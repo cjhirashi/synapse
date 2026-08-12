@@ -1,0 +1,83 @@
+name: synapse
+
+services:
+  backend:
+    build: ./backend
+    container_name: synapse-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - postgres
+      - couchdb
+      - qdrant
+    networks:
+      - synapse_internal
+      - infraestructura_default
+
+  frontend:
+    build: ./frontend
+    container_name: synapse-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - synapse_internal
+      - infraestructura_default
+
+  couchdb:
+    image: couchdb:3
+    container_name: synapse-couchdb
+    restart: unless-stopped
+    environment:
+      - COUCHDB_USER=${COUCHDB_USER}
+      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+    volumes:
+      - /mnt/disco1/synapse-data/couchdb:/opt/couchdb/data
+    networks:
+      - synapse_internal
+
+  qdrant:
+    image: qdrant/qdrant
+    container_name: synapse-qdrant
+    restart: unless-stopped
+    environment:
+      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
+    volumes:
+      - /mnt/disco1/synapse-data/qdrant:/qdrant/storage
+    networks:
+      - synapse_internal
+
+  postgres:
+    image: postgres:15
+    container_name: synapse-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - /mnt/disco1/synapse-data/postgres:/var/lib/postgresql/data
+    networks:
+      - synapse_internal
+
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    container_name: synapse-gotenberg
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    command:
+      - "gotenberg"
+      - "--api-port=3001"
+    networks:
+      - synapse_internal
+
+networks:
+  synapse_internal:
+    name: synapse_internal
+  infraestructura_default:
+    external: true
