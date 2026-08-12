@@ -85,4 +85,4 @@ open-webui   Up
 - **Aislamiento de usuarios**: cada usuario tiene su propia DB CouchDB `user-{id}` — invariante crítico
 - **Git flow**: `feature/*` → PR → `dev` → Charlie revisa → `main`. Nunca commit directo a `dev` o `main`
 - **DNS Docker**: configurado en `/etc/docker/daemon.json` con DNS del router + Google
-- **SSH GitHub**: clave `synapse-server-192.168.100.200` (ed25519) activa en GitHub
+- **SSH GitHub**: clave ed25519 del servidor activa en GitHub

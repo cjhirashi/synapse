@@ -4,7 +4,7 @@ Plataforma personal self-hosted para gestión del conocimiento con agentes de IA
 Reemplaza Claude Desktop + Obsidian.
 
 **Stack:** FastAPI · CouchDB/PouchDB · Qdrant · LangGraph · LiteLLM · React  
-**Despliegue:** Docker Compose en servidor local Ubuntu (`192.168.100.200`)
+**Despliegue:** Docker Compose en servidor local Ubuntu (self-hosted)
 
 ## Estructura
 
