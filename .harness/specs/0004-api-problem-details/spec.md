@@ -2,25 +2,27 @@
 id: SPEC-0004
 tipo: spec
 feature: 0004-api-problem-details
-estado: draft
+estado: approved
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: c8c9e24   # base al abrir la spec (aún sin código propio)
 anchor_mode: advisory
 covers:
   - backend/app/core/problems.py
   - backend/tests/test_problem*.py
+  - frontend/src/api/problems.ts
+  - frontend/src/api/problems.test.ts
   - .harness/specs/0004-api-problem-details/contracts/**
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente
+  fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: pendiente
 actualizado: 2026-10-11
 ---
 
 # SPEC-0004 · Errores de la API con Problem Details (RFC 9457)
 
-> Fase 1 (Specify) **en curso**: elicitación interactiva (`method.md §3`). Tandas 1
-> (Q1–Q6) y 2 (Q7–Q10) decididas por el usuario; 0 marcadores; falta GATE 1.
+> Fase 1 (Specify) **cerrada**: tandas 1 (Q1–Q6) y 2 (Q7–Q10) decididas por el usuario;
+> GATE 1 aprobado. El *cómo* está en `plan.md`.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -166,4 +168,4 @@ en su propio spec los tipos que añade.
 | Q10 · 500 con traza al log; 500 mínimo fijo si falla el manejador; sin ids de correlación | Diagnosticable sin filtrar internos; correlación espera a Art. 7 | No registrar nada en esta feature | — |
 
 ## Marcadores abiertos
-Ninguno (tandas 1 y 2 decididas). Pendiente: confirmación «así es» del usuario y GATE 1.
+Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).
