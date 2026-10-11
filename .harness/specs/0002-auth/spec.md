@@ -34,6 +34,7 @@ aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
+  pr_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 

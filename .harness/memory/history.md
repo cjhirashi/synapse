@@ -1,5 +1,22 @@
 # History — Synapse
 
+## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
+- **Fase alcanzada:** specify (en curso, sin GATE 1)
+- **Rebotes del verificador:** 0
+- **Directiva de Pausa:** no
+- **Drift / re-anchor:** no
+- **Anclas movidas:** — (SPEC-0003 nace con `anchor_commit: c8c9e24`, base sin código propio)
+- **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
+- **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `draft`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
+- **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
+- **Próximo paso:** respuestas del usuario a P1–P6; iterar hasta 0 marcadores y "así es".
+- **Registro de tareas:**
+  - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
+  - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
+  - [2026-10-11] Borrador `spec.md` de 0003 desde la plantilla y T-002: alcance, fronteras REST, RF-001…RF-005 firmes, 6 marcadores (P1 almacenamiento, P2 validación/concurrencia, P3 papelera, P4 403 vs 404, P5 RFC 9457, P6 UI/paginación).
+
+---
+
 ## [2026-10-11] Sprint 1 (0002-auth) — COMPLETADO Y VERIFICADO
 
 **Fase alcanzada:** Implement → Verify (ciclo completo Specify → Plan → Tasks → Implement → Verify)
