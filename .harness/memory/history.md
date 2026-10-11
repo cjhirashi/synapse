@@ -9,7 +9,7 @@
 - **Gate:** verde (21 ok · 1 aviso: `spectral` no instalado)
 - **Docs actualizadas:** `specs/0004-api-problem-details/{spec,plan,tasks}.md`, contratos 0002 y 0004, ARCHIFY.md, SPEC-0003 (referencias a 0004), SPEC-0002 (nota y ancla), `backend/README.md`, `backend/app/core/README.md`, `frontend/src/README.md`, AGENTS.md, state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** re-verificación de 0004 (Fase 5, la decide el usuario) tras las correcciones V-1…V-8; después Fase 3 (Tasks) de 0003.
+- **Próximo paso:** el usuario decide sobre W-1…W-4 (menores) de la re-verificación y, si lo considera, pasa SPEC-0004 a `verified`; después Fase 3 (Tasks) de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -47,6 +47,7 @@
   - [2026-10-11] T-049: `backend/README.md` y `core/README.md` (log del mensaje interno, regla de `PydanticCustomError`, 404/405 fuera del contrato por operación). Contratos re-exportados: sin cambios.
   - [2026-10-11] T-050: tabla de cobertura (RF en `Pass`, docs `hecho`, tareas nuevas en sus filas); SPEC-0004 `implemented`; state.md. Backend 158/158, frontend 32/32, tsc limpio.
   - [2026-10-11] **Session-End:** fase implement (correcciones de la verificación adversarial, enmienda 1). Rebote V-1…V-8 resuelto. Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, state.md, history.md. Decisión: `covers` sin cambios (transversales sin dueño, PLAN-0004 §7). No se marca nada `verified`; próximo paso: re-verificación decidida por el usuario.
+  - [2026-10-11] Usuario: «Haz la reverificación que recomiendas». Subagente verificador (sólo lectura) sobre HEAD `70d671a`: veredicto **APPROVED**, V-1…V-8 resueltos (mutaciones en worktree del scratchpad confirman V-1 y V-4; 8 tests nuevos fallan con el código de `91b9531`; fuzz de ~25 tipos de pydantic sin eco del valor). Gate verde (21 ok · 1 aviso), backend 158/158, frontend 32/32, tsc limpio, contratos sin diff. Menores: W-1 plantilla de `PydanticCustomError` con f-string publicaría el valor (E1 promete garantía en el traductor); W-2 `too_short`/`too_long` de colecciones caen a `Invalid value.` (faltan `field_type`/`actual_length` en `SAFE_CTX_KEYS`); W-3 spec §5/§6 y nombre de test aún dicen «500 mínimo fijo/constante»; W-4 «emitido ⊆ declarado» sólo en `test_problem_auth.py`. Pendiente de decisión del usuario. No se marca nada `verified`.
 
 ---
 
