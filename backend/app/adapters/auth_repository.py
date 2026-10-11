@@ -63,10 +63,19 @@ class AuthRepository(AuthPort):
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
         return self.db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
 
-    def revoke_refresh_token(self, token: RefreshToken, rotated: bool = False) -> None:
+    def revoke_refresh_token(self, token: RefreshToken) -> None:
         token.revoked = True
-        token.rotated = rotated
         self.db.flush()
+
+    def claim_refresh_token(self, token: RefreshToken) -> bool:
+        # UPDATE condicional: con dos peticiones a la vez sólo una afecta la fila (RF-010).
+        claimed = (
+            self.db.query(RefreshToken)
+            .filter(RefreshToken.id == token.id, RefreshToken.revoked.is_(False))
+            .update({"revoked": True, "rotated": True}, synchronize_session=False)
+        )
+        self.db.flush()
+        return claimed == 1
 
     def revoke_refresh_tokens(self, user_id: str) -> None:
         self.db.query(RefreshToken).filter(

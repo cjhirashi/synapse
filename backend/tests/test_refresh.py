@@ -109,3 +109,32 @@ def test_rf_022_token_revoked_by_logout_does_not_trigger_mass_revocation(client,
         assert _replay(client, raw).status_code == 401
         # La otra sesión del mismo usuario sigue pudiendo renovar.
         assert other.post("/auth/refresh").status_code == 200
+
+
+def test_rf_022_concurrent_rotation_of_the_same_token_leaves_no_second_session(client, db):
+    """W-1: dos peticiones leen el mismo refresh token antes de que la otra confirme.
+    Sólo una puede rotarlo; la otra equivale a reutilizarlo (RF-010, RF-022)."""
+    import pytest
+    from fastapi import HTTPException
+
+    from app.adapters.auth_repository import AuthRepository
+    from app.services.auth_service import AuthService
+    from tests.conftest import TestingSessionLocal
+
+    login(client)
+    raw = client.cookies.get("refresh_token")
+    stale = TestingSessionLocal()
+    try:
+        # La segunda petición ya leyó el token (se retiene: el mapa de identidad es débil)…
+        seen = stale.query(RefreshToken).one()
+        assert seen.revoked is False
+        # …cuando la primera lo rota y confirma.
+        assert client.post("/auth/refresh").status_code == 200
+
+        with pytest.raises(HTTPException) as exc:
+            AuthService(AuthRepository(stale), couchdb=None).refresh(raw)
+        assert exc.value.status_code == 401
+    finally:
+        stale.close()
+    db.expire_all()
+    assert db.query(RefreshToken).filter(RefreshToken.revoked.is_(False)).count() == 0

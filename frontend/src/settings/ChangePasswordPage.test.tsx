@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import ChangePasswordPage from "./ChangePasswordPage";
 import * as api from "../api/auth";
@@ -68,4 +68,18 @@ test("RF-017/020: con datos válidos llama a la API y avisa del éxito", async (
   await fill(user, "admin1234", "una-clave-larga");
   await waitFor(() => expect(onChanged).toHaveBeenCalled());
   expect(spy).toHaveBeenCalledWith("admin1234", "una-clave-larga");
+});
+
+test("RF-023: si la sesión caducó y no se pudo renovar (401), lleva a /login", async () => {
+  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(401, "Invalid token"));
+  render(
+    <MemoryRouter initialEntries={["/settings/password"]}>
+      <Routes>
+        <Route path="/settings/password" element={<ChangePasswordPage onChanged={vi.fn()} />} />
+        <Route path="/login" element={<p>Pantalla de login</p>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await fill(userEvent.setup(), "admin1234", "una-clave-larga");
+  expect(await screen.findByText("Pantalla de login")).toBeInTheDocument();
 });

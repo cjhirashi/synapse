@@ -54,8 +54,9 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
   `Authorization`) y refresh token de 30 días en cookie `refresh_token`, guardado hasheado.
   El JWT lleva `ver` (= `users.token_version`): cambiar la contraseña la incrementa e invalida
   al instante los access tokens anteriores de todas las sesiones (la actual recibe cookies nuevas).
-  Cada `/auth/refresh` **rota** el refresh token; reutilizar uno ya rotado revoca todos los del
-  usuario (posible robo). Los JWT emitidos antes de la migración 004 (sin `ver`) dejan de valer.
+  Cada `/auth/refresh` **rota** el refresh token de forma atómica (`UPDATE` condicional: con dos
+  peticiones simultáneas sólo una gana); reutilizar uno ya rotado, o perder esa carrera, revoca
+  todos los del usuario (posible robo). Los JWT emitidos antes de la migración 004 (sin `ver`) dejan de valer.
 
 | Endpoint | Respuesta |
 |---|---|

@@ -38,7 +38,12 @@ class AuthPort(ABC):
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None: ...
 
     @abstractmethod
-    def revoke_refresh_token(self, token: RefreshToken, rotated: bool = False) -> None: ...
+    def revoke_refresh_token(self, token: RefreshToken) -> None: ...
+
+    @abstractmethod
+    def claim_refresh_token(self, token: RefreshToken) -> bool:
+        """Lo marca revocado y rotado sólo si aún no estaba revocado, en una única operación
+        atómica. Devuelve False si otra petición se adelantó."""
 
     @abstractmethod
     def revoke_refresh_tokens(self, user_id: str) -> None: ...

@@ -112,6 +112,12 @@ actualizado: 2026-10-11
 - [x] T-067 — tests vitest + `AppLayout` con enlace "Cambiar contraseña" y "Cerrar sesión" (RF-023) [code]
 - [x] T-068 — re-exportar contrato; actualizar `backend/README.md`, `frontend/src/README.md`, `ARCHIFY.md`, `state.md`, `history.md` [doc]
 
+### P — Re-verificación: hallazgos W-1, W-2 (sin cambio de spec)
+- [x] T-069 — test: una rotación concurrente del mismo refresh token (lectura obsoleta) no deja dos sesiones; la perdedora → 401 y revocación masiva (RF-010, RF-022) [test]
+- [x] T-070 — `AuthRepository.claim_refresh_token`: revocación atómica condicional (`UPDATE … WHERE revoked = false`, 1 fila) usada por `AuthService.refresh` (RF-010, RF-022) [code]
+- [x] T-071 — test vitest + `ChangePasswordPage`: un 401 (renovación fallida) lleva a `/login` (RF-023) [code]
+- [x] T-072 — actualizar `plan.md`, `backend/README.md`, `state.md`, `history.md` [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -124,7 +130,7 @@ actualizado: 2026-10-11
 | RF-007 | T-021, T-022 | test_auth | Pass |
 | RF-008 | T-019, T-020 | test_auth | Pass |
 | RF-009 | T-008, T-025, T-026 | test_refresh | Pass |
-| RF-010 | T-005–T-008, T-023, T-024, T-060, T-064 | test_refresh | Pass |
+| RF-010 | T-005–T-008, T-023, T-024, T-060, T-064, T-069, T-070 | test_refresh | Pass |
 | RF-011 | T-023, T-024 | test_refresh | Pass |
 | RF-012 | T-027–T-029, T-035, T-036, T-054, T-055 | test_admin | Pass |
 | RF-013 | T-027, T-029, T-052, T-055, T-057 | test_admin, test_auth, test_bootstrap | Pass |
@@ -134,8 +140,8 @@ actualizado: 2026-10-11
 | RF-017 | T-008, T-030, T-031, T-035, T-036, T-059, T-063 | test_change_password | Pass |
 | RF-018 | T-003, T-004, T-030, T-031 | test_change_password | Pass |
 | RF-021 | T-059, T-062, T-063 | test_change_password | Pass |
-| RF-022 | T-060, T-062, T-064 | test_refresh | Pass |
-| RF-023 | T-065–T-067 | vitest (api/auth, layout) | Pass |
+| RF-022 | T-060, T-062, T-064, T-069, T-070 | test_refresh | Pass |
+| RF-023 | T-065–T-067, T-071 | vitest (api/auth, layout, ChangePasswordPage) | Pass |
 | RF-019 | T-005–T-007, T-013, T-032, T-033, T-035, T-051 | test_forced_change | Pass |
 | RF-020 | T-037–T-041 | ChangePasswordPage.test, RequireAuth.test, LoginPage.test (vitest) | Pass |
 | RNF-001 | T-042 | `pytest --cov=app` (97 %) | Pass |

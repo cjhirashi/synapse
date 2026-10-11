@@ -123,7 +123,13 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
-        self.repo.revoke_refresh_token(stored, rotated=True)
+        if not self.repo.claim_refresh_token(stored):
+            # Otra petición lo rotó entre la lectura y ahora: equivale a reutilizarlo (RF-022).
+            self.repo.revoke_refresh_tokens(stored.user_id)
+            self.repo.commit()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+            )
         return stored.user, self.create_refresh_token(stored.user)
 
     def logout(self, raw_token: str | None) -> None:

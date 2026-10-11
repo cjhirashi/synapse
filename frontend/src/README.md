@@ -14,6 +14,6 @@ src/
 
 `api/auth.ts` renueva la sesión sola: ante un 401 llama una vez a `/auth/refresh`
 (serializado entre pestañas con Web Locks) y repite la petición; si falla, la sesión se da
-por cerrada.
+por cerrada (`RequireAuth` y las páginas que reciben ese 401 llevan a `/login`).
 
 El resto de la estructura (bóvedas, editor, sync) se define en sus propias specs.

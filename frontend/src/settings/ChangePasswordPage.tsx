@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { ApiError, changePassword } from "../api/auth";
 
 const MIN_LENGTH = 10;
@@ -9,6 +10,7 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -21,7 +23,9 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
       await changePassword(current, next);
       onChanged();
     } catch (err) {
-      if (err instanceof ApiError && err.status === 400) setError("La contraseña actual es incorrecta.");
+      // `request()` ya intentó renovar la sesión: un 401 aquí es una sesión cerrada (RF-023).
+      if (err instanceof ApiError && err.status === 401) navigate("/login", { replace: true });
+      else if (err instanceof ApiError && err.status === 400) setError("La contraseña actual es incorrecta.");
       else if (err instanceof ApiError && err.status === 422) setError("La nueva contraseña no cumple la política.");
       else setError("No se pudo cambiar la contraseña. Inténtalo de nuevo.");
     } finally {

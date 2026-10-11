@@ -127,4 +127,8 @@ Hoy sólo hay READMEs. Para RF-020 se crea el **mínimo**: proyecto Vite + React
   - R-4 (RF-023): `api/auth.ts::request` reintenta tras un único `/auth/refresh` compartido (`navigator.locks` si existe, si no una promesa en curso). Tests vitest.
   - R-6 (RF-014): `test_isolation.py` recorre todo `GET` protegido del router como A y como B y comprueba que no aparecen identificadores del otro; y que las bases CouchDB por usuario dan 401 sin credenciales.
 
+- **Re-verificación (W-1, W-2)** —
+  - W-1 (RF-010, RF-022): la rotación pasa a ser una revocación atómica condicional (`AuthRepository.claim_refresh_token`: `UPDATE refresh_tokens SET revoked, rotated WHERE id = ? AND revoked = false`). Si no afecta exactamente una fila, otra petición ya lo rotó: se trata como reutilización (401 + revocación masiva). En PostgreSQL (READ COMMITTED) el segundo `UPDATE` espera al primero y re-evalúa el `WHERE`. `revoke_refresh_token` pierde el parámetro `rotated` (sólo lo marca la rotación). Test con lectura obsoleta en una segunda sesión.
+  - W-2 (RF-023): `ChangePasswordPage` navega a `/login` si `changePassword` termina en 401 (la renovación ya falló en `request()`). Test vitest.
+
 `covers` (a ampliar en `spec.md` al cierre): `backend/app/**` de auth/admin, `backend/alembic/versions/*002*`, `backend/tests/test_*{auth,admin,refresh,...}*`, `contracts/openapi.yaml`, `frontend/src/**`, `.env.example`.
