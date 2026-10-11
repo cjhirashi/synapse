@@ -24,9 +24,9 @@ actualizado: 2026-10-11
 
 # SPEC-0003 · CRUD de bóvedas
 
-> Fase 1 (Specify) **en curso**: elicitación interactiva (`method.md §3`). Tanda 1
-> (P1–P6) decidida por el usuario; tanda 2 (casos límite, no funcionales, seguridad)
-> abierta en §Marcadores.
+> Fase 1 (Specify): elicitación interactiva (`method.md §3`). Tandas 1 (P1–P6) y 2
+> (P7–P12) decididas por el usuario; 0 marcadores abiertos. Pendiente del "así es" y
+> del GATE 1.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores
@@ -48,7 +48,8 @@ actualizado: 2026-10-11
   soft delete, listar la papelera y restaurar.
 - Control de concurrencia optimista con ETag / `If-Match` (basado en `_rev`).
 - Aislamiento: un usuario nunca ve ni modifica las bóvedas de otro (respuesta 404).
-- UI: lista de bóvedas, formulario de crear/editar y borrar con confirmación.
+- UI: lista de bóvedas, formulario de crear/editar, borrar con confirmación y vista
+  "Papelera" con restaurar.
 ### Fuera de alcance
 - **Purga automática a los 30 días:** queda como RF-016 (diferido), se implementa en una
   feature aparte junto con la decisión sobre los documentos de la bóveda.
@@ -74,7 +75,7 @@ actualizado: 2026-10-11
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `id` | string | generado por el servidor `[NEEDS CLARIFICATION: P10]` |
+| `id` | string (UUID v4) | generado por el servidor; en CouchDB el documento es `vault:{id}` |
 | `name` | string | obligatorio, 1–100 caracteres tras quitar espacios a los lados |
 | `description` | string \| null | opcional, ≤ 2000 caracteres |
 | `tags` | string[] | ≤ 20; cada uno 1–32 caracteres; en minúsculas y sin repetidos |
@@ -83,7 +84,11 @@ actualizado: 2026-10-11
 | `deleted_at` | string \| null | `null` salvo en la papelera |
 
 - La versión del documento viaja en la cabecera `ETag` (derivada de `_rev`), no en el cuerpo.
-- Lista: `{ "items": [Bóveda], "next_cursor": string | null }`; `limit` 1–200 (50 por defecto).
+- Lista: `{ "items": [Bóveda], "next_cursor": string | null }`; `limit` 1–200 (50 por
+  defecto); orden: `created_at` descendente y, a igual fecha, `id` descendente.
+- Cuerpos de `POST`/`PATCH`: sólo `name`, `description`, `tags`; cualquier otro campo → 422.
+- Unicidad del nombre: documento de reserva `vault-name:{name en minúsculas}` en la misma
+  base (detalle de diseño en `plan.md`).
 - Errores: `application/problem+json` (RFC 9457) vía la feature previa.
 
 ## 4. Criterios de aceptación (EARS)
@@ -95,6 +100,8 @@ actualizado: 2026-10-11
   devolver como máximo `limit` bóvedas y un `next_cursor` opaco que, enviado como
   `cursor`, devuelve la página siguiente sin repetir ni saltar bóvedas; en la última
   página `next_cursor` es `null`.
+- **RF-024** — El sistema DEBE ordenar las bóvedas de `GET /vaults` por `created_at`
+  descendente y, a igual `created_at`, por `id` descendente.
 - **RF-003** — SI `limit` está fuera de 1–200 o `cursor` no es válido ENTONCES el sistema
   DEBE responder 422.
 
@@ -109,6 +116,14 @@ actualizado: 2026-10-11
   de `name` y dejar `tags` en minúsculas y sin repetidos.
 - **RF-007** — SI ya existe otra bóveda no borrada del mismo usuario con el mismo `name`
   sin distinguir mayúsculas ENTONCES el sistema DEBE responder 409 sin guardar nada.
+- **RF-021** — CUANDO dos peticiones simultáneas crean o renombran bóvedas del mismo
+  usuario con el mismo `name` (sin distinguir mayúsculas) el sistema DEBE guardar sólo
+  una y responder 409 a la otra.
+- **RF-022** — CUANDO se crea una bóveda el sistema DEBE asignarle un `id` UUID v4
+  generado por el servidor.
+- **RF-023** — SI el cuerpo de `POST` o `PATCH` trae un campo distinto de `name`,
+  `description` o `tags` (p. ej. `owner_id`, `id`, `deleted_at`) ENTONCES el sistema DEBE
+  responder 422 sin guardar nada.
 
 **Ver y editar**
 - **RF-008** — CUANDO el dueño pide `GET /vaults/{vault_id}` de una bóveda no borrada el
@@ -130,6 +145,13 @@ actualizado: 2026-10-11
 - **RF-013** — CUANDO el dueño envía `POST /vaults/{vault_id}/restore` sobre una bóveda
   borrada con `If-Match` vigente el sistema DEBE poner `deleted_at = null` y responder
   200 con la bóveda y su `ETag` nuevo.
+- **RF-025** — SI al restaurar ya existe otra bóveda no borrada del usuario con el mismo
+  `name` (sin distinguir mayúsculas) ENTONCES el sistema DEBE responder 409 sin modificar
+  nada.
+- **RF-026** — SI se pide `DELETE` sobre una bóveda ya borrada, o `restore` sobre una no
+  borrada, ENTONCES el sistema DEBE responder 404 sin modificar nada.
+- **RF-027** — CUANDO se borra una bóveda su nombre DEBE quedar libre para otra bóveda del
+  mismo usuario; CUANDO se renombra, el nombre anterior DEBE quedar libre.
 
 **Aislamiento y acceso**
 - **RF-014** — SI un usuario pide, edita, borra o restaura una bóveda que no existe en su
@@ -150,15 +172,20 @@ actualizado: 2026-10-11
   o el aviso de nombre repetido de un 409.
 - **RF-020** — CUANDO el usuario pide borrar una bóveda el frontend DEBE pedir
   confirmación antes de enviar el `DELETE`.
+- **RF-028** — CUANDO el usuario abre la vista "Papelera" el frontend DEBE listar sus
+  bóvedas borradas con su `deleted_at` y un botón "Restaurar"; un 409 al restaurar DEBE
+  mostrarse como aviso de nombre ocupado.
 
 ## 5. Casos límite y manejo de errores
 - Bóveda inexistente, ajena o ya borrada al pedirla/editarla: 404 (RF-011, RF-014).
 - Edición concurrente: 412 (RF-010); el cliente debe volver a leer.
 - Almacén caído: 503 (RF-017).
-- Creación simultánea con el mismo nombre: `[NEEDS CLARIFICATION: P7]`.
-- Restaurar cuando ya existe otra bóveda activa con ese nombre: `[NEEDS CLARIFICATION: P8]`.
-- Borrar una ya borrada / restaurar una no borrada: `[NEEDS CLARIFICATION: P8]`.
-- Campos desconocidos en el cuerpo (p. ej. `owner_id`): `[NEEDS CLARIFICATION: P11]`.
+- Creación o renombrado simultáneo con el mismo nombre: sólo uno gana, 409 al otro (RF-021).
+- Restaurar con el nombre ocupado por otra bóveda activa: 409 (RF-025).
+- Borrar una ya borrada / restaurar una no borrada: 404 (RF-026).
+- Campos desconocidos en el cuerpo (p. ej. `owner_id`): 422 (RF-023).
+- Bóvedas creadas mientras se pagina: el orden por `created_at`/`id` mantiene el cursor
+  estable (RF-002, RF-024).
 
 ## 6. Registro de decisiones y descartes
 | Decisión | Justificación | Alternativa descartada | ADR |
@@ -171,14 +198,16 @@ actualizado: 2026-10-11
 | P4 · Bóveda ajena → 404 | Un 403 confirma que el id existe (filtración) | 403 como decía T-002 | — |
 | P5 · RFC 9457 en toda la API en una feature previa | Constitución Art. 6; un solo formato en auth y bóvedas | Mantener `{"detail"}`; RFC 9457 sólo en bóvedas | — |
 | P6 · UI incluida; paginación por cursor con `limit` (50, máx. 200) | Prueba manual de la feature; agentes pueden crear muchas bóvedas | Sólo API; lista sin paginar; paginación por offset | — |
+| P7 · Unicidad del nombre con un documento de reserva `vault-name:{minúsculas}` | CouchDB no tiene restricciones únicas; el conflicto de escritura deja un solo ganador | Comprobar y luego escribir (admite duplicados raros) | — |
+| P8 · Restaurar con nombre ocupado → 409; borrar ya borrada / restaurar no borrada → 404 | Coherente con la vista normal y la papelera; nunca se pierde una bóveda por restaurar | Renombrar solo al restaurar; 409 o 204 idempotente | — |
+| P9 · Orden por `created_at` desc + `id`; p95 < 300 ms (RNF-001) | Lo más reciente primero y cursor estable | Orden alfabético; sin objetivo de rendimiento | — |
+| P10 · `id` UUID v4 del servidor (`vault:{uuid}` en CouchDB) | No adivinable ni enumerable; prefijo listo para otros tipos de documento | Id del cliente; slug del nombre | — |
+| P11 · Campos desconocidos → 422 | Hace visibles errores de clientes y agentes; `owner_id` nunca viene de fuera | Ignorarlos en silencio | — |
+| P12 · Vista "Papelera" con restaurar en la UI | La API ya lo soporta; sin ella sólo se restaura por API | Papelera sólo por API | — |
 
 ## 7. Requisitos no funcionales (RNF)
-- `[NEEDS CLARIFICATION: P9 — rendimiento del listado y orden]`
+- **RNF-001** — `GET /vaults` con `limit=50` DEBE responder en p95 < 300 ms con 1 000
+  bóvedas en la base del usuario (índice Mango sobre `type`, `deleted_at`, `created_at`).
 
 ## Marcadores abiertos
-- `[NEEDS CLARIFICATION: P7 — unicidad del nombre ante creaciones simultáneas]`
-- `[NEEDS CLARIFICATION: P8 — restaurar con nombre ocupado; borrar ya borrada; restaurar no borrada]`
-- `[NEEDS CLARIFICATION: P9 — orden del listado y objetivo de rendimiento]`
-- `[NEEDS CLARIFICATION: P10 — formato del id]`
-- `[NEEDS CLARIFICATION: P11 — campos desconocidos en el cuerpo]`
-- `[NEEDS CLARIFICATION: P12 — papelera y restaurar en la UI]`
+- Ninguno.
