@@ -1,90 +1,74 @@
 # AGENTS.md — Synapse
 
-## Antes de Empezar
+> **Punto de entrada** para cualquier agente que trabaje en este repo. Es un **mapa**,
+> no una biblia: lee sólo lo que necesites, cuando lo necesites.
+>
+> **Cómo trabajamos:** este repo usa un arnés **SDD Anchored** (spec viva anclada al
+> código). Empieza por **`.harness/method.md §0`**. Los principios innegociables están
+> en **`.harness/constitution.md`**.
+>
+> **Separación estricta:** `.harness/` = gobernanza · `docs/` = el producto.
 
-1. `bash .harness/gate/check.sh`
-2. Lee: `.harness/memory/state.md`
-3. Lee: `.harness/constitution.md` (Art. 2, 5, 8)
-4. Lee: `TAREAS.md`
+## Antes de empezar (en orden)
 
----
+1. Ejecuta **`.harness/gate/check.sh`**. Si cierra (exit 1 / ❌), **DETENTE** y reporta.
+2. Lee **`.harness/memory/state.md`** (correcciones del usuario van arriba — se leen SIEMPRE).
+3. Ojea **`.harness/specs/`** — carpetas `NNN-slug` = features; `estado:` en su `spec.md`.
 
-## 🎯 Roles Fijos
+## Qué es Synapse
 
-| Rol | Especialidad | Responsabilidad |
-|-----|---|---|
-| **arquitecto-fastapi** | Endpoints, middleware | Routers, performance |
-| **experto-couchdb** | Datos, sync, queries | Esquemas, aislamiento |
-| **guardian-seguridad** | Permisos, aislamiento | Validación, OWASP |
-| **especialista-frontend** | React, UX | Componentes, hooks |
+Plataforma personal self-hosted para gestión del conocimiento con agentes IA.
+Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 
-**OpenClaw externos:** AIRA, Paulina, Liza, main (gestión de bóveda)
-
----
-
-## 🔄 Ciclo SDD Automático (Sprint Mode)
-
-**AIRA asigna en `TAREAS.md`. Ejecuta automáticamente:**
-
-1. Lee TAREAS.md
-2. Para cada `[T-NNN]`:
-   - Crea `.harness/specs/{feature}/spec.md`
-   - Crea `.harness/specs/{feature}/plan.md`
-   - Gate ✅ → Implementa + tests (≥80%)
-   - Gate ✅ → Commit `(T-NNN)`
-   - Registra en `BITACORA-IMPLEMENTACION.md`
-3. Al completar → regresa a AIRA
-
-**Sin esperar instrucciones.** Bloqueadores → BITACORA-IMPLEMENTACION.md.
-
----
-
-## 🛠️ Comandos Esenciales
-
-```bash
-bash .harness/gate/check.sh        # Estado
-pytest tests/ --cov=app             # Tests backend
-docker compose up -d                # Dev
-/archify                            # Diagramas
-```
-
----
-
-## 🔒 P1-P5 (Antes de Commit)
-
-- P1: Gate siempre primero
-- P2: Datos scoped a `current_user.id`
-- P3: Validar permisos (owner check)
-- P4: Sin secretos en repo
-- P5: Tests con CouchDB real
-
----
-
-## 📚 Arquitectura
-
-**Hexagonal.** Services → `core/ports/`. Factory selecciona adapter.
-
+**Arquitectura:** Hexagonal (services → `core/ports/`; adapters seleccionados por factory).
 **Crítico:** Aislamiento por usuario. Base CouchDB `synapse_user_{id}`. **Nunca romper.**
 
+## Servicios / módulos
+
+| Módulo | Stack | Tests | Arranque |
+|--------|-------|-------|----------|
+| **Backend** | FastAPI + CouchDB | `pytest tests/ --cov=app` | `docker compose up -d` |
+| **Frontend** | React | `npm test --coverage` | `docker compose up -d` |
+| **Sync** | PouchDB + offline-first | Incluido en tests | Automático |
+
+## Convenciones
+
+- **Código:** inglés. **Specs/docs:** español.
+- **Commits:** Conventional Commits + `(T-NNN)` o `(RF-NNN)`.
+- **IDs:** `RF-`/`RNF-`/`T-` por feature; `ADR-` por proyecto.
+- **Tests:** anotados con su `RF-` en comment.
+- **Errores API:** RFC 9457 (Problem Details).
+
+## Reglas P1-P5 (seguridad — SIEMPRE)
+
+- **P1:** Gate siempre primero.
+- **P2:** Datos scoped a `current_user.id`.
+- **P3:** Permisos validados (owner check).
+- **P4:** Sin secretos en repo.
+- **P5:** Tests con BD real (nunca mocks).
+
+## Mapa de documentación (producto)
+
+| Doc | Ruta | Se actualiza cuando… |
+|-----|------|---------------------|
+| Especificaciones | `.harness/specs/*/spec.md` | Nueva feature |
+| Planes | `.harness/specs/*/plan.md` | Fase 2 → 3 |
+| Decisiones | `.harness/decisions/ADR-*.md` | Cambio arquitectónico |
+| API | `docs/API.md` | Endpoints cambian |
+
+Tabla completa: `.harness/constitution.md` Art. 11.
+
+## Roles Fijos (para futuras colaboraciones)
+
+| Rol | Especialidad |
+|-----|---|
+| **arquitecto-fastapi** | Endpoints, middleware, performance |
+| **experto-couchdb** | Datos, sync, aislamiento |
+| **guardian-seguridad** | Permisos, OWASP |
+| **especialista-frontend** | React, UX, hooks |
+
+**OpenClaw (externos):** AIRA (diseño), Paulina (?), Liza (coordinación), main (orquestación).
+
 ---
 
-## 🎯 Casos de Uso Rápido
-
-### Backend CRUD
-- routers/vaults.py (endpoints)
-- models/vault.py (Pydantic)
-- services/vault_service.py (lógica)
-- Tests: validar aislamiento (P3)
-
-### Frontend
-- components/{Feature}.tsx
-- hooks/use{Feature}.ts
-- Tests: validar build sin errores
-
-### Diagramas
-- `/archify` → C4, Sequence, Dataflow
-- Guardar en `.harness/specs/{feature}/diagrams/`
-
----
-
-**Synapse — SDD Anchored — Sprint Mode Activado**
+**Synapse — SDD Anchored — Harness Génesis Completada**
