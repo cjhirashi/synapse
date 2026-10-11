@@ -61,6 +61,6 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 1 de **0004-api-problem-details**: el usuario revisa `plan.md` para GATE 2 de
-`specs/0004-api-problem-details/spec.md`. En paralelo puede hacerse la Fase 3 (Tasks) de
+Fase 2 de **0004-api-problem-details**: el usuario revisa el `plan.md` de
+`specs/0004-api-problem-details/` para el GATE 2. En paralelo puede hacerse la Fase 3 (Tasks) de
 0003. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
