@@ -1,0 +1,10 @@
+# RNF-001 (SPEC-0002): cobertura >= 80 % en el módulo auth.
+# Hoy `app/` contiene únicamente el módulo auth; al llegar otras features,
+# acotar con `omit` o subir a un umbral por módulo.
+# Uso: pytest --cov=app   (falla si la cobertura baja del umbral)
+[run]
+source = app
+
+[report]
+fail_under = 80
+show_missing = true

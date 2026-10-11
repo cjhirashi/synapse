@@ -78,8 +78,8 @@ actualizado: 2026-10-11
 - [x] T-041 — `LoginPage.tsx` y `RequireAuth.tsx` con rutas (cubre RF-020) [zona: frontend]
 
 ### L · No funcionales
-- [ ] T-042 — configurar `pytest --cov` con umbral 80 % en módulos de auth (cubre RNF-001) [zona: test]
-- [ ] T-043 — comprobar que la suite usa CouchDB real y declarar la excepción SQLite (cubre RNF-002) [zona: test]
+- [x] T-042 — configurar `pytest --cov` con umbral 80 % en módulos de auth (cubre RNF-001) [zona: test]
+- [x] T-043 — comprobar que la suite usa CouchDB real y declarar la excepción SQLite (cubre RNF-002) [zona: test]
 
 ### M · Documentación
 - [ ] T-044 — exportar `contracts/openapi.yaml` final [doc]

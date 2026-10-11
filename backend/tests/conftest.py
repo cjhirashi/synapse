@@ -31,6 +31,18 @@ def override_get_db():
         db.close()
 
 
+@pytest.fixture(scope="session", autouse=True)
+def require_real_couchdb():
+    """P5: sin CouchDB real la suite se detiene en vez de pasar en falso."""
+    import httpx
+    from app.core.config import settings
+
+    try:
+        httpx.get(settings.COUCHDB_URL, timeout=5).raise_for_status()
+    except httpx.HTTPError as exc:
+        pytest.exit(f"CouchDB de pruebas no disponible en {settings.COUCHDB_URL}: {exc}", returncode=2)
+
+
 @pytest.fixture(autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
