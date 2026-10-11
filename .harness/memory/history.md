@@ -1,7 +1,7 @@
 # History — Synapse
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (Fase 4 en curso: T-001…T-014 hechas)
+- **Fase alcanzada:** implement (Fase 4 en curso: T-001…T-025 hechas; backend completo)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no (aviso: la migración tocará archivos de `covers` de 0002 → re-anclaje de 0002 al cierre)
@@ -9,7 +9,7 @@
 - **Gate:** verde
 - **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** Fase 4 desde T-015 (OpenAPI de errores); en paralelo, Fase 3 de 0003.
+- **Próximo paso:** Fase 4 desde T-026 (frontend); en paralelo, Fase 3 de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -25,6 +25,10 @@
   - [2026-10-11] T-007…T-011: `core/problems.py` — manejadores de dominio, framework (404/405 `about:blank`, conserva `Allow`) y no controlados (500 genérico + traza al log), `FALLBACK_500_BODY` constante; `test_problem_handlers.py` 8/8.
   - [2026-10-11] T-012/T-013: manejador de `RequestValidationError` — `loc`→`pointer` (escape RFC 6901, JSON inválido/cuerpo ausente → `#`), `parameter`, `header` (guiones); sólo `msg`; `type`/`title`/`detail` tomados de la entrada `validation-error` del catálogo; `test_problem_validation.py` 10/10.
   - [2026-10-11] T-014: `main.py` llama a `install_problem_handlers`; borrado el manejador ad hoc de `ProvisioningError`. Suite: 120 verdes, 4 rojos esperados (3 de contrato, 1 de arquitectura).
+  - [2026-10-11] Usuario: «Sigue». T-015/T-016: `test_problem_contract.py` (barrido: todo 4xx/5xx es `Problem` en problem+json, 500 en toda operación, sin `HTTPValidationError`); `problem_responses(*errors)` (títulos unidos por código) e `install_problem_openapi` (con caché) cableado en `main.py`. Ajuste: `Problem`/`ProblemError` publican sus opcionales como omitibles, no anulables (`SkipJsonSchema[None]`, sin `default`), y sus docstrings —que son la `description` pública— en inglés.
+  - [2026-10-11] T-017…T-020: `test_problem_auth.py` — tabla de 11 errores auth/admin (código de SPEC-0002 + `type`), login idéntico para email inexistente/contraseña errónea, política → 422 `#/new_password`, valores rechazados nunca devueltos, email inválido → `#/email`, CouchDB caído → 503 sin mensaje interno.
+  - [2026-10-11] T-021…T-023: `dependencies.py`, `auth_service.py` (sin `fastapi`) y `routers/auth.py` lanzan errores de dominio; `responses=problem_responses(...)` en cada ruta (admin a nivel de router). Mensajes de `validate_new_password` y del validador de email traducidos al inglés en su origen (Q4); `test_security` ajustado (`match="differ"`).
+  - [2026-10-11] T-024/T-025: `test_forced_change` lee `type`; `test_auth`/`test_refresh` esperan `AdminRequired`/`InvalidRefreshToken` en vez de `HTTPException`; contratos 0002 y 0004 re-exportados. Suite backend: **150/150 verde**.
 
 ---
 

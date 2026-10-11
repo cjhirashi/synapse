@@ -94,14 +94,14 @@ def test_rf_007_require_admin_rejects_guest():
     import asyncio
 
     import pytest
-    from fastapi import HTTPException
 
     from app.core.dependencies import require_admin
+    from app.core.errors import AdminRequired
 
     guest = TokenPayload(sub="u", role="guest", exp=9999999999, ver=0)
-    with pytest.raises(HTTPException) as exc:
+    with pytest.raises(AdminRequired) as exc:
         asyncio.run(require_admin(guest))
-    assert exc.value.status_code == 403
+    assert exc.value.status == 403
 
 
 def test_rf_001_public_register_endpoint_no_longer_exists(client):

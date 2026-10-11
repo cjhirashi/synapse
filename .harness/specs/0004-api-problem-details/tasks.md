@@ -37,19 +37,19 @@ actualizado: 2026-10-11
 - [x] T-014 — `main.py`: `install_problem_handlers(app)`; borrar el manejador ad hoc de `ProvisioningError` (cubre RF-001, RF-006) [zona: ruta]
 
 ### E · OpenAPI de errores
-- [ ] T-015 — test (rojo) `test_problem_contract.py`: barrido de todas las operaciones — cada 4xx/5xx declarado usa `application/problem+json` con `$ref` a `Problem`; toda operación declara 500; sin `HTTPValidationError`/`ValidationError` (cubre RF-009) [zona: test]
-- [ ] T-016 — `problem_responses(*errors)` e `install_problem_openapi(app)` (con caché) en `core/problems.py`; cableado en `main.py` (cubre RF-009) [zona: ruta]
+- [x] T-015 — test (rojo) `test_problem_contract.py`: barrido de todas las operaciones — cada 4xx/5xx declarado usa `application/problem+json` con `$ref` a `Problem`; toda operación declara 500; sin `HTTPValidationError`/`ValidationError` (cubre RF-009) [zona: test]
+- [x] T-016 — `problem_responses(*errors)` e `install_problem_openapi(app)` (con caché) en `core/problems.py`; cableado en `main.py` (cubre RF-009) [zona: ruta]
 
 ### F · Migración de auth y admin
-- [ ] T-017 — test (rojo) `test_problem_auth.py`: tabla parametrizada de cada error de auth/admin → mismo código que antes + `type` del catálogo (sin cookie, token inválido, token de versión anterior, refresh inválido/reutilizado, guest en admin, cambio pendiente, contraseña actual errónea, email repetido) (cubre RF-006) [zona: test]
-- [ ] T-018 — test (rojo): login con email inexistente vs contraseña errónea → cuerpos idénticos byte a byte (cubre RF-007) [zona: test]
-- [ ] T-019 — test (rojo): contraseña inválida en `login` y `change-password` no aparece en la respuesta; política → 422 `validation-error` con `pointer: "#/new_password"` (cubre RF-005, RF-011) [zona: test]
-- [ ] T-020 — test (rojo): CouchDB inaccesible al crear usuario → 503 `storage-unavailable` sin el mensaje interno del adaptador (cubre RF-004, RF-006) [zona: test]
-- [ ] T-021 — `core/dependencies.py`: `NotAuthenticated`, `InvalidToken`, `AdminRequired`, `PasswordChangeRequired` (cubre RF-006, RF-008) [zona: núcleo]
-- [ ] T-022 — `services/auth_service.py`: `EmailTaken`, `InvalidCredentials`, `InvalidRefreshToken`, `WrongCurrentPassword`, `PasswordPolicyViolation`; sin `fastapi` en el servicio (cubre RF-006, RF-007, RF-008) [zona: servicio]
-- [ ] T-023 — `routers/auth.py` (`/me` → `InvalidToken`) y `responses=problem_responses(...)` en cada ruta de `auth.py` y `admin.py` (cubre RF-006, RF-008, RF-009) [zona: ruta]
-- [ ] T-024 — `test_forced_change.py`: leer `type` en lugar de `detail`; suite completa del backend en verde (cubre RF-006) [zona: test]
-- [ ] T-025 — re-export de contratos (0002 y 0004) y test de deriva en verde (cubre RF-009) [zona: script]
+- [x] T-017 — test (rojo) `test_problem_auth.py`: tabla parametrizada de cada error de auth/admin → mismo código que antes + `type` del catálogo (sin cookie, token inválido, token de versión anterior, refresh inválido/reutilizado, guest en admin, cambio pendiente, contraseña actual errónea, email repetido) (cubre RF-006) [zona: test]
+- [x] T-018 — test (rojo): login con email inexistente vs contraseña errónea → cuerpos idénticos byte a byte (cubre RF-007) [zona: test]
+- [x] T-019 — test (rojo): contraseña inválida en `login` y `change-password` no aparece en la respuesta; política → 422 `validation-error` con `pointer: "#/new_password"` (cubre RF-005, RF-011) [zona: test]
+- [x] T-020 — test (rojo): CouchDB inaccesible al crear usuario → 503 `storage-unavailable` sin el mensaje interno del adaptador (cubre RF-004, RF-006) [zona: test]
+- [x] T-021 — `core/dependencies.py`: `NotAuthenticated`, `InvalidToken`, `AdminRequired`, `PasswordChangeRequired` (cubre RF-006, RF-008) [zona: núcleo]
+- [x] T-022 — `services/auth_service.py`: `EmailTaken`, `InvalidCredentials`, `InvalidRefreshToken`, `WrongCurrentPassword`, `PasswordPolicyViolation`; sin `fastapi` en el servicio (cubre RF-006, RF-007, RF-008) [zona: servicio]
+- [x] T-023 — `routers/auth.py` (`/me` → `InvalidToken`) y `responses=problem_responses(...)` en cada ruta de `auth.py` y `admin.py` (cubre RF-006, RF-008, RF-009) [zona: ruta]
+- [x] T-024 — `test_forced_change.py`: leer `type` en lugar de `detail`; suite completa del backend en verde (cubre RF-006) [zona: test]
+- [x] T-025 — re-export de contratos (0002 y 0004) y test de deriva en verde (cubre RF-009) [zona: script]
 
 ### G · Frontend
 - [ ] T-026 — test (rojo) `api/problems.test.ts`: `parseProblem` con problem+json, JSON sin campos y cuerpo no JSON; `ApiError` con `status`/`type`/`title`/`detail`/`errors` y `message` con prioridad `detail` → `title` → `statusText` (cubre RF-010) [zona: test]

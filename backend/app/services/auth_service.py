@@ -3,10 +3,16 @@ import uuid
 from datetime import datetime, timedelta
 
 import jwt
-from fastapi import HTTPException, status
 from sqlalchemy.exc import IntegrityError
 
 from app.core.config import settings
+from app.core.errors import (
+    EmailTaken,
+    InvalidCredentials,
+    InvalidRefreshToken,
+    PasswordPolicyViolation,
+    WrongCurrentPassword,
+)
 from app.core.models.user import User
 from app.core.ports.auth_port import AuthPort
 from app.core.ports.couchdb_port import CouchDBPort
@@ -67,28 +73,21 @@ class AuthService:
 
     def create_guest_user(self, email: str, password: str) -> User:
         if self.repo.get_user_by_email(normalize_email(email)):
-            raise self._email_taken()
+            raise EmailTaken()
         try:
             return self._provision_user(email, password, GUEST_ROLE_ID, must_change_password=True)
-        except IntegrityError:
-            raise self._email_taken()
-
-    @staticmethod
-    def _email_taken() -> HTTPException:
-        return HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+        except IntegrityError as exc:
+            # Otra petición insertó el mismo email entre la comprobación y el INSERT.
+            raise EmailTaken() from exc
 
     def login(self, email: str, password: str) -> User:
         user = self.repo.get_user_by_email(normalize_email(email))
         if not user or not user.is_active:
             verify_password(_DUMMY_HASH, password)
-            raise self._invalid_credentials()
+            raise InvalidCredentials()
         if not verify_password(user.hashed_password, password):
-            raise self._invalid_credentials()
+            raise InvalidCredentials()  # mismo error que sin usuario (RF-007 de SPEC-0004)
         return user
-
-    @staticmethod
-    def _invalid_credentials() -> HTTPException:
-        return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     def create_token(self, user: User) -> str:
         payload = {
@@ -120,16 +119,12 @@ class AuthService:
             or stored.expires_at < datetime.utcnow()
             or not stored.user.is_active
         ):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            )
+            raise InvalidRefreshToken()
         if not self.repo.claim_refresh_token(stored):
             # Otra petición lo rotó entre la lectura y ahora: equivale a reutilizarlo (RF-022).
             self.repo.revoke_refresh_tokens(stored.user_id)
             self.repo.commit()
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            )
+            raise InvalidRefreshToken("refresh token claimed concurrently")
         return stored.user, self.create_refresh_token(stored.user)
 
     def logout(self, raw_token: str | None) -> None:
@@ -143,17 +138,16 @@ class AuthService:
     def change_password(self, user_id: str, current_password: str, new_password: str) -> User:
         user = self.repo.get_user_by_id(user_id)
         if user is None:
-            raise self._invalid_credentials()
+            raise InvalidCredentials()
         if not verify_password(user.hashed_password, current_password):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect"
-            )
+            raise WrongCurrentPassword()
         try:
             validate_new_password(new_password, current=current_password)
         except ValueError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-            )
+            # Mismo formato que un 422 de pydantic: el fallo señala el campo del cuerpo.
+            raise PasswordPolicyViolation(
+                errors=[{"pointer": "#/new_password", "detail": str(exc)}]
+            ) from exc
         self.repo.update_password(user, hash_password(new_password))
         self.repo.revoke_refresh_tokens(user.id)
         self.repo.commit()

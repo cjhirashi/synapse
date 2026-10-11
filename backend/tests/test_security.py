@@ -34,7 +34,7 @@ def test_rf_018_policy_rejects_short_password():
 
 
 def test_rf_018_policy_rejects_same_as_current():
-    with pytest.raises(ValueError, match="distinta"):
+    with pytest.raises(ValueError, match="differ"):
         validate_new_password("admin1234!!", current="admin1234!!")
 
 

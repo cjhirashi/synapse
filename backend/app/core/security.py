@@ -28,9 +28,9 @@ def normalize_email(email: str) -> str:
 
 def validate_new_password(new: str, current: str) -> None:
     if len(new) < MIN_PASSWORD_LENGTH:
-        raise ValueError(f"La contraseña debe tener al menos {MIN_PASSWORD_LENGTH} caracteres")
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
     if new == current:
-        raise ValueError("La nueva contraseña debe ser distinta de la actual")
+        raise ValueError("New password must differ from the current one")
 
 
 def hash_refresh_token(raw_token: str) -> str:

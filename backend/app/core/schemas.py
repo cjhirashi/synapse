@@ -22,7 +22,7 @@ class CreateUserRequest(BaseModel):
     def _valid_email(cls, v: str) -> str:
         v = normalize_email(v)
         if not EMAIL_PATTERN.match(v):
-            raise ValueError("Formato de email inválido")
+            raise ValueError("Invalid email format")
         return v
 
 

@@ -7,7 +7,7 @@ def test_rf_019_flagged_user_is_blocked_from_protected_endpoints(client):
     login(client)
     res = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
     assert res.status_code == 403
-    assert "password" in res.json()["detail"].lower()
+    assert res.json()["type"] == "urn:synapse:problem:password-change-required"
 
 
 def test_rf_019_flagged_user_can_use_me_change_password_and_logout(client):

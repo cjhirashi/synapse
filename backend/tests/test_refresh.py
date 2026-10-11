@@ -115,9 +115,9 @@ def test_rf_022_concurrent_rotation_of_the_same_token_leaves_no_second_session(c
     """W-1: dos peticiones leen el mismo refresh token antes de que la otra confirme.
     Sólo una puede rotarlo; la otra equivale a reutilizarlo (RF-010, RF-022)."""
     import pytest
-    from fastapi import HTTPException
 
     from app.adapters.auth_repository import AuthRepository
+    from app.core.errors import InvalidRefreshToken
     from app.services.auth_service import AuthService
     from tests.conftest import TestingSessionLocal
 
@@ -131,9 +131,9 @@ def test_rf_022_concurrent_rotation_of_the_same_token_leaves_no_second_session(c
         # …cuando la primera lo rota y confirma.
         assert client.post("/auth/refresh").status_code == 200
 
-        with pytest.raises(HTTPException) as exc:
+        with pytest.raises(InvalidRefreshToken) as exc:
             AuthService(AuthRepository(stale), couchdb=None).refresh(raw)
-        assert exc.value.status_code == 401
+        assert exc.value.status == 401
     finally:
         stale.close()
     db.expire_all()

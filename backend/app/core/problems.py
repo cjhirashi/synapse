@@ -11,7 +11,8 @@ from http import HTTPStatus
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+from pydantic.json_schema import SkipJsonSchema
 from starlette.exceptions import HTTPException
 
 from app.core.errors import DomainError, PasswordPolicyViolation
@@ -27,29 +28,39 @@ VALIDATION_DETAIL = VALIDATION_ERROR.detail
 
 
 # --- Esquema publicado en el contrato (canon: contrato de SPEC-0004) ---
+# Los docstrings de estos modelos son la `description` pública del contrato: van en inglés.
+
+def _omittable():
+    """Campo opcional que se omite de la respuesta (`exclude_none`) y nunca vale `null`.
+
+    `SkipJsonSchema[None]` quita `null` de los tipos publicados y esto quita el `default`,
+    así el contrato lo declara opcional, no anulable.
+    """
+    return Field(default=None, json_schema_extra=lambda schema: schema.pop("default", None))
+
 
 class ProblemError(BaseModel):
-    """Un fallo de validación. Lleva exactamente una ubicación (RF-005)."""
+    """A single validation failure. Carries exactly one location: pointer, parameter or header."""
 
     model_config = ConfigDict(extra="forbid")
 
     detail: str
-    pointer: str | None = None
-    parameter: str | None = None
-    header: str | None = None
+    pointer: str | SkipJsonSchema[None] = _omittable()
+    parameter: str | SkipJsonSchema[None] = _omittable()
+    header: str | SkipJsonSchema[None] = _omittable()
 
 
 class Problem(BaseModel):
-    """Cuerpo de toda respuesta de error de la API."""
+    """RFC 9457 Problem Details: body of every API error response."""
 
     model_config = ConfigDict(extra="forbid")
 
     type: str
     title: str
     status: int
-    detail: str | None = None
+    detail: str | SkipJsonSchema[None] = _omittable()
     instance: str
-    errors: list[ProblemError] | None = None
+    errors: list[ProblemError] | SkipJsonSchema[None] = _omittable()
 
 
 # --- Construcción de la respuesta ---
@@ -179,6 +190,67 @@ async def _unhandled_error(request: Request, exc: Exception) -> Response:
         ),
         500,
     ))
+
+
+# --- Contrato OpenAPI (RF-009) ---
+
+PROBLEM_SCHEMA_REF = "#/components/schemas/Problem"
+# Esquemas del 422 por defecto de FastAPI; tras sustituirlo nadie los referencia.
+FASTAPI_VALIDATION_SCHEMAS = ("HTTPValidationError", "ValidationError")
+
+
+def _problem_content() -> dict:
+    return {PROBLEM_MEDIA_TYPE: {"schema": {"$ref": PROBLEM_SCHEMA_REF}}}
+
+
+def problem_responses(*errors: type[DomainError]) -> dict[int, dict]:
+    """`responses=` de una ruta a partir de los errores de dominio que puede lanzar.
+
+    Si varios comparten código, la descripción une sus títulos (sin repetir).
+    """
+    titles: dict[int, list[str]] = {}
+    for error in errors:
+        status_titles = titles.setdefault(error.status, [])
+        if error.title not in status_titles:
+            status_titles.append(error.title)
+    return {
+        status: {"description": " / ".join(status_titles), "content": _problem_content()}
+        for status, status_titles in titles.items()
+    }
+
+
+def _with_problems(schema: dict) -> dict:
+    schemas = schema.setdefault("components", {}).setdefault("schemas", {})
+    for name in FASTAPI_VALIDATION_SCHEMAS:
+        schemas.pop(name, None)
+    problem = Problem.model_json_schema(ref_template="#/components/schemas/{model}")
+    schemas.update(problem.pop("$defs"))  # ProblemError
+    schemas["Problem"] = problem
+
+    for path_item in schema.get("paths", {}).values():
+        for operation in path_item.values():
+            responses = operation.setdefault("responses", {})
+            # FastAPI declara el 422 en toda operación con entrada; se conserva dónde, no cómo.
+            if "422" in responses:
+                responses["422"] = {"description": VALIDATION_ERROR.title, "content": _problem_content()}
+            responses["500"] = {
+                "description": HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+                "content": _problem_content(),
+            }
+    return schema
+
+
+def install_problem_openapi(app: FastAPI) -> None:
+    """Publica los errores como `Problem` en el OpenAPI de la app (se construye una vez)."""
+    build_default = app.openapi
+
+    def openapi() -> dict:
+        if app.openapi_schema is None:
+            # `build_default` guarda en `app.openapi_schema` la versión sin procesar; se reemplaza.
+            app.openapi_schema = _with_problems(build_default())
+        return app.openapi_schema
+
+    app.openapi = openapi
 
 
 def install_problem_handlers(app: FastAPI) -> None:
