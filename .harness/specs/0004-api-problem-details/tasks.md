@@ -15,7 +15,7 @@ actualizado: 2026-10-11
 
 ## Tareas
 ### A · Re-anclaje previo de 0002 (PLAN-0004 §7)
-- [ ] T-001 — `covers` de SPEC-0002: sustituir `backend/tests/**` por sus propios archivos (`conftest.py`, `test_admin.py`, `test_auth.py`, `test_bootstrap.py`, `test_change_password.py`, `test_config.py`, `test_contract.py`, `test_couchdb_adapter.py`, `test_flow.py`, `test_forced_change.py`, `test_health.py`, `test_isolation.py`, `test_models.py`, `test_provisioning.py`, `test_real_backends.py`, `test_refresh.py`, `test_security.py`) con nota de re-anclaje; gate verde (cubre RF-009) [doc]
+- [x] T-001 — `covers` de SPEC-0002: sustituir `backend/tests/**` por sus propios archivos (`conftest.py`, `test_admin.py`, `test_auth.py`, `test_bootstrap.py`, `test_change_password.py`, `test_config.py`, `test_contract.py`, `test_couchdb_adapter.py`, `test_flow.py`, `test_forced_change.py`, `test_health.py`, `test_isolation.py`, `test_models.py`, `test_provisioning.py`, `test_real_backends.py`, `test_refresh.py`, `test_security.py`) con nota de re-anclaje; gate verde (cubre RF-009) [doc]
 
 ### B · Contratos por feature
 - [ ] T-002 — test (rojo): `test_contract.py` por feature — cada contrato = su parte de la app (prefijos + recorrido de `$ref`); toda ruta pertenece a exactamente una feature; contrato de 0004 sin `paths` con `Problem`/`ProblemError`; copia de `Problem` en 0002 igual a la de 0004 (cubre RF-009) [zona: test]

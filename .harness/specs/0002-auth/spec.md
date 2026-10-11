@@ -28,7 +28,23 @@ covers:
   - backend/alembic/versions/*initial_auth*
   - backend/alembic/versions/*normalize_email*
   - backend/alembic/versions/*token_version*
-  - backend/tests/**
+  - backend/tests/conftest.py
+  - backend/tests/test_admin.py
+  - backend/tests/test_auth.py
+  - backend/tests/test_bootstrap.py
+  - backend/tests/test_change_password.py
+  - backend/tests/test_config.py
+  - backend/tests/test_contract.py
+  - backend/tests/test_couchdb_adapter.py
+  - backend/tests/test_flow.py
+  - backend/tests/test_forced_change.py
+  - backend/tests/test_health.py
+  - backend/tests/test_isolation.py
+  - backend/tests/test_models.py
+  - backend/tests/test_provisioning.py
+  - backend/tests/test_real_backends.py
+  - backend/tests/test_refresh.py
+  - backend/tests/test_security.py
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
@@ -49,6 +65,11 @@ actualizado: 2026-10-11
 >
 > **Enmienda 2 2026-10-11** (residuales R-1…R-6 del verificador, dirigida por el usuario):
 > RF-014 reforzado; RF-017 y RF-010 precisados; nuevos RF-021…RF-023. Aprobada por el usuario.
+>
+> **Re-anclaje 2026-10-11** (PLAN-0004 §7, T-001 de TASKS-0004): `covers` deja de
+> reclamar `backend/tests/**` y lista sólo los tests de esta feature, para que los tests
+> de otras features (`test_problem*`, `test_vault*`) no provoquen DRIFT aquí. Sin cambio
+> de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
