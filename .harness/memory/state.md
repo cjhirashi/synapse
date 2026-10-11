@@ -36,7 +36,7 @@ sprint_actual: 2
 
 | Feature | Estado | Notas |
 |---|---|---|
-| 0002-auth | `implemented` (sin verificar) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificación posterior en el historial |
+| 0002-auth | `implemented` (sin verificar) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · ancla en 028c2ba |
 | 0003-vault-crud | sin spec | T-002 de `TAREAS.md` |
 
 ## Backlog / deuda conocida
