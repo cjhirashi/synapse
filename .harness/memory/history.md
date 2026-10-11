@@ -1,7 +1,7 @@
 # History — Synapse
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
-- **Fase alcanzada:** plan (GATE 1 aprobado; plan en borrador, falta GATE 2)
+- **Fase alcanzada:** tasks (GATES 1 y 2 aprobados; `tasks.md` escrito)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no (aviso: la migración tocará archivos de `covers` de 0002 → re-anclaje de 0002 al cierre)
@@ -9,7 +9,7 @@
 - **Gate:** verde
 - **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** revisión del plan por el usuario → GATE 2.
+- **Próximo paso:** Fase 4 (TDD) desde T-001; en paralelo, Fase 3 de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -17,6 +17,8 @@
   - [2026-10-11] Usuario: «Acepto Q7 a Q10 tal como las recomiendas». Spec: `errors` con `pointer`/`parameter`/`header` y sin valores del cliente; catálogo con fuente única en `core/errors.py`; RF-011…RF-014 (sin `input`/`ctx`, traza de 500 al log, 500 mínimo si falla el manejador, unicidad y forma de `type`); §5 y §6 completados; 0 marcadores.
   - [2026-10-11] Usuario: «así es, pasa al plan» → **GATE 1 aprobado** (`fase_1` registrada, spec `approved`; `covers` + `frontend/src/api/problems{,.test}.ts`).
   - [2026-10-11] `plan.md` de 0004 (borrador): `DomainError` con `slug/title/status/detail` (mensaje interno separado del `detail` público), `ProvisioningError` ⊂ `StorageUnavailable`, traductor `core/problems.py` (4 manejadores, `FALLBACK_500`, `loc`→pointer/parameter/header), OpenAPI con `problem_responses` + `install_problem_openapi`, reparto de contratos por feature adelantado desde PLAN-0003, frontend `api/problems.ts`; re-anclaje de 0002 al cierre.
+  - [2026-10-11] Usuario: «Apruebo el plan» → **GATE 2 aprobado** (`fase_2` en spec y plan; plan `approved`).
+  - [2026-10-11] `tasks.md` de 0004: T-001…T-037 en 8 bloques (re-anclaje 0002, contratos por feature, catálogo, traductor, OpenAPI, migración auth/admin, frontend, docs); cobertura 14/14 RF y 8 filas `[doc]` (Gate 3).
 
 ---
 

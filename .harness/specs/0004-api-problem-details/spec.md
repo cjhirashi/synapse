@@ -15,14 +15,14 @@ covers:
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 
 # SPEC-0004 · Errores de la API con Problem Details (RFC 9457)
 
 > Fase 1 (Specify) **cerrada**: tandas 1 (Q1–Q6) y 2 (Q7–Q10) decididas por el usuario;
-> GATE 1 aprobado. El *cómo* está en `plan.md`.
+> GATES 1 y 2 aprobados. El *cómo* está en `plan.md`.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
