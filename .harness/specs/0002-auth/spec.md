@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: cf1632d
+anchor_commit: 71b8d45
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
