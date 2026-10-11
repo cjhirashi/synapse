@@ -1,7 +1,7 @@
 # History — Synapse
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
-- **Fase alcanzada:** tasks (GATES 1 y 2 aprobados; `tasks.md` escrito)
+- **Fase alcanzada:** implement (Fase 4 en curso: T-001…T-014 hechas)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no (aviso: la migración tocará archivos de `covers` de 0002 → re-anclaje de 0002 al cierre)
@@ -9,7 +9,7 @@
 - **Gate:** verde
 - **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** Fase 4 (TDD) desde T-001; en paralelo, Fase 3 de 0003.
+- **Próximo paso:** Fase 4 desde T-015 (OpenAPI de errores); en paralelo, Fase 3 de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -19,6 +19,12 @@
   - [2026-10-11] `plan.md` de 0004 (borrador): `DomainError` con `slug/title/status/detail` (mensaje interno separado del `detail` público), `ProvisioningError` ⊂ `StorageUnavailable`, traductor `core/problems.py` (4 manejadores, `FALLBACK_500`, `loc`→pointer/parameter/header), OpenAPI con `problem_responses` + `install_problem_openapi`, reparto de contratos por feature adelantado desde PLAN-0003, frontend `api/problems.ts`; re-anclaje de 0002 al cierre.
   - [2026-10-11] Usuario: «Apruebo el plan» → **GATE 2 aprobado** (`fase_2` en spec y plan; plan `approved`).
   - [2026-10-11] `tasks.md` de 0004: T-001…T-037 en 8 bloques (re-anclaje 0002, contratos por feature, catálogo, traductor, OpenAPI, migración auth/admin, frontend, docs); cobertura 14/14 RF y 8 filas `[doc]` (Gate 3).
+  - [2026-10-11] Usuario: «Empieza la Fase 4 de 0004 desde T-001». T-001: `covers` de 0002 re-anclados a sus 17 tests propios (commit `99f9998`).
+  - [2026-10-11] T-002/T-003: contrato por feature — `export_openapi.py` reparte rutas (0002: `/auth`, `/admin`, `/health`) y esquemas (0004: `Problem`) con recorrido transitivo de `$ref`; `test_contract.py` exige rutas con un solo dueño y copias de `Problem` idénticas al canon (3 rojos hasta T-016/T-025).
+  - [2026-10-11] T-004…T-006: `core/errors.py` con `DomainError` (catálogo = clases; mensaje interno ≠ `detail` público) y `test_problem_catalog.py` (forma/unicidad de `type`, prueba AST de RF-008, roja hasta el bloque F).
+  - [2026-10-11] T-007…T-011: `core/problems.py` — manejadores de dominio, framework (404/405 `about:blank`, conserva `Allow`) y no controlados (500 genérico + traza al log), `FALLBACK_500_BODY` constante; `test_problem_handlers.py` 8/8.
+  - [2026-10-11] T-012/T-013: manejador de `RequestValidationError` — `loc`→`pointer` (escape RFC 6901, JSON inválido/cuerpo ausente → `#`), `parameter`, `header` (guiones); sólo `msg`; `type`/`title`/`detail` tomados de la entrada `validation-error` del catálogo; `test_problem_validation.py` 10/10.
+  - [2026-10-11] T-014: `main.py` llama a `install_problem_handlers`; borrado el manejador ad hoc de `ProvisioningError`. Suite: 120 verdes, 4 rojos esperados (3 de contrato, 1 de arquitectura).
 
 ---
 

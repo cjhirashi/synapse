@@ -18,23 +18,23 @@ actualizado: 2026-10-11
 - [x] T-001 — `covers` de SPEC-0002: sustituir `backend/tests/**` por sus propios archivos (`conftest.py`, `test_admin.py`, `test_auth.py`, `test_bootstrap.py`, `test_change_password.py`, `test_config.py`, `test_contract.py`, `test_couchdb_adapter.py`, `test_flow.py`, `test_forced_change.py`, `test_health.py`, `test_isolation.py`, `test_models.py`, `test_provisioning.py`, `test_real_backends.py`, `test_refresh.py`, `test_security.py`) con nota de re-anclaje; gate verde (cubre RF-009) [doc]
 
 ### B · Contratos por feature
-- [ ] T-002 — test (rojo): `test_contract.py` por feature — cada contrato = su parte de la app (prefijos + recorrido de `$ref`); toda ruta pertenece a exactamente una feature; contrato de 0004 sin `paths` con `Problem`/`ProblemError`; copia de `Problem` en 0002 igual a la de 0004 (cubre RF-009) [zona: test]
-- [ ] T-003 — `scripts/export_openapi.py`: `FEATURES`, `contract_for(spec, prefixes)`, escritura de un contrato por feature (cubre RF-009) [zona: script]
+- [x] T-002 — test (rojo): `test_contract.py` por feature — cada contrato = su parte de la app (prefijos + recorrido de `$ref`); toda ruta pertenece a exactamente una feature; contrato de 0004 sin `paths` con `Problem`/`ProblemError`; copia de `Problem` en 0002 igual a la de 0004 (cubre RF-009) [zona: test]
+- [x] T-003 — `scripts/export_openapi.py`: `FEATURES`, `contract_for(spec, prefixes)`, escritura de un contrato por feature (cubre RF-009) [zona: script]
 
 ### C · Núcleo: catálogo de errores de dominio
-- [ ] T-004 — test (rojo) `test_problem_catalog.py`: toda subclase de `DomainError` declara `slug`/`title`/`status`/`detail`; `type` único con forma `urn:synapse:problem:[a-z0-9-]+`; las 10 entradas del catálogo de SPEC-0004 §3 existen con su código (cubre RF-003, RF-014) [zona: test]
-- [ ] T-005 — test (rojo) de arquitectura por AST: ningún módulo de `app/` salvo `core/problems.py` importa `HTTPException` (cubre RF-008) [zona: test]
-- [ ] T-006 — `core/errors.py`: `DomainError` (mensaje interno separado de `detail` público, `errors` opcional) y las 10 clases; `ProvisioningError` ⊂ `StorageUnavailable` (cubre RF-003, RF-008, RF-014) [zona: núcleo]
+- [x] T-004 — test (rojo) `test_problem_catalog.py`: toda subclase de `DomainError` declara `slug`/`title`/`status`/`detail`; `type` único con forma `urn:synapse:problem:[a-z0-9-]+`; las 10 entradas del catálogo de SPEC-0004 §3 existen con su código (cubre RF-003, RF-014) [zona: test]
+- [x] T-005 — test (rojo) de arquitectura por AST: ningún módulo de `app/` salvo `core/problems.py` importa `HTTPException` (cubre RF-008) [zona: test]
+- [x] T-006 — `core/errors.py`: `DomainError` (mensaje interno separado de `detail` público, `errors` opcional) y las 10 clases; `ProvisioningError` ⊂ `StorageUnavailable` (cubre RF-003, RF-008, RF-014) [zona: núcleo]
 
 ### D · Traductor (`core/problems.py`)
-- [ ] T-007 — test (rojo) `test_problem_handlers.py` con app mínima: `DomainError` → `application/problem+json`, `type`/`title`/`status`/`instance` (sin query); mensaje interno ausente; `errors` sólo si hay (cubre RF-001, RF-002, RF-003, RF-004) [zona: test]
-- [ ] T-008 — test (rojo): 404 de ruta y 405 (con `Allow`) → `about:blank` + frase estándar (cubre RF-001, RF-003) [zona: test]
-- [ ] T-009 — test (rojo): excepción no controlada → 500 genérico sin el texto de la excepción; traza con método y ruta en `caplog` (`raise_server_exceptions=False`) (cubre RF-004, RF-012) [zona: test]
-- [ ] T-010 — test (rojo): fallo del constructor (monkeypatch) → `FALLBACK_500` constante en `application/problem+json` (cubre RF-013) [zona: test]
-- [ ] T-011 — `core/problems.py`: `Problem`, `ProblemError`, `ProblemResponse`, constructor único, manejadores de `DomainError`/`StarletteHTTPException`/`Exception`, `FALLBACK_500` (cubre RF-001…RF-004, RF-012, RF-013) [zona: ruta]
-- [ ] T-012 — test (rojo) `test_problem_validation.py`: `loc` de cuerpo anidado → `pointer` con escape `~0`/`~1`; JSON inválido y cuerpo ausente → `#`; query/path → `parameter`; header → `header` con guiones; `detail` raíz fijo; sin `input`/`ctx`/`url` (cubre RF-005, RF-011) [zona: test]
-- [ ] T-013 — manejador de `RequestValidationError` con la conversión de `loc` (cubre RF-005, RF-011) [zona: ruta]
-- [ ] T-014 — `main.py`: `install_problem_handlers(app)`; borrar el manejador ad hoc de `ProvisioningError` (cubre RF-001, RF-006) [zona: ruta]
+- [x] T-007 — test (rojo) `test_problem_handlers.py` con app mínima: `DomainError` → `application/problem+json`, `type`/`title`/`status`/`instance` (sin query); mensaje interno ausente; `errors` sólo si hay (cubre RF-001, RF-002, RF-003, RF-004) [zona: test]
+- [x] T-008 — test (rojo): 404 de ruta y 405 (con `Allow`) → `about:blank` + frase estándar (cubre RF-001, RF-003) [zona: test]
+- [x] T-009 — test (rojo): excepción no controlada → 500 genérico sin el texto de la excepción; traza con método y ruta en `caplog` (`raise_server_exceptions=False`) (cubre RF-004, RF-012) [zona: test]
+- [x] T-010 — test (rojo): fallo del constructor (monkeypatch) → `FALLBACK_500` constante en `application/problem+json` (cubre RF-013) [zona: test]
+- [x] T-011 — `core/problems.py`: `Problem`, `ProblemError`, `ProblemResponse`, constructor único, manejadores de `DomainError`/`StarletteHTTPException`/`Exception`, `FALLBACK_500` (cubre RF-001…RF-004, RF-012, RF-013) [zona: ruta]
+- [x] T-012 — test (rojo) `test_problem_validation.py`: `loc` de cuerpo anidado → `pointer` con escape `~0`/`~1`; JSON inválido y cuerpo ausente → `#`; query/path → `parameter`; header → `header` con guiones; `detail` raíz fijo; sin `input`/`ctx`/`url` (cubre RF-005, RF-011) [zona: test]
+- [x] T-013 — manejador de `RequestValidationError` con la conversión de `loc` (cubre RF-005, RF-011) [zona: ruta]
+- [x] T-014 — `main.py`: `install_problem_handlers(app)`; borrar el manejador ad hoc de `ProvisioningError` (cubre RF-001, RF-006) [zona: ruta]
 
 ### E · OpenAPI de errores
 - [ ] T-015 — test (rojo) `test_problem_contract.py`: barrido de todas las operaciones — cada 4xx/5xx declarado usa `application/problem+json` con `$ref` a `Problem`; toda operación declara 500; sin `HTTPValidationError`/`ValidationError` (cubre RF-009) [zona: test]

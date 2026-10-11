@@ -1,2 +1,121 @@
-class ProvisioningError(Exception):
+"""Errores de dominio de Synapse (SPEC-0004).
+
+Cada subclase de `DomainError` con `slug` propio **es** una entrada del catálogo de
+Problem Details: `type` = `urn:synapse:problem:{slug}`, más su `title`, código HTTP y
+`detail` público por defecto (en inglés). Servicios y dependencias lanzan estas clases;
+sólo `core/problems.py` las traduce a HTTP (RF-008).
+
+El texto con el que se construye la excepción es **interno** (va al log, nunca al
+cliente). Para dar al cliente un `detail` distinto del de la clase hay que pasarlo de
+forma explícita con `detail=`.
+"""
+from typing import ClassVar
+
+PROBLEM_TYPE_PREFIX = "urn:synapse:problem:"
+
+
+class DomainError(Exception):
+    slug: ClassVar[str]
+    title: ClassVar[str]
+    status: ClassVar[int]
+    detail: ClassVar[str]
+
+    def __init__(
+        self,
+        message: str | None = None,
+        *,
+        detail: str | None = None,
+        errors: list[dict[str, str]] | None = None,
+    ) -> None:
+        super().__init__(message or detail or self.detail)
+        self.public_detail = detail or self.detail
+        # Sólo para 422: [{"pointer" | "parameter" | "header": ..., "detail": ...}].
+        self.errors = errors
+
+    @classmethod
+    def type_uri(cls) -> str:
+        return PROBLEM_TYPE_PREFIX + cls.slug
+
+
+# --- Autenticación y autorización (SPEC-0002) ---
+
+class NotAuthenticated(DomainError):
+    slug = "not-authenticated"
+    title = "Not authenticated"
+    status = 401
+    detail = "Not authenticated"
+
+
+class InvalidToken(DomainError):
+    slug = "invalid-token"
+    title = "Invalid token"
+    status = 401
+    detail = "Invalid token"
+
+
+class InvalidCredentials(DomainError):
+    slug = "invalid-credentials"
+    title = "Invalid credentials"
+    status = 401
+    detail = "Invalid credentials"
+
+
+class InvalidRefreshToken(DomainError):
+    slug = "invalid-refresh-token"
+    title = "Invalid refresh token"
+    status = 401
+    detail = "Invalid refresh token"
+
+
+class AdminRequired(DomainError):
+    slug = "admin-required"
+    title = "Admin required"
+    status = 403
+    detail = "Admin required"
+
+
+class PasswordChangeRequired(DomainError):
+    slug = "password-change-required"
+    title = "Password change required"
+    status = 403
+    detail = "Password change required"
+
+
+class WrongCurrentPassword(DomainError):
+    slug = "wrong-current-password"
+    title = "Current password is incorrect"
+    status = 400
+    detail = "Current password is incorrect"
+
+
+class EmailTaken(DomainError):
+    slug = "email-taken"
+    title = "Email already registered"
+    status = 409
+    detail = "Email already registered"
+
+
+# --- Validación ---
+
+class PasswordPolicyViolation(DomainError):
+    """Mismo `type` que los 422 de pydantic: el cliente los trata igual (RF-005)."""
+
+    slug = "validation-error"
+    title = "Validation error"
+    status = 422
+    detail = "Request validation failed."
+
+
+# --- Almacenamiento ---
+
+class StorageUnavailable(DomainError):
+    slug = "storage-unavailable"
+    title = "Storage unavailable"
+    status = 503
+    detail = "Storage unavailable"
+
+
+class ProvisioningError(StorageUnavailable):
     """Falló el aprovisionamiento de la base CouchDB de un usuario."""
+
+    detail = "Storage provisioning unavailable"
