@@ -13,6 +13,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
+from pydantic_core import PydanticKnownError
 from starlette.exceptions import HTTPException
 
 from app.core.errors import DomainError, PasswordPolicyViolation
@@ -25,6 +26,15 @@ UNEXPECTED_DETAIL = "An unexpected error occurred."
 # Los 422 de pydantic comparten la entrada `validation-error` del catálogo (RF-005).
 VALIDATION_ERROR = PasswordPolicyViolation
 VALIDATION_DETAIL = VALIDATION_ERROR.detail
+# Texto de una entrada de `errors` cuando su mensaje podría llevar el valor recibido (RF-011).
+GENERIC_FIELD_DETAIL = "Invalid value."
+# Claves de `ctx` de pydantic que sólo llevan restricciones del esquema (límites, valores
+# permitidos), nunca datos del cliente; las demás (`error`, `input`, …) no se usan.
+SAFE_CTX_KEYS = frozenset({
+    "gt", "ge", "lt", "le", "multiple_of",
+    "min_length", "max_length", "max_digits", "decimal_places", "whole_digits",
+    "expected", "expected_schemes", "pattern",
+})
 
 
 # --- Esquema publicado en el contrato (canon: contrato de SPEC-0004) ---
@@ -84,31 +94,40 @@ def _respond(body: bytes, status: int, headers: dict[str, str] | None = None) ->
     return Response(content=body, status_code=status, media_type=PROBLEM_MEDIA_TYPE, headers=headers)
 
 
-# RF-013: respuesta constante, calculada al importar y sin pasar por `_problem_body`, para
-# poder contestar incluso si el traductor falla.
-FALLBACK_500_BODY = json.dumps(
-    {
-        "type": GENERIC_TYPE,
-        "title": HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
-        "status": 500,
-        "detail": UNEXPECTED_DETAIL,
-    },
-    separators=(",", ":"),
-).encode()
+# RF-013: campos fijos del 500 de fallback, calculados al importar. Se serializan con
+# `json.dumps` (sin el modelo ni `_problem_body`) para poder contestar aunque el traductor
+# falle; sólo se añade `instance`, que el esquema `Problem` exige.
+FALLBACK_500 = {
+    "type": GENERIC_TYPE,
+    "title": HTTPStatus.INTERNAL_SERVER_ERROR.phrase,
+    "status": 500,
+    "detail": UNEXPECTED_DETAIL,
+}
 
 
 def _safely(request: Request, build) -> Response:
-    """Ejecuta `build()`; si el propio traductor falla, responde el 500 constante."""
+    """Ejecuta `build()`; si el propio traductor falla, responde el 500 de fallback."""
     try:
         return build()
     except Exception:
-        logger.exception("Problem translator failed on %s %s", request.method, request.url.path)
-        return _respond(FALLBACK_500_BODY, 500)
+        path = request.url.path
+        logger.exception("Problem translator failed on %s %s", request.method, path)
+        body = json.dumps({**FALLBACK_500, "instance": path}, separators=(",", ":")).encode()
+        return _respond(body, 500)
 
 
 # --- Manejadores ---
 
 async def _domain_error(request: Request, exc: DomainError) -> Response:
+    # El mensaje interno no va al cliente, pero sí al log: en un 5xx es la única pista de
+    # la causa (p. ej. por qué CouchDB no respondió), así que va con traza y causa encadenada.
+    server_side = exc.status >= 500
+    logger.log(
+        logging.ERROR if server_side else logging.INFO,
+        "%s on %s %s: %s",
+        type(exc).__name__, request.method, request.url.path, exc,
+        exc_info=exc if server_side else None,
+    )
     return _safely(request, lambda: _respond(
         _problem_body(
             status=exc.status,
@@ -122,20 +141,32 @@ async def _domain_error(request: Request, exc: DomainError) -> Response:
     ))
 
 
+def _status_phrase(status: int) -> str:
+    """Frase estándar del código; sin ella (p. ej. 499), la de su clase: 400 o 500."""
+    try:
+        return HTTPStatus(status).phrase
+    except ValueError:
+        return HTTPStatus(400 if 400 <= status < 500 else 500).phrase
+
+
 async def _framework_error(request: Request, exc: HTTPException) -> Response:
-    phrase = HTTPStatus(exc.status_code).phrase
-    detail = exc.detail if isinstance(exc.detail, str) else phrase
-    return _safely(request, lambda: _respond(
-        _problem_body(
-            status=exc.status_code,
-            type_=GENERIC_TYPE,
-            title=phrase,
-            detail=detail,
-            instance=request.url.path,
-        ),
-        exc.status_code,
-        headers=exc.headers,  # p. ej. `Allow` en un 405
-    ))
+    # Todo el cálculo, frase incluida, va dentro de `_safely` (RF-013).
+    def build() -> Response:
+        phrase = _status_phrase(exc.status_code)
+        detail = exc.detail if isinstance(exc.detail, str) else phrase
+        return _respond(
+            _problem_body(
+                status=exc.status_code,
+                type_=GENERIC_TYPE,
+                title=phrase,
+                detail=detail,
+                instance=request.url.path,
+            ),
+            exc.status_code,
+            headers=exc.headers,  # p. ej. `Allow` en un 405
+        )
+
+    return _safely(request, build)
 
 
 # --- De un error de pydantic a una ubicación (RF-005) ---
@@ -158,10 +189,29 @@ def _location(error: dict) -> dict[str, str]:
     return {"parameter": str(path[0])}
 
 
+def _field_detail(error: dict) -> str:
+    """Texto de una entrada de `errors` sin el valor recibido (RF-011).
+
+    No se copia `msg`: para los tipos de pydantic se vuelve a generar desde su plantilla
+    con sólo las claves seguras de `ctx`; si la plantilla exige otra (p. ej. `error`, que
+    trae el texto de un `ValueError` o el fragmento de un UUID inválido), texto genérico.
+    """
+    ctx = error.get("ctx") or {}
+    safe_ctx = {key: value for key, value in ctx.items() if key in SAFE_CTX_KEYS}
+    try:
+        return PydanticKnownError(error["type"], safe_ctx).message()
+    except KeyError:
+        # Tipo propio (`PydanticCustomError`): sin `ctx`, su `msg` es la plantilla constante.
+        return GENERIC_FIELD_DETAIL if ctx else error["msg"]
+    except TypeError:
+        # La plantilla pide una clave de `ctx` que no es segura.
+        return GENERIC_FIELD_DETAIL
+
+
 async def _validation_error(request: Request, exc: RequestValidationError) -> Response:
-    # RF-011: de cada error sólo se usa `msg`; nunca `input`, `ctx` ni `url`.
+    # RF-011: nunca se usan `input`, `ctx` (salvo restricciones del esquema) ni `url`.
     def build() -> Response:
-        errors = [{**_location(e), "detail": e["msg"]} for e in exc.errors()]
+        errors = [{**_location(e), "detail": _field_detail(e)} for e in exc.errors()]
         return _respond(
             _problem_body(
                 status=VALIDATION_ERROR.status,

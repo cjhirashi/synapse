@@ -1,10 +1,18 @@
 """422 de validación como Problem Details (SPEC-0004 RF-005, RF-011)."""
+from uuid import UUID
+
 import pytest
 from fastapi import FastAPI, Header, Query
 from fastapi.testclient import TestClient
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from pydantic_core import PydanticCustomError
 
-from app.core.problems import PROBLEM_MEDIA_TYPE, VALIDATION_DETAIL, install_problem_handlers
+from app.core.problems import (
+    GENERIC_FIELD_DETAIL,
+    PROBLEM_MEDIA_TYPE,
+    VALIDATION_DETAIL,
+    install_problem_handlers,
+)
 
 LEAKED_VALUE = "SuperSecretValue123"
 
@@ -13,6 +21,35 @@ class Item(BaseModel):
     name: str = Field(max_length=5)
     tags: list[int] = []
     scores: dict[str, int] = {}
+
+
+class Coded(BaseModel):
+    """Validadores que meten el valor recibido en su mensaje (RF-011)."""
+
+    code: str = ""
+    label: str = ""
+    slug: str = ""
+
+    @field_validator("code")
+    @classmethod
+    def _plain_value_error(cls, v: str) -> str:
+        if v:
+            raise ValueError(f"code {v!r} is not allowed")
+        return v
+
+    @field_validator("label")
+    @classmethod
+    def _custom_error_with_ctx(cls, v: str) -> str:
+        if v:
+            raise PydanticCustomError("bad_label", "label {label} is taken", {"label": v})
+        return v
+
+    @field_validator("slug")
+    @classmethod
+    def _custom_error_constant(cls, v: str) -> str:
+        if v:
+            raise PydanticCustomError("bad_slug", "Slug is reserved")
+        return v
 
 
 def _make_app() -> FastAPI:
@@ -25,6 +62,14 @@ def _make_app() -> FastAPI:
 
     @app.get("/items/{item_id}")
     def read(item_id: int, limit: int = Query(50, ge=1, le=200)):
+        return {}
+
+    @app.post("/coded")
+    def coded(body: Coded):
+        return {}
+
+    @app.get("/vaults/{vault_id}")
+    def vault(vault_id: UUID):
         return {}
 
     @app.get("/guarded")
@@ -101,3 +146,31 @@ def test_submitted_value_is_never_echoed(client):
     response = client.post("/items", json={"name": LEAKED_VALUE, "tags": [LEAKED_VALUE]})
     _errors(response)
     assert LEAKED_VALUE not in response.text
+
+
+# --- RF-011: el texto de cada entrada sale de plantillas, nunca del valor recibido ---
+
+@pytest.mark.parametrize("field", ["code", "label"])
+def test_validator_message_carrying_the_value_becomes_generic(client, field):
+    response = client.post("/coded", json={field: LEAKED_VALUE})
+    assert _errors(response) == [{"pointer": f"#/{field}", "detail": GENERIC_FIELD_DETAIL}]
+    assert LEAKED_VALUE not in response.text
+
+
+def test_uuid_parsing_detail_does_not_quote_the_value(client):
+    # El valor de un parámetro de ruta ya forma parte de `instance`; lo que no debe repetir
+    # es la entrada de `errors` (pydantic cita el carácter inválido en su `msg`).
+    response = client.get("/vaults/SECRETxx-0000-0000-0000-000000000000")
+    assert _errors(response) == [{"parameter": "vault_id", "detail": GENERIC_FIELD_DETAIL}]
+
+
+def test_constant_custom_message_is_kept(client):
+    errors = _errors(client.post("/coded", json={"slug": "admin"}))
+    assert errors == [{"pointer": "#/slug", "detail": "Slug is reserved"}]
+
+
+def test_schema_limits_are_kept_in_the_detail(client):
+    errors = _errors(client.get("/items/1?limit=500"))
+    assert errors == [{"parameter": "limit", "detail": "Input should be less than or equal to 200"}]
+    errors = _errors(client.post("/items", json={"name": "toolong"}))
+    assert errors == [{"pointer": "#/name", "detail": "String should have at most 5 characters"}]

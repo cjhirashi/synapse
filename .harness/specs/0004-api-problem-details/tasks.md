@@ -30,8 +30,8 @@ actualizado: 2026-10-11
 - [x] T-007 — test (rojo) `test_problem_handlers.py` con app mínima: `DomainError` → `application/problem+json`, `type`/`title`/`status`/`instance` (sin query); mensaje interno ausente; `errors` sólo si hay (cubre RF-001, RF-002, RF-003, RF-004) [zona: test]
 - [x] T-008 — test (rojo): 404 de ruta y 405 (con `Allow`) → `about:blank` + frase estándar (cubre RF-001, RF-003) [zona: test]
 - [x] T-009 — test (rojo): excepción no controlada → 500 genérico sin el texto de la excepción; traza con método y ruta en `caplog` (`raise_server_exceptions=False`) (cubre RF-004, RF-012) [zona: test]
-- [x] T-010 — test (rojo): fallo del constructor (monkeypatch) → `FALLBACK_500` constante en `application/problem+json` (cubre RF-013) [zona: test]
-- [x] T-011 — `core/problems.py`: `Problem`, `ProblemError`, `ProblemResponse`, constructor único, manejadores de `DomainError`/`StarletteHTTPException`/`Exception`, `FALLBACK_500` (cubre RF-001…RF-004, RF-012, RF-013) [zona: ruta]
+- [x] T-010 — test (rojo): fallo del constructor (monkeypatch) → `FALLBACK_500` (campos fijos + `instance`) en `application/problem+json` (cubre RF-013) [zona: test]
+- [x] T-011 — `core/problems.py`: `Problem`, `ProblemError`, `_respond` (problem+json), constructor único `_problem_body`, manejadores de `DomainError`/`StarletteHTTPException`/`Exception`, `FALLBACK_500` (cubre RF-001…RF-004, RF-012, RF-013) [zona: ruta]
 - [x] T-012 — test (rojo) `test_problem_validation.py`: `loc` de cuerpo anidado → `pointer` con escape `~0`/`~1`; JSON inválido y cuerpo ausente → `#`; query/path → `parameter`; header → `header` con guiones; `detail` raíz fijo; sin `input`/`ctx`/`url` (cubre RF-005, RF-011) [zona: test]
 - [x] T-013 — manejador de `RequestValidationError` con la conversión de `loc` (cubre RF-005, RF-011) [zona: ruta]
 - [x] T-014 — `main.py`: `install_problem_handlers(app)`; borrar el manejador ad hoc de `ProvisioningError` (cubre RF-001, RF-006) [zona: ruta]
@@ -67,31 +67,48 @@ actualizado: 2026-10-11
 - [x] T-036 — cierre: nota y `anchor_commit` nuevo en SPEC-0002 (formato de errores → SPEC-0004) [doc]
 - [x] T-037 — cierre: `state.md` (estado de 0004, re-anclaje de 0002, residual "contrato sin respuestas de error" resuelto) [doc]
 
-## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
+### I · Correcciones de la verificación adversarial (enmienda 1)
+- [x] T-038 — enmienda 1 de SPEC-0004 (RF-009, RF-011, RF-013, §5, §6) y PLAN-0004 §2/§5/§7/§9 al día con el código (V-3, V-5, V-6, V-7, V-8) (cubre RF-009, RF-011, RF-013) [doc]
+- [x] T-039 — test (rojo) `test_problem_auth.py`: cada error provocado figura en las respuestas declaradas de su operación en `app.openapi()` (V-1) (cubre RF-009) [zona: test]
+- [x] T-040 — test (rojo) `test_problem_handlers.py`: el mensaje interno de un `DomainError` llega al log (5xx con traza y causa; 4xx sin traza) y nunca a la respuesta (V-2) (cubre RF-004, RF-012) [zona: test]
+- [x] T-041 — `core/problems.py`: `_domain_error` registra el mensaje interno (cubre RF-004, RF-012) [zona: ruta]
+- [x] T-042 — `test_problem_auth.py`: «igual a la actual» ejerce la regla `differ` (contraseña actual ≥ 10); aserción de no-eco con el valor realmente enviado (V-4) (cubre RF-005, RF-011) [zona: test]
+- [x] T-043 — test (rojo): `HTTPException(499)` conserva su código, `title` de su clase (V-5) (cubre RF-003, RF-013) [zona: test]
+- [x] T-044 — `core/problems.py`: frase HTTP dentro de `_safely`, con la de la clase si no hay estándar (cubre RF-003, RF-013) [zona: ruta]
+- [x] T-045 — test (rojo) `test_problem_validation.py`: `ValueError` y UUID cuyo `msg` lleva el valor → texto sin el valor; límites y plantillas propias sin `ctx` se conservan (V-3) (cubre RF-011) [zona: test]
+- [x] T-046 — `core/problems.py`: `detail` desde plantillas con `SAFE_CTX_KEYS`; `core/schemas.py`: email con `PydanticCustomError` (cubre RF-005, RF-011) [zona: ruta]
+- [x] T-047 — test (rojo): el 500 de fallback lleva `instance` y cumple el esquema `Problem` (V-6) (cubre RF-002, RF-013) [zona: test]
+- [x] T-048 — `core/problems.py`: fallback con campos fijos + `instance` (cubre RF-002, RF-013) [zona: ruta]
+- [x] T-049 — docs: `backend/README.md` y `core/README.md` (log del mensaje interno, regla de `PydanticCustomError`, 404/405 fuera del contrato por operación); re-export de contratos si cambian (cubre RF-009, RF-011) [doc]
+- [x] T-050 — cierre: tabla de cobertura con su estado, SPEC-0004 `implemented` con `anchor_commit` nuevo, state.md e history.md (cubre RF-001…RF-014) [doc]
+
+## Cobertura (el gate exige 100 %; `Estado` se rellena a mano con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-007, T-008, T-011, T-014 | test_problem_handlers | Pendiente |
-| RF-002 | T-007, T-011 | test_problem_handlers | Pendiente |
-| RF-003 | T-004, T-006, T-007, T-008, T-011 | test_problem_catalog, test_problem_handlers | Pendiente |
-| RF-004 | T-007, T-009, T-011, T-020 | test_problem_handlers, test_problem_auth | Pendiente |
-| RF-005 | T-012, T-013, T-019 | test_problem_validation, test_problem_auth | Pendiente |
-| RF-006 | T-014, T-017, T-020–T-024 | test_problem_auth, test_forced_change | Pendiente |
-| RF-007 | T-018, T-022 | test_problem_auth | Pendiente |
-| RF-008 | T-005, T-006, T-021–T-023 | test_problem_catalog | Pendiente |
-| RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031 | test_contract, test_problem_contract | Pendiente |
-| RF-010 | T-026–T-029 | problems.test.ts, auth.test.ts, ChangePasswordPage.test.tsx | Pendiente |
-| RF-011 | T-012, T-013, T-019 | test_problem_validation, test_problem_auth | Pendiente |
-| RF-012 | T-009, T-011 | test_problem_handlers | Pendiente |
-| RF-013 | T-010, T-011 | test_problem_handlers | Pendiente |
-| RF-014 | T-004, T-006 | test_problem_catalog | Pendiente |
-| doc: contrato-0004 | T-030 | — | Pendiente |
-| doc: contrato-0002 | T-031 | — | Pendiente |
-| doc: spec-0002 | T-001, T-036 | — | Pendiente |
-| doc: backend-readme | T-032 | — | Pendiente |
-| doc: core-readme | T-033 | — | Pendiente |
-| doc: frontend-readme | T-034 | — | Pendiente |
-| doc: agents-md | T-035 | — | Pendiente |
-| doc: state | T-037 | — | Pendiente |
+| RF-001 | T-007, T-008, T-011, T-014 | test_problem_handlers | Pass |
+| RF-002 | T-007, T-011, T-047, T-048 | test_problem_handlers | Pass |
+| RF-003 | T-004, T-006, T-007, T-008, T-011, T-043, T-044 | test_problem_catalog, test_problem_handlers | Pass |
+| RF-004 | T-007, T-009, T-011, T-020, T-040, T-041 | test_problem_handlers, test_problem_auth | Pass |
+| RF-005 | T-012, T-013, T-019, T-042, T-046 | test_problem_validation, test_problem_auth | Pass |
+| RF-006 | T-014, T-017, T-020–T-024 | test_problem_auth, test_forced_change | Pass |
+| RF-007 | T-018, T-022 | test_problem_auth | Pass |
+| RF-008 | T-005, T-006, T-021–T-023 | test_problem_catalog | Pass |
+| RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031, T-038, T-039, T-049 | test_contract, test_problem_contract, test_problem_auth | Pass |
+| RF-010 | T-026–T-029 | problems.test.ts, auth.test.ts, ChangePasswordPage.test.tsx | Pass |
+| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049 | test_problem_validation, test_problem_auth | Pass |
+| RF-012 | T-009, T-011, T-040, T-041 | test_problem_handlers | Pass |
+| RF-013 | T-010, T-011, T-038, T-043, T-044, T-047, T-048 | test_problem_handlers | Pass |
+| RF-014 | T-004, T-006 | test_problem_catalog | Pass |
+| doc: contrato-0004 | T-030 | — | hecho |
+| doc: contrato-0002 | T-031 | — | hecho |
+| doc: spec-0002 | T-001, T-036 | — | hecho |
+| doc: backend-readme | T-032, T-049 | — | hecho |
+| doc: core-readme | T-033, T-049 | — | hecho |
+| doc: frontend-readme | T-034 | — | hecho |
+| doc: agents-md | T-035 | — | hecho |
+| doc: state | T-037, T-050 | — | hecho |
+| doc: spec-0004-enmienda-1 | T-038 | — | hecho |
+| doc: history | T-050 | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

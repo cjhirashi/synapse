@@ -93,9 +93,15 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 - `instance` es la ruta pedida, sin query. `detail` y `errors` pueden faltar, nunca valen `null`.
 - `errors` (sólo en 422) lleva un fallo por entrada con **una** ubicación: `pointer`
   (JSON Pointer al cuerpo; `#` si el JSON es inválido o falta), `parameter` (query/path) o
-  `header`. Nunca se repite el valor enviado por el cliente.
+  `header`. Nunca se repite el valor enviado por el cliente, ni siquiera dentro del `detail`
+  de una entrada: los mensajes de pydantic se regeneran sólo con los límites del esquema
+  (p. ej. `String should have at most 5 characters`) y, si dependen de otra cosa, valen
+  `Invalid value.`.
 - Un error no controlado es un 500 genérico; la traza va al log (`app.core.problems`), nunca
-  a la respuesta.
+  a la respuesta. Si el propio traductor falla, responde un 500 de campos fijos más `instance`.
+- Las operaciones declaran en el contrato los códigos de sus errores de dominio, el 422 y el
+  500. Los errores de enrutado (404 de ruta inexistente, 405) no se declaran por operación,
+  pero también salen como Problem Details.
 
 **Catálogo** — vive en `app/core/errors.py` (cada clase es una entrada):
 
@@ -115,10 +121,17 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 **Añadir un error de dominio:**
 1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y
    `detail` (inglés). `tests/test_problem_catalog.py` exige `type` único y bien formado.
-2. Lánzala desde el servicio o la dependencia. El texto de la excepción es interno (va al log);
-   para otro `detail` público pasa `detail=`. Nunca `HTTPException` fuera de
+2. Lánzala desde el servicio o la dependencia. El texto de la excepción es interno: se
+   registra en `app.core.problems` (5xx en ERROR con traza y causa encadenada, 4xx en INFO)
+   y nunca llega al cliente; para otro `detail` público pasa `detail=`. Nunca `HTTPException` fuera de
    `core/problems.py` (lo comprueba un test).
 3. Declárala en la ruta con `responses=problem_responses(MiError)` para que salga en el contrato.
+   Los tests de `tests/test_problem_auth.py` exigen que cada código emitido esté declarado.
+
+**Mensajes de validadores propios:** un validador de pydantic que quiera un texto concreto en
+`errors[].detail` lanza `PydanticCustomError("<tipo>", "<plantilla fija>")` sin `ctx` (ver el
+del email en `core/schemas.py`). Un `ValueError` o una plantilla con `ctx` se publican como
+`Invalid value.`, porque su texto puede contener el valor recibido.
 
 ## Contratos OpenAPI por feature
 

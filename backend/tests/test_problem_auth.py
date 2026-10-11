@@ -1,15 +1,25 @@
-"""Errores de auth y admin como Problem Details (SPEC-0004 RF-004…RF-007, RF-011).
+"""Errores de auth y admin como Problem Details (SPEC-0004 RF-004…RF-007, RF-009, RF-011).
 
-Cada error conserva el código HTTP de SPEC-0002 y gana el `type` del catálogo.
+Cada error conserva el código HTTP de SPEC-0002 y gana el `type` del catálogo; además,
+su operación lo declara en el contrato (emitido ⊆ declarado).
 """
 import pytest
+from starlette.routing import compile_path
 
 from app.core.models.user import User
 from app.core.problems import PROBLEM_MEDIA_TYPE
+from app.main import app
 from tests.conftest import SEED_EMAIL, SEED_PASSWORD, login
 
 NEW = "a-brand-new-password"
 URN = "urn:synapse:problem:"
+
+
+def _declared_statuses(method: str, path: str) -> set[str]:
+    """Códigos que declara la operación del contrato cuya plantilla casa con `method path`."""
+    paths = app.openapi()["paths"]
+    template = next(t for t in paths if compile_path(t)[0].fullmatch(path))
+    return set(paths[template][method.lower()]["responses"])
 
 
 def _assert_problem(response, status: int, slug: str) -> dict:
@@ -18,6 +28,9 @@ def _assert_problem(response, status: int, slug: str) -> dict:
     body = response.json()
     assert body["type"] == URN + slug
     assert body["status"] == status
+    # RF-009: lo que la app emite está declarado en su operación.
+    request = response.request
+    assert str(status) in _declared_statuses(request.method, request.url.path), request.url
     return body
 
 
@@ -149,15 +162,22 @@ def test_password_policy_is_a_validation_problem_pointing_at_new_password(client
 
 
 def test_new_password_equal_to_current_is_a_validation_problem(client):
+    # La semilla no cumple la longitud mínima: primero se pasa a una contraseña válida, así
+    # el 422 sólo puede venir de la regla «distinta de la actual».
     login(client)
-    body = _assert_problem(_change(client, new=SEED_PASSWORD), 422, "validation-error")
-    assert [e["pointer"] for e in body["errors"]] == ["#/new_password"]
+    assert _change(client).status_code == 204
+    body = _assert_problem(_change(client, current=NEW, new=NEW), 422, "validation-error")
+    assert body["errors"] == [
+        {"pointer": "#/new_password", "detail": "New password must differ from the current one"}
+    ]
 
 
 def test_rejected_password_never_appears_in_the_response(client):
-    secret = "Zq9-unique-secret"
+    secret = "Zq9-sec"  # más corta que el mínimo: la política la rechaza
     login(client)
-    assert secret not in _change(client, new=secret[:3] + "x").text
+    rejected = _change(client, new=secret)
+    _assert_problem(rejected, 422, "validation-error")
+    assert secret not in rejected.text
     assert secret not in _change(client, current=secret).text
     client.cookies.clear()
     assert secret not in login(client, SEED_EMAIL, secret).text
@@ -169,8 +189,7 @@ def test_rejected_password_never_appears_in_the_response(client):
 
 def test_invalid_email_on_user_creation_points_at_email(ready_admin):
     body = _assert_problem(_create(ready_admin, "not-an-email"), 422, "validation-error")
-    assert [e["pointer"] for e in body["errors"]] == ["#/email"]
-    assert "not-an-email" not in body["errors"][0]["detail"]
+    assert body["errors"] == [{"pointer": "#/email", "detail": "Invalid email format"}]
 
 
 # --- RF-004 / RF-006: almacenamiento caído ---

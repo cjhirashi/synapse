@@ -6,12 +6,12 @@ import json
 import logging
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from app.core import problems
-from app.core.errors import InvalidToken, PasswordPolicyViolation
-from app.core.problems import PROBLEM_MEDIA_TYPE, install_problem_handlers
+from app.core.errors import InvalidToken, PasswordPolicyViolation, ProvisioningError
+from app.core.problems import PROBLEM_MEDIA_TYPE, Problem, install_problem_handlers
 
 SECRET = "internal-secret-xyz"
 
@@ -27,6 +27,18 @@ def _make_app() -> FastAPI:
     @app.get("/domain-with-errors")
     def domain_with_errors():
         raise PasswordPolicyViolation(errors=[{"pointer": "#/new_password", "detail": "Too short"}])
+
+    @app.get("/storage-down")
+    def storage_down():
+        try:
+            raise ConnectionError("connection refused at 10.0.0.7")
+        except ConnectionError as exc:
+            raise ProvisioningError(f"CouchDB unreachable: {SECRET}") from exc
+
+    @app.get("/nonstandard")
+    def nonstandard():
+        # Starlette exige `detail` explícito para códigos sin frase estándar.
+        raise HTTPException(499, detail="Client closed request")
 
     @app.get("/boom")
     def boom():
@@ -70,6 +82,28 @@ def test_domain_error_internal_message_never_reaches_the_client(client):
     assert SECRET not in client.get("/domain").text
 
 
+def test_server_domain_error_logs_internal_message_and_cause(client, caplog):
+    with caplog.at_level(logging.DEBUG, logger=problems.logger.name):
+        response = client.get("/storage-down")
+    _assert_problem(response, 503)
+    assert SECRET not in response.text
+    record = next(r for r in caplog.records if r.name == problems.logger.name)
+    assert record.levelno == logging.ERROR
+    assert SECRET in record.getMessage() and "GET /storage-down" in record.getMessage()
+    # La traza incluye la causa encadenada (`raise ... from exc`).
+    assert record.exc_info[0] is ProvisioningError
+    assert isinstance(record.exc_info[1].__cause__, ConnectionError)
+
+
+def test_client_domain_error_logs_internal_message_without_traceback(client, caplog):
+    with caplog.at_level(logging.DEBUG, logger=problems.logger.name):
+        client.get("/domain")
+    record = next(r for r in caplog.records if r.name == problems.logger.name)
+    assert record.levelno == logging.INFO
+    assert SECRET in record.getMessage()
+    assert record.exc_info is None
+
+
 def test_domain_error_carries_errors_when_present(client):
     body = _assert_problem(client.get("/domain-with-errors"), 422)
     assert body["type"] == "urn:synapse:problem:validation-error"
@@ -91,6 +125,13 @@ def test_wrong_method_is_about_blank_405_and_keeps_allow(client):
     assert body["type"] == "about:blank"
     assert body["title"] == "Method Not Allowed"
     assert response.headers["allow"] == "POST"
+
+
+def test_status_without_standard_phrase_keeps_its_code(client):
+    body = _assert_problem(client.get("/nonstandard"), 499)
+    assert body["type"] == "about:blank"
+    assert body["title"] == "Bad Request"  # frase de su clase (4xx)
+    assert body["detail"] == "Client closed request"
 
 
 # --- RF-004 / RF-012: errores no controlados ---
@@ -124,6 +165,8 @@ def test_translator_failure_returns_constant_minimal_500(client, monkeypatch, ca
         response = client.get("/domain")
     assert response.status_code == 500
     assert response.headers["content-type"] == PROBLEM_MEDIA_TYPE
-    assert response.content == problems.FALLBACK_500_BODY
-    assert json.loads(response.content)["status"] == 500
+    body = json.loads(response.content)
+    assert body == {**problems.FALLBACK_500, "instance": "/domain"}
+    # Cumple el esquema `Problem` publicado (`instance` es obligatorio).
+    Problem.model_validate(body)
     assert any(r.exc_info and r.exc_info[0] is ValueError for r in caplog.records)

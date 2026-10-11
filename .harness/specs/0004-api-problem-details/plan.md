@@ -74,20 +74,22 @@ class DomainError(Exception):
 ### Capa HTTP — traductor (`core/problems.py`, nuevo)
 - `Problem` y `ProblemError` (pydantic): esquema publicado en el contrato.
   `ProblemError` = `detail` + exactamente uno de `pointer` / `parameter` / `header`.
-- `ProblemResponse(JSONResponse)` con `media_type = "application/problem+json"`.
+- `_respond(body, status, headers)`: `Response` con `media_type = "application/problem+json"`.
 - `install_problem_handlers(app)` registra, en este orden de especificidad:
 
 | Excepción | Respuesta | RF |
 |---|---|---|
-| `DomainError` | `type` URN, `title`/`status` de la clase, `detail` público, `errors` si hay | RF-003, 006, 008 |
+| `DomainError` | `type` URN, `title`/`status` de la clase, `detail` público, `errors` si hay; el mensaje interno va al log (5xx: `ERROR` con traza y causa; 4xx: `INFO`) | RF-003, 004, 006, 008, 012 |
 | `RequestValidationError` | 422 `validation-error`; una entrada por error de pydantic (ver abajo) | RF-005, 011 |
-| `StarletteHTTPException` (404/405 del router y cualquier otra del framework) | `about:blank`, `title` = frase estándar (`HTTPStatus(code).phrase`), `detail` = el del framework; conserva sus cabeceras (`Allow` en 405) | RF-001, 003 |
+| `StarletteHTTPException` (404/405 del router y cualquier otra del framework) | `about:blank`, `title` = frase estándar (`HTTPStatus(code).phrase`; código sin frase → la de su clase, 400 o 500, conservando el código), `detail` = el del framework; conserva sus cabeceras (`Allow` en 405) | RF-001, 003 |
 | `Exception` | 500 `about:blank`, `detail` "An unexpected error occurred."; `logger.exception(...)` con método y ruta | RF-004, 012 |
 
 - `instance` = `request.url.path` (sin query) en todos los casos (RF-002).
 - **Fallo del propio traductor (RF-013):** cada manejador construye la respuesta dentro de
-  un `try`; si algo falla, devuelve `FALLBACK_500`, un cuerpo **constante** (bytes
-  precalculados al importar el módulo) con `application/problem+json`, y registra el error.
+  un `try` (`_safely`), incluido el cálculo del `title`; si algo falla, devuelve el 500 de
+  fallback (`FALLBACK_500`, campos fijos precalculados al importar el módulo, más
+  `instance`, serializado con `json.dumps` sin pasar por el modelo) con
+  `application/problem+json`, y registra el error (enmienda 1, V-6).
 - **De pydantic a ubicación (RF-005):** `loc[0]` decide el campo:
   - `"body"` → `pointer` = `"#"` + `"/" + segmento` por cada elemento restante de `loc`,
     escapando `~`→`~0` y `/`→`~1` (RFC 6901). Cuerpo ausente o JSON inválido
@@ -96,8 +98,19 @@ class DomainError(Exception):
   - `"header"` → `header` = `loc[1]` con el nombre HTTP (guiones bajos → guiones).
   - Hoy ninguna ruta declara parámetros de cookie (las cookies se leen a mano y sus fallos
     son 401); si apareciera `"cookie"` se trataría como `parameter`.
-- **Sin valores del cliente (RF-011):** de cada error de pydantic sólo se usa `msg`; nunca
-  `input`, `ctx` ni `url`. El `detail` raíz del 422 es fijo ("Request validation failed.").
+- **Sin valores del cliente (RF-011, enmienda 1 V-3):** el `detail` de cada entrada se
+  construye desde el `type` del error, nunca copiando `msg`, `input`, `ctx` ni `url`:
+  - tipo conocido por pydantic → su plantilla (`PydanticKnownError(type, ctx).message()`)
+    rellenada sólo con claves de restricción del esquema (`SAFE_CTX_KEYS`: límites,
+    `expected`, …);
+  - tipo propio (`PydanticCustomError`) sin `ctx` → su plantilla, que es una constante del
+    código;
+  - cualquier otro caso (`value_error`/`assertion_error`, cuyo `ctx.error` es el texto de
+    la excepción; plantillas que exigen `ctx.error`, como UUID o JSON inválido; tipos
+    propios con `ctx`) → `"Invalid value."`.
+  Los validadores que quieran un texto concreto lanzan `PydanticCustomError` con plantilla
+  fija (p. ej. el email de `CreateUserRequest`). El `detail` raíz del 422 es fijo
+  ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las
   clases que puede lanzar (código → descripción = `title`, contenido
   `application/problem+json` con `$ref` a `Problem`).
@@ -153,11 +166,12 @@ feature**, porque 0004 necesita su propio contrato antes que 0003:
 | Zona | Qué se prueba | Archivo |
 |---|---|---|
 | Catálogo | cada subclase de `DomainError` tiene `slug`, `title`, `status`, `detail`; `type` único y con forma `urn:synapse:problem:[a-z0-9-]+` (RF-014) | `test_problem_catalog.py` |
-| Traductor | `DomainError` → cuerpo y cabecera; mensaje interno no aparece; `errors` opcional; 404/405 de ruta (con `Allow`); 500 genérico con `raise_server_exceptions=False` y traza en `caplog` (RF-012); fallo del traductor → `FALLBACK_500` (RF-013) | `test_problem_handlers.py` (app mínima de prueba) |
+| Traductor | `DomainError` → cuerpo y cabecera; mensaje interno no aparece; `errors` opcional; 404/405 de ruta (con `Allow`); 500 genérico con `raise_server_exceptions=False` y traza en `caplog` (RF-012); mensaje interno de `DomainError` en `caplog`; fallo del traductor → `FALLBACK_500` con `instance` (RF-013); código sin frase estándar conserva su código | `test_problem_handlers.py` (app mínima de prueba) |
 | Validación | `loc` → `pointer`/`parameter`/`header`, escape RFC 6901, JSON inválido → `#`; nunca el valor enviado: contraseña de 3 caracteres en `change-password` y en `login` no aparece en la respuesta (RF-011) | `test_problem_validation.py` |
 | Migración | cada error de auth/admin: mismo código que antes + `type` del catálogo (tabla parametrizada); login con email inexistente y con contraseña errónea → cuerpos idénticos (RF-007); CouchDB caído → 503 `storage-unavailable` sin el mensaje interno | `test_problem_auth.py` |
 | Arquitectura | ningún módulo de `app/` salvo `core/problems.py` importa `HTTPException` (RF-008), por AST | `test_problem_catalog.py` |
 | Barrido | recorre todas las operaciones del contrato: cada respuesta 4xx/5xx declarada usa `application/problem+json` con `$ref` a `Problem`; cada error real devuelto en la suite lleva `application/problem+json` | `test_problem_contract.py` + `test_contract.py` |
+| Emitido ⊆ declarado (V-1) | cada error real de auth/admin provocado en `test_problem_auth.py` figura en las respuestas que su operación declara en `app.openapi()` (salvo 404/405 de enrutado, enmienda 1) | `test_problem_auth.py` |
 | Regresión | suite existente de 0002 en verde; el test que hoy lee `detail` (`test_forced_change.py`) pasa a leer `type` | suite completa |
 | Frontend | `parseProblem` con problem+json, json sin campos, cuerpo no JSON; `ApiError` con todos los campos; pantallas muestran los mismos textos; `auth.test.ts` con cuerpos Problem | vitest |
 
@@ -178,7 +192,7 @@ feature**, porque 0004 necesita su propio contrato antes que 0003:
 |---|---|
 | 0004 modifica archivos de `covers` de 0002 (`auth_service.py`, `dependencies.py`, `routers/**`, `export_openapi.py`, `api/auth.ts`, pantallas, contrato) | Sin re-anclar, el gate marcaría DRIFT en 0002. Se acota `backend/tests/**` (paso 1) y, al cerrar 0004, se mueve el `anchor_commit` de 0002 con una nota en su spec: "errores de la API sustituidos por SPEC-0004" (la línea de §3 que hoy dice `{"detail"}`). |
 | Se adelantan pasos de PLAN-0003 | El reparto de contratos y el re-anclaje de 0002 (pasos 1–2 de PLAN-0003 §6) se hacen aquí. Al escribir `tasks.md` de 0003 esos pasos se dan por hechos; además, sus errores (`VaultNotFound`, …) se declaran como subclases de `DomainError` con su `slug` y no "en `main.py`" como decía PLAN-0003 §2. Son ajustes de detalle que 0003 recoge en su Fase 3 sin cambiar ninguna decisión. |
-| `core/errors.py` y `main.py` sin dueño | Transversales (lo decidió PLAN-0003): 0003 y las features siguientes añaden ahí sus errores; si 0004 los cubriera, cada feature nueva provocaría DRIFT en 0004. |
+| `core/errors.py`, `core/schemas.py` y `main.py` sin dueño en 0004 | Transversales (lo decidió PLAN-0003): 0003 y las features siguientes añaden ahí sus errores; si 0004 los cubriera, cada feature nueva provocaría DRIFT en 0004. |
 | Manejador de `Exception` en Starlette | Starlette responde con nuestro manejador y además re-lanza la excepción al servidor; por eso los tests de 500 usan `TestClient(raise_server_exceptions=False)`. El registro explícito con `logger.exception` asegura la traza aunque el servidor cambie. |
 | Cambio incompatible en la API | Decidido en Q6 (sin clientes externos). Se marca como **breaking** en el commit y en `backend/README.md`. |
 
@@ -217,10 +231,10 @@ Jerarquía `DomainError`; sin `HTTPException` en `services/`, `core/dependencies
 ### Implementación de RF-010
 `api/problems.ts`, `request()` en `auth.ts`, `ChangePasswordPage` por `type`. Tests vitest de `problems.test.ts`, `auth.test.ts` y pantallas.
 ### Implementación de RF-011
-Sólo `msg` de pydantic; `detail` raíz fijo. Tests con contraseñas inválidas en `login` y `change-password`.
+`detail` de cada entrada desde plantillas con `SAFE_CTX_KEYS` (§2); `detail` raíz fijo. Tests con contraseñas inválidas en `login` y `change-password`, `ValueError` y UUID con el valor dentro del mensaje de pydantic.
 ### Implementación de RF-012
-`logger.exception` en el manejador de `Exception`. Test con `caplog`: aparece la traza con método y ruta.
+`logger.error(..., exc_info=exc)` en el manejador de `Exception`; el de `DomainError` registra el mensaje interno. Tests con `caplog`: traza con método y ruta; mensaje interno y causa de un 503.
 ### Implementación de RF-013
-`FALLBACK_500` precalculado; `try` en cada manejador. Test: forzar fallo del constructor (monkeypatch) → 500 `application/problem+json` con el cuerpo constante.
+`FALLBACK_500` precalculado más `instance`; `_safely` en cada manejador. Tests: forzar fallo del constructor (monkeypatch) → 500 `application/problem+json` con los campos fijos e `instance`; `HTTPException(499)` conserva su código.
 ### Implementación de RF-014
 Test de catálogo sobre todas las subclases de `DomainError` (recorrido recursivo de `__subclasses__`).

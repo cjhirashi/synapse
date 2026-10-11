@@ -2,7 +2,7 @@
 id: SPEC-0004
 tipo: spec
 feature: 0004-api-problem-details
-estado: approved
+estado: implemented
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: c8c9e24   # base al abrir la spec (aún sin código propio)
 anchor_mode: advisory
@@ -16,6 +16,7 @@ covers:
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 
@@ -23,6 +24,9 @@ actualizado: 2026-10-11
 
 > Fase 1 (Specify) **cerrada**: tandas 1 (Q1–Q6) y 2 (Q7–Q10) decididas por el usuario;
 > GATES 1 y 2 aprobados. El *cómo* está en `plan.md`.
+>
+> **Enmienda 1 2026-10-11** (verificación adversarial, V-3/V-5/V-6/V-7): RF-011, RF-013 y
+> RF-009 precisados; nuevo caso límite de códigos sin frase estándar. Aprobada por el usuario.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -116,11 +120,13 @@ en su propio spec los tipos que añade.
   y su ubicación: `pointer` para el cuerpo, `parameter` para query o ruta, `header` para
   cabeceras.
 - **RF-011** — CUANDO el sistema describe un fallo de validación NO DEBE incluir el valor
-  enviado por el cliente ni datos internos del validador (`input`, `ctx`) en la respuesta.
+  enviado por el cliente ni datos internos del validador (`input`, `ctx`) en la respuesta,
+  tampoco dentro del texto `detail` de cada entrada de `errors`.
 - **RF-012** — SI ocurre un error no controlado ENTONCES el sistema DEBE registrarlo en el
   log del servidor con su traza completa.
 - **RF-013** — SI falla la construcción del propio Problem Details ENTONCES el sistema DEBE
-  responder un 500 mínimo y fijo con `application/problem+json`.
+  responder un 500 con `application/problem+json`, `type`, `title`, `status` y `detail`
+  fijos e `instance` (ruta de la petición).
 - **RF-014** — Cada `type` del catálogo DEBE ser único y tener la forma
   `urn:synapse:problem:<slug>` (slug en minúsculas con guiones).
 
@@ -136,7 +142,9 @@ en su propio spec los tipos que añade.
 **Contrato y frontend**
 - **RF-009** — El contrato OpenAPI DEBE declarar el esquema `Problem` y, en cada endpoint,
   las respuestas de error que puede devolver con `application/problem+json`; el test de
-  deriva DEBE fallar si la app y el contrato difieren.
+  deriva DEBE fallar si la app y el contrato difieren. Los errores de enrutado (404 de ruta
+  inexistente, 405) no pertenecen a ninguna operación y no se declaran en ellas; RF-001 los
+  cubre igualmente.
 - **RF-010** — CUANDO el frontend recibe un error de la API `ApiError` DEBE exponer
   `status`, `type`, `title`, `detail` y `errors`, y las pantallas de login, cambio de
   contraseña y cierre de sesión DEBEN seguir mostrando los mismos mensajes que hoy.
@@ -150,6 +158,10 @@ en su propio spec los tipos que añade.
 - Validación de query, ruta o cabecera (`?limit=500`, `If-Match` mal formado): 422 con
   `parameter` o `header` en lugar de `pointer` (RF-005).
 - Error no controlado: traza al log, nunca a la respuesta (RF-004, RF-012).
+- Mensaje de validación que lleva el valor recibido (validador propio con `ValueError`,
+  UUID mal formado): la entrada sale con un texto genérico, nunca con el valor (RF-011).
+- `HTTPException` con un código sin frase estándar (p. ej. 499): conserva su código; el
+  `title` es la frase de su clase (400 o 500).
 
 ## 6. Registro de decisiones y descartes
 | Decisión | Justificación | Alternativa descartada | ADR |
@@ -166,6 +178,9 @@ en su propio spec los tipos que añade.
 | Q8 · Nunca repetir el valor enviado ni `input`/`ctx` de pydantic | Evita fugas (contraseñas) por defecto, sin depender de marcar campos | Ocultar sólo campos marcados como sensibles (frágil) | — |
 | Q9 · Catálogo en el código (`core/errors.py`); spec con la tabla inicial; test de unicidad y forma | Una sola fuente por hecho (Art. 12) | YAML compartido por código y docs (carga sin beneficio con un cliente) | — |
 | Q10 · 500 con traza al log; 500 mínimo fijo si falla el manejador; sin ids de correlación | Diagnosticable sin filtrar internos; correlación espera a Art. 7 | No registrar nada en esta feature | — |
+| E1 · V-3: los `detail` de validación salen de plantillas fijas y sólo admiten restricciones del esquema; si no, texto genérico | La garantía de RF-011 vive en el traductor, no en la disciplina de cada validador | Rebajar la promesa de RF-011 | — |
+| E1 · V-6: el 500 de fallback incluye `instance` | Cumple el esquema `Problem` publicado (`instance` obligatorio) | Hacer `instance` opcional en el contrato | — |
+| E1 · V-7: 404/405 de enrutado fuera de las respuestas por operación | No pertenecen a una operación; declararlos en todas sólo añade ruido | Declararlos globalmente en cada operación | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).
