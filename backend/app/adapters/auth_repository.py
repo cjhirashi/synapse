@@ -46,6 +46,7 @@ class AuthRepository(AuthPort):
     def update_password(self, user: User, hashed_password: str) -> None:
         user.hashed_password = hashed_password
         user.must_change_password = False
+        user.token_version += 1  # invalida los access tokens anteriores (RF-021)
         self.db.flush()
 
     def save_refresh_token(self, user_id: str, token_hash: str, expires_at: datetime) -> RefreshToken:
@@ -62,8 +63,9 @@ class AuthRepository(AuthPort):
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
         return self.db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
 
-    def revoke_refresh_token(self, token: RefreshToken) -> None:
+    def revoke_refresh_token(self, token: RefreshToken, rotated: bool = False) -> None:
         token.revoked = True
+        token.rotated = rotated
         self.db.flush()
 
     def revoke_refresh_tokens(self, user_id: str) -> None:

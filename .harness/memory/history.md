@@ -66,7 +66,14 @@
 
 ---
 
-## [2026-10-11] 0002-auth — enmienda 2: residuales R-1…R-6 (en curso)
+## [2026-10-11] 0002-auth — enmienda 2: residuales R-1…R-6
+- **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)
+- **Rebotes del verificador:** 0 nuevos (cierra los residuales R-1…R-6 del rebote anterior)
+- **Directiva de Pausa:** no
+- **Drift / re-anchor:** sí (`covers` + `App.tsx`, `layout/**`, `*token_version*`)
+- **Anclas movidas:** no (enmienda 2 pendiente de aprobación)
+- **Docs actualizadas:** spec.md, plan.md, tasks.md (bloque O), backend/README.md, frontend/src/README.md, ARCHIFY.md, state.md (contrato re-exportado sin cambios)
+- **Próximo paso:** aprobación de la enmienda 2 y re-verificación de 0002; luego 0003-vault-crud.
 - **Aprobaciones:** enmienda 1 (V-1/V-2/V-3/G-1) aprobada por el usuario; enmienda 2 redactada, pendiente de aprobación.
 - **Registro de tareas:**
   - [2026-10-11] Fase 1/2/3 — spec (RF-010, RF-014, RF-017 precisados; RF-021…RF-023 nuevos), plan y bloque O (T-059…T-068) redactados.
@@ -80,6 +87,7 @@
   - [2026-10-11] T-065 — tests vitest de renovación automática (reintento, fallo → sesión cerrada, renovación única, Web Locks, sin renovar en login); en rojo.
   - [2026-10-11] T-066 — `api/auth.ts::request` reintenta tras un único `/auth/refresh` (Web Locks entre pestañas, promesa compartida en la pestaña).
   - [2026-10-11] T-067 — `layout/AppLayout.tsx` con enlace "Cambiar contraseña" y "Cerrar sesión" (avisa si el logout falla); `App.tsx` lo usa como ruta de diseño de las privadas. Frontend 23/23, `tsc` limpio.
+  - [2026-10-11] T-068 — docs: backend/README (versión de credenciales, rotación), frontend/src/README, ARCHIFY (diagrama), state; contrato re-exportado (sin cambios).
 
 ## [2026-10-11] 0002-auth — enmienda tras verificación adversarial
 - **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)

@@ -41,3 +41,4 @@ class TokenPayload(BaseModel):
     sub: str   # user_id — el proxy construye synapse_user_{sub}
     role: str
     exp: int
+    ver: int   # versión de credenciales (RF-021)

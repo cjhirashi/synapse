@@ -10,12 +10,43 @@ export interface Me {
   must_change_password: boolean;
 }
 
-async function request(path: string, init: RequestInit = {}): Promise<Response> {
+// Rutas cuyo 401 es una respuesta final, no una sesión caducada.
+const NO_REFRESH = new Set(["/auth/login", "/auth/refresh", "/auth/logout"]);
+
+let refreshing: Promise<boolean> | null = null;
+
+async function callRefresh(): Promise<boolean> {
+  const res = await fetch("/auth/refresh", { method: "POST", credentials: "include" });
+  return res.ok;
+}
+
+/**
+ * Renueva la sesión con el refresh token (RF-023). Una sola renovación en curso por
+ * pestaña y, con Web Locks, serializada entre pestañas: dos rotaciones simultáneas del
+ * mismo refresh token dispararían la detección de reutilización del backend (RF-022).
+ */
+export function refreshSession(): Promise<boolean> {
+  if (!refreshing) {
+    const locks = typeof navigator !== "undefined" ? navigator.locks : undefined;
+    const run = locks ? locks.request("synapse-auth-refresh", callRefresh) : callRefresh();
+    refreshing = run
+      .catch(() => false)
+      .finally(() => {
+        refreshing = null;
+      });
+  }
+  return refreshing;
+}
+
+async function request(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   const res = await fetch(path, {
     credentials: "include",
     headers: { "Content-Type": "application/json" },
     ...init,
   });
+  if (res.status === 401 && retry && !NO_REFRESH.has(path) && (await refreshSession())) {
+    return request(path, init, false);
+  }
   if (!res.ok) {
     let detail = res.statusText;
     try {

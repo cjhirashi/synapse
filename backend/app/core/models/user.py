@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Index, func
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Index, Integer, func
 from sqlalchemy.orm import relationship
 from app.adapters.database import Base
 
@@ -12,6 +12,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)  # Argon2id
     is_active = Column(Boolean, default=True)
     must_change_password = Column(Boolean, nullable=False, default=False)
+    token_version = Column(Integer, nullable=False, default=0)  # claim `ver` del JWT (RF-021)
     role_id = Column(String, ForeignKey("roles.id"), nullable=False)
     couchdb_name = Column(String, unique=True)  # synapse_user_{id}
     created_at = Column(DateTime, nullable=False)

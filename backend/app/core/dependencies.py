@@ -8,7 +8,7 @@ from app.core.models.user import User
 from app.core.schemas import TokenPayload
 
 
-async def get_current_user(request: Request) -> TokenPayload:
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> TokenPayload:
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(
@@ -16,13 +16,17 @@ async def get_current_user(request: Request) -> TokenPayload:
             detail="Not authenticated",
         )
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-        return TokenPayload(**payload)
+        payload = TokenPayload(**jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"]))
     except (jwt.PyJWTError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",
         )
+    # Un token emitido antes del último cambio de contraseña ya no vale (RF-021).
+    user = db.get(User, payload.sub)
+    if user is None or not user.is_active or user.token_version != payload.ver:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return payload
 
 
 async def require_admin(

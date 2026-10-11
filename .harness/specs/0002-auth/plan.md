@@ -119,4 +119,12 @@ Hoy sólo hay READMEs. Para RF-020 se crea el **mínimo**: proyecto Vite + React
   - V-3 (RF-005): hash Argon2id ficticio a nivel de módulo en `auth_service.py`, verificado cuando el usuario no existe o está inactivo; test determinista que espía `verify_password`.
   - G-1 (RF-012): regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` en `CreateUserRequest` → 422; contrato re-exportado.
 
+- **Enmienda 2 (R-1…R-6)** —
+  - Migración `004_token_version`: `users.token_version INTEGER NOT NULL DEFAULT 0` y `refresh_tokens.rotated BOOLEAN NOT NULL DEFAULT false`. Los JWT emitidos antes del despliegue (sin `ver`) dejan de valer: re-login único.
+  - R-1 (RF-021, RF-017): `create_token` añade `ver`; `get_current_user` pasa a leer el usuario de la BD (activo y `ver == token_version`); `change_password` incrementa `token_version` y el router emite cookies nuevas. Tests: `test_change_password.py`.
+  - R-2 (RF-010, RF-022): `AuthService.refresh` marca el usado `revoked+rotated` y devuelve uno nuevo; si llega uno `rotated` revoca todos los del usuario. Tests: `test_refresh.py`.
+  - R-3/R-5 (RF-023): `frontend/src/layout/AppLayout.tsx` (nav con enlace y "Cerrar sesión") envolviendo las rutas privadas. Tests vitest.
+  - R-4 (RF-023): `api/auth.ts::request` reintenta tras un único `/auth/refresh` compartido (`navigator.locks` si existe, si no una promesa en curso). Tests vitest.
+  - R-6 (RF-014): `test_isolation.py` recorre todo `GET` protegido del router como A y como B y comprueba que no aparecen identificadores del otro; y que las bases CouchDB por usuario dan 401 sin credenciales.
+
 `covers` (a ampliar en `spec.md` al cierre): `backend/app/**` de auth/admin, `backend/alembic/versions/*002*`, `backend/tests/test_*{auth,admin,refresh,...}*`, `contracts/openapi.yaml`, `frontend/src/**`, `.env.example`.

@@ -86,7 +86,8 @@
 - Arranque: el backend siembra el admin desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` y crea su base `synapse_user_{id}` (la base se crea al **dar de alta** un usuario, no en el login)
 - Login: `POST /auth/login` → Argon2id → cookies httpOnly `access_token` (JWT 24 h) y `refresh_token` (30 días, guardado hasheado)
 - Cambio forzado: con `must_change_password=true` sólo se permiten `/auth/me`, `/auth/change-password` y `/auth/logout`; el frontend redirige a "Cambiar contraseña"
-- Renovación: `POST /auth/refresh` emite un nuevo `access_token`
+- Renovación: ante un 401 el frontend llama `POST /auth/refresh`, que emite un nuevo `access_token` y rota el `refresh_token` (reutilizar uno rotado revoca todos)
+- Cambio de contraseña: invalida los access tokens anteriores (claim `ver`) y entrega cookies nuevas a la sesión actual
 - Alta de guests: el admin llama `POST /admin/users` → usuario `guest` + su base CouchDB
 
 **Borrador (Mermaid) hasta exportar con Archify:**
@@ -107,12 +108,12 @@ sequenceDiagram
     F->>U: redirige a /settings/password
     U->>F: actual + nueva (≥ 10, distinta)
     F->>B: POST /auth/change-password
-    B->>P: guarda hash, desactiva indicador, revoca refresh tokens
-    B-->>F: 204
+    B->>P: guarda hash, desactiva indicador, token_version+1, revoca refresh tokens
+    B-->>F: 204 + cookies nuevas (las demás sesiones pierden acceso)
     Note over F,B: Más tarde, access_token expirado
     F->>B: POST /auth/refresh (cookie refresh_token)
-    B->>P: valida hash, no revocado ni expirado
-    B-->>F: 200 + nuevo access_token
+    B->>P: valida hash, no revocado ni expirado; lo marca rotado
+    B-->>F: 200 + nuevo access_token y nuevo refresh_token
     U->>F: (admin) alta de guest
     F->>B: POST /admin/users {email, password}
     B->>P: crea guest (must_change_password=true)

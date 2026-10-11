@@ -14,5 +14,6 @@ class RefreshToken(Base):
     token_hash = Column(String, unique=True, nullable=False)  # SHA-256; nunca el token en claro
     expires_at = Column(DateTime, nullable=False)
     revoked = Column(Boolean, nullable=False, default=False)
+    rotated = Column(Boolean, nullable=False, default=False)  # revocado por rotación (RF-022)
     created_at = Column(DateTime, nullable=False)
     user = relationship("User")

@@ -50,8 +50,9 @@ def login(body: LoginRequest, response: Response, service: AuthService = Depends
 
 @router.post("/refresh")
 def refresh(request: Request, response: Response, service: AuthService = Depends(get_auth_service)):
-    user = service.refresh(request.cookies.get("refresh_token"))
+    user, new_refresh = service.refresh(request.cookies.get("refresh_token"))
     _set_access_cookie(response, service.create_token(user))
+    _set_refresh_cookie(response, new_refresh)
     return {"message": "Token renovado"}
 
 
@@ -84,7 +85,11 @@ def me(
 @router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
 def change_password(
     body: ChangePasswordRequest,
+    response: Response,
     current_user: TokenPayload = Depends(get_current_user),
     service: AuthService = Depends(get_auth_service),
 ):
-    service.change_password(current_user.sub, body.current_password, body.new_password)
+    user = service.change_password(current_user.sub, body.current_password, body.new_password)
+    # Los tokens anteriores quedan invalidados (RF-021); la sesión actual recibe unos nuevos.
+    _set_access_cookie(response, service.create_token(user))
+    _set_refresh_cookie(response, service.create_refresh_token(user))

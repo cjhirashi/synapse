@@ -52,14 +52,18 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
   no el usuario, para no permitir enumerar emails.
 - **Sesión:** JWT de 24 h en cookie httpOnly `access_token` (sólo cookie, nunca
   `Authorization`) y refresh token de 30 días en cookie `refresh_token`, guardado hasheado.
+  El JWT lleva `ver` (= `users.token_version`): cambiar la contraseña la incrementa e invalida
+  al instante los access tokens anteriores de todas las sesiones (la actual recibe cookies nuevas).
+  Cada `/auth/refresh` **rota** el refresh token; reutilizar uno ya rotado revoca todos los del
+  usuario (posible robo). Los JWT emitidos antes de la migración 004 (sin `ver`) dejan de valer.
 
 | Endpoint | Respuesta |
 |---|---|
 | `POST /auth/login` `{email,password}` | 200 + cookies · 401 |
-| `POST /auth/refresh` | 200 + nuevo `access_token` · 401 |
+| `POST /auth/refresh` | 200 + nuevos `access_token` y `refresh_token` (rotación) · 401 |
 | `POST /auth/logout` | 204, limpia cookies y revoca el refresh token |
 | `GET /auth/me` | 200 `{user_id,role,must_change_password}` · 401 |
-| `POST /auth/change-password` `{current_password,new_password}` | 204 · 400 · 422 |
+| `POST /auth/change-password` `{current_password,new_password}` | 204 + cookies nuevas · 400 · 422 |
 | `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
 
 Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`. Si cambias la API,

@@ -95,6 +95,7 @@ class AuthService:
             "sub": user.id,
             "role": user.role.name,
             "exp": datetime.utcnow() + ACCESS_TOKEN_TTL,
+            "ver": user.token_version,
         }
         return jwt.encode(payload, settings.JWT_SECRET, algorithm="HS256")
 
@@ -106,8 +107,13 @@ class AuthService:
         self.repo.commit()
         return raw
 
-    def refresh(self, raw_token: str | None) -> User:
+    def refresh(self, raw_token: str | None) -> tuple[User, str]:
+        """Rota el refresh token: revoca el usado y devuelve el usuario y uno nuevo (RF-010)."""
         stored = self.repo.get_refresh_token(hash_refresh_token(raw_token)) if raw_token else None
+        if stored is not None and stored.rotated:
+            # Reutilización de un token ya rotado: posible robo, se cierra todo (RF-022).
+            self.repo.revoke_refresh_tokens(stored.user_id)
+            self.repo.commit()
         if (
             stored is None
             or stored.revoked
@@ -117,7 +123,8 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
-        return stored.user
+        self.repo.revoke_refresh_token(stored, rotated=True)
+        return stored.user, self.create_refresh_token(stored.user)
 
     def logout(self, raw_token: str | None) -> None:
         if not raw_token:
@@ -127,7 +134,7 @@ class AuthService:
             self.repo.revoke_refresh_token(stored)
             self.repo.commit()
 
-    def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
+    def change_password(self, user_id: str, current_password: str, new_password: str) -> User:
         user = self.repo.get_user_by_id(user_id)
         if user is None:
             raise self._invalid_credentials()
@@ -144,3 +151,4 @@ class AuthService:
         self.repo.update_password(user, hash_password(new_password))
         self.repo.revoke_refresh_tokens(user.id)
         self.repo.commit()
+        return user

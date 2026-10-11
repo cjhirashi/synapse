@@ -100,6 +100,18 @@ actualizado: 2026-10-11
 - [x] T-057 — migración `003_normalize_email` + índice funcional en el modelo; probarla en SQLite y PostgreSQL (RF-013) [code]
 - [x] T-058 — re-exportar `contracts/openapi.yaml`, actualizar `backend/README.md`, `state.md`, `history.md` [doc]
 
+### O — Enmienda 2: residuales del verificador (R-1…R-6)
+- [x] T-059 — tests: access token anterior al cambio de contraseña → 401; la sesión actual sigue viva con las cookies nuevas (RF-021, RF-017) [test]
+- [x] T-060 — tests: refresh rota el token; reutilizar uno rotado → 401 y revoca todos; uno revocado por logout no dispara la revocación masiva (RF-010, RF-022) [test]
+- [x] T-061 — test: ninguna respuesta GET protegida filtra identificadores de otro usuario; bases CouchDB sin credenciales → 401 (RF-014) [test]
+- [x] T-062 — migración `004_token_version` + modelos; probada en SQLite y PostgreSQL (RF-021, RF-022) [code]
+- [x] T-063 — claim `ver`, `get_current_user` con BD, `change_password` con cookies nuevas (RF-021, RF-017) [code]
+- [x] T-064 — rotación y detección de reutilización en `AuthService.refresh` (RF-010, RF-022) [code]
+- [x] T-065 — tests vitest: reintento tras refresh, renovación única, sesión cerrada si falla (RF-023) [test]
+- [x] T-066 — `request()` con renovación automática (RF-023) [code]
+- [x] T-067 — tests vitest + `AppLayout` con enlace "Cambiar contraseña" y "Cerrar sesión" (RF-023) [code]
+- [x] T-068 — re-exportar contrato; actualizar `backend/README.md`, `frontend/src/README.md`, `ARCHIFY.md`, `state.md`, `history.md` [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -112,15 +124,18 @@ actualizado: 2026-10-11
 | RF-007 | T-021, T-022 | test_auth | Pass |
 | RF-008 | T-019, T-020 | test_auth | Pass |
 | RF-009 | T-008, T-025, T-026 | test_refresh | Pass |
-| RF-010 | T-005–T-008, T-023, T-024 | test_refresh | Pass |
+| RF-010 | T-005–T-008, T-023, T-024, T-060, T-064 | test_refresh | Pass |
 | RF-011 | T-023, T-024 | test_refresh | Pass |
 | RF-012 | T-027–T-029, T-035, T-036, T-054, T-055 | test_admin | Pass |
 | RF-013 | T-027, T-029, T-052, T-055, T-057 | test_admin, test_auth, test_bootstrap | Pass |
-| RF-014 | T-009, T-010, T-034 | test_isolation, test_flow | Pass |
+| RF-014 | T-009, T-010, T-034, T-061 | test_isolation, test_flow | Pass |
 | RF-015 | T-009–T-012, T-027, T-028 | test_provisioning | Pass |
 | RF-016 | T-014, T-015 | test_bootstrap | Pass |
-| RF-017 | T-008, T-030, T-031, T-035, T-036 | test_change_password | Pass |
+| RF-017 | T-008, T-030, T-031, T-035, T-036, T-059, T-063 | test_change_password | Pass |
 | RF-018 | T-003, T-004, T-030, T-031 | test_change_password | Pass |
+| RF-021 | T-059, T-062, T-063 | test_change_password | Pass |
+| RF-022 | T-060, T-062, T-064 | test_refresh | Pass |
+| RF-023 | T-065–T-067 | vitest (api/auth, layout) | Pass |
 | RF-019 | T-005–T-007, T-013, T-032, T-033, T-035, T-051 | test_forced_change | Pass |
 | RF-020 | T-037–T-041 | ChangePasswordPage.test, RequireAuth.test, LoginPage.test (vitest) | Pass |
 | RNF-001 | T-042 | `pytest --cov=app` (97 %) | Pass |

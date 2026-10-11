@@ -29,11 +29,12 @@ def test_rf_004_login_sets_access_and_refresh_cookies(client):
     assert "max-age=2592000" in refresh and "path=/auth" in refresh
 
 
-def test_rf_004_access_token_payload_has_only_sub_role_exp(client):
+def test_rf_004_access_token_payload_has_only_sub_role_exp_ver(client):
     login(client)
     token = client.cookies.get("access_token")
     payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
-    assert set(payload) == {"sub", "role", "exp"}
+    assert set(payload) == {"sub", "role", "exp", "ver"}
+    assert payload["ver"] == 0
     assert payload["role"] == "admin"
     remaining = payload["exp"] - datetime.utcnow().timestamp()
     assert 23 * 3600 < remaining <= 24 * 3600 + 5
@@ -51,7 +52,7 @@ def test_rf_006_protected_endpoint_without_cookie(client):
 
 
 def test_rf_006_invalid_token_is_rejected(client):
-    client.cookies.set("access_token", "not-a-jwt", domain="testserver")
+    client.cookies.set("access_token", "not-a-jwt", domain="testserver.local")
     assert client.get("/auth/me").status_code == 401
 
 
@@ -61,7 +62,7 @@ def test_rf_006_token_signed_with_other_secret_is_rejected(client):
         "another-secret",
         algorithm="HS256",
     )
-    client.cookies.set("access_token", bad, domain="testserver")
+    client.cookies.set("access_token", bad, domain="testserver.local")
     assert client.get("/auth/me").status_code == 401
 
 
@@ -71,7 +72,7 @@ def test_rf_006_expired_token_is_rejected(client):
         settings.JWT_SECRET,
         algorithm="HS256",
     )
-    client.cookies.set("access_token", expired, domain="testserver")
+    client.cookies.set("access_token", expired, domain="testserver.local")
     assert client.get("/auth/me").status_code == 401
 
 
@@ -97,7 +98,7 @@ def test_rf_007_require_admin_rejects_guest():
 
     from app.core.dependencies import require_admin
 
-    guest = TokenPayload(sub="u", role="guest", exp=9999999999)
+    guest = TokenPayload(sub="u", role="guest", exp=9999999999, ver=0)
     with pytest.raises(HTTPException) as exc:
         asyncio.run(require_admin(guest))
     assert exc.value.status_code == 403
