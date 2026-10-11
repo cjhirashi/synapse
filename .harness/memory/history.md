@@ -1,7 +1,23 @@
 # History — Synapse
 
+## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
+- **Fase alcanzada:** specify (en curso, sin GATE 1)
+- **Rebotes del verificador:** 0
+- **Directiva de Pausa:** no
+- **Drift / re-anchor:** no (aviso: la migración tocará archivos de `covers` de 0002 → re-anclaje de 0002 al cierre)
+- **Anclas movidas:** — (SPEC-0004 nace con `anchor_commit: c8c9e24`)
+- **Gate:** verde
+- **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
+- **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre.
+- **Próximo paso:** respuestas del usuario a Q1–Q6.
+- **Registro de tareas:**
+  - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
+  - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
+
+---
+
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** plan (GATE 1 aprobado; espera GATE 2)
+- **Fase alcanzada:** plan (GATES 1 y 2 aprobados)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
@@ -9,7 +25,7 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `draft`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** aprobación del plan (GATE 2) → Fase 3 (Tasks). Antes de la Fase 4: feature de errores RFC 9457. Reservar número para la feature de errores RFC 9457 (previa a implementar 0003).
+- **Próximo paso:** Fase 3 (Tasks) de 0003; Fase 4 tras mergear SPEC-0004. Reservar número para la feature de errores RFC 9457 (previa a implementar 0003).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -19,6 +35,7 @@
   - [2026-10-11] Usuario: «Acepto P7 a P12 tal como las recomiendas». Registradas en §6: reserva `vault-name:{minúsculas}` para la unicidad (RF-021); restaurar con nombre ocupado → 409, borrar ya borrada / restaurar no borrada → 404 (RF-025, RF-026); orden `created_at` desc + `id` (RF-024) y RNF-001 (p95 < 300 ms); id UUID v4 (RF-022); campos desconocidos → 422 (RF-023); vista "Papelera" (RF-028). Nombre libre al borrar/renombrar (RF-027). **0 marcadores**; a la espera del "así es" → GATE 1.
   - [2026-10-11] Usuario: «así es, pasa al plan». **GATE 1 aprobado** → `aprobaciones.fase_1`, `estado: approved`. Fe de erratas al spec (a confirmar en GATE 2): `owner_id` es `string` UUID (como `users.id`), no `integer`; RNF-001 dice "índice de CouchDB" en vez de "índice Mango".
   - [2026-10-11] Fase 2 — `plan.md` redactado: puerto `VaultPort` + `VaultRepository` (httpx) + `VaultService`; reserva `vault-name:{minúsculas}` con detección de huérfanas (sin transacciones entre documentos); `ETag` = `_rev`; vista `_design/vaults/by_created` (clave `[borrada, created_at]`, empate por `_id`) creada de forma idempotente por base; cursor base64url; export del contrato repartido por feature; re-anclaje de 0002 (`backend/tests/**` y archivos compartidos). `covers` de 0003 fijado. Espera GATE 2.
+  - [2026-10-11] Usuario: «Apruebo el plan». **GATE 2 aprobado** → `plan.md` `approved`, `aprobaciones.fase_2` en spec y plan; fe de erratas (`owner_id` string, RNF-001) confirmada. Fase 3 (Tasks) de 0003 queda para antes de la Fase 4, que espera a SPEC-0004.
 
 ---
 

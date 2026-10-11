@@ -19,14 +19,14 @@ covers:
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 
 # SPEC-0003 · CRUD de bóvedas
 
 > Fase 1 (Specify) cerrada: co-definida con el usuario (tandas P1–P6 y P7–P12), "así es"
-> y GATE 1 aprobados el 2026-10-11. Fase 2 (Plan) en curso.
+> y GATE 1 aprobados el 2026-10-11. GATE 2 (plan) aprobado el 2026-10-11.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores
@@ -37,7 +37,7 @@ actualizado: 2026-10-11
 - **Dependencias:**
   - SPEC-0002: sesión por cookie, `get_current_user`, bloqueo con `must_change_password`.
     La base CouchDB `synapse_user_{id}` ya existe desde el alta del usuario.
-  - **Feature previa de errores RFC 9457** (número por reservar): manejador global de
+  - **SPEC-0004 `0004-api-problem-details`** (errores RFC 9457): manejador global de
     `application/problem+json` para toda la API. 0003 no se implementa antes que ella.
 - **Almacenamiento:** cada bóveda es un documento `type: "vault"` dentro de la base
   CouchDB del propio usuario. El aislamiento lo da la base; ninguna consulta cruza bases.
@@ -54,7 +54,7 @@ actualizado: 2026-10-11
 - **Purga automática a los 30 días:** queda como RF-016 (diferido), se implementa en una
   feature aparte junto con la decisión sobre los documentos de la bóveda.
 - Documentos dentro de la bóveda (feature de documentos).
-- Sincronización PouchDB ↔ CouchDB (0004-sync-offline-first).
+- Sincronización PouchDB ↔ CouchDB (feature de sincronización, número por reservar).
 - Compartir bóvedas entre usuarios.
 - Permisos especiales para agentes OpenClaw (usan la API como cualquier usuario).
 - El formato de errores RFC 9457 en sí (feature previa).

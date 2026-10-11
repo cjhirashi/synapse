@@ -2,9 +2,9 @@
 id: PLAN-0003
 tipo: plan
 feature: 0003-vault-crud
-estado: draft
+estado: approved
 aprobaciones:
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 
@@ -12,7 +12,7 @@ actualizado: 2026-10-11
 
 > El *cómo* de SPEC-0003, en el patrón por-capas con puertos (ADR-001):
 > `routers → services → core/ports ← adapters`.
-> **Prerrequisito:** la feature de errores RFC 9457 (número por reservar) debe estar
+> **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) debe estar
 > mergeada antes de empezar la Fase 4 de 0003. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el manejador global de esa feature.
 
@@ -180,7 +180,7 @@ compara cada contrato con su parte de la app y comprueba los endpoints de cada s
 | Test de rendimiento con tiempos | Marcado `perf` y fuera de la corrida por defecto para no volver la suite inestable; se ejecuta en la verificación. |
 | Depende de la feature RFC 9457 | Hasta que exista, los errores saldrían como `{"detail"}`; por eso no se empieza la Fase 4 antes. |
 
-**Fe de erratas al spec (aplicadas junto al GATE 1, a confirmar en el GATE 2):**
+**Fe de erratas al spec (aplicadas junto al GATE 1, confirmadas en el GATE 2):**
 `owner_id` es `string` (UUID, como `users.id`), no `integer`; RNF-001 pasa de "índice
 Mango sobre …" a "índice de CouchDB" (detalle de implementación, no decisión del usuario).
 
