@@ -38,7 +38,7 @@ sprint_actual: 2
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · ancla en 028c2ba |
 | 0003-vault-crud | spec y plan `approved` (GATES 1 y 2) | RF-001…RF-028 + RNF-001 · falta Fase 3 (Tasks) · Fase 4 espera a SPEC-0004 · T-002 de `TAREAS.md` |
-| 0004-api-problem-details | `draft` (Fase 1) | errores RFC 9457 en toda la API · 6 marcadores (Q1–Q6) · prerrequisito de la Fase 4 de 0003 |
+| 0004-api-problem-details | `draft` (Fase 1) | errores RFC 9457 en toda la API · Q1–Q6 decididas · RF-001…RF-010 · 4 marcadores (Q7–Q10) · prerrequisito de la Fase 4 de 0003 |
 
 ## Backlog / deuda conocida
 
@@ -61,6 +61,6 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 1 de **0004-api-problem-details**: el usuario responde Q1–Q6 de
+Fase 1 de **0004-api-problem-details**: el usuario responde la tanda 2 (Q7–Q10) de
 `specs/0004-api-problem-details/spec.md`. En paralelo puede hacerse la Fase 3 (Tasks) de
 0003. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
