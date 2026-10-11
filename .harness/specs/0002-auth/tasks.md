@@ -71,11 +71,11 @@ actualizado: 2026-10-11
 - [x] T-036 — script de export y `contracts/openapi.yaml` + test de deriva (cubre RF-004, RF-012, RF-017) [zona: contrato]
 
 ### K · Frontend
-- [ ] T-037 — scaffold Vite + React + TS + vitest (cubre RF-020) [zona: frontend]
-- [ ] T-038 — test: formulario de cambio (validación, errores 400/422) (cubre RF-020) [zona: test]
-- [ ] T-039 — `api/auth.ts` y `ChangePasswordPage.tsx` (cubre RF-020) [zona: frontend]
-- [ ] T-040 — test: guardia redirige a cambio si `must_change_password` (cubre RF-020) [zona: test]
-- [ ] T-041 — `LoginPage.tsx` y `RequireAuth.tsx` con rutas (cubre RF-020) [zona: frontend]
+- [x] T-037 — scaffold Vite + React + TS + vitest (cubre RF-020) [zona: frontend]
+- [x] T-038 — test: formulario de cambio (validación, errores 400/422) (cubre RF-020) [zona: test]
+- [x] T-039 — `api/auth.ts` y `ChangePasswordPage.tsx` (cubre RF-020) [zona: frontend]
+- [x] T-040 — test: guardia redirige a cambio si `must_change_password` (cubre RF-020) [zona: test]
+- [x] T-041 — `LoginPage.tsx` y `RequireAuth.tsx` con rutas (cubre RF-020) [zona: frontend]
 
 ### L · No funcionales
 - [ ] T-042 — configurar `pytest --cov` con umbral 80 % en módulos de auth (cubre RNF-001) [zona: test]
