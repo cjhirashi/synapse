@@ -1,6 +1,6 @@
 ---
 ultima_actualizacion: 2026-10-11
-fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud en Fase 1 (Specify)
+fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud en Fase 2 (Plan)
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -37,7 +37,7 @@ sprint_actual: 2
 | Feature | Estado | Notas |
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · ancla en 028c2ba |
-| 0003-vault-crud | `draft` (Fase 1) | `specs/0003-vault-crud/spec.md` · P1–P12 decididas, RF-001…RF-028 + RNF-001 · 0 marcadores · espera "así es" (GATE 1) · depende de una feature previa de errores RFC 9457 · T-002 de `TAREAS.md` |
+| 0003-vault-crud | spec `approved` (GATE 1) · plan `draft` | RF-001…RF-028 + RNF-001 · `plan.md` espera GATE 2 · depende de una feature previa de errores RFC 9457 · T-002 de `TAREAS.md` |
 
 ## Backlog / deuda conocida
 
@@ -60,6 +60,6 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 1 de **0003-vault-crud**: el usuario confirma "así es" sobre `specs/0003-vault-crud/spec.md`
-(0 marcadores) → GATE 1 → Fase 2 (Plan).
+GATE 2 de **0003-vault-crud** (`specs/0003-vault-crud/plan.md`) → Fase 3 (Tasks). La Fase 4
+no empieza hasta mergear la feature de errores RFC 9457 (número por reservar).
 Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.

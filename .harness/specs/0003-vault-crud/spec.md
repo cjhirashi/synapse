@@ -2,7 +2,7 @@
 id: SPEC-0003
 tipo: spec
 feature: 0003-vault-crud
-estado: draft
+estado: approved
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: c8c9e24   # base al abrir la spec (aún sin código propio)
 anchor_mode: advisory
@@ -11,22 +11,22 @@ covers:
   - backend/app/services/vault_service.py
   - backend/app/core/ports/vault_port.py
   - backend/app/adapters/vault_repository.py
-  - backend/tests/test_vaults*.py
+  - backend/tests/test_vault*.py
   - frontend/src/vaults/**
   - frontend/src/api/vaults.ts
+  - .harness/specs/0003-vault-crud/contracts/**
   - .harness/specs/0003-vault-crud/diagrams/**
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente
+  fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: pendiente
 actualizado: 2026-10-11
 ---
 
 # SPEC-0003 · CRUD de bóvedas
 
-> Fase 1 (Specify): elicitación interactiva (`method.md §3`). Tandas 1 (P1–P6) y 2
-> (P7–P12) decididas por el usuario; 0 marcadores abiertos. Pendiente del "así es" y
-> del GATE 1.
+> Fase 1 (Specify) cerrada: co-definida con el usuario (tandas P1–P6 y P7–P12), "así es"
+> y GATE 1 aprobados el 2026-10-11. Fase 2 (Plan) en curso.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores
@@ -79,7 +79,7 @@ actualizado: 2026-10-11
 | `name` | string | obligatorio, 1–100 caracteres tras quitar espacios a los lados |
 | `description` | string \| null | opcional, ≤ 2000 caracteres |
 | `tags` | string[] | ≤ 20; cada uno 1–32 caracteres; en minúsculas y sin repetidos |
-| `owner_id` | integer | id del dueño, tomado del token |
+| `owner_id` | string (UUID) | id del dueño (`users.id`), tomado del token |
 | `created_at`, `updated_at` | string (RFC 3339, UTC) | los pone el servidor |
 | `deleted_at` | string \| null | `null` salvo en la papelera |
 
@@ -207,7 +207,8 @@ actualizado: 2026-10-11
 
 ## 7. Requisitos no funcionales (RNF)
 - **RNF-001** — `GET /vaults` con `limit=50` DEBE responder en p95 < 300 ms con 1 000
-  bóvedas en la base del usuario (índice Mango sobre `type`, `deleted_at`, `created_at`).
+  bóvedas en la base del usuario, apoyado en un índice de CouchDB (sin recorrer la base
+  completa).
 
 ## Marcadores abiertos
 - Ninguno.
