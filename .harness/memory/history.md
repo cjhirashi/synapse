@@ -8,12 +8,13 @@
 - **Anclas movidas:** — (SPEC-0004 nace con `anchor_commit: c8c9e24`)
 - **Gate:** verde
 - **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
-- **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** respuestas del usuario a la tanda 2 (Q7–Q10).
+- **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
+- **Próximo paso:** «así es» del usuario sobre el spec completo → GATE 1.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
   - [2026-10-11] Usuario: «Acepto Q1 a Q6 tal como las recomiendas». Spec reescrito: `type` URN / `about:blank`, `errors[{pointer, detail}]` en 422, mensajes en inglés, catálogo inicial de 10 tipos (auth/admin/validación/almacenamiento), RF-001…RF-010 en EARS, §6 con Q1–Q6 y descartes. Tanda 2 abierta: Q7 (validación fuera del cuerpo), Q8 (no repetir valores del cliente), Q9 (ubicación del catálogo), Q10 (registro de 500 y fallo del manejador).
+  - [2026-10-11] Usuario: «Acepto Q7 a Q10 tal como las recomiendas». Spec: `errors` con `pointer`/`parameter`/`header` y sin valores del cliente; catálogo con fuente única en `core/errors.py`; RF-011…RF-014 (sin `input`/`ctx`, traza de 500 al log, 500 mínimo si falla el manejador, unicidad y forma de `type`); §5 y §6 completados; 0 marcadores.
 
 ---
 

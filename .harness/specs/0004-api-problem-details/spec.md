@@ -19,8 +19,8 @@ actualizado: 2026-10-11
 
 # SPEC-0004 · Errores de la API con Problem Details (RFC 9457)
 
-> Fase 1 (Specify) **en curso**: elicitación interactiva (`method.md §3`). Tanda 1
-> (Q1–Q6) decidida por el usuario; tanda 2 abierta en §Marcadores.
+> Fase 1 (Specify) **en curso**: elicitación interactiva (`method.md §3`). Tandas 1
+> (Q1–Q6) y 2 (Q7–Q10) decididas por el usuario; 0 marcadores; falta GATE 1.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -74,9 +74,12 @@ actualizado: 2026-10-11
 | `status` | integer | igual al código HTTP de la respuesta |
 | `detail` | string | en inglés; explica este caso concreto |
 | `instance` | string | ruta de la petición (sin query) |
-| `errors` | array | sólo en 422: `[{ "pointer": "#/campo", "detail": "…" }]` (JSON Pointer sobre el cuerpo) `[NEEDS CLARIFICATION: Q7 — errores en query/ruta/cabecera]` |
+| `errors` | array | sólo en 422; cada entrada lleva `detail` y **una** ubicación: `pointer` (JSON Pointer sobre el cuerpo, p. ej. `#/name`), `parameter` (query o ruta, p. ej. `limit`) o `header` (p. ej. `If-Match`). Nunca incluye el valor enviado |
 
-**Catálogo inicial (errores ya existentes de auth y admin):**
+**Catálogo inicial (errores ya existentes de auth y admin).** La fuente única del catálogo
+es el código: cada error de dominio de `core/errors.py` declara su `slug`, `title` y
+código HTTP (Art. 12). Esta tabla es el estado inicial; cada feature posterior documenta
+en su propio spec los tipos que añade.
 
 | `type` (`urn:synapse:problem:…`) | Código | Cuándo |
 |---|---|---|
@@ -107,8 +110,17 @@ actualizado: 2026-10-11
   `type: about:blank` y un `detail` genérico, sin trazas, mensajes de excepción ni datos
   internos.
 - **RF-005** — SI la petición no pasa la validación ENTONCES el sistema DEBE responder 422
-  con `type` `validation-error` y una entrada en `errors` por cada fallo, con el `pointer`
-  JSON del campo del cuerpo y su `detail`.
+  con `type` `validation-error` y una entrada en `errors` por cada fallo, con su `detail`
+  y su ubicación: `pointer` para el cuerpo, `parameter` para query o ruta, `header` para
+  cabeceras.
+- **RF-011** — CUANDO el sistema describe un fallo de validación NO DEBE incluir el valor
+  enviado por el cliente ni datos internos del validador (`input`, `ctx`) en la respuesta.
+- **RF-012** — SI ocurre un error no controlado ENTONCES el sistema DEBE registrarlo en el
+  log del servidor con su traza completa.
+- **RF-013** — SI falla la construcción del propio Problem Details ENTONCES el sistema DEBE
+  responder un 500 mínimo y fijo con `application/problem+json`.
+- **RF-014** — Cada `type` del catálogo DEBE ser único y tener la forma
+  `urn:synapse:problem:<slug>` (slug en minúsculas con guiones).
 
 **Migración de auth y admin**
 - **RF-006** — El sistema DEBE conservar el código HTTP actual de cada respuesta de error
@@ -130,9 +142,12 @@ actualizado: 2026-10-11
 ## 5. Casos límite y manejo de errores
 - Error lanzado en una dependencia antes del endpoint (auth): mismo formato (RF-001).
 - Respuestas 2xx/204 y cookies que se fijan en ellas: sin cambios.
-- Error en el propio manejador al construir el Problem: `[NEEDS CLARIFICATION: Q10]`.
+- Error en el propio manejador al construir el Problem: 500 mínimo fijo (RF-013).
 - Valores enviados por el cliente dentro de los mensajes de validación (p. ej. una
-  contraseña): `[NEEDS CLARIFICATION: Q8]`.
+  contraseña inválida): nunca se repiten (RF-011); un test lo comprueba con una contraseña.
+- Validación de query, ruta o cabecera (`?limit=500`, `If-Match` mal formado): 422 con
+  `parameter` o `header` en lugar de `pointer` (RF-005).
+- Error no controlado: traza al log, nunca a la respuesta (RF-004, RF-012).
 
 ## 6. Registro de decisiones y descartes
 | Decisión | Justificación | Alternativa descartada | ADR |
@@ -145,9 +160,10 @@ actualizado: 2026-10-11
 | Q4 · `title`/`detail` en inglés; el frontend traduce por `type` | Coherente con el código (Art. 9); cambiar un texto de la UI no cambia el contrato | Mensajes en español desde la API | — |
 | Q5 · Esquema `Problem` y errores declarados en cada endpoint; `ApiError` ampliado | Cierra el residual de 0002 (contrato sin errores) | Contrato sólo con respuestas 2xx | — |
 | Q6 · Cambio en el lugar, sin `/v2` ni convivencia | Ningún cliente externo ni agente usa aún la API | Versionar la API; periodo con ambos formatos | — |
+| Q7 · Ubicación por `pointer` / `parameter` / `header` | JSON Pointer sólo direcciona el cuerpo; sigue el borrador de extensiones de RFC 9457 | `pointer` con prefijo inventado (`#/query/limit`), no es un JSON Pointer válido | — |
+| Q8 · Nunca repetir el valor enviado ni `input`/`ctx` de pydantic | Evita fugas (contraseñas) por defecto, sin depender de marcar campos | Ocultar sólo campos marcados como sensibles (frágil) | — |
+| Q9 · Catálogo en el código (`core/errors.py`); spec con la tabla inicial; test de unicidad y forma | Una sola fuente por hecho (Art. 12) | YAML compartido por código y docs (carga sin beneficio con un cliente) | — |
+| Q10 · 500 con traza al log; 500 mínimo fijo si falla el manejador; sin ids de correlación | Diagnosticable sin filtrar internos; correlación espera a Art. 7 | No registrar nada en esta feature | — |
 
 ## Marcadores abiertos
-- `[NEEDS CLARIFICATION: Q7 — errores de validación en query, ruta y cabeceras]`
-- `[NEEDS CLARIFICATION: Q8 — no repetir valores del cliente en los errores]`
-- `[NEEDS CLARIFICATION: Q9 — dónde vive el catálogo de tipos]`
-- `[NEEDS CLARIFICATION: Q10 — registro de los 500 y fallo del propio manejador]`
+Ninguno (tandas 1 y 2 decididas). Pendiente: confirmación «así es» del usuario y GATE 1.
