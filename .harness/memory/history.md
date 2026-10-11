@@ -9,11 +9,13 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `draft`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** respuestas del usuario a P1–P6; iterar hasta 0 marcadores y "así es".
+- **Próximo paso:** respuestas del usuario a P7–P12; iterar hasta 0 marcadores y "así es". Reservar número para la feature de errores RFC 9457 (previa a implementar 0003).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0003 desde la plantilla y T-002: alcance, fronteras REST, RF-001…RF-005 firmes, 6 marcadores (P1 almacenamiento, P2 validación/concurrencia, P3 papelera, P4 403 vs 404, P5 RFC 9457, P6 UI/paginación).
+  - [2026-10-11] Usuario: «Acepto P1 a P6 tal como las recomiendas». Registradas en §6: bóveda como documento en la base CouchDB del usuario; nombre único (sin mayúsculas) y límites; ETag/`If-Match`; papelera y restaurar dentro, purga a 30 días diferida (RF-016); ajena → 404; RFC 9457 como feature previa a 0003; UI incluida y paginación por cursor. Spec reescrito con RF-001…RF-020 en EARS.
+  - [2026-10-11] Tanda 2 abierta (P7–P12): creaciones simultáneas con el mismo nombre, casos de papelera, orden y rendimiento, formato del id, campos desconocidos, papelera en la UI.
 
 ---
 

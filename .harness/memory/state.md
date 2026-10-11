@@ -37,7 +37,7 @@ sprint_actual: 2
 | Feature | Estado | Notas |
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · ancla en 028c2ba |
-| 0003-vault-crud | `draft` (Fase 1) | `specs/0003-vault-crud/spec.md` · 6 marcadores abiertos (P1–P6) · T-002 de `TAREAS.md` |
+| 0003-vault-crud | `draft` (Fase 1) | `specs/0003-vault-crud/spec.md` · P1–P6 decididas, RF-001…RF-020 · tanda 2 abierta (P7–P12) · depende de una feature previa de errores RFC 9457 · T-002 de `TAREAS.md` |
 
 ## Backlog / deuda conocida
 
@@ -60,6 +60,6 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 1 de **0003-vault-crud**: el usuario responde la primera tanda (P1–P6) de
+Fase 1 de **0003-vault-crud**: el usuario responde la segunda tanda (P7–P12) de
 `specs/0003-vault-crud/spec.md`; se itera hasta 0 marcadores y "así es" → GATE 1.
 Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
