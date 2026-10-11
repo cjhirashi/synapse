@@ -1,0 +1,9 @@
+# Servicios del proyecto para los bloques por perfil de la compuerta.
+# Una línea por servicio:  <ruta relativa a la raíz del repo>:<python|node|mcp>
+# Se rellena en la Génesis / implantación. Ejemplos (borrar):
+#
+# services/api:python
+# services/worker:python
+# web/admin:node
+# web/portfolio:node
+# mcp-server:mcp
