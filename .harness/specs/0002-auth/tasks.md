@@ -64,11 +64,11 @@ actualizado: 2026-10-11
 - [x] T-033 — `require_password_changed` aplicado a routers protegidos; `/auth/me` con `must_change_password` (cubre RF-019) [zona: núcleo/ruta]
 
 ### I · Aislamiento y flujo completo
-- [ ] T-034 — test: dos usuarios no acceden a datos del otro; ningún endpoint recibe `user_id` por parámetro (cubre RF-014) [zona: test]
-- [ ] T-035 — test e2e: bootstrap → login → forzado → cambio → admin crea guest → guest cambia clave (cubre RF-001, RF-012, RF-017, RF-019) [zona: test]
+- [x] T-034 — test: dos usuarios no acceden a datos del otro; ningún endpoint recibe `user_id` por parámetro (cubre RF-014) [zona: test]
+- [x] T-035 — test e2e: bootstrap → login → forzado → cambio → admin crea guest → guest cambia clave (cubre RF-001, RF-012, RF-017, RF-019) [zona: test]
 
 ### J · Contrato
-- [ ] T-036 — script de export y `contracts/openapi.yaml` + test de deriva (cubre RF-004, RF-012, RF-017) [zona: contrato]
+- [x] T-036 — script de export y `contracts/openapi.yaml` + test de deriva (cubre RF-004, RF-012, RF-017) [zona: contrato]
 
 ### K · Frontend
 - [ ] T-037 — scaffold Vite + React + TS + vitest (cubre RF-020) [zona: frontend]
