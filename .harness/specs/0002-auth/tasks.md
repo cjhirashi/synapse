@@ -15,27 +15,27 @@ actualizado: 2026-10-11
 
 ## Tareas
 ### A · Núcleo y configuración
-- [ ] T-001 — test: `Settings` sin `JWT_SECRET`/`ADMIN_*`/`COUCHDB_*` lanza `ValidationError` (cubre RF-002) [zona: test]
-- [ ] T-002 — quitar defaults de `config.py`, añadir `ADMIN_EMAIL`/`ADMIN_PASSWORD`; env de prueba en `conftest.py` (cubre RF-002) [zona: núcleo]
-- [ ] T-003 — test: hash Argon2id verificable y no reversible; política (≥10, distinta de la actual) (cubre RF-003, RF-018) [zona: test]
-- [ ] T-004 — `core/security.py`: hash/verify, política, SHA-256 de refresh (cubre RF-003, RF-018) [zona: núcleo]
+- [x] T-001 — test: `Settings` sin `JWT_SECRET`/`ADMIN_*`/`COUCHDB_*` lanza `ValidationError` (cubre RF-002) [zona: test]
+- [x] T-002 — quitar defaults de `config.py`, añadir `ADMIN_EMAIL`/`ADMIN_PASSWORD`; env de prueba en `conftest.py` (cubre RF-002) [zona: núcleo]
+- [x] T-003 — test: hash Argon2id verificable y no reversible; política (≥10, distinta de la actual) (cubre RF-003, RF-018) [zona: test]
+- [x] T-004 — `core/security.py`: hash/verify, política, SHA-256 de refresh (cubre RF-003, RF-018) [zona: núcleo]
 
 ### B · Datos
-- [ ] T-005 — test: modelo `RefreshToken` y `User.must_change_password` persisten (cubre RF-010, RF-019) [zona: test]
-- [ ] T-006 — `models/refresh_token.py` y columna `must_change_password` (cubre RF-010, RF-019) [zona: núcleo]
-- [ ] T-007 — migración Alembic `002` (columna + tabla + índice) y verificación `upgrade head` (cubre RF-010, RF-019) [zona: adaptador]
-- [ ] T-008 — ampliar `AuthPort`/`AuthRepository`: `commit`, `rollback`, `update_password`, CRUD de refresh tokens (cubre RF-009, RF-010, RF-017) [zona: puerto/adaptador]
+- [x] T-005 — test: modelo `RefreshToken` y `User.must_change_password` persisten (cubre RF-010, RF-019) [zona: test]
+- [x] T-006 — `models/refresh_token.py` y columna `must_change_password` (cubre RF-010, RF-019) [zona: núcleo]
+- [x] T-007 — migración Alembic `002` (columna + tabla + índice) y verificación `upgrade head` (cubre RF-010, RF-019) [zona: adaptador]
+- [x] T-008 — ampliar `AuthPort`/`AuthRepository`: `commit`, `rollback`, `update_password`, CRUD de refresh tokens (cubre RF-009, RF-010, RF-017) [zona: puerto/adaptador]
 
 ### C · CouchDB y aprovisionamiento
-- [ ] T-009 — test integración (CouchDB real): `ensure_user_db` crea y es idempotente (412 = éxito) (cubre RF-014, RF-015) [zona: test]
-- [ ] T-010 — `CouchDBPort` + `adapters/couchdb.py` (cubre RF-014, RF-015) [zona: adaptador]
-- [ ] T-011 — test: `_provision_user` con doble que falla ⇒ rollback, sin fila en PG (cubre RF-015) [zona: test]
-- [ ] T-012 — `AuthService._provision_user` (insertar → CouchDB → commit / rollback) (cubre RF-015) [zona: servicio]
+- [x] T-009 — test integración (CouchDB real): `ensure_user_db` crea y es idempotente (412 = éxito) (cubre RF-014, RF-015) [zona: test]
+- [x] T-010 — `CouchDBPort` + `adapters/couchdb.py` (cubre RF-014, RF-015) [zona: adaptador]
+- [x] T-011 — test: `_provision_user` con doble que falla ⇒ rollback, sin fila en PG (cubre RF-015) [zona: test]
+- [x] T-012 — `AuthService._provision_user` (insertar → CouchDB → commit / rollback) (cubre RF-015) [zona: servicio]
 
 ### D · Bootstrap
-- [ ] T-013 — test: arranque crea admin con `must_change_password=true` y base CouchDB; segundo arranque no duplica (cubre RF-001, RF-019) [zona: test]
-- [ ] T-014 — test: carrera de dos bootstraps ⇒ un solo admin (`IntegrityError` tratado) (cubre RF-016) [zona: test]
-- [ ] T-015 — `AuthService.bootstrap_admin` + `lifespan` en `main.py` (cubre RF-001, RF-016) [zona: servicio/ruta]
+- [x] T-013 — test: arranque crea admin con `must_change_password=true` y base CouchDB; segundo arranque no duplica (cubre RF-001, RF-019) [zona: test]
+- [x] T-014 — test: carrera de dos bootstraps ⇒ un solo admin (`IntegrityError` tratado) (cubre RF-016) [zona: test]
+- [x] T-015 — `AuthService.bootstrap_admin` + `lifespan` en `main.py` (cubre RF-001, RF-016) [zona: servicio/ruta]
 
 ### E · Login, sesión y dependencias
 - [ ] T-016 — migrar `conftest.py`/`test_auth.py`: fixtures sin `/auth/register`, login con admin sembrado (cubre RF-004, RF-005) [zona: test]

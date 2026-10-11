@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.adapters.auth_repository import AuthRepository
+from app.adapters.couchdb import CouchDBAdapter
 from app.adapters.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.schemas import LoginRequest, RegisterRequest, RegisterResponse, TokenPayload
@@ -11,7 +12,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _get_service(db: Session = Depends(get_db)) -> AuthService:
-    return AuthService(AuthRepository(db))
+    return AuthService(AuthRepository(db), CouchDBAdapter())
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)

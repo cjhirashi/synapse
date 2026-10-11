@@ -11,6 +11,7 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     hashed_password = Column(String, nullable=False)  # Argon2id
     is_active = Column(Boolean, default=True)
+    must_change_password = Column(Boolean, nullable=False, default=False)
     role_id = Column(String, ForeignKey("roles.id"), nullable=False)
     couchdb_name = Column(String, unique=True)  # synapse_user_{id}
     created_at = Column(DateTime, nullable=False)
