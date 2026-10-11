@@ -1,6 +1,8 @@
 CLAUDE.md
 .claude/agents/
 
+diseño/
+
 .env
 __pycache__/
 *.py[cod]

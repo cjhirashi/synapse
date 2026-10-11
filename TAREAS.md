@@ -25,7 +25,7 @@ sprint_actual: 2
 **Descripción:**
 Implementar login/logout en FastAPI. Usuarios en tabla `users` con passwords hasheados con Argon2id.
 Generar JWT en cookie httpOnly. Validar JWT en todo endpoint protegido.
-Ver CLAUDE.md section "Authentication" y `.harness/specs/0002-auth/spec.md`
+Crea `.harness/specs/0002-auth/spec.md` con esta descripción como base (ver `Aceptación` abajo para criterios).
 
 **Aceptación:**
 - [ ] Endpoint POST /auth/login acepta `{username, password}`
@@ -69,7 +69,7 @@ Ver CLAUDE.md section "Authentication" y `.harness/specs/0002-auth/spec.md`
 Crear endpoints REST para CRUD de bóvedas. Cada bóveda pertenece a un usuario.
 Crear base CouchDB `synapse_user_{user_id}` automáticamente al crear primera bóveda.
 Validar que usuario solo acceda a sus propias bóvedas (P3 rule).
-Ver `.harness/specs/0003-vault-crud/spec.md`
+Crea `.harness/specs/0003-vault-crud/spec.md` (ver `Aceptación` abajo como base).
 
 **Aceptación:**
 - [ ] GET /vaults → lista bóvedas del usuario autenticado (JSON)
