@@ -33,6 +33,7 @@ aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
+  enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11
 ---
 
@@ -46,7 +47,7 @@ actualizado: 2026-10-11
 > RF-012, RF-013 y RF-019 precisados. Aprobada por el usuario el 2026-10-11.
 >
 > **Enmienda 2 2026-10-11** (residuales R-1…R-6 del verificador, dirigida por el usuario):
-> RF-014 reforzado; RF-017 y RF-010 precisados; nuevos RF-021…RF-023. **Pendiente de aprobación del usuario.**
+> RF-014 reforzado; RF-017 y RF-010 precisados; nuevos RF-021…RF-023. Aprobada por el usuario.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

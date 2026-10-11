@@ -68,13 +68,13 @@
 
 ## [2026-10-11] 0002-auth — enmienda 2: residuales R-1…R-6
 - **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)
-- **Rebotes del verificador:** 0 nuevos (cierra los residuales R-1…R-6 del rebote anterior)
+- **Rebotes del verificador:** 1 (re-verificación: W-1 carrera en refresh, W-2 sesión cerrada en RF-023)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí (`covers` + `App.tsx`, `layout/**`, `*token_version*`)
-- **Anclas movidas:** no (enmienda 2 pendiente de aprobación)
+- **Anclas movidas:** no (re-verificación con rebote)
 - **Docs actualizadas:** spec.md, plan.md, tasks.md (bloque O), backend/README.md, frontend/src/README.md, ARCHIFY.md, state.md (contrato re-exportado sin cambios)
-- **Próximo paso:** aprobación de la enmienda 2 y re-verificación de 0002; luego 0003-vault-crud.
-- **Aprobaciones:** enmienda 1 (V-1/V-2/V-3/G-1) aprobada por el usuario; enmienda 2 redactada, pendiente de aprobación.
+- **Próximo paso:** decisión del usuario sobre W-1/W-2; corregir, re-verificar y luego 0003-vault-crud.
+- **Aprobaciones:** enmienda 1 (V-1/V-2/V-3/G-1) aprobada por el usuario; enmienda 2 aprobada por el usuario.
 - **Registro de tareas:**
   - [2026-10-11] Fase 1/2/3 — spec (RF-010, RF-014, RF-017 precisados; RF-021…RF-023 nuevos), plan y bloque O (T-059…T-068) redactados.
   - [2026-10-11] T-059, T-060 — tests de RF-021/RF-017 y RF-010/RF-022 escritos; en rojo (7 fallos esperados).
@@ -88,6 +88,9 @@
   - [2026-10-11] T-066 — `api/auth.ts::request` reintenta tras un único `/auth/refresh` (Web Locks entre pestañas, promesa compartida en la pestaña).
   - [2026-10-11] T-067 — `layout/AppLayout.tsx` con enlace "Cambiar contraseña" y "Cerrar sesión" (avisa si el logout falla); `App.tsx` lo usa como ruta de diseño de las privadas. Frontend 23/23, `tsc` limpio.
   - [2026-10-11] T-068 — docs: backend/README (versión de credenciales, rotación), frontend/src/README, ARCHIFY (diagrama), state; contrato re-exportado (sin cambios).
+  - [2026-10-11] Enmienda 2 aprobada por el usuario (registrada en `spec.md` → `aprobaciones.enmienda_2`). Arranca la re-verificación adversarial de 0002.
+  - [2026-10-11] Re-verificación adversarial de 0002 — gate verde (17 ok · 1 aviso spectral); backend 84/84, cobertura 97,95 %; frontend 23/23, `tsc` y build limpios; 6 mutaciones sobre las defensas nuevas (check `ver`, incremento, rotación, revocación masiva, detección sólo de rotados, cookies tras cambio) → todas detectadas por los tests.
+  - [2026-10-11] Veredicto: **rebote** (2 hallazgos, nada pasa a `verified`). W-1 (medio): `refresh` lee y revoca sin operación atómica; dos peticiones concurrentes con el mismo refresh token lo rotan dos veces → dos sesiones válidas sin disparar RF-022 (demostrado intercalando dos sesiones). W-2 (bajo): RF-023 «tratar la sesión como cerrada» sólo lo aplica `RequireAuth` al navegar; `ChangePasswordPage` muestra un error genérico ante 401. Residuales de diseño (no violan el spec): el access token sobrevive 24 h al logout y a la revocación de RF-022; el contrato no declara 400/401/403/409; el test de Web Locks sólo comprueba el nombre del lock; el de aislamiento hoy sólo recorre `/auth/me`.
 
 ## [2026-10-11] 0002-auth — enmienda tras verificación adversarial
 - **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)

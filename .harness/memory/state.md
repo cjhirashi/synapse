@@ -36,12 +36,12 @@ sprint_actual: 2
 
 | Feature | Estado | Notas |
 |---|---|---|
-| 0002-auth | `implemented` (sin verificar) | T-001–T-068 hechas · backend 84 tests · frontend 23 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · **enmienda 2 (R-1…R-6, RF-021…RF-023) pendiente de aprobación del usuario** |
+| 0002-auth | `implemented` (sin verificar) | T-001–T-068 hechas · backend 84 tests · frontend 23 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · **re-verificación: rebote W-1 (carrera en refresh) y W-2 (RF-023 sesión cerrada en cambio de contraseña)** |
 | 0003-vault-crud | sin spec | T-002 de `TAREAS.md` |
 
 ## Backlog / deuda conocida
 
-1. **Aprobación de la enmienda 2 de SPEC-0002** (R-1…R-6) y del PR #3; re-verificación (nada está `verified`).
+1. **Hallazgos de la re-verificación de SPEC-0002:** W-1 (rotación de refresh no atómica) y W-2 (401 tras renovación fallida en `ChangePasswordPage`); después, nueva re-verificación y aprobación del PR #3 (nada está `verified`). Residuales de diseño: access token válido 24 h tras logout / RF-022; contrato sin respuestas de error.
    El test de aislamiento recorre todo GET protegido: reforzar con casos de datos en 0003.
 2. **`docker-compose.yml`** aún declara Qdrant y Gotenberg (contradice "almacén puro"),
    el backend depende de `qdrant`, y `frontend/` no tiene `Dockerfile`. Requiere decisión
