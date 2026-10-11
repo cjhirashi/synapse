@@ -2,11 +2,18 @@
 id: SPEC-0002
 tipo: spec
 feature: 0002-auth
-estado: approved
+estado: implemented
 anchor_commit: cf1632d
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
+  - frontend/src/auth/**
+  - frontend/src/api/auth.ts
+  - backend/app/bootstrap.py
+  - backend/app/core/security.py
+  - backend/app/core/config.py
+  - backend/alembic/versions/*refresh_tokens*
+  - backend/scripts/export_openapi.py
   - backend/app/routers/admin.py
   - backend/app/core/models/refresh_token.py
   - backend/app/routers/auth.py
@@ -17,7 +24,7 @@ covers:
   - backend/app/core/schemas.py
   - backend/app/core/models/**
   - backend/alembic/versions/*initial_auth*
-  - backend/tests/test_auth.py
+  - backend/tests/**
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
@@ -26,9 +33,9 @@ actualizado: 2026-10-11
 
 # SPEC-0002 · Autenticación y aislamiento por usuario
 
-> Borrador **retroactivo** (brownfield): ancla lo implementado en `cf1632d` y
-> propone la deuda pendiente. Sin aprobar: requiere elicitación con el usuario
-> (`method.md §3`) y Gate 1.
+> Spec **retroactivo** (brownfield): ancló lo implementado en `cf1632d` y la deuda
+> pendiente. Aprobado (Gates 1 y 2) e implementado; pendiente de verificación y
+> aprobación humana del PR.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
@@ -52,13 +59,13 @@ actualizado: 2026-10-11
 ## 3. Modelo de datos y contratos de E/S
 | Frontera | Dirección | Tipo | Contrato |
 |---|---|---|---|
-| `POST /auth/login` `{email,password}` → 200 + cookies / 401 | entrada | REST | pendiente `openapi.yaml` |
-| `POST /auth/logout` → 204, limpia cookies | entrada | REST | pendiente |
-| `POST /auth/refresh` (cookie `refresh_token`) → 200 + nuevo `access_token` / 401 | entrada | REST | pendiente |
-| `POST /auth/change-password` `{current_password,new_password}` → 204 / 400 / 401 | entrada | REST | pendiente |
+| `POST /auth/login` `{email,password}` → 200 + cookies / 401 | entrada | REST | `contracts/openapi.yaml` |
+| `POST /auth/logout` → 204, limpia cookies | entrada | REST | `contracts/openapi.yaml` |
+| `POST /auth/refresh` (cookie `refresh_token`) → 200 + nuevo `access_token` / 401 | entrada | REST | `contracts/openapi.yaml` |
+| `POST /auth/change-password` `{current_password,new_password}` → 204 / 400 / 401 | entrada | REST | `contracts/openapi.yaml` |
 | UI: sección "Cambiar contraseña" | salida | Frontend React | — |
-| `GET /auth/me` → 200 `{user_id,role,must_change_password}` / 401 | entrada | REST | pendiente |
-| `POST /admin/users` `{email,password}` → 201 `{id,email,role:"guest"}` / 403 / 409 | entrada | REST | pendiente |
+| `GET /auth/me` → 200 `{user_id,role,must_change_password}` / 401 | entrada | REST | `contracts/openapi.yaml` |
+| `POST /admin/users` `{email,password}` → 201 `{id,email,role:"guest"}` / 403 / 409 | entrada | REST | `contracts/openapi.yaml` |
 | Creación de base `synapse_user_{id}` (PUT idempotente) | salida | HTTP CouchDB | — |
 - JWT: `sub`, `role`, `exp` únicamente. Cookies `httpOnly`, `Secure`, `SameSite=Lax`.
 - Tabla `refresh_tokens(id, user_id, token_hash, expires_at, revoked, created_at)`; nunca el token en claro.
@@ -106,4 +113,4 @@ actualizado: 2026-10-11
 - **RNF-002** — Tests contra BD real (P5).
 
 ## Marcadores abiertos
-- `[NEEDS CLARIFICATION: ninguno, salvo confirmar la interpretación del punto 5 (admin sembrado desde entorno con ADMIN_EMAIL=cjhirashi@gmail.com, contraseña por variable de entorno) y retirar POST /auth/register.]`
+- Ninguno (interpretación del admin sembrado y retirada de `POST /auth/register` confirmadas por el usuario).

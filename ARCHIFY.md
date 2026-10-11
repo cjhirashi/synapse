@@ -82,20 +82,49 @@
 ### 3. **Flujo de Autenticación** (Sprint 2 — Implementar junto a login)
 
 **Tipo:** Sequence (interacciones)  
-**Qué mostrar:**
-- Usuario ingresa credenciales en frontend
-- Frontend envía POST /auth/login
-- Backend valida (Argon2id)
-- Backend genera JWT
-- Backend crea base CouchDB `synapse_user_{id}`
-- Retorna JWT en cookie httpOnly
-- Usuario accede a bóvedas
+**Qué mostrar** (según SPEC-0002):
+- Arranque: el backend siembra el admin desde `ADMIN_EMAIL`/`ADMIN_PASSWORD` y crea su base `synapse_user_{id}` (la base se crea al **dar de alta** un usuario, no en el login)
+- Login: `POST /auth/login` → Argon2id → cookies httpOnly `access_token` (JWT 24 h) y `refresh_token` (30 días, guardado hasheado)
+- Cambio forzado: con `must_change_password=true` sólo se permiten `/auth/me`, `/auth/change-password` y `/auth/logout`; el frontend redirige a "Cambiar contraseña"
+- Renovación: `POST /auth/refresh` emite un nuevo `access_token`
+- Alta de guests: el admin llama `POST /admin/users` → usuario `guest` + su base CouchDB
+
+**Borrador (Mermaid) hasta exportar con Archify:**
+```mermaid
+sequenceDiagram
+    actor U as Usuario
+    participant F as Frontend React
+    participant B as Backend FastAPI
+    participant P as PostgreSQL
+    participant C as CouchDB
+    Note over B,C: Arranque: siembra admin (must_change_password=true) + PUT synapse_user_{id}
+    U->>F: correo + contraseña
+    F->>B: POST /auth/login
+    B->>P: busca usuario, verifica Argon2id
+    B-->>F: 200 + cookies access_token (24 h) y refresh_token (30 d)
+    F->>B: GET /auth/me
+    B-->>F: {user_id, role, must_change_password: true}
+    F->>U: redirige a /settings/password
+    U->>F: actual + nueva (≥ 10, distinta)
+    F->>B: POST /auth/change-password
+    B->>P: guarda hash, desactiva indicador, revoca refresh tokens
+    B-->>F: 204
+    Note over F,B: Más tarde, access_token expirado
+    F->>B: POST /auth/refresh (cookie refresh_token)
+    B->>P: valida hash, no revocado ni expirado
+    B-->>F: 200 + nuevo access_token
+    U->>F: (admin) alta de guest
+    F->>B: POST /admin/users {email, password}
+    B->>P: crea guest (must_change_password=true)
+    B->>C: PUT synapse_user_{id} (si falla: rollback + 503)
+    B-->>F: 201 {id, email, role: guest}
+```
 
 **Comando:**
 ```bash
 /archify
 # Seleccionar: Sequence
-# Describir: "Synapse Auth: Usuario (navegador) → Frontend React → Backend FastAPI → CouchDB. Login con Argon2id, JWT en cookie, crear base por usuario"
+# Describir: usar el borrador Mermaid de arriba (bootstrap, login, cambio forzado, refresh, alta de guest)
 # Exportar: HTML, SVG, PNG
 ```
 

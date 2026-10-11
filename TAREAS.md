@@ -27,17 +27,18 @@ Implementar login/logout en FastAPI. Usuarios en tabla `users` con passwords has
 Generar JWT en cookie httpOnly. Validar JWT en todo endpoint protegido.
 Crea `.harness/specs/0002-auth/spec.md` con esta descripción como base (ver `Aceptación` abajo para criterios).
 
-**Aceptación:**
-- [ ] Endpoint POST /auth/login acepta `{username, password}`
-- [ ] Password hasheado con Argon2id en DB
-- [ ] JWT generado y retornado en cookie httpOnly (14 días expiración)
-- [ ] Endpoint POST /auth/logout limpia cookie
-- [ ] Endpoint GET /auth/me retorna usuario autenticado
+**Aceptación** (corregida según SPEC-0002, que es la fuente de verdad):
+- [ ] Endpoint POST /auth/login acepta `{email, password}`
+- [ ] Password hasheado con Argon2id en DB (`argon2-cffi`; JWT con `PyJWT`)
+- [ ] JWT retornado en cookie httpOnly (**24 h**) + refresh token de 30 días (`POST /auth/refresh`)
+- [ ] Endpoint POST /auth/logout limpia ambas cookies y revoca el refresh token
+- [ ] Endpoint GET /auth/me retorna `{user_id, role, must_change_password}`
 - [ ] Tokens inválidos/expirados → 401 Unauthorized
-- [ ] CORS permite credenciales: `credentials: 'include'` en frontend
-- [ ] Tests: ≥80% cobertura en `backend/tests/auth/`
-- [ ] Gate: ✅ Verde (14 ok, 0 error)
-- [ ] Spec.md + plan.md en `.harness/specs/0002-auth/`
+- [ ] Frontend usa `credentials: 'include'`; mismo origen vía proxy (Vite en dev, Caddy en prod), sin CORS
+- [ ] Admin sembrado desde entorno, `POST /admin/users` para guests, cambio de contraseña forzado
+- [ ] Tests: ≥80 % cobertura (`pytest --cov=app`, umbral en `backend/.coveragerc`)
+- [ ] Gate: ✅ abierta
+- [ ] Spec.md + plan.md + tasks.md en `.harness/specs/0002-auth/`
 
 **Bloqueadores:** Ninguno
 

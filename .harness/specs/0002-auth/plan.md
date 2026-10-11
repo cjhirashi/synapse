@@ -2,7 +2,7 @@
 id: PLAN-0002
 tipo: plan
 feature: 0002-auth
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-11

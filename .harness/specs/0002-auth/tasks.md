@@ -2,7 +2,7 @@
 id: TASKS-0002
 tipo: tasks
 feature: 0002-auth
-estado: draft
+estado: implemented
 actualizado: 2026-10-11
 ---
 
@@ -82,43 +82,43 @@ actualizado: 2026-10-11
 - [x] T-043 — comprobar que la suite usa CouchDB real y declarar la excepción SQLite (cubre RNF-002) [zona: test]
 
 ### M · Documentación
-- [ ] T-044 — exportar `contracts/openapi.yaml` final [doc]
-- [ ] T-045 — actualizar `backend/README.md` (env, bootstrap, endpoints) [doc]
-- [ ] T-046 — crear `.env.example` y revisar `docker-compose.yml` [doc]
-- [ ] T-047 — actualizar `frontend/README.md` y `frontend/src/README.md` [doc]
-- [ ] T-048 — corregir `TAREAS.md` T-001 (libs, 24 h, logout) [doc]
-- [ ] T-049 — añadir diagrama de login/refresh/cambio forzado a `ARCHIFY.md` [doc]
-- [ ] T-050 — reescribir `.harness/memory/state.md` y entrada Session-End en `history.md` [doc]
+- [x] T-044 — exportar `contracts/openapi.yaml` final [doc]
+- [x] T-045 — actualizar `backend/README.md` (env, bootstrap, endpoints) [doc]
+- [x] T-046 — crear `.env.example` y revisar `docker-compose.yml` [doc]
+- [x] T-047 — actualizar `frontend/README.md` y `frontend/src/README.md` [doc]
+- [x] T-048 — corregir `TAREAS.md` T-001 (libs, 24 h, logout) [doc]
+- [x] T-049 — añadir diagrama de login/refresh/cambio forzado a `ARCHIFY.md` [doc]
+- [x] T-050 — reescribir `.harness/memory/state.md` y entrada Session-End en `history.md` [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-013, T-015, T-035 | test_bootstrap, test_flow | Pendiente |
-| RF-002 | T-001, T-002 | test_config | Pendiente |
-| RF-003 | T-003, T-004 | test_security | Pendiente |
-| RF-004 | T-016–T-018, T-036 | test_auth | Pendiente |
-| RF-005 | T-016–T-018 | test_auth | Pendiente |
-| RF-006 | T-019, T-020 | test_auth | Pendiente |
-| RF-007 | T-021, T-022 | test_auth | Pendiente |
-| RF-008 | T-019, T-020 | test_auth | Pendiente |
-| RF-009 | T-008, T-025, T-026 | test_refresh | Pendiente |
-| RF-010 | T-005–T-008, T-023, T-024 | test_refresh | Pendiente |
-| RF-011 | T-023, T-024 | test_refresh | Pendiente |
-| RF-012 | T-027–T-029, T-035, T-036 | test_admin | Pendiente |
-| RF-013 | T-027, T-029 | test_admin | Pendiente |
-| RF-014 | T-009, T-010, T-034 | test_isolation | Pendiente |
-| RF-015 | T-009–T-012, T-027, T-028 | test_provisioning | Pendiente |
-| RF-016 | T-014, T-015 | test_bootstrap | Pendiente |
-| RF-017 | T-008, T-030, T-031, T-035, T-036 | test_change_password | Pendiente |
-| RF-018 | T-003, T-004, T-030, T-031 | test_change_password | Pendiente |
-| RF-019 | T-005–T-007, T-013, T-032, T-033, T-035 | test_forced_change | Pendiente |
-| RF-020 | T-037–T-041 | vitest | Pendiente |
-| RNF-001 | T-042 | cov ≥ 80 % | Pendiente |
-| RNF-002 | T-043 | — | Pendiente |
-| doc: openapi | T-044 | — | Pendiente |
-| doc: backend-readme | T-045 | — | Pendiente |
-| doc: env-compose | T-046 | — | Pendiente |
-| doc: frontend-readme | T-047 | — | Pendiente |
-| doc: tareas-md | T-048 | — | Pendiente |
-| doc: archify | T-049 | — | Pendiente |
-| doc: state | T-050 | — | Pendiente |
+| RF-001 | T-013, T-015, T-035 | test_bootstrap, test_flow | Pass |
+| RF-002 | T-001, T-002 | test_config | Pass |
+| RF-003 | T-003, T-004 | test_security | Pass |
+| RF-004 | T-016–T-018, T-036 | test_auth, test_contract | Pass |
+| RF-005 | T-016–T-018 | test_auth | Pass |
+| RF-006 | T-019, T-020 | test_auth | Pass |
+| RF-007 | T-021, T-022 | test_auth | Pass |
+| RF-008 | T-019, T-020 | test_auth | Pass |
+| RF-009 | T-008, T-025, T-026 | test_refresh | Pass |
+| RF-010 | T-005–T-008, T-023, T-024 | test_refresh | Pass |
+| RF-011 | T-023, T-024 | test_refresh | Pass |
+| RF-012 | T-027–T-029, T-035, T-036 | test_admin | Pass |
+| RF-013 | T-027, T-029 | test_admin | Pass |
+| RF-014 | T-009, T-010, T-034 | test_isolation, test_flow | Pass |
+| RF-015 | T-009–T-012, T-027, T-028 | test_provisioning | Pass |
+| RF-016 | T-014, T-015 | test_bootstrap | Pass |
+| RF-017 | T-008, T-030, T-031, T-035, T-036 | test_change_password | Pass |
+| RF-018 | T-003, T-004, T-030, T-031 | test_change_password | Pass |
+| RF-019 | T-005–T-007, T-013, T-032, T-033, T-035 | test_forced_change | Pass |
+| RF-020 | T-037–T-041 | ChangePasswordPage.test, RequireAuth.test, LoginPage.test (vitest) | Pass |
+| RNF-001 | T-042 | `pytest --cov=app` (97 %) | Pass |
+| RNF-002 | T-043 | test_real_backends (+ excepción SQLite, plan §7) | Pass |
+| doc: openapi | T-044 | — | Hecho |
+| doc: backend-readme | T-045 | — | Hecho |
+| doc: env-compose | T-046 | — | Hecho |
+| doc: frontend-readme | T-047 | — | Hecho |
+| doc: tareas-md | T-048 | — | Hecho |
+| doc: archify | T-049 | — | Hecho |
+| doc: state | T-050 | — | Hecho |

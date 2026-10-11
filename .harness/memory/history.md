@@ -1,5 +1,16 @@
 # History — Synapse
 
+## [2026-10-11] 0002-auth — implementada (pendiente de verificación)
+- **Fase alcanzada:** implement
+- **Rebotes del verificador:** 0 (verificador aún no ejecutado)
+- **Directiva de Pausa:** sí (fuentes en conflicto state.md / cola Cowork / TAREAS.md → el usuario fijó state.md como fuente; secreto semilla vs P4 → sólo en `.env` local + cambio forzado)
+- **Drift / re-anchor:** sí (SPEC-0002 retroactivo sobre `cf1632d`; `covers` ampliado a los archivos nuevos)
+- **Anclas movidas:** SPEC-0002 → commit de cierre de esta sesión
+- **Gate:** verde (1 aviso: spectral no instalado)
+- **Docs actualizadas:** contracts/openapi.yaml, backend/README.md, backend/tests/README.md, .env.example, frontend/README.md, frontend/src/README.md, TAREAS.md (T-001), ARCHIFY.md, state.md
+- **Decisiones de diseño / límites de integración:** admin sembrado desde entorno y `/auth/register` retirado; JWT 24 h + refresh 30 d hasheado; `must_change_password` leído de BD (JWT mínimo); rollback de PG si falla CouchDB. Excepción P5: control plane en SQLite.
+- **Próximo paso:** verificación adversarial de 0002 + PR; luego decidir limpieza de docker-compose y abrir 0003-vault-crud.
+
 ## Session 2026-10-10 (Génesis — CORREGIDA)
 
 **Evento:** Génesis de harness SDD Anchored para Synapse (REVISADA — almacén puro)
