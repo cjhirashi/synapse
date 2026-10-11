@@ -61,6 +61,10 @@ class AuthRepository(AuthPort):
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None:
         return self.db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
 
+    def revoke_refresh_token(self, token: RefreshToken) -> None:
+        token.revoked = True
+        self.db.flush()
+
     def revoke_refresh_tokens(self, user_id: str) -> None:
         self.db.query(RefreshToken).filter(
             RefreshToken.user_id == user_id, RefreshToken.revoked.is_(False)

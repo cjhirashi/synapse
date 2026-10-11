@@ -38,30 +38,30 @@ actualizado: 2026-10-11
 - [x] T-015 — `AuthService.bootstrap_admin` + `lifespan` en `main.py` (cubre RF-001, RF-016) [zona: servicio/ruta]
 
 ### E · Login, sesión y dependencias
-- [ ] T-016 — migrar `conftest.py`/`test_auth.py`: fixtures sin `/auth/register`, login con admin sembrado (cubre RF-004, RF-005) [zona: test]
-- [ ] T-017 — test: login válido emite `access_token` (24 h) y `refresh_token`; credenciales inválidas ⇒ 401 igual para email/contraseña (cubre RF-004, RF-005) [zona: test]
-- [ ] T-018 — ajustar `login` para emitir `refresh_token` (hash guardado, path `/auth`) y retirar `POST /auth/register` (cubre RF-004, RF-005) [zona: servicio/ruta]
-- [ ] T-019 — test: sin cookie / token inválido o expirado ⇒ 401; token en header `Authorization` ignorado (cubre RF-006, RF-008) [zona: test]
-- [ ] T-020 — verificar/ajustar `get_current_user` para pasar T-019 (cubre RF-006, RF-008) [zona: núcleo]
-- [ ] T-021 — test: `require_admin` ⇒ 403 a guest (cubre RF-007) [zona: test]
-- [ ] T-022 — verificar `require_admin` (cubre RF-007) [zona: núcleo]
+- [x] T-016 — migrar `conftest.py`/`test_auth.py`: fixtures sin `/auth/register`, login con admin sembrado (cubre RF-004, RF-005) [zona: test]
+- [x] T-017 — test: login válido emite `access_token` (24 h) y `refresh_token`; credenciales inválidas ⇒ 401 igual para email/contraseña (cubre RF-004, RF-005) [zona: test]
+- [x] T-018 — ajustar `login` para emitir `refresh_token` (hash guardado, path `/auth`) y retirar `POST /auth/register` (cubre RF-004, RF-005) [zona: servicio/ruta]
+- [x] T-019 — test: sin cookie / token inválido o expirado ⇒ 401; token en header `Authorization` ignorado (cubre RF-006, RF-008) [zona: test]
+- [x] T-020 — verificar/ajustar `get_current_user` para pasar T-019 (cubre RF-006, RF-008) [zona: núcleo]
+- [x] T-021 — test: `require_admin` ⇒ 403 a guest (cubre RF-007) [zona: test]
+- [x] T-022 — verificar `require_admin` (cubre RF-007) [zona: núcleo]
 
 ### F · Refresh y logout
-- [ ] T-023 — test: refresh válido ⇒ nuevo `access_token`; inválido/expirado/revocado ⇒ 401 (cubre RF-010, RF-011) [zona: test]
-- [ ] T-024 — `AuthService.refresh` + `POST /auth/refresh` (cubre RF-010, RF-011) [zona: servicio/ruta]
-- [ ] T-025 — test: logout limpia ambas cookies y revoca el refresh (cubre RF-009) [zona: test]
-- [ ] T-026 — `AuthService.logout` + `POST /auth/logout` (cubre RF-009) [zona: servicio/ruta]
+- [x] T-023 — test: refresh válido ⇒ nuevo `access_token`; inválido/expirado/revocado ⇒ 401 (cubre RF-010, RF-011) [zona: test]
+- [x] T-024 — `AuthService.refresh` + `POST /auth/refresh` (cubre RF-010, RF-011) [zona: servicio/ruta]
+- [x] T-025 — test: logout limpia ambas cookies y revoca el refresh (cubre RF-009) [zona: test]
+- [x] T-026 — `AuthService.logout` + `POST /auth/logout` (cubre RF-009) [zona: servicio/ruta]
 
 ### G · Admin crea usuarios
-- [ ] T-027 — test: admin crea guest (201, `must_change_password=true`, base CouchDB existe); 409 email repetido; 403 a guest; 503 si falla CouchDB (cubre RF-012, RF-013, RF-015) [zona: test]
-- [ ] T-028 — `AuthService.create_guest_user` (cubre RF-012, RF-015) [zona: servicio]
-- [ ] T-029 — `routers/admin.py` `POST /admin/users` y registro en `main.py` (cubre RF-012, RF-013) [zona: ruta]
+- [x] T-027 — test: admin crea guest (201, `must_change_password=true`, base CouchDB existe); 409 email repetido; 403 a guest; 503 si falla CouchDB (cubre RF-012, RF-013, RF-015) [zona: test]
+- [x] T-028 — `AuthService.create_guest_user` (cubre RF-012, RF-015) [zona: servicio]
+- [x] T-029 — `routers/admin.py` `POST /admin/users` y registro en `main.py` (cubre RF-012, RF-013) [zona: ruta]
 
 ### H · Cambio de contraseña y forzado
-- [ ] T-030 — test: cambio correcto ⇒ 204, flag a false, refresh revocados; actual incorrecta ⇒ 400; política ⇒ 422 (cubre RF-017, RF-018) [zona: test]
-- [ ] T-031 — `AuthService.change_password` + `POST /auth/change-password` (cubre RF-017, RF-018) [zona: servicio/ruta]
-- [ ] T-032 — test: con flag activo, `/admin/users` ⇒ 403; `/auth/me`, `change-password`, `logout` permitidos; `/auth/me` devuelve el flag (cubre RF-019) [zona: test]
-- [ ] T-033 — `require_password_changed` aplicado a routers protegidos; `/auth/me` con `must_change_password` (cubre RF-019) [zona: núcleo/ruta]
+- [x] T-030 — test: cambio correcto ⇒ 204, flag a false, refresh revocados; actual incorrecta ⇒ 400; política ⇒ 422 (cubre RF-017, RF-018) [zona: test]
+- [x] T-031 — `AuthService.change_password` + `POST /auth/change-password` (cubre RF-017, RF-018) [zona: servicio/ruta]
+- [x] T-032 — test: con flag activo, `/admin/users` ⇒ 403; `/auth/me`, `change-password`, `logout` permitidos; `/auth/me` devuelve el flag (cubre RF-019) [zona: test]
+- [x] T-033 — `require_password_changed` aplicado a routers protegidos; `/auth/me` con `must_change_password` (cubre RF-019) [zona: núcleo/ruta]
 
 ### I · Aislamiento y flujo completo
 - [ ] T-034 — test: dos usuarios no acceden a datos del otro; ningún endpoint recibe `user_id` por parámetro (cubre RF-014) [zona: test]

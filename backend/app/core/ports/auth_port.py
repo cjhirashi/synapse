@@ -37,6 +37,9 @@ class AuthPort(ABC):
     def get_refresh_token(self, token_hash: str) -> RefreshToken | None: ...
 
     @abstractmethod
+    def revoke_refresh_token(self, token: RefreshToken) -> None: ...
+
+    @abstractmethod
     def revoke_refresh_tokens(self, user_id: str) -> None: ...
 
     @abstractmethod

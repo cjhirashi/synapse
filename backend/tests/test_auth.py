@@ -1,7 +1,10 @@
-import httpx
-import pytest
+from datetime import datetime, timedelta
+
+import jwt
 
 from app.core.config import settings
+from app.core.schemas import TokenPayload
+from tests.conftest import SEED_EMAIL, SEED_PASSWORD, login
 
 
 def test_health_check(client):
@@ -10,46 +13,96 @@ def test_health_check(client):
     assert res.json() == {"status": "ok"}
 
 
-def test_register_first_user_success(client):
-    res = client.post("/auth/register", json={"email": "admin@test.com", "password": "secret"})
-    assert res.status_code == 201
-    assert res.json()["role"] == "admin"
-    assert "id" in res.json()
-    assert res.json()["email"] == "admin@test.com"
-
-
-def test_register_second_user_rejected(client, admin_user):
-    res = client.post("/auth/register", json={"email": "other@test.com", "password": "secret"})
-    assert res.status_code == 409
-
-
-def test_login_success_sets_cookie(client, admin_user):
-    res = client.post("/auth/login", json={"email": "admin@test.com", "password": "secret"})
-    assert res.status_code == 200
-    assert "access_token" in res.cookies
-
-
-def test_login_invalid_credentials(client, admin_user):
-    res = client.post("/auth/login", json={"email": "admin@test.com", "password": "wrong"})
-    assert res.status_code == 401
-
-
-def test_protected_endpoint_without_cookie(client):
-    res = client.get("/auth/me")
-    assert res.status_code == 401
-
-
-def test_protected_endpoint_with_valid_cookie(client, admin_user, auth_cookies):
-    res = client.get("/auth/me")
+def test_rf_004_login_sets_access_and_refresh_cookies(client):
+    res = login(client)
     assert res.status_code == 200
     assert res.json()["role"] == "admin"
+    cookies = {c.name: c for c in client.cookies.jar}
+    assert "access_token" in cookies and "refresh_token" in cookies
+
+    set_cookie = [h.lower() for h in res.headers.get_list("set-cookie")]
+    access = next(h for h in set_cookie if h.startswith("access_token="))
+    refresh = next(h for h in set_cookie if h.startswith("refresh_token="))
+    for header in (access, refresh):
+        assert "httponly" in header and "secure" in header and "samesite=lax" in header
+    assert "max-age=86400" in access
+    assert "max-age=2592000" in refresh and "path=/auth" in refresh
 
 
-def test_couchdb_created_on_register(client):
-    res = client.post("/auth/register", json={"email": "admin@test.com", "password": "secret"})
-    user_id = res.json()["id"]
-    couchdb_res = httpx.get(
-        f"{settings.COUCHDB_URL}/synapse_user_{user_id}",
-        auth=(settings.COUCHDB_USER, settings.COUCHDB_PASSWORD),
+def test_rf_004_access_token_payload_has_only_sub_role_exp(client):
+    login(client)
+    token = client.cookies.get("access_token")
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=["HS256"])
+    assert set(payload) == {"sub", "role", "exp"}
+    assert payload["role"] == "admin"
+    remaining = payload["exp"] - datetime.utcnow().timestamp()
+    assert 23 * 3600 < remaining <= 24 * 3600 + 5
+
+
+def test_rf_005_wrong_password_and_unknown_email_look_identical(client):
+    wrong_pw = login(client, SEED_EMAIL, "not-the-password")
+    unknown = login(client, "nobody@test.com", SEED_PASSWORD)
+    assert wrong_pw.status_code == unknown.status_code == 401
+    assert wrong_pw.json() == unknown.json()
+
+
+def test_rf_006_protected_endpoint_without_cookie(client):
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_rf_006_invalid_token_is_rejected(client):
+    client.cookies.set("access_token", "not-a-jwt", domain="testserver")
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_rf_006_token_signed_with_other_secret_is_rejected(client):
+    bad = jwt.encode(
+        {"sub": "x", "role": "admin", "exp": datetime.utcnow() + timedelta(hours=1)},
+        "another-secret",
+        algorithm="HS256",
     )
-    assert couchdb_res.status_code == 200
+    client.cookies.set("access_token", bad, domain="testserver")
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_rf_006_expired_token_is_rejected(client):
+    expired = jwt.encode(
+        {"sub": "x", "role": "admin", "exp": datetime.utcnow() - timedelta(seconds=10)},
+        settings.JWT_SECRET,
+        algorithm="HS256",
+    )
+    client.cookies.set("access_token", expired, domain="testserver")
+    assert client.get("/auth/me").status_code == 401
+
+
+def test_rf_008_authorization_header_is_ignored(client):
+    login(client)
+    token = client.cookies.get("access_token")
+    client.cookies.clear()
+    res = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert res.status_code == 401
+
+
+def test_rf_006_valid_cookie_grants_access(client, auth_cookies):
+    res = client.get("/auth/me")
+    assert res.status_code == 200
+    assert res.json()["role"] == "admin"
+
+
+def test_rf_007_require_admin_rejects_guest():
+    import asyncio
+
+    import pytest
+    from fastapi import HTTPException
+
+    from app.core.dependencies import require_admin
+
+    guest = TokenPayload(sub="u", role="guest", exp=9999999999)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(require_admin(guest))
+    assert exc.value.status_code == 403
+
+
+def test_rf_001_public_register_endpoint_no_longer_exists(client):
+    res = client.post("/auth/register", json={"email": "x@test.com", "password": "secret"})
+    assert res.status_code == 404

@@ -55,15 +55,35 @@ def client():
     app.state.session_factory = SessionLocal
 
 
+SEED_EMAIL = "cjhirashi@gmail.com"
+SEED_PASSWORD = "admin1234"
+
+
+def login(client, email=SEED_EMAIL, password=SEED_PASSWORD):
+    return client.post("/auth/login", json={"email": email, "password": password})
+
+
 @pytest.fixture
 def admin_user(client):
-    client.post("/auth/register", json={"email": "admin@test.com", "password": "secret"})
+    """El admin sembrado en el arranque (ADMIN_EMAIL / ADMIN_PASSWORD)."""
+    return {"email": SEED_EMAIL, "password": SEED_PASSWORD}
 
 
 @pytest.fixture
 def auth_cookies(client, admin_user):
-    client.post("/auth/login", json={"email": "admin@test.com", "password": "secret"})
+    login(client)
     return client.cookies
+
+
+@pytest.fixture
+def ready_admin(client, db):
+    """Admin autenticado con el cambio de contraseña obligatorio ya resuelto."""
+    from app.core.models.user import User
+
+    db.query(User).filter(User.email == SEED_EMAIL).update({"must_change_password": False})
+    db.commit()
+    assert login(client).status_code == 200
+    return client
 
 
 @pytest.fixture
