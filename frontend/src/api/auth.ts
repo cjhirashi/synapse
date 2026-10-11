@@ -1,8 +1,7 @@
-export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
+import { parseProblem } from "./problems";
+
+// `ApiError` vive en `problems.ts` (SPEC-0004); se re-exporta para no romper importaciones.
+export { ApiError } from "./problems";
 
 export interface Me {
   user_id: string;
@@ -47,16 +46,7 @@ async function request(path: string, init: RequestInit = {}, retry = true): Prom
   if (res.status === 401 && retry && !NO_REFRESH.has(path) && (await refreshSession())) {
     return request(path, init, false);
   }
-  if (!res.ok) {
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      if (typeof body.detail === "string") detail = body.detail;
-    } catch {
-      /* cuerpo no JSON */
-    }
-    throw new ApiError(res.status, detail);
-  }
+  if (!res.ok) throw await parseProblem(res);
   return res;
 }
 

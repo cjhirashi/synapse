@@ -52,10 +52,10 @@ actualizado: 2026-10-11
 - [x] T-025 — re-export de contratos (0002 y 0004) y test de deriva en verde (cubre RF-009) [zona: script]
 
 ### G · Frontend
-- [ ] T-026 — test (rojo) `api/problems.test.ts`: `parseProblem` con problem+json, JSON sin campos y cuerpo no JSON; `ApiError` con `status`/`type`/`title`/`detail`/`errors` y `message` con prioridad `detail` → `title` → `statusText` (cubre RF-010) [zona: test]
-- [ ] T-027 — `api/problems.ts`: `ApiError`, `parseProblem`, constantes `PROBLEM.*` (cubre RF-010) [zona: frontend]
-- [ ] T-028 — `api/auth.test.ts` con cuerpos Problem (rojo) → `request()` usa `parseProblem`; `auth.ts` re-exporta `ApiError` (cubre RF-010) [zona: frontend]
-- [ ] T-029 — `ChangePasswordPage.test.tsx` con `type` (rojo) → la página decide por `type`; mismos textos; tests de `LoginPage`/`RequireAuth` en verde (cubre RF-010) [zona: frontend]
+- [x] T-026 — test (rojo) `api/problems.test.ts`: `parseProblem` con problem+json, JSON sin campos y cuerpo no JSON; `ApiError` con `status`/`type`/`title`/`detail`/`errors` y `message` con prioridad `detail` → `title` → `statusText` (cubre RF-010) [zona: test]
+- [x] T-027 — `api/problems.ts`: `ApiError`, `parseProblem`, constantes `PROBLEM.*` (cubre RF-010) [zona: frontend]
+- [x] T-028 — `api/auth.test.ts` con cuerpos Problem (rojo) → `request()` usa `parseProblem`; `auth.ts` re-exporta `ApiError` (cubre RF-010) [zona: frontend]
+- [x] T-029 — `ChangePasswordPage.test.tsx` con `type` (rojo) → la página decide por `type`; mismos textos; tests de `LoginPage`/`RequireAuth` en verde (cubre RF-010) [zona: frontend]
 
 ### H · Documentación (PLAN-0004 §8)
 - [ ] T-030 — contrato `0004-api-problem-details/contracts/openapi.yaml` creado por export y versionado (cubre RF-009) [doc]

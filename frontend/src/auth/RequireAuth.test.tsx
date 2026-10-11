@@ -31,7 +31,7 @@ test("RF-020: la propia página de cambio es accesible con el indicador activo (
 });
 
 test("RF-006: sin sesión (401) redirige a /login", async () => {
-  vi.spyOn(api, "getMe").mockRejectedValue(new api.ApiError(401, "Not authenticated"));
+  vi.spyOn(api, "getMe").mockRejectedValue(new api.ApiError(401, { type: "urn:synapse:problem:not-authenticated", title: "Not authenticated" }));
   renderAt("/");
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
 });

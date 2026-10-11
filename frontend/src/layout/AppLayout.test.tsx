@@ -38,7 +38,7 @@ test("RF-023: Cerrar sesión llama a logout y lleva a /login", async () => {
 });
 
 test("RF-023: si el logout falla, avisa y no finge haber cerrado la sesión", async () => {
-  vi.spyOn(api, "logout").mockRejectedValue(new api.ApiError(500, "boom"));
+  vi.spyOn(api, "logout").mockRejectedValue(new api.ApiError(500, { title: "Internal Server Error" }));
   const user = renderAt();
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cerrar la sesión");

@@ -1,6 +1,7 @@
 import { FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, changePassword } from "../api/auth";
+import { PROBLEM } from "../api/problems";
 
 const MIN_LENGTH = 10;
 
@@ -24,9 +25,10 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
       onChanged();
     } catch (err) {
       // `request()` ya intentó renovar la sesión: un 401 aquí es una sesión cerrada (RF-023).
+      // Los demás errores se distinguen por `type` del catálogo, no por código (SPEC-0004).
       if (err instanceof ApiError && err.status === 401) navigate("/login", { replace: true });
-      else if (err instanceof ApiError && err.status === 400) setError("La contraseña actual es incorrecta.");
-      else if (err instanceof ApiError && err.status === 422) setError("La nueva contraseña no cumple la política.");
+      else if (err instanceof ApiError && err.type === PROBLEM.wrongCurrentPassword) setError("La contraseña actual es incorrecta.");
+      else if (err instanceof ApiError && err.type === PROBLEM.validationError) setError("La nueva contraseña no cumple la política.");
       else setError("No se pudo cambiar la contraseña. Inténtalo de nuevo.");
     } finally {
       setBusy(false);

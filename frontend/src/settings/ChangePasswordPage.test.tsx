@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
 import ChangePasswordPage from "./ChangePasswordPage";
 import * as api from "../api/auth";
+import { PROBLEM } from "../api/problems";
 
 function setup(onChanged = vi.fn()) {
   render(
@@ -47,19 +48,30 @@ test("RF-020: rechaza si la nueva es igual a la actual", async () => {
   expect(spy).not.toHaveBeenCalled();
 });
 
-test("RF-018: muestra el error cuando el servidor responde 400 (actual incorrecta)", async () => {
-  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(400, "Current password is incorrect"));
+test("RF-018/RF-010: muestra el error cuando el servidor responde wrong-current-password", async () => {
+  vi.spyOn(api, "changePassword").mockRejectedValue(
+    new api.ApiError(400, { type: PROBLEM.wrongCurrentPassword, title: "Current password is incorrect" }),
+  );
   const { user, onChanged } = setup();
   await fill(user, "equivocada", "una-clave-larga");
   expect(await screen.findByRole("alert")).toHaveTextContent("contraseña actual es incorrecta");
   expect(onChanged).not.toHaveBeenCalled();
 });
 
-test("RF-018: muestra el error cuando el servidor responde 422 (política)", async () => {
-  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(422, "policy"));
+test("RF-018/RF-010: muestra el error cuando el servidor responde validation-error (política)", async () => {
+  vi.spyOn(api, "changePassword").mockRejectedValue(
+    new api.ApiError(422, { type: PROBLEM.validationError, title: "Validation error" }),
+  );
   const { user } = setup();
   await fill(user, "admin1234", "una-clave-larga");
   expect(await screen.findByRole("alert")).toHaveTextContent("no cumple la política");
+});
+
+test("RF-010: decide por type, no por código: un 400 genérico no es «actual incorrecta»", async () => {
+  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(400, { title: "Bad Request" }));
+  const { user } = setup();
+  await fill(user, "admin1234", "una-clave-larga");
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cambiar la contraseña");
 });
 
 test("RF-017/020: con datos válidos llama a la API y avisa del éxito", async () => {
@@ -71,7 +83,7 @@ test("RF-017/020: con datos válidos llama a la API y avisa del éxito", async (
 });
 
 test("RF-023: si la sesión caducó y no se pudo renovar (401), lleva a /login", async () => {
-  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(401, "Invalid token"));
+  vi.spyOn(api, "changePassword").mockRejectedValue(new api.ApiError(401, { type: "urn:synapse:problem:invalid-token", title: "Invalid token" }));
   render(
     <MemoryRouter initialEntries={["/settings/password"]}>
       <Routes>

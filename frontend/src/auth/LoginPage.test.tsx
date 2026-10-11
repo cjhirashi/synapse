@@ -15,7 +15,7 @@ async function submit(email: string, password: string) {
 }
 
 test("RF-005: credenciales inválidas muestran un mensaje genérico", async () => {
-  vi.spyOn(api, "login").mockRejectedValue(new api.ApiError(401, "Invalid credentials"));
+  vi.spyOn(api, "login").mockRejectedValue(new api.ApiError(401, { type: "urn:synapse:problem:invalid-credentials", title: "Invalid credentials" }));
   render(<MemoryRouter><LoginPage onLoggedIn={vi.fn()} /></MemoryRouter>);
   await submit("a@b.com", "mala");
   expect(await screen.findByRole("alert")).toHaveTextContent("Correo o contraseña incorrectos");
