@@ -1,15 +1,15 @@
 # History — Synapse
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (Fase 4 en curso: T-001…T-029 hechas; backend y frontend completos)
+- **Fase alcanzada:** implement (Fase 4 completa: T-001…T-037; pendiente de verificación, Fase 5 del usuario)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
-- **Drift / re-anchor:** no (aviso: la migración tocará archivos de `covers` de 0002 → re-anclaje de 0002 al cierre)
-- **Anclas movidas:** — (SPEC-0004 nace con `anchor_commit: c8c9e24`)
-- **Gate:** verde
-- **Docs actualizadas:** `specs/0004-api-problem-details/spec.md` (nuevo, `draft`), ARCHIFY.md (la sincronización ya no es `0004`), SPEC-0003 (referencias a 0004), state.md
+- **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
+- **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063` (SPEC-0004 nace con `anchor_commit: c8c9e24`)
+- **Gate:** verde (21 ok · 1 aviso: `spectral` no instalado)
+- **Docs actualizadas:** `specs/0004-api-problem-details/{spec,plan,tasks}.md`, contratos 0002 y 0004, ARCHIFY.md, SPEC-0003 (referencias a 0004), SPEC-0002 (nota y ancla), `backend/README.md`, `backend/app/core/README.md`, `frontend/src/README.md`, AGENTS.md, state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** Fase 4 desde T-030 (documentación); en paralelo, Fase 3 de 0003.
+- **Próximo paso:** Fase 5 (verificación) de 0004 por el usuario; después Fase 3 (Tasks) de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -30,6 +30,11 @@
   - [2026-10-11] T-021…T-023: `dependencies.py`, `auth_service.py` (sin `fastapi`) y `routers/auth.py` lanzan errores de dominio; `responses=problem_responses(...)` en cada ruta (admin a nivel de router). Mensajes de `validate_new_password` y del validador de email traducidos al inglés en su origen (Q4); `test_security` ajustado (`match="differ"`).
   - [2026-10-11] T-024/T-025: `test_forced_change` lee `type`; `test_auth`/`test_refresh` esperan `AdminRequired`/`InvalidRefreshToken` en vez de `HTTPException`; contratos 0002 y 0004 re-exportados. Suite backend: **150/150 verde**.
   - [2026-10-11] T-026…T-029: `api/problems.ts` (`Problem`, `ApiError` con `type`/`title`/`detail`/`errors` y `message` detail→title→statusText, `parseProblem` tolerante a cuerpos no JSON y a campos mal tipados, `PROBLEM.*`); `auth.ts` usa `parseProblem` y re-exporta `ApiError`; `ChangePasswordPage` decide por `type` (test nuevo: un 400 genérico no es «actual incorrecta»); tests de páginas con `ApiError(status, problem)`. Frontend **32/32**, `tsc` limpio.
+  - [2026-10-11] T-030/T-031: contratos re-exportados — 0004 sólo con `Problem`/`ProblemError` (canon); 0002 con respuestas de error `Problem` en cada operación (p. ej. `POST /admin/users`: 401, 403, 409, 422, 500, 503).
+  - [2026-10-11] T-032…T-035: `backend/README.md` (sección «Errores (SPEC-0004)»: aviso de cambio incompatible, ejemplo, reglas, catálogo de 10 tipos, cómo añadir un error; «Contratos OpenAPI por feature»), `core/README.md` (`errors.py`/`problems.py`), `frontend/src/README.md` (`problems.ts`, `ApiError`), AGENTS.md (servicios y dependencias lanzan errores de dominio, nunca `HTTPException`).
+  - [2026-10-11] T-036: SPEC-0002 con nota «formato de errores → SPEC-0004» y `anchor_commit: f28e063` (último commit sobre sus `covers`).
+  - [2026-10-11] T-037: state.md — 0004 con Fase 4 completa, 0002 re-anclada, residual «contrato sin respuestas de error» resuelto. Gate verde.
+  - [2026-10-11] **Session-End:** Fase 4 de 0004 completa (T-001…T-037), 0 rebotes, gate verde (1 aviso), backend 150/150 y frontend 32/32. Decisiones: opcionales de `Problem` omitibles y no anulables; los 422 de pydantic comparten la entrada `validation-error`; ancla de 0002 en `f28e063`. No se marca nada `verified`: la Fase 5 es del usuario.
 
 ---
 

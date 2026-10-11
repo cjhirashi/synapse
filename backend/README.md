@@ -13,7 +13,7 @@ FastAPI — monolito modular por capas con puertos (ADR-001).
 ```
 backend/
 ├── app/
-│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos
+│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
 │   ├── services/     # Lógica de negocio (auth_service.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB)
@@ -67,9 +67,67 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `POST /auth/change-password` `{current_password,new_password}` | 204 + cookies nuevas · 400 · 422 |
 | `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
 
-Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`. Si cambias la API,
-re-expórtalo (`python scripts/export_openapi.py`); `tests/test_contract.py` falla si
-el contrato y la app difieren.
+Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`.
+
+## Errores (SPEC-0004)
+
+> **Cambio incompatible:** desde SPEC-0004 los errores ya no son `{"detail": "..."}`.
+> Todo cliente debe leer el cuerpo Problem Details descrito abajo.
+
+Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
+
+```json
+{
+  "type": "urn:synapse:problem:validation-error",
+  "title": "Validation error",
+  "status": 422,
+  "detail": "Request validation failed.",
+  "instance": "/auth/change-password",
+  "errors": [{"pointer": "#/new_password", "detail": "Password must be at least 10 characters long"}]
+}
+```
+
+- `type` identifica el error y es lo que deben comparar los clientes: `urn:synapse:problem:<slug>`
+  para los del catálogo, `about:blank` para los genéricos (404, 405, 500…), cuyo `title` es la
+  frase HTTP. `title` y `detail` van en inglés; la UI traduce a partir de `type`.
+- `instance` es la ruta pedida, sin query. `detail` y `errors` pueden faltar, nunca valen `null`.
+- `errors` (sólo en 422) lleva un fallo por entrada con **una** ubicación: `pointer`
+  (JSON Pointer al cuerpo; `#` si el JSON es inválido o falta), `parameter` (query/path) o
+  `header`. Nunca se repite el valor enviado por el cliente.
+- Un error no controlado es un 500 genérico; la traza va al log (`app.core.problems`), nunca
+  a la respuesta.
+
+**Catálogo** — vive en `app/core/errors.py` (cada clase es una entrada):
+
+| `type` (slug) | Código | Cuándo |
+|---|---|---|
+| `not-authenticated` | 401 | falta la cookie `access_token` |
+| `invalid-token` | 401 | JWT inválido, caducado, de versión anterior o de usuario inactivo |
+| `invalid-credentials` | 401 | login fallido (mismo cuerpo exista o no el email) |
+| `invalid-refresh-token` | 401 | refresh ausente, inválido, revocado o reutilizado |
+| `admin-required` | 403 | ruta de admin sin rol admin |
+| `password-change-required` | 403 | cambio de contraseña obligatorio pendiente |
+| `wrong-current-password` | 400 | `change-password` con la contraseña actual errónea |
+| `email-taken` | 409 | `POST /admin/users` con un email ya registrado |
+| `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña |
+| `storage-unavailable` | 503 | CouchDB inaccesible |
+
+**Añadir un error de dominio:**
+1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y
+   `detail` (inglés). `tests/test_problem_catalog.py` exige `type` único y bien formado.
+2. Lánzala desde el servicio o la dependencia. El texto de la excepción es interno (va al log);
+   para otro `detail` público pasa `detail=`. Nunca `HTTPException` fuera de
+   `core/problems.py` (lo comprueba un test).
+3. Declárala en la ruta con `responses=problem_responses(MiError)` para que salga en el contrato.
+
+## Contratos OpenAPI por feature
+
+`python scripts/export_openapi.py` escribe un contrato por feature (`FEATURES` en el script):
+`0002-auth` (rutas `/auth`, `/admin`, `/health`) y `0004-api-problem-details` (sólo los
+esquemas `Problem`/`ProblemError`, el canon). Cada contrato lleva una copia de `Problem` para
+ser autocontenido; `tests/test_contract.py` falla si un contrato difiere de la app, si una
+ruta no tiene exactamente una feature dueña o si una copia de `Problem` difiere del canon.
+Si cambias la API, re-exporta.
 
 ## Comandos
 
@@ -83,6 +141,6 @@ docker compose exec backend pytest --cov=app
 # Migraciones
 docker compose exec backend alembic upgrade head
 
-# Exportar el contrato OpenAPI
+# Exportar los contratos OpenAPI (uno por feature)
 python scripts/export_openapi.py
 ```

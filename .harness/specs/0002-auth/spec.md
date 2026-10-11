@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: 028c2ba
+anchor_commit: f28e063
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -70,6 +70,12 @@ actualizado: 2026-10-11
 > reclamar `backend/tests/**` y lista sólo los tests de esta feature, para que los tests
 > de otras features (`test_problem*`, `test_vault*`) no provoquen DRIFT aquí. Sin cambio
 > de requisitos.
+>
+> **Formato de errores → SPEC-0004 (2026-10-11, T-036 de TASKS-0004):** los códigos HTTP
+> de esta spec se mantienen, pero el cuerpo de todo error es ahora un Problem Details
+> (RFC 9457, `application/problem+json`) definido por SPEC-0004. Servicios y dependencias
+> lanzan errores de dominio (`core/errors.py`); el contrato `contracts/openapi.yaml` se
+> re-exportó con esas respuestas. Ancla movida a `f28e063`. Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

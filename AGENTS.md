@@ -37,7 +37,7 @@ Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 - **Commits:** Conventional Commits + `(T-NNN)` o `(RF-NNN)`.
 - **IDs:** `RF-`/`RNF-`/`T-` por feature; `ADR-` por proyecto.
 - **Tests:** anotados con su `RF-` en comment.
-- **Errores API:** RFC 9457 (Problem Details).
+- **Errores API:** RFC 9457 (Problem Details). Servicios y dependencias lanzan errores de dominio (`core/errors.py`), nunca `HTTPException`; sólo `core/problems.py` los traduce a HTTP (SPEC-0004).
 
 ## 🔴 Regla Crítica — History Actualizado
 

@@ -58,14 +58,14 @@ actualizado: 2026-10-11
 - [x] T-029 — `ChangePasswordPage.test.tsx` con `type` (rojo) → la página decide por `type`; mismos textos; tests de `LoginPage`/`RequireAuth` en verde (cubre RF-010) [zona: frontend]
 
 ### H · Documentación (PLAN-0004 §8)
-- [ ] T-030 — contrato `0004-api-problem-details/contracts/openapi.yaml` creado por export y versionado (cubre RF-009) [doc]
-- [ ] T-031 — contrato `0002-auth/contracts/openapi.yaml` re-exportado con respuestas de error (cubre RF-009) [doc]
-- [ ] T-032 — `backend/README.md`: sección "Errores (SPEC-0004)" (formato, catálogo, cómo añadir un error de dominio, export por feature, aviso de cambio incompatible) [doc]
-- [ ] T-033 — `backend/app/core/README.md`: `errors.py` (catálogo) y `problems.py` (traductor) [doc]
-- [ ] T-034 — `frontend/src/README.md`: `api/problems.ts` y `ApiError` [doc]
-- [ ] T-035 — `AGENTS.md`: regla "los servicios lanzan errores de dominio, nunca `HTTPException`" (o declarar que el mapa no lo menciona) [doc]
-- [ ] T-036 — cierre: nota y `anchor_commit` nuevo en SPEC-0002 (formato de errores → SPEC-0004) [doc]
-- [ ] T-037 — cierre: `state.md` (estado de 0004, re-anclaje de 0002, residual "contrato sin respuestas de error" resuelto) [doc]
+- [x] T-030 — contrato `0004-api-problem-details/contracts/openapi.yaml` creado por export y versionado (cubre RF-009) [doc]
+- [x] T-031 — contrato `0002-auth/contracts/openapi.yaml` re-exportado con respuestas de error (cubre RF-009) [doc]
+- [x] T-032 — `backend/README.md`: sección "Errores (SPEC-0004)" (formato, catálogo, cómo añadir un error de dominio, export por feature, aviso de cambio incompatible) [doc]
+- [x] T-033 — `backend/app/core/README.md`: `errors.py` (catálogo) y `problems.py` (traductor) [doc]
+- [x] T-034 — `frontend/src/README.md`: `api/problems.ts` y `ApiError` [doc]
+- [x] T-035 — `AGENTS.md`: regla "los servicios lanzan errores de dominio, nunca `HTTPException`" (o declarar que el mapa no lo menciona) [doc]
+- [x] T-036 — cierre: nota y `anchor_commit` nuevo en SPEC-0002 (formato de errores → SPEC-0004) [doc]
+- [x] T-037 — cierre: `state.md` (estado de 0004, re-anclaje de 0002, residual "contrato sin respuestas de error" resuelto) [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
