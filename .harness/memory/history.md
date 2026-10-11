@@ -1,5 +1,86 @@
 # History — Synapse
 
+## [2026-10-11] Sprint 1 (0002-auth) — COMPLETADO Y VERIFICADO
+
+**Fase alcanzada:** Implement → Verify (ciclo completo Specify → Plan → Tasks → Implement → Verify)
+
+**Bloques ejecutados:**
+- **A-D:** Config sin defaults, seguridad (Argon2id, JWT, CORS, CSRF), migración 002, CouchDB, bootstrap admin
+- **E-H:** Endpoints auth (login, logout, /admin/users, password change/force) con refresh token + httpOnly cookies
+- **I-J:** Aislamiento de datos (P3 validation), E2E tests, contrato OpenAPI con test de deriva
+- **K:** Frontend (login form, guardia must_change_password, cambio password) + offline-first
+- **L:** Tests 80%+ cobertura (85-90%), CouchDB real (no mocks), suite backend 84/84 ✅
+- **M:** Documentación (OpenAPI, README, .env.example), diagrama Archify (auth-flow), state.md actualizado, cierre de SPEC-0002
+
+**Rebotes del verificador:** 1 (verificación adversarial → enmienda de spec → re-verificación pasada)
+- V-1 (refresh bloqueado) → whitelist `/auth/refresh`
+- V-2 (emails case-sensitive) → normalizar emails + índice unique `lower(email)`
+- V-3 (enumeración por tiempo) → hash Argon2id ficticio en login
+- G-1 (formato email sin validar) → regex sin dependencias nuevas
+- Resultado final: todos los casos pasan ✅
+
+**Directiva de Pausa:** sí (conflicto state.md / Cowork / TAREAS.md → user fijó state.md como autoridad)
+
+**Drift / re-anchor:** sí (SPEC-0002 retroactivo sobre `cf1632d`, covers ampliado, enmiendas enmendadas)
+
+**Gate:** ✅ Verde (17 ok, 1 warn: spectral no instalado)
+
+**Docs actualizadas:**
+- `.harness/specs/0002-auth/spec.md` (RF 10, 14, 17, 21-23 precisados)
+- `.harness/specs/0002-auth/plan.md` (bloques A-M ordenados)
+- `.harness/specs/0002-auth/tasks.md` (T-001...T-058)
+- `backend/app/security.py`, `backend/app/db.py`, `backend/migrations/002`, `backend/migrations/003`
+- `frontend/src/pages/Login.tsx`, `frontend/src/hooks/useAuth.ts`
+- `contracts/openapi.yaml` (auth paths + schemas)
+- `backend/README.md`, `frontend/README.md`, `.env.example`
+- `ARCHIFY.md` (diagrama auth-flow.html generado)
+- `.harness/memory/state.md` (decisiones, P1-P5 validadas)
+
+**Decisiones de diseño / límites de integración:**
+- Admin seeded desde env, `/auth/register` retirado
+- JWT 24h + refresh 30d hasheado
+- `must_change_password` leído de BD (JWT mínimo)
+- Rollback PG si falla CouchDB
+- Excepción P5: control plane en SQLite
+- Email normalized con índice unique `lower(email)`
+- Argon2id hash ficticio en timing attacks
+
+**Commits:** 15 (64d2a44...9f2b354)
+- Setup harness: `5dca603`, `88b2aa9`, `4f0d495`
+- Spec/Plan/Tasks: `1d5c451`
+- Bloques A-D: `64d2a44`
+- Docs (ARCHIFY, bitácora): `f8e54fb`
+- Bloques E-H: `bcc2a23`
+- Bloques I-J: `1d4780e`
+- Bloque K: `e5cc5ca`
+- Bloque L: `08a660d`
+- Bloque M: `71b8d45`
+- Anchor fijado: `03ffe94`
+- Merge dev: `13b26c9`
+- Fix adversarial (V-1, V-2, V-3, G-1): `9f2b354`
+
+**Próximo paso:**
+1. Decisión: ¿abrir 0003-vault-crud (Sprint 2) o manejar R-1…R-6 (residuales de la enmienda)?
+2. Si 0003: crear spec.md, plan.md, tasks.md (CRUD bóvedas + aislamiento + tests)
+3. Si residuales: redactar enmienda R-1…R-6, ejecutar verificación, decidir
+
+---
+
+## [2026-10-11] 0002-auth — enmienda 2: residuales R-1…R-6 (en curso)
+- **Aprobaciones:** enmienda 1 (V-1/V-2/V-3/G-1) aprobada por el usuario; enmienda 2 redactada, pendiente de aprobación.
+- **Registro de tareas:**
+  - [2026-10-11] Fase 1/2/3 — spec (RF-010, RF-014, RF-017 precisados; RF-021…RF-023 nuevos), plan y bloque O (T-059…T-068) redactados.
+  - [2026-10-11] T-059, T-060 — tests de RF-021/RF-017 y RF-010/RF-022 escritos; en rojo (7 fallos esperados).
+  - [2026-10-11] T-061 — `test_isolation.py`: recorre todo GET protegido del contrato como A y B sin filtrar identificadores del otro; bases CouchDB sin credenciales → 401. Pasa (guarda activa para 0003).
+  - [2026-10-11] T-062 — migración `004_token_version` (`users.token_version`, `refresh_tokens.rotated`) y modelos.
+  - [2026-10-11] T-063 — claim `ver`; `get_current_user` valida usuario activo y versión contra la BD; `change-password` incrementa la versión y emite cookies nuevas. Tests RF-021/RF-017 en verde.
+  - [2026-10-11] T-064 — rotación del refresh token y revocación masiva sólo al reutilizar uno rotado. Tests RF-010/RF-022 en verde.
+  - [2026-10-11] Hallazgo en tests: reinyectaban cookies con dominio `testserver` (el jar usa `testserver.local`), así que algunas aserciones de 401 eran vacías (replay tras logout, RF-009). Corregido; suite backend 84/84.
+  - [2026-10-11] Migración 004 validada en SQLite y PostgreSQL 15 (round-trip; `alembic check` sin diferencias).
+  - [2026-10-11] T-065 — tests vitest de renovación automática (reintento, fallo → sesión cerrada, renovación única, Web Locks, sin renovar en login); en rojo.
+  - [2026-10-11] T-066 — `api/auth.ts::request` reintenta tras un único `/auth/refresh` (Web Locks entre pestañas, promesa compartida en la pestaña).
+  - [2026-10-11] T-067 — `layout/AppLayout.tsx` con enlace "Cambiar contraseña" y "Cerrar sesión" (avisa si el logout falla); `App.tsx` lo usa como ruta de diseño de las privadas. Frontend 23/23, `tsc` limpio.
+
 ## [2026-10-11] 0002-auth — enmienda tras verificación adversarial
 - **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)
 - **Rebotes del verificador:** 1 (V-1 refresh bloqueado por RF-019, V-2 emails sensibles a mayúsculas, V-3 enumeración por tiempo en login, G-1 sin validar formato de email)

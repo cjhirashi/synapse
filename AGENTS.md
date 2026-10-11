@@ -39,6 +39,23 @@ Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 - **Tests:** anotados con su `RF-` en comment.
 - **Errores API:** RFC 9457 (Problem Details).
 
+## 🔴 Regla Crítica — History Actualizado
+
+**Al cierre de cada sesión, actualiza `.harness/memory/history.md`:**
+
+Añade entrada Session-End con:
+- **Fecha** (e.g., `[2026-10-11]`)
+- **Fase alcanzada** (Specify/Plan/Tasks/Implement/Verify)
+- **Rebotes del verificador** (0, N, o lista si hay)
+- **Directiva de Pausa** (sí/no — si te bloqueas, describe)
+- **Drift / re-anchor** (sí/no)
+- **Gate status** (verde/rojo/warns)
+- **Docs actualizadas** (lista qué cambiaron)
+- **Decisiones de diseño** (qué se decidió por qué)
+- **Próximo paso** (qué sigue cuando continúes)
+
+**Por qué:** AIRA lo lee diariamente. Es la bitácora viva del harness (parte del proyecto, no redundante).
+
 ## Reglas P1-P5 (seguridad — SIEMPRE)
 
 - **P1:** Gate siempre primero.
