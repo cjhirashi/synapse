@@ -2,14 +2,14 @@
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
 - **Fase alcanzada:** implement (Fase 4 completa: T-001…T-037; pendiente de verificación, Fase 5 del usuario)
-- **Rebotes del verificador:** 0
+- **Rebotes del verificador:** 1 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
 - **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063` (SPEC-0004 nace con `anchor_commit: c8c9e24`)
 - **Gate:** verde (21 ok · 1 aviso: `spectral` no instalado)
 - **Docs actualizadas:** `specs/0004-api-problem-details/{spec,plan,tasks}.md`, contratos 0002 y 0004, ARCHIFY.md, SPEC-0003 (referencias a 0004), SPEC-0002 (nota y ancla), `backend/README.md`, `backend/app/core/README.md`, `frontend/src/README.md`, AGENTS.md, state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** Fase 5 (verificación) de 0004 por el usuario; después Fase 3 (Tasks) de 0003.
+- **Próximo paso:** el usuario decide sobre V-1…V-8 de la verificación adversarial (correcciones dentro del spec y enmienda para V-3/V-6/V-7); después Fase 3 (Tasks) de 0003.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -35,6 +35,7 @@
   - [2026-10-11] T-036: SPEC-0002 con nota «formato de errores → SPEC-0004» y `anchor_commit: f28e063` (último commit sobre sus `covers`).
   - [2026-10-11] T-037: state.md — 0004 con Fase 4 completa, 0002 re-anclada, residual «contrato sin respuestas de error» resuelto. Gate verde.
   - [2026-10-11] **Session-End:** Fase 4 de 0004 completa (T-001…T-037), 0 rebotes, gate verde (1 aviso), backend 150/150 y frontend 32/32. Decisiones: opcionales de `Problem` omitibles y no anulables; los 422 de pydantic comparten la entrada `validation-error`; ancla de 0002 en `f28e063`. No se marca nada `verified`: la Fase 5 es del usuario.
+  - [2026-10-11] Usuario: «Verifica 0004 con el verificador adversarial». Subagente verificador (sólo lectura): gate verde, backend 150/150 (Python 3.14 y versiones fijadas 3.11), frontend 32/32, contratos re-exportados idénticos. Veredicto **APROBABLE CON RESIDUALES**, sin bloqueantes. Mayores: V-1 ningún test exige «emitido ⊆ declarado» (RF-009); V-2 el mensaje interno de `DomainError` no se registra aunque las docs dicen «va al log». Menores: V-3 `msg` de pydantic puede incluir el valor (`value_error`, UUID) (RF-011); V-4 test «igual a la actual» ejerce la regla de longitud y aserción tautológica; V-5 frase HTTP calculada fuera de `_safely`; V-6 fallback 500 sin `instance` (requerido en el contrato); V-7 404/405 no declarados; V-8 plan/tasks citan `ProblemResponse`/`FALLBACK_500` y `errors.py`/`main.py` fuera de `covers`; además la tabla de cobertura de `tasks.md` no la rellena el gate. Pendiente de decisión del usuario.
 
 ---
 
