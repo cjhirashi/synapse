@@ -90,6 +90,16 @@ actualizado: 2026-10-11
 - [x] T-049 — añadir diagrama de login/refresh/cambio forzado a `ARCHIFY.md` [doc]
 - [x] T-050 — reescribir `.harness/memory/state.md` y entrada Session-End en `history.md` [doc]
 
+### N — Enmienda tras verificación adversarial (V-1, V-2, V-3, G-1)
+- [x] T-051 — test: `/auth/refresh` permitido con `must_change_password` activo (RF-019) [test]
+- [x] T-052 — tests: 409 por email duplicado en mayúsculas; login case-insensitive; bootstrap normaliza (RF-013) [test]
+- [x] T-053 — test: login verifica Argon2id aunque el usuario no exista o esté inactivo (RF-005) [test]
+- [x] T-054 — test: email con formato inválido → 422 (RF-012) [test]
+- [x] T-055 — `normalize_email` + validadores en schemas + normalización en servicio/repositorio (RF-013, RF-012) [code]
+- [x] T-056 — hash ficticio en `AuthService.login` (RF-005) [code]
+- [x] T-057 — migración `003_normalize_email` + índice funcional en el modelo; probarla en SQLite y PostgreSQL (RF-013) [code]
+- [x] T-058 — re-exportar `contracts/openapi.yaml`, actualizar `backend/README.md`, `state.md`, `history.md` [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -97,21 +107,21 @@ actualizado: 2026-10-11
 | RF-002 | T-001, T-002 | test_config | Pass |
 | RF-003 | T-003, T-004 | test_security | Pass |
 | RF-004 | T-016–T-018, T-036 | test_auth, test_contract | Pass |
-| RF-005 | T-016–T-018 | test_auth | Pass |
+| RF-005 | T-016–T-018, T-053, T-056 | test_auth | Pass |
 | RF-006 | T-019, T-020 | test_auth | Pass |
 | RF-007 | T-021, T-022 | test_auth | Pass |
 | RF-008 | T-019, T-020 | test_auth | Pass |
 | RF-009 | T-008, T-025, T-026 | test_refresh | Pass |
 | RF-010 | T-005–T-008, T-023, T-024 | test_refresh | Pass |
 | RF-011 | T-023, T-024 | test_refresh | Pass |
-| RF-012 | T-027–T-029, T-035, T-036 | test_admin | Pass |
-| RF-013 | T-027, T-029 | test_admin | Pass |
+| RF-012 | T-027–T-029, T-035, T-036, T-054, T-055 | test_admin | Pass |
+| RF-013 | T-027, T-029, T-052, T-055, T-057 | test_admin, test_auth, test_bootstrap | Pass |
 | RF-014 | T-009, T-010, T-034 | test_isolation, test_flow | Pass |
 | RF-015 | T-009–T-012, T-027, T-028 | test_provisioning | Pass |
 | RF-016 | T-014, T-015 | test_bootstrap | Pass |
 | RF-017 | T-008, T-030, T-031, T-035, T-036 | test_change_password | Pass |
 | RF-018 | T-003, T-004, T-030, T-031 | test_change_password | Pass |
-| RF-019 | T-005–T-007, T-013, T-032, T-033, T-035 | test_forced_change | Pass |
+| RF-019 | T-005–T-007, T-013, T-032, T-033, T-035, T-051 | test_forced_change | Pass |
 | RF-020 | T-037–T-041 | ChangePasswordPage.test, RequireAuth.test, LoginPage.test (vitest) | Pass |
 | RNF-001 | T-042 | `pytest --cov=app` (97 %) | Pass |
 | RNF-002 | T-043 | test_real_backends (+ excepción SQLite, plan §7) | Pass |

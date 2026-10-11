@@ -16,7 +16,6 @@ components:
     CreateUserRequest:
       properties:
         email:
-          minLength: 3
           title: Email
           type: string
         password:

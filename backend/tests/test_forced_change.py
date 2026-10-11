@@ -32,3 +32,9 @@ def test_rf_019_after_change_the_block_is_lifted(client):
     assert me["must_change_password"] is False
     res = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
     assert res.status_code == 201
+
+
+def test_rf_019_flagged_user_can_refresh(client):
+    login(client)
+    assert client.get("/auth/me").json()["must_change_password"] is True
+    assert client.post("/auth/refresh").status_code == 200

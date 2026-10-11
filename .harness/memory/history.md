@@ -1,5 +1,16 @@
 # History — Synapse
 
+## [2026-10-11] 0002-auth — enmienda tras verificación adversarial
+- **Fase alcanzada:** implement (enmienda Specify → Plan → Tasks → Implement)
+- **Rebotes del verificador:** 1 (V-1 refresh bloqueado por RF-019, V-2 emails sensibles a mayúsculas, V-3 enumeración por tiempo en login, G-1 sin validar formato de email)
+- **Directiva de Pausa:** no (el usuario dirigió: enmendar spec para V-1, corregir V-2, V-3, G-1)
+- **Drift / re-anchor:** sí (`covers` + `*normalize_email*`)
+- **Anclas movidas:** no (spec enmendado pendiente de aprobación)
+- **Gate:** verde (1 aviso: spectral no instalado)
+- **Docs actualizadas:** spec.md, plan.md, tasks.md (bloque N), contracts/openapi.yaml, backend/README.md, state.md
+- **Decisiones de diseño / límites de integración:** `/auth/refresh` en la lista blanca; emails normalizados + índice único `lower(email)` (migración 003); hash Argon2id ficticio en login; regex de email sin dependencias nuevas.
+- **Próximo paso:** aprobación de la enmienda por el usuario y re-verificación; decidir R-1…R-6.
+
 ## [2026-10-11] 0002-auth — implementada (pendiente de verificación)
 - **Fase alcanzada:** implement
 - **Rebotes del verificador:** 0 (verificador aún no ejecutado)

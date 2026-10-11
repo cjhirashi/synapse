@@ -35,16 +35,19 @@ sprint_actual: 2
 
 | Feature | Estado | Notas |
 |---|---|---|
-| 0002-auth | `implemented` (sin verificar) | T-001–T-050 hechas · backend 69 tests, cov 97 % · frontend 13 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` |
+| 0002-auth | `implemented` (sin verificar) | T-001–T-058 hechas · backend 77 tests, cov 97 % · frontend 13 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · **enmienda del spec (V-1/V-2/V-3/G-1) pendiente de aprobación del usuario** |
 | 0003-vault-crud | sin spec | T-002 de `TAREAS.md` |
 
 ## Backlog / deuda conocida
 
-1. **Verificación de 0002-auth** por el verificador adversarial + aprobación humana del PR (nada está `verified`).
+1. **Aprobación de la enmienda de SPEC-0002** (RF-005/012/013/019) y del PR #3; re-verificación (nada está `verified`).
+   Residuales del verificador sin abordar: R-1 access tokens válidos tras cambiar contraseña,
+   R-2 sin rotación de refresh, R-3 sin enlace a "Cambiar contraseña" en la UI, R-4 el frontend
+   no llama `/auth/refresh`, R-5 sin botón de logout, R-6 test de aislamiento casi vacío.
 2. **`docker-compose.yml`** aún declara Qdrant y Gotenberg (contradice "almacén puro"),
    el backend depende de `qdrant`, y `frontend/` no tiene `Dockerfile`. Requiere decisión
    (fuera del alcance de 0002).
-3. **Migración 002** probada sólo en SQLite; falta en PostgreSQL real.
+3. Migraciones 002 y 003 probadas en SQLite y PostgreSQL 15 real (round-trip; 003 aborta si hay duplicados por mayúsculas).
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
 5. `.harness/gate/services.txt` vacío (bloque por perfil inactivo); `spectral` no instalado (lint de contrato omitido).
 6. `datetime.utcnow()` deprecado en `auth_service`/`auth_repository` (avisos, no fallos).

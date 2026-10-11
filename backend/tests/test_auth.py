@@ -106,3 +106,28 @@ def test_rf_007_require_admin_rejects_guest():
 def test_rf_001_public_register_endpoint_no_longer_exists(client):
     res = client.post("/auth/register", json={"email": "x@test.com", "password": "secret"})
     assert res.status_code == 404
+
+
+def test_rf_013_login_is_case_insensitive(client):
+    assert login(client, "  CJHirashi@Gmail.COM ", SEED_PASSWORD).status_code == 200
+
+
+def test_rf_005_login_runs_argon2_even_for_unknown_or_inactive_user(client, db, monkeypatch):
+    from app.core.models.user import User
+    from app.services import auth_service
+
+    calls = []
+    real = auth_service.verify_password
+
+    def spy(hashed, password):
+        calls.append(hashed)
+        return real(hashed, password)
+
+    monkeypatch.setattr(auth_service, "verify_password", spy)
+    assert login(client, "nobody@test.com", SEED_PASSWORD).status_code == 401
+    assert len(calls) == 1
+
+    db.query(User).filter(User.email == SEED_EMAIL).update({"is_active": False})
+    db.commit()
+    assert login(client, SEED_EMAIL, SEED_PASSWORD).status_code == 401
+    assert len(calls) == 2

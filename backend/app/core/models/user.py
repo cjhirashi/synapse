@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Index, func
 from sqlalchemy.orm import relationship
 from app.adapters.database import Base
 
@@ -16,3 +16,6 @@ class User(Base):
     couchdb_name = Column(String, unique=True)  # synapse_user_{id}
     created_at = Column(DateTime, nullable=False)
     role = relationship("Role", back_populates="users")
+
+    # Unicidad case-insensitive (RF-013); la crea la migración 003.
+    __table_args__ = (Index("ix_users_email_lower", func.lower(email), unique=True),)

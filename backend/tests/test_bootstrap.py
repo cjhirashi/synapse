@@ -58,3 +58,9 @@ def test_rf_016_concurrent_bootstrap_yields_single_admin(db):
     finally:
         session.close()
     assert db.query(User).count() == 1
+
+
+def test_rf_013_bootstrap_normalizes_admin_email(db, monkeypatch):
+    monkeypatch.setattr(settings, "ADMIN_EMAIL", "  CJHirashi@Gmail.com ")
+    run_bootstrap(Session, FakeCouchDB())
+    assert db.query(User).one().email == "cjhirashi@gmail.com"

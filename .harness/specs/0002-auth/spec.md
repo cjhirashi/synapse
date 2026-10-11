@@ -24,6 +24,7 @@ covers:
   - backend/app/core/schemas.py
   - backend/app/core/models/**
   - backend/alembic/versions/*initial_auth*
+  - backend/alembic/versions/*normalize_email*
   - backend/tests/**
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
@@ -36,6 +37,9 @@ actualizado: 2026-10-11
 > Spec **retroactivo** (brownfield): ancló lo implementado en `cf1632d` y la deuda
 > pendiente. Aprobado (Gates 1 y 2) e implementado; pendiente de verificación y
 > aprobación humana del PR.
+>
+> **Enmienda 2026-10-11** (tras verificación adversarial, V-1/V-2/V-3/G-1): RF-005,
+> RF-012, RF-013 y RF-019 precisados. **Pendiente de aprobación del usuario.**
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
@@ -76,20 +80,20 @@ actualizado: 2026-10-11
 - **RF-002** — SI faltan `JWT_SECRET`, `ADMIN_PASSWORD` o credenciales de CouchDB en el entorno ENTONCES el sistema DEBE negarse a arrancar.
 - **RF-003** — El sistema DEBE almacenar contraseñas con Argon2id, nunca en claro.
 - **RF-004** — CUANDO las credenciales de `POST /auth/login` son válidas, el sistema DEBE emitir un JWT de 24 h en cookie `access_token` y un refresh token en cookie `refresh_token`.
-- **RF-005** — SI el email no existe O la contraseña no coincide ENTONCES login DEBE responder 401 con el mismo mensaje.
+- **RF-005** — SI el email no existe O la contraseña no coincide ENTONCES login DEBE responder 401 con el mismo mensaje, y DEBE ejecutar la verificación Argon2id en ambos casos (sin diferencia de tiempo que permita enumerar emails).
 - **RF-006** — SI falta la cookie, o el JWT es inválido o expirado ENTONCES todo endpoint protegido DEBE responder 401.
 - **RF-007** — SI el rol del token no es `admin` ENTONCES `require_admin` DEBE responder 403.
 - **RF-008** — El sistema DEBE leer el token sólo de la cookie `access_token`, nunca de `Authorization`.
 - **RF-009** — CUANDO llega `POST /auth/logout`, el sistema DEBE limpiar ambas cookies y revocar el refresh token.
 - **RF-010** — CUANDO llega `POST /auth/refresh` con refresh token válido, no expirado ni revocado, el sistema DEBE emitir un nuevo `access_token`.
 - **RF-011** — SI el refresh token es inválido, expirado o revocado ENTONCES `POST /auth/refresh` DEBE responder 401.
-- **RF-012** — CUANDO un admin llama `POST /admin/users` con datos válidos, el sistema DEBE crear un usuario `guest` con `must_change_password=true` y su base CouchDB, y responder 201.
-- **RF-013** — SI el email ya existe ENTONCES `POST /admin/users` DEBE responder 409; SI el llamante no es admin, 403.
+- **RF-012** — CUANDO un admin llama `POST /admin/users` con datos válidos (email con formato `local@dominio.tld`; si no, 422), el sistema DEBE crear un usuario `guest` con `must_change_password=true` y su base CouchDB, y responder 201.
+- **RF-013** — SI el email ya existe ENTONCES `POST /admin/users` DEBE responder 409; SI el llamante no es admin, 403. Los emails DEBEN normalizarse (sin espacios, en minúsculas) al guardar y al hacer login: dos emails que sólo difieren en mayúsculas son el mismo usuario.
 - **RF-014** — Cada usuario DEBE tener su propia base `synapse_user_{id}`; ningún endpoint DEBE exponer datos de otro usuario (P2, P3).
 
 - **RF-017** — CUANDO un usuario autenticado llama `POST /auth/change-password` con su contraseña actual correcta y una nueva válida (≥ 10 caracteres, distinta de la actual), el sistema DEBE guardarla con Argon2id, revocar sus refresh tokens y responder 204.
 - **RF-018** — SI la contraseña actual es incorrecta ENTONCES DEBE responder 400 y no modificar nada; SI la nueva no cumple la política, 422.
-- **RF-019** — Todo usuario creado con contraseña asignada (admin sembrado en el bootstrap y guests creados por `/admin/users`) DEBE quedar con `must_change_password=true`, que se desactiva al cambiar la contraseña (RF-017); MIENTRAS ese indicador esté activo, el sistema DEBE rechazar con 403 todo endpoint salvo `/auth/me`, `/auth/change-password` y `/auth/logout`.
+- **RF-019** — Todo usuario creado con contraseña asignada (admin sembrado en el bootstrap y guests creados por `/admin/users`) DEBE quedar con `must_change_password=true`, que se desactiva al cambiar la contraseña (RF-017); MIENTRAS ese indicador esté activo, el sistema DEBE rechazar con 403 todo endpoint protegido salvo `/auth/me`, `/auth/change-password`, `/auth/logout` y `/auth/refresh`.
 - **RF-020** — El frontend DEBE ofrecer una sección "Cambiar contraseña" accesible a todo usuario autenticado, y DEBE redirigir a ella mientras `must_change_password` sea true.
 
 ## 5. Casos límite y manejo de errores
@@ -106,6 +110,10 @@ actualizado: 2026-10-11
 | Refresh token hasheado (SHA-256), 30 días | Diseño de la cola de Cowork | Token sin persistir | — |
 | Secretos sólo de entorno | P4 | Defaults en `config.py` | — |
 | Guests creados por el admin con la misma contraseña semilla (la entrega el admin en el body) y cambio forzado | Decisión del usuario | Contraseña aleatoria / enlace de activación | — |
+| Enmienda 2026-10-11 (verificación adversarial, dirigida por el usuario): `/auth/refresh` en la lista blanca de RF-019 | El refresh no da acceso a datos; bloquearlo sólo forzaría re-login | Bloquear refresh con el indicador activo | — |
+| Emails normalizados (strip + minúsculas) + índice único sobre `lower(email)` (migración 003) | Evita cuentas duplicadas por mayúsculas | Comparación case-insensitive sólo en consultas | — |
+| Login verifica contra un hash Argon2id ficticio si el usuario no existe o está inactivo | Elimina enumeración por tiempo | Retardo artificial fijo | — |
+| Validación de formato de email por regex simple (422) | Sin dependencias nuevas | `email-validator` / `EmailStr` | — |
 | Contraseña semilla `admin1234` vía `ADMIN_PASSWORD` en `.env` local (no versionado) + cambio forzado | Decisión del usuario; mitiga clave conocida | Contraseña fija en código/repo; semilla aleatoria | — |
 
 ## 7. Requisitos no funcionales

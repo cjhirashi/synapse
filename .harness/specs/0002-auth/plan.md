@@ -55,6 +55,7 @@ Hoy sólo hay READMEs. Para RF-020 se crea el **mínimo**: proyecto Vite + React
 ## 3. Modelo de datos
 - Migración `002`: `users.must_change_password BOOLEAN NOT NULL DEFAULT false`; tabla `refresh_tokens(id, user_id FK, token_hash UNIQUE, expires_at, revoked, created_at)` con índice en `user_id`.
 - El email ya es `UNIQUE` (cubre RF-016).
+- **Enmienda (V-2):** migración `003_normalize_email`: `UPDATE users SET email = lower(trim(email))` y índice único `ix_users_email_lower` sobre `lower(email)` (falla si ya existen duplicados por mayúsculas: se corrigen a mano antes). El modelo declara el mismo índice funcional.
 - Cookies: `access_token` (24 h, path `/`), `refresh_token` (30 días, path `/auth`), ambas `httpOnly; Secure; SameSite=Lax`.
 - `config.py`: `DATABASE_URL`, `COUCHDB_*`, `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` **sin valor por defecto** (pydantic falla al arrancar, RF-002).
 
@@ -111,5 +112,11 @@ Hoy sólo hay READMEs. Para RF-020 se crea el **mínimo**: proyecto Vite + React
 - **RF-017, RF-018** — `AuthService.change_password`, `routers/auth.py`; `test_change_password.py`.
 - **RF-019** — `require_password_changed` aplicado a routers protegidos; `test_forced_change.py`.
 - **RF-020** — `frontend/src/pages/ChangePasswordPage.tsx`, `LoginPage.tsx`, `RequireAuth.tsx`; tests vitest.
+
+- **Enmienda 2026-10-11** —
+  - V-1 (RF-019): sin cambio de código (`/auth/refresh` ya no exigía el cambio); test que lo fija en `test_forced_change.py`.
+  - V-2 (RF-013): `normalize_email()` en `core/security.py`; validadores pydantic en `LoginRequest`/`CreateUserRequest`; `AuthService` normaliza también en `bootstrap_admin` y `get_user_by_email`; migración 003. Tests en `test_admin.py`/`test_auth.py`.
+  - V-3 (RF-005): hash Argon2id ficticio a nivel de módulo en `auth_service.py`, verificado cuando el usuario no existe o está inactivo; test determinista que espía `verify_password`.
+  - G-1 (RF-012): regex `^[^@\s]+@[^@\s]+\.[^@\s]+$` en `CreateUserRequest` → 422; contrato re-exportado.
 
 `covers` (a ampliar en `spec.md` al cierre): `backend/app/**` de auth/admin, `backend/alembic/versions/*002*`, `backend/tests/test_*{auth,admin,refresh,...}*`, `contracts/openapi.yaml`, `frontend/src/**`, `.env.example`.

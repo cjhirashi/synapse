@@ -13,6 +13,7 @@ from app.core.ports.couchdb_port import CouchDBPort
 from app.core.security import (
     hash_password,
     hash_refresh_token,
+    normalize_email,
     validate_new_password,
     verify_password,
 )
@@ -23,6 +24,10 @@ GUEST_ROLE_ID = "guest-role-id"
 ACCESS_TOKEN_TTL = timedelta(hours=24)
 REFRESH_TOKEN_TTL = timedelta(days=30)
 
+# Se verifica contra este hash cuando el usuario no existe o está inactivo, para que el
+# login tarde lo mismo en todos los casos y no permita enumerar emails (RF-005).
+_DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
+
 
 class AuthService:
     def __init__(self, repo: AuthPort, couchdb: CouchDBPort):
@@ -31,6 +36,7 @@ class AuthService:
 
     def _provision_user(self, email: str, password: str, role_id: str, must_change_password: bool) -> User:
         """Inserta el usuario y su base CouchDB; si algo falla, no queda nada en PostgreSQL."""
+        email = normalize_email(email)
         user_id = str(uuid.uuid4())
         couchdb_name = f"synapse_user_{user_id}"
         try:
@@ -60,7 +66,7 @@ class AuthService:
             return None
 
     def create_guest_user(self, email: str, password: str) -> User:
-        if self.repo.get_user_by_email(email):
+        if self.repo.get_user_by_email(normalize_email(email)):
             raise self._email_taken()
         try:
             return self._provision_user(email, password, GUEST_ROLE_ID, must_change_password=True)
@@ -72,8 +78,11 @@ class AuthService:
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     def login(self, email: str, password: str) -> User:
-        user = self.repo.get_user_by_email(email)
-        if not user or not user.is_active or not verify_password(user.hashed_password, password):
+        user = self.repo.get_user_by_email(normalize_email(email))
+        if not user or not user.is_active:
+            verify_password(_DUMMY_HASH, password)
+            raise self._invalid_credentials()
+        if not verify_password(user.hashed_password, password):
             raise self._invalid_credentials()
         return user
 

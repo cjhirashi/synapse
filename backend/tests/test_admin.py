@@ -54,3 +54,36 @@ def test_rf_015_couchdb_failure_returns_503_and_leaves_no_user(ready_admin, db, 
     monkeypatch.setattr(CouchDBAdapter, "ensure_user_db", boom)
     assert _create(ready_admin).status_code == 503
     assert db.query(User).filter(User.email == "guest@test.com").count() == 0
+
+
+def test_rf_013_email_differing_only_in_case_is_409(ready_admin):
+    assert _create(ready_admin, "guest@test.com").status_code == 201
+    assert _create(ready_admin, "  Guest@TEST.com ").status_code == 409
+
+
+def test_rf_013_created_email_is_stored_normalized(ready_admin, db):
+    res = _create(ready_admin, " New.Guest@Test.COM ")
+    assert res.status_code == 201
+    assert res.json()["email"] == "new.guest@test.com"
+    assert db.query(User).filter(User.email == "new.guest@test.com").count() == 1
+
+
+def test_rf_013_db_rejects_case_duplicates(db):
+    import uuid
+    from datetime import datetime
+
+    import pytest
+    from sqlalchemy.exc import IntegrityError
+
+    for email in ("dup@test.com", "DUP@test.com"):
+        db.add(User(id=str(uuid.uuid4()), email=email, hashed_password="x",
+                    role_id="guest-role-id", created_at=datetime.utcnow()))
+    with pytest.raises(IntegrityError):
+        db.commit()
+    db.rollback()
+
+
+def test_rf_012_invalid_email_format_is_422(ready_admin, db):
+    for bad in ("no-at-sign", "a@b", "a b@test.com", "@test.com", "a@.com"):
+        assert _create(ready_admin, bad).status_code == 422, bad
+    assert db.query(User).count() == 1

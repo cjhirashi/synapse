@@ -45,7 +45,11 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
   y su base CouchDB `synapse_user_{id}`. Es idempotente y seguro con varias réplicas.
 - **Cambio forzado:** el admin sembrado y los guests creados por el admin quedan con
   `must_change_password=true`; mientras tanto sólo responden `/auth/me`,
-  `/auth/change-password` y `/auth/logout` (el resto, 403).
+  `/auth/change-password`, `/auth/logout` y `/auth/refresh` (el resto, 403).
+- **Emails:** se guardan y comparan normalizados (sin espacios, en minúsculas; índice único
+  sobre `lower(email)`, migración 003). `POST /admin/users` valida el formato (422).
+- **Login:** mismo 401 y mismo coste (verificación Argon2id contra un hash ficticio) exista o
+  no el usuario, para no permitir enumerar emails.
 - **Sesión:** JWT de 24 h en cookie httpOnly `access_token` (sólo cookie, nunca
   `Authorization`) y refresh token de 30 días en cookie `refresh_token`, guardado hasheado.
 
@@ -56,7 +60,7 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `POST /auth/logout` | 204, limpia cookies y revoca el refresh token |
 | `GET /auth/me` | 200 `{user_id,role,must_change_password}` · 401 |
 | `POST /auth/change-password` `{current_password,new_password}` | 204 · 400 · 422 |
-| `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 503 |
+| `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
 
 Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`. Si cambias la API,
 re-expórtalo (`python scripts/export_openapi.py`); `tests/test_contract.py` falla si
