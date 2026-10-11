@@ -56,6 +56,64 @@ Añade entrada Session-End con:
 
 **Por qué:** AIRA lo lee diariamente. Es la bitácora viva del harness (parte del proyecto, no redundante).
 
+## 🔴 Regla Crítica — Código Ordenado y Profesional
+
+**Código DEBE reflejar orden, comentarios y metodología — no aleatoriedad.**
+
+**Comentarios:**
+- Obligatorios donde la lógica no es obvia
+- Explicar POR QUÉ, no QUÉ
+- Una línea antes de la sección, breve
+
+**Orden Visual:**
+- Estructura clara y predecible
+- Agrupación lógica de funciones
+- Separación visual entre bloques (línea en blanco)
+- Indentación consistente (2 espacios JS, 4 Python)
+
+**Patrones Consistentes:**
+- **Mismo tipo = mismo patrón en TODO el repo**
+- Todos los servicios usan la misma estructura
+- Todos los endpoints: ruta → validar → procesar → responder
+- Todos los tests: arrange → act → assert
+
+**Profesionalismo Visual:**
+- Código que diga "personas ordenadas" de inmediato
+- Quien lee entiende la arquitectura en 2 minutos
+- Patrones visuales claros
+
+**Checklist (pre-commit):**
+- [ ] ¿Hay comentarios donde no es obvio?
+- [ ] ¿Está ordenado por bloques lógicos?
+- [ ] ¿Sigue el patrón de archivos similares?
+- [ ] ¿Indentación consistente?
+
+## 🔴 Regla Crítica — Resolver Desde la Raíz
+
+**Ante fallas: NUNCA parches. SIEMPRE resolver desde la causa raíz.**
+
+**Prohibido:**
+- ❌ If temporales (`if os.getenv("TESTING")`)
+- ❌ Comentarios `TODO`, `HACK`, `FIXME` sin fecha
+- ❌ Skipear tests ("lo arreglamos después")
+- ❌ Agregar defensas alrededor del error
+
+**Método (resolver desde la raíz):**
+
+1. **Investigar:** Stacktrace de abajo hacia arriba — ¿dónde se originó?
+2. **Comprender:** ¿Qué asunción era incorrecta?
+3. **Fixar:** Cambiar la causa raíz, no el síntoma
+4. **Validar:** Tests que confirmen que el fix es permanente
+5. **Limpiar:** Eliminar workarounds y code smells
+
+**Ejemplo:**
+- **Síntoma:** Endpoint GET `/vaults` retorna bóveda de otro usuario
+- **Raíz:** No validar `current_user.id == vault.owner_id`
+- **Fix:** Agregar validación en el query
+- **Validar:** Test que asegure aislamiento
+
+**Por qué:** Parches = deuda técnica + código frágil. Fix desde raíz = profesional + mantenible.
+
 ## Reglas P1-P5 (seguridad — SIEMPRE)
 
 - **P1:** Gate siempre primero.
