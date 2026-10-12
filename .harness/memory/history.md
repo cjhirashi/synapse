@@ -2,7 +2,7 @@
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
 - **Fase alcanzada:** implement (Fase 4 completa: T-001…T-037; pendiente de verificación, Fase 5 del usuario)
-- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3)
+- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4, pendiente de reparto)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
 - **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063`; SPEC-0004 `c8c9e24` → `97ba08a` (cierre tras la enmienda 1) → `d41c74f` (cierre tras la enmienda 2) → `4f784de` (cierre tras la enmienda 3)
@@ -63,6 +63,7 @@
   - [2026-10-12] T-062: `backend/README.md` y `core/README.md` (catálogo de mensajes, regla de errores de pydantic, `ContractGuard` en toda la suite).
   - [2026-10-12] T-063: tabla de cobertura con T-057…T-063, ítem 7 (W-4) retirado del backlog de state.md, ancla movida. Backend 168/168 (todas sus peticiones pasan por el guard), frontend 32/32, tsc limpio, contratos sin diff.
   - [2026-10-12] **Session-End:** fase implement (W-1 y W-4 resueltos de raíz, enmienda 3). Rebotes: el reparto de la enmienda 2 se corrige por indicación del usuario. Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, state.md, history.md. Decisión: el texto publicado de un error propio sale del catálogo por su código y «emitido ⊆ declarado» se comprueba en toda la suite. No se marca nada `verified`; próximo paso: re-verificación decidida por el usuario.
+  - [2026-10-12] Usuario: «Haz la re-verificación por favor». Subagente verificador (sólo lectura) sobre HEAD `789447d`: veredicto **APPROVED con menores**. Gate verde (21 ok · 1 aviso), backend 168/168, frontend 32/32, tsc limpio, contratos sin diff. Mutaciones: los 4 tests nuevos de W-1 fallan con el código de `d41c74f`; quitar el 401 declarado de `/auth/login` tumba 7 tests de la suite general (sin contar los del guard). Menores: X-1 el test AST no ve `ValidationError.from_exception_data` (evasión deliberada con `ctx` de tipo conocido publica el valor); X-2 `ContractGuard` toma la primera plantilla que casa la ruta y no la que atendió la petición (latente hasta rutas con parámetros de SPEC-0003); X-3 un código del catálogo que coincida con un tipo de pydantic nunca usa el texto del catálogo; X-4 comentario obsoleto del ancla, `actualizado` de tasks, `assert` en `contract_guard.py`, log 500 engañoso al fallar el guard sin documentar, fixture con `client` innecesario. Pendiente de decisión del usuario. No se marca nada `verified`.
 
 ---
 
