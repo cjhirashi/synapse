@@ -137,6 +137,46 @@ class PasswordPolicyViolation(ValidationFailed):
     """La nueva contraseña incumple la política (`core/security.py`)."""
 
 
+class InvalidCursor(ValidationFailed):
+    """`cursor` de `GET /vaults` ilegible o de otra lista (SPEC-0003 RF-003)."""
+
+
+# --- Bóvedas (SPEC-0003) ---
+
+class VaultNotFound(DomainError):
+    """Bóveda inexistente, ajena, borrada o con id no UUID: mismo cuerpo siempre (RF-014)."""
+
+    slug = "vault-not-found"
+    title = "Vault not found"
+    status = 404
+    detail = "Vault not found"
+
+
+class VaultNameTaken(DomainError):
+    slug = "vault-name-taken"
+    title = "Vault name already in use"
+    status = 409
+    detail = "Vault name already in use"
+
+
+class PreconditionRequired(DomainError):
+    """Escritura sin `If-Match` (RF-010)."""
+
+    slug = "precondition-required"
+    title = "Precondition required"
+    status = 428
+    detail = "If-Match header is required"
+
+
+class PreconditionFailed(DomainError):
+    """`If-Match` distinto del `ETag` vigente: la bóveda cambió (RF-010)."""
+
+    slug = "precondition-failed"
+    title = "Precondition failed"
+    status = 412
+    detail = "Vault has changed"
+
+
 # --- Almacenamiento ---
 
 class StorageUnavailable(DomainError):
@@ -150,3 +190,13 @@ class ProvisioningError(StorageUnavailable):
     """Falló el aprovisionamiento de la base CouchDB de un usuario."""
 
     detail = "Storage provisioning unavailable"
+
+
+# --- Fallos internos de puertos (no son entradas del catálogo) ---
+
+class RevisionConflict(Exception):
+    """El almacén rechazó una escritura por `_rev` (documento cambiado o ya existente).
+
+    Lo lanza `VaultPort` y el servicio siempre lo convierte en `VaultNameTaken` o
+    `PreconditionFailed`; no hereda de `DomainError` porque nunca llega al cliente así.
+    """

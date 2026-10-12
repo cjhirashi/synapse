@@ -1,4 +1,8 @@
-from pydantic import BaseModel, Field, field_validator
+from typing import Annotated
+
+from pydantic import (
+    AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, field_validator,
+)
 
 from app.core.errors import field_error
 from app.core.security import EMAIL_PATTERN, normalize_email
@@ -44,3 +48,65 @@ class TokenPayload(BaseModel):
     role: str
     exp: int
     ver: int   # versión de credenciales (RF-021)
+
+
+# --- Bóvedas (SPEC-0003) ---
+# Los límites usan restricciones nativas de pydantic: el traductor de 422 (SPEC-0004)
+# regenera sus mensajes sólo con los límites del esquema, nunca con el valor enviado.
+
+VaultName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+VaultDescription = Annotated[str, StringConstraints(max_length=2000)]
+VaultTag = Annotated[
+    str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=32)
+]
+
+
+def _dedupe_tags(tags: list[str]) -> list[str]:
+    """Quita repetidos conservando el primer orden (RF-006); llegan ya en minúsculas."""
+    return list(dict.fromkeys(tags))
+
+
+# `max_length` cuenta los tags enviados, antes de quitar repetidos (RF-005).
+VaultTags = Annotated[list[VaultTag], Field(max_length=20), AfterValidator(_dedupe_tags)]
+
+
+class VaultCreate(BaseModel):
+    """Cuerpo de `POST /vaults`; cualquier otro campo → 422 (RF-023)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: VaultName
+    description: VaultDescription | None = None
+    tags: VaultTags = Field(default_factory=list)
+
+
+class VaultUpdate(BaseModel):
+    """Cuerpo de `PATCH /vaults/{id}`: se aplican sólo los campos enviados (RF-009).
+
+    `name` y `tags` no admiten `null`: su tipo no es anulable y el valor por defecto `None`
+    no se valida (pydantic no valida defaults), así que "ausente" se distingue de un
+    `null` explícito, que da 422. `description: null` sí vale: borra la descripción.
+    Se lee con `model_dump(exclude_unset=True)`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: VaultName = None  # type: ignore[assignment]
+    description: VaultDescription | None = None
+    tags: VaultTags = None  # type: ignore[assignment]
+
+
+class VaultOut(BaseModel):
+    id: str
+    name: str
+    description: str | None
+    tags: list[str]
+    owner_id: str
+    created_at: str
+    updated_at: str
+    deleted_at: str | None
+
+
+class VaultPage(BaseModel):
+    items: list[VaultOut]
+    next_cursor: str | None

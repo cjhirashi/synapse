@@ -1,0 +1,100 @@
+"""Esquemas de entrada de bóvedas (SPEC-0003): límites, normalización y campos permitidos.
+
+Son tests unitarios del núcleo: no necesitan CouchDB ni la app.
+"""
+import pytest
+from pydantic import ValidationError
+
+from app.core.schemas import VaultCreate, VaultUpdate
+
+
+def _error_types(exc: ValidationError) -> set[str]:
+    return {e["type"] for e in exc.errors()}
+
+
+# --- RF-005: límites ---
+
+@pytest.mark.parametrize("name", ["a", "a" * 100, "  " + "a" * 100 + "  "])
+def test_rf_005_name_within_limits_is_accepted(name):
+    assert VaultCreate(name=name).name == name.strip()
+
+
+@pytest.mark.parametrize("name", ["", "   ", "a" * 101])
+def test_rf_005_name_out_of_limits_after_strip_is_rejected(name):
+    with pytest.raises(ValidationError):
+        VaultCreate(name=name)
+
+
+def test_rf_005_name_is_required():
+    with pytest.raises(ValidationError) as exc:
+        VaultCreate()
+    assert _error_types(exc.value) == {"missing"}
+
+
+def test_rf_005_description_up_to_2000_characters():
+    assert len(VaultCreate(name="n", description="d" * 2000).description) == 2000
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", description="d" * 2001)
+
+
+def test_rf_005_at_most_20_tags():
+    assert len(VaultCreate(name="n", tags=[f"t{i}" for i in range(20)]).tags) == 20
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", tags=[f"t{i}" for i in range(21)])
+
+
+@pytest.mark.parametrize("tag", ["", "   ", "t" * 33])
+def test_rf_005_each_tag_has_1_to_32_characters(tag):
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", tags=[tag])
+    assert VaultCreate(name="n", tags=["t" * 32]).tags == ["t" * 32]
+
+
+# --- RF-006: normalización ---
+
+def test_rf_006_name_is_stripped():
+    assert VaultCreate(name="  Notas  ").name == "Notas"
+
+
+def test_rf_006_tags_are_lowercased_and_deduplicated_keeping_order():
+    vault = VaultCreate(name="n", tags=[" Work ", "home", "WORK", "Home", "misc"])
+    assert vault.tags == ["work", "home", "misc"]
+
+
+def test_rf_006_defaults_are_empty():
+    vault = VaultCreate(name="n")
+    assert vault.description is None and vault.tags == []
+
+
+# --- RF-023: sólo name, description y tags ---
+
+@pytest.mark.parametrize("field", ["owner_id", "id", "deleted_at", "created_at"])
+@pytest.mark.parametrize("schema", [VaultCreate, VaultUpdate])
+def test_rf_023_unknown_fields_are_rejected(schema, field):
+    with pytest.raises(ValidationError) as exc:
+        schema(name="n", **{field: "x"})
+    assert _error_types(exc.value) == {"extra_forbidden"}
+
+
+# --- RF-009: PATCH aplica sólo lo enviado ---
+
+def test_rf_009_update_marks_only_sent_fields():
+    assert VaultUpdate(description="d").model_dump(exclude_unset=True) == {"description": "d"}
+    assert VaultUpdate().model_dump(exclude_unset=True) == {}
+
+
+def test_rf_009_update_null_description_clears_it():
+    assert VaultUpdate(description=None).model_dump(exclude_unset=True) == {"description": None}
+
+
+@pytest.mark.parametrize("field", ["name", "tags"])
+def test_rf_009_update_null_name_or_tags_is_rejected(field):
+    with pytest.raises(ValidationError):
+        VaultUpdate(**{field: None})
+
+
+def test_rf_009_update_applies_the_same_rules_as_create():
+    update = VaultUpdate(name="  Notas ", tags=["A", "a"])
+    assert update.name == "Notas" and update.tags == ["a"]
+    with pytest.raises(ValidationError):
+        VaultUpdate(name="a" * 101)

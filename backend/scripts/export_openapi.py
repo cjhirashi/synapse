@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 # exactamente una feature (lo exige test_contract.py).
 FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0002-auth": {"paths": ("/auth", "/admin", "/health"), "schemas": ()},
+    "0003-vault-crud": {"paths": ("/vaults",), "schemas": ()},
     "0004-api-problem-details": {"paths": (), "schemas": ("Problem",)},
 }
 

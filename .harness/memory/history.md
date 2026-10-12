@@ -132,6 +132,11 @@
   - [2026-10-12] PLAN-0003 alineado con SPEC-0004 (`verified`), sin cambiar decisiones del spec: prerrequisito cumplido; errores como entradas del catálogo (`vault-not-found`, `vault-name-taken`, `precondition-required`, `precondition-failed`) e `InvalidCursor` ⊂ `ValidationFailed` sin `slug` ni `detail` propios (BB-3); `RevisionConflict` fuera del catálogo; sin manejadores en `main.py`; `vault_id` como `str` y `If-Match` opcional para que den 404/428 y no 422; restricciones nativas de pydantic; re-anclaje de 0002 y reparto de contratos ya hechos por 0004 (§6); tipos de bóvedas del frontend en `api/vaults.ts`. Todo en la nueva §10.
   - [2026-10-12] `tasks.md` de 0003 (borrador): T-001…T-051 en 8 bloques (contrato, núcleo, puerto y adaptador, servicio con doble, rutas, rendimiento, frontend, docs); tests nuevos sólo en `test_vault*.py` para no tocar los de 0004; cobertura 28 RF + RNF-001 (RF-016 diferido con su tarea `[doc]`) y 7 filas `[doc]`.
   - [2026-10-12] **Session-End:** fase tasks (0003). Sin rebotes. Gate verde. Docs: plan/tasks de 0003, state.md, history.md. Decisión: el plan se ajusta a SPEC-0004 en §10 (a confirmar en GATE 3). No se aprueba nada: próximo paso, GATE 3 del usuario.
+  - [2026-10-12] Usuario: «Apruebo el GATE 3, empieza la Fase 4 desde T-001». **GATE 3 aprobado** → `tasks.md` `approved` (`aprobaciones.fase_3`), `aprobaciones.fase_3` en el spec y `ajustes_fase_3` (§10) en el plan.
+  - [2026-10-12] T-001/T-002: `test_contract.py` exige los 6 endpoints de 0003; `0003-vault-crud` en `FEATURES`. 3 rojos esperados hasta T-032 (contrato sin exportar y sin rutas).
+  - [2026-10-12] T-003…T-005: `test_vault_schemas.py` (28 tests: límites, normalización, `extra="forbid"`, `null` en PATCH) rojo → `VaultCreate`/`VaultUpdate`/`VaultOut`/`VaultPage` en `core/schemas.py` con `StringConstraints` y deduplicación por `AfterValidator`; verde.
+  - [2026-10-12] T-006/T-007: `test_vault_errors.py` rojo → `InvalidCursor` ⊂ `ValidationFailed`, `VaultNotFound`, `VaultNameTaken`, `PreconditionRequired`, `PreconditionFailed` y `RevisionConflict` (fuera del catálogo) en `core/errors.py`; verde junto a `test_problem_catalog.py`.
+  - [2026-10-12] T-008/T-009: tests del cursor rojos → `encode_cursor`/`decode_cursor` en `services/vault_service.py` (base64url de `{d,c,i}`; `InvalidCursor` con `errors` de texto fijo); verde.
 
 ---
 

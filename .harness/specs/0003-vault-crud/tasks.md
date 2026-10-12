@@ -2,7 +2,9 @@
 id: TASKS-0003
 tipo: tasks
 feature: 0003-vault-crud
-estado: draft
+estado: approved
+aprobaciones:
+  fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
 ---
 
@@ -21,17 +23,17 @@ actualizado: 2026-10-12
 
 ## Tareas
 ### A · Contrato (PLAN-0003 §4)
-- [ ] T-001 — test (rojo) en `test_contract.py`: el contrato de `0003-vault-crud` documenta los 6 endpoints de SPEC-0003 §3 (`GET`/`POST /vaults`, `GET`/`PATCH`/`DELETE /vaults/{vault_id}`, `POST /vaults/{vault_id}/restore`) (cubre RF-001, RF-004, RF-008, RF-009, RF-011, RF-013) [zona: test]
-- [ ] T-002 — `scripts/export_openapi.py`: `"0003-vault-crud": {"paths": ("/vaults",), "schemas": ()}` en `FEATURES` (cubre RF-001, RF-004) [zona: script]
+- [x] T-001 — test (rojo) en `test_contract.py`: el contrato de `0003-vault-crud` documenta los 6 endpoints de SPEC-0003 §3 (`GET`/`POST /vaults`, `GET`/`PATCH`/`DELETE /vaults/{vault_id}`, `POST /vaults/{vault_id}/restore`) (cubre RF-001, RF-004, RF-008, RF-009, RF-011, RF-013) [zona: test]
+- [x] T-002 — `scripts/export_openapi.py`: `"0003-vault-crud": {"paths": ("/vaults",), "schemas": ()}` en `FEATURES` (cubre RF-001, RF-004) [zona: script]
 
 ### B · Núcleo: esquemas, errores y cursor
-- [ ] T-003 — test (rojo) `test_vault_schemas.py`: límites de `VaultCreate` — `name` 0/1/100/101 tras quitar espacios y sólo espacios; `description` 2000/2001; 20/21 tags; tag 0/33 (cubre RF-005) [zona: test]
-- [ ] T-004 — test (rojo) `test_vault_schemas.py`: normalización (`name` sin espacios a los lados; tags en minúsculas, sin repetidos, orden conservado); `extra="forbid"` con `owner_id`, `id`, `deleted_at`; `VaultUpdate` — campos ausentes no se marcan como enviados, `name: null`/`tags: null` → error, `description: null` válido (cubre RF-006, RF-009, RF-023) [zona: test]
-- [ ] T-005 — `core/schemas.py`: `VaultCreate`, `VaultUpdate`, `VaultOut`, `VaultPage` con restricciones nativas de pydantic (PLAN-0003 §10) (cubre RF-005, RF-006, RF-009, RF-023) [zona: núcleo]
-- [ ] T-006 — test (rojo) `test_vault_errors.py`: `VaultNotFound` 404, `VaultNameTaken` 409, `PreconditionRequired` 428 y `PreconditionFailed` 412 con su `slug`; `InvalidCursor` ⊂ `ValidationFailed` sin `slug` ni `detail` propios (BB-3); `RevisionConflict` no es `DomainError` (cubre RF-003, RF-007, RF-010, RF-014) [zona: test]
-- [ ] T-007 — `core/errors.py`: las cinco clases del catálogo y `RevisionConflict`, comentadas (cubre RF-003, RF-007, RF-010, RF-014) [zona: núcleo]
-- [ ] T-008 — test (rojo) `test_vault_service.py`: cursor — ida y vuelta de `{d, c, i}`; base64 basura, JSON sin claves o de otro tipo y `d` distinto del pedido → `InvalidCursor` con `errors=[{"parameter": "cursor", ...}]` de texto fijo (cubre RF-002, RF-003) [zona: test]
-- [ ] T-009 — `services/vault_service.py`: `encode_cursor`/`decode_cursor` (cubre RF-002, RF-003) [zona: servicio]
+- [x] T-003 — test (rojo) `test_vault_schemas.py`: límites de `VaultCreate` — `name` 0/1/100/101 tras quitar espacios y sólo espacios; `description` 2000/2001; 20/21 tags; tag 0/33 (cubre RF-005) [zona: test]
+- [x] T-004 — test (rojo) `test_vault_schemas.py`: normalización (`name` sin espacios a los lados; tags en minúsculas, sin repetidos, orden conservado); `extra="forbid"` con `owner_id`, `id`, `deleted_at`; `VaultUpdate` — campos ausentes no se marcan como enviados, `name: null`/`tags: null` → error, `description: null` válido (cubre RF-006, RF-009, RF-023) [zona: test]
+- [x] T-005 — `core/schemas.py`: `VaultCreate`, `VaultUpdate`, `VaultOut`, `VaultPage` con restricciones nativas de pydantic (PLAN-0003 §10) (cubre RF-005, RF-006, RF-009, RF-023) [zona: núcleo]
+- [x] T-006 — test (rojo) `test_vault_errors.py`: `VaultNotFound` 404, `VaultNameTaken` 409, `PreconditionRequired` 428 y `PreconditionFailed` 412 con su `slug`; `InvalidCursor` ⊂ `ValidationFailed` sin `slug` ni `detail` propios (BB-3); `RevisionConflict` no es `DomainError` (cubre RF-003, RF-007, RF-010, RF-014) [zona: test]
+- [x] T-007 — `core/errors.py`: las cinco clases del catálogo y `RevisionConflict`, comentadas (cubre RF-003, RF-007, RF-010, RF-014) [zona: núcleo]
+- [x] T-008 — test (rojo) `test_vault_service.py`: cursor — ida y vuelta de `{d, c, i}`; base64 basura, JSON sin claves o de otro tipo y `d` distinto del pedido → `InvalidCursor` con `errors=[{"parameter": "cursor", ...}]` de texto fijo (cubre RF-002, RF-003) [zona: test]
+- [x] T-009 — `services/vault_service.py`: `encode_cursor`/`decode_cursor` (cubre RF-002, RF-003) [zona: servicio]
 
 ### C · Puerto y adaptador (CouchDB real)
 - [ ] T-010 — `core/ports/vault_port.py`: `VaultPort` (ABC) con `get`, `put`, `delete`, `list_page` documentados (cubre RF-001, RF-004) [zona: puerto]

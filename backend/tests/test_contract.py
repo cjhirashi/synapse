@@ -79,3 +79,18 @@ def test_contract_documents_every_endpoint_of_the_auth_spec():
     for path, method in expected:
         assert method in paths[path], (path, method)
     assert "/auth/register" not in paths
+
+
+def test_contract_documents_every_endpoint_of_the_vault_spec():
+    """SPEC-0003 §3: las seis operaciones de bóvedas viven en el contrato de 0003."""
+    paths = _committed("0003-vault-crud").get("paths", {})
+    expected = {
+        ("/vaults", "get"),
+        ("/vaults", "post"),
+        ("/vaults/{vault_id}", "get"),
+        ("/vaults/{vault_id}", "patch"),
+        ("/vaults/{vault_id}", "delete"),
+        ("/vaults/{vault_id}/restore", "post"),
+    }
+    documented = {(path, method) for path, ops in paths.items() for method in ops}
+    assert expected <= documented, sorted(expected - documented)

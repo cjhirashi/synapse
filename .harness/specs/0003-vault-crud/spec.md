@@ -20,7 +20,8 @@ covers:
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-actualizado: 2026-10-11
+  fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+actualizado: 2026-10-12
 ---
 
 # SPEC-0003 · CRUD de bóvedas
