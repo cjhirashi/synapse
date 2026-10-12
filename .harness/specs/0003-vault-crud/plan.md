@@ -353,3 +353,25 @@ Detectado el 2026-10-12 por `test_vaults_concurrency.py` (T-029) contra CouchDB 
   igual; RF-021 pasa a cumplirse). El test de RF-017 del servicio avanza el reloj más allá
   del arrendamiento; tests nuevos: crear/renombrar mientras la reserva ajena está vigente →
   409; huérfana vencida → se reasigna.
+
+## 13. Hallazgo de la Fase 4: los listados no dan el `ETag` (PROPUESTO — pendiente de aprobación)
+Detectado el 2026-10-12 al empezar el bloque G (frontend). Cambia una decisión del spec
+(§3: "la versión viaja en la cabecera `ETag`, no en el cuerpo"), así que va por carril SDD y
+no se implementa hasta que el usuario lo apruebe.
+
+- **Fallo.** `restore` exige `If-Match` (RF-010), pero un cliente no puede conocer el `ETag`
+  de una bóveda borrada: el listado de la papelera no lo trae y `GET /vaults/{id}` de una
+  borrada da 404 (RF-011). La vista "Papelera" (RF-028) no puede restaurar nada. Borrar desde
+  la lista (RF-020) tampoco tiene `ETag` sin un `GET` previo por bóveda. Los tests de API lo
+  ocultaban porque leen el `_rev` directamente de CouchDB.
+- **Propuesta.** Cada elemento de `VaultPage.items` lleva `etag` (el mismo valor que la
+  cabecera `ETag` de esa bóveda). Esquema `VaultListItem(VaultOut)` con `etag: str`, que el
+  servicio construye desde `_rev`; las respuestas de una sola bóveda no cambian (sólo
+  cabecera). Spec: §3 añade "salvo en los listados, donde cada elemento lleva su `etag`" y
+  RF-001/RF-012 lo mencionan. Contrato de 0003 re-exportado.
+- **Alternativas descartadas:** `GET /vaults/{id}?deleted=true` (más superficie y dos
+  peticiones por acción); `restore` sin `If-Match` (contradice RF-010 y P2); `ETag` en la
+  respuesta del `DELETE` (sólo sirve para deshacer al momento, no para la papelera tras
+  recargar).
+- **Impacto:** tests de API que lean el `etag` del listado en lugar de CouchDB; tests del
+  servicio para `etag` en `list`; `api/vaults.ts` lo expone en cada bóveda.

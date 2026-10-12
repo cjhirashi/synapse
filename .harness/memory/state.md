@@ -65,4 +65,4 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 4 de **0003-vault-crud**: bloque G (frontend, T-035…T-044), luego H (docs, T-045…T-051). Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
+Fase 4 de **0003-vault-crud**: decisión del usuario sobre PLAN-0003 §13 (`etag` en los listados; bloquea la Papelera del bloque G). Luego bloque G (frontend, T-035…T-044) y H (docs, T-045…T-051). Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
