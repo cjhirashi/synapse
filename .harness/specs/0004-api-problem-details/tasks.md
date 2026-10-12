@@ -2,7 +2,7 @@
 id: TASKS-0004
 tipo: tasks
 feature: 0004-api-problem-details
-estado: draft
+estado: verified
 actualizado: 2026-10-12
 ---
 

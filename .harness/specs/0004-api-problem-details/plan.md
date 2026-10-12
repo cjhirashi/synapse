@@ -2,7 +2,7 @@
 id: PLAN-0004
 tipo: plan
 feature: 0004-api-problem-details
-estado: approved
+estado: verified
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
 actualizado: 2026-10-12

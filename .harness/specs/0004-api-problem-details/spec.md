@@ -2,7 +2,7 @@
 id: SPEC-0004
 tipo: spec
 feature: 0004-api-problem-details
-estado: implemented
+estado: verified
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 0f8b80f   # cierre tras las correcciones de la enmienda 8
 anchor_mode: advisory
@@ -24,6 +24,7 @@ aprobaciones:
   enmienda_6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_7: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_8: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  verificado: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # Fase 5
 actualizado: 2026-10-12
 ---
 

@@ -1,7 +1,7 @@
 # History — Synapse
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (Fase 4 completa: T-001…T-088 tras ocho enmiendas; pendiente del paso a `verified`, Fase 5 del usuario)
+- **Fase alcanzada:** verified (Fase 4 completa: T-001…T-088 tras ocho enmiendas; pasada a `verified` por el usuario el 2026-10-12)
 - **Rebotes del verificador:** 7 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4 → T-064…T-069, enmienda 4; re-verificación 4: APPROVED con menores Y-1…Y-3 → T-070…T-074, enmienda 5; re-verificación 5: APPROVED con menores Z-1…Z-4 → T-075…T-078, enmienda 6; re-verificación 6: APPROVED con menores AA-1…AA-4 → T-079…T-083, enmienda 7; re-verificación 7: APPROVED con menores BB-1…BB-3 → T-084…T-088, enmienda 8, cerrada sin nueva ronda)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
@@ -9,7 +9,7 @@
 - **Gate:** verde (21 ok · 1 aviso: `spectral` no instalado)
 - **Docs actualizadas:** `specs/0004-api-problem-details/{spec,plan,tasks}.md`, contratos 0002 y 0004, ARCHIFY.md, SPEC-0003 (referencias a 0004), SPEC-0002 (nota y ancla), `backend/README.md`, `backend/app/core/README.md`, `frontend/src/README.md`, AGENTS.md, state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
-- **Próximo paso:** el usuario decide el paso de SPEC-0004 a `verified`; después Fase 3 (Tasks) de 0003.
+- **Próximo paso:** Fase 3 (Tasks) de 0003 (con BB-3 de 0004).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «abre la feature de errores RFC 9457». Rúbrica §2: cambia el contrato de toda la API → **carril SDD**.
   - [2026-10-11] Borrador `spec.md` de 0004: contexto brownfield (HTTPException en servicios, `{"detail"}`, frontend lee `detail`, contrato sin errores), RF-001…RF-004 firmes, 6 marcadores (Q1 errores de framework/500, Q2 errores de dominio, Q3 `type` y validación, Q4 idioma, Q5 contrato y frontend, Q6 compatibilidad).
@@ -103,6 +103,8 @@
   - [2026-10-12] T-087: fila RF-005 de la cobertura con `test_problem_catalog` (BB-2).
   - [2026-10-12] T-088 (cierre): BB-3 anotado en la fila 0003 de state.md para su Fase 3; tabla de cobertura con T-084…T-088; cabecera de 0004 (T-001…T-088, 7 rebotes); ancla movida.
   - [2026-10-12] **Session-End:** fase implement (cierre de la re-verificación 7, enmienda 8). Rebote BB-1/BB-2 resuelto sin nueva ronda por la regla de salida (sólo un test que endurece y docs; sin cambio de comportamiento); BB-3 diferido a la Fase 3 de 0003. Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, method.md, state.md, history.md. Decisión: regla de salida de la verificación aprobada por el usuario. No se marca nada `verified`; próximo paso: paso de 0004 a `verified`, decisión del usuario.
+  - [2026-10-12] Usuario: «Paso 0004 a verified, actualízalo por favor». Fase 5 decidida por el usuario: `estado: verified` en spec, plan y tasks de 0004 (aprobación `verificado` en el front-matter del spec), state.md y cabecera de history.md al día. Ancla sin mover: `0f8b80f` sigue siendo el último commit sobre los `covers`.
+  - [2026-10-12] **Session-End:** fase verified (decisión del usuario). Sin rebotes. Gate verde. Docs: spec/plan/tasks de 0004, state.md, history.md. Decisión: 0004 cerrada como `verified` por el usuario. Próximo paso: Fase 3 (Tasks) de 0003 (con BB-3); aparte, merge del PR #3 y paso de 0002 a `verified` (usuario).
 
 ---
 
