@@ -5,16 +5,17 @@ feature: 0003-vault-crud
 estado: approved
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-actualizado: 2026-10-11
+actualizado: 2026-10-12
 ---
 
 # PLAN-0003 · CRUD de bóvedas
 
 > El *cómo* de SPEC-0003, en el patrón por-capas con puertos (ADR-001):
 > `routers → services → core/ports ← adapters`.
-> **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) debe estar
-> mergeada antes de empezar la Fase 4 de 0003. Este plan sólo **lanza excepciones de
-> dominio**; el formato `application/problem+json` lo pone el manejador global de esa feature.
+> **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) — cumplido:
+> `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
+> dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
+> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -45,10 +46,14 @@ actualizado: 2026-10-11
   - Validadores: `name.strip()` 1–100; `description` ≤ 2000; `tags` ≤ 20, cada uno
     `strip()` 1–32, después minúsculas y sin repetidos conservando el orden (RF-005, RF-006).
   - `VaultOut` y `VaultPage { items, next_cursor }`.
-- **Errores de dominio** (`core/errors.py`): `VaultNotFound` (404), `VaultNameTaken`
-  (409), `PreconditionRequired` (428), `PreconditionFailed` (412), `InvalidCursor` (422),
-  `StorageUnavailable` (503). Se mapean a estado HTTP en `main.py`; el cuerpo lo da la
-  feature RFC 9457.
+- **Errores de dominio** (`core/errors.py`, catálogo de SPEC-0004): `VaultNotFound`
+  (`vault-not-found`, 404), `VaultNameTaken` (`vault-name-taken`, 409),
+  `PreconditionRequired` (`precondition-required`, 428), `PreconditionFailed`
+  (`precondition-failed`, 412) y `InvalidCursor` (422) — subclase de `ValidationFailed`
+  sin `slug` ni `detail` propios, lanzada sin `detail=` y con
+  `errors=[{"parameter": "cursor", "detail": "Invalid cursor."}]` de texto fijo (BB-3 de
+  la re-verificación 7 de 0004). `StorageUnavailable` (503) ya existe. Los traduce
+  `core/problems.py`; las rutas los declaran con `problem_responses`.
 - **Puerto** `core/ports/vault_port.py` (`VaultPort`, ABC). Opera sobre una base
   concreta (`db: str`) y sobre documentos con `_rev`:
   - `get(db, doc_id) -> dict | None`
@@ -57,6 +62,8 @@ actualizado: 2026-10-11
   - `list_page(db, deleted: bool, limit: int, after: tuple[str, str] | None) -> list[dict]`
     (orden `created_at` desc, `_id` desc; `after` = clave de la última vista)
   - `RevisionConflict` vive en `core/errors.py` (el servicio no conoce códigos HTTP de CouchDB).
+    No es un `DomainError` (no es una entrada del catálogo): el servicio siempre lo captura
+    y lo convierte en 409/412; si escapara, sería un 500 genérico.
 
 ### Coordinación (`services/vault_service.py`)
 `VaultService(port, db_name)` — una instancia por petición, con la base del usuario.
@@ -98,7 +105,10 @@ decodifica o su `d` no coincide con el `deleted` pedido → `InvalidCursor` (422
   `GET /vaults/{vault_id}` (200 + `ETag`) · `PATCH /vaults/{vault_id}` (`If-Match`, 200 + `ETag`) ·
   `DELETE /vaults/{vault_id}` (`If-Match`, 204) · `POST /vaults/{vault_id}/restore` (`If-Match`, 200 + `ETag`).
 - `vault_id` que no es UUID → 404 (no 422), para que "no existe" se vea siempre igual (RF-014).
-- `main.py`: `include_router` + manejadores de los errores de dominio.
+- `vault_id` se declara `str` (no `UUID`) para que pydantic no responda 422; el servicio
+  lo valida y lanza `VaultNotFound`. `If-Match` se declara opcional (`Header(None)`) para
+  que su ausencia sea 428 y no un 422 de pydantic.
+- `main.py`: sólo `include_router` (los manejadores ya los instala SPEC-0004).
 
 ### Fronteras de salida
 | Frontera | Para qué | Implementación concreta |
@@ -161,8 +171,9 @@ compara cada contrato con su parte de la app y comprueba los endpoints de cada s
 | Frontend | lista/cargar más, formulario y errores 422/409/412, confirmación de borrado, papelera y restaurar, cliente `vaults.ts` con `ETag` | vitest + Testing Library |
 
 ## 6. Secuenciación
-1. Re-anclaje previo de 0002 (§7): `covers` de 0002 sin `backend/tests/**`.
-2. Contrato: reparto por feature en `export_openapi.py` + `test_contract.py` (rojo) → export.
+1. ~~Re-anclaje previo de 0002~~ — hecho por SPEC-0004 (T-001).
+2. Contrato: el reparto por feature ya existe (SPEC-0004 T-002/T-003); falta la feature
+   `0003-vault-crud` en `FEATURES` y el test de sus endpoints (rojo) → export.
 3. Núcleo: tests de esquemas y cursor (rojo) → `schemas.py`, errores.
 4. Adaptador: tests de integración (rojo) → `VaultPort`, `VaultRepository`, vista.
 5. Servicio: tests con doble (rojo) → `VaultService`.
@@ -178,7 +189,7 @@ compara cada contrato con su parte de la app y comprueba los endpoints de cada s
 | Vista map/reduce en lugar de un índice Mango | La paginación por clave exacta (`startkey` + `startkey_docid`) da un cursor estable con empates; con Mango haría falta `$or` sobre `created_at`/`_id`, que no usa bien el índice. Por eso RNF-001 dice ahora "índice de CouchDB" (fe de erratas al spec, ver abajo). |
 | 0003 toca archivos de `covers` de 0002 (`App.tsx`, `layout/**`, `api/auth.ts`, `export_openapi.py`) y 0002 cubre `backend/tests/**` entero | Sin re-anclar, el gate marcaría DRIFT en 0002. Se acota `backend/tests/**` de 0002 a sus propios archivos y, al cerrar 0003, se mueve el `anchor_commit` de 0002 con una nota. |
 | Test de rendimiento con tiempos | Marcado `perf` y fuera de la corrida por defecto para no volver la suite inestable; se ejecuta en la verificación. |
-| Depende de la feature RFC 9457 | Hasta que exista, los errores saldrían como `{"detail"}`; por eso no se empieza la Fase 4 antes. |
+| Depende de la feature RFC 9457 | Cumplido: SPEC-0004 `verified` (2026-10-12). |
 
 **Fe de erratas al spec (aplicadas junto al GATE 1, confirmadas en el GATE 2):**
 `owner_id` es `string` (UUID, como `users.id`), no `integer`; RNF-001 pasa de "índice
@@ -265,3 +276,25 @@ Archivos compartidos que 0003 modifica: los que ya cubre 0002 (`core/schemas.py`
 `App.tsx`, `layout/**`, `api/auth.ts`, `export_openapi.py`, `test_contract.py`) se quedan en
 0002 y se re-anclan al cierre (§7); `core/errors.py` y `main.py` no los cubre ninguna spec
 y siguen sin dueño (transversales).
+
+## 10. Ajustes de la Fase 3 tras SPEC-0004 (2026-10-12)
+Al escribir `tasks.md`, el plan se alinea con lo que SPEC-0004 dejó implementado; ninguna
+decisión del spec cambia:
+- Errores: cuatro entradas nuevas del catálogo (§2) e `InvalidCursor` ⊂ `ValidationFailed`
+  (BB-3, aprobado por el usuario en el cierre de 0004). Nada se mapea en `main.py`.
+- Validación de esquemas con restricciones nativas de pydantic (`StringConstraints` con
+  `strip_whitespace`, `min_length`, `max_length`; `max_length` en la lista de tags): sus
+  mensajes los regenera el traductor con los límites del esquema (RF-011 de 0004); la
+  deduplicación de tags es una normalización, no un error. En `VaultUpdate`, `name` y
+  `tags` tienen tipo no anulable con valor por defecto sin validar: si faltan no se
+  aplican; si llegan como `null`, 422.
+- Rutas: cada operación declara sus errores con `problem_responses` (lo exige
+  `ContractGuard` en toda la suite) más `SESSION_ERRORS` y `PasswordChangeRequired` en el
+  router.
+- Contrato: sólo se añade `"0003-vault-crud": {"paths": ("/vaults",)}` a `FEATURES`.
+- Frontend: los `type` de bóvedas (`vault-name-taken`, `precondition-failed`) se declaran en
+  `api/vaults.ts` (cubierto por 0003), no en `problems.ts` (cubierto por 0004); se usa
+  `ApiError` de `problems.ts`.
+- Re-anclaje al cierre (§7): 0003 modifica archivos de `covers` de 0002 (`core/schemas.py`,
+  `App.tsx`, `layout/**`, `api/auth.ts`, `export_openapi.py`, `test_contract.py`, `conftest.py`); al cerrar
+  se mueve el ancla de 0002 con una nota.

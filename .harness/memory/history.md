@@ -109,15 +109,15 @@
 ---
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** plan (GATES 1 y 2 aprobados)
+- **Fase alcanzada:** tasks (GATES 1 y 2 aprobados; `tasks.md` en borrador, GATE 3 pendiente)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
 - **Anclas movidas:** — (SPEC-0003 nace con `anchor_commit: c8c9e24`, base sin código propio)
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
-- **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `draft`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
+- **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `approved`; §10 de ajustes tras SPEC-0004), `specs/0003-vault-crud/tasks.md` (nuevo, `draft`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** Fase 3 (Tasks) de 0003; Fase 4 tras mergear SPEC-0004. Reservar número para la feature de errores RFC 9457 (previa a implementar 0003).
+- **Próximo paso:** GATE 3 de 0003 (el usuario aprueba `tasks.md` y PLAN-0003 §10); después Fase 4 desde T-001.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -128,6 +128,10 @@
   - [2026-10-11] Usuario: «así es, pasa al plan». **GATE 1 aprobado** → `aprobaciones.fase_1`, `estado: approved`. Fe de erratas al spec (a confirmar en GATE 2): `owner_id` es `string` UUID (como `users.id`), no `integer`; RNF-001 dice "índice de CouchDB" en vez de "índice Mango".
   - [2026-10-11] Fase 2 — `plan.md` redactado: puerto `VaultPort` + `VaultRepository` (httpx) + `VaultService`; reserva `vault-name:{minúsculas}` con detección de huérfanas (sin transacciones entre documentos); `ETag` = `_rev`; vista `_design/vaults/by_created` (clave `[borrada, created_at]`, empate por `_id`) creada de forma idempotente por base; cursor base64url; export del contrato repartido por feature; re-anclaje de 0002 (`backend/tests/**` y archivos compartidos). `covers` de 0003 fijado. Espera GATE 2.
   - [2026-10-11] Usuario: «Apruebo el plan». **GATE 2 aprobado** → `plan.md` `approved`, `aprobaciones.fase_2` en spec y plan; fe de erratas (`owner_id` string, RNF-001) confirmada. Fase 3 (Tasks) de 0003 queda para antes de la Fase 4, que espera a SPEC-0004.
+  - [2026-10-12] Usuario: «Empieza la Fase 3 (Tasks) de 0003 por favor». Rúbrica §2: carril SDD, Fase 3. Gate verde.
+  - [2026-10-12] PLAN-0003 alineado con SPEC-0004 (`verified`), sin cambiar decisiones del spec: prerrequisito cumplido; errores como entradas del catálogo (`vault-not-found`, `vault-name-taken`, `precondition-required`, `precondition-failed`) e `InvalidCursor` ⊂ `ValidationFailed` sin `slug` ni `detail` propios (BB-3); `RevisionConflict` fuera del catálogo; sin manejadores en `main.py`; `vault_id` como `str` y `If-Match` opcional para que den 404/428 y no 422; restricciones nativas de pydantic; re-anclaje de 0002 y reparto de contratos ya hechos por 0004 (§6); tipos de bóvedas del frontend en `api/vaults.ts`. Todo en la nueva §10.
+  - [2026-10-12] `tasks.md` de 0003 (borrador): T-001…T-051 en 8 bloques (contrato, núcleo, puerto y adaptador, servicio con doble, rutas, rendimiento, frontend, docs); tests nuevos sólo en `test_vault*.py` para no tocar los de 0004; cobertura 28 RF + RNF-001 (RF-016 diferido con su tarea `[doc]`) y 7 filas `[doc]`.
+  - [2026-10-12] **Session-End:** fase tasks (0003). Sin rebotes. Gate verde. Docs: plan/tasks de 0003, state.md, history.md. Decisión: el plan se ajusta a SPEC-0004 en §10 (a confirmar en GATE 3). No se aprueba nada: próximo paso, GATE 3 del usuario.
 
 ---
 
