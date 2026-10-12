@@ -109,7 +109,7 @@
 ---
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-015 hechas)
+- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-024 hechas)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
@@ -117,7 +117,7 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `approved`; §10 de ajustes tras SPEC-0004), `specs/0003-vault-crud/tasks.md` (nuevo, `approved`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** Fase 4 de 0003, bloque D (servicio con doble en memoria) desde T-016.
+- **Próximo paso:** Fase 4 de 0003, bloque E (rutas) desde T-025.
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -138,6 +138,7 @@
   - [2026-10-12] T-006/T-007: `test_vault_errors.py` rojo → `InvalidCursor` ⊂ `ValidationFailed`, `VaultNotFound`, `VaultNameTaken`, `PreconditionRequired`, `PreconditionFailed` y `RevisionConflict` (fuera del catálogo) en `core/errors.py`; verde junto a `test_problem_catalog.py`.
   - [2026-10-12] T-008/T-009: tests del cursor rojos → `encode_cursor`/`decode_cursor` en `services/vault_service.py` (base64url de `{d,c,i}`; `InvalidCursor` con `errors` de texto fijo); verde.
   - [2026-10-12] T-010…T-015: `VaultPort` (ABC) → tests de integración contra CouchDB real (put/get/delete con `_rev`, conflictos, `list_page` con empates, inserciones y bóveda del cursor fuera de la lista, índice idempotente, red caída y 5xx → `StorageUnavailable`) → `VaultRepository` con `httpx.Client`; 24 verdes. Ajuste del plan (§11): descarte condicional de la primera fila en vez de `skip=1`, que saltaba una bóveda si la del cursor salía de la lista (RF-012). Gate verde.
+  - [2026-10-12] T-016…T-024: doble `InMemoryVaultPort` (semántica de `_rev`, fallos inyectables, escritura intercalada antes de un `put`) y tests de `create`/`get`/`update`/`delete`/`restore`/`list` en rojo → `VaultService` (reserva con huérfanas, precondición `If-Match`, `limit+1`, reloj inyectable, `Versioned`); 46 verdes. Ajuste del plan (§11): la reserva sólo se libera tras una escritura confirmada y si nadie la usa; liberar tras un `put` fallido o un renombrado perdido podía dejar nombres repetidos. Gate verde.
 
 ---
 

@@ -6,8 +6,17 @@ ni CouchDB. Lanza errores de dominio de `core/errors.py`.
 import base64
 import binascii
 import json
+import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import NamedTuple
 
-from app.core.errors import InvalidCursor
+from app.core.errors import (
+    InvalidCursor, PreconditionFailed, PreconditionRequired, RevisionConflict,
+    StorageUnavailable, VaultNameTaken, VaultNotFound,
+)
+from app.core.ports.vault_port import VaultPort
+from app.core.schemas import VaultCreate, VaultOut, VaultPage, VaultUpdate
 
 # --- Cursor de paginación (RF-002, RF-003) ---
 # base64url (sin relleno) de {"d": deleted, "c": created_at, "i": id}: la clave de la última
@@ -36,3 +45,212 @@ def decode_cursor(cursor: str, deleted: bool) -> tuple[str, str]:
     ):
         raise InvalidCursor("cursor of another list or malformed", errors=_CURSOR_ERROR)
     return payload["c"], payload["i"]
+
+
+# --- Servicio ---
+
+def utc_now() -> str:
+    """Hora actual en RFC 3339 UTC, ancho fijo: el orden de texto es el cronológico."""
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+class Versioned(NamedTuple):
+    """Bóveda y su `ETag` (el `_rev` entre comillas), que la ruta pone en la cabecera."""
+
+    vault: VaultOut
+    etag: str
+
+
+class VaultService:
+    """Operaciones de bóvedas sobre la base de un usuario (una instancia por petición).
+
+    Unicidad del nombre (RF-007, RF-021, RF-027): documento `vault-name:{minúsculas}` que
+    apunta a la bóveda que lo usa. Una reserva sólo **bloquea** si esa bóveda existe, no
+    está borrada y sigue llamándose así; si no, es huérfana y se reasigna. Por eso una
+    escritura que falla a medias nunca deja un nombre bloqueado y la liberación es de
+    mejor esfuerzo: sólo se intenta tras una escritura confirmada que deja el nombre
+    sin usar (borrado o renombrado).
+    """
+
+    def __init__(self, port: VaultPort, db: str, clock: Callable[[], str] = utc_now):
+        self._port = port
+        self._db = db
+        self._clock = clock
+
+    # --- Lectura ---
+
+    def list(self, deleted: bool, limit: int, cursor: str | None) -> VaultPage:
+        after = None
+        if cursor is not None:
+            created_at, vault_id = decode_cursor(cursor, deleted)
+            after = (created_at, _doc_id(vault_id))
+        # Se pide uno de más: si llega, hay página siguiente y el cursor apunta al último
+        # que se devuelve, no al sobrante.
+        docs = self._port.list_page(self._db, deleted, limit + 1, after)
+        page = docs[:limit]
+        next_cursor = None
+        if len(docs) > limit:
+            last = page[-1]
+            next_cursor = encode_cursor(deleted, last["created_at"], _vault_id(last))
+        return VaultPage(items=[_to_out(doc) for doc in page], next_cursor=next_cursor)
+
+    def get(self, vault_id: str) -> Versioned:
+        return _versioned(self._load(vault_id, deleted=False))
+
+    # --- Escritura ---
+
+    def create(self, data: VaultCreate, owner_id: str) -> Versioned:
+        vault_id = str(uuid.uuid4())
+        now = self._clock()
+        self._reserve(data.name, vault_id)
+        doc = {
+            "_id": _doc_id(vault_id),
+            "type": "vault",
+            "name": data.name,
+            "description": data.description,
+            "tags": data.tags,
+            "owner_id": owner_id,
+            "created_at": now,
+            "updated_at": now,
+            "deleted_at": None,
+        }
+        # Si este `put` falla, la reserva queda huérfana (su bóveda no existe) y no
+        # bloquea: no se libera, porque un fallo de red puede ocultar un `put` que sí entró.
+        doc["_rev"] = self._port.put(self._db, doc)
+        return _versioned(doc)
+
+    def update(self, vault_id: str, data: VaultUpdate, if_match: str | None) -> Versioned:
+        doc = self._load(vault_id, deleted=False)
+        _check_precondition(doc, if_match)
+        changes = data.model_dump(exclude_unset=True)
+        old_name = doc["name"]
+        # Cambiar sólo mayúsculas conserva la misma reserva: no choca consigo misma.
+        renamed = "name" in changes and changes["name"].lower() != old_name.lower()
+        if renamed:
+            self._reserve(changes["name"], _vault_id(doc))
+        updated = {**doc, **changes, "updated_at": self._clock()}
+        updated["_rev"] = self._write(updated)
+        if renamed:
+            self._release(old_name)
+        return _versioned(updated)
+
+    def delete(self, vault_id: str, if_match: str | None) -> None:
+        doc = self._load(vault_id, deleted=False)
+        _check_precondition(doc, if_match)
+        self._write({**doc, "deleted_at": self._clock()})
+        self._release(doc["name"])
+
+    def restore(self, vault_id: str, if_match: str | None) -> Versioned:
+        doc = self._load(vault_id, deleted=True)
+        _check_precondition(doc, if_match)
+        self._reserve(doc["name"], _vault_id(doc))
+        restored = {**doc, "deleted_at": None}
+        restored["_rev"] = self._write(restored)
+        return _versioned(restored)
+
+    # --- Internos ---
+
+    def _load(self, vault_id: str, deleted: bool) -> dict:
+        """La bóveda en el estado pedido; cualquier otra cosa es `VaultNotFound` (RF-014, RF-026)."""
+        try:
+            doc_id = _doc_id(str(uuid.UUID(vault_id)))
+        except ValueError:
+            raise VaultNotFound(f"vault_id is not a UUID: {vault_id!r}") from None
+        doc = self._port.get(self._db, doc_id)
+        if doc is None or doc.get("type") != "vault" or bool(doc["deleted_at"]) is not deleted:
+            raise VaultNotFound(f"{doc_id} not found (deleted={deleted})")
+        return doc
+
+    def _write(self, doc: dict) -> str:
+        """`put` con el `_rev` leído: si otra escritura entró entre medias, 412 (RF-010)."""
+        try:
+            return self._port.put(self._db, doc)
+        except RevisionConflict:
+            raise PreconditionFailed(f"{doc['_id']} changed before the write") from None
+
+    def _holder(self, reservation: dict, name: str) -> bool:
+        """¿La bóveda de la reserva existe, está activa y se llama `name` (sin mayúsculas)?"""
+        vault = self._port.get(self._db, _doc_id(reservation["vault_id"]))
+        return (
+            vault is not None
+            and vault.get("type") == "vault"
+            and not vault["deleted_at"]
+            and vault["name"].lower() == name.lower()
+        )
+
+    def _reserve(self, name: str, vault_id: str) -> None:
+        """Toma `vault-name:{name}` para `vault_id` o lanza `VaultNameTaken` (RF-007, RF-021)."""
+        key = _name_key(name)
+        reservation = {"_id": key, "type": "vault-name", "vault_id": vault_id}
+        try:
+            self._port.put(self._db, reservation)
+            return
+        except RevisionConflict:
+            pass
+        current = self._port.get(self._db, key)
+        if current is not None:
+            if current["vault_id"] == vault_id:
+                return  # ya es de esta bóveda (p. ej. restaurar sin haberla liberado)
+            if self._holder(current, name):
+                raise VaultNameTaken(f"{key} held by {current['vault_id']}")
+            reservation["_rev"] = current["_rev"]  # huérfana: se reasigna sobre su `_rev`
+        # Si otra petición escribe la reserva entre la lectura y este `put`, ella gana.
+        try:
+            self._port.put(self._db, reservation)
+        except RevisionConflict:
+            raise VaultNameTaken(f"{key} taken concurrently") from None
+
+    def _release(self, name: str) -> None:
+        """Borra la reserva si ya no la usa nadie; mejor esfuerzo: un fallo la deja huérfana.
+
+        Se comprueba el uso (y no sólo a quién apunta) porque, entre la escritura y esta
+        liberación, otra petición puede haber vuelto a tomar el nombre para la misma bóveda.
+        """
+        key = _name_key(name)
+        try:
+            current = self._port.get(self._db, key)
+            if current is not None and not self._holder(current, name):
+                self._port.delete(self._db, key, current["_rev"])
+        except (RevisionConflict, StorageUnavailable):
+            pass
+
+
+def _doc_id(vault_id: str) -> str:
+    return f"vault:{vault_id}"
+
+
+def _vault_id(doc: dict) -> str:
+    return doc["_id"].removeprefix("vault:")
+
+
+def _name_key(name: str) -> str:
+    return f"vault-name:{name.lower()}"
+
+
+def _etag(doc: dict) -> str:
+    return f'"{doc["_rev"]}"'
+
+
+def _check_precondition(doc: dict, if_match: str | None) -> None:
+    """`If-Match` obligatorio e igual al `ETag` vigente (RF-010)."""
+    if if_match is None:
+        raise PreconditionRequired()
+    if if_match != _etag(doc):
+        raise PreconditionFailed(f"If-Match {if_match} != {_etag(doc)}")
+
+
+def _to_out(doc: dict) -> VaultOut:
+    return VaultOut(
+        id=_vault_id(doc),
+        name=doc["name"],
+        description=doc["description"],
+        tags=doc["tags"],
+        owner_id=doc["owner_id"],
+        created_at=doc["created_at"],
+        updated_at=doc["updated_at"],
+        deleted_at=doc["deleted_at"],
+    )
+
+
+def _versioned(doc: dict) -> Versioned:
+    return Versioned(_to_out(doc), _etag(doc))

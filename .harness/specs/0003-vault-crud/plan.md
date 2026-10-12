@@ -72,9 +72,9 @@ actualizado: 2026-10-12
 | Método | Pasos | RF |
 |---|---|---|
 | `list(deleted, limit, cursor)` | decodifica cursor → `list_page(limit+1)` → si sobra uno, `next_cursor` = cursor del último devuelto | RF-001, 002, 003, 012, 024 |
-| `create(data, owner_id)` | `id = uuid4()` → `_reserve(name, id)` → `put(vault)`; si falla el `put`, libera la reserva | RF-004…007, 021, 022 |
+| `create(data, owner_id)` | `id = uuid4()` → `_reserve(name, id)` → `put(vault)`; si falla el `put`, la reserva queda huérfana (§11) | RF-004…007, 021, 022 |
 | `get(id)` | `get("vault:{id}")`; inexistente, de otro tipo o borrada → `VaultNotFound` | RF-008, 014 |
-| `update(id, data, if_match)` | precondición → si cambia el nombre (sin mayúsculas), `_reserve(nuevo)` → `put` con `_rev` = `if_match` (conflicto → 412 y libera la reserva nueva) → libera la anterior | RF-009, 010, 021, 027 |
+| `update(id, data, if_match)` | precondición → si cambia el nombre (sin mayúsculas), `_reserve(nuevo)` → `put` con `_rev` = `if_match` (conflicto → 412; la reserva nueva queda huérfana, §11) → libera la anterior | RF-009, 010, 021, 027 |
 | `delete(id, if_match)` | precondición → `deleted_at = now` con `put` → libera la reserva | RF-010, 011, 026, 027 |
 | `restore(id, if_match)` | precondición (debe estar borrada; si no, 404) → `_reserve(name)` (ocupado → 409) → `deleted_at = null` con `put` | RF-010, 013, 025, 026 |
 
@@ -212,7 +212,7 @@ Mango sobre …" a "índice de CouchDB" (detalle de implementación, no decisió
 ### Implementación de RF-001
 `VaultService.list(deleted=False)` → `VaultRepository.list_page` (vista, `d=0`); `GET /vaults`. Tests: `test_vaults_api.py`, `test_vault_repository.py`.
 ### Implementación de RF-002
-Cursor en `vault_service.py` (`limit+1` para saber si hay más); `startkey`/`startkey_docid`/`skip=1` en el adaptador. Tests: paginación completa sin repetidos ni saltos, con empates de `created_at` e inserciones a mitad.
+Cursor en `vault_service.py` (`limit+1` para saber si hay más); `startkey`/`startkey_docid` y descarte condicional de la primera fila en el adaptador (§11). Tests: paginación completa sin repetidos ni saltos, con empates de `created_at` e inserciones a mitad.
 ### Implementación de RF-003
 `Query(ge=1, le=200)` en la ruta; `InvalidCursor` → 422. Tests: `limit=0`, `limit=201`, cursor basura, cursor de la papelera usado en la lista normal.
 ### Implementación de RF-004
@@ -309,3 +309,12 @@ decisión del spec cambia:
   cambia. Lo cubre `test_rf_012_after_key_still_works_when_that_vault_left_the_list`.
 - `VaultRepository` acepta un `transport` de httpx sólo para simular 5xx en tests; en
   producción no se pasa.
+- Liberación de reservas (§2, T-018/T-020): sólo tras una escritura **confirmada** que deja
+  el nombre sin usar (borrado o renombrado), y sólo si la reserva ya no la usa ninguna
+  bóveda activa con ese nombre. Si el `put` de la bóveda falla al crear, o choca al
+  renombrar, la reserva no se libera: queda huérfana y se reasigna. Liberarla podía dejar
+  un nombre repetido (un error de red que oculta un `put` que sí entró, o dos renombrados
+  intercalados de la misma bóveda hacia el mismo nombre). La regla de §2 ("una huérfana
+  no bloquea nada") ya garantiza RF-017; ninguna decisión del spec cambia.
+- `VaultService` recibe un reloj (`clock`) para que los tests fijen `created_at` y
+  `updated_at`; devuelve `Versioned(vault, etag)` para que la ruta ponga el `ETag`.
