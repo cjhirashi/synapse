@@ -6,6 +6,7 @@ estado: approved
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   ajustes_fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §10, con el GATE 3
+  ajustes_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §11
 actualizado: 2026-10-12
 ---
 
@@ -16,7 +17,7 @@ actualizado: 2026-10-12
 > **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) — cumplido:
 > `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
-> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10.
+> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -301,6 +302,7 @@ decisión del spec cambia:
   se mueve el ancla de 0002 con una nota.
 
 ## 11. Ajustes de la Fase 4 (implementación)
+Aprobados por el usuario el 2026-10-12.
 - Paginación (§3, T-015): en lugar de `skip=1` fijo, el adaptador pide `limit + 1` desde
   `startkey=[d, c]`/`startkey_docid` y descarta la primera fila **sólo si es** la bóveda del
   cursor. Con `skip=1`, si esa bóveda salió de la lista entre páginas (papelera,
