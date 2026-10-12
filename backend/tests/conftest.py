@@ -23,6 +23,24 @@ from tests.contract_guard import ContractGuard
 # Starlette aún no ha construido la pila de middlewares.
 app.add_middleware(ContractGuard, schema_provider=app.openapi)
 
+
+# --- Marca `perf` (RNF-001 de SPEC-0003, T-033) ---
+# Los tests con tiempos quedan fuera de la corrida por defecto para no volverla inestable;
+# se ejecutan a propósito con `-m perf` (p. ej. en la verificación).
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "perf: test de rendimiento con tiempos; sólo con `-m perf`")
+
+
+def pytest_collection_modifyitems(config, items):
+    if "perf" in (config.getoption("markexpr") or ""):
+        return  # la expresión de `-m` ya decide qué tests `perf` corren
+    deselected = [item for item in items if item.get_closest_marker("perf")]
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = [item for item in items if not item.get_closest_marker("perf")]
+
+
 TEST_DATABASE_URL = "sqlite:///./test.db"
 
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})

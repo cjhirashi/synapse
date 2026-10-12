@@ -171,6 +171,9 @@ Si cambias la API, re-exporta.
 # Tests (requieren un CouchDB real; el control plane usa SQLite — excepción declarada en plan.md §7)
 docker compose exec backend pytest -v
 
+# Tests de rendimiento (marca `perf`, fuera de la corrida por defecto): RNF-001 de 0003
+docker compose exec backend pytest -m perf -s
+
 # Tests con umbral de cobertura (80 %, en .coveragerc)
 docker compose exec backend pytest --cov=app
 

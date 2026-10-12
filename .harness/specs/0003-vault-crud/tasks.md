@@ -65,8 +65,8 @@ actualizado: 2026-10-12
 - [x] T-032 — re-exportar contratos (`0003-vault-crud/contracts/openapi.yaml` nuevo; 0002 y 0004 sin cambios); T-001 en verde (cubre RF-001, RF-004) [doc]
 
 ### F · Rendimiento
-- [ ] T-033 — `conftest.py`: marca `perf` registrada y fuera de la corrida por defecto (se ejecuta con `-m perf`) (cubre RNF-001) [zona: test]
-- [ ] T-034 — `test_vaults_perf.py`: 1 000 bóvedas, 50 lecturas de la primera página (`limit=50`), p95 < 300 ms contra CouchDB real (cubre RNF-001) [zona: test]
+- [x] T-033 — `conftest.py`: marca `perf` registrada y fuera de la corrida por defecto (se ejecuta con `-m perf`) (cubre RNF-001) [zona: test]
+- [x] T-034 — `test_vaults_perf.py`: 1 000 bóvedas, 50 lecturas de la primera página (`limit=50`), p95 < 300 ms contra CouchDB real (cubre RNF-001) [zona: test]
 
 ### G · Frontend
 - [ ] T-035 — test (rojo) `api/vaults.test.ts`: `listVaults({deleted, cursor})`, `createVault`, `updateVault`/`deleteVault`/`restoreVault` con `If-Match`; devuelven la bóveda con su `etag`; errores como `ApiError` con `type` (cubre RF-018, RF-019, RF-028) [zona: test]

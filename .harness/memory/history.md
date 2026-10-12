@@ -109,7 +109,7 @@
 ---
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-032 hechas; PLAN-0003 §12 aprobado e implementado)
+- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-034 hechas; PLAN-0003 §12 aprobado e implementado)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
@@ -117,7 +117,7 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `approved`; §10 de ajustes tras SPEC-0004), `specs/0003-vault-crud/tasks.md` (nuevo, `approved`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** bloque F (rendimiento, T-033/T-034).
+- **Próximo paso:** bloque G (frontend, T-035…T-044).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -148,6 +148,8 @@
   - [2026-10-12] Usuario: «Apruebo» → PLAN-0003 §12 aprobado (`aprobaciones.hallazgo_fase_4`).
   - [2026-10-12] §12 implementado (TDD): la reserva guarda `reserved_at` y bloquea mientras siga dentro de `RESERVATION_LEASE` (30 s) aunque su bóveda aún no la use; vencida, se reasigna. Detalle de la misma corrección: `_release(name, vault_id)` sólo borra la reserva si sigue apuntando a la bóveda que libera (una liberación tardía ya no borra una reserva reasignada a otra). Tests nuevos: create y rename con otra escritura en curso → 409, liberación tardía, huérfana vencida; los de RF-017 y renombrado perdido avanzan el reloj más allá del arrendamiento. T-029 en verde (estable en 3 corridas). Suite backend **334/334**; gate verde. §2 del plan apunta a §12.
   - [2026-10-12] **Session-End:** fase implement (0003, bloque E completo: T-025…T-032 y §12). Sin rebotes del verificador. Gate verde (21 ok · 1 aviso); backend 334/334. Docs: plan (§2, §12 aprobado), tasks, state.md, history.md. Decisión: arrendamiento de 30 s en las reservas de nombre y liberación sólo de la reserva propia. Nada marcado `verified`. Próximo paso: bloque F (T-033/T-034).
+  - [2026-10-12] Usuario: «Sigue con el bloque F». Rúbrica §2: tareas del plan aprobado (carril SDD, Fase 4). Gate verde.
+  - [2026-10-12] T-033/T-034: marca `perf` registrada en `conftest.py` y deseleccionada salvo que `-m` la nombre; `test_vaults_perf.py` siembra 1 000 bóvedas con `VaultService` + `VaultRepository` reales y mide 50 lecturas de `GET /vaults?limit=50` por la API (la primera lectura, que construye la vista, queda fuera de la muestra). Resultado: **p95 = 18 ms** (mediana 15 ms) frente a 300 ms. `backend/README.md` documenta `pytest -m perf`.
 
 ---
 
