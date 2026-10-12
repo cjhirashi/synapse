@@ -2,7 +2,7 @@
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
 - **Fase alcanzada:** implement (Fase 4 completa: T-001…T-037; pendiente de verificación, Fase 5 del usuario)
-- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4 → T-064…T-069, enmienda 4)
+- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4 → T-064…T-069, enmienda 4; re-verificación 4: APPROVED con menores Y-1…Y-3, pendiente de decisión)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
 - **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063`; SPEC-0004 `c8c9e24` → `97ba08a` (cierre tras la enmienda 1) → `d41c74f` (cierre tras la enmienda 2) → `4f784de` (cierre tras la enmienda 3) → `65f9911` (cierre tras la enmienda 4)
@@ -71,6 +71,7 @@
   - [2026-10-12] T-068: `backend/README.md`, `core/README.md` y comentario del catálogo en `core/errors.py` (regla por módulo, códigos del catálogo, operación atendida, log 500 al fallar el guardián).
   - [2026-10-12] T-069: tabla de cobertura con T-064…T-069, state.md, ancla movida. Backend 176/176, frontend 32/32, tsc limpio, contratos sin diff.
   - [2026-10-12] **Session-End:** fase implement (correcciones de la re-verificación 3, enmienda 4). Rebote X-1…X-4 resuelto. Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, state.md, history.md. Decisión: la regla de errores de pydantic es por módulo y el guardián lee la ruta atendida. No se marca nada `verified`; próximo paso: re-verificación o paso a `verified`, decisión del usuario.
+  - [2026-10-12] Usuario: «Haz la re-verificación por favor». Subagente verificador (sólo lectura) sobre HEAD `54bd4b1`: veredicto **APPROVED con menores**. Gate verde (21 ok · 1 aviso), backend 176/176, frontend 32/32, tsc limpio, contratos sin diff. Mutaciones: el test de plantillas solapadas falla con el guardián de `9e44621` («DID NOT RAISE»); un módulo con `from pydantic import ValidationError as VE; VE.from_exception_data(...)` lo detecta el test nuevo y no el anterior; `"missing"` en el catálogo tumba su test; quitar `EmailTaken` de `admin.py` tumba 3 tests de la suite general. Menores: Y-1 (realista) un `RequestValidationError` construido a mano en `app/` con `type` conocido y `ctx` del cliente publica el valor, y el escaneo lo permite explícitamente; Y-2 el comentario de `contract_guard.py` atribuye `scope["route"]` al router de Starlette (lo fija `APIRoute`; `Route`/`Mount` puros quedarían fuera sin aviso); Y-3 fila 0004 de state.md sin la enmienda 4 y fila E3 · W-1 del spec sin marcar como sustituida. Observación: la regla también prohíbe `except ValidationError` en `app/`. Pendiente de decisión del usuario. No se marca nada `verified`.
 
 ---
 
