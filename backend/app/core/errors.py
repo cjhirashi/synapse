@@ -117,13 +117,23 @@ class EmailTaken(DomainError):
 
 # --- Validación ---
 
-class PasswordPolicyViolation(DomainError):
-    """Mismo `type` que los 422 de pydantic: el cliente los trata igual (RF-005)."""
+class ValidationFailed(DomainError):
+    """Entrada única de todo 422, de pydantic o de dominio (RF-005, enmienda 7).
+
+    Una validación que pydantic no puede expresar (p. ej. entre path, query y cuerpo) lanza
+    una subclase sin slug propio con `errors=[{"pointer" | "parameter" | "header": ...,
+    "detail": ...}]`. Cada `detail` es texto fijo, nunca interpolado con datos del cliente
+    (RF-011): el traductor lo publica tal cual.
+    """
 
     slug = "validation-error"
     title = "Validation error"
     status = 422
     detail = "Request validation failed."
+
+
+class PasswordPolicyViolation(ValidationFailed):
+    """La nueva contraseña incumple la política (`core/security.py`)."""
 
 
 # --- Almacenamiento ---

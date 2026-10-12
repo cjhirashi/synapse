@@ -22,6 +22,7 @@ aprobaciones:
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  enmienda_7: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
 ---
 
@@ -59,6 +60,12 @@ actualizado: 2026-10-12
 > distintas (path frente a cuerpo) usa un error de dominio 422 con `errors=`; queda
 > aceptado como residual que una clase pasada por una variable, `functools.partial` o
 > una tabla de fábricas escape al análisis estático.
+>
+> **Enmienda 7 2026-10-12** (re-verificación 6, AA-1…AA-3): todo 422 de dominio hereda de
+> un error de validación genérico (`ValidationFailed`, entrada `validation-error`) sin
+> `type` propio, y un test lo exige; el `detail` de cada entrada de `errors` de un error
+> de dominio es texto fijo, nunca interpolado con datos del cliente; el residual de E6 ·
+> Z-1 se describe por su naturaleza, no con una lista.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -129,7 +136,7 @@ en su propio spec los tipos que añade.
 | `password-change-required` | 403 | usuario con `must_change_password` |
 | `wrong-current-password` | 400 | cambio de contraseña con la actual incorrecta |
 | `email-taken` | 409 | alta de usuario con email existente |
-| `validation-error` | 422 | cuerpo o parámetros inválidos, incluida la política de contraseña |
+| `validation-error` | 422 | cuerpo o parámetros inválidos, incluida la política de contraseña; todo 422 (enmienda 7) |
 | `storage-unavailable` | 503 | CouchDB no responde al aprovisionar |
 
 ## 4. Criterios de aceptación (EARS)
@@ -227,8 +234,10 @@ en su propio spec los tipos que añade.
 | E4 · X-2: el guardián resuelve la operación por la ruta que atendió la petición (`scope["route"].path_format`), no por la primera plantilla del contrato que casa la ruta | Con plantillas solapadas (`/vaults/{vault_id}` y `/vaults/search`, SPEC-0003) la primera que casa puede no ser la que Starlette elige | Elegir la plantilla que case ruta y método (repite el enrutado de Starlette) | — |
 | E4 · X-3: ningún código de `FIELD_ERROR_MESSAGES` coincide con un tipo conocido de pydantic (lo exige el test del catálogo) | El traductor resuelve antes los tipos conocidos: su entrada del catálogo nunca se publicaría | — | — |
 | E5 · Y-1 (precisada por E6 · Z-3): fuera de `core/errors.py` y `core/problems.py`, nada en `app/` importa `pydantic_core` ni construye un error de validación: llamadas a `ValidationError`, `RequestValidationError`, `InitErrorDetails`, `PydanticCustomError`, `PydanticKnownError` o `from_exception_data` y subclases suyas, resolviendo los alias de import; importarlos para capturarlos (`except`) está permitido | La causa común de X-1 e Y-1 es construir a mano un error cuyo `ctx` el traductor publicaría; `RequestValidationError` a mano es el patrón de FastAPI para validaciones entre campos, así que debe quedar cubierto, y `except ValidationError` es legítimo (p. ej. validar documentos de CouchDB) | Prohibir el uso de los nombres (E4, impide capturarlos y deja fuera `RequestValidationError`) | — |
-| E6 · Z-2: una validación entre campos del cuerpo lanza `field_error`/`ValueError` desde un `model_validator` (su fallo sale en la raíz, `pointer` `#`); la que cruza fuentes (path, query y cuerpo) lanza un error de dominio 422 con `errors=` y la ubicación de cada fallo, como `PasswordPolicyViolation` | Da a cada caso una vía permitida que publica sólo texto del catálogo o del propio error de dominio, sin `RequestValidationError` a mano | `RequestValidationError` a mano (prohibido por E5) | — |
-| E6 · Z-1: residual aceptado — el análisis estático de E5 no sigue la clase cuando pasa por una variable (`RVE = RequestValidationError`), `functools.partial` o una tabla de fábricas; ese código haría publicar el `ctx` | Exige rodear la regla a propósito y la regla queda documentada; seguir el flujo de datos con `ast` no es proporcionado, y publicar sólo límites numéricos no cerraría `expected` ni `pattern` | Endurecer el traductor (sólo `ctx` numéricos) | — |
+| E6 · Z-2: una validación entre campos del cuerpo lanza `field_error`/`ValueError` desde un `model_validator` (su fallo sale en la raíz, `pointer` `#`); la que cruza fuentes (path, query y cuerpo) lanza un error de dominio 422 con `errors=` y la ubicación de cada fallo (desde E7 · AA-1, una subclase de `ValidationFailed`) | Da a cada caso una vía permitida que publica sólo texto del catálogo o del propio error de dominio, sin `RequestValidationError` a mano | `RequestValidationError` a mano (prohibido por E5) | — |
+| E6 · Z-1 (redacción de E7 · AA-2): residual aceptado — el análisis estático sólo reconoce llamadas y herencias escritas con el nombre de la clase (o su alias de import) o como atributo; cualquier otra referencia —variable, parámetro por defecto, `functools.partial`, `getattr`, `type()`, tablas de fábricas— se le escapa (p. ej. `RVE = RequestValidationError`); ese código haría publicar el `ctx` | Exige rodear la regla a propósito y la regla queda documentada; seguir el flujo de datos con `ast` no es proporcionado, y publicar sólo límites numéricos no cerraría `expected` ni `pattern` | Endurecer el traductor (sólo `ctx` numéricos) | — |
+| E7 · AA-1: `ValidationFailed` es la única entrada `validation-error`; todo `DomainError` de 422 hereda de ella sin slug propio (`PasswordPolicyViolation` incluida) y el traductor la usa para los 422 de pydantic; un test exige «422 ⇔ subclase de `ValidationFailed`» | RF-005 promete un único `type` para todo 422 y el cliente lo reconoce por él; sin la clase genérica, un 422 nuevo (p. ej. `InvalidCursor` de SPEC-0003) reutilizaba una clase de contraseñas o creaba un `type` propio sin que nada lo detectara | Reutilizar `PasswordPolicyViolation`; documentar la regla sin test | — |
+| E7 · AA-3: el `detail` de cada entrada de `errors` de un error de dominio es texto fijo (constantes del esquema, como la longitud mínima, sí), nunca interpolado con datos del cliente | El traductor publica `errors` tal cual: la garantía de RF-011 depende aquí de quien escribe el error, y debe quedar escrita | Derivar el texto de `FIELD_ERROR_MESSAGES` (más maquinaria para un único caso actual) | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).

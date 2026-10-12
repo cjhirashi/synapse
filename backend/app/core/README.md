@@ -25,10 +25,13 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
   `from_exception_data`, también con alias o heredando): un error construido a mano con un
   tipo conocido haría que el traductor publicara su `ctx`. Capturarlos (`except`) sí se
-  puede. Lo comprueba `test_problem_catalog.py` (análisis estático: una clase pasada por una
-  variable o `functools.partial` se le escapa; residual aceptado, enmienda 6). Las
+  puede. Lo comprueba `test_problem_catalog.py` por análisis estático: sólo reconoce llamadas
+  y herencias por nombre, alias o atributo; cualquier otra referencia (variable, parámetro,
+  `functools.partial`, `getattr`, `type()`, tablas) se le escapa (residual aceptado). Las
   validaciones entre campos usan `field_error` en un `model_validator`; las que cruzan path,
-  query y cuerpo, un `DomainError` 422 con `errors=`.
+  query y cuerpo, una subclase de `ValidationFailed` con `errors=` de texto fijo.
+- `ValidationFailed` es la única entrada `validation-error`: todo 422 de dominio hereda de
+  ella sin `slug` propio y el traductor la usa para los 422 de pydantic (RF-005).
 
 ## Subdirectorios
 

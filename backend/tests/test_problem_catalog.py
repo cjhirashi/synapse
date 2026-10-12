@@ -22,6 +22,7 @@ INITIAL_CATALOG = {
     "PasswordChangeRequired": ("password-change-required", 403),
     "WrongCurrentPassword": ("wrong-current-password", 400),
     "EmailTaken": ("email-taken", 409),
+    "ValidationFailed": ("validation-error", 422),
     "PasswordPolicyViolation": ("validation-error", 422),
     "StorageUnavailable": ("storage-unavailable", 503),
 }
@@ -75,6 +76,22 @@ def test_provisioning_error_is_a_storage_unavailable():
     assert issubclass(errors.ProvisioningError, errors.StorageUnavailable)
 
 
+def test_every_422_is_a_validation_failed():
+    # RF-005: todo 422 lleva `type` `validation-error`. Un 422 de dominio hereda de
+    # `ValidationFailed` sin slug propio; uno con slug propio rompería el contrato con el
+    # cliente, que reconoce el 422 por ese `type` (enmienda 7, AA-1).
+    for cls in _all_subclasses(DomainError):
+        is_validation = issubclass(cls, errors.ValidationFailed)
+        assert (cls.status == 422) == is_validation, cls.__name__
+        if is_validation:
+            assert cls.type_uri() == errors.ValidationFailed.type_uri(), cls.__name__
+
+
+def test_password_policy_violation_is_a_validation_failed():
+    assert issubclass(errors.PasswordPolicyViolation, errors.ValidationFailed)
+    assert "slug" not in vars(errors.PasswordPolicyViolation)
+
+
 def test_internal_message_is_separate_from_public_detail():
     exc = errors.StorageUnavailable("CouchDB inaccesible: connection refused")
     assert str(exc) == "CouchDB inaccesible: connection refused"
@@ -106,7 +123,9 @@ def test_only_the_problem_translator_imports_http_exception():
 # conocido haría que el traductor rellenara su plantilla con un `ctx` del validador, que
 # puede llevar valores del cliente. La regla mira la construcción (llamadas y subclases,
 # con alias de import resueltos), no el nombre: capturar el error (`except`) es legítimo
-# (enmienda 5). `pydantic_core` entero queda reservado a los dueños.
+# (enmienda 5). `pydantic_core` entero queda reservado a los dueños. Residual aceptado
+# (enmiendas 6 y 7): una referencia a la clase que no sea una llamada o una base escrita por
+# nombre, alias o atributo (variable, parámetro, `partial`, `getattr`, `type()`) se escapa.
 PYDANTIC_ERROR_OWNERS = {"core/errors.py", "core/problems.py"}
 PYDANTIC_ERROR_MODULE = "pydantic_core"
 VALIDATION_ERROR_BUILDERS = {

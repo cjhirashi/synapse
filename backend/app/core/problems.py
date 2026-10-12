@@ -16,7 +16,7 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticKnownError
 from starlette.exceptions import HTTPException
 
-from app.core.errors import FIELD_ERROR_MESSAGES, DomainError, PasswordPolicyViolation
+from app.core.errors import FIELD_ERROR_MESSAGES, DomainError, ValidationFailed
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ PROBLEM_MEDIA_TYPE = "application/problem+json"
 GENERIC_TYPE = "about:blank"
 UNEXPECTED_DETAIL = "An unexpected error occurred."
 # Los 422 de pydantic comparten la entrada `validation-error` del catálogo (RF-005).
-VALIDATION_ERROR = PasswordPolicyViolation
+VALIDATION_ERROR = ValidationFailed
 VALIDATION_DETAIL = VALIDATION_ERROR.detail
 # Texto de una entrada de `errors` cuando su mensaje podría llevar el valor recibido (RF-011).
 GENERIC_FIELD_DETAIL = "Invalid value."

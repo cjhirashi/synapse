@@ -63,7 +63,8 @@ class DomainError(Exception):
 | `PasswordChangeRequired` | `password-change-required` | 403 | `require_password_changed` |
 | `WrongCurrentPassword` | `wrong-current-password` | 400 | `AuthService.change_password` |
 | `EmailTaken` | `email-taken` | 409 | `AuthService.create_guest_user` |
-| `PasswordPolicyViolation` | `validation-error` | 422 | `AuthService.change_password` (con `errors=[{pointer: "#/new_password", detail}]`) |
+| `ValidationFailed` | `validation-error` | 422 | traductor (422 de pydantic); base de todo 422 de dominio (enmienda 7) |
+| `PasswordPolicyViolation` (subclase de `ValidationFailed`) | `validation-error` | 422 | `AuthService.change_password` (con `errors=[{pointer: "#/new_password", detail}]`) |
 | `StorageUnavailable` | `storage-unavailable` | 503 | adaptadores de CouchDB |
 
 - `ProvisioningError` pasa a ser subclase de `StorageUnavailable` (mismo `type`, mismo
@@ -119,9 +120,12 @@ class DomainError(Exception):
   o `from_exception_data` ni hereda de ellos (alias de import resueltos; enmienda 6, Z-3);
   capturarlos sí está permitido. Una validación entre campos del cuerpo lanza `field_error`
   desde un `model_validator` (sale en la raíz, `pointer` `#`); la que cruza path, query y
-  cuerpo lanza un error de dominio 422 con `errors=` (enmienda 6, Z-2). Una clase pasada
-  por una variable o `functools.partial` escapa al escaneo: residual aceptado (Z-1). Ningún
-  código del catálogo es un tipo conocido de pydantic (enmienda 4, X-3).
+  cuerpo lanza una subclase de `ValidationFailed` con `errors=` (enmiendas 6 y 7), cuyos
+  `detail` son texto fijo, nunca datos del cliente (AA-3). Residual aceptado (Z-1, AA-2):
+  el análisis estático sólo reconoce llamadas y herencias escritas con el nombre de la
+  clase (o su alias de import) o como atributo; cualquier otra referencia —variable,
+  parámetro por defecto, `functools.partial`, `getattr`, `type()`, tablas de fábricas— se
+  le escapa. Ningún código del catálogo es un tipo conocido de pydantic (enmienda 4, X-3).
   El `detail` raíz del 422 es fijo
   ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las

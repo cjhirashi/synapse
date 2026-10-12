@@ -140,13 +140,20 @@ El traductor publica el texto del catálogo por el código, nunca el mensaje lan
 `core/errors.py` y `core/problems.py` pueden importar `pydantic_core` o construir errores de
 validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
 `from_exception_data`, también con alias o heredando). Capturarlos (`except`) sí se puede.
-Lo comprueba `tests/test_problem_catalog.py`, por análisis estático: no sigue una clase
-pasada por una variable o `functools.partial` (residual aceptado), así que no lo intentes.
+Lo comprueba `tests/test_problem_catalog.py` por análisis estático, que sólo reconoce
+llamadas y herencias escritas con el nombre de la clase (o su alias) o como atributo;
+cualquier otra referencia (variable, parámetro, `functools.partial`, `getattr`, `type()`,
+tablas) se le escapa. Es un residual aceptado, no una vía: no lo rodees.
 En lugar de un `RequestValidationError` a mano:
 - **Entre campos del cuerpo:** `field_error` o `ValueError` desde un `model_validator`; el
   fallo sale en la raíz (`"pointer": "#"`).
-- **Entre fuentes** (path, query y cuerpo): un error de dominio 422 con `errors=` y la
-  ubicación de cada fallo, como `PasswordPolicyViolation` en `services/auth_service.py`.
+- **Entre fuentes** (path, query y cuerpo): una subclase de `ValidationFailed` (sin `slug`
+  propio) con `errors=` y la ubicación de cada fallo, como `PasswordPolicyViolation` en
+  `services/auth_service.py`. Cada `detail` es texto fijo, nunca interpolado con datos del
+  cliente: el traductor lo publica tal cual.
+
+Todo 422 de dominio hereda de `ValidationFailed` y comparte su `type` `validation-error`
+(RF-005); un test lo exige.
 
 ## Contratos OpenAPI por feature
 
