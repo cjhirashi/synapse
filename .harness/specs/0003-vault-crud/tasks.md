@@ -36,12 +36,12 @@ actualizado: 2026-10-12
 - [x] T-009 — `services/vault_service.py`: `encode_cursor`/`decode_cursor` (cubre RF-002, RF-003) [zona: servicio]
 
 ### C · Puerto y adaptador (CouchDB real)
-- [ ] T-010 — `core/ports/vault_port.py`: `VaultPort` (ABC) con `get`, `put`, `delete`, `list_page` documentados (cubre RF-001, RF-004) [zona: puerto]
-- [ ] T-011 — test (rojo) `test_vault_repository.py`: `put` crea y devuelve `_rev`; `put` con `_rev` viejo o sobre un doc existente sin `_rev` → `RevisionConflict`; `get` inexistente → `None`; `delete` con `_rev` (cubre RF-004, RF-010) [zona: test]
-- [ ] T-012 — test (rojo) `test_vault_repository.py`: `list_page` — sólo `type: "vault"`, filtro `deleted`, orden `created_at` desc y empate por `_id` desc, `after` sin repetidos ni saltos con inserciones a mitad; `_design/vaults` idempotente (cubre RF-001, RF-002, RF-012, RF-024) [zona: test]
-- [ ] T-013 — test (rojo) `test_vault_repository.py`: CouchDB inaccesible (puerto cerrado) y 5xx → `StorageUnavailable` en cada método (cubre RF-017) [zona: test]
-- [ ] T-014 — `adapters/vault_repository.py`: `get`/`put`/`delete` con `httpx` (201/200 ok, 409 → `RevisionConflict`, 404 → `None`, red/5xx → `StorageUnavailable`) (cubre RF-004, RF-010, RF-017) [zona: adaptador]
-- [ ] T-015 — `adapters/vault_repository.py`: `_design/vaults` (vista `by_created`, `PUT` idempotente memorizado por base) y `list_page` con `startkey`/`startkey_docid`/`skip=1` (cubre RF-001, RF-002, RF-012, RF-024) [zona: adaptador]
+- [x] T-010 — `core/ports/vault_port.py`: `VaultPort` (ABC) con `get`, `put`, `delete`, `list_page` documentados (cubre RF-001, RF-004) [zona: puerto]
+- [x] T-011 — test (rojo) `test_vault_repository.py`: `put` crea y devuelve `_rev`; `put` con `_rev` viejo o sobre un doc existente sin `_rev` → `RevisionConflict`; `get` inexistente → `None`; `delete` con `_rev` (cubre RF-004, RF-010) [zona: test]
+- [x] T-012 — test (rojo) `test_vault_repository.py`: `list_page` — sólo `type: "vault"`, filtro `deleted`, orden `created_at` desc y empate por `_id` desc, `after` sin repetidos ni saltos con inserciones a mitad; `_design/vaults` idempotente (cubre RF-001, RF-002, RF-012, RF-024) [zona: test]
+- [x] T-013 — test (rojo) `test_vault_repository.py`: CouchDB inaccesible (puerto cerrado) y 5xx → `StorageUnavailable` en cada método (cubre RF-017) [zona: test]
+- [x] T-014 — `adapters/vault_repository.py`: `get`/`put`/`delete` con `httpx` (201/200 ok, 409 → `RevisionConflict`, 404 → `None`, red/5xx → `StorageUnavailable`) (cubre RF-004, RF-010, RF-017) [zona: adaptador]
+- [x] T-015 — `adapters/vault_repository.py`: `_design/vaults` (vista `by_created`, `PUT` idempotente memorizado por base) y `list_page` con `startkey`/`startkey_docid` y descarte condicional (plan §11) (cubre RF-001, RF-002, RF-012, RF-024) [zona: adaptador]
 
 ### D · Servicio (doble en memoria de `VaultPort`)
 - [ ] T-016 — doble en memoria `InMemoryVaultPort` en `test_vault_service.py`: `_rev` incremental, `RevisionConflict`, fallos inyectables por operación y escritura intercalada entre lectura y `put` (cubre RF-010, RF-017, RF-021) [zona: test]

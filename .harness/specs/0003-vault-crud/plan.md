@@ -140,7 +140,7 @@ decodifica o su `d` no coincide con el `deleted` pedido → `InvalidCursor` (422
 - **Índice** `_design/vaults`, vista `by_created`:
   `emit([doc.deleted_at ? 1 : 0, doc.created_at], null)` para `type == "vault"`.
   Consulta `descending=true`, `startkey=[d, {}]`, `endkey=[d]`, `include_docs=true`,
-  `limit`; con cursor, `startkey=[d, c]`, `startkey_docid="vault:{i}"`, `skip=1`.
+  `limit`; con cursor, `startkey=[d, c]`, `startkey_docid="vault:{i}"` (descarte condicional de la primera fila, ver §11).
   CouchDB ordena por clave y luego por `_id`, lo que da exactamente RF-024 y una página
   siguiente sin repetidos ni saltos aunque se creen bóvedas mientras tanto (RNF-001).
 - **Creación del índice:** el adaptador hace `PUT _design/vaults` idempotente (409 =
@@ -299,3 +299,13 @@ decisión del spec cambia:
 - Re-anclaje al cierre (§7): 0003 modifica archivos de `covers` de 0002 (`core/schemas.py`,
   `App.tsx`, `layout/**`, `api/auth.ts`, `export_openapi.py`, `test_contract.py`, `conftest.py`); al cerrar
   se mueve el ancla de 0002 con una nota.
+
+## 11. Ajustes de la Fase 4 (implementación)
+- Paginación (§3, T-015): en lugar de `skip=1` fijo, el adaptador pide `limit + 1` desde
+  `startkey=[d, c]`/`startkey_docid` y descarta la primera fila **sólo si es** la bóveda del
+  cursor. Con `skip=1`, si esa bóveda salió de la lista entre páginas (papelera,
+  restaurada, borrada), la primera fila ya es la siguiente y se saltaba: un salto que
+  RF-012 prohíbe. Mismo orden, misma consulta y mismo cursor; ninguna decisión del spec
+  cambia. Lo cubre `test_rf_012_after_key_still_works_when_that_vault_left_the_list`.
+- `VaultRepository` acepta un `transport` de httpx sólo para simular 5xx en tests; en
+  producción no se pasa.
