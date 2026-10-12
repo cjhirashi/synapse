@@ -82,6 +82,14 @@ actualizado: 2026-10-11
 - [x] T-049 — docs: `backend/README.md` y `core/README.md` (log del mensaje interno, regla de `PydanticCustomError`, 404/405 fuera del contrato por operación); re-export de contratos si cambian (cubre RF-009, RF-011) [doc]
 - [x] T-050 — cierre: tabla de cobertura con su estado, SPEC-0004 `implemented` con `anchor_commit` nuevo, state.md e history.md (cubre RF-001…RF-014) [doc]
 
+### J · Correcciones de la re-verificación adversarial (enmienda 2)
+- [x] T-051 — enmienda 2 de SPEC-0004 (§5, §6: E2 · W-1, W-2, W-4; redacción del 500 de fallback) y PLAN-0004 §2/§9 (cubre RF-011, RF-013) [doc]
+- [x] T-052 — test (rojo) `test_problem_validation.py`: el límite de longitud de una lista conserva su texto, sin los elementos (W-2) (cubre RF-011) [zona: test]
+- [x] T-053 — `core/problems.py`: `field_type` y `actual_length` en `SAFE_CTX_KEYS` (cubre RF-011) [zona: ruta]
+- [x] T-054 — `test_problem_handlers.py`: el test del fallback se nombra por lo que comprueba (campos fijos + `instance`) (W-3) (cubre RF-013) [zona: test]
+- [x] T-055 — docs: `backend/README.md` (plantilla literal, límites de colecciones) y `core/README.md` (cubre RF-011) [doc]
+- [x] T-056 — cierre: tabla de cobertura, W-4 al backlog de state.md, `anchor_commit` nuevo, history.md (cubre RF-011, RF-013) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` se rellena a mano con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -95,20 +103,21 @@ actualizado: 2026-10-11
 | RF-008 | T-005, T-006, T-021–T-023 | test_problem_catalog | Pass |
 | RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031, T-038, T-039, T-049 | test_contract, test_problem_contract, test_problem_auth | Pass |
 | RF-010 | T-026–T-029 | problems.test.ts, auth.test.ts, ChangePasswordPage.test.tsx | Pass |
-| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049 | test_problem_validation, test_problem_auth | Pass |
+| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049, T-051–T-053, T-055 | test_problem_validation, test_problem_auth | Pass |
 | RF-012 | T-009, T-011, T-040, T-041 | test_problem_handlers | Pass |
-| RF-013 | T-010, T-011, T-038, T-043, T-044, T-047, T-048 | test_problem_handlers | Pass |
+| RF-013 | T-010, T-011, T-038, T-043, T-044, T-047, T-048, T-051, T-054 | test_problem_handlers | Pass |
 | RF-014 | T-004, T-006 | test_problem_catalog | Pass |
 | doc: contrato-0004 | T-030 | — | hecho |
 | doc: contrato-0002 | T-031 | — | hecho |
 | doc: spec-0002 | T-001, T-036 | — | hecho |
-| doc: backend-readme | T-032, T-049 | — | hecho |
-| doc: core-readme | T-033, T-049 | — | hecho |
+| doc: backend-readme | T-032, T-049, T-055 | — | hecho |
+| doc: core-readme | T-033, T-049, T-055 | — | hecho |
 | doc: frontend-readme | T-034 | — | hecho |
 | doc: agents-md | T-035 | — | hecho |
-| doc: state | T-037, T-050 | — | hecho |
+| doc: state | T-037, T-050, T-056 | — | hecho |
 | doc: spec-0004-enmienda-1 | T-038 | — | hecho |
-| doc: history | T-050 | — | hecho |
+| doc: spec-0004-enmienda-2 | T-051 | — | hecho |
+| doc: history | T-050, T-056 | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

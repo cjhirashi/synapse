@@ -5,7 +5,7 @@ feature: 0004-api-problem-details
 estado: approved
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-actualizado: 2026-10-11
+actualizado: 2026-10-12
 ---
 
 # PLAN-0004 · Errores de la API con Problem Details (RFC 9457)
@@ -102,6 +102,7 @@ class DomainError(Exception):
   construye desde el `type` del error, nunca copiando `msg`, `input`, `ctx` ni `url`:
   - tipo conocido por pydantic → su plantilla (`PydanticKnownError(type, ctx).message()`)
     rellenada sólo con claves de restricción del esquema (`SAFE_CTX_KEYS`: límites,
+    `field_type` y `actual_length` de colecciones —un recuento, no el contenido—,
     `expected`, …);
   - tipo propio (`PydanticCustomError`) sin `ctx` → su plantilla, que es una constante del
     código;
@@ -109,7 +110,9 @@ class DomainError(Exception):
     la excepción; plantillas que exigen `ctx.error`, como UUID o JSON inválido; tipos
     propios con `ctx`) → `"Invalid value."`.
   Los validadores que quieran un texto concreto lanzan `PydanticCustomError` con plantilla
-  fija (p. ej. el email de `CreateUserRequest`). El `detail` raíz del 422 es fijo
+  fija (p. ej. el email de `CreateUserRequest`). La plantilla es un literal del código,
+  nunca un f-string ni nada que lleve el valor (enmienda 2, W-1): el traductor no puede
+  distinguirla de una constante. El `detail` raíz del 422 es fijo
   ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las
   clases que puede lanzar (código → descripción = `title`, contenido
@@ -231,7 +234,7 @@ Jerarquía `DomainError`; sin `HTTPException` en `services/`, `core/dependencies
 ### Implementación de RF-010
 `api/problems.ts`, `request()` en `auth.ts`, `ChangePasswordPage` por `type`. Tests vitest de `problems.test.ts`, `auth.test.ts` y pantallas.
 ### Implementación de RF-011
-`detail` de cada entrada desde plantillas con `SAFE_CTX_KEYS` (§2); `detail` raíz fijo. Tests con contraseñas inválidas en `login` y `change-password`, `ValueError` y UUID con el valor dentro del mensaje de pydantic.
+`detail` de cada entrada desde plantillas con `SAFE_CTX_KEYS` (§2); `detail` raíz fijo. Tests con contraseñas inválidas en `login` y `change-password`, `ValueError` y UUID con el valor dentro del mensaje de pydantic; límites de cadenas, números y colecciones conservan su texto (enmienda 2).
 ### Implementación de RF-012
 `logger.error(..., exc_info=exc)` en el manejador de `Exception`; el de `DomainError` registra el mensaje interno. Tests con `caplog`: traza con método y ruta; mensaje interno y causa de un 503.
 ### Implementación de RF-013

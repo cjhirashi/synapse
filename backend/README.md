@@ -95,8 +95,8 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
   (JSON Pointer al cuerpo; `#` si el JSON es inválido o falta), `parameter` (query/path) o
   `header`. Nunca se repite el valor enviado por el cliente, ni siquiera dentro del `detail`
   de una entrada: los mensajes de pydantic se regeneran sólo con los límites del esquema
-  (p. ej. `String should have at most 5 characters`) y, si dependen de otra cosa, valen
-  `Invalid value.`.
+  (p. ej. `String should have at most 5 characters`; en colecciones también el número de
+  elementos, nunca los elementos) y, si dependen de otra cosa, valen `Invalid value.`.
 - Un error no controlado es un 500 genérico; la traza va al log (`app.core.problems`), nunca
   a la respuesta. Si el propio traductor falla, responde un 500 de campos fijos más `instance`.
 - Las operaciones declaran en el contrato los códigos de sus errores de dominio, el 422 y el
@@ -131,7 +131,9 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 **Mensajes de validadores propios:** un validador de pydantic que quiera un texto concreto en
 `errors[].detail` lanza `PydanticCustomError("<tipo>", "<plantilla fija>")` sin `ctx` (ver el
 del email en `core/schemas.py`). Un `ValueError` o una plantilla con `ctx` se publican como
-`Invalid value.`, porque su texto puede contener el valor recibido.
+`Invalid value.`, porque su texto puede contener el valor recibido. La plantilla se publica
+tal cual, así que **debe ser un literal**: nunca un f-string, un `.format()` ni nada que lleve
+el valor (el traductor no puede distinguirla de una constante; SPEC-0004 enmienda 2).
 
 ## Contratos OpenAPI por feature
 

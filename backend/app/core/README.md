@@ -13,7 +13,9 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   registra los manejadores (dominio, validación de pydantic, errores del framework y no
   controlados, con un 500 de campos fijos más `instance` si el propio traductor falla). Los
   `detail` de cada entrada de un 422 se regeneran desde las plantillas de pydantic con sólo
-  las claves seguras de `ctx` (`SAFE_CTX_KEYS`); si no se puede, `Invalid value.`.
+  las claves seguras de `ctx` (`SAFE_CTX_KEYS`: límites del esquema y recuentos de
+  colecciones); si no se puede, `Invalid value.`. Las plantillas de `PydanticCustomError`
+  se publican tal cual: deben ser literales.
   `problem_responses` e
   `install_problem_openapi` publican los errores en el contrato. Es el único módulo de
   `app/` que importa `HTTPException`.

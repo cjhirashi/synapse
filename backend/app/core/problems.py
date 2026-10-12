@@ -29,11 +29,13 @@ VALIDATION_DETAIL = VALIDATION_ERROR.detail
 # Texto de una entrada de `errors` cuando su mensaje podría llevar el valor recibido (RF-011).
 GENERIC_FIELD_DETAIL = "Invalid value."
 # Claves de `ctx` de pydantic que sólo llevan restricciones del esquema (límites, valores
-# permitidos), nunca datos del cliente; las demás (`error`, `input`, …) no se usan.
+# permitidos) o un recuento (`actual_length`), nunca datos del cliente; las demás
+# (`error`, `input`, …) no se usan.
 SAFE_CTX_KEYS = frozenset({
     "gt", "ge", "lt", "le", "multiple_of",
     "min_length", "max_length", "max_digits", "decimal_places", "whole_digits",
     "expected", "expected_schemes", "pattern",
+    "field_type", "actual_length",  # límites de colecciones (`too_short`/`too_long`)
 })
 
 

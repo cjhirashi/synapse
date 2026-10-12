@@ -17,7 +17,8 @@ aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-actualizado: 2026-10-11
+  enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+actualizado: 2026-10-12
 ---
 
 # SPEC-0004 · Errores de la API con Problem Details (RFC 9457)
@@ -27,6 +28,11 @@ actualizado: 2026-10-11
 >
 > **Enmienda 1 2026-10-11** (verificación adversarial, V-3/V-5/V-6/V-7): RF-011, RF-013 y
 > RF-009 precisados; nuevo caso límite de códigos sin frase estándar. Aprobada por el usuario.
+>
+> **Enmienda 2 2026-10-12** (re-verificación adversarial, W-1/W-2/W-3): alcance de la
+> garantía de RF-011 precisado (las plantillas propias son código del proyecto y deben ser
+> literales); los límites de colecciones conservan su texto; redacción del 500 de fallback.
+> Aprobada por el usuario.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -152,7 +158,7 @@ en su propio spec los tipos que añade.
 ## 5. Casos límite y manejo de errores
 - Error lanzado en una dependencia antes del endpoint (auth): mismo formato (RF-001).
 - Respuestas 2xx/204 y cookies que se fijan en ellas: sin cambios.
-- Error en el propio manejador al construir el Problem: 500 mínimo fijo (RF-013).
+- Error en el propio manejador al construir el Problem: 500 de campos fijos más `instance` (RF-013).
 - Valores enviados por el cliente dentro de los mensajes de validación (p. ej. una
   contraseña inválida): nunca se repiten (RF-011); un test lo comprueba con una contraseña.
 - Validación de query, ruta o cabecera (`?limit=500`, `If-Match` mal formado): 422 con
@@ -162,6 +168,11 @@ en su propio spec los tipos que añade.
   UUID mal formado): la entrada sale con un texto genérico, nunca con el valor (RF-011).
 - `HTTPException` con un código sin frase estándar (p. ej. 499): conserva su código; el
   `title` es la frase de su clase (400 o 500).
+- Validador propio que construye la plantilla de su `PydanticCustomError` con el valor
+  recibido (p. ej. con un f-string): el traductor no puede distinguirla de una constante;
+  por eso la plantilla DEBE ser un literal del código (enmienda 2, W-1).
+- Límite de longitud de una colección (`list` con `max_length`): la entrada conserva el
+  texto con el límite y el número de elementos, nunca los elementos (RF-011).
 
 ## 6. Registro de decisiones y descartes
 | Decisión | Justificación | Alternativa descartada | ADR |
@@ -177,10 +188,13 @@ en su propio spec los tipos que añade.
 | Q7 · Ubicación por `pointer` / `parameter` / `header` | JSON Pointer sólo direcciona el cuerpo; sigue el borrador de extensiones de RFC 9457 | `pointer` con prefijo inventado (`#/query/limit`), no es un JSON Pointer válido | — |
 | Q8 · Nunca repetir el valor enviado ni `input`/`ctx` de pydantic | Evita fugas (contraseñas) por defecto, sin depender de marcar campos | Ocultar sólo campos marcados como sensibles (frágil) | — |
 | Q9 · Catálogo en el código (`core/errors.py`); spec con la tabla inicial; test de unicidad y forma | Una sola fuente por hecho (Art. 12) | YAML compartido por código y docs (carga sin beneficio con un cliente) | — |
-| Q10 · 500 con traza al log; 500 mínimo fijo si falla el manejador; sin ids de correlación | Diagnosticable sin filtrar internos; correlación espera a Art. 7 | No registrar nada en esta feature | — |
-| E1 · V-3: los `detail` de validación salen de plantillas fijas y sólo admiten restricciones del esquema; si no, texto genérico | La garantía de RF-011 vive en el traductor, no en la disciplina de cada validador | Rebajar la promesa de RF-011 | — |
+| Q10 · 500 con traza al log; 500 de campos fijos si falla el manejador (más `instance`, E1); sin ids de correlación | Diagnosticable sin filtrar internos; correlación espera a Art. 7 | No registrar nada en esta feature | — |
+| E1 · V-3: los `detail` de validación salen de plantillas fijas y sólo admiten restricciones del esquema; si no, texto genérico | La garantía de RF-011 vive en el traductor, no en la disciplina de cada validador (precisada en E2 · W-1) | Rebajar la promesa de RF-011 | — |
 | E1 · V-6: el 500 de fallback incluye `instance` | Cumple el esquema `Problem` publicado (`instance` obligatorio) | Hacer `instance` opcional en el contrato | — |
 | E1 · V-7: 404/405 de enrutado fuera de las respuestas por operación | No pertenecen a una operación; declararlos en todas sólo añade ruido | Declararlos globalmente en cada operación | — |
+| E2 · W-1: el traductor garantiza RF-011 para todo lo que genera pydantic, `ValueError`/`assert` y tipos propios con `ctx`; la plantilla de un `PydanticCustomError` es código del proyecto y debe ser un literal (regla documentada en `backend/README.md`) | El traductor no distingue una plantilla literal de una construida con el valor; la regla es revisable en código | Lista blanca de tipos propios publicables | — |
+| E2 · W-2: `field_type` y `actual_length` son claves seguras de `ctx` | Salen del esquema y de un recuento, nunca del contenido; los límites de colecciones conservan su texto | Documentar la excepción y dejar `Invalid value.` | — |
+| E2 · W-4: «emitido ⊆ declarado» para toda la suite queda en el backlog | Hoy todo está declarado y `test_problem_auth.py` cubre los escenarios de error de auth | Hook de respuesta en `conftest.py` ya | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).

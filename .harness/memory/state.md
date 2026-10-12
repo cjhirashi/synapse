@@ -1,6 +1,6 @@
 ---
-ultima_actualizacion: 2026-10-11
-fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud con plan aprobado; 0004-api-problem-details implementada (Fase 4 + correcciones de la verificación adversarial, pendiente de re-verificación)
+ultima_actualizacion: 2026-10-12
+fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud con plan aprobado; 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-3 corregidos con enmienda 2), pendiente de que el usuario la pase a `verified`
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -38,7 +38,7 @@ sprint_actual: 2
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
 | 0003-vault-crud | spec y plan `approved` (GATES 1 y 2) | RF-001…RF-028 + RNF-001 · falta Fase 3 (Tasks) · Fase 4 espera a SPEC-0004 · T-002 de `TAREAS.md` |
-| 0004-api-problem-details | `implemented` · T-001…T-050 hechas · verificación adversarial APROBABLE CON RESIDUALES (V-1…V-8) corregida con enmienda 1 · pendiente de re-verificación (Fase 5, la decide el usuario) | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 158 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
+| 0004-api-problem-details | `implemented` · T-001…T-056 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-3 corregidos con enmienda 2 · W-4 al backlog · paso a `verified` pendiente del usuario | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 159 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
 
 ## Backlog / deuda conocida
 
@@ -51,6 +51,7 @@ sprint_actual: 2
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
 5. `.harness/gate/services.txt` vacío (bloque por perfil inactivo); `spectral` no instalado (lint de contrato omitido).
 6. `datetime.utcnow()` deprecado en `auth_service`/`auth_repository` (avisos, no fallos).
+7. **SPEC-0004 W-4:** «emitido ⊆ declarado» sólo se comprueba en `test_problem_auth.py`; llevarlo a toda la suite con un hook de respuesta en `conftest.py` (hoy todo está declarado).
 
 ## Hazards conocidos
 
@@ -61,5 +62,5 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Re-verificación (Fase 5) de **0004-api-problem-details** tras corregir V-1…V-8, a cargo del usuario. Después,
+Paso de **0004-api-problem-details** a `verified` (lo decide el usuario, no el agente). Después,
 Fase 3 (Tasks) de 0003 y su Fase 4 sobre el formato de errores de SPEC-0004. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.

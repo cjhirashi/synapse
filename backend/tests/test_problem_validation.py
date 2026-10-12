@@ -19,7 +19,7 @@ LEAKED_VALUE = "SuperSecretValue123"
 
 class Item(BaseModel):
     name: str = Field(max_length=5)
-    tags: list[int] = []
+    tags: list[int] = Field(default=[], max_length=2)
     scores: dict[str, int] = {}
 
 
@@ -174,3 +174,13 @@ def test_schema_limits_are_kept_in_the_detail(client):
     assert errors == [{"parameter": "limit", "detail": "Input should be less than or equal to 200"}]
     errors = _errors(client.post("/items", json={"name": "toolong"}))
     assert errors == [{"pointer": "#/name", "detail": "String should have at most 5 characters"}]
+
+
+def test_collection_limits_are_kept_without_the_items(client):
+    # `too_long` necesita `field_type` y `actual_length`: salen del esquema y de un recuento,
+    # nunca del contenido, así que el texto se conserva sin los elementos (enmienda 2, W-2).
+    response = client.post("/items", json={"name": "ok", "tags": [9001, 9002, 9003]})
+    assert _errors(response) == [
+        {"pointer": "#/tags", "detail": "List should have at most 2 items after validation, not 3"}
+    ]
+    assert "9001" not in response.text

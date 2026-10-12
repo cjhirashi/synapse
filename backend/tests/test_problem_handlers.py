@@ -156,7 +156,7 @@ def test_unhandled_error_is_logged_with_traceback(client, caplog):
 
 # --- RF-013: fallo del propio traductor ---
 
-def test_translator_failure_returns_constant_minimal_500(client, monkeypatch, caplog):
+def test_translator_failure_returns_fixed_500_with_instance(client, monkeypatch, caplog):
     def broken(*args, **kwargs):
         raise ValueError("translator bug")
 
