@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -12,6 +12,8 @@ function renderAt(path = "/") {
         <Route element={<AppLayout />}>
           <Route path="/" element={<div>inicio privado</div>} />
           <Route path="/settings/password" element={<div>cambio de clave</div>} />
+          <Route path="/vaults" element={<div>sección bóvedas</div>} />
+          <Route path="/vaults/trash" element={<div>sección papelera</div>} />
         </Route>
         <Route path="/login" element={<div>pantalla login</div>} />
       </Routes>
@@ -43,4 +45,13 @@ test("RF-023: si el logout falla, avisa y no finge haber cerrado la sesión", as
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cerrar la sesión");
   expect(screen.getByText("inicio privado")).toBeInTheDocument();
+});
+
+test("RF-018 / RF-028: los enlaces «Bóvedas» y «Papelera» llevan a sus secciones", async () => {
+  const user = renderAt();
+  const nav = screen.getByRole("navigation", { name: "Principal" });
+  await user.click(within(nav).getByRole("link", { name: "Papelera" }));
+  expect(screen.getByText("sección papelera")).toBeInTheDocument();
+  await user.click(within(nav).getByRole("link", { name: "Bóvedas" }));
+  expect(screen.getByText("sección bóvedas")).toBeInTheDocument();
 });

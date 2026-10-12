@@ -37,7 +37,11 @@ export function refreshSession(): Promise<boolean> {
   return refreshing;
 }
 
-async function request(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
+/**
+ * Petición al backend con cookies de sesión: renueva la sesión ante un 401 y convierte
+ * toda respuesta fallida en `ApiError`. La reutilizan los demás clientes (`vaults.ts`).
+ */
+export async function request(path: string, init: RequestInit = {}, retry = true): Promise<Response> {
   const res = await fetch(path, {
     credentials: "include",
     headers: { "Content-Type": "application/json" },

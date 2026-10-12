@@ -69,16 +69,16 @@ actualizado: 2026-10-12
 - [x] T-034 — `test_vaults_perf.py`: 1 000 bóvedas, 50 lecturas de la primera página (`limit=50`), p95 < 300 ms contra CouchDB real (cubre RNF-001) [zona: test]
 
 ### G · Frontend
-- [ ] T-035 — test (rojo) `api/vaults.test.ts`: `listVaults({deleted, cursor})`, `createVault`, `updateVault`/`deleteVault`/`restoreVault` con `If-Match`; devuelven la bóveda con su `etag`; errores como `ApiError` con `type` (cubre RF-018, RF-019, RF-028) [zona: test]
-- [ ] T-036 — `api/auth.ts`: exportar `request` (sin otros cambios); `api/vaults.ts` con los `type` de bóvedas (cubre RF-018, RF-019, RF-028) [zona: frontend]
-- [ ] T-037 — test (rojo) `vaults/VaultListPage.test.tsx`: muestra nombre, descripción y tags; "Cargar más" pide con `cursor` y se oculta sin `next_cursor`; borrar pide confirmación y cancelar no envía `DELETE` (cubre RF-018, RF-020) [zona: test]
-- [ ] T-038 — `vaults/VaultListPage.tsx` (cubre RF-018, RF-020) [zona: frontend]
-- [ ] T-039 — test (rojo) `vaults/VaultForm.test.tsx`: crear y editar; 422 junto a su campo (por `pointer`); 409 → aviso de nombre repetido; 412 → aviso de bóveda cambiada y recarga (cubre RF-019) [zona: test]
-- [ ] T-040 — `vaults/VaultForm.tsx` (cubre RF-019) [zona: frontend]
-- [ ] T-041 — test (rojo) `vaults/TrashPage.test.tsx`: borradas con `deleted_at`; "Restaurar" llama con su `etag`; 409 → aviso de nombre ocupado (cubre RF-028) [zona: test]
-- [ ] T-042 — `vaults/TrashPage.tsx` (cubre RF-028) [zona: frontend]
-- [ ] T-043 — test (rojo) `App.test.tsx` y `layout/AppLayout.test.tsx`: rutas `/vaults`, `/vaults/new`, `/vaults/:id/edit`, `/vaults/trash`; `/` redirige a `/vaults`; enlaces "Bóvedas" y "Papelera" (cubre RF-018, RF-028) [zona: test]
-- [ ] T-044 — `App.tsx` y `layout/AppLayout.tsx` (cubre RF-018, RF-028) [zona: frontend]
+- [x] T-035 — test (rojo) `api/vaults.test.ts`: `listVaults({deleted, cursor})`, `createVault`, `updateVault`/`deleteVault`/`restoreVault` con `If-Match`; devuelven la bóveda con su `etag`; errores como `ApiError` con `type` (cubre RF-018, RF-019, RF-028) [zona: test]
+- [x] T-036 — `api/auth.ts`: exportar `request` (sin otros cambios); `api/vaults.ts` con los `type` de bóvedas (cubre RF-018, RF-019, RF-028) [zona: frontend]
+- [x] T-037 — test (rojo) `vaults/VaultListPage.test.tsx`: muestra nombre, descripción y tags; "Cargar más" pide con `cursor` y se oculta sin `next_cursor`; borrar pide confirmación y cancelar no envía `DELETE` (cubre RF-018, RF-020) [zona: test]
+- [x] T-038 — `vaults/VaultListPage.tsx` (cubre RF-018, RF-020) [zona: frontend]
+- [x] T-039 — test (rojo) `vaults/VaultForm.test.tsx`: crear y editar; 422 junto a su campo (por `pointer`); 409 → aviso de nombre repetido; 412 → aviso de bóveda cambiada y recarga (cubre RF-019) [zona: test]
+- [x] T-040 — `vaults/VaultForm.tsx` (cubre RF-019) [zona: frontend]
+- [x] T-041 — test (rojo) `vaults/TrashPage.test.tsx`: borradas con `deleted_at`; "Restaurar" llama con su `etag`; 409 → aviso de nombre ocupado (cubre RF-028) [zona: test]
+- [x] T-042 — `vaults/TrashPage.tsx` (cubre RF-028) [zona: frontend]
+- [x] T-043 — test (rojo) `App.test.tsx` y `layout/AppLayout.test.tsx`: rutas `/vaults`, `/vaults/new`, `/vaults/:id/edit`, `/vaults/trash`; `/` redirige a `/vaults`; enlaces "Bóvedas" y "Papelera" (cubre RF-018, RF-028) [zona: test]
+- [x] T-044 — `App.tsx` y `layout/AppLayout.tsx` (cubre RF-018, RF-028) [zona: frontend]
 
 ### H · Documentación (PLAN-0003 §8)
 - [ ] T-045 — `backend/README.md`: sección "Bóvedas (SPEC-0003)" (endpoints, `ETag`/`If-Match`, 404 de ajena), estructura (`vault_service`, `vault_repository`, `vaults.py`), cuatro entradas nuevas en el catálogo de errores y la feature 0003 en "Contratos OpenAPI por feature" [doc]
