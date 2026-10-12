@@ -518,6 +518,17 @@ def test_rf_012_list_of_the_trash_passes_deleted_and_returns_deleted_vaults(serv
     assert trashed.id == gone.id and trashed.deleted_at
 
 
+def test_rf_012_list_items_carry_their_current_etag(service):
+    """PLAN-0003 §13: el `etag` del listado basta para restaurar desde la Papelera."""
+    created, etag = _create(service, name="gone")
+    [active] = service.list(deleted=False, limit=10, cursor=None).items
+    assert active.etag == etag
+    service.delete(created.id, etag)
+    [trashed] = service.list(deleted=True, limit=10, cursor=None).items
+    assert trashed.etag != etag
+    assert service.restore(created.id, trashed.etag).vault.deleted_at is None
+
+
 def test_rf_003_trash_cursor_on_the_normal_list_is_invalid(service):
     for i in range(2):
         created, etag = _create(service, name=f"v{i}")

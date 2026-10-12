@@ -51,8 +51,11 @@ def assert_problem(response, status: int, slug: str) -> dict:
     return body
 
 
-def _etag_of_stored(db_name: str, vault_id: str) -> str:
-    return f'"{stored_docs(db_name)[f"vault:{vault_id}"]["_rev"]}"'
+def etag_in_trash(client, vault_id: str) -> str:
+    """El `ETag` de una bóveda borrada, sacado del listado de la Papelera como haría la UI
+    (PLAN-0003 §13): `GET /vaults/{id}` de una borrada es 404."""
+    items = client.get("/vaults", params={"deleted": "true", "limit": 200}).json()["items"]
+    return next(v["etag"] for v in items if v["id"] == vault_id)
 
 
 # --- T-025: flujos felices (RF-001, 002, 004, 006, 008, 009, 011, 012, 013, 022) ---
@@ -82,6 +85,9 @@ def test_rf_001_list_returns_active_vaults_newest_first(ready_admin):
     assert res.status_code == 200
     assert [v["id"] for v in res.json()["items"]] == ids[::-1]
     assert res.json()["next_cursor"] is None
+    # PLAN-0003 §13: cada elemento lleva el mismo `ETag` que daría su `GET`.
+    for item in res.json()["items"]:
+        assert item["etag"] == ready_admin.get(f"/vaults/{item['id']}").headers["etag"]
 
 
 def test_rf_002_pagination_walks_every_vault_once(ready_admin):
@@ -137,12 +143,21 @@ def test_rf_012_trash_lists_only_deleted_vaults_with_pagination(ready_admin):
     assert all(v["deleted_at"] for v in listed) and kept not in [v["id"] for v in listed]
 
 
+def test_rf_012_trash_items_carry_the_etag_that_restore_needs(ready_admin, db):
+    created = create(ready_admin)
+    vault_id = created.json()["id"]
+    ready_admin.delete(f"/vaults/{vault_id}", headers={"If-Match": created.headers["etag"]})
+    [item] = ready_admin.get("/vaults", params={"deleted": "true"}).json()["items"]
+    assert item["etag"] == f'"{stored_docs(user_db(db))[f"vault:{vault_id}"]["_rev"]}"'
+    assert item["etag"] != created.headers["etag"]
+
+
 def test_rf_013_restore_brings_the_vault_back(ready_admin, db):
     created = create(ready_admin)
     vault_id = created.json()["id"]
     ready_admin.delete(f"/vaults/{vault_id}", headers={"If-Match": created.headers["etag"]})
     res = ready_admin.post(f"/vaults/{vault_id}/restore",
-                           headers={"If-Match": _etag_of_stored(user_db(db), vault_id)})
+                           headers={"If-Match": etag_in_trash(ready_admin, vault_id)})
     assert res.status_code == 200, res.text
     assert res.json()["deleted_at"] is None
     assert res.headers["etag"] == ready_admin.get(f"/vaults/{vault_id}").headers["etag"]
@@ -229,7 +244,7 @@ def test_rf_025_restore_with_a_taken_name_is_409_and_stays_deleted(ready_admin, 
     ready_admin.delete(f"/vaults/{vault_id}", headers={"If-Match": created.headers["etag"]})
     create(ready_admin, name="NOTAS")
     res = ready_admin.post(f"/vaults/{vault_id}/restore",
-                           headers={"If-Match": _etag_of_stored(user_db(db), vault_id)})
+                           headers={"If-Match": etag_in_trash(ready_admin, vault_id)})
     assert_problem(res, 409, "vault-name-taken")
     assert stored_docs(user_db(db))[f"vault:{vault_id}"]["deleted_at"]
 
@@ -264,7 +279,7 @@ def test_rf_026_delete_of_deleted_and_restore_of_active_are_404(ready_admin, db)
     gone_id = gone.json()["id"]
     ready_admin.delete(f"/vaults/{gone_id}", headers={"If-Match": gone.headers["etag"]})
     res = ready_admin.delete(f"/vaults/{gone_id}",
-                             headers={"If-Match": _etag_of_stored(user_db(db), gone_id)})
+                             headers={"If-Match": etag_in_trash(ready_admin, gone_id)})
     assert_problem(res, 404, "vault-not-found")
 
 

@@ -16,7 +16,7 @@ from app.core.errors import (
     StorageUnavailable, VaultNameTaken, VaultNotFound,
 )
 from app.core.ports.vault_port import VaultPort
-from app.core.schemas import VaultCreate, VaultOut, VaultPage, VaultUpdate
+from app.core.schemas import VaultCreate, VaultListItem, VaultOut, VaultPage, VaultUpdate
 
 # --- Cursor de paginación (RF-002, RF-003) ---
 # base64url (sin relleno) de {"d": deleted, "c": created_at, "i": id}: la clave de la última
@@ -106,7 +106,7 @@ class VaultService:
         if len(docs) > limit:
             last = page[-1]
             next_cursor = encode_cursor(deleted, last["created_at"], _vault_id(last))
-        return VaultPage(items=[_to_out(doc) for doc in page], next_cursor=next_cursor)
+        return VaultPage(items=[_to_list_item(doc) for doc in page], next_cursor=next_cursor)
 
     def get(self, vault_id: str) -> Versioned:
         return _versioned(self._load(vault_id, deleted=False))
@@ -277,6 +277,10 @@ def _to_out(doc: dict) -> VaultOut:
         updated_at=doc["updated_at"],
         deleted_at=doc["deleted_at"],
     )
+
+
+def _to_list_item(doc: dict) -> VaultListItem:
+    return VaultListItem(**_to_out(doc).model_dump(), etag=_etag(doc))
 
 
 def _versioned(doc: dict) -> Versioned:

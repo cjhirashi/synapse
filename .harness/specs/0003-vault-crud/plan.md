@@ -8,6 +8,7 @@ aprobaciones:
   ajustes_fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §10, con el GATE 3
   ajustes_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §11
   hallazgo_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }  # §12
+  etag_listados: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }    # §13
 actualizado: 2026-10-12
 ---
 
@@ -18,7 +19,7 @@ actualizado: 2026-10-12
 > **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) — cumplido:
 > `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
-> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11 y §12.
+> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11, §12 y §13.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -354,10 +355,10 @@ Detectado el 2026-10-12 por `test_vaults_concurrency.py` (T-029) contra CouchDB 
   del arrendamiento; tests nuevos: crear/renombrar mientras la reserva ajena está vigente →
   409; huérfana vencida → se reasigna.
 
-## 13. Hallazgo de la Fase 4: los listados no dan el `ETag` (PROPUESTO — pendiente de aprobación)
+## 13. Hallazgo de la Fase 4: los listados no dan el `ETag` (APROBADO el 2026-10-12)
 Detectado el 2026-10-12 al empezar el bloque G (frontend). Cambia una decisión del spec
-(§3: "la versión viaja en la cabecera `ETag`, no en el cuerpo"), así que va por carril SDD y
-no se implementa hasta que el usuario lo apruebe.
+(§3: "la versión viaja en la cabecera `ETag`, no en el cuerpo"), así que fue por carril SDD;
+aprobado por el usuario el 2026-10-12 junto con la enmienda del spec.
 
 - **Fallo.** `restore` exige `If-Match` (RF-010), pero un cliente no puede conocer el `ETag`
   de una bóveda borrada: el listado de la papelera no lo trae y `GET /vaults/{id}` de una

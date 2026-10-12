@@ -107,6 +107,12 @@ class VaultOut(BaseModel):
     deleted_at: str | None
 
 
+class VaultListItem(VaultOut):
+    # PLAN-0003 §13: en los listados la versión viaja en cada elemento (mismo valor que la
+    # cabecera `ETag`); sin ella la Papelera no podría enviar `If-Match` al restaurar.
+    etag: str
+
+
 class VaultPage(BaseModel):
-    items: list[VaultOut]
+    items: list[VaultListItem]
     next_cursor: str | None

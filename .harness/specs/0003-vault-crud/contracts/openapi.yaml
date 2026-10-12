@@ -79,6 +79,53 @@ components:
       - name
       title: VaultCreate
       type: object
+    VaultListItem:
+      properties:
+        created_at:
+          title: Created At
+          type: string
+        deleted_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Deleted At
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        etag:
+          title: Etag
+          type: string
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+        owner_id:
+          title: Owner Id
+          type: string
+        tags:
+          items:
+            type: string
+          title: Tags
+          type: array
+        updated_at:
+          title: Updated At
+          type: string
+      required:
+      - id
+      - name
+      - description
+      - tags
+      - owner_id
+      - created_at
+      - updated_at
+      - deleted_at
+      - etag
+      title: VaultListItem
+      type: object
     VaultOut:
       properties:
         created_at:
@@ -126,7 +173,7 @@ components:
       properties:
         items:
           items:
-            $ref: '#/components/schemas/VaultOut'
+            $ref: '#/components/schemas/VaultListItem'
           title: Items
           type: array
         next_cursor:

@@ -21,6 +21,7 @@ aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  enmienda_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # `etag` en los listados (PLAN-0003 §13)
 actualizado: 2026-10-12
 ---
 
@@ -84,8 +85,11 @@ actualizado: 2026-10-12
 | `created_at`, `updated_at` | string (RFC 3339, UTC) | los pone el servidor |
 | `deleted_at` | string \| null | `null` salvo en la papelera |
 
-- La versión del documento viaja en la cabecera `ETag` (derivada de `_rev`), no en el cuerpo.
-- Lista: `{ "items": [Bóveda], "next_cursor": string | null }`; `limit` 1–200 (50 por
+- La versión del documento viaja en la cabecera `ETag` (derivada de `_rev`), no en el cuerpo,
+  salvo en los listados: cada elemento lleva su `etag` (mismo valor que la cabecera), porque
+  una bóveda borrada no se puede pedir por id y la Papelera lo necesita para restaurar
+  (enmienda de la Fase 4, PLAN-0003 §13).
+- Lista: `{ "items": [Bóveda + etag], "next_cursor": string | null }`; `limit` 1–200 (50 por
   defecto); orden: `created_at` descendente y, a igual fecha, `id` descendente.
 - Cuerpos de `POST`/`PATCH`: sólo `name`, `description`, `tags`; cualquier otro campo → 422.
 - Unicidad del nombre: documento de reserva `vault-name:{name en minúsculas}` en la misma
@@ -96,7 +100,7 @@ actualizado: 2026-10-12
 
 **Listado y paginación**
 - **RF-001** — CUANDO un usuario autenticado pide `GET /vaults` el sistema DEBE devolver
-  sólo sus bóvedas con `deleted_at = null`.
+  sólo sus bóvedas con `deleted_at = null`, cada una con su `etag`.
 - **RF-002** — CUANDO `GET /vaults` recibe `limit` (1–200, 50 si falta) el sistema DEBE
   devolver como máximo `limit` bóvedas y un `next_cursor` opaco que, enviado como
   `cursor`, devuelve la página siguiente sin repetir ni saltar bóvedas; en la última
@@ -142,7 +146,7 @@ actualizado: 2026-10-12
   sistema DEBE poner `deleted_at` con la hora actual, conservar los datos y responder
   204; la bóveda deja de aparecer en `GET /vaults` y en `GET /vaults/{vault_id}`.
 - **RF-012** — CUANDO un usuario pide `GET /vaults?deleted=true` el sistema DEBE devolver
-  sólo sus bóvedas borradas, con la misma paginación de RF-002.
+  sólo sus bóvedas borradas, cada una con su `etag`, con la misma paginación de RF-002.
 - **RF-013** — CUANDO el dueño envía `POST /vaults/{vault_id}/restore` sobre una bóveda
   borrada con `If-Match` vigente el sistema DEBE poner `deleted_at = null` y responder
   200 con la bóveda y su `ETag` nuevo.

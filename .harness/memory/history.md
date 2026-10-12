@@ -153,6 +153,8 @@
   - [2026-10-12] Suite completa tras el bloque F: 334 verdes, 1 deseleccionado (`perf`). Commit b277f13.
   - [2026-10-12] Usuario: «Sigue con el bloque G». Rúbrica §2: al preparar `api/vaults.ts` aparece un hueco de diseño que revisa una decisión del spec (§3: versión sólo en la cabecera `ETag`) → carril SDD. Los listados no dan el `ETag` de cada bóveda y `GET` de una borrada es 404, así que la Papelera (RF-028) no puede restaurar (RF-010 exige `If-Match`). Propuesto PLAN-0003 §13: `etag` en cada elemento de `VaultPage.items`. Bloque G detenido hasta que el usuario lo apruebe.
   - [2026-10-12] **Session-End:** fase implement (0003, bloque F completo: T-033/T-034; bloque G sin empezar). Sin rebotes del verificador. Gate verde (21 ok · 1 aviso); backend 334 verdes + perf p95 18 ms. Docs: plan (§13 propuesto), tasks, state.md, history.md, backend/README.md. Decisión pendiente del usuario: PLAN-0003 §13. Nada marcado `verified`. Próximo paso: implementar §13 si se aprueba (backend, spec, contrato) y luego bloque G (T-035…T-044).
+  - [2026-10-12] Usuario: «Apruebo» (PLAN-0003 §13). Rúbrica §2: decisión aprobada del carril SDD. Gate verde.
+  - [2026-10-12] §13 implementado: `VaultListItem(VaultOut)` con `etag` en `VaultPage.items` (servicio lo construye desde `_rev`); spec §3, RF-001 y RF-012 enmendados (`enmienda_fase_4`); plan §13 aprobado; contrato 0003 re-exportado. Tests: los de API restauran con el `etag` de la Papelera (adiós lectura directa de CouchDB), nuevo `test_rf_012_trash_items_carry_the_etag_that_restore_needs` y `test_rf_012_list_items_carry_their_current_etag`. Backend 336 verdes, 1 deseleccionado.
 
 ---
 
