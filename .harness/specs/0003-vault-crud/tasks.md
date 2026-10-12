@@ -55,14 +55,14 @@ actualizado: 2026-10-12
 - [x] T-024 — `VaultService.list` (cubre RF-001, RF-002, RF-003, RF-012, RF-024) [zona: servicio]
 
 ### E · Rutas (TestClient + CouchDB real)
-- [ ] T-025 — test (rojo) `test_vaults_api.py`: flujos felices — `POST` 201 con `ETag` y documento en `synapse_user_{sub}` con `owner_id` del token; `GET` lista y por id con `ETag`; `PATCH` 200 con `ETag` nuevo; `DELETE` 204 y desaparece de lista y de `GET`; papelera paginada; `restore` 200 (cubre RF-001, RF-002, RF-004, RF-006, RF-008, RF-009, RF-011, RF-012, RF-013, RF-022) [zona: test]
-- [ ] T-026 — test (rojo) `test_vaults_api.py`: 422 Problem — `limit` 0/201, cursor basura (`parameter: cursor`), límites de RF-005, campos desconocidos; en cada caso sin documento escrito (cubre RF-003, RF-005, RF-023) [zona: test]
-- [ ] T-027 — test (rojo) `test_vaults_api.py`: 409 (`Notas`/`notas`, restaurar con nombre ocupado), nombres liberados al borrar y al renombrar, 428 y 412 en `PATCH`/`DELETE`/`restore`, 404 de RF-026, 503 con CouchDB inaccesible (cubre RF-007, RF-010, RF-017, RF-025, RF-026, RF-027) [zona: test]
-- [ ] T-028 — test (rojo) `test_vaults_isolation.py`: B no ve en su lista la bóveda de A; `GET`/`PATCH`/`DELETE`/`restore` de B con el id de A → 404 con cuerpo idéntico al de un id inexistente y al de un id no UUID; la base de A no cambia; sin cookie → 401 y con cambio de contraseña pendiente → 403 en los 6 endpoints (cubre RF-014, RF-015) [zona: test]
-- [ ] T-029 — test (rojo) `test_vaults_concurrency.py`: dos `POST` simultáneos (hilos) con el mismo nombre → una 201 y una 409; lo mismo con dos renombrados (cubre RF-021) [zona: test]
-- [ ] T-030 — `routers/vaults.py`: router con `require_password_changed`, `get_vault_service` (base sólo del `sub` del token), 6 rutas finas con `ETag`/`If-Match` y `problem_responses` por operación (cubre RF-001…RF-015, RF-017, RF-021…RF-027) [zona: ruta]
-- [ ] T-031 — `main.py`: `include_router(vaults_router)` (cubre RF-001, RF-015) [zona: ruta]
-- [ ] T-032 — re-exportar contratos (`0003-vault-crud/contracts/openapi.yaml` nuevo; 0002 y 0004 sin cambios); T-001 en verde (cubre RF-001, RF-004) [doc]
+- [x] T-025 — test (rojo) `test_vaults_api.py`: flujos felices — `POST` 201 con `ETag` y documento en `synapse_user_{sub}` con `owner_id` del token; `GET` lista y por id con `ETag`; `PATCH` 200 con `ETag` nuevo; `DELETE` 204 y desaparece de lista y de `GET`; papelera paginada; `restore` 200 (cubre RF-001, RF-002, RF-004, RF-006, RF-008, RF-009, RF-011, RF-012, RF-013, RF-022) [zona: test]
+- [x] T-026 — test (rojo) `test_vaults_api.py`: 422 Problem — `limit` 0/201, cursor basura (`parameter: cursor`), límites de RF-005, campos desconocidos; en cada caso sin documento escrito (cubre RF-003, RF-005, RF-023) [zona: test]
+- [x] T-027 — test (rojo) `test_vaults_api.py`: 409 (`Notas`/`notas`, restaurar con nombre ocupado), nombres liberados al borrar y al renombrar, 428 y 412 en `PATCH`/`DELETE`/`restore`, 404 de RF-026, 503 con CouchDB inaccesible (cubre RF-007, RF-010, RF-017, RF-025, RF-026, RF-027) [zona: test]
+- [x] T-028 — test (rojo) `test_vaults_isolation.py`: B no ve en su lista la bóveda de A; `GET`/`PATCH`/`DELETE`/`restore` de B con el id de A → 404 con cuerpo idéntico al de un id inexistente y al de un id no UUID; la base de A no cambia; sin cookie → 401 y con cambio de contraseña pendiente → 403 en los 6 endpoints (cubre RF-014, RF-015) [zona: test]
+- [ ] T-029 — test (rojo) `test_vaults_concurrency.py`: dos `POST` simultáneos (hilos) con el mismo nombre → una 201 y una 409; lo mismo con dos renombrados (cubre RF-021) [zona: test] — escrito; **sigue rojo** por la carrera de PLAN-0003 §12 (pendiente de aprobación)
+- [x] T-030 — `routers/vaults.py`: router con `require_password_changed`, `get_vault_service` (base sólo del `sub` del token), 6 rutas finas con `ETag`/`If-Match` y `problem_responses` por operación (cubre RF-001…RF-015, RF-017, RF-021…RF-027) [zona: ruta]
+- [x] T-031 — `main.py`: `include_router(vaults_router)` (cubre RF-001, RF-015) [zona: ruta]
+- [x] T-032 — re-exportar contratos (`0003-vault-crud/contracts/openapi.yaml` nuevo; 0002 y 0004 sin cambios); T-001 en verde (cubre RF-001, RF-004) [doc]
 
 ### F · Rendimiento
 - [ ] T-033 — `conftest.py`: marca `perf` registrada y fuera de la corrida por defecto (se ejecuta con `-m perf`) (cubre RNF-001) [zona: test]

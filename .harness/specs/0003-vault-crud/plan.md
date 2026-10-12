@@ -320,3 +320,28 @@ Aprobados por el usuario el 2026-10-12.
   no bloquea nada") ya garantiza RF-017; ninguna decisión del spec cambia.
 - `VaultService` recibe un reloj (`clock`) para que los tests fijen `created_at` y
   `updated_at`; devuelve `Versioned(vault, etag)` para que la ruta ponga el `ETag`.
+
+## 12. Hallazgo de la Fase 4: carrera en la reserva de nombre (PROPUESTO — pendiente de aprobación)
+Detectado el 2026-10-12 por `test_vaults_concurrency.py` (T-029) contra CouchDB real; no se
+implementa hasta que el usuario lo apruebe (cambia la regla de huérfanas de §2/§11).
+
+- **Fallo (viola RF-021).** `_reserve` escribe la reserva *antes* que la bóveda (al crear) o
+  antes de cambiarle el nombre (al renombrar/restaurar). En esa ventana la reserva apunta a
+  una bóveda que no existe o que aún no se llama así; una petición simultánea la juzga
+  huérfana, la reasigna y **las dos ganan** (dos 201, o dos 200). Reproducido de forma
+  determinista con el doble en memoria: `before_next_put` lanza un segundo `create` justo
+  antes del `put` de la bóveda del primero.
+- **Causa raíz.** Con sólo el estado de la bóveda no se distingue una reserva *en curso* de
+  una cuya escritura *falló*: ambas apuntan a una bóveda que no la usa.
+- **Propuesta: arrendamiento (lease).** La reserva guarda `reserved_at` (el `clock` del
+  servicio). Si su bóveda no la usa, la reserva **sigue bloqueando** mientras sea más
+  reciente que `RESERVATION_LEASE = 30 s` (más de 3× el timeout de 10 s del adaptador, así
+  que cubre cualquier escritura en curso); pasado ese plazo es huérfana y se reasigna como
+  hoy. La liberación (§11) no cambia.
+- **Alternativa descartada:** escribir primero la bóveda y compensar si la reserva falla. La
+  perdedora sería visible en listados y una compensación fallida dejaría el nombre repetido.
+- **Impacto observable:** tras una escritura fallida el nombre queda bloqueado (409) hasta
+  30 s en lugar de quedar libre al instante. El spec no cambia (RF-017 es el 503 y sigue
+  igual; RF-021 pasa a cumplirse). El test de RF-017 del servicio avanza el reloj más allá
+  del arrendamiento; tests nuevos: crear/renombrar mientras la reserva ajena está vigente →
+  409; huérfana vencida → se reasigna.

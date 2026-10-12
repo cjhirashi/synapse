@@ -109,7 +109,7 @@
 ---
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-024 hechas)
+- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-032 hechas salvo el verde de T-029, bloqueado por PLAN-0003 §12)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
@@ -117,7 +117,7 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `approved`; §10 de ajustes tras SPEC-0004), `specs/0003-vault-crud/tasks.md` (nuevo, `approved`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** Fase 4 de 0003, bloque E (rutas) desde T-025.
+- **Próximo paso:** aprobación del usuario de PLAN-0003 §12 (arrendamiento de reservas); luego T-029 en verde y bloque F (T-033).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -141,6 +141,9 @@
   - [2026-10-12] T-016…T-024: doble `InMemoryVaultPort` (semántica de `_rev`, fallos inyectables, escritura intercalada antes de un `put`) y tests de `create`/`get`/`update`/`delete`/`restore`/`list` en rojo → `VaultService` (reserva con huérfanas, precondición `If-Match`, `limit+1`, reloj inyectable, `Versioned`); 46 verdes. Ajuste del plan (§11): la reserva sólo se libera tras una escritura confirmada y si nadie la usa; liberar tras un `put` fallido o un renombrado perdido podía dejar nombres repetidos. Gate verde.
   - [2026-10-12] **Session-End:** fase implement (0003, bloques A–D: T-001…T-024). Sin rebotes. Gate verde (21 ok · 1 aviso); backend 288 verdes y 3 rojos esperados del contrato hasta T-032. Docs: plan (§11 nuevo), tasks, state.md, history.md. Decisiones: dos ajustes de implementación en PLAN-0003 §11 (descarte condicional en vez de `skip=1`; reservas liberadas sólo tras escrituras confirmadas), sin cambios en el spec; a confirmar por el usuario. Commits ed3b140, cb857e3 y 3c366c3, subidos. Próximo paso: bloque E (rutas) desde T-025.
   - [2026-10-12] Usuario: «Apruebo los 2 ajustes». PLAN-0003 §11 aprobado (descarte condicional de la fila del cursor; liberación de reservas sólo tras escrituras confirmadas) → `aprobaciones.ajustes_fase_4` en el plan.
+  - [2026-10-12] T-025…T-029: tests de API en rojo — `test_vaults_api.py` (flujos felices, 422 Problem sin escrituras, 409, nombres liberados, 428/412, 404 de RF-026, 503), `test_vaults_isolation.py` (B no ve ni toca lo de A, 404 idénticos, 401/403 en los 6 endpoints) y `test_vaults_concurrency.py` (dos hilos con barrera contra CouchDB real).
+  - [2026-10-12] T-030…T-032: `routers/vaults.py` (6 rutas finas, `ETag`/`If-Match`, base sólo del `sub`, repositorio único por proceso con `lru_cache`, `problem_responses` por operación) e `include_router` en `main.py`; contrato `0003-vault-crud/contracts/openapi.yaml` exportado (0002 y 0004 sin cambios). 38/40 verdes.
+  - [2026-10-12] **Hallazgo (RF-021):** T-029 sigue rojo — dos creaciones o dos renombrados simultáneos ganan ambos. Causa raíz: la reserva se escribe antes que la bóveda, y en esa ventana la otra petición la juzga huérfana (regla de §2/§11) y la reasigna; reproducido de forma determinista con el doble en memoria. Propuesta en PLAN-0003 §12 (arrendamiento de 30 s en la reserva) **pendiente de aprobación** del usuario: cambia la regla de huérfanas, así que va por carril SDD y no se implementa todavía.
 
 ---
 
