@@ -4,7 +4,7 @@ tipo: spec
 feature: 0004-api-problem-details
 estado: implemented
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 97ba08a   # cierre de la Fase 4 con las correcciones de la enmienda 1
+anchor_commit: d41c74f   # cierre tras las correcciones de la enmienda 2
 anchor_mode: advisory
 covers:
   - backend/app/core/problems.py
