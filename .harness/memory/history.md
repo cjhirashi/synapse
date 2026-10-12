@@ -5,7 +5,7 @@
 - **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4 → T-064…T-069, enmienda 4)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
-- **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063`; SPEC-0004 `c8c9e24` → `97ba08a` (cierre tras la enmienda 1) → `d41c74f` (cierre tras la enmienda 2) → `4f784de` (cierre tras la enmienda 3)
+- **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063`; SPEC-0004 `c8c9e24` → `97ba08a` (cierre tras la enmienda 1) → `d41c74f` (cierre tras la enmienda 2) → `4f784de` (cierre tras la enmienda 3) → `65f9911` (cierre tras la enmienda 4)
 - **Gate:** verde (21 ok · 1 aviso: `spectral` no instalado)
 - **Docs actualizadas:** `specs/0004-api-problem-details/{spec,plan,tasks}.md`, contratos 0002 y 0004, ARCHIFY.md, SPEC-0003 (referencias a 0004), SPEC-0002 (nota y ancla), `backend/README.md`, `backend/app/core/README.md`, `frontend/src/README.md`, AGENTS.md, state.md
 - **Decisiones:** número `0004` para esta feature (Art. 9); la sincronización tomará el siguiente libre. Q1–Q6 y Q7–Q10 aceptadas tal como se recomendaron (ver §6 del spec).
