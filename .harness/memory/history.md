@@ -109,7 +109,7 @@
 ---
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
-- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-032 hechas salvo el verde de T-029, bloqueado por PLAN-0003 §12)
+- **Fase alcanzada:** implement (GATES 1, 2 y 3 aprobados; Fase 4 en curso: T-001…T-032 hechas; PLAN-0003 §12 aprobado e implementado)
 - **Rebotes del verificador:** 0
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
@@ -117,7 +117,7 @@
 - **Gate:** verde (19 ok · 1 aviso: spectral no instalado)
 - **Docs actualizadas:** `specs/0003-vault-crud/spec.md` (nuevo, `approved`), `specs/0003-vault-crud/plan.md` (nuevo, `approved`; §10 de ajustes tras SPEC-0004), `specs/0003-vault-crud/tasks.md` (nuevo, `approved`), `specs/0002-auth/spec.md` (`aprobaciones.pr_3`), state.md
 - **Decisiones:** la base CouchDB no se crea en `POST /vaults` (ya existe desde el alta del usuario, SPEC-0002); T-002 queda desactualizado en ese punto.
-- **Próximo paso:** aprobación del usuario de PLAN-0003 §12 (arrendamiento de reservas); luego T-029 en verde y bloque F (T-033).
+- **Próximo paso:** bloque F (rendimiento, T-033/T-034).
 - **Registro de tareas:**
   - [2026-10-11] Usuario: «Apruebo el PR». Registrado en SPEC-0002 → `aprobaciones.pr_3`. `estado` sigue en `implemented`: el merge y el paso a `verified` quedan en manos del usuario.
   - [2026-10-11] Rúbrica §2 para 0003: endpoints y almacenamiento nuevos → **carril SDD**.
@@ -145,6 +145,8 @@
   - [2026-10-12] T-030…T-032: `routers/vaults.py` (6 rutas finas, `ETag`/`If-Match`, base sólo del `sub`, repositorio único por proceso con `lru_cache`, `problem_responses` por operación) e `include_router` en `main.py`; contrato `0003-vault-crud/contracts/openapi.yaml` exportado (0002 y 0004 sin cambios). 38/40 verdes.
   - [2026-10-12] **Hallazgo (RF-021):** T-029 sigue rojo — dos creaciones o dos renombrados simultáneos ganan ambos. Causa raíz: la reserva se escribe antes que la bóveda, y en esa ventana la otra petición la juzga huérfana (regla de §2/§11) y la reasigna; reproducido de forma determinista con el doble en memoria. Propuesta en PLAN-0003 §12 (arrendamiento de 30 s en la reserva) **pendiente de aprobación** del usuario: cambia la regla de huérfanas, así que va por carril SDD y no se implementa todavía.
   - [2026-10-12] **Session-End:** fase implement (0003, bloque E: T-025…T-032). Sin rebotes del verificador. Gate verde (21 ok · 1 aviso); backend 330 verdes y 1 rojo (T-029, carrera de RF-021; el otro caso de T-029 pasa o falla según el entrelazado). Los 3 rojos de contrato ya están verdes. Docs: plan (§12 propuesto), tasks, state.md, history.md, contrato 0003. Decisión pendiente del usuario: PLAN-0003 §12. Próximo paso: implementar §12 si se aprueba; luego bloque F (T-033).
+  - [2026-10-12] Usuario: «Apruebo» → PLAN-0003 §12 aprobado (`aprobaciones.hallazgo_fase_4`).
+  - [2026-10-12] §12 implementado (TDD): la reserva guarda `reserved_at` y bloquea mientras siga dentro de `RESERVATION_LEASE` (30 s) aunque su bóveda aún no la use; vencida, se reasigna. Detalle de la misma corrección: `_release(name, vault_id)` sólo borra la reserva si sigue apuntando a la bóveda que libera (una liberación tardía ya no borra una reserva reasignada a otra). Tests nuevos: create y rename con otra escritura en curso → 409, liberación tardía, huérfana vencida; los de RF-017 y renombrado perdido avanzan el reloj más allá del arrendamiento. T-029 en verde (estable en 3 corridas). Suite backend **334/334**; gate verde. §2 del plan apunta a §12.
 
 ---
 

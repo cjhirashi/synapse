@@ -7,6 +7,7 @@ import copy
 import json
 import uuid
 from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -16,7 +17,9 @@ from app.core.errors import (
 )
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultCreate, VaultUpdate
-from app.services.vault_service import VaultService, decode_cursor, encode_cursor
+from app.services.vault_service import (
+    RESERVATION_LEASE, VaultService, decode_cursor, encode_cursor,
+)
 
 CURSOR_ERROR = [{"parameter": "cursor", "detail": "Invalid cursor."}]
 
@@ -138,14 +141,20 @@ OWNER = "7d1c9a8e-0000-4000-8000-000000000001"
 
 
 class TickingClock:
-    """Reloj determinista: cada llamada avanza un segundo (RFC 3339, UTC)."""
+    """Reloj determinista: cada llamada avanza un segundo (RFC 3339, UTC).
+
+    `advance` salta en el tiempo, p. ej. para dejar vencer el arrendamiento de una reserva.
+    """
 
     def __init__(self):
-        self.ticks = 0
+        self.now = datetime(2026, 10, 12, 10, 0, tzinfo=UTC)
 
     def __call__(self) -> str:
-        self.ticks += 1
-        return f"2026-10-12T10:00:{self.ticks:02d}.000000Z"
+        self.now += timedelta(seconds=1)
+        return self.now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+    def advance(self, delta: timedelta) -> None:
+        self.now += delta
 
 
 @pytest.fixture
@@ -154,8 +163,13 @@ def port():
 
 
 @pytest.fixture
-def service(port):
-    return VaultService(port, DB, clock=TickingClock())
+def clock():
+    return TickingClock()
+
+
+@pytest.fixture
+def service(port, clock):
+    return VaultService(port, DB, clock=clock)
 
 
 def _create(service, name="Notas", **fields):
@@ -164,6 +178,16 @@ def _create(service, name="Notas", **fields):
 
 def _reservation(port, name):
     return port.docs[DB].get(f"vault-name:{name.lower()}")
+
+
+def _expired_orphan(port, name):
+    """Reserva de una bóveda que no existe, tomada una hora antes del reloj de los tests."""
+    port.put(DB, {"_id": f"vault-name:{name.lower()}", "type": "vault-name",
+                  "vault_id": str(uuid.uuid4()), "reserved_at": "2026-10-12T09:00:00.000000Z"})
+
+
+def _past_the_lease(clock):
+    clock.advance(RESERVATION_LEASE)
 
 
 def test_double_rejects_stale_rev_and_bumps_generation(port):
@@ -196,6 +220,7 @@ def test_rf_007_create_reserves_the_lowercased_name(service, port):
     vault, _ = _create(service, name="Mis Notas")
     reservation = _reservation(port, "mis notas")
     assert (reservation["type"], reservation["vault_id"]) == ("vault-name", vault.id)
+    datetime.strptime(reservation["reserved_at"], "%Y-%m-%dT%H:%M:%S.%fZ")  # marca del arrendamiento
 
 
 def test_rf_007_same_name_ignoring_case_is_taken_without_saving(service, port):
@@ -205,17 +230,34 @@ def test_rf_007_same_name_ignoring_case_is_taken_without_saving(service, port):
     assert sum(d.get("type") == "vault" for d in port.docs[DB].values()) == 1
 
 
-def test_rf_007_orphan_reservation_is_reassigned(service, port):
-    port.put(DB, {"_id": "vault-name:notas", "type": "vault-name", "vault_id": str(uuid.uuid4())})
+def test_rf_007_expired_orphan_reservation_is_reassigned(service, port):
+    _expired_orphan(port, "Notas")
     vault, _ = _create(service, name="Notas")
     assert _reservation(port, "notas")["vault_id"] == vault.id
+
+
+def test_rf_021_create_while_another_create_is_in_flight_is_409(service, port, clock):
+    # PLAN-0003 §12: la reserva de `rival` ya está escrita pero su bóveda todavía no; está
+    # vigente, así que bloquea aunque su bóveda aún no la use.
+    rival = VaultService(port, DB, clock=clock)
+    outcome = {}
+
+    def second_create():
+        with pytest.raises(VaultNameTaken):
+            _create(service, name="NOTAS")
+        outcome["blocked"] = True
+
+    port.before_next_put(second_create, when=lambda doc: doc.get("type") == "vault")
+    _create(rival, name="Notas")
+    assert outcome == {"blocked": True}
+    assert [d["name"] for d in port.docs[DB].values() if d.get("type") == "vault"] == ["Notas"]
 
 
 def test_rf_021_interleaved_reservations_let_only_one_win(service, port):
     rival = VaultService(port, DB, clock=TickingClock())
     # La reserva de `rival` se cuela entre el primer intento fallido y la reasignación
     # de la huérfana: el `put` con el `_rev` leído choca y gana `rival`.
-    port.put(DB, {"_id": "vault-name:notas", "type": "vault-name", "vault_id": str(uuid.uuid4())})
+    _expired_orphan(port, "notas")
     port.before_next_put(
         lambda: _create(rival, name="notas"),
         when=lambda doc: doc["_id"] == "vault-name:notas" and "_rev" in doc,
@@ -226,12 +268,17 @@ def test_rf_021_interleaved_reservations_let_only_one_win(service, port):
     assert [v["name"] for v in vaults] == ["notas"]
 
 
-def test_rf_017_failed_vault_put_leaves_no_vault_and_the_name_free(service, port):
+def test_rf_017_failed_vault_put_leaves_no_vault_and_frees_the_name_after_the_lease(
+        service, port, clock):
     port.fail_next("put", when=lambda db, doc: doc["_id"].startswith("vault:"))
     with pytest.raises(StorageUnavailable):
         _create(service, name="Notas")
     assert not any(d.get("type") == "vault" for d in port.docs[DB].values())
-    vault, _ = _create(service, name="Notas")  # la reserva que quedó es huérfana
+    # Mientras el arrendamiento siga vigente, la reserva no se distingue de una en curso.
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="Notas")
+    _past_the_lease(clock)
+    vault, _ = _create(service, name="Notas")  # ya es huérfana: se reasigna
     assert _reservation(port, "notas")["vault_id"] == vault.id
 
 
@@ -325,7 +372,7 @@ def test_rf_010_write_between_read_and_put_is_412(service, port):
     assert service.get(created.id)[0].description == "rival"
 
 
-def test_rf_021_lost_rename_race_does_not_block_the_new_name(service, port):
+def test_rf_021_lost_rename_race_frees_the_new_name_after_the_lease(service, port, clock):
     created, etag = _create(service, name="Viejo")
     rival = VaultService(port, DB, clock=TickingClock())
     port.before_next_put(
@@ -334,7 +381,40 @@ def test_rf_021_lost_rename_race_does_not_block_the_new_name(service, port):
     )
     with pytest.raises(PreconditionFailed):
         service.update(created.id, VaultUpdate(name="Nuevo"), etag)
+    _past_the_lease(clock)
     _create(service, name="nuevo")  # la reserva que quedó apunta a una bóveda llamada "Viejo"
+
+
+def test_rf_021_rename_while_another_rename_is_in_flight_is_409(service, port, clock):
+    first, first_etag = _create(service, name="Uno")
+    second, second_etag = _create(service, name="Dos")
+    rival = VaultService(port, DB, clock=clock)
+    outcome = {}
+
+    def second_rename():
+        with pytest.raises(VaultNameTaken):
+            service.update(second.id, VaultUpdate(name="mismo"), second_etag)
+        outcome["blocked"] = True
+
+    port.before_next_put(second_rename, when=lambda doc: doc["_id"] == f"vault:{first.id}")
+    rival.update(first.id, VaultUpdate(name="Mismo"), first_etag)
+    assert outcome == {"blocked": True}
+    assert service.get(second.id)[0].name == "Dos"
+
+
+def test_rf_021_late_release_keeps_a_reservation_taken_by_another_vault(service, port, clock):
+    # `left` deja "Mismo" pero su liberación falla; vencido el arrendamiento, `taker` reasigna
+    # la reserva y, antes de que escriba su bóveda, llega la liberación tardía de `left`:
+    # no debe borrar una reserva que ya no es suya (dejaría "Mismo" sin reserva).
+    left, left_etag = _create(service, name="Mismo")
+    taker, taker_etag = _create(service, name="Otro")
+    port.fail_next("delete")
+    service.update(left.id, VaultUpdate(name="Fuera"), left_etag)
+    _past_the_lease(clock)
+    port.before_next_put(lambda: service._release("Mismo", left.id),
+                         when=lambda doc: doc["_id"] == f"vault:{taker.id}")
+    service.update(taker.id, VaultUpdate(name="Mismo"), taker_etag)
+    assert _reservation(port, "mismo")["vault_id"] == taker.id
 
 
 # --- T-021: delete y restore (RF-010, RF-011, RF-013, RF-025, RF-026, RF-027) ---

@@ -8,7 +8,7 @@ import binascii
 import json
 import uuid
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import NamedTuple
 
 from app.core.errors import (
@@ -49,9 +49,20 @@ def decode_cursor(cursor: str, deleted: bool) -> tuple[str, str]:
 
 # --- Servicio ---
 
+_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+# Arrendamiento de una reserva de nombre (PLAN-0003 §12): más de 3× el timeout de 10 s del
+# adaptador, así que cubre cualquier escritura de bóveda que siga en curso.
+RESERVATION_LEASE = timedelta(seconds=30)
+
+
 def utc_now() -> str:
     """Hora actual en RFC 3339 UTC, ancho fijo: el orden de texto es el cronológico."""
-    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    return datetime.now(UTC).strftime(_TIMESTAMP_FORMAT)
+
+
+def _parse_timestamp(value: str) -> datetime:
+    return datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=UTC)
 
 
 class Versioned(NamedTuple):
@@ -65,11 +76,14 @@ class VaultService:
     """Operaciones de bóvedas sobre la base de un usuario (una instancia por petición).
 
     Unicidad del nombre (RF-007, RF-021, RF-027): documento `vault-name:{minúsculas}` que
-    apunta a la bóveda que lo usa. Una reserva sólo **bloquea** si esa bóveda existe, no
-    está borrada y sigue llamándose así; si no, es huérfana y se reasigna. Por eso una
-    escritura que falla a medias nunca deja un nombre bloqueado y la liberación es de
-    mejor esfuerzo: sólo se intenta tras una escritura confirmada que deja el nombre
-    sin usar (borrado o renombrado).
+    apunta a la bóveda que lo usa y guarda cuándo se tomó (`reserved_at`). Una reserva
+    **bloquea** si esa bóveda existe, no está borrada y se llama así, o si todavía está
+    dentro de su arrendamiento (`RESERVATION_LEASE`): la reserva se escribe antes que la
+    bóveda, y sin el arrendamiento una escritura en curso no se distingue de una que falló
+    (PLAN-0003 §12). Fuera de esos casos es huérfana y se reasigna, así que una escritura
+    que falla a medias bloquea el nombre como mucho lo que dura el arrendamiento. La
+    liberación es de mejor esfuerzo: sólo se intenta tras una escritura confirmada que deja
+    el nombre sin usar (borrado o renombrado).
     """
 
     def __init__(self, port: VaultPort, db: str, clock: Callable[[], str] = utc_now):
@@ -131,14 +145,14 @@ class VaultService:
         updated = {**doc, **changes, "updated_at": self._clock()}
         updated["_rev"] = self._write(updated)
         if renamed:
-            self._release(old_name)
+            self._release(old_name, _vault_id(doc))
         return _versioned(updated)
 
     def delete(self, vault_id: str, if_match: str | None) -> None:
         doc = self._load(vault_id, deleted=False)
         _check_precondition(doc, if_match)
         self._write({**doc, "deleted_at": self._clock()})
-        self._release(doc["name"])
+        self._release(doc["name"], _vault_id(doc))
 
     def restore(self, vault_id: str, if_match: str | None) -> Versioned:
         doc = self._load(vault_id, deleted=True)
@@ -178,10 +192,17 @@ class VaultService:
             and vault["name"].lower() == name.lower()
         )
 
+    def _leased(self, reservation: dict) -> bool:
+        """¿La reserva sigue dentro de su arrendamiento? (puede haber una escritura en curso)."""
+        age = _parse_timestamp(self._clock()) - _parse_timestamp(reservation["reserved_at"])
+        return age < RESERVATION_LEASE
+
     def _reserve(self, name: str, vault_id: str) -> None:
         """Toma `vault-name:{name}` para `vault_id` o lanza `VaultNameTaken` (RF-007, RF-021)."""
         key = _name_key(name)
-        reservation = {"_id": key, "type": "vault-name", "vault_id": vault_id}
+        reservation = {
+            "_id": key, "type": "vault-name", "vault_id": vault_id, "reserved_at": self._clock(),
+        }
         try:
             self._port.put(self._db, reservation)
             return
@@ -191,7 +212,7 @@ class VaultService:
         if current is not None:
             if current["vault_id"] == vault_id:
                 return  # ya es de esta bóveda (p. ej. restaurar sin haberla liberado)
-            if self._holder(current, name):
+            if self._holder(current, name) or self._leased(current):
                 raise VaultNameTaken(f"{key} held by {current['vault_id']}")
             reservation["_rev"] = current["_rev"]  # huérfana: se reasigna sobre su `_rev`
         # Si otra petición escribe la reserva entre la lectura y este `put`, ella gana.
@@ -200,16 +221,22 @@ class VaultService:
         except RevisionConflict:
             raise VaultNameTaken(f"{key} taken concurrently") from None
 
-    def _release(self, name: str) -> None:
-        """Borra la reserva si ya no la usa nadie; mejor esfuerzo: un fallo la deja huérfana.
+    def _release(self, name: str, vault_id: str) -> None:
+        """Borra la reserva de `vault_id` si ya no la usa; mejor esfuerzo: un fallo la deja huérfana.
 
-        Se comprueba el uso (y no sólo a quién apunta) porque, entre la escritura y esta
-        liberación, otra petición puede haber vuelto a tomar el nombre para la misma bóveda.
+        Sólo se borra una reserva que sigue apuntando a `vault_id`: si otra bóveda ya la
+        reasignó, su escritura puede estar en curso y borrarla dejaría el nombre sin reserva
+        (PLAN-0003 §12). Y se comprueba el uso porque, entre la escritura y esta liberación,
+        otra petición puede haber vuelto a tomar el nombre para la misma bóveda.
         """
         key = _name_key(name)
         try:
             current = self._port.get(self._db, key)
-            if current is not None and not self._holder(current, name):
+            if (
+                current is not None
+                and current["vault_id"] == vault_id
+                and not self._holder(current, name)
+            ):
                 self._port.delete(self._db, key, current["_rev"])
         except (RevisionConflict, StorageUnavailable):
             pass

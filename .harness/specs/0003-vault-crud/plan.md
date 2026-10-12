@@ -7,6 +7,7 @@ aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   ajustes_fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §10, con el GATE 3
   ajustes_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §11
+  hallazgo_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }  # §12
 actualizado: 2026-10-12
 ---
 
@@ -17,7 +18,7 @@ actualizado: 2026-10-12
 > **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) — cumplido:
 > `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
-> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11.
+> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11 y §12.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -80,15 +81,17 @@ actualizado: 2026-10-12
 | `restore(id, if_match)` | precondición (debe estar borrada; si no, 404) → `_reserve(name)` (ocupado → 409) → `deleted_at = null` con `put` | RF-010, 013, 025, 026 |
 
 **Reserva de nombre** (`_reserve(name, vault_id)`, RF-007/RF-021/RF-027) — documento
-`vault-name:{name.lower()}` = `{ type: "vault-name", vault_id }`:
+`vault-name:{name.lower()}` = `{ type: "vault-name", vault_id, reserved_at }` (`reserved_at` y
+el arrendamiento: §12):
 1. `put` sin `_rev` (creación). Si CouchDB acepta → reservado.
 2. Si choca (`RevisionConflict`): se lee la reserva y la bóveda a la que apunta. Si esa
-   bóveda existe, no está borrada y su `name.lower()` coincide → `VaultNameTaken` (409).
+   bóveda existe, no está borrada y su `name.lower()` coincide, **o la reserva sigue dentro
+   de su arrendamiento de 30 s (§12)** → `VaultNameTaken` (409).
    Si no (reserva **huérfana**: un `put` que falló, un borrado o un renombrado que no
    alcanzó a liberarla) → se reasigna con `put` usando el `_rev` leído; si ese `put`
    choca, otra petición ganó → 409.
-- Consecuencia: la liberación es "mejor esfuerzo"; una reserva que quede atrás no bloquea
-  nada porque se detecta como huérfana. Así no hay escrituras a medias que dejen un
+- Consecuencia: la liberación es "mejor esfuerzo"; una reserva que quede atrás bloquea como
+  mucho lo que dura su arrendamiento y luego se detecta como huérfana (§12). Así no hay escrituras a medias que dejen un
   nombre bloqueado (RF-017) sin necesitar transacciones entre documentos.
 
 **Precondición** (`If-Match`, RF-010): ausente → `PreconditionRequired`; el `ETag` es el
@@ -321,9 +324,9 @@ Aprobados por el usuario el 2026-10-12.
 - `VaultService` recibe un reloj (`clock`) para que los tests fijen `created_at` y
   `updated_at`; devuelve `Versioned(vault, etag)` para que la ruta ponga el `ETag`.
 
-## 12. Hallazgo de la Fase 4: carrera en la reserva de nombre (PROPUESTO — pendiente de aprobación)
-Detectado el 2026-10-12 por `test_vaults_concurrency.py` (T-029) contra CouchDB real; no se
-implementa hasta que el usuario lo apruebe (cambia la regla de huérfanas de §2/§11).
+## 12. Hallazgo de la Fase 4: carrera en la reserva de nombre
+Detectado el 2026-10-12 por `test_vaults_concurrency.py` (T-029) contra CouchDB real.
+**Aprobado por el usuario el 2026-10-12**; sustituye la regla de huérfanas de §2/§11.
 
 - **Fallo (viola RF-021).** `_reserve` escribe la reserva *antes* que la bóveda (al crear) o
   antes de cambiarle el nombre (al renombrar/restaurar). En esa ventana la reserva apunta a
@@ -340,6 +343,11 @@ implementa hasta que el usuario lo apruebe (cambia la regla de huérfanas de §2
   hoy. La liberación (§11) no cambia.
 - **Alternativa descartada:** escribir primero la bóveda y compensar si la reserva falla. La
   perdedora sería visible en listados y una compensación fallida dejaría el nombre repetido.
+- **Liberación sólo de la reserva propia (detalle de implementación de esta misma
+  corrección).** `_release(name, vault_id)` borra la reserva sólo si sigue apuntando a la
+  bóveda que libera. Si otra bóveda ya la reasignó (vencido el arrendamiento), su escritura
+  puede estar en curso: borrarla dejaría el nombre sin reserva. Sin efecto visible fuera de
+  esa carrera. Lo cubre `test_rf_021_late_release_keeps_a_reservation_taken_by_another_vault`.
 - **Impacto observable:** tras una escritura fallida el nombre queda bloqueado (409) hasta
   30 s en lugar de quedar libre al instante. El spec no cambia (RF-017 es el 503 y sigue
   igual; RF-021 pasa a cumplirse). El test de RF-017 del servicio avanza el reloj más allá
