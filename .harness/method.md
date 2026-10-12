@@ -166,6 +166,14 @@ Tras cada tarea: `gate/check.sh` (§6). El verificador es **adversarial**: su me
 **demostrar que la tarea está mal** (aserción débil, cobertura baja, contrato roto,
 spec no sincronizado, parche). Evidencia = **salida de terminal pegada**.
 
+**Regla de salida de la verificación.** Tras corregir los hallazgos de una ronda, sólo
+hay otra ronda si (a) algún hallazgo era **bloqueante o mayor**, o (b) la corrección
+**cambia el comportamiento** del código (respuestas, contratos, lógica). Los menores que
+sólo tocan documentación, trazabilidad, estilo o un test que endurece lo existente se
+corrigen, pasan el gate y la suite y se registran en `history.md`, **sin nueva ronda**;
+el usuario decide entonces `verified`. Una evasión deliberada aceptada como residual no
+reabre la verificación.
+
 ### Cierre (Session-End)
 
 - `gate/check.sh` verde · `anchor_commit` (front-matter de `spec.md`) movido al commit

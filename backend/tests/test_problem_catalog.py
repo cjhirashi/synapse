@@ -85,6 +85,8 @@ def test_every_422_is_a_validation_failed():
         assert (cls.status == 422) == is_validation, cls.__name__
         if is_validation:
             assert cls.type_uri() == errors.ValidationFailed.type_uri(), cls.__name__
+            # El `detail` raíz del 422 es fijo; lo variable va en `errors` (enmienda 8, BB-1).
+            assert cls.detail == errors.ValidationFailed.detail, cls.__name__
 
 
 def test_password_policy_violation_is_a_validation_failed():

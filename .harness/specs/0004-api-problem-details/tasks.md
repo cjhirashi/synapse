@@ -127,6 +127,13 @@ actualizado: 2026-10-12
 - [x] T-082 — docs: `backend/README.md`, `core/README.md` y comentario del escaneo (vía `ValidationFailed`, `detail` de texto fijo, residual por su naturaleza) (AA-1, AA-2, AA-3) (cubre RF-005, RF-011) [doc]
 - [x] T-083 — cierre: tabla de cobertura, state.md, cabecera de 0004 en history.md (AA-4), `anchor_commit` nuevo (cubre RF-005, RF-011) [doc]
 
+### P · Cierre de la re-verificación 7 (enmienda 8, sin nueva ronda)
+- [x] T-084 — enmienda 8 de SPEC-0004 (nota; §6: E8 · BB-1) y PLAN-0004 §2 (cubre RF-005, RF-011) [doc]
+- [x] T-085 — test (rojo con una subclase que redefine `detail`) `test_every_422_is_a_validation_failed` exige el `detail` raíz de `ValidationFailed` (BB-1) (cubre RF-005, RF-014) [zona: test]
+- [x] T-086 — docs: docstring de `ValidationFailed`, `backend/README.md` y `core/README.md` (sin `detail` propio ni `detail=`) (BB-1) (cubre RF-005, RF-011) [doc]
+- [x] T-087 — fila RF-005 de la cobertura con `test_problem_catalog` (BB-2) (cubre RF-005) [doc]
+- [x] T-088 — regla de salida de la verificación en `method.md` §3 (Fase 4), aprobada por el usuario; BB-3 anotado para la Fase 3 de 0003 en state.md; cierre (state, history, ancla) (cubre RF-005) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` se rellena a mano con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -134,24 +141,24 @@ actualizado: 2026-10-12
 | RF-002 | T-007, T-011, T-047, T-048 | test_problem_handlers | Pass |
 | RF-003 | T-004, T-006, T-007, T-008, T-011, T-043, T-044 | test_problem_catalog, test_problem_handlers | Pass |
 | RF-004 | T-007, T-009, T-011, T-020, T-040, T-041 | test_problem_handlers, test_problem_auth | Pass |
-| RF-005 | T-012, T-013, T-019, T-042, T-046, T-079–T-083 | test_problem_validation, test_problem_auth | Pass |
+| RF-005 | T-012, T-013, T-019, T-042, T-046, T-079–T-088 | test_problem_validation, test_problem_auth, test_problem_catalog | Pass |
 | RF-006 | T-014, T-017, T-020–T-024 | test_problem_auth, test_forced_change | Pass |
 | RF-007 | T-018, T-022 | test_problem_auth | Pass |
 | RF-008 | T-005, T-006, T-021–T-023 | test_problem_catalog | Pass |
 | RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031, T-038, T-039, T-049, T-057, T-061, T-062, T-064, T-066–T-069, T-072, T-074 | test_contract, test_problem_contract, test_problem_contract_guard (ContractGuard en toda la suite, operación atendida) | Pass |
 | RF-010 | T-026–T-029 | problems.test.ts, auth.test.ts, ChangePasswordPage.test.tsx | Pass |
-| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049, T-051–T-053, T-055, T-057–T-060, T-062, T-064, T-065, T-068, T-069, T-070, T-071, T-073–T-079, T-082, T-083 | test_problem_validation, test_problem_auth, test_problem_catalog | Pass |
+| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049, T-051–T-053, T-055, T-057–T-060, T-062, T-064, T-065, T-068, T-069, T-070, T-071, T-073–T-079, T-082–T-086 | test_problem_validation, test_problem_auth, test_problem_catalog | Pass |
 | RF-012 | T-009, T-011, T-040, T-041 | test_problem_handlers | Pass |
 | RF-013 | T-010, T-011, T-038, T-043, T-044, T-047, T-048, T-051, T-054 | test_problem_handlers | Pass |
-| RF-014 | T-004, T-006, T-080 | test_problem_catalog | Pass |
+| RF-014 | T-004, T-006, T-080, T-085 | test_problem_catalog | Pass |
 | doc: contrato-0004 | T-030 | — | hecho |
 | doc: contrato-0002 | T-031 | — | hecho |
 | doc: spec-0002 | T-001, T-036 | — | hecho |
-| doc: backend-readme | T-032, T-049, T-055, T-062, T-068, T-073, T-077, T-082 | — | hecho |
-| doc: core-readme | T-033, T-049, T-055, T-062, T-068, T-073, T-077, T-082 | — | hecho |
+| doc: backend-readme | T-032, T-049, T-055, T-062, T-068, T-073, T-077, T-082, T-086 | — | hecho |
+| doc: core-readme | T-033, T-049, T-055, T-062, T-068, T-073, T-077, T-082, T-086 | — | hecho |
 | doc: frontend-readme | T-034 | — | hecho |
 | doc: agents-md | T-035 | — | hecho |
-| doc: state | T-037, T-050, T-056, T-063, T-069, T-074, T-078, T-083 | — | hecho |
+| doc: state | T-037, T-050, T-056, T-063, T-069, T-074, T-078, T-083, T-088 | — | hecho |
 | doc: spec-0004-enmienda-1 | T-038 | — | hecho |
 | doc: spec-0004-enmienda-2 | T-051 | — | hecho |
 | doc: spec-0004-enmienda-3 | T-057 | — | hecho |
@@ -159,7 +166,9 @@ actualizado: 2026-10-12
 | doc: spec-0004-enmienda-5 | T-070 | — | hecho |
 | doc: spec-0004-enmienda-6 | T-075 | — | hecho |
 | doc: spec-0004-enmienda-7 | T-079 | — | hecho |
-| doc: history | T-050, T-056, T-063, T-069, T-074, T-078, T-083 | — | hecho |
+| doc: spec-0004-enmienda-8 | T-084 | — | hecho |
+| doc: method-regla-de-salida | T-088 | — | hecho |
+| doc: history | T-050, T-056, T-063, T-069, T-074, T-078, T-083, T-088 | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

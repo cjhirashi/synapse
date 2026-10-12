@@ -123,7 +123,8 @@ class ValidationFailed(DomainError):
     Una validación que pydantic no puede expresar (p. ej. entre path, query y cuerpo) lanza
     una subclase sin slug propio con `errors=[{"pointer" | "parameter" | "header": ...,
     "detail": ...}]`. Cada `detail` es texto fijo, nunca interpolado con datos del cliente
-    (RF-011): el traductor lo publica tal cual.
+    (RF-011): el traductor lo publica tal cual. El `detail` raíz no se redefine ni se pasa
+    con `detail=`: es el mismo para todo 422 (enmienda 8).
     """
 
     slug = "validation-error"

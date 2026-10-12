@@ -153,7 +153,8 @@ En lugar de un `RequestValidationError` a mano:
   cliente: el traductor lo publica tal cual.
 
 Todo 422 de dominio hereda de `ValidationFailed` y comparte su `type` `validation-error`
-(RF-005); un test lo exige.
+y su `detail` raíz fijo (RF-005); un test lo exige. Tampoco pases `detail=` al lanzarlo:
+lo variable va en `errors`.
 
 ## Contratos OpenAPI por feature
 

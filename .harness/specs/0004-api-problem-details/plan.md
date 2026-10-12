@@ -121,7 +121,8 @@ class DomainError(Exception):
   capturarlos sí está permitido. Una validación entre campos del cuerpo lanza `field_error`
   desde un `model_validator` (sale en la raíz, `pointer` `#`); la que cruza path, query y
   cuerpo lanza una subclase de `ValidationFailed` con `errors=` (enmiendas 6 y 7), cuyos
-  `detail` son texto fijo, nunca datos del cliente (AA-3). Residual aceptado (Z-1, AA-2):
+  `detail` son texto fijo, nunca datos del cliente (AA-3), y cuyo `detail` raíz es el de
+  `ValidationFailed`, sin redefinirlo ni pasar `detail=` (BB-1). Residual aceptado (Z-1, AA-2):
   el análisis estático sólo reconoce llamadas y herencias escritas con el nombre de la
   clase (o su alias de import) o como atributo; cualquier otra referencia —variable,
   parámetro por defecto, `functools.partial`, `getattr`, `type()`, tablas de fábricas— se

@@ -31,7 +31,8 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   validaciones entre campos usan `field_error` en un `model_validator`; las que cruzan path,
   query y cuerpo, una subclase de `ValidationFailed` con `errors=` de texto fijo.
 - `ValidationFailed` es la única entrada `validation-error`: todo 422 de dominio hereda de
-  ella sin `slug` propio y el traductor la usa para los 422 de pydantic (RF-005).
+  ella sin `slug` ni `detail` propios (y se lanza sin `detail=`) y el traductor la usa
+  para los 422 de pydantic (RF-005).
 
 ## Subdirectorios
 

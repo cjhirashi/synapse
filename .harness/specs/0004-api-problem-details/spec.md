@@ -23,6 +23,7 @@ aprobaciones:
   enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_7: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  enmienda_8: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
 ---
 
@@ -66,6 +67,10 @@ actualizado: 2026-10-12
 > `type` propio, y un test lo exige; el `detail` de cada entrada de `errors` de un error
 > de dominio es texto fijo, nunca interpolado con datos del cliente; el residual de E6 ·
 > Z-1 se describe por su naturaleza, no con una lista.
+>
+> **Enmienda 8 2026-10-12** (re-verificación 7, BB-1; cierre sin nueva ronda por la regla
+> de salida de `method.md`): el `detail` raíz de un 422 de dominio es el de
+> `ValidationFailed`; ni la subclase lo redefine ni se pasa `detail=`.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -238,6 +243,7 @@ en su propio spec los tipos que añade.
 | E6 · Z-1 (redacción de E7 · AA-2): residual aceptado — el análisis estático sólo reconoce llamadas y herencias escritas con el nombre de la clase (o su alias de import) o como atributo; cualquier otra referencia —variable, parámetro por defecto, `functools.partial`, `getattr`, `type()`, tablas de fábricas— se le escapa (p. ej. `RVE = RequestValidationError`); ese código haría publicar el `ctx` | Exige rodear la regla a propósito y la regla queda documentada; seguir el flujo de datos con `ast` no es proporcionado, y publicar sólo límites numéricos no cerraría `expected` ni `pattern` | Endurecer el traductor (sólo `ctx` numéricos) | — |
 | E7 · AA-1: `ValidationFailed` es la única entrada `validation-error`; todo `DomainError` de 422 hereda de ella sin slug propio (`PasswordPolicyViolation` incluida) y el traductor la usa para los 422 de pydantic; un test exige «422 ⇔ subclase de `ValidationFailed`» | RF-005 promete un único `type` para todo 422 y el cliente lo reconoce por él; sin la clase genérica, un 422 nuevo (p. ej. `InvalidCursor` de SPEC-0003) reutilizaba una clase de contraseñas o creaba un `type` propio sin que nada lo detectara | Reutilizar `PasswordPolicyViolation`; documentar la regla sin test | — |
 | E7 · AA-3: el `detail` de cada entrada de `errors` de un error de dominio es texto fijo (constantes del esquema, como la longitud mínima, sí), nunca interpolado con datos del cliente | El traductor publica `errors` tal cual: la garantía de RF-011 depende aquí de quien escribe el error, y debe quedar escrita | Derivar el texto de `FIELD_ERROR_MESSAGES` (más maquinaria para un único caso actual) | — |
+| E8 · BB-1: el `detail` raíz de todo 422 de dominio es el de `ValidationFailed` (el test lo exige para el atributo de clase; no pasar `detail=` es regla documentada) | El `detail` raíz del 422 es fijo (PLAN §2) y, si variara, sería otra vía para publicar datos del cliente | Sólo documentarlo | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).
