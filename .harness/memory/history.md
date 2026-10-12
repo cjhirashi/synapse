@@ -2,7 +2,7 @@
 
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
 - **Fase alcanzada:** implement (Fase 4 completa: T-001…T-037; pendiente de verificación, Fase 5 del usuario)
-- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2, W-4 al backlog)
+- **Rebotes del verificador:** 2 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** sí — SPEC-0002 re-anclada (T-001: `covers` sin `backend/tests/**`; T-036: formato de errores → SPEC-0004)
 - **Anclas movidas:** SPEC-0002 `028c2ba` → `f28e063`; SPEC-0004 `c8c9e24` → `97ba08a` (cierre tras la enmienda 1) → `d41c74f` (cierre tras la enmienda 2)
@@ -55,6 +55,14 @@
   - [2026-10-12] T-055: `backend/README.md` (plantilla literal, recuento en colecciones) y `core/README.md`.
   - [2026-10-12] T-056: tabla de cobertura con T-051…T-056, W-4 al backlog de state.md, ancla movida. Backend 159/159, frontend 32/32, tsc limpio, contratos sin diff.
   - [2026-10-12] **Session-End:** fase implement (correcciones de la re-verificación, enmienda 2). Rebote W-1…W-4 resuelto (W-4 en backlog). Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, state.md, history.md. Decisión: la garantía de RF-011 cubre lo que genera pydantic; las plantillas de `PydanticCustomError` son código y deben ser literales. No se marca nada `verified`; el paso es del usuario.
+  - [2026-10-12] Usuario: «Resuelves los problemas, recuerda que tienes que analizar para encontrar el problema de raíz». Análisis de raíz: W-1 — el traductor confiaba en un `msg` que construye quien lanza el error, así que la garantía de RF-011 dependía de una convención («plantilla literal») sin comprobar; W-4 — «emitido ⊆ declarado» vivía en un helper de un solo módulo de tests, así que el resto de la suite podía emitir códigos no declarados sin que nada fallara. Rúbrica §2: revisa decisiones de la enmienda 2 → carril SDD, enmienda 3.
+  - [2026-10-12] T-057: enmienda 3 en SPEC-0004 (§5 validador con el valor en su mensaje; §6 E2 · W-1/W-4 sustituidas por E3 · W-1/W-4) y PLAN-0004 §2/§5; bloque K en tasks.md.
+  - [2026-10-12] T-058/T-059: tests rojos — un código catalogado publica el texto del catálogo aunque el mensaje lanzado lleve el valor; un código propio no catalogado sale `Invalid value.`; prueba AST: en `app/` sólo `core/errors.py` y `core/problems.py` usan errores de pydantic; catálogo bien formado (código slug, texto sin `{}`, `field_error` coherente). 4 rojos.
+  - [2026-10-12] T-060: `FIELD_ERROR_MESSAGES` + `field_error()` en `core/errors.py`; `_field_detail` resuelve los tipos propios por código desde el catálogo (nunca `msg`); el validador de email usa `field_error("invalid_email")`. Verde.
+  - [2026-10-12] T-061: `tests/contract_guard.py` (`ContractGuard`, middleware ASGI de test) instalado en `conftest.py` sobre la app real: toda respuesta ≥ 400 de toda la suite debe estar declarada en su operación (404/405 de enrutado excluidos). Retirado el chequeo duplicado de `test_problem_auth.py`; `test_problem_contract_guard.py` (instalación, declarados, no declarados, 404/405, extremo a extremo con un 401 quitado del esquema). Mutación: sin el guard fallan 2 tests.
+  - [2026-10-12] T-062: `backend/README.md` y `core/README.md` (catálogo de mensajes, regla de errores de pydantic, `ContractGuard` en toda la suite).
+  - [2026-10-12] T-063: tabla de cobertura con T-057…T-063, ítem 7 (W-4) retirado del backlog de state.md, ancla movida. Backend 168/168 (todas sus peticiones pasan por el guard), frontend 32/32, tsc limpio, contratos sin diff.
+  - [2026-10-12] **Session-End:** fase implement (W-1 y W-4 resueltos de raíz, enmienda 3). Rebotes: el reparto de la enmienda 2 se corrige por indicación del usuario. Gate verde. Docs: spec/plan/tasks de 0004, READMEs backend y core, state.md, history.md. Decisión: el texto publicado de un error propio sale del catálogo por su código y «emitido ⊆ declarado» se comprueba en toda la suite. No se marca nada `verified`; próximo paso: re-verificación decidida por el usuario.
 
 ---
 

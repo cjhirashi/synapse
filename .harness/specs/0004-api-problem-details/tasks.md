@@ -90,6 +90,15 @@ actualizado: 2026-10-11
 - [x] T-055 — docs: `backend/README.md` (plantilla literal, límites de colecciones) y `core/README.md` (cubre RF-011) [doc]
 - [x] T-056 — cierre: tabla de cobertura, W-4 al backlog de state.md, `anchor_commit` nuevo, history.md (cubre RF-011, RF-013) [doc]
 
+### K · W-1 y W-4 de raíz (enmienda 3)
+- [x] T-057 — enmienda 3 de SPEC-0004 (§5, §6: E3 · W-1, E3 · W-4) y PLAN-0004 §2/§5 (cubre RF-009, RF-011) [doc]
+- [x] T-058 — test (rojo) `test_problem_validation.py`: un código catalogado publica el texto del catálogo aunque se lance con el valor dentro; uno no catalogado, el genérico (W-1) (cubre RF-011) [zona: test]
+- [x] T-059 — test (rojo) `test_problem_catalog.py`: en `app/` sólo `core/errors.py` y `core/problems.py` usan `PydanticCustomError`/`PydanticKnownError`; catálogo de mensajes bien formado (W-1) (cubre RF-011) [zona: test]
+- [x] T-060 — `core/errors.py`: `FIELD_ERROR_MESSAGES` y `field_error`; `core/problems.py`: tipos propios desde el catálogo; `core/schemas.py`: email con `field_error` (cubre RF-011) [zona: ruta]
+- [x] T-061 — `conftest.py`: middleware de prueba «emitido ⊆ declarado» para toda petición a la app real; `test_problem_contract_guard.py` prueba que detecta un código no declarado y respeta las exclusiones de RF-009; helper de `test_problem_auth.py` sin la comprobación duplicada (W-4) (cubre RF-009) [zona: test]
+- [x] T-062 — docs: `backend/README.md` y `core/README.md` (catálogo de mensajes de validación, comprobación de contrato en toda la suite) (cubre RF-009, RF-011) [doc]
+- [x] T-063 — cierre: tabla de cobertura, W-4 fuera del backlog de state.md, `anchor_commit` nuevo, history.md (cubre RF-009, RF-011) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` se rellena a mano con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -101,23 +110,24 @@ actualizado: 2026-10-11
 | RF-006 | T-014, T-017, T-020–T-024 | test_problem_auth, test_forced_change | Pass |
 | RF-007 | T-018, T-022 | test_problem_auth | Pass |
 | RF-008 | T-005, T-006, T-021–T-023 | test_problem_catalog | Pass |
-| RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031, T-038, T-039, T-049 | test_contract, test_problem_contract, test_problem_auth | Pass |
+| RF-009 | T-001–T-003, T-015, T-016, T-023, T-025, T-030, T-031, T-038, T-039, T-049, T-057, T-061, T-062 | test_contract, test_problem_contract, test_problem_contract_guard (ContractGuard en toda la suite) | Pass |
 | RF-010 | T-026–T-029 | problems.test.ts, auth.test.ts, ChangePasswordPage.test.tsx | Pass |
-| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049, T-051–T-053, T-055 | test_problem_validation, test_problem_auth | Pass |
+| RF-011 | T-012, T-013, T-019, T-038, T-042, T-045, T-046, T-049, T-051–T-053, T-055, T-057–T-060, T-062 | test_problem_validation, test_problem_auth, test_problem_catalog | Pass |
 | RF-012 | T-009, T-011, T-040, T-041 | test_problem_handlers | Pass |
 | RF-013 | T-010, T-011, T-038, T-043, T-044, T-047, T-048, T-051, T-054 | test_problem_handlers | Pass |
 | RF-014 | T-004, T-006 | test_problem_catalog | Pass |
 | doc: contrato-0004 | T-030 | — | hecho |
 | doc: contrato-0002 | T-031 | — | hecho |
 | doc: spec-0002 | T-001, T-036 | — | hecho |
-| doc: backend-readme | T-032, T-049, T-055 | — | hecho |
-| doc: core-readme | T-033, T-049, T-055 | — | hecho |
+| doc: backend-readme | T-032, T-049, T-055, T-062 | — | hecho |
+| doc: core-readme | T-033, T-049, T-055, T-062 | — | hecho |
 | doc: frontend-readme | T-034 | — | hecho |
 | doc: agents-md | T-035 | — | hecho |
-| doc: state | T-037, T-050, T-056 | — | hecho |
+| doc: state | T-037, T-050, T-056, T-063 | — | hecho |
 | doc: spec-0004-enmienda-1 | T-038 | — | hecho |
 | doc: spec-0004-enmienda-2 | T-051 | — | hecho |
-| doc: history | T-050, T-056 | — | hecho |
+| doc: spec-0004-enmienda-3 | T-057 | — | hecho |
+| doc: history | T-050, T-056, T-063 | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

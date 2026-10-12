@@ -16,6 +16,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.adapters.database import Base, SessionLocal, get_db
 from app.main import app
+from tests.contract_guard import ContractGuard
+
+# RF-009 (SPEC-0004): todo cliente de la app real, en cualquier test, pasa por la
+# comprobación «emitido ⊆ declarado». Se instala antes de la primera petición, cuando
+# Starlette aún no ha construido la pila de middlewares.
+app.add_middleware(ContractGuard, schema_provider=app.openapi)
 
 TEST_DATABASE_URL = "sqlite:///./test.db"
 

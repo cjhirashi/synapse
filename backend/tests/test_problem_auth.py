@@ -1,25 +1,17 @@
 """Errores de auth y admin como Problem Details (SPEC-0004 RF-004…RF-007, RF-009, RF-011).
 
-Cada error conserva el código HTTP de SPEC-0002 y gana el `type` del catálogo; además,
-su operación lo declara en el contrato (emitido ⊆ declarado).
+Cada error conserva el código HTTP de SPEC-0002 y gana el `type` del catálogo. Que su
+operación lo declare en el contrato (emitido ⊆ declarado) lo comprueba `ContractGuard`
+para toda la suite (`tests/contract_guard.py`).
 """
 import pytest
-from starlette.routing import compile_path
 
 from app.core.models.user import User
 from app.core.problems import PROBLEM_MEDIA_TYPE
-from app.main import app
 from tests.conftest import SEED_EMAIL, SEED_PASSWORD, login
 
 NEW = "a-brand-new-password"
 URN = "urn:synapse:problem:"
-
-
-def _declared_statuses(method: str, path: str) -> set[str]:
-    """Códigos que declara la operación del contrato cuya plantilla casa con `method path`."""
-    paths = app.openapi()["paths"]
-    template = next(t for t in paths if compile_path(t)[0].fullmatch(path))
-    return set(paths[template][method.lower()]["responses"])
 
 
 def _assert_problem(response, status: int, slug: str) -> dict:
@@ -28,9 +20,6 @@ def _assert_problem(response, status: int, slug: str) -> dict:
     body = response.json()
     assert body["type"] == URN + slug
     assert body["status"] == status
-    # RF-009: lo que la app emite está declarado en su operación.
-    request = response.request
-    assert str(status) in _declared_statuses(request.method, request.url.path), request.url
     return body
 
 

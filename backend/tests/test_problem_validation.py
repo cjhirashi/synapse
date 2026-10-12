@@ -29,6 +29,7 @@ class Coded(BaseModel):
     code: str = ""
     label: str = ""
     slug: str = ""
+    email: str = ""
 
     @field_validator("code")
     @classmethod
@@ -49,6 +50,13 @@ class Coded(BaseModel):
     def _custom_error_constant(cls, v: str) -> str:
         if v:
             raise PydanticCustomError("bad_slug", "Slug is reserved")
+        return v
+
+    @field_validator("email")
+    @classmethod
+    def _cataloged_code_with_the_value(cls, v: str) -> str:
+        if v:
+            raise PydanticCustomError("invalid_email", f"{v} is not a valid email")
         return v
 
 
@@ -164,9 +172,17 @@ def test_uuid_parsing_detail_does_not_quote_the_value(client):
     assert _errors(response) == [{"parameter": "vault_id", "detail": GENERIC_FIELD_DETAIL}]
 
 
-def test_constant_custom_message_is_kept(client):
+def test_cataloged_code_publishes_the_catalog_text_not_the_raised_message(client):
+    # El texto publicable sale de `FIELD_ERROR_MESSAGES` por el código, nunca del mensaje con
+    # que se lanzó, aunque éste lleve el valor (enmienda 3, W-1).
+    response = client.post("/coded", json={"email": LEAKED_VALUE})
+    assert _errors(response) == [{"pointer": "#/email", "detail": "Invalid email format"}]
+    assert LEAKED_VALUE not in response.text
+
+
+def test_uncataloged_custom_code_is_generic_even_if_constant(client):
     errors = _errors(client.post("/coded", json={"slug": "admin"}))
-    assert errors == [{"pointer": "#/slug", "detail": "Slug is reserved"}]
+    assert errors == [{"pointer": "#/slug", "detail": GENERIC_FIELD_DETAIL}]
 
 
 def test_schema_limits_are_kept_in_the_detail(client):

@@ -8,10 +8,29 @@ sólo `core/problems.py` las traduce a HTTP (RF-008).
 El texto con el que se construye la excepción es **interno** (va al log, nunca al
 cliente). Para dar al cliente un `detail` distinto del de la clase hay que pasarlo de
 forma explícita con `detail=`.
+
+También vive aquí el catálogo de mensajes de validación propios (`FIELD_ERROR_MESSAGES`):
+el único texto de un validador que puede llegar al cliente.
 """
 from typing import ClassVar
 
+from pydantic_core import PydanticCustomError
+
 PROBLEM_TYPE_PREFIX = "urn:synapse:problem:"
+
+
+# --- Mensajes de validación propios (SPEC-0004 RF-011, enmienda 3) ---
+# Código del error → texto publicable en `errors[].detail` (inglés, sin `{}`). El traductor
+# publica esta entrada por el código, nunca el mensaje con que se lanzó; un código que no
+# esté aquí sale como texto genérico.
+FIELD_ERROR_MESSAGES: dict[str, str] = {
+    "invalid_email": "Invalid email format",
+}
+
+
+def field_error(code: str) -> PydanticCustomError:
+    """Error que lanza un validador de pydantic para un código del catálogo."""
+    return PydanticCustomError(code, FIELD_ERROR_MESSAGES[code])
 
 
 class DomainError(Exception):

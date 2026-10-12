@@ -104,15 +104,16 @@ class DomainError(Exception):
     rellenada sólo con claves de restricción del esquema (`SAFE_CTX_KEYS`: límites,
     `field_type` y `actual_length` de colecciones —un recuento, no el contenido—,
     `expected`, …);
-  - tipo propio (`PydanticCustomError`) sin `ctx` → su plantilla, que es una constante del
-    código;
+  - tipo propio (`PydanticCustomError`) → la entrada de su código en `FIELD_ERROR_MESSAGES`
+    (`core/errors.py`), nunca su `msg` (enmienda 3, W-1);
   - cualquier otro caso (`value_error`/`assertion_error`, cuyo `ctx.error` es el texto de
     la excepción; plantillas que exigen `ctx.error`, como UUID o JSON inválido; tipos
-    propios con `ctx`) → `"Invalid value."`.
-  Los validadores que quieran un texto concreto lanzan `PydanticCustomError` con plantilla
-  fija (p. ej. el email de `CreateUserRequest`). La plantilla es un literal del código,
-  nunca un f-string ni nada que lleve el valor (enmienda 2, W-1): el traductor no puede
-  distinguirla de una constante. El `detail` raíz del 422 es fijo
+    propios sin entrada en el catálogo) → `"Invalid value."`.
+  Los validadores que quieran un texto concreto lo declaran en `FIELD_ERROR_MESSAGES` y
+  lanzan `field_error("<código>")` (p. ej. el email de `CreateUserRequest`). Un test exige
+  que en `app/` sólo `core/errors.py` (catálogo) y `core/problems.py` (render) usen
+  `PydanticCustomError`/`PydanticKnownError`, para que nadie publique `ctx` con valores del
+  cliente. El `detail` raíz del 422 es fijo
   ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las
   clases que puede lanzar (código → descripción = `title`, contenido
@@ -174,7 +175,7 @@ feature**, porque 0004 necesita su propio contrato antes que 0003:
 | Migración | cada error de auth/admin: mismo código que antes + `type` del catálogo (tabla parametrizada); login con email inexistente y con contraseña errónea → cuerpos idénticos (RF-007); CouchDB caído → 503 `storage-unavailable` sin el mensaje interno | `test_problem_auth.py` |
 | Arquitectura | ningún módulo de `app/` salvo `core/problems.py` importa `HTTPException` (RF-008), por AST | `test_problem_catalog.py` |
 | Barrido | recorre todas las operaciones del contrato: cada respuesta 4xx/5xx declarada usa `application/problem+json` con `$ref` a `Problem`; cada error real devuelto en la suite lleva `application/problem+json` | `test_problem_contract.py` + `test_contract.py` |
-| Emitido ⊆ declarado (V-1) | cada error real de auth/admin provocado en `test_problem_auth.py` figura en las respuestas que su operación declara en `app.openapi()` (salvo 404/405 de enrutado, enmienda 1) | `test_problem_auth.py` |
+| Emitido ⊆ declarado (V-1, enmienda 3) | toda respuesta ≥ 400 de la app real, en cualquier test, figura en las respuestas que su operación declara en `app.openapi()` (salvo 404/405 de enrutado y rutas fuera del contrato) | middleware de prueba en `conftest.py` + `test_problem_contract_guard.py` |
 | Regresión | suite existente de 0002 en verde; el test que hoy lee `detail` (`test_forced_change.py`) pasa a leer `type` | suite completa |
 | Frontend | `parseProblem` con problem+json, json sin campos, cuerpo no JSON; `ApiError` con todos los campos; pantallas muestran los mismos textos; `auth.test.ts` con cuerpos Problem | vitest |
 

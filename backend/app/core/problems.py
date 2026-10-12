@@ -16,7 +16,7 @@ from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticKnownError
 from starlette.exceptions import HTTPException
 
-from app.core.errors import DomainError, PasswordPolicyViolation
+from app.core.errors import FIELD_ERROR_MESSAGES, DomainError, PasswordPolicyViolation
 
 logger = logging.getLogger(__name__)
 
@@ -194,17 +194,19 @@ def _location(error: dict) -> dict[str, str]:
 def _field_detail(error: dict) -> str:
     """Texto de una entrada de `errors` sin el valor recibido (RF-011).
 
-    No se copia `msg`: para los tipos de pydantic se vuelve a generar desde su plantilla
+    Nunca se copia `msg`: para los tipos de pydantic se vuelve a generar desde su plantilla
     con sólo las claves seguras de `ctx`; si la plantilla exige otra (p. ej. `error`, que
     trae el texto de un `ValueError` o el fragmento de un UUID inválido), texto genérico.
+    Los tipos propios salen del catálogo `FIELD_ERROR_MESSAGES` (enmienda 3).
     """
     ctx = error.get("ctx") or {}
     safe_ctx = {key: value for key, value in ctx.items() if key in SAFE_CTX_KEYS}
     try:
         return PydanticKnownError(error["type"], safe_ctx).message()
     except KeyError:
-        # Tipo propio (`PydanticCustomError`): sin `ctx`, su `msg` es la plantilla constante.
-        return GENERIC_FIELD_DETAIL if ctx else error["msg"]
+        # Tipo propio (`PydanticCustomError`): el texto es el del catálogo para su código,
+        # nunca su `msg`, que lo construye quien lanza el error y podría llevar el valor.
+        return FIELD_ERROR_MESSAGES.get(error["type"], GENERIC_FIELD_DETAIL)
     except TypeError:
         # La plantilla pide una clave de `ctx` que no es segura.
         return GENERIC_FIELD_DETAIL

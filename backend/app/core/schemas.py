@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, field_validator
-from pydantic_core import PydanticCustomError
 
+from app.core.errors import field_error
 from app.core.security import EMAIL_PATTERN, normalize_email
 
 
@@ -23,8 +23,8 @@ class CreateUserRequest(BaseModel):
     def _valid_email(cls, v: str) -> str:
         v = normalize_email(v)
         if not EMAIL_PATTERN.match(v):
-            # Plantilla fija y sin `ctx`: el traductor la publica tal cual (SPEC-0004 RF-011).
-            raise PydanticCustomError("invalid_email", "Invalid email format")
+            # El texto publicado sale del catálogo de errores (SPEC-0004 RF-011).
+            raise field_error("invalid_email")
         return v
 
 

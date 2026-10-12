@@ -126,14 +126,16 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
    y nunca llega al cliente; para otro `detail` público pasa `detail=`. Nunca `HTTPException` fuera de
    `core/problems.py` (lo comprueba un test).
 3. Declárala en la ruta con `responses=problem_responses(MiError)` para que salga en el contrato.
-   Los tests de `tests/test_problem_auth.py` exigen que cada código emitido esté declarado.
+   En toda la suite, `ContractGuard` (`tests/contract_guard.py`, instalado en `conftest.py`)
+   tumba cualquier petición cuyo código de error no esté declarado en su operación.
 
 **Mensajes de validadores propios:** un validador de pydantic que quiera un texto concreto en
-`errors[].detail` lanza `PydanticCustomError("<tipo>", "<plantilla fija>")` sin `ctx` (ver el
-del email en `core/schemas.py`). Un `ValueError` o una plantilla con `ctx` se publican como
-`Invalid value.`, porque su texto puede contener el valor recibido. La plantilla se publica
-tal cual, así que **debe ser un literal**: nunca un f-string, un `.format()` ni nada que lleve
-el valor (el traductor no puede distinguirla de una constante; SPEC-0004 enmienda 2).
+`errors[].detail` declara su código y su texto (inglés, sin `{}`) en `FIELD_ERROR_MESSAGES`
+de `core/errors.py` y lanza `field_error("<código>")` (ver el del email en `core/schemas.py`).
+El traductor publica el texto del catálogo por el código, nunca el mensaje lanzado; un
+`ValueError` o un código no catalogado salen como `Invalid value.`. En `app/` sólo
+`core/errors.py` y `core/problems.py` pueden usar `PydanticCustomError`/`PydanticKnownError`
+(lo comprueba `tests/test_problem_catalog.py`).
 
 ## Contratos OpenAPI por feature
 

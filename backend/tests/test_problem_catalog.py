@@ -96,3 +96,38 @@ def test_only_the_problem_translator_imports_http_exception():
             if "HTTPException" in names:
                 offenders.append(path.relative_to(APP_DIR).as_posix())
     assert not offenders, sorted(set(offenders))
+
+
+# --- Mensajes de validación propios (RF-011, enmienda 3) ---
+
+# Módulos de `app/` que pueden usar los errores de pydantic: el catálogo los construye y el
+# traductor los renderiza. Cualquier otro podría publicar `ctx` con valores del cliente.
+PYDANTIC_ERROR_OWNERS = {"core/errors.py", "core/problems.py"}
+PYDANTIC_ERROR_NAMES = {"PydanticCustomError", "PydanticKnownError"}
+
+
+def test_only_the_catalog_and_translator_use_pydantic_errors():
+    offenders = []
+    for path in APP_DIR.rglob("*.py"):
+        if path.relative_to(APP_DIR).as_posix() in PYDANTIC_ERROR_OWNERS:
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = []
+            if isinstance(node, ast.ImportFrom):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.Attribute):
+                names = [node.attr]
+            elif isinstance(node, ast.Name):
+                names = [node.id]
+            if PYDANTIC_ERROR_NAMES & set(names):
+                offenders.append(path.relative_to(APP_DIR).as_posix())
+    assert not offenders, sorted(set(offenders))
+
+
+def test_field_error_catalog_is_well_formed():
+    assert errors.FIELD_ERROR_MESSAGES, "catálogo vacío"
+    for code, message in errors.FIELD_ERROR_MESSAGES.items():
+        assert re.fullmatch(r"[a-z][a-z0-9_]*", code), code
+        assert message and "{" not in message, (code, message)  # plantilla sin `ctx`
+        raised = errors.field_error(code)
+        assert (raised.type, raised.message()) == (code, message)
