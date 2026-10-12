@@ -25,7 +25,10 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
   `from_exception_data`, también con alias o heredando): un error construido a mano con un
   tipo conocido haría que el traductor publicara su `ctx`. Capturarlos (`except`) sí se
-  puede. Lo comprueba `test_problem_catalog.py`.
+  puede. Lo comprueba `test_problem_catalog.py` (análisis estático: una clase pasada por una
+  variable o `functools.partial` se le escapa; residual aceptado, enmienda 6). Las
+  validaciones entre campos usan `field_error` en un `model_validator`; las que cruzan path,
+  query y cuerpo, un `DomainError` 422 con `errors=`.
 
 ## Subdirectorios
 

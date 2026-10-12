@@ -139,9 +139,14 @@ El traductor publica el texto del catálogo por el código, nunca el mensaje lan
 `ValueError` o un código no catalogado salen como `Invalid value.`. En `app/` sólo
 `core/errors.py` y `core/problems.py` pueden importar `pydantic_core` o construir errores de
 validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
-`from_exception_data`, también con alias o heredando); una validación entre campos lanza
-`field_error` o `ValueError`, no un `RequestValidationError` a mano. Capturarlos (`except`)
-sí se puede. Lo comprueba `tests/test_problem_catalog.py`.
+`from_exception_data`, también con alias o heredando). Capturarlos (`except`) sí se puede.
+Lo comprueba `tests/test_problem_catalog.py`, por análisis estático: no sigue una clase
+pasada por una variable o `functools.partial` (residual aceptado), así que no lo intentes.
+En lugar de un `RequestValidationError` a mano:
+- **Entre campos del cuerpo:** `field_error` o `ValueError` desde un `model_validator`; el
+  fallo sale en la raíz (`"pointer": "#"`).
+- **Entre fuentes** (path, query y cuerpo): un error de dominio 422 con `errors=` y la
+  ubicación de cada fallo, como `PasswordPolicyViolation` en `services/auth_service.py`.
 
 ## Contratos OpenAPI por feature
 

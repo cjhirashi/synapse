@@ -116,7 +116,11 @@ class DomainError(Exception):
   cliente; desde la enmienda 5 (Y-1) la regla es sobre la construcción: fuera de esos dos,
   nada en `app/` importa `pydantic_core` ni llama a `ValidationError`,
   `RequestValidationError`, `InitErrorDetails`, `PydanticCustomError`, `PydanticKnownError`
-  o `from_exception_data` (alias de import resueltos); capturarlos sí está permitido. Ningún
+  o `from_exception_data` ni hereda de ellos (alias de import resueltos; enmienda 6, Z-3);
+  capturarlos sí está permitido. Una validación entre campos del cuerpo lanza `field_error`
+  desde un `model_validator` (sale en la raíz, `pointer` `#`); la que cruza path, query y
+  cuerpo lanza un error de dominio 422 con `errors=` (enmienda 6, Z-2). Una clase pasada
+  por una variable o `functools.partial` escapa al escaneo: residual aceptado (Z-1). Ningún
   código del catálogo es un tipo conocido de pydantic (enmienda 4, X-3).
   El `detail` raíz del 422 es fijo
   ("Request validation failed.").

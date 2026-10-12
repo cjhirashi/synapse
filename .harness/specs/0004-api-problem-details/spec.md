@@ -21,6 +21,7 @@ aprobaciones:
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  enmienda_6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
 ---
 
@@ -52,6 +53,12 @@ actualizado: 2026-10-12
 > `app/` construye `ValidationError`, `RequestValidationError`, `InitErrorDetails` ni errores
 > de `pydantic_core` (tampoco con alias); capturarlos (`except`) sí está permitido.
 > Sustituye E4 · X-1.
+>
+> **Enmienda 6 2026-10-12** (re-verificación 5, Z-1…Z-3): la regla de E5 cubre también
+> heredar de esas clases (lo que ya exigía el test); la validación que cruza fuentes
+> distintas (path frente a cuerpo) usa un error de dominio 422 con `errors=`; queda
+> aceptado como residual que una clase pasada por una variable, `functools.partial` o
+> una tabla de fábricas escape al análisis estático.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -219,7 +226,9 @@ en su propio spec los tipos que añade.
 | ~~E4 · X-1: nada fuera de los dueños importa `pydantic_core` ni usa los nombres `ValidationError`, `from_exception_data`, `InitErrorDetails`~~ → sustituida por E5 · Y-1 | — | — | — |
 | E4 · X-2: el guardián resuelve la operación por la ruta que atendió la petición (`scope["route"].path_format`), no por la primera plantilla del contrato que casa la ruta | Con plantillas solapadas (`/vaults/{vault_id}` y `/vaults/search`, SPEC-0003) la primera que casa puede no ser la que Starlette elige | Elegir la plantilla que case ruta y método (repite el enrutado de Starlette) | — |
 | E4 · X-3: ningún código de `FIELD_ERROR_MESSAGES` coincide con un tipo conocido de pydantic (lo exige el test del catálogo) | El traductor resuelve antes los tipos conocidos: su entrada del catálogo nunca se publicaría | — | — |
-| E5 · Y-1: fuera de `core/errors.py` y `core/problems.py`, nada en `app/` importa `pydantic_core` ni construye un error de validación: llamadas a `ValidationError`, `RequestValidationError`, `InitErrorDetails`, `PydanticCustomError`, `PydanticKnownError` o `from_exception_data`, resolviendo los alias de import; importarlos para capturarlos (`except`) está permitido | La causa común de X-1 e Y-1 es construir a mano un error cuyo `ctx` el traductor publicaría; `RequestValidationError` a mano es el patrón de FastAPI para validaciones entre campos, así que debe quedar cubierto, y `except ValidationError` es legítimo (p. ej. validar documentos de CouchDB) | Prohibir el uso de los nombres (E4, impide capturarlos y deja fuera `RequestValidationError`) | — |
+| E5 · Y-1 (precisada por E6 · Z-3): fuera de `core/errors.py` y `core/problems.py`, nada en `app/` importa `pydantic_core` ni construye un error de validación: llamadas a `ValidationError`, `RequestValidationError`, `InitErrorDetails`, `PydanticCustomError`, `PydanticKnownError` o `from_exception_data` y subclases suyas, resolviendo los alias de import; importarlos para capturarlos (`except`) está permitido | La causa común de X-1 e Y-1 es construir a mano un error cuyo `ctx` el traductor publicaría; `RequestValidationError` a mano es el patrón de FastAPI para validaciones entre campos, así que debe quedar cubierto, y `except ValidationError` es legítimo (p. ej. validar documentos de CouchDB) | Prohibir el uso de los nombres (E4, impide capturarlos y deja fuera `RequestValidationError`) | — |
+| E6 · Z-2: una validación entre campos del cuerpo lanza `field_error`/`ValueError` desde un `model_validator` (su fallo sale en la raíz, `pointer` `#`); la que cruza fuentes (path, query y cuerpo) lanza un error de dominio 422 con `errors=` y la ubicación de cada fallo, como `PasswordPolicyViolation` | Da a cada caso una vía permitida que publica sólo texto del catálogo o del propio error de dominio, sin `RequestValidationError` a mano | `RequestValidationError` a mano (prohibido por E5) | — |
+| E6 · Z-1: residual aceptado — el análisis estático de E5 no sigue la clase cuando pasa por una variable (`RVE = RequestValidationError`), `functools.partial` o una tabla de fábricas; ese código haría publicar el `ctx` | Exige rodear la regla a propósito y la regla queda documentada; seguir el flujo de datos con `ast` no es proporcionado, y publicar sólo límites numéricos no cerraría `expected` ni `pattern` | Endurecer el traductor (sólo `ctx` numéricos) | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).

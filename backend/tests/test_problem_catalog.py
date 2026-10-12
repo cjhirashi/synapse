@@ -140,9 +140,12 @@ def _validation_error_constructions(source: str) -> list[str]:
             if (node.module or "").split(".")[0] == PYDANTIC_ERROR_MODULE:
                 found.append(node.module)
         elif isinstance(node, ast.Call):
-            found += [name for name in [_called_name(node.func, aliases)] if name in VALIDATION_ERROR_BUILDERS]
+            name = _called_name(node.func, aliases)
+            if name in VALIDATION_ERROR_BUILDERS:
+                found.append(name)
         elif isinstance(node, ast.ClassDef):
-            found += [name for base in node.bases if (name := _called_name(base, aliases)) in VALIDATION_ERROR_BUILDERS]
+            bases = (_called_name(base, aliases) for base in node.bases)
+            found += [name for name in bases if name in VALIDATION_ERROR_BUILDERS]
     return found
 
 
