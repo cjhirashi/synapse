@@ -145,13 +145,15 @@ sequenceDiagram
 - User A crea bóveda (owner)
 - User B accede a Synapse
 - ✅ User B NO ve bóvedas de A
-- User A intenta acceder a bóvedas de B → ❌ Error 403
+- User A intenta acceder a bóvedas de B → ❌ Error 404 `vault-not-found` (mismo cuerpo que
+  una bóveda inexistente: nunca 403, que revelaría que existe — SPEC-0003 RF-014)
+- Cada usuario tiene su propia base CouchDB (`synapse_user_{id}`) y la elegida sale sólo del token
 
 **Comando:**
 ```bash
 /archify
 # Seleccionar: Narrative
-# Describir: "Synapse Data Isolation: User A (propietario) vs User B (invitado). User B no ve datos de A. Validación de permisos en TODO endpoint."
+# Describir: "Synapse Data Isolation: User A (propietario) vs User B (invitado). Una base CouchDB por usuario, elegida sólo por el token. User B no ve datos de A; pedir una bóveda de A da 404, igual que si no existiera."
 # Exportar: HTML, SVG, PNG light/dark
 ```
 
@@ -198,6 +200,10 @@ sequenceDiagram
 - [ ] Generar **Autenticación (Sequence)**
 - [ ] Generar **Aislamiento (Narrative)**
 - [ ] Guardar en `.harness/specs/0003-vault-crud/diagrams/`
+
+> **Nota (T-003):** estos diagramas no forman parte del alcance de SPEC-0003 ni bloquean su
+> cierre (spec §2): se generan en paralelo. La carpeta `diagrams/` de 0003 está en sus
+> `covers`, así que guardarlos ahí no rompe el anclaje.
 
 ### **Sprint 3 — Documentos**
 - [ ] (No requiere diagramas nuevos, puede reutilizar arquitectura)

@@ -15,9 +15,9 @@ backend/
 ├── app/
 │   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
-│   ├── services/     # Lógica de negocio (auth_service.py)
-│   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py)
+│   ├── services/     # Lógica de negocio (auth_service.py, vault_service.py)
+│   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB: vault_repository.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, vaults.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
@@ -69,6 +69,46 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 
 Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`.
 
+## Bóvedas (SPEC-0003)
+
+Cada bóveda es un documento `type: "vault"` en la base CouchDB del usuario
+(`synapse_user_{sub}`, creada en el alta — SPEC-0002). Capas: `routers/vaults.py` →
+`services/vault_service.py` → `core/ports/vault_port.py` (`VaultPort`) →
+`adapters/vault_repository.py` (`VaultRepository`, HTTP de CouchDB).
+
+- **Aislamiento:** la base sale sólo del token; ningún dato de la petición la elige. Una
+  bóveda ajena, inexistente, en el estado equivocado (borrada para `GET`/`PATCH`/`DELETE`,
+  activa para `restore`) o con id que no es UUID responde el **mismo 404** `vault-not-found`:
+  nunca 403, para no revelar que existe.
+- **Sesión:** las 6 rutas exigen sesión (401) y el cambio de contraseña hecho (403).
+- **Versión (`ETag`/`If-Match`):** el `ETag` es el `_rev` entre comillas. Va en la cabecera
+  de las respuestas con una bóveda; en los listados cada elemento lleva su `etag` (la
+  papelera lo necesita para restaurar, porque `GET` de una borrada da 404). `PATCH`,
+  `DELETE` y `restore` exigen `If-Match`: sin él 428 `precondition-required`; distinto del
+  vigente 412 `precondition-failed` (otra escritura ganó: relee y repite).
+- **Nombre único entre las bóvedas activas del usuario** (sin distinguir mayúsculas; una
+  borrada libera su nombre y `restore` lo vuelve a reclamar): documento de reserva `vault-name:{nombre en minúsculas}` escrito antes que la
+  bóveda, con un arrendamiento de 30 s (`RESERVATION_LEASE`) para que una escritura que falla
+  a medias no bloquee el nombre para siempre. Conflicto → 409 `vault-name-taken`.
+- **Papelera:** `DELETE` marca `deleted_at` (borrado lógico); `GET /vaults?deleted=true` lista
+  las borradas y `restore` las devuelve. La purga a 30 días (RF-016) es otra feature.
+- **Paginación:** orden `created_at` descendente (empate por id); `next_cursor` opaco, válido
+  sólo para la lista (normal o papelera) que lo emitió. El índice (`_design/vaults`, vista
+  `by_created`) se crea en la primera consulta de cada base, no al crear la bóveda.
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /vaults?limit=1..200&cursor=&deleted=false` | 200 `{items:[Bóveda + etag], next_cursor}` · 422 |
+| `POST /vaults` `{name,description?,tags?}` | 201 + `ETag` · 409 · 422 |
+| `GET /vaults/{id}` | 200 + `ETag` · 404 |
+| `PATCH /vaults/{id}` + `If-Match` (sólo los campos enviados) | 200 + `ETag` · 404 · 409 · 412 · 428 · 422 |
+| `DELETE /vaults/{id}` + `If-Match` | 204 · 404 · 412 · 428 |
+| `POST /vaults/{id}/restore` + `If-Match` | 200 + `ETag` · 404 · 409 · 412 · 428 |
+
+Todas pueden responder además 401, 403 y 503 (`storage-unavailable`). Contrato completo:
+`.harness/specs/0003-vault-crud/contracts/openapi.yaml`. Rendimiento (RNF-001):
+`tests/test_vaults_perf.py`, marca `perf` (ver Comandos).
+
 ## Errores (SPEC-0004)
 
 > **Cambio incompatible:** desde SPEC-0004 los errores ya no son `{"detail": "..."}`.
@@ -115,7 +155,11 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `password-change-required` | 403 | cambio de contraseña obligatorio pendiente |
 | `wrong-current-password` | 400 | `change-password` con la contraseña actual errónea |
 | `email-taken` | 409 | `POST /admin/users` con un email ya registrado |
-| `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña |
+| `vault-not-found` | 404 | bóveda inexistente, ajena, borrada o con id no UUID (mismo cuerpo) |
+| `vault-name-taken` | 409 | ya hay otra bóveda del usuario con ese nombre (sin mayúsculas) |
+| `precondition-failed` | 412 | `If-Match` distinto del `ETag` vigente de la bóveda |
+| `precondition-required` | 428 | escritura de bóveda sin `If-Match` |
+| `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña; `cursor` inválido |
 | `storage-unavailable` | 503 | CouchDB inaccesible |
 
 **Añadir un error de dominio:**
@@ -159,7 +203,8 @@ lo variable va en `errors`.
 ## Contratos OpenAPI por feature
 
 `python scripts/export_openapi.py` escribe un contrato por feature (`FEATURES` en el script):
-`0002-auth` (rutas `/auth`, `/admin`, `/health`) y `0004-api-problem-details` (sólo los
+`0002-auth` (rutas `/auth`, `/admin`, `/health`), `0003-vault-crud` (rutas `/vaults`) y
+`0004-api-problem-details` (sólo los
 esquemas `Problem`/`ProblemError`, el canon). Cada contrato lleva una copia de `Problem` para
 ser autocontenido; `tests/test_contract.py` falla si un contrato difiere de la app, si una
 ruta no tiene exactamente una feature dueña o si una copia de `Problem` difiere del canon.

@@ -2,7 +2,7 @@
 id: PLAN-0003
 tipo: plan
 feature: 0003-vault-crud
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   ajustes_fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §10, con el GATE 3
@@ -19,7 +19,7 @@ actualizado: 2026-10-12
 > **Prerrequisito:** SPEC-0004 (`0004-api-problem-details`, errores RFC 9457) — cumplido:
 > `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
-> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11, §12 y §13.
+> Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11, §12 y §13; notas del cierre: §14.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -376,3 +376,15 @@ aprobado por el usuario el 2026-10-12 junto con la enmienda del spec.
   recargar).
 - **Impacto:** tests de API que lean el `etag` del listado en lugar de CouchDB; tests del
   servicio para `etag` en `list`; `api/vaults.ts` lo expone en cada bóveda.
+
+## 14. Notas del cierre de la Fase 4 (T-051; informativas, ninguna decisión cambia)
+- **`frontend/vite.config.ts` fuera de todo `covers`:** el bloque G añadió el proxy de
+  desarrollo de `/vaults` (sirve `index.html` a las navegaciones con `Accept: text/html`,
+  para que recargar `/vaults/...` en el navegador pinte la ruta de React en vez de pedir
+  JSON al backend). Es configuración de desarrollo, sin efecto en el build ni en la API,
+  y ninguna spec cubre ese archivo (lo tocó también 0002 con `/auth` y `/admin`), así que
+  no genera drift ni se añade a los `covers` de 0003. Queda documentado en
+  `frontend/src/README.md`; anclarlo es decisión de una spec de tooling del frontend.
+- **`getVault`** en `api/vaults.ts`, que la lista de §9 no nombraba: la ruta de edición y la
+  recarga tras un 412 la necesitan. Cubierta por `vaults.test.ts` y `VaultForm.test.tsx`.
+- **Re-anclaje de 0002** (§10): hecho en su `spec.md`, ancla `4a07556`.

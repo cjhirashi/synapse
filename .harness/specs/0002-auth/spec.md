@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: f28e063
+anchor_commit: 4a07556   # re-anclaje por SPEC-0003 (PLAN-0003 §10)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -51,7 +51,7 @@ aprobaciones:
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   pr_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
-actualizado: 2026-10-11
+actualizado: 2026-10-12
 ---
 
 # SPEC-0002 · Autenticación y aislamiento por usuario
@@ -76,6 +76,14 @@ actualizado: 2026-10-11
 > (RFC 9457, `application/problem+json`) definido por SPEC-0004. Servicios y dependencias
 > lanzan errores de dominio (`core/errors.py`); el contrato `contracts/openapi.yaml` se
 > re-exportó con esas respuestas. Ancla movida a `f28e063`. Sin cambio de requisitos.
+>
+> **Re-anclaje 2026-10-12** (PLAN-0003 §10, T-051 de TASKS-0003): SPEC-0003 (bóvedas) tocó
+> archivos de estos `covers` sin cambiar ningún requisito de esta spec: `core/schemas.py`
+> (esquemas de bóveda), `scripts/export_openapi.py` (feature `0003-vault-crud`),
+> `tests/conftest.py` (marca `perf` de RNF-001), `tests/test_contract.py` (contrato
+> de 0003), `App.tsx` (rutas `/vaults/**`, `/` → `/vaults`), `layout/AppLayout.tsx` y su test
+> (navegación Bóvedas/Papelera) y `api/auth.ts` (`request` exportado para `api/vaults.ts`).
+> Ancla movida a `4a07556`. Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

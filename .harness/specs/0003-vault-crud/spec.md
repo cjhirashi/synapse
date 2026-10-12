@@ -2,9 +2,9 @@
 id: SPEC-0003
 tipo: spec
 feature: 0003-vault-crud
-estado: approved
+estado: implemented
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: c8c9e24   # base al abrir la spec (aún sin código propio)
+anchor_commit: 4a07556   # cierre de la Fase 4 (T-051)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py

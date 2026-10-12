@@ -60,7 +60,7 @@ Crea `.harness/specs/0002-auth/spec.md` con esta descripción como base (ver `Ac
 
 ### [T-002] CRUD de bóvedas (Get/Create/Update/Delete)
 
-**Estado:** Pendiente  
+**Estado:** En curso — SPEC-0003 en Fase 4 (implementada, pendiente de verificación)  
 **Prioridad:** P1  
 **Estimación:** 16 horas  
 **Fecha asignación:** 2026-10-12 (después T-001 completada)  
@@ -68,18 +68,25 @@ Crea `.harness/specs/0002-auth/spec.md` con esta descripción como base (ver `Ac
 
 **Descripción:**
 Crear endpoints REST para CRUD de bóvedas. Cada bóveda pertenece a un usuario.
-Crear base CouchDB `synapse_user_{user_id}` automáticamente al crear primera bóveda.
 Validar que usuario solo acceda a sus propias bóvedas (P3 rule).
-Crea `.harness/specs/0003-vault-crud/spec.md` (ver `Aceptación` abajo como base).
+Especificado en `.harness/specs/0003-vault-crud/spec.md` (manda sobre esta ficha).
+
+> **Ajustes decididos en SPEC-0003** (sustituyen a la ficha original):
+> - `POST /vaults` **no crea** la base CouchDB: `synapse_user_{id}` ya existe desde el alta (SPEC-0002).
+> - Una bóveda ajena responde **404**, no 403 (no revela que existe).
+> - **Sin índice `by_owner_id`:** la base es del usuario; el aislamiento lo da la base, no un filtro.
+> - **Papelera:** `GET /vaults?deleted=true` y `POST /vaults/{id}/restore`; la purga a 30 días es otra feature.
+> - **Concurrencia:** `ETag` (el `_rev`) y `If-Match` obligatorio en `PATCH`, `DELETE` y `restore` (428/412).
 
 **Aceptación:**
-- [ ] GET /vaults → lista bóvedas del usuario autenticado (JSON)
-- [ ] POST /vaults → crea nueva bóveda, genera `synapse_user_{id}`, retorna bóveda creada
-- [ ] PATCH /vaults/{vault_id} → actualiza nombre/descripción/tags
-- [ ] DELETE /vaults/{vault_id} → elimina bóveda (soft delete con timestamp)
-- [ ] Todas queries filtran por `owner_id == current_user.id` (P3 validado)
-- [ ] Usuario B NO ve bóvedas de usuario A (403 si intenta acceder)
-- [ ] Bóveda tiene: id, nombre, descripción, owner_id, created_at, updated_at, tags[]
+- [ ] GET /vaults → lista paginada de las bóvedas del usuario autenticado (JSON, cada una con su `etag`)
+- [ ] POST /vaults → crea nueva bóveda y retorna la bóveda creada con `ETag`
+- [ ] PATCH /vaults/{vault_id} → actualiza nombre/descripción/tags (con `If-Match`)
+- [ ] DELETE /vaults/{vault_id} → mueve a la papelera (soft delete con timestamp, con `If-Match`)
+- [ ] POST /vaults/{vault_id}/restore → la devuelve de la papelera
+- [ ] Toda operación usa sólo la base del token (P3 validado)
+- [ ] Usuario B NO ve bóvedas de usuario A (404 si intenta acceder)
+- [ ] Bóveda tiene: id, nombre, descripción, owner_id, created_at, updated_at, deleted_at, tags[]
 - [ ] Tests: ≥80% cobertura, incluyendo permission tests
 - [ ] Gate: ✅ Verde
 - [ ] Spec.md + plan.md completos
@@ -87,16 +94,18 @@ Crea `.harness/specs/0003-vault-crud/spec.md` (ver `Aceptación` abajo como base
 **Bloqueadores:** T-001 (necesita auth para validar `current_user`)
 
 **Notas:**
-- Usar pattern Hexagonal: port VaultRepository, adapter CouchDB
-- Crear índice en CouchDB: `by_owner_id`
+- Pattern Hexagonal: puerto `VaultPort`, adaptador CouchDB `VaultRepository`
+- Índice CouchDB `_design/vaults` (vista `by_created`) para el orden y la paginación
 - Soft delete: `deleted_at` != null
 - No borrar base de datos, solo marcar documentos como deleted
 
-**Archivos a tocar:**
-- `backend/app/vaults.py` (nuevo)
-- `backend/app/ports/vault_repository.py` (nuevo)
-- `backend/app/adapters/couchdb_vault.py` (nuevo)
-- `backend/tests/test_vaults.py` (nuevo)
+**Archivos tocados:**
+- `backend/app/routers/vaults.py`
+- `backend/app/services/vault_service.py`
+- `backend/app/core/ports/vault_port.py`
+- `backend/app/adapters/vault_repository.py`
+- `backend/tests/test_vault*.py`
+- `frontend/src/vaults/**`, `frontend/src/api/vaults.ts`
 
 ---
 

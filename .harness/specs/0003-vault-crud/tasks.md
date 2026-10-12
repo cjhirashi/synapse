@@ -2,7 +2,7 @@
 id: TASKS-0003
 tipo: tasks
 feature: 0003-vault-crud
-estado: approved
+estado: implemented
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
@@ -81,53 +81,53 @@ actualizado: 2026-10-12
 - [x] T-044 — `App.tsx` y `layout/AppLayout.tsx` (cubre RF-018, RF-028) [zona: frontend]
 
 ### H · Documentación (PLAN-0003 §8)
-- [ ] T-045 — `backend/README.md`: sección "Bóvedas (SPEC-0003)" (endpoints, `ETag`/`If-Match`, 404 de ajena), estructura (`vault_service`, `vault_repository`, `vaults.py`), cuatro entradas nuevas en el catálogo de errores y la feature 0003 en "Contratos OpenAPI por feature" [doc]
-- [ ] T-046 — `backend/app/core/ports/README.md` y `backend/app/adapters/README.md`: `VaultPort` y `VaultRepository` [doc]
-- [ ] T-047 — `frontend/src/README.md`: carpeta `vaults/`, `api/vaults.ts`, rutas [doc]
-- [ ] T-048 — `TAREAS.md` (T-002): sin crear base en `POST`, 404 en vez de 403, sin índice `by_owner_id`, papelera, `If-Match` [doc]
-- [ ] T-049 — `ARCHIFY.md`: diagrama de aislamiento (404) y nota de T-003 [doc]
-- [ ] T-050 — `state.md`: RF-016 (purga a 30 días) en el backlog como feature aparte (cubre RF-016) [doc]
-- [ ] T-051 (cierre) — re-anclaje de 0002 (nota y `anchor_commit` por los archivos compartidos de PLAN-0003 §10, incluido `conftest.py`); `anchor_commit` de 0003; `state.md` con el estado de 0003 y residuales; tabla de cobertura con la evidencia [doc]
+- [x] T-045 — `backend/README.md`: sección "Bóvedas (SPEC-0003)" (endpoints, `ETag`/`If-Match`, 404 de ajena), estructura (`vault_service`, `vault_repository`, `vaults.py`), cuatro entradas nuevas en el catálogo de errores y la feature 0003 en "Contratos OpenAPI por feature" [doc]
+- [x] T-046 — `backend/app/core/ports/README.md` y `backend/app/adapters/README.md`: `VaultPort` y `VaultRepository` [doc]
+- [x] T-047 — `frontend/src/README.md`: carpeta `vaults/`, `api/vaults.ts`, rutas [doc]
+- [x] T-048 — `TAREAS.md` (T-002): sin crear base en `POST`, 404 en vez de 403, sin índice `by_owner_id`, papelera, `If-Match` [doc]
+- [x] T-049 — `ARCHIFY.md`: diagrama de aislamiento (404) y nota de T-003 [doc]
+- [x] T-050 — `state.md`: RF-016 (purga a 30 días) en el backlog como feature aparte (cubre RF-016) [doc]
+- [x] T-051 (cierre) — re-anclaje de 0002 (nota y `anchor_commit` por los archivos compartidos de PLAN-0003 §10, incluido `conftest.py`); `anchor_commit` de 0003; `state.md` con el estado de 0003 y residuales; tabla de cobertura con la evidencia [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` se rellena con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-001, T-002, T-010, T-012, T-015, T-023, T-024, T-025, T-030, T-031, T-032 | test_vaults_api, test_vault_repository, test_vault_service, test_contract | Pendiente |
-| RF-002 | T-008, T-009, T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_service, test_vault_repository, test_vaults_api | Pendiente |
-| RF-003 | T-006, T-007, T-008, T-009, T-023, T-024, T-026, T-030 | test_vault_errors, test_vault_service, test_vaults_api | Pendiente |
-| RF-004 | T-001, T-002, T-010, T-011, T-014, T-017, T-018, T-025, T-030, T-032 | test_vault_service, test_vault_repository, test_vaults_api | Pendiente |
-| RF-005 | T-003, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pendiente |
-| RF-006 | T-004, T-005, T-025, T-030 | test_vault_schemas, test_vaults_api | Pendiente |
-| RF-007 | T-006, T-007, T-017, T-018, T-027, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-008 | T-001, T-019, T-020, T-025, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-009 | T-001, T-004, T-005, T-019, T-020, T-025, T-030 | test_vault_schemas, test_vault_service, test_vaults_api | Pendiente |
-| RF-010 | T-006, T-007, T-011, T-014, T-016, T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pendiente |
-| RF-011 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-012 | T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pendiente |
-| RF-013 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-014 | T-006, T-007, T-019, T-020, T-028, T-030 | test_vault_service, test_vaults_isolation | Pendiente |
-| RF-015 | T-028, T-030, T-031 | test_vaults_isolation | Pendiente |
-| RF-016 | T-050 (diferido a otra feature, spec §2) | — | Pendiente |
-| RF-017 | T-013, T-014, T-016, T-017, T-018, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pendiente |
-| RF-018 | T-035, T-036, T-037, T-038, T-043, T-044 | vaults.test.ts, VaultListPage.test.tsx, App.test.tsx | Pendiente |
-| RF-019 | T-035, T-036, T-039, T-040 | vaults.test.ts, VaultForm.test.tsx | Pendiente |
-| RF-020 | T-037, T-038 | VaultListPage.test.tsx | Pendiente |
-| RF-021 | T-016, T-017, T-018, T-019, T-020, T-029, T-030 | test_vault_service, test_vaults_concurrency | Pendiente |
-| RF-022 | T-017, T-018, T-025, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-023 | T-004, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pendiente |
-| RF-024 | T-012, T-015, T-023, T-024, T-030 | test_vault_repository, test_vault_service | Pendiente |
-| RF-025 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-026 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-027 | T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pendiente |
-| RF-028 | T-035, T-036, T-041, T-042, T-043, T-044 | vaults.test.ts, TrashPage.test.tsx, AppLayout.test.tsx | Pendiente |
-| RNF-001 | T-033, T-034 | test_vaults_perf (`-m perf`) | Pendiente |
-| doc: contrato-0003 | T-032 | — | Pendiente |
-| doc: backend-readme | T-045 | — | Pendiente |
-| doc: ports-adapters-readme | T-046 | — | Pendiente |
-| doc: frontend-readme | T-047 | — | Pendiente |
-| doc: tareas-t002 | T-048 | — | Pendiente |
-| doc: archify | T-049 | — | Pendiente |
-| doc: state | T-050, T-051 | — | Pendiente |
+| RF-001 | T-001, T-002, T-010, T-012, T-015, T-023, T-024, T-025, T-030, T-031, T-032 | test_vaults_api, test_vault_repository, test_vault_service, test_contract | Pass |
+| RF-002 | T-008, T-009, T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_service, test_vault_repository, test_vaults_api | Pass |
+| RF-003 | T-006, T-007, T-008, T-009, T-023, T-024, T-026, T-030 | test_vault_errors, test_vault_service, test_vaults_api | Pass |
+| RF-004 | T-001, T-002, T-010, T-011, T-014, T-017, T-018, T-025, T-030, T-032 | test_vault_service, test_vault_repository, test_vaults_api | Pass |
+| RF-005 | T-003, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pass |
+| RF-006 | T-004, T-005, T-025, T-030 | test_vault_schemas, test_vaults_api | Pass |
+| RF-007 | T-006, T-007, T-017, T-018, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-008 | T-001, T-019, T-020, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-009 | T-001, T-004, T-005, T-019, T-020, T-025, T-030 | test_vault_schemas, test_vault_service, test_vaults_api | Pass |
+| RF-010 | T-006, T-007, T-011, T-014, T-016, T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
+| RF-011 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-012 | T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
+| RF-013 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-014 | T-006, T-007, T-019, T-020, T-028, T-030 | test_vault_service, test_vaults_isolation | Pass |
+| RF-015 | T-028, T-030, T-031 | test_vaults_isolation | Pass |
+| RF-016 | T-050 (diferido a otra feature, spec §2) | — (en el backlog de `state.md`) | hecho |
+| RF-017 | T-013, T-014, T-016, T-017, T-018, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
+| RF-018 | T-035, T-036, T-037, T-038, T-043, T-044 | vaults.test.ts, VaultListPage.test.tsx, App.test.tsx | Pass |
+| RF-019 | T-035, T-036, T-039, T-040 | vaults.test.ts, VaultForm.test.tsx | Pass |
+| RF-020 | T-037, T-038 | VaultListPage.test.tsx | Pass |
+| RF-021 | T-016, T-017, T-018, T-019, T-020, T-029, T-030 | test_vault_service, test_vaults_concurrency | Pass |
+| RF-022 | T-017, T-018, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-023 | T-004, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pass |
+| RF-024 | T-012, T-015, T-023, T-024, T-030 | test_vault_repository, test_vault_service | Pass |
+| RF-025 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-026 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-027 | T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-028 | T-035, T-036, T-041, T-042, T-043, T-044 | vaults.test.ts, TrashPage.test.tsx, AppLayout.test.tsx | Pass |
+| RNF-001 | T-033, T-034 | test_vaults_perf (`-m perf`: 1 passed; p95 18 ms con 1 000 bóvedas) | Pass |
+| doc: contrato-0003 | T-032 | — | hecho |
+| doc: backend-readme | T-045 | — | hecho |
+| doc: ports-adapters-readme | T-046 | — | hecho |
+| doc: frontend-readme | T-047 | — | hecho |
+| doc: tareas-t002 | T-048 | — | hecho |
+| doc: archify | T-049 | — | hecho |
+| doc: state | T-050, T-051 | — | hecho |
 | doc: plan-0003-ajustes-fase-3 | (hecho al escribir este `tasks.md`: PLAN-0003 §10) | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).

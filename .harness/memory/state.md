@@ -1,6 +1,6 @@
 ---
 ultima_actualizacion: 2026-10-12
-fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud en Fase 4 (GATE 3 aprobado; T-001…T-044 hechas; plan §12 y §13 aprobados); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
+fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud `implemented` (T-001…T-051 hechas; plan §11–§14; pendiente de verificación adversarial); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -41,7 +41,7 @@ sprint_actual: 2
 | Feature | Estado | Notas |
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
-| 0003-vault-crud | spec, plan y tasks `approved` (GATES 1, 2 y 3) · Fase 4 en curso: T-001…T-044 hechas (núcleo, puerto, adaptador, servicio, rutas, contrato, rendimiento —p95 18 ms con 1 000 bóvedas— y frontend; plan §11, §12 —arrendamiento de 30 s, RF-021— y §13 —`etag` en los listados—) · backend 336 tests · frontend 82 | RF-001…RF-028 + RNF-001 · Fase 3: T-001…T-051 (cobertura 29/29 + 7 filas `[doc]`); PLAN-0003 §10 alineado con SPEC-0004 (BB-3 aplicado: `InvalidCursor` ⊂ `ValidationFailed`; sin manejadores en `main.py`) · Fase 4 desbloqueada (SPEC-0004 `verified`) · T-002 de `TAREAS.md` |
+| 0003-vault-crud | `implemented` (2026-10-12; spec, plan y tasks) · pendiente de verificación adversarial y de `verified` (lo decide el usuario) · T-001…T-051 hechas · plan §11, §12 (arrendamiento de 30 s, RF-021), §13 (`etag` en los listados) aprobados; §14 notas de cierre · backend 336 tests (cobertura 99 %) + `perf` 1/1 (p95 18 ms con 1 000 bóvedas) · frontend 82/82 · ancla en 4a07556 | RF-001…RF-028 + RNF-001 (cobertura 28 RF en `Pass`, RF-016 diferido → backlog 7) · contrato en `specs/0003-vault-crud/contracts/openapi.yaml` · 0002 re-anclada a 4a07556 · residuales: `frontend/vite.config.ts` sin spec que lo cubra (plan §14); cobertura del frontend no medible (falta `@vitest/coverage-v8`) · T-002 de `TAREAS.md` |
 | 0004-api-problem-details | `verified` (por el usuario, 2026-10-12) · T-001…T-088 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · re-verificaciones 3 y 4 APPROVED con menores X-1…X-4 (enmienda 4: guardián por ruta atendida, códigos del catálogo) e Y-1…Y-3 (enmienda 5: prohibida la construcción a mano de errores de validación fuera del catálogo y el traductor) · re-verificación 5 APPROVED con menores Z-1…Z-4 (enmienda 6: vías permitidas entre campos y entre fuentes, residual del análisis estático aceptado) · re-verificación 6 APPROVED con menores AA-1…AA-4 (enmienda 7: `ValidationFailed` como base de todo 422, `detail` de dominio de texto fijo) · re-verificación 7 APPROVED con menores (enmienda 8: `detail` raíz fijo; cerrada sin nueva ronda) | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 185 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
 
 ## Backlog / deuda conocida
@@ -55,6 +55,9 @@ sprint_actual: 2
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
 5. `.harness/gate/services.txt` vacío (bloque por perfil inactivo); `spectral` no instalado (lint de contrato omitido).
 6. `datetime.utcnow()` deprecado en `auth_service`/`auth_repository` (avisos, no fallos).
+7. **Purga de la papelera a 30 días** (RF-016 de SPEC-0003, diferido por spec §2): feature
+   aparte, que debe decidir también qué pasa con los documentos de la bóveda purgada.
+   Hasta entonces las bóvedas borradas siguen en la papelera indefinidamente.
 
 ## Hazards conocidos
 
@@ -65,4 +68,4 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-Fase 4 de **0003-vault-crud**: PLAN-0003 §13 aprobado e implementado; bloque G (frontend, T-035…T-044) hecho: 82/82. Siguiente: bloque H (docs, T-045…T-051, con el re-anclaje de 0002 y la nota de `vite.config.ts`). Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg) y diagrama T-003.
+**0003-vault-crud** cerrada en `implemented`: verificación adversarial (Fase 4) y, con la regla de salida, decisión del usuario sobre `verified`. Decidir si se añade `@vitest/coverage-v8` para medir la cobertura del frontend. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg), diagrama T-003 y merge de PR #3.
