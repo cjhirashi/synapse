@@ -113,7 +113,10 @@ class DomainError(Exception):
   lanzan `field_error("<código>")` (p. ej. el email de `CreateUserRequest`). Un test exige
   que en `app/` sólo `core/errors.py` (catálogo) y `core/problems.py` (render) usen
   `PydanticCustomError`/`PydanticKnownError`, para que nadie publique `ctx` con valores del
-  cliente. El `detail` raíz del 422 es fijo
+  cliente; desde la enmienda 4 (X-1) la regla es por módulo: fuera de esos dos, nada en
+  `app/` importa `pydantic_core` ni usa `ValidationError`/`from_exception_data`/
+  `InitErrorDetails`, y ningún código del catálogo es un tipo conocido de pydantic (X-3).
+  El `detail` raíz del 422 es fijo
   ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las
   clases que puede lanzar (código → descripción = `title`, contenido
@@ -175,7 +178,7 @@ feature**, porque 0004 necesita su propio contrato antes que 0003:
 | Migración | cada error de auth/admin: mismo código que antes + `type` del catálogo (tabla parametrizada); login con email inexistente y con contraseña errónea → cuerpos idénticos (RF-007); CouchDB caído → 503 `storage-unavailable` sin el mensaje interno | `test_problem_auth.py` |
 | Arquitectura | ningún módulo de `app/` salvo `core/problems.py` importa `HTTPException` (RF-008), por AST | `test_problem_catalog.py` |
 | Barrido | recorre todas las operaciones del contrato: cada respuesta 4xx/5xx declarada usa `application/problem+json` con `$ref` a `Problem`; cada error real devuelto en la suite lleva `application/problem+json` | `test_problem_contract.py` + `test_contract.py` |
-| Emitido ⊆ declarado (V-1, enmienda 3) | toda respuesta ≥ 400 de la app real, en cualquier test, figura en las respuestas que su operación declara en `app.openapi()` (salvo 404/405 de enrutado y rutas fuera del contrato) | middleware de prueba en `conftest.py` + `test_problem_contract_guard.py` |
+| Emitido ⊆ declarado (V-1, enmienda 3) | toda respuesta ≥ 400 de la app real, en cualquier test, figura en las respuestas que su operación declara en `app.openapi()`; la operación es la de la ruta que atendió la petición (`scope["route"]`, enmienda 4 X-2), no la primera plantilla que casa (salvo 404/405 de enrutado y rutas fuera del contrato) | middleware de prueba en `conftest.py` + `test_problem_contract_guard.py` |
 | Regresión | suite existente de 0002 en verde; el test que hoy lee `detail` (`test_forced_change.py`) pasa a leer `type` | suite completa |
 | Frontend | `parseProblem` con problem+json, json sin campos, cuerpo no JSON; `ApiError` con todos los campos; pantallas muestran los mismos textos; `auth.test.ts` con cuerpos Problem | vitest |
 

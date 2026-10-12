@@ -4,7 +4,7 @@ tipo: spec
 feature: 0004-api-problem-details
 estado: implemented
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 4f784de   # cierre tras las correcciones de la enmienda 2
+anchor_commit: 4f784de   # cierre tras las correcciones de la enmienda 3
 anchor_mode: advisory
 covers:
   - backend/app/core/problems.py
@@ -19,6 +19,7 @@ aprobaciones:
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
+  enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
 actualizado: 2026-10-12
 ---
 
@@ -39,6 +40,11 @@ actualizado: 2026-10-12
 > publicable de un error de validación propio sale de un catálogo, nunca del mensaje con que
 > se lanzó; sólo el catálogo construye errores de pydantic en `app/`; «emitido ⊆ declarado»
 > se comprueba en toda la suite. Sustituye las decisiones E2 · W-1 y E2 · W-4.
+>
+> **Enmienda 4 2026-10-12** (re-verificación 3, X-1…X-4): en `app/` nada fuera del catálogo
+> y del traductor puede tocar `pydantic_core` ni construir un `ValidationError`; un código
+> del catálogo nunca coincide con un tipo de pydantic; «emitido ⊆ declarado» se resuelve
+> por la operación que atendió la petición, no por la primera plantilla que casa la ruta.
 
 ## 1. Contexto del dominio
 - **Problema:** la API responde los errores con el `{"detail": ...}` de FastAPI, cada
@@ -203,6 +209,9 @@ en su propio spec los tipos que añade.
 | ~~E2 · W-4: «emitido ⊆ declarado» al backlog~~ → sustituida por E3 · W-4 | — | — | — |
 | E3 · W-1: catálogo de mensajes de validación propios (`FIELD_ERROR_MESSAGES` en `core/errors.py`); el traductor publica la entrada del catálogo por el código del error, y el genérico si no está; un test exige que sólo el catálogo (y el traductor, para renderizar) usen los errores de pydantic en `app/` | La garantía de RF-011 vuelve a vivir en el traductor y queda comprobada por test, sin depender de cómo se escriba un validador | Plantilla literal por disciplina (E2) | — |
 | E3 · W-4: «emitido ⊆ declarado» en la propia app bajo test (middleware ASGI de prueba en `conftest.py`) para toda petición de cualquier test; 404/405 de enrutado y rutas fuera del contrato excluidos (RF-009) | La comprobación no depende de qué tests llamen a un helper | Helper en un solo archivo (V-1) o backlog (E2) | — |
+| E4 · X-1: la regla de E3 · W-1 es una lista de permitidos por módulo: fuera de `core/errors.py` y `core/problems.py`, nada en `app/` importa `pydantic_core` ni usa `ValidationError`, `from_exception_data` o `InitErrorDetails` | Un error construido a mano con un `type` conocido haría que el traductor rellenara su plantilla con un `ctx` del validador; prohibir nombres sueltos deja huecos por construcción | Lista de nombres prohibidos (E3) | — |
+| E4 · X-2: el guardián resuelve la operación por la ruta que atendió la petición (`scope["route"].path_format`), no por la primera plantilla del contrato que casa la ruta | Con plantillas solapadas (`/vaults/{vault_id}` y `/vaults/search`, SPEC-0003) la primera que casa puede no ser la que Starlette elige | Elegir la plantilla que case ruta y método (repite el enrutado de Starlette) | — |
+| E4 · X-3: ningún código de `FIELD_ERROR_MESSAGES` coincide con un tipo conocido de pydantic (lo exige el test del catálogo) | El traductor resuelve antes los tipos conocidos: su entrada del catálogo nunca se publicaría | — | — |
 
 ## Marcadores abiertos
 Ninguno (tandas 1 y 2 decididas; GATE 1 aprobado).

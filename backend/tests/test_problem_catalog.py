@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 import pytest
+from pydantic_core import PydanticKnownError
 
 from app.core import errors
 from app.core.errors import DomainError
@@ -100,28 +101,62 @@ def test_only_the_problem_translator_imports_http_exception():
 
 # --- Mensajes de validación propios (RF-011, enmienda 3) ---
 
-# Módulos de `app/` que pueden usar los errores de pydantic: el catálogo los construye y el
-# traductor los renderiza. Cualquier otro podría publicar `ctx` con valores del cliente.
+# Módulos de `app/` que pueden usar la maquinaria de errores de pydantic: el catálogo los
+# construye y el traductor los renderiza. Fuera de ellos, un error construido a mano con un
+# `type` conocido haría que el traductor rellenara su plantilla con un `ctx` del validador,
+# que puede llevar valores del cliente. Por eso la regla es por módulo (todo `pydantic_core`)
+# más las puertas de `pydantic` que construyen errores, no una lista de clases (enmienda 4).
 PYDANTIC_ERROR_OWNERS = {"core/errors.py", "core/problems.py"}
-PYDANTIC_ERROR_NAMES = {"PydanticCustomError", "PydanticKnownError"}
+PYDANTIC_ERROR_MODULE = "pydantic_core"
+PYDANTIC_ERROR_NAMES = {
+    "PydanticCustomError", "PydanticKnownError",
+    "ValidationError", "from_exception_data", "InitErrorDetails",
+}
+
+
+def _pydantic_error_uses(source: str) -> list[str]:
+    """Usos en `source` de `pydantic_core` o de los nombres que construyen errores."""
+    uses = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, ast.Import):
+            uses += [a.name for a in node.names if a.name.split(".")[0] == PYDANTIC_ERROR_MODULE]
+        elif isinstance(node, ast.ImportFrom):
+            if (node.module or "").split(".")[0] == PYDANTIC_ERROR_MODULE:
+                uses.append(node.module)
+            uses += [a.name for a in node.names if a.name in PYDANTIC_ERROR_NAMES]
+        elif isinstance(node, ast.Attribute) and node.attr in PYDANTIC_ERROR_NAMES:
+            uses.append(node.attr)
+        elif isinstance(node, ast.Name) and node.id in PYDANTIC_ERROR_NAMES:
+            uses.append(node.id)
+    return uses
+
+
+@pytest.mark.parametrize("source", [
+    "from pydantic_core import PydanticCustomError",
+    "import pydantic_core as pc",
+    "from pydantic_core.core_schema import ValidatorFunctionWrapHandler",
+    "from pydantic import ValidationError",
+    "import pydantic\nraise pydantic.ValidationError.from_exception_data('m', [])",
+    "from pydantic_core import InitErrorDetails",
+])
+def test_pydantic_error_scan_catches_every_way_to_build_an_error(source):
+    assert _pydantic_error_uses(source), source
+
+
+def test_pydantic_error_scan_allows_plain_validators():
+    # `ValueError` sale con el texto genérico; `RequestValidationError` es de FastAPI.
+    source = "from fastapi.exceptions import RequestValidationError\nraise ValueError('bad')"
+    assert _pydantic_error_uses(source) == []
 
 
 def test_only_the_catalog_and_translator_use_pydantic_errors():
-    offenders = []
-    for path in APP_DIR.rglob("*.py"):
-        if path.relative_to(APP_DIR).as_posix() in PYDANTIC_ERROR_OWNERS:
-            continue
-        for node in ast.walk(ast.parse(path.read_text())):
-            names = []
-            if isinstance(node, ast.ImportFrom):
-                names = [alias.name for alias in node.names]
-            elif isinstance(node, ast.Attribute):
-                names = [node.attr]
-            elif isinstance(node, ast.Name):
-                names = [node.id]
-            if PYDANTIC_ERROR_NAMES & set(names):
-                offenders.append(path.relative_to(APP_DIR).as_posix())
-    assert not offenders, sorted(set(offenders))
+    offenders = {
+        relative: uses
+        for path in APP_DIR.rglob("*.py")
+        if (relative := path.relative_to(APP_DIR).as_posix()) not in PYDANTIC_ERROR_OWNERS
+        and (uses := _pydantic_error_uses(path.read_text()))
+    }
+    assert not offenders, offenders
 
 
 def test_field_error_catalog_is_well_formed():
@@ -129,5 +164,9 @@ def test_field_error_catalog_is_well_formed():
     for code, message in errors.FIELD_ERROR_MESSAGES.items():
         assert re.fullmatch(r"[a-z][a-z0-9_]*", code), code
         assert message and "{" not in message, (code, message)  # plantilla sin `ctx`
+        # El traductor resuelve antes los tipos conocidos: con ese nombre, la entrada del
+        # catálogo nunca se publicaría (enmienda 4, X-3).
+        with pytest.raises(KeyError):
+            PydanticKnownError(code)
         raised = errors.field_error(code)
         assert (raised.type, raised.message()) == (code, message)

@@ -1,6 +1,6 @@
 ---
 ultima_actualizacion: 2026-10-12
-fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud con plan aprobado; 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3), pendiente de que el usuario la pase a `verified`
+fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud con plan aprobado; 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4), pendiente de que el usuario la pase a `verified`
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -38,7 +38,7 @@ sprint_actual: 2
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
 | 0003-vault-crud | spec y plan `approved` (GATES 1 y 2) | RF-001…RF-028 + RNF-001 · falta Fase 3 (Tasks) · Fase 4 espera a SPEC-0004 · T-002 de `TAREAS.md` |
-| 0004-api-problem-details | `implemented` · T-001…T-063 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · paso a `verified` pendiente del usuario | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 168 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
+| 0004-api-problem-details | `implemented` · T-001…T-069 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · paso a `verified` pendiente del usuario | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 176 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
 
 ## Backlog / deuda conocida
 

@@ -9,7 +9,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   público por defecto. El mensaje con que se construye la excepción es interno: el
   traductor lo registra (5xx en ERROR con traza, 4xx en INFO) y no lo publica. También
   guarda `FIELD_ERROR_MESSAGES` y `field_error`: los únicos textos de validadores propios
-  que llegan al cliente.
+  que llegan al cliente (sus códigos nunca coinciden con un tipo de pydantic).
   Servicios y dependencias lanzan estas clases; no saben nada de HTTP.
 - `problems.py` — traductor único a Problem Details (RFC 9457). `install_problem_handlers`
   registra los manejadores (dominio, validación de pydantic, errores del framework y no
@@ -21,6 +21,9 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `problem_responses` e
   `install_problem_openapi` publican los errores en el contrato. Es el único módulo de
   `app/` que importa `HTTPException`.
+- Sólo `errors.py` y `problems.py` pueden importar `pydantic_core` o usar `ValidationError`
+  (`from_exception_data`, `InitErrorDetails`): un error construido a mano con un tipo
+  conocido haría que el traductor publicara su `ctx` (lo comprueba `test_problem_catalog.py`).
 
 ## Subdirectorios
 

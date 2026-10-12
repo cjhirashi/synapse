@@ -19,10 +19,11 @@ from pydantic_core import PydanticCustomError
 PROBLEM_TYPE_PREFIX = "urn:synapse:problem:"
 
 
-# --- Mensajes de validación propios (SPEC-0004 RF-011, enmienda 3) ---
+# --- Mensajes de validación propios (SPEC-0004 RF-011, enmiendas 3 y 4) ---
 # Código del error → texto publicable en `errors[].detail` (inglés, sin `{}`). El traductor
 # publica esta entrada por el código, nunca el mensaje con que se lanzó; un código que no
-# esté aquí sale como texto genérico.
+# esté aquí sale como texto genérico. Ningún código puede ser un tipo conocido de pydantic:
+# el traductor resuelve antes esos tipos y esta entrada nunca se publicaría.
 FIELD_ERROR_MESSAGES: dict[str, str] = {
     "invalid_email": "Invalid email format",
 }

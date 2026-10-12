@@ -127,15 +127,18 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
    `core/problems.py` (lo comprueba un test).
 3. Declárala en la ruta con `responses=problem_responses(MiError)` para que salga en el contrato.
    En toda la suite, `ContractGuard` (`tests/contract_guard.py`, instalado en `conftest.py`)
-   tumba cualquier petición cuyo código de error no esté declarado en su operación.
+   tumba cualquier petición cuyo código de error no esté declarado en la operación que la
+   atendió (la ruta que eligió el router, aunque otra plantilla también case la ruta). Si
+   falla, el log muestra además un «Unhandled error» con 500: es efecto de esa infracción.
 
 **Mensajes de validadores propios:** un validador de pydantic que quiera un texto concreto en
 `errors[].detail` declara su código y su texto (inglés, sin `{}`) en `FIELD_ERROR_MESSAGES`
-de `core/errors.py` y lanza `field_error("<código>")` (ver el del email en `core/schemas.py`).
+de `core/errors.py` (código que no sea un tipo de pydantic) y lanza `field_error("<código>")`
+(ver el del email en `core/schemas.py`).
 El traductor publica el texto del catálogo por el código, nunca el mensaje lanzado; un
 `ValueError` o un código no catalogado salen como `Invalid value.`. En `app/` sólo
-`core/errors.py` y `core/problems.py` pueden usar `PydanticCustomError`/`PydanticKnownError`
-(lo comprueba `tests/test_problem_catalog.py`).
+`core/errors.py` y `core/problems.py` pueden importar `pydantic_core` o usar `ValidationError`
+(`from_exception_data`, `InitErrorDetails`); lo comprueba `tests/test_problem_catalog.py`.
 
 ## Contratos OpenAPI por feature
 
