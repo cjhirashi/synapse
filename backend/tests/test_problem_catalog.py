@@ -101,60 +101,82 @@ def test_only_the_problem_translator_imports_http_exception():
 
 # --- Mensajes de validación propios (RF-011, enmienda 3) ---
 
-# Módulos de `app/` que pueden usar la maquinaria de errores de pydantic: el catálogo los
-# construye y el traductor los renderiza. Fuera de ellos, un error construido a mano con un
-# `type` conocido haría que el traductor rellenara su plantilla con un `ctx` del validador,
-# que puede llevar valores del cliente. Por eso la regla es por módulo (todo `pydantic_core`)
-# más las puertas de `pydantic` que construyen errores, no una lista de clases (enmienda 4).
+# Módulos de `app/` que pueden construir errores de validación: el catálogo los construye y
+# el traductor los renderiza. Fuera de ellos, un error construido a mano con un `type`
+# conocido haría que el traductor rellenara su plantilla con un `ctx` del validador, que
+# puede llevar valores del cliente. La regla mira la construcción (llamadas y subclases,
+# con alias de import resueltos), no el nombre: capturar el error (`except`) es legítimo
+# (enmienda 5). `pydantic_core` entero queda reservado a los dueños.
 PYDANTIC_ERROR_OWNERS = {"core/errors.py", "core/problems.py"}
 PYDANTIC_ERROR_MODULE = "pydantic_core"
-PYDANTIC_ERROR_NAMES = {
-    "PydanticCustomError", "PydanticKnownError",
-    "ValidationError", "from_exception_data", "InitErrorDetails",
+VALIDATION_ERROR_BUILDERS = {
+    "ValidationError", "RequestValidationError", "InitErrorDetails",
+    "PydanticCustomError", "PydanticKnownError", "from_exception_data",
 }
 
 
-def _pydantic_error_uses(source: str) -> list[str]:
-    """Usos en `source` de `pydantic_core` o de los nombres que construyen errores."""
-    uses = []
-    for node in ast.walk(ast.parse(source)):
+def _called_name(node: ast.expr, aliases: dict[str, str]) -> str | None:
+    """Nombre original de lo que se llama o hereda: `VE` → `ValidationError`, `m.X` → `X`."""
+    if isinstance(node, ast.Name):
+        return aliases.get(node.id, node.id)
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def _validation_error_constructions(source: str) -> list[str]:
+    """Usos en `source` de `pydantic_core` y construcciones de errores de validación."""
+    tree = ast.parse(source)
+    aliases = {
+        alias.asname: alias.name
+        for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
+        for alias in node.names if alias.asname
+    }
+    found = []
+    for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            uses += [a.name for a in node.names if a.name.split(".")[0] == PYDANTIC_ERROR_MODULE]
+            found += [a.name for a in node.names if a.name.split(".")[0] == PYDANTIC_ERROR_MODULE]
         elif isinstance(node, ast.ImportFrom):
             if (node.module or "").split(".")[0] == PYDANTIC_ERROR_MODULE:
-                uses.append(node.module)
-            uses += [a.name for a in node.names if a.name in PYDANTIC_ERROR_NAMES]
-        elif isinstance(node, ast.Attribute) and node.attr in PYDANTIC_ERROR_NAMES:
-            uses.append(node.attr)
-        elif isinstance(node, ast.Name) and node.id in PYDANTIC_ERROR_NAMES:
-            uses.append(node.id)
-    return uses
+                found.append(node.module)
+        elif isinstance(node, ast.Call):
+            found += [name for name in [_called_name(node.func, aliases)] if name in VALIDATION_ERROR_BUILDERS]
+        elif isinstance(node, ast.ClassDef):
+            found += [name for base in node.bases if (name := _called_name(base, aliases)) in VALIDATION_ERROR_BUILDERS]
+    return found
 
 
 @pytest.mark.parametrize("source", [
     "from pydantic_core import PydanticCustomError",
     "import pydantic_core as pc",
     "from pydantic_core.core_schema import ValidatorFunctionWrapHandler",
-    "from pydantic import ValidationError",
-    "import pydantic\nraise pydantic.ValidationError.from_exception_data('m', [])",
     "from pydantic_core import InitErrorDetails",
+    "import pydantic\nraise pydantic.ValidationError.from_exception_data('m', [])",
+    "from pydantic import ValidationError as VE\nraise VE.from_exception_data('m', [])",
+    "from fastapi.exceptions import RequestValidationError\nraise RequestValidationError([])",
+    "from fastapi.exceptions import RequestValidationError as RVE\nraise RVE([])",
+    "from fastapi import exceptions\nraise exceptions.RequestValidationError([])",
+    "from fastapi.exceptions import RequestValidationError\nclass Mine(RequestValidationError): ...",
 ])
-def test_pydantic_error_scan_catches_every_way_to_build_an_error(source):
-    assert _pydantic_error_uses(source), source
+def test_scan_catches_hand_built_validation_errors(source):
+    assert _validation_error_constructions(source), source
 
 
-def test_pydantic_error_scan_allows_plain_validators():
-    # `ValueError` sale con el texto genérico; `RequestValidationError` es de FastAPI.
-    source = "from fastapi.exceptions import RequestValidationError\nraise ValueError('bad')"
-    assert _pydantic_error_uses(source) == []
+@pytest.mark.parametrize("source", [
+    "raise ValueError('bad')",  # sale con el texto genérico
+    "from pydantic import ValidationError\ntry:\n    pass\nexcept ValidationError:\n    pass",
+    "from fastapi.exceptions import RequestValidationError\nhandlers = {RequestValidationError: None}",
+])
+def test_scan_allows_plain_validators_and_catching(source):
+    assert _validation_error_constructions(source) == []
 
 
-def test_only_the_catalog_and_translator_use_pydantic_errors():
+def test_only_the_catalog_and_translator_build_validation_errors():
     offenders = {
-        relative: uses
+        relative: found
         for path in APP_DIR.rglob("*.py")
         if (relative := path.relative_to(APP_DIR).as_posix()) not in PYDANTIC_ERROR_OWNERS
-        and (uses := _pydantic_error_uses(path.read_text()))
+        and (found := _validation_error_constructions(path.read_text()))
     }
     assert not offenders, offenders
 

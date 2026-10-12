@@ -113,9 +113,11 @@ class DomainError(Exception):
   lanzan `field_error("<código>")` (p. ej. el email de `CreateUserRequest`). Un test exige
   que en `app/` sólo `core/errors.py` (catálogo) y `core/problems.py` (render) usen
   `PydanticCustomError`/`PydanticKnownError`, para que nadie publique `ctx` con valores del
-  cliente; desde la enmienda 4 (X-1) la regla es por módulo: fuera de esos dos, nada en
-  `app/` importa `pydantic_core` ni usa `ValidationError`/`from_exception_data`/
-  `InitErrorDetails`, y ningún código del catálogo es un tipo conocido de pydantic (X-3).
+  cliente; desde la enmienda 5 (Y-1) la regla es sobre la construcción: fuera de esos dos,
+  nada en `app/` importa `pydantic_core` ni llama a `ValidationError`,
+  `RequestValidationError`, `InitErrorDetails`, `PydanticCustomError`, `PydanticKnownError`
+  o `from_exception_data` (alias de import resueltos); capturarlos sí está permitido. Ningún
+  código del catálogo es un tipo conocido de pydantic (enmienda 4, X-3).
   El `detail` raíz del 422 es fijo
   ("Request validation failed.").
 - `problem_responses(*errors)` construye el `responses=` de una ruta a partir de las

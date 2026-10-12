@@ -137,8 +137,11 @@ de `core/errors.py` (código que no sea un tipo de pydantic) y lanza `field_erro
 (ver el del email en `core/schemas.py`).
 El traductor publica el texto del catálogo por el código, nunca el mensaje lanzado; un
 `ValueError` o un código no catalogado salen como `Invalid value.`. En `app/` sólo
-`core/errors.py` y `core/problems.py` pueden importar `pydantic_core` o usar `ValidationError`
-(`from_exception_data`, `InitErrorDetails`); lo comprueba `tests/test_problem_catalog.py`.
+`core/errors.py` y `core/problems.py` pueden importar `pydantic_core` o construir errores de
+validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
+`from_exception_data`, también con alias o heredando); una validación entre campos lanza
+`field_error` o `ValueError`, no un `RequestValidationError` a mano. Capturarlos (`except`)
+sí se puede. Lo comprueba `tests/test_problem_catalog.py`.
 
 ## Contratos OpenAPI por feature
 

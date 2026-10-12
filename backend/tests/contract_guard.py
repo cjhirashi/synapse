@@ -47,9 +47,11 @@ class ContractGuard:
             # Se comprueba al empezar la respuesta, antes de enviar nada: la excepción sube
             # hasta el TestClient (`raise_server_exceptions=True`) y tumba el test.
             if message["type"] == "http.response.start":
-                # El router de Starlette deja en el mismo `scope` la ruta que eligió (también
-                # en un 405, por coincidencia parcial). Se usa ésa y no la primera plantilla
-                # del contrato que casa la ruta: con plantillas solapadas pueden diferir.
+                # `APIRoute.matches` (FastAPI) pone en `scope["route"]` la ruta que el router
+                # eligió, también en un 405 por coincidencia parcial. Se usa ésa y no la
+                # primera plantilla del contrato que casa la ruta: con plantillas solapadas
+                # pueden diferir. Una `Route` o un `Mount` de Starlette puros no la fijan y
+                # quedan fuera, igual que lo están del contrato.
                 route = scope.get("route")
                 violation = undeclared_error(
                     self.schema_provider(),

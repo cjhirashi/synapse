@@ -21,9 +21,11 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `problem_responses` e
   `install_problem_openapi` publican los errores en el contrato. Es el único módulo de
   `app/` que importa `HTTPException`.
-- Sólo `errors.py` y `problems.py` pueden importar `pydantic_core` o usar `ValidationError`
-  (`from_exception_data`, `InitErrorDetails`): un error construido a mano con un tipo
-  conocido haría que el traductor publicara su `ctx` (lo comprueba `test_problem_catalog.py`).
+- Sólo `errors.py` y `problems.py` pueden importar `pydantic_core` o construir errores de
+  validación (`ValidationError`, `RequestValidationError`, `InitErrorDetails`,
+  `from_exception_data`, también con alias o heredando): un error construido a mano con un
+  tipo conocido haría que el traductor publicara su `ctx`. Capturarlos (`except`) sí se
+  puede. Lo comprueba `test_problem_catalog.py`.
 
 ## Subdirectorios
 
