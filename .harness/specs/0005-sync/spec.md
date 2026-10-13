@@ -16,6 +16,7 @@ covers:                  # borrador: se cierra en la Fase 2 (plan)
 # --- aprobaciones humanas ---
 aprobaciones:
   decisiones_d1_d6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §8, ADR-002, ADR-003
+  aclaraciones_c1_c4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 } # §8
   fase_1: pendiente
   fase_2: pendiente
 actualizado: 2026-10-13
@@ -28,7 +29,8 @@ actualizado: 2026-10-13
 > obsoletos") y de la observación de 0003 (el servidor sólo acepta ids UUID canónicos).
 >
 > **Tanda 1 (2026-10-13):** el usuario aprobó las recomendaciones D-1…D-6 (§8; ADR-002 y
-> ADR-003). Quedan abiertas las preguntas de la tanda 2 («Marcadores abiertos»).
+> ADR-003). **Tanda 2 (2026-10-13):** aprobó C-1…C-4 (§8). Sin marcadores de aclaración abiertos;
+> falta su «así es» para el Gate 1.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al
@@ -118,14 +120,20 @@ actualizado: 2026-10-13
   correcta.
 - **RF-010** — CUANDO vuelve la conexión, el cliente DEBE reanudar la sincronización sin
   acción del usuario y mostrar "cambios pendientes" hasta que el servidor los confirme.
+- **RF-019** — SI `/sync` responde 503 o no responde ENTONCES el cliente DEBE mostrar "sin
+  conexión" y reintentar con espera creciente (1 s, 2 s, 4 s… hasta un máximo de 60 s entre
+  intentos), y volver a la espera inicial tras una sincronización correcta.
 - **RF-011** — CUANDO una bóveda se borra o se restaura en un dispositivo, el cambio DEBE
   llegar a los demás dispositivos del usuario como cualquier otra edición.
 
 **Conflictos (ADR-003)**
 - **RF-012** — CUANDO el cliente detecta una bóveda con revisiones en conflicto, DEBE
-  combinarlas solo si cambiaron campos distintos (`name`, `description`, `tags`) y guardar
-  la versión combinada como una edición nueva.
-- **RF-013** — SI las versiones en conflicto cambiaron el mismo campo ENTONCES el cliente
+  compararlas con su versión común (ancestro) y combinarlas solo si cambiaron campos
+  distintos (`name`, `description`, `tags`), guardando la versión combinada como una
+  edición nueva. En `tags` cuentan por separado las etiquetas añadidas y las quitadas
+  respecto al ancestro, de modo que una etiqueta quitada en un dispositivo no reaparezca.
+- **RF-013** — SI las versiones en conflicto cambiaron el mismo campo, o el ancestro ya no
+  está disponible, ENTONCES el cliente
   DEBE mostrar ambas en una vista de conflictos y conservar las dos hasta que el usuario
   elija o combine; ningún orden de sincronización puede perder una versión sin decisión
   explícita.
@@ -139,8 +147,10 @@ actualizado: 2026-10-13
   detenerla, conservar los cambios pendientes y pedir iniciar sesión; tras iniciarla con el
   mismo usuario, DEBE reanudarla.
 - **RF-017** — CUANDO el usuario cierra sesión, el cliente DEBE borrar la réplica local;
-  SI hay cambios pendientes ENTONCES DEBE avisar antes de borrarla.
-  [NEEDS CLARIFICATION: opciones del aviso, ver C-4]
+  SI hay cambios pendientes ENTONCES DEBE avisar antes de borrarla con las opciones
+  "Sincronizar y salir", "Salir y descartar" y "Cancelar" (sin conexión, sólo las dos
+  últimas). "Sincronizar y salir" cierra la sesión sólo cuando el servidor confirma todos
+  los cambios; si alguno se rechaza o falla, vuelve al aviso.
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -148,7 +158,7 @@ actualizado: 2026-10-13
 - Corte de red a mitad de un lote: la replicación se reanuda desde el último checkpoint
   `_local`; reenviar el mismo lote no duplica nada (idempotencia por `_rev`).
 - CouchDB caído con red disponible: el proxy responde 503 `application/problem+json` (como
-  RF-017 de 0003) y el cliente lo trata como "sin conexión". [NEEDS CLARIFICATION: C-1]
+  RF-017 de 0003) y el cliente lo trata como "sin conexión", con reintentos (RF-019).
 - Dos bóvedas creadas sin conexión con el mismo nombre en dos dispositivos: la segunda en
   llegar se rechaza (RF-006) y el usuario la renombra.
 - Dos pestañas del mismo navegador sobre la misma réplica (R-10): una sola replica.
@@ -176,7 +186,8 @@ actualizado: 2026-10-13
 
 ## 7. Requisitos no funcionales (RNF)
 - **RNF-001** — Con conexión, un cambio guardado en un dispositivo DEBE aparecer en otro
-  dispositivo del mismo usuario en ≤ 5 s. [NEEDS CLARIFICATION: C-2]
+  dispositivo del mismo usuario en ≤ 5 s, medido en la verificación con dos réplicas
+  reales (RNF-002).
 - **RNF-002** — Los tests de sincronización DEBEN usar dos réplicas reales contra CouchDB
   real a través del proxy (P5): sin mocks del protocolo de replicación.
 - **RNF-003** — Los tests de aislamiento DEBEN probar que un usuario no puede leer ni
@@ -191,9 +202,8 @@ actualizado: 2026-10-13
 | D-4 · Sólo se replican `vault:*` | Las reservas de nombre y el diseño son del servidor | Replicar la base completa (R-12) | ADR-002 |
 | D-5 · Borrar la réplica local al cerrar sesión, avisando si hay pendientes | Equipos compartidos (R-5) | Conservarla; opción "recordar este dispositivo" | — |
 | D-6 · Sin service worker en esta feature | Mantener el alcance; PWA aparte | Cachear la SPA ahora | — |
+| C-1 · CouchDB caído = sin conexión, reintentos 1 s → 60 s (RF-019) | No saturar el backend; el usuario sigue trabajando en local | Reintento fijo; error bloqueante | — |
+| C-2 · Propagación ≤ 5 s con conexión (RNF-001) | Medible con dos réplicas reales | Sin objetivo de latencia | — |
+| C-3 · Merge contra el ancestro; tags como altas/bajas; sin ancestro → decide el usuario (RF-012, RF-013) | Una etiqueta quitada no reaparece; nada se combina a ciegas | Unión de etiquetas (resucita las quitadas); comparar sólo las dos versiones | ADR-003 |
+| C-4 · Aviso al salir: sincronizar y salir / salir y descartar / cancelar (RF-017) | No perder cambios sin decisión explícita | Bloquear la salida hasta sincronizar; descartar sin avisar | — |
 
-## Marcadores abiertos (tanda 2)
-- `[NEEDS CLARIFICATION: C-1 — con CouchDB caído (503), ¿reintentos con espera creciente (p. ej. 1 s → 2 s → … hasta 60 s) y estado "sin conexión" en la UI? Recomendación: sí.]`
-- `[NEEDS CLARIFICATION: C-2 — RNF-001: ¿≤ 5 s de propagación entre dispositivos con conexión es el objetivo? Recomendación: sí, medido en la verificación con dos réplicas.]`
-- `[NEEDS CLARIFICATION: C-3 — "qué campo cambió" (RF-012) se calcula contra la versión común (ancestro): para tags, altas y bajas por separado, de modo que una etiqueta quitada en un dispositivo no reaparezca. SI el ancestro ya no está disponible ENTONCES se pregunta al usuario (RF-013). Recomendación: aceptar.]`
-- `[NEEDS CLARIFICATION: C-4 — aviso al cerrar sesión con cambios pendientes (RF-017): con red, "Sincronizar y salir" / "Salir y descartar" / "Cancelar"; sin red, sólo "Salir y descartar" / "Cancelar". Recomendación: aceptar.]`

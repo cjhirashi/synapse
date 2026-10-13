@@ -467,3 +467,23 @@
 - **Docs:** `specs/0005-sync/spec.md`, `diagrams/`, ADR-002, ADR-003, `state.md`.
 - **Decisiones del usuario pendientes:** C-1…C-4 y el «así es» de 0005; las 3 preguntas de 0006; merge de PR #3; SPEC-0002 → `verified`.
 - **Próximo paso:** cerrar C-1…C-4 → Gate 1 de SPEC-0005.
+
+## [2026-10-13] 0005-sync — aclaraciones C-1…C-4 aprobadas
+
+- El usuario aprobó las recomendaciones C-1…C-4:
+  - C-1 → RF-019 nuevo: con 503 o sin respuesta, "sin conexión" y reintentos de 1 s a 60 s;
+  - C-2 → RNF-001: ≤ 5 s, medido con dos réplicas reales;
+  - C-3 → RF-012/RF-013: merge contra el ancestro, tags como altas y bajas, sin ancestro decide el usuario;
+  - C-4 → RF-017: aviso al salir ("Sincronizar y salir" / "Salir y descartar" / "Cancelar"; sin red, sólo las dos últimas).
+- Registradas en §8 con sus descartes; ADR-003 enlaza C-3. Marcadores de aclaración: 0.
+- `estado` sigue en `draft` y `fase_1` pendiente hasta el «así es» del usuario (no me autoapruebo).
+- Diagrama `sync-flow` regenerado (tarjeta de estado); finalize y visual-check en verde.
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** SPEC-0005 lista para el Gate 1 (0 marcadores), a la espera del «así es».
+- **Rebotes:** ninguno.
+- **Gate:** verde (avisos conocidos: spectral; `covers` de 0005/0006 aún sin archivos).
+- **Docs:** `specs/0005-sync/spec.md`, `diagrams/`, ADR-003, `state.md`.
+- **Decisiones del usuario pendientes:** «así es» de 0005; las 3 de 0006; merge de PR #3; SPEC-0002 → `verified`.
+- **Próximo paso:** con el «así es», Fase 2 (Plan) de SPEC-0005.

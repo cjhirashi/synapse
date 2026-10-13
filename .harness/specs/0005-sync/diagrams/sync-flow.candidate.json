@@ -662,8 +662,8 @@
    "dot": "amber",
    "title": "Estado de la Fase 1",
    "items": [
-    "D-1…D-4 aprobados (ADR-002, ADR-003)",
-    "Abierto: backoff, RNF-001, reglas del merge",
+    "D-1…D-6 y C-1…C-4 aprobados",
+    "Sin marcadores abiertos; falta el Gate 1",
     "Nada está implementado todavía"
    ]
   }

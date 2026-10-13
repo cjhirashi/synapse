@@ -38,8 +38,9 @@ Elegimos **resolución automática campo a campo y, si no basta, el usuario elig
 
 - **Buenas:** sin pérdida silenciosa (R-3); intervención mínima del usuario.
 - **Coste / malas:** decidir "qué campo cambió" exige comparar contra la versión común
-  (ancestro); cómo se obtiene, y qué hacer si ya no está disponible, se fija en SPEC-0005 y
-  su plan. Hace falta una vista de conflictos en la UI.
+  (ancestro); las etiquetas cuentan como altas y bajas, y sin ancestro decide el usuario
+  (SPEC-0005 RF-012/RF-013, C-3). Cómo se obtiene el ancestro se fija en el plan.
+  Hace falta una vista de conflictos en la UI.
 
 ## Enlaces
 

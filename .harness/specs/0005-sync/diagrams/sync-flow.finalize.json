@@ -5,16 +5,16 @@
   "status": "pass",
   "type": "workflow",
   "quality": "showcase",
-  "startedAt": "2026-10-13T04:49:48.733Z",
+  "startedAt": "2026-10-13T05:04:48.009Z",
   "specification": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.candidate.json",
-    "sha256": "7098012244f45f2b9d05c9305ac1b182f57530af471867740c781151f11551b2",
-    "bytes": 31915
+    "sha256": "47824c4c9156dcbc65cec4ca662d59b08621733e8f621285b609a79b3ed0bf45",
+    "bytes": 31905
   },
   "artifact": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
-    "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
-    "bytes": 764268
+    "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
+    "bytes": 764258
   },
   "stages": {
     "validate": {
@@ -40,8 +40,8 @@
         "ok": true,
         "command": "validate",
         "specification": {
-          "sha256": "7098012244f45f2b9d05c9305ac1b182f57530af471867740c781151f11551b2",
-          "bytes": 31915
+          "sha256": "47824c4c9156dcbc65cec4ca662d59b08621733e8f621285b609a79b3ed0bf45",
+          "bytes": 31905
         },
         "validation": {
           "checksPassed": 9,
@@ -56,7 +56,7 @@
     "deliver": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 607,
+      "durationMs": 644,
       "command": [
         "/usr/bin/node",
         "/archify/bin/archify.mjs",
@@ -72,19 +72,19 @@
       ],
       "receipt": {
         "schemaVersion": 1,
-        "receiptId": "1bd0734c-01d9-4b4b-89c2-fa4427daf473",
+        "receiptId": "3c92628a-659c-446b-9243-0d56abb949bc",
         "ok": true,
         "command": "deliver",
         "type": "workflow",
         "input": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.candidate.json",
         "output": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
         "specification": {
-          "sha256": "7098012244f45f2b9d05c9305ac1b182f57530af471867740c781151f11551b2",
-          "bytes": 31915
+          "sha256": "47824c4c9156dcbc65cec4ca662d59b08621733e8f621285b609a79b3ed0bf45",
+          "bytes": 31905
         },
         "artifact": {
-          "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
-          "bytes": 764268
+          "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
+          "bytes": 764258
         },
         "validation": {
           "checksPassed": 9,
@@ -110,7 +110,7 @@
     "check": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 176,
+      "durationMs": 165,
       "command": [
         "/usr/bin/node",
         "/archify/bin/archify.mjs",
@@ -122,8 +122,8 @@
         "ok": true,
         "file": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
         "artifact": {
-          "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
-          "bytes": 764268
+          "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
+          "bytes": 764258
         },
         "checks": [
           {
@@ -252,13 +252,13 @@
           "issues": []
         },
         "provenance": "current",
-        "deliveryReceiptId": "1bd0734c-01d9-4b4b-89c2-fa4427daf473"
+        "deliveryReceiptId": "3c92628a-659c-446b-9243-0d56abb949bc"
       }
     },
     "browser-check": {
       "status": "pass",
       "exitCode": 0,
-      "durationMs": 3812,
+      "durationMs": 4033,
       "command": [
         "/usr/bin/node",
         "/archify/bin/archify.mjs",
@@ -276,11 +276,11 @@
         "status": "pass",
         "visualReview": "not-requested",
         "provenance": "current",
-        "deliveryReceiptId": "1bd0734c-01d9-4b4b-89c2-fa4427daf473",
+        "deliveryReceiptId": "3c92628a-659c-446b-9243-0d56abb949bc",
         "artifact": {
           "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
-          "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
-          "bytes": 764268
+          "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
+          "bytes": 764258
         },
         "state": {
           "detail": "read",
@@ -1478,14 +1478,14 @@
     "browserCheckReceipt": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.browser-check.json"
   },
   "visualReview": "not-requested",
-  "finishedAt": "2026-10-13T04:49:53.729Z",
-  "durationMs": 4995,
+  "finishedAt": "2026-10-13T05:04:53.280Z",
+  "durationMs": 5270,
   "update": {
     "status": "current",
     "installedVersion": "3.0.1",
     "availableVersion": "3.0.1",
     "releaseNotes": null,
-    "checkedAt": "2026-10-13T04:49:48.839Z",
+    "checkedAt": "2026-10-13T05:04:48.110Z",
     "source": "network",
     "noticeRequired": false,
     "noticeText": null
