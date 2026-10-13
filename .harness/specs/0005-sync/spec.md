@@ -2,7 +2,7 @@
 id: SPEC-0005
 tipo: spec
 feature: 0005-sync
-estado: draft            # draft | in-review | approved | implemented | verified | deprecated
+estado: approved         # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 5704bf9   # último commit reconciliado (lo mueve el cierre)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
@@ -17,20 +17,21 @@ covers:                  # borrador: se cierra en la Fase 2 (plan)
 aprobaciones:
   decisiones_d1_d6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §8, ADR-002, ADR-003
   aclaraciones_c1_c4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 } # §8
-  fase_1: pendiente
+  fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # «así es»
   fase_2: pendiente
 actualizado: 2026-10-13
 ---
 
 # SPEC-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
 
-> Fase 1 (Specify) en curso, elicitación con el usuario (`method.md §3`). Nace del hazard 1
+> Fase 1 (Specify) cerrada tras la elicitación con el usuario (`method.md §3`). Nace del hazard 1
 > de `state.md` ("Conflictos PouchDB ↔ CouchDB"), del hazard 3 ("Offline → datos
 > obsoletos") y de la observación de 0003 (el servidor sólo acepta ids UUID canónicos).
 >
+> **GATE 1 aprobado (2026-10-13):** el usuario confirmó «así es»; sigue la Fase 2 (`plan.md`).
+>
 > **Tanda 1 (2026-10-13):** el usuario aprobó las recomendaciones D-1…D-6 (§8; ADR-002 y
-> ADR-003). **Tanda 2 (2026-10-13):** aprobó C-1…C-4 (§8). Sin marcadores de aclaración abiertos;
-> falta su «así es» para el Gate 1.
+> ADR-003). **Tanda 2 (2026-10-13):** aprobó C-1…C-4 (§8). Sin marcadores de aclaración abiertos.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al

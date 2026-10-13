@@ -487,3 +487,8 @@
 - **Docs:** `specs/0005-sync/spec.md`, `diagrams/`, ADR-003, `state.md`.
 - **Decisiones del usuario pendientes:** «así es» de 0005; las 3 de 0006; merge de PR #3; SPEC-0002 → `verified`.
 - **Próximo paso:** con el «así es», Fase 2 (Plan) de SPEC-0005.
+
+## [2026-10-13] 0005-sync — GATE 1 aprobado
+
+- Usuario: «así es» → **GATE 1 aprobado**: `aprobaciones.fase_1` registrada, `estado: approved`.
+- Sigue la Fase 2 (`plan.md`) de SPEC-0005.
