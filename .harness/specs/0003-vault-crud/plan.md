@@ -2,7 +2,7 @@
 id: PLAN-0003
 tipo: plan
 feature: 0003-vault-crud
-estado: implemented
+estado: verified
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   ajustes_fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §10, con el GATE 3

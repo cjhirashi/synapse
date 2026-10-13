@@ -2,7 +2,7 @@
 id: TASKS-0003
 tipo: tasks
 feature: 0003-vault-crud
-estado: implemented
+estado: verified
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque I (PLAN-0003 §15)

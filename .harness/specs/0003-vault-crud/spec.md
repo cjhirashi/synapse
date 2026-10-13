@@ -2,9 +2,9 @@
 id: SPEC-0003
 tipo: spec
 feature: 0003-vault-crud
-estado: implemented
+estado: verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: d730de9   # cierre de la enmienda 1 (T-070)
+anchor_commit: e5ec154   # cierre de los menores de la verificación 2 (T-075)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py
@@ -24,6 +24,8 @@ aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # `etag` en los listados (PLAN-0003 §13)
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # verificación adversarial (PLAN-0003 §15)
+  menores_verificacion_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # VB-1…VB-5 (T-071…T-075)
+  verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }
 actualizado: 2026-10-13
 ---
 
