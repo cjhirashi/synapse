@@ -178,6 +178,38 @@ class PreconditionFailed(DomainError):
     detail = "Vault has changed"
 
 
+# --- Sincronización (SPEC-0005) ---
+
+class SyncEndpointNotFound(DomainError):
+    """Ruta de `/sync` fuera del subconjunto permitido del protocolo (RF-003).
+
+    Responde la ruta comodín final del router: la petición nunca llega a CouchDB, y el
+    cuerpo es el mismo para cualquier ruta, método o base nombrada en la URL.
+    """
+
+    slug = "sync-endpoint-not-found"
+    title = "Sync endpoint not found"
+    status = 404
+    detail = "Sync endpoint not found"
+
+
+class InvalidSyncRequest(ValidationFailed):
+    """Parámetro o cuerpo del protocolo de replicación mal formado (SPEC-0005 RF-004).
+
+    `services/sync_filter.py` lo lanza con `errors=` de texto fijo por parámetro o puntero;
+    los parámetros fuera de la lista blanca no son error: se descartan sin más.
+    """
+
+
+class PayloadTooLarge(DomainError):
+    """Lote de `_bulk_docs` o documento `_local` por encima de los límites (PLAN-0005 §2.1)."""
+
+    slug = "payload-too-large"
+    title = "Payload too large"
+    status = 413
+    detail = "Payload too large"
+
+
 # --- Almacenamiento ---
 
 class StorageUnavailable(DomainError):

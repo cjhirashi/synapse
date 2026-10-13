@@ -29,14 +29,14 @@ actualizado: 2026-10-13
 ### A · Contrato y errores (PLAN-0005 §4)
 - [ ] T-001 — test (rojo) en `test_contract.py`: el contrato de `0005-sync` documenta las rutas de PLAN-0005 §2.1 (`GET /sync/`, `GET /sync/db/`, `GET`·`POST /sync/db/_changes`, `POST _revs_diff`, `POST _bulk_get`, `GET`·`POST _all_docs`, `POST _bulk_docs`, `GET`·`PUT _local/{id}`) y no la comodín (cubre RF-001, RF-003) [zona: test]
 - [ ] T-002 — `scripts/export_openapi.py`: `"0005-sync": {"paths": ("/sync",), "schemas": ()}` en `FEATURES` (cubre RF-001) [zona: script]
-- [ ] T-003 — test (rojo) `test_sync_errors.py`: `SyncEndpointNotFound` (404, `sync-endpoint-not-found`) y `PayloadTooLarge` (413, `payload-too-large`) son `DomainError` con su `slug` (cubre RF-003) [zona: test]
-- [ ] T-004 — `core/errors.py`: las dos clases, comentadas (cubre RF-003) [zona: núcleo]
+- [x] T-003 — test (rojo) `test_sync_errors.py`: `SyncEndpointNotFound` (404, `sync-endpoint-not-found`) y `PayloadTooLarge` (413, `payload-too-large`) son `DomainError` con su `slug` (cubre RF-003) [zona: test]
+- [x] T-004 — `core/errors.py`: las dos clases, comentadas (cubre RF-003) [zona: núcleo]
 
 ### B · Filtros puros (`services/sync_filter.py`)
-- [ ] T-005 — test (rojo) `test_sync_filter.py`: `is_replicable_id` (`vault:{uuid}` canónico sí; `vault-name:*`, `_design/*`, UUID no canónico, `foo` no) y `changes_query` (lista blanca, descarta `filter`/`doc_ids`/`selector`/`view`, `feed=continuous` → `ValidationFailed`, acota `heartbeat`/`timeout` a 60 s, selector fijo) (cubre RF-004, RF-007) [zona: test]
-- [ ] T-006 — test (rojo) `test_sync_filter.py`: recorte de `_revs_diff` (no replicables → `missing` sin consultar), `_bulk_get` (no replicables → `not_found`) y su fusión con la respuesta, `all_docs_query` (rango forzado, `keys` filtradas), `sanitize_db_info` (sin `doc_count` ni tamaños, `db_name: "db"`) (cubre RF-004, RF-007) [zona: test]
-- [ ] T-007 — `sync_filter.py`: `is_replicable_id`, `changes_query` (cubre RF-004, RF-007) [zona: servicio]
-- [ ] T-008 — `sync_filter.py`: recortes de `_revs_diff`, `_bulk_get`, `_all_docs` y `sanitize_db_info` (cubre RF-004, RF-007) [zona: servicio]
+- [x] T-005 — test (rojo) `test_sync_filter.py`: `is_replicable_id` (`vault:{uuid}` canónico sí; `vault-name:*`, `_design/*`, UUID no canónico, `foo` no) y `changes_query` (lista blanca, descarta `filter`/`doc_ids`/`selector`/`view`, `feed=continuous` → `ValidationFailed`, acota `heartbeat`/`timeout` a 60 s, selector fijo) (cubre RF-004, RF-007) [zona: test]
+- [x] T-006 — test (rojo) `test_sync_filter.py`: recorte de `_revs_diff` (no replicables → `missing` sin consultar), `_bulk_get` (no replicables → `not_found`) y su fusión con la respuesta, `all_docs_query` (rango forzado, `keys` filtradas), `sanitize_db_info` (sin `doc_count` ni tamaños, `db_name: "db"`) (cubre RF-004, RF-007) [zona: test]
+- [x] T-007 — `sync_filter.py`: `is_replicable_id`, `changes_query` (cubre RF-004, RF-007) [zona: servicio]
+- [x] T-008 — `sync_filter.py`: recortes de `_revs_diff`, `_bulk_get`, `_all_docs` y `sanitize_db_info` (cubre RF-004, RF-007) [zona: servicio]
 
 ### C · Puertos y adaptadores (CouchDB real)
 - [ ] T-009 — `core/ports/replication_port.py`: `ReplicationPort` (ABC async) con `db_info`, `changes`, `revs_diff`, `bulk_get`, `all_docs`, `bulk_docs_replicated`, `get_local`, `put_local`, documentados (cubre RF-001, RF-004) [zona: puerto]

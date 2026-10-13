@@ -33,7 +33,7 @@ def _parse_timestamp(value: str) -> datetime:
     return datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=UTC)
 
 
-def _is_timestamp(value: str) -> bool:
+def is_timestamp(value: str) -> bool:
     """¿`value` tiene exactamente el formato de `utc_now`? (`%f` acepta menos dígitos)."""
     try:
         return _parse_timestamp(value).strftime(_TIMESTAMP_FORMAT) == value
@@ -41,7 +41,7 @@ def _is_timestamp(value: str) -> bool:
         return False
 
 
-def _is_canonical_uuid(value: str) -> bool:
+def is_canonical_uuid(value: str) -> bool:
     """¿`value` es un UUID en forma canónica (minúsculas, con guiones, sin envoltorio)?"""
     try:
         return str(uuid.UUID(value)) == value
@@ -90,8 +90,8 @@ def decode_cursor(cursor: str, deleted: bool) -> tuple[str, str]:
         raise InvalidCursor("cursor of another list or malformed", errors=_CURSOR_ERROR)
     created_at, vault_id = payload["c"], payload["i"]
     if not (
-        _is_timestamp(created_at)
-        and _is_canonical_uuid(vault_id)
+        is_timestamp(created_at)
+        and is_canonical_uuid(vault_id)
         and encode_cursor(deleted, created_at, vault_id) == cursor
     ):
         raise InvalidCursor("cursor not emitted by this server", errors=_CURSOR_ERROR)
@@ -210,7 +210,7 @@ class VaultService:
 
         Sólo se acepta el id en forma canónica, la que devuelve la API (PLAN-0003 §15, VA-5).
         """
-        if not _is_canonical_uuid(vault_id):
+        if not is_canonical_uuid(vault_id):
             raise VaultNotFound(f"vault_id is not a canonical UUID: {vault_id!r}")
         doc_id = _doc_id(vault_id)
         doc = self._port.get(self._db, doc_id)

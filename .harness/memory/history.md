@@ -580,3 +580,20 @@
   - La API no cambia.
 - `state.md`: la corrección del usuario queda arriba. Queda pendiente decidir qué sustituye al nginx de `frontend/Dockerfile`, que sirve los estáticos y enruta `/auth`, `/admin` y `/vaults`; es un cambio fuera de 0005.
 - `tasks.md` pasa a `approved` con `fase_3`. Empieza la Fase 4.
+
+## [2026-10-13] 0005-sync — Fase 4: T-003…T-008 (errores y filtros)
+
+- **T-003/T-004:**
+  - `core/errors.py`: `SyncEndpointNotFound` (404, `sync-endpoint-not-found`) y `PayloadTooLarge` (413, `payload-too-large`).
+  - Además `InvalidSyncRequest` (422 sin slug propio, textos fijos) para los parámetros y cuerpos mal formados del protocolo.
+  - Test: `test_sync_errors.py`.
+- **T-005…T-008:** `services/sync_filter.py`, con tests en `test_sync_filter.py` (59 tests):
+  - `is_replicable_id`;
+  - `changes_query`: lista blanca, `feed` ∈ {normal, longpoll}, esperas acotadas a 60 s y selector fijo;
+  - recortes de `_revs_diff` y `_bulk_get`;
+  - `all_docs_query`;
+  - `sanitize_db_info`.
+- **Hallazgo sobre CouchDB real:** `total_rows` y `offset` de `_all_docs` revelan el número de reservas, igual que `doc_count`. Se añadió `sanitize_all_docs_response`, que deja sólo filas de bóvedas, `total_rows` = filas devueltas y `offset` 0. Es la misma regla que el plan ya aplicaba a `db_info`, así que no cambia el diseño.
+- **Comprobado contra CouchDB:** el rango `vault:`…`vault:￰` usa orden de bytes y deja fuera `vault-name:*`; `_bulk_get` devuelve un resultado por pedido, en orden.
+- `vault_service.py` (0003, P-1): `is_canonical_uuid` e `is_timestamp` pasan a públicas para que la sincronización reutilice el mismo canon. Se re-ancla al cierre.
+- T-001/T-002 (contrato) se hacen junto con las rutas (bloque F) para no dejar la suite en rojo entre commits.
