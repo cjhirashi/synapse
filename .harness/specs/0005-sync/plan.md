@@ -123,6 +123,26 @@ equivalentes (RF-008). Para sostenerlo en la API REST también, `VaultService._h
 pasa a mirar **todas** las hojas vivas de la bóveda (`VaultPort.leaves`) en lugar de sólo
 la ganadora. Sin conflictos hay una sola hoja, así que el comportamiento REST no cambia.
 
+**Notas de implementación (Fase 4, T-022/T-023; sin cambio de requisitos):**
+- **Async:** `ReplicationPort` es async y `VaultPort`/`VaultService` son síncronos, así que
+  `SyncPushService.push` es `async` y corre las llamadas síncronas en un hilo
+  (`anyio.to_thread`). Por eso la ruta `_bulk_docs` será `async def`, a diferencia del resto
+  de rutas no-stream de §2.1.
+- **Reservas públicas:** `VaultService._reserve`/`_release` pasan a `reserve`/`release`. El
+  push las usa desde otro servicio. Re-anclaje de 0003 al cierre (§7).
+- **`_rev` y `_revisions`** se comprueban justo después del id: los pasos 2 y 3 dependen de
+  ellos. Rechazo con `validation-error:_rev` o `validation-error:_revisions` si no están bien
+  formados o no concuerdan (`start` = generación, `ids[0]` = hash).
+- **Proyección de hojas por lote:** las reglas que miran "las hojas existentes" (lápida,
+  `created_at`, liberación) usan las hojas del servidor más las revisiones ya aceptadas del
+  mismo lote. Así se ve el estado que dejará la escritura. Cada `push` vuelve a leer las
+  hojas.
+- **Liberación (paso 9):** también se liberan los nombres que se reservaron dentro del lote y
+  que no acaba usando ninguna hoja, por ejemplo una revisión intermedia superada por otra del
+  mismo lote.
+- Sólo `_deleted: true` es una lápida; cualquier otro valor de `_deleted` →
+  `validation-error:_deleted`.
+
 ### 2.4 Filtros (`services/sync_filter.py`)
 Funciones puras sobre los cuerpos de CouchDB, probadas sin red: `is_replicable_id`,
 `changes_query` (lista blanca y acotado de parámetros, selector fijo),

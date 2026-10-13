@@ -156,7 +156,7 @@ class VaultService:
     def create(self, data: VaultCreate, owner_id: str) -> Versioned:
         vault_id = str(uuid.uuid4())
         now = self._clock()
-        self._reserve(data.name, vault_id)
+        self.reserve(data.name, vault_id)
         doc = {
             "_id": _doc_id(vault_id),
             "type": "vault",
@@ -182,23 +182,23 @@ class VaultService:
         # reserva: no choca consigo misma.
         renamed = "name" in changes and name_key(changes["name"]) != name_key(old_name)
         if renamed:
-            self._reserve(changes["name"], _vault_id(doc))
+            self.reserve(changes["name"], _vault_id(doc))
         updated = {**doc, **changes, "updated_at": self._clock()}
         updated["_rev"] = self._write(updated)
         if renamed:
-            self._release(old_name, _vault_id(doc))
+            self.release(old_name, _vault_id(doc))
         return _versioned(updated)
 
     def delete(self, vault_id: str, if_match: str | None) -> None:
         doc = self._load(vault_id, deleted=False)
         _check_precondition(doc, if_match)
         self._write({**doc, "deleted_at": self._clock()})
-        self._release(doc["name"], _vault_id(doc))
+        self.release(doc["name"], _vault_id(doc))
 
     def restore(self, vault_id: str, if_match: str | None) -> Versioned:
         doc = self._load(vault_id, deleted=True)
         _check_precondition(doc, if_match)
-        self._reserve(doc["name"], _vault_id(doc))
+        self.reserve(doc["name"], _vault_id(doc))
         restored = {**doc, "deleted_at": None}
         restored["_rev"] = self._write(restored)
         return _versioned(restored)
@@ -245,7 +245,9 @@ class VaultService:
         age = _parse_timestamp(self._clock()) - _parse_timestamp(reservation["reserved_at"])
         return age < RESERVATION_LEASE
 
-    def _reserve(self, name: str, vault_id: str) -> None:
+    # --- Reservas de nombre (públicas: el push de sincronización usa las mismas, SPEC-0005 RF-008) ---
+
+    def reserve(self, name: str, vault_id: str) -> None:
         """Escribe `vault-name:{clave}` para `vault_id` o lanza `VaultNameTaken` (RF-007, RF-021).
 
         La reserva siempre se escribe, también cuando ya es de esta bóveda (p. ej. al
@@ -279,7 +281,7 @@ class VaultService:
                 raise VaultNameTaken(f"{key} held by {current['vault_id']}")
             rev = current["_rev"]  # propia o huérfana: se reescribe sobre su `_rev`
 
-    def _release(self, name: str, vault_id: str) -> None:
+    def release(self, name: str, vault_id: str) -> None:
         """Borra la reserva de `vault_id` si ya no la usa; mejor esfuerzo: un fallo la deja huérfana.
 
         Sólo se borra una reserva que sigue apuntando a `vault_id`: si otra bóveda ya la

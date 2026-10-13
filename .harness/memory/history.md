@@ -636,3 +636,24 @@
   - Ningún test REST cambió.
 - Suite completa: **538 passed**.
 - **Próximo paso:** bloque E (T-018…T-023, `SyncPushService`).
+
+## [2026-10-13] 0005-sync — Fase 4: T-018…T-023 (push validado, bloque E)
+- **T-018:** `tests/test_sync_push.py` trae `InMemoryCouch`, un doble con árbol de revisiones.
+  - Implementa `VaultPort` y `ReplicationPort` sobre los mismos datos.
+  - Reproduce la ganadora determinista de CouchDB, `new_edits:false` con historia, `fail_next` y `before_next`.
+- **T-019…T-021:** 80 tests: id, ya almacenada, lápidas, forma, campos, dueño, fechas, `created_at` inmutable, reservas, lote mixto, lotes intercalados, REST + sync con el mismo nombre y errores de escritura.
+- **T-022/T-023:** `app/services/sync_push.py` (`SyncPushService.push` async).
+  - Los 9 pasos de §2.3.
+  - Proyección de hojas por lote.
+  - Devuelve sólo los rechazos, en orden.
+- Desviaciones registradas en PLAN-0005 §2.3 (notas de implementación):
+  - servicio async y ruta `_bulk_docs` `async def`;
+  - `reserve`/`release` públicos (re-anclaje de 0003 al cierre);
+  - `_rev`/`_revisions` comprobados tras el id;
+  - liberación también de los nombres reservados dentro del lote;
+  - `_deleted` distinto de `true` → `validation-error:_deleted`.
+- Rebote interno: la proyección era de la instancia y un segundo `push` veía hojas viejas.
+  - Corregido de raíz: el estado es de cada lote.
+  - Test que lo fija, rojo sin la corrección.
+- Gate abierto (24 ok · 2 warn). Suite completa: **618 passed**.
+- **Próximo paso:** bloque F (rutas `/sync`, T-001/T-002 contrato y `FEATURES`).

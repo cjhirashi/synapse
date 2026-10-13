@@ -588,7 +588,7 @@ def test_rf_021_late_release_keeps_a_reservation_taken_by_another_vault(service,
     port.fail_next("delete")
     service.update(left.id, VaultUpdate(name="Fuera"), left_etag)
     _past_the_lease(clock)
-    port.before_next_put(lambda: service._release("Mismo", left.id),
+    port.before_next_put(lambda: service.release("Mismo", left.id),
                          when=lambda doc: doc["_id"] == f"vault:{taker.id}")
     service.update(taker.id, VaultUpdate(name="Mismo"), taker_etag)
     assert _reservation(port, "mismo")["vault_id"] == taker.id
@@ -675,7 +675,7 @@ def test_rf_021_release_that_wins_the_race_makes_the_restore_reserve_again(servi
     released = []
 
     def late_release():
-        service._release("Notas", created.id)
+        service.release("Notas", created.id)
         released.append(_reservation(port, "notas"))
 
     port.before_next_put(late_release,
