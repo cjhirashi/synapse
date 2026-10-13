@@ -16,6 +16,8 @@ actualizado: 2026-10-13
 > **Prerrequisitos cumplidos:** SPEC-0002 (sesión), SPEC-0003 (bóvedas, `verified`),
 > SPEC-0004 (RFC 9457, `verified`). Este plan sólo lanza errores de dominio; el formato
 > `application/problem+json` lo pone el traductor de 0004.
+> **Enmienda del GATE 3 (2026-10-13, por el usuario):** sin nginx; el proxy inverso es un
+> Caddy externo. Cambian §2.5 (mismo origen), §6 paso 10, §7 y §8; el diseño de la API no cambia.
 > **GATE 2 aprobado (2026-10-13):** el usuario aprobó el plan con P-1 opción (a) (se toca el
 > código de 0003 y se re-ancla al cierre) y P-2 (dependencia `pouchdb-browser`); P-3…P-5
 > quedan confirmadas con el plan (§7).
@@ -158,8 +160,12 @@ test se retiran: la API REST no cambia y sigue para los agentes (`state.md`).
 `/conflicts`. `layout/AppLayout.tsx` muestra `SyncStatusBar` y su botón "Salir" llama
 a `requestLogout()`.
 
-**Mismo origen:** `frontend/nginx.conf` añade `location /sync/` con `proxy_buffering off` y
-`proxy_read_timeout 90s` (longpoll); `vite.config.ts` añade `"/sync": BACKEND`. `/sync` es
+**Mismo origen (enmienda del GATE 3):** sin nginx. En producción el proxy inverso es el
+**Caddy externo** del usuario, fuera de este repo: debe llevar `/sync/*` al backend en el
+mismo origen que la SPA, sin búfer de respuesta (`flush_interval -1`) y sin un tiempo
+límite de respuesta menor de 90 s (`longpoll`). Estos requisitos se documentan
+(tarea `[doc]`); no hay configuración de proxy en el repo para 0005. En desarrollo,
+`vite.config.ts` añade `"/sync": BACKEND`. `/sync` es
 sólo de la API: las vistas nuevas son `/rejections` y `/conflicts`, así que no hace falta
 el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
 
@@ -252,7 +258,7 @@ ocupado), sigue el flujo de RF-006.
 8. Replicador, estado, rechazos, conflictos (rojo) → módulos de `sync/`.
 9. UI: tests (rojo) → `SyncProvider`, barra, vistas, diálogo; páginas de bóvedas sobre
    `vaultStore` (P-1); `App.tsx`, `AppLayout.tsx`; retirar `api/vaults.ts`.
-10. Mismo origen: `nginx.conf`, `vite.config.ts`.
+10. Mismo origen: `vite.config.ts`; requisitos del Caddy externo documentados (sin nginx).
 11. Sync real y rendimiento (RNF-001/002) con `sync-integration.sh`.
 12. Diagrama: actualizar la tarjeta de estado del candidato y regenerar.
 13. Tareas `[doc]` de §8 y re-anclajes (§7).
@@ -266,7 +272,7 @@ ocupado), sigue el flujo de RF-006.
 | P-4 · Una reserva por cada rama viva y activa | Más estricto que "una por bóveda": una rama perdedora con un nombre que ya usa otra bóveda se rechaza al llegar (RF-006) en lugar de esperar a la resolución. Es lo que impide que una rama perdedora se convierta en ganadora sin reserva (§2.3). |
 | P-5 · Lápidas sólo para cerrar ramas en conflicto | El borrado de bóvedas sigue siendo el *soft delete* de 0003; una lápida que dejaría la bóveda sin hojas vivas se rechaza. **Riesgo residual aceptado:** dos lápidas *simultáneas* de un cliente modificado sobre las dos ramas podrían borrar del todo una bóveda propia. No afecta a otro usuario (P2) y el cliente oficial nunca lo hace (siempre conserva la ganadora determinista, §2.6). |
 | Re-anclaje de 0002 | 0005 modifica `App.tsx`, `layout/**` y `scripts/export_openapi.py` (de `covers` de 0002) y `core/errors.py`/`main.py` (sin dueño). Al cerrar, se mueve el ancla de 0002 con una nota, como en 0003/0004. |
-| `frontend/nginx.conf`, `frontend/vite.config.ts`, `package.json` sin `covers` | Configuración compartida por varias features (precedente PLAN-0003 §14): no se anclan a 0005; se documentan en `frontend/src/README.md`. |
+| `frontend/vite.config.ts`, `package.json` sin `covers` | Configuración compartida por varias features (precedente PLAN-0003 §14): no se anclan a 0005; se documentan en `frontend/src/README.md`. |
 | Tests de sync real necesitan el backend levantado | `sync-integration.sh` lo levanta contra la base de test (SQLite, excepción P5) y CouchDB de test; fuera de `npm test` por defecto, obligatorio en la verificación. |
 | Streaming de `_changes` | Puerto async propio para no bloquear hilos; el resto sigue síncrono como 0003. |
 | Ancestro desde el árbol local | Sin `auto_compaction`; si falta, decide el usuario (RF-013), así que nunca se pierde una versión. |
@@ -275,9 +281,9 @@ ocupado), sigue el flujo de RF-006.
 | Documento del mapa | Qué cambia | Acción |
 |---|---|---|
 | `0005-sync/contracts/openapi.yaml` | rutas `/sync/**` y códigos de rechazo | crear (export) |
-| `backend/README.md` | sección "Sincronización (SPEC-0005)": rutas, lista blanca, push validado, códigos `reason`, límites | actualizar |
+| `backend/README.md` | sección "Sincronización (SPEC-0005)": rutas, lista blanca, push validado, códigos `reason`, límites, requisitos del proxy inverso externo (Caddy) para `/sync/*` | actualizar |
 | `backend/app/{core/ports,adapters,services,routers}/README.md` | `ReplicationPort`, `ReplicationRepository`, `VaultPort.leaves`, `sync_push`, `sync_filter`, `sync.py` | actualizar |
-| `frontend/src/README.md` | carpeta `sync/`, réplica local, estados, rechazos y conflictos, cierre de sesión, proxys `/sync` de nginx y Vite, pantallas de bóvedas sobre la réplica | actualizar |
+| `frontend/src/README.md` | carpeta `sync/`, réplica local, estados, rechazos y conflictos, cierre de sesión, proxy `/sync` de Vite y requisitos del Caddy externo, pantallas de bóvedas sobre la réplica | actualizar |
 | `frontend/README.md` o `package.json` scripts | `npm run test:sync` y `sync-integration.sh` | actualizar |
 | `0005-sync/diagrams/` (+ `README.md`) | tarjeta de estado (ya no "falta el Gate 1") y rutas exactas | regenerar |
 | `ARCHIFY.md` | estado del diagrama de sync | actualizar |
@@ -341,4 +347,4 @@ Archivos compartidos que 0005 modifica sin reclamarlos: de 0003 (P-1) `vault_ser
 `vault_port.py`, `vault_repository.py`, `test_vault_service.py`, `frontend/src/vaults/**`,
 `frontend/src/api/vaults.ts` (se retira); de 0002 `App.tsx`, `layout/**`,
 `scripts/export_openapi.py`, `test_contract.py`; sin dueño `core/errors.py`, `main.py`,
-`nginx.conf`, `vite.config.ts`, `package.json`. Se re-anclan al cierre (§7).
+`vite.config.ts`, `package.json`. Se re-anclan al cierre (§7).

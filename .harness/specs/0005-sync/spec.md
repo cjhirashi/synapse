@@ -48,7 +48,7 @@ actualizado: 2026-10-13
   - CouchDB sólo se usa con la credencial **admin**, desde la red interna
     `synapse_internal`; no hay usuarios CouchDB por persona ni `_security` por base.
   - La sesión es una cookie httpOnly con JWT de 24 h (SPEC-0002); la SPA y la API
-    comparten origen (Caddy / nginx / Vite).
+    comparten origen (Caddy externo en producción, Vite en desarrollo; sin nginx, por el usuario en el GATE 3).
   - Los invariantes de 0003 los aplica el **servicio** del backend, no CouchDB: validación
     de campos (RF-005/006/023), nombre único con reservas `vault-name:{name_key}` (RF-007,
     RF-021, RF-025, RF-027), id canónico (RF-014/022), soft delete con `deleted_at`.

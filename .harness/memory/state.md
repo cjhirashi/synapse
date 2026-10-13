@@ -21,6 +21,8 @@ sprint_actual: 2
 - **Patrón:** monolito modular por capas con puertos (ADR-001).
 - **Rama de trabajo:** `feature/sprint-1-auth` (no `dev`).
 - **Bitácora:** cada tarea concluida se registra en `history.md` en el momento, no sólo al cierre.
+- **Sin nginx (2026-10-13, GATE 3 de 0005):** el proxy inverso de producción es un **Caddy
+  externo** al repo. Ninguna feature añade configuración de nginx.
 - **Regla de salida de la verificación (2026-10-12):** sólo hay otra ronda si hubo un hallazgo
   bloqueante o mayor, o si la corrección cambia el comportamiento; los menores de docs,
   trazabilidad, estilo o tests que endurecen se corrigen y registran sin nueva ronda
@@ -51,7 +53,9 @@ sprint_actual: 2
 2. ~~`docker-compose.yml` con Qdrant/Gotenberg y sin `Dockerfile` del frontend~~ → resuelto
    (2026-10-13, prompt directo): fuera Qdrant y Gotenberg; `frontend/Dockerfile` (Node →
    nginx) con `nginx.conf` que replica el proxy de Vite; override de desarrollo sobre la
-   etapa `build`. Residual: `test_contract.py` no corre dentro de la imagen del backend
+   etapa `build`. **Pendiente por la corrección "sin nginx":** decidir cómo se sirven los
+   estáticos y quién enruta `/auth`, `/admin` y `/vaults` (con el `map` de `Accept`) cuando
+   se retire el nginx de `frontend/Dockerfile`. Residual: `test_contract.py` no corre dentro de la imagen del backend
    (necesita `specs/` y `scripts/` del repo).
 3. Migraciones 002, 003 y 004 probadas en SQLite y PostgreSQL 15 real (round-trip; 003 aborta si hay duplicados por mayúsculas).
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
@@ -72,4 +76,4 @@ sprint_actual: 2
 
 **0003-vault-crud** en `verified` (2026-10-13). Observación para la futura feature de sincronización: el servidor sólo acepta ids UUID canónicos. Diagrama T-003 generado en `diagrams/` (2026-10-13). Pendiente aparte: merge de PR #3.
 
-**0005-sync** (PouchDB ↔ CouchDB) con **GATE 1 aprobado** (`approved`, 2026-10-13); **GATE 2 aprobado** (PLAN-0005, 2026-10-13, con P-1 (a): se toca el código de 0003 y se re-ancla al cierre; P-2: dependencia `pouchdb-browser`), con **TASKS-0005 en borrador** (84 tareas T-001…T-084, bloques A–L según PLAN-0005 §6; esperando GATE 3): D-1…D-6 aprobadas por el usuario (proxy `/sync` validado, offline lectura+escritura, merge por campo, sólo `vault:*`, borrar réplica al salir, sin PWA; ADR-002, ADR-003); C-1…C-4 aprobadas (backoff 1→60 s, ≤ 5 s, merge contra ancestro, aviso al salir); RF-001…RF-019 EARS, 0 marcadores. **0006-integration-real-db** (renumerada desde 0005) sigue en `draft` con sus 3 preguntas.
+**0005-sync** (PouchDB ↔ CouchDB) con **GATE 1 aprobado** (`approved`, 2026-10-13); **GATE 2 aprobado** (PLAN-0005, 2026-10-13, con P-1 (a): se toca el código de 0003 y se re-ancla al cierre; P-2: dependencia `pouchdb-browser`), con **GATE 3 aprobado** (TASKS-0005, 84 tareas T-001…T-084; enmienda: sin nginx, Caddy externo), en Fase 4 (Implement): D-1…D-6 aprobadas por el usuario (proxy `/sync` validado, offline lectura+escritura, merge por campo, sólo `vault:*`, borrar réplica al salir, sin PWA; ADR-002, ADR-003); C-1…C-4 aprobadas (backoff 1→60 s, ≤ 5 s, merge contra ancestro, aviso al salir); RF-001…RF-019 EARS, 0 marcadores. **0006-integration-real-db** (renumerada desde 0005) sigue en `draft` con sus 3 preguntas.

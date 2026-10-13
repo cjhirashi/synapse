@@ -569,3 +569,14 @@
   - merge de PR #3;
   - SPEC-0002 → `verified`.
 - **Próximo paso:** con el GATE 3, la Fase 4 empieza por el bloque A (T-001).
+
+## [2026-10-13] 0005-sync — GATE 3 aprobado, con enmienda "sin nginx"
+
+- El usuario aprobó `tasks.md` con una observación: sin nginx, porque el proxy inverso se gestiona fuera con Caddy.
+- **Enmienda:**
+  - plan §2.5, §6 paso 10, §7, §8 y §9: el mismo origen en producción lo da el Caddy externo, y en desarrollo Vite;
+  - spec: nota de contexto;
+  - T-067: pasa a `[doc]` con los requisitos del Caddy para `/sync/*` (mismo origen, `flush_interval -1`, sin límite de respuesta menor de 90 s).
+  - La API no cambia.
+- `state.md`: la corrección del usuario queda arriba. Queda pendiente decidir qué sustituye al nginx de `frontend/Dockerfile`, que sirve los estáticos y enruta `/auth`, `/admin` y `/vaults`; es un cambio fuera de 0005.
+- `tasks.md` pasa a `approved` con `fase_3`. Empieza la Fase 4.

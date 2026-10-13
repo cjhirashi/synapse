@@ -2,13 +2,16 @@
 id: TASKS-0005
 tipo: tasks
 feature: 0005-sync
-estado: draft
+estado: approved
 aprobaciones:
-  fase_3: pendiente
+  fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
 actualizado: 2026-10-13
 ---
 
 # TASKS-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
+
+> **GATE 3 aprobado (2026-10-13)** con una observación del usuario: sin nginx, el proxy
+> inverso es un Caddy externo. T-067 pasa de configurar nginx a documentar los requisitos del Caddy.
 
 ## Reglas
 - Cada tarea: ≤ 30 min, un solo propósito, `(cubre RF-NNN)`, zona del patrón (o `[doc]`).
@@ -107,8 +110,8 @@ actualizado: 2026-10-13
 - [ ] T-065 — `App.tsx` y `layout/AppLayout.tsx` (cubre RF-009, RF-017) [zona: cliente]
 - [ ] T-066 — retirar `frontend/src/api/vaults.ts` y `vaults.test.ts` (sin importadores; la API REST no cambia) (cubre RF-009) [zona: cliente]
 
-### J · Mismo origen
-- [ ] T-067 — `frontend/nginx.conf`: `location /sync/` con `proxy_buffering off` y `proxy_read_timeout 90s`; comprobación con `nginx -t` en el contenedor de build (cubre RF-001, RF-010) [zona: config]
+### J · Mismo origen (Caddy externo + Vite)
+- [ ] T-067 — `backend/README.md`, sección de despliegue: requisitos del Caddy externo para `/sync/*` (mismo origen que la SPA, `flush_interval -1`, sin tiempo límite de respuesta < 90 s); sin nginx (enmienda del GATE 3) (cubre RF-001, RF-010) [doc]
 - [ ] T-068 — `frontend/vite.config.ts`: `"/sync": BACKEND` (cubre RF-001) [zona: config]
 
 ### K · Sincronización real (RNF-002)
