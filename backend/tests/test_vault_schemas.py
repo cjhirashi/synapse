@@ -25,6 +25,25 @@ def test_rf_005_name_out_of_limits_after_strip_is_rejected(name):
         VaultCreate(name=name)
 
 
+# SPEC-0003 enmienda 1 (E2): ningún carácter de control (categoría Unicode `Cc`).
+@pytest.mark.parametrize("name", ["a\x00b", "uno\ndos", "a\tb", "a\x7fb", "a\x85b", "a\x1bb"])
+@pytest.mark.parametrize("schema", [VaultCreate, VaultUpdate])
+def test_rf_005_name_with_control_characters_is_rejected(schema, name):
+    with pytest.raises(ValidationError) as exc:
+        schema(name=name)
+    assert _error_types(exc.value) == {"control_characters"}
+
+
+def test_rf_005_surrounding_whitespace_controls_are_stripped_not_rejected():
+    # Se quita el espacio de los extremos antes de comprobar (RF-006).
+    assert VaultCreate(name="\tNotas\n").name == "Notas"
+
+
+@pytest.mark.parametrize("name", ["Straße", "Notas · 2026", "ﬁcha", "名前", "a\u200db"])
+def test_rf_005_other_unicode_names_are_accepted(name):
+    assert VaultCreate(name=name).name == name
+
+
 def test_rf_005_name_is_required():
     with pytest.raises(ValidationError) as exc:
         VaultCreate()

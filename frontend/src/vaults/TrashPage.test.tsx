@@ -46,7 +46,13 @@ test("RF-028: lista las borradas con su `deleted_at`", async () => {
   const list = vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
   renderPage();
   const item = await screen.findByRole("listitem", { name: "Bóveda 1" });
-  expect(within(item).getByText(/Borrada el/).querySelector("time")).toHaveAttribute("dateTime", DELETED_AT);
+  const time = within(item).getByText(/Borrada el/).querySelector("time");
+  expect(time).toHaveAttribute("dateTime", DELETED_AT);
+  // Fecha legible en español (p. ej. «12 oct 2026, 11:30»), no el texto ISO.
+  const visible = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(DELETED_AT));
+  expect(time).toHaveTextContent(visible);
+  expect(time).toHaveTextContent(/2026/);
+  expect(time).not.toHaveTextContent(DELETED_AT);
   expect(list).toHaveBeenCalledWith({ deleted: true });
 });
 
@@ -65,6 +71,17 @@ test("RF-028: «Cargar más» pide la página siguiente de la papelera", async (
   await user.click(await screen.findByRole("button", { name: "Cargar más" }));
   expect(await screen.findByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
   expect(list).toHaveBeenLastCalledWith({ deleted: true, cursor: "c1" });
+});
+
+test("RF-028: si «Cargar más» falla, conserva la papelera y avisa", async () => {
+  vi.spyOn(api, "listVaults")
+    .mockResolvedValueOnce({ items: [trashed(1)], next_cursor: "c1" })
+    .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }));
+  const user = renderPage();
+  await user.click(await screen.findByRole("button", { name: "Cargar más" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar más bóvedas.");
+  expect(screen.getByRole("listitem", { name: "Bóveda 1" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Cargar más" })).toBeInTheDocument();
 });
 
 test("RF-028: «Restaurar» llama con su etag y la quita de la papelera", async () => {
@@ -105,7 +122,7 @@ test.each([
   expect(list).toHaveBeenCalledTimes(2);
 });
 
-test("otro error al restaurar da un aviso genérico", async () => {
+test("RF-028: otro error al restaurar da un aviso genérico", async () => {
   vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
   vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }));
   const user = renderPage();
@@ -113,7 +130,7 @@ test("otro error al restaurar da un aviso genérico", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo restaurar «Bóveda 1». Inténtalo de nuevo.");
 });
 
-test("una sesión cerrada (401) al restaurar lleva a /login", async () => {
+test("RF-028: una sesión cerrada (401) al restaurar lleva a /login", async () => {
   vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
   vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(401, { type: "urn:synapse:problem:invalid-token" }));
   const user = renderPage();

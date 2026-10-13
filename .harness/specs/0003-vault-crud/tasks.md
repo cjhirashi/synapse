@@ -5,7 +5,8 @@ feature: 0003-vault-crud
 estado: implemented
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
-actualizado: 2026-10-12
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque I (PLAN-0003 §15)
+actualizado: 2026-10-13
 ---
 
 # TASKS-0003 · CRUD de bóvedas
@@ -89,38 +90,59 @@ actualizado: 2026-10-12
 - [x] T-050 — `state.md`: RF-016 (purga a 30 días) en el backlog como feature aparte (cubre RF-016) [doc]
 - [x] T-051 (cierre) — re-anclaje de 0002 (nota y `anchor_commit` por los archivos compartidos de PLAN-0003 §10, incluido `conftest.py`); `anchor_commit` de 0003; `state.md` con el estado de 0003 y residuales; tabla de cobertura con la evidencia [doc]
 
+### I · Enmienda 1: correcciones de la verificación adversarial (PLAN-0003 §15)
+- [x] T-052 — enmienda 1 de SPEC-0003 (§3 nombres equivalentes, RF-003, RF-005, RF-007, RF-014, RF-021, RF-025, §5, §6 E1/E2), PLAN-0003 §15 y este bloque (cubre RF-003, RF-005, RF-007, RF-014, RF-021, RF-025) [doc]
+- [x] T-053 — test (rojo) `test_vault_service.py`: una liberación tardía tras volver a reservar el nombre para la misma bóveda (borrar + restaurar; renombrar y devolver el nombre) no la deja sin reserva ni permite un duplicado (VA-1) (cubre RF-021, RF-027) [zona: test]
+- [x] T-054 — `_reserve`: reescribe la reserva propia sobre su `_rev` y, ante un choque, vuelve a leer y decidir (VA-1) (cubre RF-007, RF-021, RF-027) [zona: servicio]
+- [x] T-055 — test (rojo) servicio y API: «Straße»/«STRASSE», «café» NFC/NFD y «ΣΑΣ»/«σασ» son equivalentes al crear, renombrar y restaurar; cambiar sólo la forma no choca consigo misma (VA-4) (cubre RF-007, RF-021, RF-025) [zona: test]
+- [x] T-056 — `name_key` (NFKC + `casefold`) en la reserva, `_holder` y `update` (VA-4) (cubre RF-007, RF-021, RF-025, RF-027) [zona: servicio]
+- [x] T-057 — test (rojo) esquemas y API: `name` con caracteres `Cc` (NUL, salto de línea interior, `\x7f`, `\x85`) → 422 con el código `control_characters`, sin documento (VA-10) (cubre RF-005) [zona: test]
+- [x] T-058 — `core/errors.py` (`control_characters`) y validador de `VaultName` en `core/schemas.py` (VA-10) (cubre RF-005) [zona: núcleo]
+- [x] T-059 — test (rojo) cursor: datos añadidos, `c` que no es fecha, `i` no canónico, claves extra, cursor demasiado largo o muy anidado → `InvalidCursor`; API 422 (VA-2, VA-3) (cubre RF-003) [zona: test]
+- [x] T-060 — `decode_cursor` estricto (longitud, base64url estricta, ida y vuelta exacta, fecha e id válidos) (VA-2, VA-3) (cubre RF-003) [zona: servicio]
+- [x] T-061 — test (rojo) servicio y API: `vault_id` en mayúsculas, sin guiones, entre llaves o `urn:uuid:` → 404 idéntico; contrato con `format: uuid` (VA-5) (cubre RF-014) [zona: test]
+- [x] T-062 — `_load` sólo con id canónico; `format: uuid` en la ruta; re-exportar el contrato de 0003 (VA-5) (cubre RF-014) [zona: servicio]
+- [x] T-063 — test `test_vault_repository.py`: `_design/vaults` se escribe una sola vez por base en el proceso (VA-8) (cubre RNF-001) [zona: test]
+- [x] T-064 — test (rojo) `VaultForm.test.tsx`: una descripción de sólo espacios sin tocar no se envía; el error de campo se anuncia (`role="alert"`) (VA-9) (cubre RF-019) [zona: test]
+- [x] T-065 — `vaults/VaultForm.tsx` (VA-9) (cubre RF-019) [zona: frontend]
+- [x] T-066 — test (rojo) `VaultListPage.test.tsx`/`TrashPage.test.tsx`: un fallo de «Cargar más» conserva la lista y avisa; una recarga durante «Cargar más» descarta la respuesta vieja; la Papelera muestra la fecha visible (VA-8, VA-9) (cubre RF-018, RF-028) [zona: test]
+- [x] T-067 — `vaults/useVaultPages.ts`, `VaultListPage.tsx`, `TrashPage.tsx` (VA-9) (cubre RF-018, RF-028) [zona: frontend]
+- [x] T-068 — trazabilidad: `RF-` en los tests que no lo llevaban (VA-7); `covers` con `api/vaults.test.ts` (VA-6) (cubre RF-010, RF-014, RF-018, RF-019, RF-020, RF-028) [doc]
+- [x] T-069 — docs: `backend/README.md` (nombres equivalentes, caracteres de control, cursor, id canónico), `adapters/README.md` (404 al borrar), `frontend/src/README.md` (VA-9) [doc]
+- [ ] T-070 (cierre) — tabla de cobertura con la evidencia, `state.md`, `history.md`, `anchor_commit` (cubre RF-003, RF-005, RF-007, RF-014, RF-021) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` se rellena con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
 | RF-001 | T-001, T-002, T-010, T-012, T-015, T-023, T-024, T-025, T-030, T-031, T-032 | test_vaults_api, test_vault_repository, test_vault_service, test_contract | Pass |
 | RF-002 | T-008, T-009, T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_service, test_vault_repository, test_vaults_api | Pass |
-| RF-003 | T-006, T-007, T-008, T-009, T-023, T-024, T-026, T-030 | test_vault_errors, test_vault_service, test_vaults_api | Pass |
+| RF-003 | T-006, T-007, T-008, T-009, T-023, T-024, T-026, T-030, T-052, T-059, T-060, T-070 | test_vault_errors, test_vault_service, test_vaults_api; enmienda 1: test_vault_service (cursor manipulado/largo), test_vaults_api | Pass |
 | RF-004 | T-001, T-002, T-010, T-011, T-014, T-017, T-018, T-025, T-030, T-032 | test_vault_service, test_vault_repository, test_vaults_api | Pass |
-| RF-005 | T-003, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pass |
+| RF-005 | T-003, T-005, T-026, T-030, T-052, T-057, T-058, T-070 | test_vault_schemas, test_vaults_api; enmienda 1: test_vault_schemas (`control_characters`), test_vaults_api | Pass |
 | RF-006 | T-004, T-005, T-025, T-030 | test_vault_schemas, test_vaults_api | Pass |
-| RF-007 | T-006, T-007, T-017, T-018, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-007 | T-006, T-007, T-017, T-018, T-027, T-030, T-052, T-054, T-055, T-056, T-070 | test_vault_service, test_vaults_api; enmienda 1: test_vault_service (nombres equivalentes), test_vaults_api | Pass |
 | RF-008 | T-001, T-019, T-020, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
 | RF-009 | T-001, T-004, T-005, T-019, T-020, T-025, T-030 | test_vault_schemas, test_vault_service, test_vaults_api | Pass |
-| RF-010 | T-006, T-007, T-011, T-014, T-016, T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
+| RF-010 | T-006, T-007, T-011, T-014, T-016, T-019, T-020, T-021, T-022, T-027, T-030, T-068 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
 | RF-011 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
 | RF-012 | T-012, T-015, T-023, T-024, T-025, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
 | RF-013 | T-001, T-021, T-022, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
-| RF-014 | T-006, T-007, T-019, T-020, T-028, T-030 | test_vault_service, test_vaults_isolation | Pass |
+| RF-014 | T-006, T-007, T-019, T-020, T-028, T-030, T-052, T-061, T-062, T-068, T-070 | test_vault_service, test_vaults_isolation; enmienda 1: test_vault_service (id no canónico), test_vaults_api (404, `format: uuid`) | Pass |
 | RF-015 | T-028, T-030, T-031 | test_vaults_isolation | Pass |
 | RF-016 | T-050 (diferido a otra feature, spec §2) | — (en el backlog de `state.md`) | hecho |
 | RF-017 | T-013, T-014, T-016, T-017, T-018, T-027, T-030 | test_vault_repository, test_vault_service, test_vaults_api | Pass |
-| RF-018 | T-035, T-036, T-037, T-038, T-043, T-044 | vaults.test.ts, VaultListPage.test.tsx, App.test.tsx | Pass |
-| RF-019 | T-035, T-036, T-039, T-040 | vaults.test.ts, VaultForm.test.tsx | Pass |
-| RF-020 | T-037, T-038 | VaultListPage.test.tsx | Pass |
-| RF-021 | T-016, T-017, T-018, T-019, T-020, T-029, T-030 | test_vault_service, test_vaults_concurrency | Pass |
+| RF-018 | T-035, T-036, T-037, T-038, T-043, T-044, T-066, T-067, T-068 | vaults.test.ts, VaultListPage.test.tsx, App.test.tsx; enmienda 1: useVaultPages.test.tsx, VaultListPage.test.tsx (fallo de «Cargar más») | Pass |
+| RF-019 | T-035, T-036, T-039, T-040, T-064, T-065, T-068 | vaults.test.ts, VaultForm.test.tsx; enmienda 1: VaultForm.test.tsx (descripción de espacios, `role="alert"`) | Pass |
+| RF-020 | T-037, T-038, T-068 | VaultListPage.test.tsx | Pass |
+| RF-021 | T-016, T-017, T-018, T-019, T-020, T-029, T-030, T-052, T-053, T-054, T-055, T-056, T-070 | test_vault_service, test_vaults_concurrency; enmienda 1: test_vault_service (liberación tardía, VA-1) | Pass |
 | RF-022 | T-017, T-018, T-025, T-030 | test_vault_service, test_vaults_api | Pass |
 | RF-023 | T-004, T-005, T-026, T-030 | test_vault_schemas, test_vaults_api | Pass |
 | RF-024 | T-012, T-015, T-023, T-024, T-030 | test_vault_repository, test_vault_service | Pass |
-| RF-025 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
+| RF-025 | T-021, T-022, T-027, T-030, T-052, T-055, T-056 | test_vault_service, test_vaults_api; enmienda 1: test_vault_service (restaurar con nombre equivalente) | Pass |
 | RF-026 | T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
-| RF-027 | T-019, T-020, T-021, T-022, T-027, T-030 | test_vault_service, test_vaults_api | Pass |
-| RF-028 | T-035, T-036, T-041, T-042, T-043, T-044 | vaults.test.ts, TrashPage.test.tsx, AppLayout.test.tsx | Pass |
-| RNF-001 | T-033, T-034 | test_vaults_perf (`-m perf`: 1 passed; p95 18 ms con 1 000 bóvedas) | Pass |
+| RF-027 | T-019, T-020, T-021, T-022, T-027, T-030, T-053, T-054, T-056 | test_vault_service, test_vaults_api; enmienda 1: test_vault_service (VA-1) | Pass |
+| RF-028 | T-035, T-036, T-041, T-042, T-043, T-044, T-066, T-067, T-068 | vaults.test.ts, TrashPage.test.tsx, AppLayout.test.tsx; enmienda 1: TrashPage.test.tsx (fallo de «Cargar más», fecha visible) | Pass |
+| RNF-001 | T-033, T-034, T-063 | test_vaults_perf (`-m perf`: 1 passed; p95 18 ms con 1 000 bóvedas); enmienda 1: test_vault_repository (`_design/vaults` una vez) | Pass |
 | doc: contrato-0003 | T-032 | — | hecho |
 | doc: backend-readme | T-045 | — | hecho |
 | doc: ports-adapters-readme | T-046 | — | hecho |
@@ -128,6 +150,7 @@ actualizado: 2026-10-12
 | doc: tareas-t002 | T-048 | — | hecho |
 | doc: archify | T-049 | — | hecho |
 | doc: state | T-050, T-051 | — | hecho |
+| doc: spec-0003-enmienda-1 | T-052, T-068, T-069, T-070 | — | hecho |
 | doc: plan-0003-ajustes-fase-3 | (hecho al escribir este `tasks.md`: PLAN-0003 §10) | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).

@@ -10,7 +10,7 @@ type Load = "loading" | "ready" | "missing" | "error";
 
 /** Textos propios de cada campo: el `detail` de un 422 llega en inglés (SPEC-0004). */
 const FIELD_MESSAGES: Record<Field, string> = {
-  name: "El nombre debe tener entre 1 y 100 caracteres.",
+  name: "El nombre debe tener entre 1 y 100 caracteres, sin caracteres de control.",
   description: "La descripción admite hasta 2000 caracteres.",
   tags: "Hasta 20 etiquetas de 1 a 32 caracteres cada una.",
 };
@@ -31,11 +31,20 @@ function parseTags(text: string): string[] {
     .filter((tag) => tag !== "");
 }
 
-/** Sólo los campos que difieren de la versión cargada: `PATCH` no toca el resto (RF-009). */
+/** Descripción para la API: vacía o de sólo espacios es "sin descripción" (`null`). */
+function toDescription(text: string): string | null {
+  return text.trim() === "" ? null : text;
+}
+
+/**
+ * Sólo los campos que difieren de la versión cargada: `PATCH` no toca el resto (RF-009).
+ * La descripción original se normaliza igual que la del formulario: una de sólo espacios
+ * que no se tocó no cuenta como cambio (PLAN-0003 §15, VA-9).
+ */
 function changes(input: VaultInput, original: Vault): Partial<VaultInput> {
   const diff: Partial<VaultInput> = {};
   if (input.name !== original.name) diff.name = input.name;
-  if (input.description !== original.description) diff.description = input.description;
+  if (input.description !== toDescription(original.description ?? "")) diff.description = input.description;
   if (input.tags.join("\n") !== original.tags.join("\n")) diff.tags = input.tags;
   return diff;
 }
@@ -117,7 +126,7 @@ export default function VaultForm() {
     e.preventDefault();
     setFieldErrors({});
     setFormError(null);
-    const input: VaultInput = { name, description: description.trim() === "" ? null : description, tags: parseTags(tags) };
+    const input: VaultInput = { name, description: toDescription(description), tags: parseTags(tags) };
     setBusy(true);
     try {
       if (original === null) {
@@ -151,8 +160,9 @@ export default function VaultForm() {
     return fieldErrors[field] ? { "aria-invalid": true as const, "aria-describedby": `${field}-error` } : {};
   }
 
+  /** Error del campo; `role="alert"` lo anuncia al aparecer (la descripción, al enfocar). */
   function errorText(field: Field) {
-    return fieldErrors[field] && <p id={`${field}-error`}>{fieldErrors[field]}</p>;
+    return fieldErrors[field] && <p id={`${field}-error`} role="alert">{fieldErrors[field]}</p>;
   }
 
   return (

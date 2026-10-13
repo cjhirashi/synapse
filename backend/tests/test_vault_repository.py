@@ -182,6 +182,25 @@ def test_rf_001_design_doc_is_created_idempotently(repo, db):
     assert "by_created" in design["views"]
 
 
+def test_rnf_001_design_doc_is_written_once_per_db_and_process():
+    # PLAN-0003 §15 (VA-8): el `PUT _design/vaults` no se repite en cada listado (RNF-001).
+    # Un transporte que registra las peticiones; las respuestas imitan a CouchDB.
+    requests: list[tuple[str, str]] = []
+
+    def couchdb(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        if request.method == "PUT":
+            return httpx.Response(201, json={"ok": True})
+        return httpx.Response(200, json={"rows": []})
+
+    repo = VaultRepository(transport=httpx.MockTransport(couchdb))
+    for db in ("synapse_user_a", "synapse_user_a", "synapse_user_b", "synapse_user_a"):
+        repo.list_page(db, deleted=False, limit=10, after=None)
+    design_puts = [path for method, path in requests if method == "PUT"]
+    assert design_puts == ["/synapse_user_a/_design/vaults", "/synapse_user_b/_design/vaults"]
+    assert sum(method == "GET" for method, _ in requests) == 4
+
+
 # --- T-013: almacén inaccesible o 5xx → StorageUnavailable (RF-017) ---
 
 _CALLS = {

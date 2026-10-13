@@ -66,7 +66,7 @@ test("RF-018 / RF-028: listVaults envía `cursor` y `deleted` cuando se piden", 
   expect(Object.fromEntries(url.searchParams)).toEqual({ deleted: "true", cursor: "a b/c" });
 });
 
-test("getVault toma el etag de la cabecera `ETag`", async () => {
+test("RF-019: getVault toma el etag de la cabecera `ETag`", async () => {
   mockFetch(json(200, BODY, { ETag: '"2-b"' }));
   await expect(getVault(BODY.id)).resolves.toEqual({ ...BODY, etag: '"2-b"' });
 });
@@ -104,7 +104,7 @@ test("RF-028: restoreVault envía POST a /restore con el etag de la papelera", a
   expect([sent.path, sent.method, sent.headers.get("If-Match")]).toEqual([`/vaults/${BODY.id}/restore`, "POST", '"2-b"']);
 });
 
-test("los ids se codifican en la ruta", async () => {
+test("RF-019 / RF-020 / RF-028: los ids se codifican en la ruta", async () => {
   const fetchMock = mockFetch(json(200, BODY, { ETag: '"1-a"' }));
   await getVault("a/b");
   expect(call(fetchMock).path).toBe("/vaults/a%2Fb");

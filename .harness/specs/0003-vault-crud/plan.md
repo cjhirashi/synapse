@@ -9,7 +9,8 @@ aprobaciones:
   ajustes_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # §11
   hallazgo_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }  # §12
   etag_listados: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }    # §13
-actualizado: 2026-10-12
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }       # §15 (verificación adversarial)
+actualizado: 2026-10-13
 ---
 
 # PLAN-0003 · CRUD de bóvedas
@@ -20,6 +21,7 @@ actualizado: 2026-10-12
 > `verified` el 2026-10-12 en esta misma rama. Este plan sólo **lanza excepciones de
 > dominio**; el formato `application/problem+json` lo pone el traductor de esa feature.
 > Ajustes de la Fase 3 a lo que dejó SPEC-0004: §10. Ajustes de la Fase 4: §11, §12 y §13; notas del cierre: §14.
+> Correcciones de la verificación adversarial (enmienda 1): §15.
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — CouchDB por HTTP con el `httpx` que ya existe; sin librerías nuevas
@@ -388,3 +390,56 @@ aprobado por el usuario el 2026-10-12 junto con la enmienda del spec.
 - **`getVault`** en `api/vaults.ts`, que la lista de §9 no nombraba: la ruta de edición y la
   recarga tras un 412 la necesitan. Cubierta por `vaults.test.ts` y `VaultForm.test.tsx`.
 - **Re-anclaje de 0002** (§10): hecho en su `spec.md`, ancla `4a07556`.
+
+## 15. Enmienda 1: correcciones de la verificación adversarial (APROBADA el 2026-10-13)
+La verificación adversarial del 2026-10-13 (HEAD `26156e6`) dio REJECTED por VA-1 (mayor) y
+nueve menores (VA-2…VA-10). El usuario aprobó la enmienda completa y, para VA-4 y VA-10, la
+opción (a): equivalencia de nombres con NFKC + `casefold` y rechazo de caracteres de control
+(SPEC-0003 enmienda 1, decisiones E1 y E2).
+
+- **VA-1 · liberación tardía de la propia reserva (RF-007, RF-021, RF-027).** `_release`
+  lee la reserva, comprueba que su bóveda ya no la usa y la borra con el `_rev` leído. Si en
+  ese hueco otra petición vuelve a tomar el nombre **para la misma bóveda** (restaurarla, o
+  devolverle el nombre con un renombrado), `_reserve` veía la reserva ya suya y salía sin
+  escribir: el `_rev` no cambiaba, el borrado tardío entraba y la bóveda activa quedaba sin
+  reserva (y otra bóveda podía tomar su nombre). **Causa raíz:** la reserva propia se daba
+  por buena sin escribirla, así que nada invalidaba la lectura de la liberación en curso.
+  **Corrección:** `_reserve` siempre escribe; si la reserva ya es de esta bóveda, la
+  reescribe sobre su `_rev` con `reserved_at` nuevo, con lo que el borrado tardío choca
+  (`RevisionConflict`, que `_release` ya ignora). Si cualquier escritura de la reserva
+  choca, se vuelve a leer y se decide otra vez con el estado nuevo (bucle de concurrencia
+  optimista: cada vuelta exige que otra petición haya escrito entre medias). Tests
+  deterministas con el doble que intercalan la segunda petición antes del borrado.
+- **VA-4 · nombres equivalentes (RF-007, RF-021, RF-025, RF-027).** Una sola función
+  `name_key(name) = unicodedata.normalize("NFKC", name).casefold()` decide la unicidad: la
+  clave de la reserva (`vault-name:{name_key}`), la comprobación de uso (`_holder`) y si un
+  `PATCH` cambia el nombre (cambiar sólo mayúsculas o la forma Unicode conserva la
+  reserva). El nombre se guarda tal como llega. **Datos existentes:** para nombres ASCII la
+  clave no cambia; Synapse no está desplegado, así que no hace falta migrar reservas.
+- **VA-10 · caracteres de control (RF-005).** `VaultName` añade un validador que rechaza
+  cualquier carácter de categoría `Cc` tras quitar espacios, con un código nuevo del catálogo
+  de mensajes de SPEC-0004 (`control_characters` en `FIELD_ERROR_MESSAGES`, `core/errors.py`).
+- **VA-2 / VA-3 · cursor estricto (RF-003).** `decode_cursor` acepta sólo lo que
+  `encode_cursor` produce: longitud máxima de un cursor emitido (antes de decodificar, así
+  que un JSON muy anidado nunca llega a `json.loads`), base64url estricta, `c` con el
+  formato de `_TIMESTAMP_FORMAT`, `i` UUID canónico y ida y vuelta exacta (sin claves
+  extra ni datos añadidos). Todo lo demás → `InvalidCursor` (422).
+- **VA-5 · `vault_id` canónico (RF-014).** `_load` exige `str(UUID(x)) == x`; cualquier otra
+  forma (mayúsculas, sin guiones, llaves, `urn:uuid:`) → `VaultNotFound`. La ruta declara
+  `format: uuid` en el contrato (sigue siendo `str` para que un id inválido dé 404 y no 422).
+- **VA-6 · `covers`.** Se añade `frontend/src/api/vaults.test.ts`. `core/errors.py` y
+  `main.py` siguen sin dueño por decisión de §9 (transversales); no es un descuido.
+- **VA-7 · trazabilidad.** Los tests sin `RF-` lo llevan (el del doble, RF-010; los del
+  frontend, el RF de la pantalla que prueban).
+- **VA-8 · tests débiles.** Test de que el índice se crea una sola vez por base y proceso
+  (RNF-001); la Papelera comprueba la fecha visible, no sólo `dateTime` (RF-028).
+- **VA-9 · frontend (RF-018, RF-019, RF-028).** `VaultForm` compara la descripción con la
+  original normalizada igual que al enviar (una de sólo espacios sin tocar no se envía); el
+  error de campo lleva `role="alert"`. `useVaultPages`: un fallo de "Cargar más" conserva
+  la lista y avisa aparte (reintentable); cada carga lleva una generación y una respuesta de
+  una generación vieja (recarga durante "Cargar más") se descarta.
+- **Observación del adaptador:** su README anota que un 404 al borrar se traduce en
+  `RevisionConflict`.
+
+Por la regla de salida (`method.md` §3), al ser VA-1 mayor y cambiar el comportamiento, tras
+estas correcciones hay una nueva ronda de verificación adversarial.

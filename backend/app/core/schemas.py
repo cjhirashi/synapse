@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Annotated
 
 from pydantic import (
@@ -54,7 +55,21 @@ class TokenPayload(BaseModel):
 # Los límites usan restricciones nativas de pydantic: el traductor de 422 (SPEC-0004)
 # regenera sus mensajes sólo con los límites del esquema, nunca con el valor enviado.
 
-VaultName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
+def _no_control_characters(name: str) -> str:
+    """Rechaza caracteres de control (categoría `Cc`) en el nombre (SPEC-0003 enmienda 1, E2).
+
+    Corre tras quitar los espacios de los extremos: sólo cuentan los del interior.
+    """
+    if any(unicodedata.category(char) == "Cc" for char in name):
+        raise field_error("control_characters")
+    return name
+
+
+VaultName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=100),
+    AfterValidator(_no_control_characters),
+]
 VaultDescription = Annotated[str, StringConstraints(max_length=2000)]
 VaultTag = Annotated[
     str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=32)

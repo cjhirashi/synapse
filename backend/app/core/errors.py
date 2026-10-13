@@ -26,6 +26,7 @@ PROBLEM_TYPE_PREFIX = "urn:synapse:problem:"
 # el traductor resuelve antes esos tipos y esta entrada nunca se publicaría.
 FIELD_ERROR_MESSAGES: dict[str, str] = {
     "invalid_email": "Invalid email format",
+    "control_characters": "Must not contain control characters",
 }
 
 

@@ -14,6 +14,7 @@ covers:
   - backend/tests/test_vault*.py
   - frontend/src/vaults/**
   - frontend/src/api/vaults.ts
+  - frontend/src/api/vaults.test.ts
   - .harness/specs/0003-vault-crud/contracts/**
   - .harness/specs/0003-vault-crud/diagrams/**
 # --- aprobaciones humanas ---
@@ -22,13 +23,20 @@ aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-11 }
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }
   enmienda_fase_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-12 }   # `etag` en los listados (PLAN-0003 §13)
-actualizado: 2026-10-12
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # verificación adversarial (PLAN-0003 §15)
+actualizado: 2026-10-13
 ---
 
 # SPEC-0003 · CRUD de bóvedas
 
 > Fase 1 (Specify) cerrada: co-definida con el usuario (tandas P1–P6 y P7–P12), "así es"
 > y GATE 1 aprobados el 2026-10-11. GATE 2 (plan) aprobado el 2026-10-11.
+>
+> **Enmienda 1 2026-10-13** (verificación adversarial, VA-3/VA-4/VA-5/VA-10): nombres
+> equivalentes con NFKC y plegado de mayúsculas Unicode (§3, RF-007, RF-021, RF-025); sin
+> caracteres de control en `name` (RF-005); un cursor válido es sólo uno emitido por el
+> servidor (RF-003); `vault_id` sólo en forma canónica (RF-014). Aprobada por el usuario;
+> el *cómo* en PLAN-0003 §15.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores
@@ -77,8 +85,8 @@ actualizado: 2026-10-12
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `id` | string (UUID v4) | generado por el servidor; en CouchDB el documento es `vault:{id}` |
-| `name` | string | obligatorio, 1–100 caracteres tras quitar espacios a los lados |
+| `id` | string (UUID v4) | generado por el servidor, en forma canónica (minúsculas con guiones); en CouchDB el documento es `vault:{id}` |
+| `name` | string | obligatorio, 1–100 caracteres tras quitar espacios a los lados, sin caracteres de control (categoría Unicode `Cc`) |
 | `description` | string \| null | opcional, ≤ 2000 caracteres |
 | `tags` | string[] | ≤ 20; cada uno 1–32 caracteres; en minúsculas y sin repetidos |
 | `owner_id` | string (UUID) | id del dueño (`users.id`), tomado del token |
@@ -92,7 +100,11 @@ actualizado: 2026-10-12
 - Lista: `{ "items": [Bóveda + etag], "next_cursor": string | null }`; `limit` 1–200 (50 por
   defecto); orden: `created_at` descendente y, a igual fecha, `id` descendente.
 - Cuerpos de `POST`/`PATCH`: sólo `name`, `description`, `tags`; cualquier otro campo → 422.
-- Unicidad del nombre: documento de reserva `vault-name:{name en minúsculas}` en la misma
+- **Nombres equivalentes** (enmienda 1): dos nombres son el mismo si coinciden tras
+  normalizarlos con NFKC y plegado de mayúsculas Unicode (`casefold`): «Notas»/«NOTAS»,
+  «Straße»/«STRASSE», «café» compuesto/descompuesto. Se guarda el nombre tal como llega
+  (sin espacios a los lados); la normalización sólo decide la unicidad.
+- Unicidad del nombre: documento de reserva `vault-name:{nombre normalizado}` en la misma
   base (detalle de diseño en `plan.md`).
 - Errores: `application/problem+json` (RFC 9457) vía la feature previa.
 
@@ -107,23 +119,25 @@ actualizado: 2026-10-12
   página `next_cursor` es `null`.
 - **RF-024** — El sistema DEBE ordenar las bóvedas de `GET /vaults` por `created_at`
   descendente y, a igual `created_at`, por `id` descendente.
-- **RF-003** — SI `limit` está fuera de 1–200 o `cursor` no es válido ENTONCES el sistema
+- **RF-003** — SI `limit` está fuera de 1–200 o `cursor` no es válido (cualquier valor
+  distinto de un `next_cursor` que el servidor emitió para esa lista) ENTONCES el sistema
   DEBE responder 422.
 
 **Crear**
 - **RF-004** — CUANDO un usuario autenticado envía `POST /vaults` válido el sistema DEBE
   guardar la bóveda en su base CouchDB con `owner_id` tomado del token y responder 201
   con la bóveda y su `ETag`.
-- **RF-005** — SI `name` falta o queda fuera de 1–100 caracteres tras quitar espacios, o
-  `description` supera 2000, o hay más de 20 tags, o un tag queda fuera de 1–32
+- **RF-005** — SI `name` falta, queda fuera de 1–100 caracteres tras quitar espacios o
+  contiene caracteres de control (`Cc`), o `description` supera 2000, o hay más de 20 tags, o un tag queda fuera de 1–32
   caracteres, ENTONCES el sistema DEBE responder 422 sin guardar nada.
 - **RF-006** — CUANDO se guarda una bóveda el sistema DEBE quitar los espacios a los lados
   de `name` y dejar `tags` en minúsculas y sin repetidos.
-- **RF-007** — SI ya existe otra bóveda no borrada del mismo usuario con el mismo `name`
-  sin distinguir mayúsculas ENTONCES el sistema DEBE responder 409 sin guardar nada.
+- **RF-007** — SI ya existe otra bóveda no borrada del mismo usuario con un `name`
+  equivalente (§3) ENTONCES el sistema DEBE responder 409 sin guardar nada.
 - **RF-021** — CUANDO dos peticiones simultáneas crean o renombran bóvedas del mismo
-  usuario con el mismo `name` (sin distinguir mayúsculas) el sistema DEBE guardar sólo
-  una y responder 409 a la otra.
+  usuario con nombres equivalentes (§3) el sistema DEBE guardar sólo una y responder 409
+  a la otra; en ningún orden de peticiones pueden quedar dos bóvedas activas con nombres
+  equivalentes.
 - **RF-022** — CUANDO se crea una bóveda el sistema DEBE asignarle un `id` UUID v4
   generado por el servidor.
 - **RF-023** — SI el cuerpo de `POST` o `PATCH` trae un campo distinto de `name`,
@@ -150,8 +164,8 @@ actualizado: 2026-10-12
 - **RF-013** — CUANDO el dueño envía `POST /vaults/{vault_id}/restore` sobre una bóveda
   borrada con `If-Match` vigente el sistema DEBE poner `deleted_at = null` y responder
   200 con la bóveda y su `ETag` nuevo.
-- **RF-025** — SI al restaurar ya existe otra bóveda no borrada del usuario con el mismo
-  `name` (sin distinguir mayúsculas) ENTONCES el sistema DEBE responder 409 sin modificar
+- **RF-025** — SI al restaurar ya existe otra bóveda no borrada del usuario con un `name`
+  equivalente (§3) ENTONCES el sistema DEBE responder 409 sin modificar
   nada.
 - **RF-026** — SI se pide `DELETE` sobre una bóveda ya borrada, o `restore` sobre una no
   borrada, ENTONCES el sistema DEBE responder 404 sin modificar nada.
@@ -160,8 +174,9 @@ actualizado: 2026-10-12
 
 **Aislamiento y acceso**
 - **RF-014** — SI un usuario pide, edita, borra o restaura una bóveda que no existe en su
-  propia base (inexistente o de otro usuario) ENTONCES el sistema DEBE responder 404 con
-  el mismo cuerpo en ambos casos y sin modificar nada.
+  propia base (inexistente, de otro usuario o con un `vault_id` que no es un UUID en forma
+  canónica) ENTONCES el sistema DEBE responder 404 con el mismo cuerpo en todos los casos
+  y sin modificar nada.
 - **RF-015** — MIENTRAS el usuario tenga `must_change_password` el sistema DEBE responder
   403 en todos los endpoints de bóvedas; sin sesión válida, 401 (heredado de SPEC-0002).
 - **RF-016** — *(diferido a otra feature)* El sistema DEBE eliminar definitivamente las
@@ -189,6 +204,10 @@ actualizado: 2026-10-12
 - Restaurar con el nombre ocupado por otra bóveda activa: 409 (RF-025).
 - Borrar una ya borrada / restaurar una no borrada: 404 (RF-026).
 - Campos desconocidos en el cuerpo (p. ej. `owner_id`): 422 (RF-023).
+- Nombre con caracteres de control (p. ej. NUL): 422 (RF-005).
+- «Straße» con «STRASSE» activa, o «café» descompuesto con «café» compuesto: 409 (RF-007).
+- Cursor alterado, con datos añadidos o fabricado a mano: 422 (RF-003).
+- `vault_id` en mayúsculas, sin guiones, entre llaves o como `urn:uuid:`: 404 (RF-014).
 - Bóvedas creadas mientras se pagina: el orden por `created_at`/`id` mantiene el cursor
   estable (RF-002, RF-024).
 
@@ -209,6 +228,8 @@ actualizado: 2026-10-12
 | P10 · `id` UUID v4 del servidor (`vault:{uuid}` en CouchDB) | No adivinable ni enumerable; prefijo listo para otros tipos de documento | Id del cliente; slug del nombre | — |
 | P11 · Campos desconocidos → 422 | Hace visibles errores de clientes y agentes; `owner_id` nunca viene de fuera | Ignorarlos en silencio | — |
 | P12 · Vista "Papelera" con restaurar en la UI | La API ya lo soporta; sin ella sólo se restaura por API | Papelera sólo por API | — |
+| E1 · Nombres equivalentes con NFKC + `casefold` (VA-4, enmienda 1) | `lower()` deja convivir nombres que el usuario ve iguales («Straße»/«STRASSE», «café» NFC/NFD) | Sólo `lower()`; guardar el nombre ya normalizado (cambiaría lo que escribió el usuario) | — |
+| E2 · Sin caracteres de control en `name` (VA-10, enmienda 1) | Un NUL o un salto de línea en un nombre es invisible o rompe la UI y los agentes | Aceptarlos; quitarlos en silencio | — |
 
 ## 7. Requisitos no funcionales (RNF)
 - **RNF-001** — `GET /vaults` con `limit=50` DEBE responder en p95 < 300 ms con 1 000

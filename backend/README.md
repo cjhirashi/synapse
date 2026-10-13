@@ -78,22 +78,28 @@ Cada bóveda es un documento `type: "vault"` en la base CouchDB del usuario
 
 - **Aislamiento:** la base sale sólo del token; ningún dato de la petición la elige. Una
   bóveda ajena, inexistente, en el estado equivocado (borrada para `GET`/`PATCH`/`DELETE`,
-  activa para `restore`) o con id que no es UUID responde el **mismo 404** `vault-not-found`:
-  nunca 403, para no revelar que existe.
+  activa para `restore`) o con id que no es un UUID canónico (minúsculas con guiones; no
+  valen mayúsculas, sin guiones, `{…}` ni `urn:uuid:`) responde el **mismo 404**
+  `vault-not-found`: nunca 403, para no revelar que existe.
 - **Sesión:** las 6 rutas exigen sesión (401) y el cambio de contraseña hecho (403).
 - **Versión (`ETag`/`If-Match`):** el `ETag` es el `_rev` entre comillas. Va en la cabecera
   de las respuestas con una bóveda; en los listados cada elemento lleva su `etag` (la
   papelera lo necesita para restaurar, porque `GET` de una borrada da 404). `PATCH`,
   `DELETE` y `restore` exigen `If-Match`: sin él 428 `precondition-required`; distinto del
   vigente 412 `precondition-failed` (otra escritura ganó: relee y repite).
-- **Nombre único entre las bóvedas activas del usuario** (sin distinguir mayúsculas; una
-  borrada libera su nombre y `restore` lo vuelve a reclamar): documento de reserva `vault-name:{nombre en minúsculas}` escrito antes que la
-  bóveda, con un arrendamiento de 30 s (`RESERVATION_LEASE`) para que una escritura que falla
-  a medias no bloquee el nombre para siempre. Conflicto → 409 `vault-name-taken`.
+- **Nombre único entre las bóvedas activas del usuario:** dos nombres son el mismo si
+  coinciden tras NFKC + `casefold` (`name_key`: mayúsculas, ß/SS, NFC/NFD, ligaduras); el
+  nombre se guarda tal como llega y no admite caracteres de control (422). Una borrada
+  libera su nombre y `restore` lo vuelve a reclamar. Documento de reserva
+  `vault-name:{name_key}` escrito antes que la bóveda (siempre se reescribe, también si ya
+  era suya, para que una liberación tardía no la borre), con un arrendamiento de 30 s
+  (`RESERVATION_LEASE`) para que una escritura que falla a medias no bloquee el nombre
+  para siempre. Conflicto → 409 `vault-name-taken`.
 - **Papelera:** `DELETE` marca `deleted_at` (borrado lógico); `GET /vaults?deleted=true` lista
   las borradas y `restore` las devuelve. La purga a 30 días (RF-016) es otra feature.
 - **Paginación:** orden `created_at` descendente (empate por id); `next_cursor` opaco, válido
-  sólo para la lista (normal o papelera) que lo emitió. El índice (`_design/vaults`, vista
+  sólo tal como lo emitió el servidor y para la lista (normal o papelera) que lo emitió:
+  cualquier alteración, o un texto más largo que un cursor emitido, es 422. El índice (`_design/vaults`, vista
   `by_created`) se crea en la primera consulta de cada base, no al crear la bóveda.
 
 | Endpoint | Respuesta |
@@ -155,8 +161,8 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `password-change-required` | 403 | cambio de contraseña obligatorio pendiente |
 | `wrong-current-password` | 400 | `change-password` con la contraseña actual errónea |
 | `email-taken` | 409 | `POST /admin/users` con un email ya registrado |
-| `vault-not-found` | 404 | bóveda inexistente, ajena, borrada o con id no UUID (mismo cuerpo) |
-| `vault-name-taken` | 409 | ya hay otra bóveda del usuario con ese nombre (sin mayúsculas) |
+| `vault-not-found` | 404 | bóveda inexistente, ajena, borrada o con id no canónico (mismo cuerpo) |
+| `vault-name-taken` | 409 | ya hay otra bóveda activa del usuario con un nombre equivalente |
 | `precondition-failed` | 412 | `If-Match` distinto del `ETag` vigente de la bóveda |
 | `precondition-required` | 428 | escritura de bóveda sin `If-Match` |
 | `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña; `cursor` inválido |

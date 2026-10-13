@@ -180,7 +180,10 @@ def test_rf_003_garbage_or_foreign_cursor_is_422(ready_admin, deleted):
             ready_admin.delete(f"/vaults/{res.json()['id']}", headers={"If-Match": res.headers["etag"]})
     # Cursor válido de la otra lista (papelera ↔ normal) y cursor basura.
     other = ready_admin.get("/vaults", params={"deleted": str(deleted).lower(), "limit": 1})
-    for cursor in (other.json()["next_cursor"], "%%%"):
+    emitted = other.json()["next_cursor"]
+    # PLAN-0003 §15 (VA-2, VA-3): un cursor emitido con datos añadidos y uno enorme.
+    tampered = ready_admin.get("/vaults", params={"deleted": str(deleted).lower(), "limit": 1})
+    for cursor in (emitted, "%%%", tampered.json()["next_cursor"] + "AAAA", "A" * 10_000):
         res = ready_admin.get("/vaults", params={"deleted": str(not deleted).lower(), "cursor": cursor})
         body = assert_problem(res, 422, "validation-error")
         assert body["errors"] == [{"parameter": "cursor", "detail": "Invalid cursor."}]
@@ -205,6 +208,24 @@ def test_rf_005_rf_023_invalid_post_body_is_422_without_saving(ready_admin, db, 
     assert stored_docs(user_db(db)) == {}
 
 
+@pytest.mark.parametrize("method", ["post", "patch"])
+def test_rf_005_name_with_control_characters_is_422_without_saving(ready_admin, db, method):
+    # SPEC-0003 enmienda 1 (E2): mensaje del catálogo de SPEC-0004, nunca el valor enviado.
+    if method == "post":
+        res = ready_admin.post("/vaults", json={"name": "a\u0000b"})
+    else:
+        created = create(ready_admin)
+        res = ready_admin.patch(f"/vaults/{created.json()['id']}", json={"name": "a\u0000b"},
+                                headers={"If-Match": created.headers["etag"]})
+    before = stored_docs(user_db(db))
+    body = assert_problem(res, 422, "validation-error")
+    assert body["errors"] == [
+        {"pointer": "#/name", "detail": "Must not contain control characters"}
+    ]
+    assert stored_docs(user_db(db)) == before
+    assert not any(d.get("name") == "a\u0000b" for d in before.values())
+
+
 @pytest.mark.parametrize(
     "payload",
     [{"name": None}, {"tags": None}, {"name": ""}, {"owner_id": "x"}, {"tags": ["t" * 33]}],
@@ -224,6 +245,15 @@ def test_rf_007_same_name_ignoring_case_is_409_without_saving(ready_admin, db):
     create(ready_admin, name="Notas")
     assert_problem(create(ready_admin, name="notas"), 409, "vault-name-taken")
     assert len(stored_vaults(user_db(db))) == 1
+
+
+def test_rf_007_equivalent_unicode_names_are_409_and_the_name_is_kept(ready_admin, db):
+    # SPEC-0003 enmienda 1 (E1): NFKC + `casefold`; el nombre se guarda tal como llega.
+    assert create(ready_admin, name="Straße").json()["name"] == "Straße"
+    assert_problem(create(ready_admin, name="STRASSE"), 409, "vault-name-taken")
+    assert create(ready_admin, name="caf\u00e9").status_code == 201
+    assert_problem(create(ready_admin, name="cafe\u0301"), 409, "vault-name-taken")
+    assert len(stored_vaults(user_db(db))) == 2
 
 
 def test_rf_027_names_are_freed_by_delete_and_by_rename(ready_admin):
@@ -281,6 +311,29 @@ def test_rf_026_delete_of_deleted_and_restore_of_active_are_404(ready_admin, db)
     res = ready_admin.delete(f"/vaults/{gone_id}",
                              headers={"If-Match": etag_in_trash(ready_admin, gone_id)})
     assert_problem(res, 404, "vault-not-found")
+
+
+@pytest.mark.parametrize("form", ["upper", "no-hyphens", "braces", "urn"])
+def test_rf_014_non_canonical_id_is_404_without_changes(ready_admin, db, form):
+    # PLAN-0003 §15 (VA-5): la misma bóveda con un id en forma no canónica no existe.
+    created = create(ready_admin)
+    vault_id = created.json()["id"]
+    other = {"upper": vault_id.upper(), "no-hyphens": vault_id.replace("-", ""),
+             "braces": f"{{{vault_id}}}", "urn": f"urn:uuid:{vault_id}"}[form]
+    headers = {"If-Match": created.headers["etag"]}
+    before = stored_docs(user_db(db))
+    assert_problem(ready_admin.get(f"/vaults/{other}"), 404, "vault-not-found")
+    for operation in ("patch", "delete", "restore"):
+        assert_problem(_write(ready_admin, operation, other, headers), 404, "vault-not-found")
+    assert stored_docs(user_db(db)) == before
+
+
+def test_rf_014_contract_declares_vault_id_as_uuid():
+    spec = app.openapi()
+    for path in ("/vaults/{vault_id}", "/vaults/{vault_id}/restore"):
+        for operation in spec["paths"][path].values():
+            [parameter] = [p for p in operation["parameters"] if p["name"] == "vault_id"]
+            assert parameter["schema"] == {"type": "string", "format": "uuid", "title": "Vault Id"}
 
 
 def test_rf_017_unreachable_couchdb_is_503(ready_admin):

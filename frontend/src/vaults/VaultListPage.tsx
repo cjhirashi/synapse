@@ -9,7 +9,7 @@ type Notice = { kind: "status" | "alert"; text: string } | null;
 /** Bóvedas activas (RF-018) con borrado confirmado (RF-020). */
 export default function VaultListPage() {
   const navigate = useNavigate();
-  const { items, nextCursor, status, loadingMore, loadMore, reload, remove } = useVaultPages(false);
+  const { items, nextCursor, status, loadingMore, moreFailed, loadMore, reload, remove } = useVaultPages(false);
   const [confirming, setConfirming] = useState<Vault | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -76,6 +76,7 @@ export default function VaultListPage() {
         </ul>
       )}
 
+      {status === "ready" && moreFailed && <p role="alert">No se pudieron cargar más bóvedas. Vuelve a intentarlo.</p>}
       {status === "ready" && nextCursor && (
         <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
           Cargar más

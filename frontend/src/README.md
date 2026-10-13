@@ -36,7 +36,9 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 `api/auth.ts` (hereda la renovación de sesión) y define `VAULT_PROBLEM` (`nameTaken`,
 `preconditionFailed`, `notFound`). Toda bóveda lleva su `etag`: el de la cabecera `ETag` en
 las respuestas de una bóveda y el del elemento en los listados; las escrituras lo mandan en
-`If-Match`. `vaults/useVaultPages.ts` pagina la lista o la papelera; `vaults/errors.ts`
+`If-Match`. `vaults/useVaultPages.ts` pagina la lista o la papelera (un fallo de «Cargar
+más» conserva lo cargado y avisa aparte; una respuesta de antes de la última recarga se
+descarta); `vaults/errors.ts`
 decide si un error es sesión cerrada (401) o vista desfasada (412 o 404 de bóveda), en cuyo
 caso la pantalla avisa y recarga: el formulario descarta lo escrito y carga la versión
 vigente (guardarlo encima pisaría el cambio ajeno).

@@ -6,6 +6,7 @@ ni CouchDB. Lanza errores de dominio de `core/errors.py`.
 import base64
 import binascii
 import json
+import unicodedata
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -17,6 +18,36 @@ from app.core.errors import (
 )
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultCreate, VaultListItem, VaultOut, VaultPage, VaultUpdate
+
+# --- Marcas de tiempo e ids ---
+
+_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
+
+
+def utc_now() -> str:
+    """Hora actual en RFC 3339 UTC, ancho fijo: el orden de texto es el cronológico."""
+    return datetime.now(UTC).strftime(_TIMESTAMP_FORMAT)
+
+
+def _parse_timestamp(value: str) -> datetime:
+    return datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=UTC)
+
+
+def _is_timestamp(value: str) -> bool:
+    """¿`value` tiene exactamente el formato de `utc_now`? (`%f` acepta menos dígitos)."""
+    try:
+        return _parse_timestamp(value).strftime(_TIMESTAMP_FORMAT) == value
+    except ValueError:
+        return False
+
+
+def _is_canonical_uuid(value: str) -> bool:
+    """¿`value` es un UUID en forma canónica (minúsculas, con guiones, sin envoltorio)?"""
+    try:
+        return str(uuid.UUID(value)) == value
+    except ValueError:
+        return False
+
 
 # --- Cursor de paginación (RF-002, RF-003) ---
 # base64url (sin relleno) de {"d": deleted, "c": created_at, "i": id}: la clave de la última
@@ -30,8 +61,21 @@ def encode_cursor(deleted: bool, created_at: str, vault_id: str) -> str:
     return base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
 
 
+# Longitud de cualquier cursor emitido: la fecha y el UUID canónico tienen ancho fijo y
+# `false` es el más largo de los dos valores de `d`.
+_CURSOR_MAX_LENGTH = len(encode_cursor(False, "2000-01-01T00:00:00.000000Z", str(uuid.UUID(int=0))))
+
+
 def decode_cursor(cursor: str, deleted: bool) -> tuple[str, str]:
-    """Devuelve `(created_at, id)` o lanza `InvalidCursor` si no es de esta lista."""
+    """Devuelve `(created_at, id)` o lanza `InvalidCursor`.
+
+    Sólo vale un cursor que `encode_cursor` emitió para esta lista (RF-003, PLAN-0003 §15):
+    la longitud se comprueba antes de decodificar (nada demasiado largo o anidado llega a
+    `json.loads`) y al final se exige la ida y vuelta exacta, que descarta datos añadidos,
+    relleno, espacios y claves extra.
+    """
+    if len(cursor) > _CURSOR_MAX_LENGTH:
+        raise InvalidCursor("cursor longer than any emitted one", errors=_CURSOR_ERROR)
     try:
         padded = cursor + "=" * (-len(cursor) % 4)
         payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")))
@@ -44,25 +88,21 @@ def decode_cursor(cursor: str, deleted: bool) -> tuple[str, str]:
         and isinstance(payload.get("i"), str)
     ):
         raise InvalidCursor("cursor of another list or malformed", errors=_CURSOR_ERROR)
-    return payload["c"], payload["i"]
+    created_at, vault_id = payload["c"], payload["i"]
+    if not (
+        _is_timestamp(created_at)
+        and _is_canonical_uuid(vault_id)
+        and encode_cursor(deleted, created_at, vault_id) == cursor
+    ):
+        raise InvalidCursor("cursor not emitted by this server", errors=_CURSOR_ERROR)
+    return created_at, vault_id
 
 
 # --- Servicio ---
 
-_TIMESTAMP_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
-
 # Arrendamiento de una reserva de nombre (PLAN-0003 §12): más de 3× el timeout de 10 s del
 # adaptador, así que cubre cualquier escritura de bóveda que siga en curso.
 RESERVATION_LEASE = timedelta(seconds=30)
-
-
-def utc_now() -> str:
-    """Hora actual en RFC 3339 UTC, ancho fijo: el orden de texto es el cronológico."""
-    return datetime.now(UTC).strftime(_TIMESTAMP_FORMAT)
-
-
-def _parse_timestamp(value: str) -> datetime:
-    return datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=UTC)
 
 
 class Versioned(NamedTuple):
@@ -138,8 +178,9 @@ class VaultService:
         _check_precondition(doc, if_match)
         changes = data.model_dump(exclude_unset=True)
         old_name = doc["name"]
-        # Cambiar sólo mayúsculas conserva la misma reserva: no choca consigo misma.
-        renamed = "name" in changes and changes["name"].lower() != old_name.lower()
+        # Cambiar a un nombre equivalente (mayúsculas, forma Unicode) conserva la misma
+        # reserva: no choca consigo misma.
+        renamed = "name" in changes and name_key(changes["name"]) != name_key(old_name)
         if renamed:
             self._reserve(changes["name"], _vault_id(doc))
         updated = {**doc, **changes, "updated_at": self._clock()}
@@ -165,11 +206,13 @@ class VaultService:
     # --- Internos ---
 
     def _load(self, vault_id: str, deleted: bool) -> dict:
-        """La bóveda en el estado pedido; cualquier otra cosa es `VaultNotFound` (RF-014, RF-026)."""
-        try:
-            doc_id = _doc_id(str(uuid.UUID(vault_id)))
-        except ValueError:
-            raise VaultNotFound(f"vault_id is not a UUID: {vault_id!r}") from None
+        """La bóveda en el estado pedido; cualquier otra cosa es `VaultNotFound` (RF-014, RF-026).
+
+        Sólo se acepta el id en forma canónica, la que devuelve la API (PLAN-0003 §15, VA-5).
+        """
+        if not _is_canonical_uuid(vault_id):
+            raise VaultNotFound(f"vault_id is not a canonical UUID: {vault_id!r}")
+        doc_id = _doc_id(vault_id)
         doc = self._port.get(self._db, doc_id)
         if doc is None or doc.get("type") != "vault" or bool(doc["deleted_at"]) is not deleted:
             raise VaultNotFound(f"{doc_id} not found (deleted={deleted})")
@@ -183,13 +226,13 @@ class VaultService:
             raise PreconditionFailed(f"{doc['_id']} changed before the write") from None
 
     def _holder(self, reservation: dict, name: str) -> bool:
-        """¿La bóveda de la reserva existe, está activa y se llama `name` (sin mayúsculas)?"""
+        """¿La bóveda de la reserva existe, está activa y tiene un nombre equivalente a `name`?"""
         vault = self._port.get(self._db, _doc_id(reservation["vault_id"]))
         return (
             vault is not None
             and vault.get("type") == "vault"
             and not vault["deleted_at"]
-            and vault["name"].lower() == name.lower()
+            and name_key(vault["name"]) == name_key(name)
         )
 
     def _leased(self, reservation: dict) -> bool:
@@ -198,28 +241,38 @@ class VaultService:
         return age < RESERVATION_LEASE
 
     def _reserve(self, name: str, vault_id: str) -> None:
-        """Toma `vault-name:{name}` para `vault_id` o lanza `VaultNameTaken` (RF-007, RF-021)."""
+        """Escribe `vault-name:{clave}` para `vault_id` o lanza `VaultNameTaken` (RF-007, RF-021).
+
+        La reserva siempre se escribe, también cuando ya es de esta bóveda (p. ej. al
+        restaurarla sin haberla liberado): el `_rev` nuevo hace chocar una liberación tardía
+        que la leyó antes (PLAN-0003 §15, VA-1). Concurrencia optimista: si la escritura
+        choca, se vuelve a leer y a decidir con el estado nuevo. Cada vuelta exige que otra
+        petición haya escrito la reserva entre medias, así que el bucle no gira solo.
+        """
         key = _name_key(name)
-        reservation = {
-            "_id": key, "type": "vault-name", "vault_id": vault_id, "reserved_at": self._clock(),
-        }
-        try:
-            self._port.put(self._db, reservation)
-            return
-        except RevisionConflict:
-            pass
-        current = self._port.get(self._db, key)
-        if current is not None:
-            if current["vault_id"] == vault_id:
-                return  # ya es de esta bóveda (p. ej. restaurar sin haberla liberado)
-            if self._holder(current, name) or self._leased(current):
+        rev = None  # primer intento sin leer: crear la reserva (el caso común)
+        while True:
+            reservation = {
+                "_id": key, "type": "vault-name", "vault_id": vault_id,
+                "reserved_at": self._clock(),
+            }
+            if rev is not None:
+                reservation["_rev"] = rev
+            try:
+                self._port.put(self._db, reservation)
+                return
+            except RevisionConflict:
+                pass
+            current = self._port.get(self._db, key)
+            if current is None:
+                rev = None  # la borraron entre medias: se vuelve a crear
+                continue
+            taken = current["vault_id"] != vault_id and (
+                self._holder(current, name) or self._leased(current)
+            )
+            if taken:
                 raise VaultNameTaken(f"{key} held by {current['vault_id']}")
-            reservation["_rev"] = current["_rev"]  # huérfana: se reasigna sobre su `_rev`
-        # Si otra petición escribe la reserva entre la lectura y este `put`, ella gana.
-        try:
-            self._port.put(self._db, reservation)
-        except RevisionConflict:
-            raise VaultNameTaken(f"{key} taken concurrently") from None
+            rev = current["_rev"]  # propia o huérfana: se reescribe sobre su `_rev`
 
     def _release(self, name: str, vault_id: str) -> None:
         """Borra la reserva de `vault_id` si ya no la usa; mejor esfuerzo: un fallo la deja huérfana.
@@ -250,8 +303,17 @@ def _vault_id(doc: dict) -> str:
     return doc["_id"].removeprefix("vault:")
 
 
+def name_key(name: str) -> str:
+    """Forma de `name` que decide la unicidad: NFKC + `casefold` (SPEC-0003 §3, enmienda 1).
+
+    Une los nombres que una persona lee como iguales (mayúsculas, ß/SS, composiciones
+    NFC/NFD, ligaduras, anchura completa); el nombre se guarda tal como llega.
+    """
+    return unicodedata.normalize("NFKC", name).casefold()
+
+
 def _name_key(name: str) -> str:
-    return f"vault-name:{name.lower()}"
+    return f"vault-name:{name_key(name)}"
 
 
 def _etag(doc: dict) -> str:

@@ -363,6 +363,7 @@ paths:
         name: vault_id
         required: true
         schema:
+          format: uuid
           title: Vault Id
           type: string
       - in: header
@@ -434,6 +435,7 @@ paths:
         name: vault_id
         required: true
         schema:
+          format: uuid
           title: Vault Id
           type: string
       responses:
@@ -494,6 +496,7 @@ paths:
         name: vault_id
         required: true
         schema:
+          format: uuid
           title: Vault Id
           type: string
       - in: header
@@ -587,6 +590,7 @@ paths:
         name: vault_id
         required: true
         schema:
+          format: uuid
           title: Vault Id
           type: string
       - in: header

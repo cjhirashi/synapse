@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Query, Response, status
+from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
 from app.adapters.vault_repository import VaultRepository
 from app.core.dependencies import get_current_user, require_password_changed
@@ -77,14 +78,17 @@ def create_vault(
 
 
 # `vault_id` se declara `str` (no `UUID`) e `If-Match` opcional: un id que no es UUID da
-# 404 (RF-014) y la falta de `If-Match` 428 (RF-010), no un 422 de validación.
+# 404 (RF-014) y la falta de `If-Match` 428 (RF-010), no un 422 de validación. El contrato
+# anuncia igualmente `format: uuid` (PLAN-0003 §15, VA-5): el servicio sólo acepta la forma
+# canónica.
+VaultId = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
 
 @router.get(
     "/{vault_id}",
     response_model=VaultOut,
     responses=_with_etag(200) | problem_responses(VaultNotFound, StorageUnavailable),
 )
-def get_vault(vault_id: str, response: Response, service: VaultService = Depends(get_vault_service)):
+def get_vault(vault_id: VaultId, response: Response, service: VaultService = Depends(get_vault_service)):
     return _respond(service.get(vault_id), response)
 
 
@@ -94,7 +98,7 @@ def get_vault(vault_id: str, response: Response, service: VaultService = Depends
     responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNameTaken),
 )
 def update_vault(
-    vault_id: str,
+    vault_id: VaultId,
     body: VaultUpdate,
     response: Response,
     if_match: str | None = Header(None),
@@ -110,7 +114,7 @@ def update_vault(
     responses=problem_responses(*_CONDITIONAL),
 )
 def delete_vault(
-    vault_id: str,
+    vault_id: VaultId,
     if_match: str | None = Header(None),
     service: VaultService = Depends(get_vault_service),
 ):
@@ -123,7 +127,7 @@ def delete_vault(
     responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNameTaken),
 )
 def restore_vault(
-    vault_id: str,
+    vault_id: VaultId,
     response: Response,
     if_match: str | None = Header(None),
     service: VaultService = Depends(get_vault_service),

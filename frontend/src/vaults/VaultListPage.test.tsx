@@ -74,6 +74,20 @@ test("RF-018: «Cargar más» pide con `cursor`, añade la página y se oculta s
   expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
 });
 
+test("RF-018: si «Cargar más» falla, conserva la lista, avisa y permite reintentar", async () => {
+  vi.spyOn(api, "listVaults")
+    .mockResolvedValueOnce({ items: [vault(1)], next_cursor: "c1" })
+    .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }))
+    .mockResolvedValueOnce({ items: [vault(2)], next_cursor: null });
+  const user = renderPage();
+  await user.click(await screen.findByRole("button", { name: "Cargar más" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar más bóvedas.");
+  expect(item("Bóveda 1")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Cargar más" }));
+  expect(await screen.findByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
 test("RF-018: «Editar» lleva al formulario de esa bóveda", async () => {
   vi.spyOn(api, "listVaults").mockResolvedValue({ items: [vault(1)], next_cursor: null });
   const user = renderPage();
@@ -119,13 +133,13 @@ test("RF-020: si la bóveda cambió (412) avisa y recarga la lista", async () =>
   expect(list).toHaveBeenCalledTimes(2);
 });
 
-test("una sesión cerrada (401) lleva a /login", async () => {
+test("RF-018: una sesión cerrada (401) lleva a /login", async () => {
   vi.spyOn(api, "listVaults").mockRejectedValue(new ApiError(401, { type: "urn:synapse:problem:invalid-token" }));
   renderPage();
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
 });
 
-test("si la lista no carga, avisa y permite reintentar", async () => {
+test("RF-018: si la lista no carga, avisa y permite reintentar", async () => {
   vi.spyOn(api, "listVaults")
     .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }))
     .mockResolvedValueOnce({ items: [vault(1)], next_cursor: null });

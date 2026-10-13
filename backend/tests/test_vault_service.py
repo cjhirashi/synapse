@@ -18,10 +18,12 @@ from app.core.errors import (
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultCreate, VaultUpdate
 from app.services.vault_service import (
-    RESERVATION_LEASE, VaultService, decode_cursor, encode_cursor,
+    RESERVATION_LEASE, VaultService, decode_cursor, encode_cursor, name_key,
 )
 
 CURSOR_ERROR = [{"parameter": "cursor", "detail": "Invalid cursor."}]
+WHEN = "2026-10-12T10:00:00.000000Z"
+SOME_ID = "0b8e2f4c-7b9d-4c2a-9a51-3f1e2d4c5b6a"
 
 
 def _raw_cursor(payload) -> str:
@@ -32,12 +34,11 @@ def _raw_cursor(payload) -> str:
 
 @pytest.mark.parametrize("deleted", [False, True])
 def test_rf_002_cursor_round_trip(deleted):
-    key = ("2026-10-12T10:00:00.000000Z", "0b8e2f4c-7b9d-4c2a-9a51-3f1e2d4c5b6a")
-    assert decode_cursor(encode_cursor(deleted, *key), deleted) == key
+    assert decode_cursor(encode_cursor(deleted, WHEN, SOME_ID), deleted) == (WHEN, SOME_ID)
 
 
 def test_rf_002_cursor_is_opaque_url_safe_text():
-    cursor = encode_cursor(False, "2026-10-12T10:00:00.000000Z", "id")
+    cursor = encode_cursor(False, WHEN, SOME_ID)
     assert set(cursor) <= set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_")
 
 
@@ -50,7 +51,21 @@ def test_rf_002_cursor_is_opaque_url_safe_text():
         _raw_cursor({"d": False, "c": "x"}),     # falta una clave
         _raw_cursor({"d": "no", "c": "x", "i": "y"}),  # tipos incorrectos
         _raw_cursor({"d": False, "c": 1, "i": "y"}),
+        # PLAN-0003 §15 (VA-3): sólo vale lo que `encode_cursor` emitió.
+        encode_cursor(False, WHEN, SOME_ID) + "AAAA",              # datos añadidos
+        encode_cursor(False, WHEN, SOME_ID) + "==",                # relleno
+        encode_cursor(False, "not-a-date", SOME_ID),               # `c` no es fecha
+        encode_cursor(False, "2026-10-12T10:00:00.1Z", SOME_ID),   # fecha de otro ancho
+        encode_cursor(False, WHEN, "id"),                          # `i` no es UUID
+        encode_cursor(False, WHEN, SOME_ID.upper()),               # `i` no canónico
+        _raw_cursor({"d": False, "c": WHEN, "i": SOME_ID}),        # JSON con espacios
+        _raw_cursor({"d": False, "c": WHEN, "i": SOME_ID, "x": 1}),  # clave extra
+        # VA-2: lo que no cabe en un cursor emitido no se decodifica.
+        "A" * 10_000,
+        _raw_cursor([]).replace("W10", "W" * 4_000 + "10"),
+        base64.urlsafe_b64encode(b"[" * 100_000).decode(),          # JSON muy anidado
     ],
+    ids=lambda cursor: cursor[:24],
 )
 def test_rf_003_unreadable_cursor_is_invalid(cursor):
     with pytest.raises(InvalidCursor) as exc:
@@ -59,7 +74,7 @@ def test_rf_003_unreadable_cursor_is_invalid(cursor):
 
 
 def test_rf_003_cursor_from_the_other_list_is_invalid():
-    trash_cursor = encode_cursor(True, "2026-10-12T10:00:00.000000Z", "id")
+    trash_cursor = encode_cursor(True, WHEN, SOME_ID)
     with pytest.raises(InvalidCursor) as exc:
         decode_cursor(trash_cursor, False)
     assert exc.value.errors == CURSOR_ERROR
@@ -71,22 +86,39 @@ class InMemoryVaultPort(VaultPort):
     """`VaultPort` en memoria con la semántica de `_rev` de CouchDB.
 
     Además permite inyectar un fallo en la próxima operación que cumpla una condición
-    (`fail_next`) y ejecutar una escritura ajena justo antes del próximo `put` que la
-    cumpla (`before_next_put`), para simular carreras entre lectura y escritura.
+    (`fail_next`) y ejecutar una escritura ajena justo antes del próximo `get`, `put` o
+    `delete` que la cumpla (`before_next_get`, `before_next_put`, `before_next_delete`),
+    para simular carreras entre lectura y escritura.
     """
 
     def __init__(self):
         self.docs: dict[str, dict[str, dict]] = {}
         self._failures: list[tuple[str, Callable[..., bool], Exception]] = []
-        self._interleaved: list[tuple[Callable[[dict], bool], Callable[[], None]]] = []
+        self._interleaved: list[tuple[str, Callable[..., bool], Callable[[], None]]] = []
 
     def fail_next(self, op: str, when: Callable[..., bool] = lambda *args: True,
                   error: Exception | None = None) -> None:
         self._failures.append((op, when, error or StorageUnavailable(f"{op} injected")))
 
+    def before_next_get(self, action: Callable[[], None],
+                        when: Callable[[str], bool] = lambda doc_id: True) -> None:
+        self._interleaved.append(("get", when, action))
+
     def before_next_put(self, action: Callable[[], None],
                         when: Callable[[dict], bool] = lambda doc: True) -> None:
-        self._interleaved.append((when, action))
+        self._interleaved.append(("put", when, action))
+
+    def before_next_delete(self, action: Callable[[], None],
+                           when: Callable[[str, str], bool] = lambda doc_id, rev: True) -> None:
+        self._interleaved.append(("delete", when, action))
+
+    def _maybe_interleave(self, op: str, *args) -> None:
+        for entry in self._interleaved:
+            name, when, action = entry
+            if name == op and when(*args):
+                self._interleaved.remove(entry)
+                action()
+                return
 
     def _maybe_fail(self, op: str, *args) -> None:
         for entry in self._failures:
@@ -96,17 +128,13 @@ class InMemoryVaultPort(VaultPort):
                 raise error
 
     def get(self, db, doc_id):
+        self._maybe_interleave("get", doc_id)
         self._maybe_fail("get", db, doc_id)
         doc = self.docs.get(db, {}).get(doc_id)
         return copy.deepcopy(doc)
 
     def put(self, db, doc):
-        for entry in self._interleaved:
-            when, action = entry
-            if when(doc):
-                self._interleaved.remove(entry)
-                action()
-                break
+        self._maybe_interleave("put", doc)
         self._maybe_fail("put", db, doc)
         store = self.docs.setdefault(db, {})
         current = store.get(doc["_id"])
@@ -118,6 +146,7 @@ class InMemoryVaultPort(VaultPort):
         return rev
 
     def delete(self, db, doc_id, rev):
+        self._maybe_interleave("delete", doc_id, rev)
         self._maybe_fail("delete", db, doc_id, rev)
         store = self.docs.get(db, {})
         if doc_id not in store or store[doc_id]["_rev"] != rev:
@@ -177,12 +206,12 @@ def _create(service, name="Notas", **fields):
 
 
 def _reservation(port, name):
-    return port.docs[DB].get(f"vault-name:{name.lower()}")
+    return port.docs[DB].get(f"vault-name:{name_key(name)}")
 
 
 def _expired_orphan(port, name):
     """Reserva de una bóveda que no existe, tomada una hora antes del reloj de los tests."""
-    port.put(DB, {"_id": f"vault-name:{name.lower()}", "type": "vault-name",
+    port.put(DB, {"_id": f"vault-name:{name_key(name)}", "type": "vault-name",
                   "vault_id": str(uuid.uuid4()), "reserved_at": "2026-10-12T09:00:00.000000Z"})
 
 
@@ -190,7 +219,7 @@ def _past_the_lease(clock):
     clock.advance(RESERVATION_LEASE)
 
 
-def test_double_rejects_stale_rev_and_bumps_generation(port):
+def test_rf_010_double_rejects_stale_rev_and_bumps_generation(port):
     rev1 = port.put(DB, {"_id": "x"})
     rev2 = port.put(DB, {"_id": "x", "_rev": rev1})
     assert rev2.startswith("2-")
@@ -216,7 +245,7 @@ def test_rf_004_create_takes_owner_from_the_caller(service):
     assert vault.owner_id == OWNER
 
 
-def test_rf_007_create_reserves_the_lowercased_name(service, port):
+def test_rf_007_create_reserves_the_normalized_name(service, port):
     vault, _ = _create(service, name="Mis Notas")
     reservation = _reservation(port, "mis notas")
     assert (reservation["type"], reservation["vault_id"]) == ("vault-name", vault.id)
@@ -228,6 +257,51 @@ def test_rf_007_same_name_ignoring_case_is_taken_without_saving(service, port):
     with pytest.raises(VaultNameTaken):
         _create(service, name="NOTAS")
     assert sum(d.get("type") == "vault" for d in port.docs[DB].values()) == 1
+
+
+# SPEC-0003 enmienda 1 (E1): NFKC + `casefold`. Pares de nombres equivalentes que `lower()`
+# no unía: ß/SS, NFC/NFD, sigma final, ligaduras y anchura completa.
+EQUIVALENT_NAMES = [
+    ("Straße", "STRASSE"),
+    ("caf\u00e9", "cafe\u0301"),
+    ("ΣΑΣ", "σας"),
+    ("ﬁcha", "FICHA"),
+    ("Ｎｏｔａｓ", "notas"),
+]
+
+
+@pytest.mark.parametrize(("first", "second"), EQUIVALENT_NAMES)
+def test_rf_007_equivalent_names_are_taken(service, port, first, second):
+    _create(service, name=first)
+    with pytest.raises(VaultNameTaken):
+        _create(service, name=second)
+    assert sum(d.get("type") == "vault" for d in port.docs[DB].values()) == 1
+
+
+def test_rf_007_reservation_key_is_the_normalized_name_and_the_name_is_kept(service, port):
+    vault, _ = _create(service, name="Straße")
+    assert vault.name == "Straße"  # se guarda tal como llega
+    assert port.docs[DB]["vault-name:strasse"]["vault_id"] == vault.id
+
+
+@pytest.mark.parametrize(("first", "second"), EQUIVALENT_NAMES)
+def test_rf_007_rename_to_an_equivalent_name_does_not_clash_with_itself(
+        service, port, first, second):
+    created, etag = _create(service, name=first)
+    updated, _ = service.update(created.id, VaultUpdate(name=second), etag)
+    assert updated.name == second
+    assert sum(d.get("type") == "vault-name" for d in port.docs[DB].values()) == 1
+    with pytest.raises(VaultNameTaken):
+        _create(service, name=first)
+
+
+@pytest.mark.parametrize(("first", "second"), EQUIVALENT_NAMES)
+def test_rf_025_restore_with_an_equivalent_name_taken_is_409(service, port, first, second):
+    created, etag = _create(service, name=first)
+    service.delete(created.id, etag)
+    _create(service, name=second)
+    with pytest.raises(VaultNameTaken):
+        service.restore(created.id, f'"{port.docs[DB][f"vault:{created.id}"]["_rev"]}"')
 
 
 def test_rf_007_expired_orphan_reservation_is_reassigned(service, port):
@@ -293,6 +367,27 @@ def test_rf_008_get_returns_the_vault_and_its_etag(service):
 def test_rf_014_missing_or_non_uuid_id_is_not_found(service, vault_id):
     with pytest.raises(VaultNotFound):
         service.get(vault_id)
+
+
+def _non_canonical_forms(vault_id: str) -> list[str]:
+    """Formas que `uuid.UUID` acepta pero no son la canónica (PLAN-0003 §15, VA-5)."""
+    return [vault_id.upper(), vault_id.replace("-", ""), f"{{{vault_id}}}", f"urn:uuid:{vault_id}"]
+
+
+@pytest.mark.parametrize("form", range(4))
+@pytest.mark.parametrize("operation", ["get", "update", "delete", "restore"])
+def test_rf_014_non_canonical_id_of_an_existing_vault_is_not_found(service, port, operation, form):
+    created, etag = _create(service)
+    if operation == "restore":
+        service.delete(created.id, etag)
+        etag = f'"{port.docs[DB][f"vault:{created.id}"]["_rev"]}"'
+    vault_id = _non_canonical_forms(created.id)[form]
+    arguments = {"get": (), "update": (VaultUpdate(description="x"), etag),
+                 "delete": (etag,), "restore": (etag,)}[operation]
+    before = copy.deepcopy(port.docs[DB])
+    with pytest.raises(VaultNotFound):
+        getattr(service, operation)(vault_id, *arguments)
+    assert port.docs[DB] == before
 
 
 def test_rf_014_doc_of_another_type_is_not_found(service, port):
@@ -415,6 +510,75 @@ def test_rf_021_late_release_keeps_a_reservation_taken_by_another_vault(service,
                          when=lambda doc: doc["_id"] == f"vault:{taker.id}")
     service.update(taker.id, VaultUpdate(name="Mismo"), taker_etag)
     assert _reservation(port, "mismo")["vault_id"] == taker.id
+
+
+def _current_etag(port, vault_id):
+    return f'"{port.docs[DB][f"vault:{vault_id}"]["_rev"]}"'
+
+
+def test_rf_021_late_release_after_a_restore_keeps_the_restored_vault_reserved(service, port):
+    # PLAN-0003 §15 (VA-1): borrar "Notas" libera su reserva; entre la comprobación de uso de
+    # la liberación y su borrado, otra petición restaura la bóveda. El borrado tardío no debe
+    # quitarle la reserva: si lo hiciera, otra bóveda podría llamarse "NOTAS".
+    created, etag = _create(service, name="Notas")
+    port.before_next_delete(lambda: service.restore(created.id, _current_etag(port, created.id)),
+                            when=lambda doc_id, rev: doc_id == "vault-name:notas")
+    service.delete(created.id, etag)
+    assert service.get(created.id)[0].deleted_at is None
+    assert _reservation(port, "notas")["vault_id"] == created.id
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="NOTAS")
+
+
+def test_rf_021_release_after_a_finished_restore_keeps_the_reservation(service, port):
+    # La restauración termina entera antes de que la liberación lea la reserva: la reserva
+    # vuelve a ser de la bóveda (con otro `_rev`) y la liberación no debe borrarla porque
+    # la bóveda la usa de nuevo.
+    created, etag = _create(service, name="Notas")
+    port.before_next_get(lambda: service.restore(created.id, _current_etag(port, created.id)),
+                         when=lambda doc_id: doc_id == "vault-name:notas")
+    service.delete(created.id, etag)
+    assert service.get(created.id)[0].deleted_at is None
+    assert _reservation(port, "notas")["vault_id"] == created.id
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="NOTAS")
+
+
+def test_rf_021_late_release_after_renaming_back_keeps_the_name_reserved(service, port):
+    # Igual con un renombrado: "Notas" → "Otro" libera "Notas"; antes del borrado, otra
+    # petición le devuelve el nombre "Notas" a la misma bóveda.
+    created, etag = _create(service, name="Notas")
+    port.before_next_delete(
+        lambda: service.update(created.id, VaultUpdate(name="Notas"),
+                               _current_etag(port, created.id)),
+        when=lambda doc_id, rev: doc_id == "vault-name:notas",
+    )
+    service.update(created.id, VaultUpdate(name="Otro"), etag)
+    assert service.get(created.id)[0].name == "Notas"
+    assert _reservation(port, "notas")["vault_id"] == created.id
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="NOTAS")
+
+
+def test_rf_021_release_that_wins_the_race_makes_the_restore_reserve_again(service, port):
+    # Al revés: la liberación tardía borra la reserva justo antes de que la restauración la
+    # reescriba sobre el `_rev` leído; la restauración vuelve a leer y la crea de nuevo.
+    created, etag = _create(service, name="Notas")
+    port.fail_next("delete")
+    service.delete(created.id, etag)  # la liberación falla: la reserva queda (huérfana)
+    released = []
+
+    def late_release():
+        service._release("Notas", created.id)
+        released.append(_reservation(port, "notas"))
+
+    port.before_next_put(late_release,
+                         when=lambda doc: doc["_id"] == "vault-name:notas" and "_rev" in doc)
+    service.restore(created.id, _current_etag(port, created.id))
+    assert released == [None]  # la liberación sí se coló y borró la reserva
+    assert _reservation(port, "notas")["vault_id"] == created.id
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="NOTAS")
 
 
 # --- T-021: delete y restore (RF-010, RF-011, RF-013, RF-025, RF-026, RF-027) ---

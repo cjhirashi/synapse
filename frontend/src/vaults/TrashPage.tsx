@@ -12,7 +12,7 @@ const DATE_FORMAT = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeSty
 /** Bóvedas borradas con su `deleted_at` y "Restaurar" (RF-028). */
 export default function TrashPage() {
   const navigate = useNavigate();
-  const { items, nextCursor, status, loadingMore, loadMore, reload, remove } = useVaultPages(true);
+  const { items, nextCursor, status, loadingMore, moreFailed, loadMore, reload, remove } = useVaultPages(true);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
@@ -74,6 +74,7 @@ export default function TrashPage() {
         </ul>
       )}
 
+      {status === "ready" && moreFailed && <p role="alert">No se pudieron cargar más bóvedas. Vuelve a intentarlo.</p>}
       {status === "ready" && nextCursor && (
         <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
           Cargar más

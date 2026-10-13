@@ -87,7 +87,7 @@ test("RF-019: editar sin cambios no envía nada y vuelve a la lista", async () =
 });
 
 test.each([
-  ["#/name", "Nombre", "El nombre debe tener entre 1 y 100 caracteres."],
+  ["#/name", "Nombre", "El nombre debe tener entre 1 y 100 caracteres, sin caracteres de control."],
   ["#/description", "Descripción", "La descripción admite hasta 2000 caracteres."],
   ["#/tags/2", "Etiquetas", "Hasta 20 etiquetas de 1 a 32 caracteres cada una."],
 ])("RF-019: un 422 en %s se muestra junto a su campo", async (pointer, label, message) => {
@@ -98,7 +98,17 @@ test.each([
   const field = await screen.findByLabelText(label);
   expect(field).toHaveAttribute("aria-invalid", "true");
   expect(field).toHaveAccessibleDescription(message);
-  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(message);  // se anuncia al aparecer
+});
+
+test("RF-019: una descripción de sólo espacios que no se tocó no se envía", async () => {
+  vi.spyOn(api, "getVault").mockResolvedValue({ ...VAULT, description: "   " });
+  const update = vi.spyOn(api, "updateVault").mockResolvedValue({ ...VAULT, name: "Otro" });
+  const user = renderAt("/vaults/id-1/edit");
+  await user.clear(await screen.findByLabelText("Nombre"));
+  await user.type(screen.getByLabelText("Nombre"), "Otro");
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+  expect(update).toHaveBeenCalledWith("id-1", { name: "Otro" }, '"1-a"');
 });
 
 test("RF-019: un 422 sin campo conocido se muestra como aviso general", async () => {
@@ -155,7 +165,7 @@ test("RF-019: un 412 avisa que la bóveda cambió y recarga sus datos y su etag"
   expect(update).toHaveBeenLastCalledWith("id-1", { description: null }, '"2-b"');
 });
 
-test("editar una bóveda que ya no existe (404) lo dice sin mostrar el formulario", async () => {
+test("RF-019: editar una bóveda que ya no existe (404) lo dice sin mostrar el formulario", async () => {
   vi.spyOn(api, "getVault").mockRejectedValue(new ApiError(404, { type: api.VAULT_PROBLEM.notFound }));
   renderAt("/vaults/id-1/edit");
   expect(await screen.findByRole("alert")).toHaveTextContent("Esta bóveda no existe o está en la papelera.");
@@ -163,7 +173,7 @@ test("editar una bóveda que ya no existe (404) lo dice sin mostrar el formulari
   expect(screen.getByRole("link", { name: "Volver a las bóvedas" })).toBeInTheDocument();
 });
 
-test("una sesión cerrada (401) al guardar lleva a /login", async () => {
+test("RF-019: una sesión cerrada (401) al guardar lleva a /login", async () => {
   vi.spyOn(api, "createVault").mockRejectedValue(new ApiError(401, { type: "urn:synapse:problem:invalid-token" }));
   const user = renderAt("/vaults/new");
   await user.type(screen.getByLabelText("Nombre"), "Notas");
@@ -171,7 +181,7 @@ test("una sesión cerrada (401) al guardar lleva a /login", async () => {
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
 });
 
-test("otro error al guardar da un aviso genérico y conserva lo escrito", async () => {
+test("RF-019: otro error al guardar da un aviso genérico y conserva lo escrito", async () => {
   vi.spyOn(api, "createVault").mockRejectedValue(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }));
   const user = renderAt("/vaults/new");
   await user.type(screen.getByLabelText("Nombre"), "Notas");
@@ -180,7 +190,7 @@ test("otro error al guardar da un aviso genérico y conserva lo escrito", async 
   expect(screen.getByLabelText("Nombre")).toHaveValue("Notas");
 });
 
-test("«Cancelar» vuelve a la lista sin guardar", async () => {
+test("RF-019: «Cancelar» vuelve a la lista sin guardar", async () => {
   const create = vi.spyOn(api, "createVault");
   const user = renderAt("/vaults/new");
   await user.click(screen.getByRole("link", { name: "Cancelar" }));
