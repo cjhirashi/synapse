@@ -110,7 +110,7 @@
 
 ## [2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta
 - **Fase alcanzada:** implemented (T-001…T-070; enmienda 1 tras la verificación adversarial 1; nueva ronda en curso)
-- **Rebotes del verificador:** 1 (verificación 1 REJECTED: VA-1 mayor + VA-2…VA-10 → enmienda 1, T-052…T-070)
+- **Rebotes del verificador:** 2 (verificación 1 REJECTED: VA-1 mayor + VA-2…VA-10 → enmienda 1, T-052…T-070; verificación 2 APPROVED con menores VB-1…VB-5)
 - **Directiva de Pausa:** no
 - **Drift / re-anchor:** no
 - **Anclas movidas:** SPEC-0003 `c8c9e24` → `4a07556` (cierre Fase 4) → `d730de9` (cierre enmienda 1); SPEC-0002 → `4a07556` → `d730de9`
@@ -177,6 +177,7 @@
   - [2026-10-13] T-068/T-069: prefijos RF- en los tests (VA-7); READMEs de backend, adapters (404 al borrar → `RevisionConflict`) y frontend.
   - [2026-10-13] T-070 (cierre): evidencia — backend 410 passed + 1 `perf` deseleccionado, cobertura 99,12 %; `-m perf` 1/1; vitest 87/87, tsc limpio; gate verde (21 ok, 1 aviso). Tabla de cobertura con la evidencia y fila `spec-0003-enmienda-1`. Commit d730de9; anclas: SPEC-0003 y SPEC-0002 (comparte `core/schemas.py`) → d730de9. `state.md` al día.
   - [2026-10-13] Nueva ronda de verificación adversarial de 0003 lanzada (obligatoria por la regla de salida: VA-1 era mayor y la corrección cambia el comportamiento).
+  - [2026-10-13] **Verificación adversarial 2 de 0003 → APPROVED con menores** (0 bloqueantes, 0 mayores; el verificador se cortó una vez por límite de uso y se reanudó). Evidencia: gate verde (21 ok, 1 aviso), backend 410 passed (cobertura 99 %), perf p95 32,5 ms, vitest 87/87, tsc limpio, contratos sin diff; estrés contra CouchDB real (12–16 hilos, nombres equivalentes, arrendamiento vencido) sin violaciones; 200 000 cursores emitidos aceptados; 49 mutantes, 41 muertos (frontend 17/17), vivos equivalentes M11, M19, M30. Menores: VB-1 sin test de unicidad pasado el arrendamiento (`_holder`, mutantes M4/M23; RF-007/021/025); VB-2 sin test del refresco de `reserved_at` al reescribir la reserva propia (M31; RF-021/025); VB-3 la ida y vuelta del cursor no se ejercita porque los casos superan la longitud máxima (M15/M17; RF-003); VB-4 límite `age < RESERVATION_LEASE` sin fijar (M24); VB-5 `plan.md` (§ líneas 82–146) y docstring de `VaultService` aún dicen `lower()`. Observación para la futura sincronización: ids no canónicos serían rechazados. Por la regla de salida no hace falta otra ronda. Repo sin tocar por el verificador. Pendiente: aprobación del usuario para corregir VB-1…VB-5; `verified` lo decide el usuario.
 
 ---
 
