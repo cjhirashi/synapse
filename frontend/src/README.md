@@ -4,11 +4,13 @@ Código fuente React.
 
 ```
 src/
-├── api/        # clientes HTTP del backend (auth.ts, vaults.ts) y errores de la API (problems.ts)
+├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
-├── layout/     # marco de las rutas privadas (navegación Bóvedas/Papelera, cuenta, cerrar sesión)
+├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
 ├── settings/   # ajustes de cuenta (cambiar contraseña)
-├── vaults/     # bóvedas: lista, formulario crear/editar, papelera (SPEC-0003)
+├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
+├── vaults/     # bóvedas sobre la réplica local: lista, formulario crear/editar, papelera (SPEC-0003)
+├── test-utils/ # utilidades de prueba (réplica en memoria, contexto de sync)
 ├── App.tsx     # rutas
 └── main.tsx
 ```
@@ -22,28 +24,39 @@ Los errores de la API llegan como Problem Details (SPEC-0004): `api/problems.ts`
 cuerpos no JSON. La UI decide por `type` —con las constantes `PROBLEM.*`— o por `status`
 cuando basta (401), y muestra sus propios textos en español; `title`/`detail` vienen en inglés.
 
-**Rutas privadas** (dentro de `RequireAuth` y `AppLayout`):
+**Rutas privadas** (dentro de `RequireAuth`, `SyncProvider` y `AppLayout`):
 
 | Ruta | Pantalla |
 |---|---|
 | `/` | redirige a `/vaults` |
 | `/vaults` | `vaults/VaultListPage.tsx` — bóvedas activas, «Cargar más», borrar con confirmación |
 | `/vaults/new` | `vaults/VaultForm.tsx` — crear |
-| `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (envía sólo los campos cambiados) |
+| `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
+| `/rejections` | `sync/RejectionsPage.tsx` — cambios que el servidor rechazó, con el motivo y «Corregir» |
+| `/conflicts` | `sync/ConflictView.tsx` — conflictos que el usuario elige o combina |
 
-**Bóvedas (SPEC-0003):** `api/vaults.ts` envuelve `/vaults/**` sobre `request` de
-`api/auth.ts` (hereda la renovación de sesión) y define `VAULT_PROBLEM` (`nameTaken`,
-`preconditionFailed`, `notFound`). Toda bóveda lleva su `etag`: el de la cabecera `ETag` en
-las respuestas de una bóveda y el del elemento en los listados; las escrituras lo mandan en
-`If-Match`. `vaults/useVaultPages.ts` pagina la lista o la papelera (un fallo de «Cargar
-más» conserva lo cargado y avisa aparte; una respuesta de antes de la última recarga se
-descarta); `vaults/errors.ts`
-decide si un error es sesión cerrada (401) o vista desfasada (412 o 404 de bóveda), en cuyo
-caso la pantalla avisa y recarga: el formulario descarta lo escrito y carga la versión
-vigente (guardarlo encima pisaría el cambio ajeno).
+**Sincronización (SPEC-0005):** `App.tsx` monta `sync/SyncProvider.tsx` con el usuario de
+`useMe()` (una instancia por usuario; no replica mientras deba cambiar la contraseña). El
+proveedor abre la réplica local (`sync/localDb.ts`, que la borra si era de otro usuario), el
+replicador continuo con `/sync` y los almacenes de estado, rechazos y conflictos, y los
+publica por `useSync()`. `layout/AppLayout.tsx` muestra `SyncStatusBar` y su «Cerrar
+sesión» llama a `requestLogout()`: con cambios sin confirmar abre `LogoutDialog`; al salir,
+`logout()` y, si el servidor cerró la sesión, se borra la réplica. `test-utils/sync.tsx`
+da réplicas en memoria, un replicador falso y un contexto mínimo (`syncValue`, `WithSync`).
+
+**Bóvedas (SPEC-0003 sobre la réplica, P-1):** las páginas leen y escriben
+`useSync().vaults` (`sync/vaultStore.ts`) en lugar de la API REST, que sigue igual para los
+agentes. Cada bóveda lleva su `rev`, que las escrituras mandan para no pisar un cambio
+ajeno. `vaults/useVaultPages.ts` lee la lista o la papelera entera (ya ordenada), muestra
+páginas de 50 en memoria y la vuelve a leer en silencio con cada `dataVersion` (cualquier
+escritura en la réplica); una lectura de antes de la última se descarta. `vaults/errors.ts`
+decide si un error es vista desfasada (otra revisión, o ya no está en esa lista), en cuyo
+caso la pantalla avisa y recarga —el formulario descarta lo escrito y carga la versión
+vigente—, o cuota agotada (R-11). `vaults/fields.ts` reúne los textos de las reglas de cada
+campo y la lectura de etiquetas y descripción, compartidos con la vista de conflictos.
 
 En desarrollo, `vite.config.ts` reenvía `/vaults` al backend salvo las navegaciones del
 navegador (`Accept: text/html`), que reciben `index.html` para que React Router pinte la ruta.
 
-El resto de la estructura (editor, sync) se define en sus propias specs.
+El resto de la estructura (editor) se define en su propia spec.

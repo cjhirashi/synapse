@@ -1,23 +1,16 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
-import { logout } from "../api/auth";
+import { Link, NavLink, Outlet } from "react-router-dom";
 import { CHANGE_PASSWORD_PATH } from "../auth/RequireAuth";
+import LogoutDialog from "../sync/LogoutDialog";
+import SyncStatusBar from "../sync/SyncStatusBar";
+import { useSync } from "../sync/useSync";
 
-/** Marco de las rutas privadas: secciones (SPEC-0003) y navegación de cuenta (RF-023). */
+/**
+ * Marco de las rutas privadas: secciones (SPEC-0003), navegación de cuenta (RF-023) y
+ * estado de la sincronización (SPEC-0005 RF-009). "Cerrar sesión" pasa por la
+ * sincronización: con cambios sin confirmar abre antes el aviso (RF-017).
+ */
 export default function AppLayout() {
-  const navigate = useNavigate();
-  const [error, setError] = useState(false);
-
-  async function onLogout() {
-    setError(false);
-    try {
-      await logout();
-      navigate("/login", { replace: true });
-    } catch {
-      // Las cookies son httpOnly: si el backend no las limpió, la sesión sigue abierta.
-      setError(true);
-    }
-  }
+  const { requestLogout } = useSync();
 
   return (
     <>
@@ -30,11 +23,12 @@ export default function AppLayout() {
       </nav>
       <nav aria-label="Cuenta">
         <Link to={CHANGE_PASSWORD_PATH}>Cambiar contraseña</Link>{" "}
-        <button type="button" onClick={onLogout}>
+        <button type="button" onClick={requestLogout}>
           Cerrar sesión
         </button>
-        {error && <p role="alert">No se pudo cerrar la sesión. Inténtalo de nuevo.</p>}
+        <LogoutDialog />
       </nav>
+      <SyncStatusBar />
       <main>
         <Outlet />
       </main>

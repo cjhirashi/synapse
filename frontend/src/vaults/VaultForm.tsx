@@ -1,58 +1,45 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ApiError, PROBLEM } from "../api/problems";
-import { createVault, getVault, updateVault, Vault, VaultInput, VAULT_PROBLEM } from "../api/vaults";
-import { isSessionClosed } from "./errors";
+import { useSync } from "../sync/useSync";
+import type { VaultField, VaultFields } from "../sync/vaultRules";
+import {
+  VaultChangedError,
+  VaultNameTakenError,
+  VaultNotFoundError,
+  VaultValidationError,
+  type Vault,
+} from "../sync/vaultStore";
+import { isStorageFull, STORAGE_FULL } from "./errors";
+import { FIELD_MESSAGES, formatTags, NAME_TAKEN, parseTags, toDescription } from "./fields";
 
-type Field = "name" | "description" | "tags";
-type FieldErrors = Partial<Record<Field, string>>;
+type FieldErrors = Partial<Record<VaultField, string>>;
 type Load = "loading" | "ready" | "missing" | "error";
 
-/** Textos propios de cada campo: el `detail` de un 422 llega en inglés (SPEC-0004). */
-const FIELD_MESSAGES: Record<Field, string> = {
-  name: "El nombre debe tener entre 1 y 100 caracteres, sin caracteres de control.",
-  description: "La descripción admite hasta 2000 caracteres.",
-  tags: "Hasta 20 etiquetas de 1 a 32 caracteres cada una.",
-};
-
-const NAME_TAKEN = "Ya tienes una bóveda con ese nombre.";
-
-/** Campo de un error de validación por su JSON Pointer (`#/tags/3` → `tags`). */
-function fieldOf(pointer: string | undefined): Field | undefined {
-  const top = pointer?.match(/^#\/([^/]+)/)?.[1];
-  return top === "name" || top === "description" || top === "tags" ? top : undefined;
-}
-
-/** Etiquetas separadas por comas; el backend las pasa a minúsculas y quita repetidas. */
-function parseTags(text: string): string[] {
-  return text
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag !== "");
-}
-
-/** Descripción para la API: vacía o de sólo espacios es "sin descripción" (`null`). */
-function toDescription(text: string): string | null {
-  return text.trim() === "" ? null : text;
-}
-
 /**
- * Sólo los campos que difieren de la versión cargada: `PATCH` no toca el resto (RF-009).
+ * Sólo los campos que difieren de la versión cargada: `update` no toca el resto (RF-009).
  * La descripción original se normaliza igual que la del formulario: una de sólo espacios
  * que no se tocó no cuenta como cambio (PLAN-0003 §15, VA-9).
  */
-function changes(input: VaultInput, original: Vault): Partial<VaultInput> {
-  const diff: Partial<VaultInput> = {};
+function changes(input: VaultFields, original: Vault): Partial<VaultFields> {
+  const diff: Partial<VaultFields> = {};
   if (input.name !== original.name) diff.name = input.name;
   if (input.description !== toDescription(original.description ?? "")) diff.description = input.description;
   if (input.tags.join("\n") !== original.tags.join("\n")) diff.tags = input.tags;
   return diff;
 }
 
-/** Crear (`/vaults/new`) o editar (`/vaults/:id/edit`) una bóveda (RF-019). */
+/**
+ * Crear (`/vaults/new`) o editar (`/vaults/:id/edit`) una bóveda de la réplica local
+ * (SPEC-0003 RF-019; SPEC-0005 RF-009).
+ *
+ * No se recarga con `dataVersion`: un cambio que llegue mientras se escribe no pisa el
+ * formulario. Si al guardar la revisión cargada ya no es la actual, se avisa y se cargan los
+ * datos vigentes (el 412 de 0003).
+ */
 export default function VaultForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { vaults } = useSync();
   const editing = id !== undefined;
 
   const [original, setOriginal] = useState<Vault | null>(null);
@@ -64,60 +51,47 @@ export default function VaultForm() {
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const sessionClosed = useCallback(
-    (err: unknown) => {
-      if (!isSessionClosed(err)) return false;
-      navigate("/login", { replace: true });
-      return true;
-    },
-    [navigate],
-  );
-
   /** Carga la versión vigente; sus valores sustituyen lo que hubiera en el formulario. */
   const fetchVault = useCallback(
     async (vaultId: string) => {
       try {
-        const vault = await getVault(vaultId);
+        const vault = await vaults.get(vaultId);
         setOriginal(vault);
         setName(vault.name);
         setDescription(vault.description ?? "");
-        setTags(vault.tags.join(", "));
+        setTags(formatTags(vault.tags));
         setLoad("ready");
       } catch (err) {
-        if (sessionClosed(err)) return;
-        setLoad(err instanceof ApiError && err.type === VAULT_PROBLEM.notFound ? "missing" : "error");
+        if (!(err instanceof VaultNotFoundError)) console.error(err);
+        setLoad(err instanceof VaultNotFoundError ? "missing" : "error");
       }
     },
-    [sessionClosed],
+    [vaults],
   );
 
   useEffect(() => {
     if (id !== undefined) void fetchVault(id);
   }, [id, fetchVault]);
 
-  function edit(field: Field, value: string) {
+  function edit(field: VaultField, value: string) {
     ({ name: setName, description: setDescription, tags: setTags })[field](value);
     setFieldErrors(({ [field]: _cleared, ...rest }) => rest);
   }
 
   function showError(err: unknown) {
-    if (sessionClosed(err)) return;
-    if (err instanceof ApiError && err.type === PROBLEM.validationError) {
-      const errors: FieldErrors = {};
-      for (const entry of err.errors) {
-        const field = fieldOf(entry.pointer);
-        if (field) errors[field] = FIELD_MESSAGES[field];
-      }
-      setFieldErrors(errors);
-      if (Object.keys(errors).length === 0) setFormError("Revisa los datos del formulario.");
-    } else if (err instanceof ApiError && err.type === VAULT_PROBLEM.nameTaken) {
+    if (err instanceof VaultValidationError) {
+      setFieldErrors(Object.fromEntries(err.fields.map((field) => [field, FIELD_MESSAGES[field]])));
+    } else if (err instanceof VaultNameTakenError) {
       setFieldErrors({ name: NAME_TAKEN });
-    } else if (err instanceof ApiError && err.type === VAULT_PROBLEM.preconditionFailed && id !== undefined) {
+    } else if (err instanceof VaultChangedError && id !== undefined) {
       setFormError("La bóveda cambió mientras la editabas. Se cargaron sus datos actuales; repite tus cambios.");
       void fetchVault(id);
-    } else if (err instanceof ApiError && err.type === VAULT_PROBLEM.notFound) {
+    } else if (err instanceof VaultNotFoundError) {
       setLoad("missing");
+    } else if (isStorageFull(err)) {
+      setFormError(STORAGE_FULL);
     } else {
+      console.error(err);
       setFormError("No se pudo guardar la bóveda. Inténtalo de nuevo.");
     }
   }
@@ -126,14 +100,14 @@ export default function VaultForm() {
     e.preventDefault();
     setFieldErrors({});
     setFormError(null);
-    const input: VaultInput = { name, description: toDescription(description), tags: parseTags(tags) };
+    const input: VaultFields = { name, description: toDescription(description), tags: parseTags(tags) };
     setBusy(true);
     try {
       if (original === null) {
-        await createVault(input);
+        await vaults.create(input);
       } else {
         const diff = changes(input, original);
-        if (Object.keys(diff).length > 0) await updateVault(original.id, diff, original.etag);
+        if (Object.keys(diff).length > 0) await vaults.update(original.id, diff, original.rev);
       }
       navigate("/vaults");
     } catch (err) {
@@ -156,12 +130,12 @@ export default function VaultForm() {
   }
 
   /** Atributos de accesibilidad que enlazan un campo con su error. */
-  function errorProps(field: Field) {
+  function errorProps(field: VaultField) {
     return fieldErrors[field] ? { "aria-invalid": true as const, "aria-describedby": `${field}-error` } : {};
   }
 
   /** Error del campo; `role="alert"` lo anuncia al aparecer (la descripción, al enfocar). */
-  function errorText(field: Field) {
+  function errorText(field: VaultField) {
     return fieldErrors[field] && <p id={`${field}-error`} role="alert">{fieldErrors[field]}</p>;
   }
 

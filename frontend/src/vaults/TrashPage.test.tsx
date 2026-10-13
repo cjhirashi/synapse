@@ -1,139 +1,151 @@
+// Papelera sobre la réplica local (SPEC-0003 RF-028; SPEC-0005 RF-009, RF-011).
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
-import { ApiError } from "../api/problems";
-import * as api from "../api/vaults";
-import type { Vault } from "../api/vaults";
+import type { SyncContextValue } from "../sync/useSync";
+import { StorageFullError } from "../sync/vaultStore";
+import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import TrashPage from "./TrashPage";
 
-const DELETED_AT = "2026-10-12T09:30:00.000000Z";
+afterEach(() => vi.restoreAllMocks());
 
-function trashed(n: number, fields: Partial<Vault> = {}): Vault {
-  return {
-    id: `id-${n}`,
-    name: `Bóveda ${n}`,
-    description: null,
-    tags: [],
-    owner_id: "u1",
-    created_at: "2026-10-12T09:00:00.000000Z",
-    updated_at: DELETED_AT,
-    deleted_at: DELETED_AT,
-    etag: `"${n}-b"`,
-    ...fields,
-  };
-}
-
-function renderPage() {
+function renderPage(value: SyncContextValue) {
   render(
-    <MemoryRouter initialEntries={["/vaults/trash"]}>
-      <Routes>
-        <Route path="/vaults/trash" element={<TrashPage />} />
-        <Route path="/login" element={<div>pantalla login</div>} />
-      </Routes>
-    </MemoryRouter>,
+    <WithSync value={value}>
+      <MemoryRouter initialEntries={["/vaults/trash"]}>
+        <Routes>
+          <Route path="/vaults/trash" element={<TrashPage />} />
+        </Routes>
+      </MemoryRouter>
+    </WithSync>,
   );
   return userEvent.setup();
+}
+
+/** Crea una bóveda y la manda a la papelera; devuelve la versión borrada. */
+async function trashed(seed: ReturnType<typeof seedStore>, name: string) {
+  const vault = await seed.create({ name, description: null, tags: [] });
+  return seed.softDelete(vault.id, vault.rev);
 }
 
 async function restoreButton(name: string) {
   return within(await screen.findByRole("listitem", { name })).getByRole("button", { name: "Restaurar" });
 }
 
-afterEach(() => vi.restoreAllMocks());
-
 test("RF-028: lista las borradas con su `deleted_at`", async () => {
-  const list = vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
-  renderPage();
-  const item = await screen.findByRole("listitem", { name: "Bóveda 1" });
+  const { value, db } = syncValue();
+  const vault = await trashed(seedStore(db), "Notas");
+  renderPage(value);
+  const item = await screen.findByRole("listitem", { name: "Notas" });
   const time = within(item).getByText(/Borrada el/).querySelector("time");
-  expect(time).toHaveAttribute("dateTime", DELETED_AT);
-  // Fecha legible en español (p. ej. «12 oct 2026, 11:30»), no el texto ISO.
-  const visible = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(DELETED_AT));
+  const deletedAt = vault.deleted_at as string;
+  expect(time).toHaveAttribute("dateTime", deletedAt);
+  // Fecha legible en español (p. ej. «12 oct 2026, 11:00»), no el texto ISO.
+  const visible = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(deletedAt));
   expect(time).toHaveTextContent(visible);
   expect(time).toHaveTextContent(/2026/);
-  expect(time).not.toHaveTextContent(DELETED_AT);
-  expect(list).toHaveBeenCalledWith({ deleted: true });
+  expect(time).not.toHaveTextContent(deletedAt);
 });
 
-test("RF-028: con la papelera vacía lo dice", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [], next_cursor: null });
-  renderPage();
+test("RF-028: con la papelera vacía lo dice (las activas no aparecen)", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Activa", description: null, tags: [] });
+  renderPage(value);
   expect(await screen.findByText("La papelera está vacía.")).toBeInTheDocument();
+  expect(screen.queryByRole("listitem", { name: "Activa" })).not.toBeInTheDocument();
 });
 
-test("RF-028: «Cargar más» pide la página siguiente de la papelera", async () => {
-  const list = vi
-    .spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [trashed(1)], next_cursor: "c1" })
-    .mockResolvedValueOnce({ items: [trashed(2)], next_cursor: null });
-  const user = renderPage();
-  await user.click(await screen.findByRole("button", { name: "Cargar más" }));
-  expect(await screen.findByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
-  expect(list).toHaveBeenLastCalledWith({ deleted: true, cursor: "c1" });
-});
-
-test("RF-028: si «Cargar más» falla, conserva la papelera y avisa", async () => {
-  vi.spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [trashed(1)], next_cursor: "c1" })
-    .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }));
-  const user = renderPage();
-  await user.click(await screen.findByRole("button", { name: "Cargar más" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar más bóvedas.");
+test("RF-009: «Cargar más» muestra las siguientes 50 borradas desde la réplica", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  for (let i = 1; i <= 51; i += 1) await trashed(seed, `Bóveda ${i}`);
+  const user = renderPage(value);
+  await screen.findByRole("listitem", { name: "Bóveda 51" });
+  expect(screen.getAllByRole("listitem")).toHaveLength(50);
+  await user.click(screen.getByRole("button", { name: "Cargar más" }));
   expect(screen.getByRole("listitem", { name: "Bóveda 1" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Cargar más" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
 });
 
-test("RF-028: «Restaurar» llama con su etag y la quita de la papelera", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1), trashed(2)], next_cursor: null });
-  const restore = vi.spyOn(api, "restoreVault").mockResolvedValue(trashed(1, { deleted_at: null, etag: '"1-c"' }));
-  const user = renderPage();
-  await user.click(await restoreButton("Bóveda 1"));
-  expect(restore).toHaveBeenCalledWith("id-1", '"1-b"');
-  expect(await screen.findByRole("status")).toHaveTextContent("«Bóveda 1» se restauró.");
-  expect(screen.queryByRole("listitem", { name: "Bóveda 1" })).not.toBeInTheDocument();
-  expect(screen.getByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
+test("RF-011: «Restaurar» la vuelve activa en la réplica y la quita de la papelera", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  const notas = await trashed(seed, "Notas");
+  await trashed(seed, "Otra");
+  const user = renderPage(value);
+  await user.click(await restoreButton("Notas"));
+  expect(await screen.findByRole("status")).toHaveTextContent("«Notas» se restauró.");
+  expect(screen.queryByRole("listitem", { name: "Notas" })).not.toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Otra" })).toBeInTheDocument();
+  expect((await value.vaults.get(notas.id)).deleted_at).toBeNull();
 });
 
-test("RF-028: un 409 al restaurar avisa que el nombre está ocupado y la deja en la papelera", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
-  vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(409, { type: api.VAULT_PROBLEM.nameTaken }));
-  const user = renderPage();
-  await user.click(await restoreButton("Bóveda 1"));
+test("RF-028: si su nombre ya lo usa otra activa avisa y la deja en la papelera", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  await trashed(seed, "Notas");
+  await seed.create({ name: "notas", description: null, tags: [] });
+  const user = renderPage(value);
+  await user.click(await restoreButton("Notas"));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "No se puede restaurar «Bóveda 1»: ya tienes otra bóveda con ese nombre.",
+    "No se puede restaurar «Notas»: ya tienes otra bóveda con ese nombre.",
   );
-  expect(screen.getByRole("listitem", { name: "Bóveda 1" })).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Notas" })).toBeInTheDocument();
 });
 
 test.each([
-  [412, api.VAULT_PROBLEM.preconditionFailed],
-  [404, api.VAULT_PROBLEM.notFound],
-])("RF-028: si la papelera está desfasada (%i) avisa y la recarga", async (status, type) => {
-  const list = vi
-    .spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [trashed(1)], next_cursor: null })
-    .mockResolvedValueOnce({ items: [], next_cursor: null });
-  vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(status, { type }));
-  const user = renderPage();
-  await user.click(await restoreButton("Bóveda 1"));
-  expect(await screen.findByRole("alert")).toHaveTextContent("cambió");
-  expect(await screen.findByText("La papelera está vacía.")).toBeInTheDocument();
-  expect(list).toHaveBeenCalledTimes(2);
+  // Otra pestaña la restauró: ya no está en la papelera (VaultNotFoundError).
+  ["ya restaurada", async (seed: ReturnType<typeof seedStore>, id: string, rev: string) => seed.restore(id, rev)],
+  // Otra pestaña la restauró y la volvió a borrar: sigue aquí con otra revisión (VaultChangedError).
+  [
+    "con otra revisión",
+    async (seed: ReturnType<typeof seedStore>, id: string, rev: string) => {
+      const restored = await seed.restore(id, rev);
+      await seed.softDelete(id, restored.rev);
+    },
+  ],
+])("RF-028: si la papelera está desfasada (%s) avisa y la recarga", async (_case, change) => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  const vault = await trashed(seed, "Notas");
+  const list = vi.spyOn(value.vaults, "list");
+  const user = renderPage(value);
+  const button = await restoreButton("Notas");
+  await change(seed, vault.id, vault.rev);
+  await user.click(button);
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "«Notas» cambió desde que se cargó la papelera; se muestra la versión actual.",
+  );
+  await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+});
+
+test("R-11: sin espacio en el dispositivo lo avisa", async () => {
+  const { value, db } = syncValue();
+  await trashed(seedStore(db), "Notas");
+  vi.spyOn(value.vaults, "restore").mockRejectedValue(new StorageFullError());
+  const user = renderPage(value);
+  await user.click(await restoreButton("Notas"));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "No queda espacio en este dispositivo para guardar cambios. Libera espacio e inténtalo de nuevo.",
+  );
 });
 
 test("RF-028: otro error al restaurar da un aviso genérico", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
-  vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }));
-  const user = renderPage();
-  await user.click(await restoreButton("Bóveda 1"));
-  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo restaurar «Bóveda 1». Inténtalo de nuevo.");
+  const { value, db } = syncValue();
+  await trashed(seedStore(db), "Notas");
+  vi.spyOn(value.vaults, "restore").mockRejectedValue(new Error("fallo de IndexedDB"));
+  const user = renderPage(value);
+  await user.click(await restoreButton("Notas"));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo restaurar «Notas». Inténtalo de nuevo.");
 });
 
-test("RF-028: una sesión cerrada (401) al restaurar lleva a /login", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [trashed(1)], next_cursor: null });
-  vi.spyOn(api, "restoreVault").mockRejectedValue(new ApiError(401, { type: "urn:synapse:problem:invalid-token" }));
-  const user = renderPage();
-  await user.click(await restoreButton("Bóveda 1"));
-  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+test("RF-028: si la réplica no se puede leer, avisa y permite reintentar", async () => {
+  const { value, db } = syncValue();
+  await trashed(seedStore(db), "Notas");
+  vi.spyOn(value.vaults, "list").mockRejectedValueOnce(new Error("fallo de IndexedDB"));
+  const user = renderPage(value);
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cargar la papelera.");
+  await user.click(screen.getByRole("button", { name: "Reintentar" }));
+  expect(await screen.findByRole("listitem", { name: "Notas" })).toBeInTheDocument();
 });

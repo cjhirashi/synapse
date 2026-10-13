@@ -1,15 +1,19 @@
-import { ApiError } from "../api/problems";
-import { VAULT_PROBLEM } from "../api/vaults";
+/**
+ * Errores de `vaultStore` que las páginas de bóvedas tratan igual (SPEC-0005 RF-009; R-11).
+ */
+import { StorageFullError, VaultChangedError, VaultNotFoundError } from "../sync/vaultStore";
 
-/** `request()` ya intentó renovar la sesión: un 401 que llega aquí es una sesión cerrada. */
-export function isSessionClosed(err: unknown): boolean {
-  return err instanceof ApiError && err.status === 401;
-}
+/** Aviso de cuota agotada (R-11): lo escrito no se guardó en este dispositivo. */
+export const STORAGE_FULL = "No queda espacio en este dispositivo para guardar cambios. Libera espacio e inténtalo de nuevo.";
 
 /**
- * La vista está desfasada: otra pestaña o dispositivo cambió la bóveda (412) o ya no está
- * en esta lista (404). La pantalla avisa y recarga para mostrar el estado real.
+ * La vista está desfasada: otra pestaña o el pull cambió la bóveda (otra revisión) o ya no
+ * está en esta lista. La pantalla avisa y recarga para mostrar el estado real.
  */
 export function isStale(err: unknown): boolean {
-  return err instanceof ApiError && (err.type === VAULT_PROBLEM.preconditionFailed || err.type === VAULT_PROBLEM.notFound);
+  return err instanceof VaultChangedError || err instanceof VaultNotFoundError;
+}
+
+export function isStorageFull(err: unknown): boolean {
+  return err instanceof StorageFullError;
 }

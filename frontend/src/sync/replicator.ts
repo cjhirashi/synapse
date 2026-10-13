@@ -75,7 +75,7 @@ export function backOff(previous: number): number {
  * Forma en tiempo de ejecución de `Sync` en PouchDB 9: los tipos no declaran sus dos
  * replicaciones (`push`, `pull`) ni el evento `checkpoint`.
  */
-interface RuntimeReplication {
+export interface RuntimeReplication {
   on(event: string, listener: (...args: never[]) => void): unknown;
 }
 interface RuntimeSync {
@@ -90,6 +90,23 @@ interface DeniedDoc {
   rev?: string;
   reason?: string;
   message?: string;
+}
+
+/**
+ * Eventos propios de un push (escritas, rechazos y checkpoints). Los usa la replicación
+ * continua y también el push de una vez de "Sincronizar y salir" (RF-017).
+ */
+export function listenPush(replication: RuntimeReplication, emit: (event: SyncEvent) => void): void {
+  replication.on("change", (info: { docs?: { _id: string; _rev: string }[] }) => {
+    emit({ type: "written", docs: (info.docs ?? []).map((doc) => ({ id: doc._id, rev: doc._rev })) });
+  });
+  replication.on("denied", (doc: DeniedDoc) => {
+    emit({ type: "denied", id: String(doc.id), rev: doc.rev ?? null, reason: String(doc.reason ?? doc.message) });
+  });
+  // `checkpoint` también avisa de pasos intermedios; sólo `{ checkpoint }` es una secuencia confirmada.
+  replication.on("checkpoint", (info: { checkpoint?: number | string }) => {
+    if (info.checkpoint !== undefined) emit({ type: "checkpoint", seq: info.checkpoint });
+  });
 }
 
 export function createReplicator({
@@ -136,17 +153,7 @@ export function createReplicator({
     // PouchDB pasa el error sólo cuando se detiene para reintentar (`backOff`).
     replication.on("paused", (err?: unknown) => emit({ type: "paused", direction, offline: err != null }));
     replication.on("error", (err: { message?: string }) => emit({ type: "error", message: String(err?.message ?? err) }));
-    if (direction !== "push") return;
-    replication.on("change", (info: { docs?: { _id: string; _rev: string }[] }) => {
-      emit({ type: "written", docs: (info.docs ?? []).map((doc) => ({ id: doc._id, rev: doc._rev })) });
-    });
-    replication.on("denied", (doc: DeniedDoc) => {
-      emit({ type: "denied", id: String(doc.id), rev: doc.rev ?? null, reason: String(doc.reason ?? doc.message) });
-    });
-    // `checkpoint` también avisa de pasos intermedios; sólo `{ checkpoint }` es una secuencia confirmada.
-    replication.on("checkpoint", (info: { checkpoint?: number | string }) => {
-      if (info.checkpoint !== undefined) emit({ type: "checkpoint", seq: info.checkpoint });
-    });
+    if (direction === "push") listenPush(replication, emit);
   }
 
   function startSync(): void {

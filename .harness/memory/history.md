@@ -731,3 +731,20 @@
   - `conflicts`: los suscriptores recibían avisos repetidos con la misma lista. Ahora sólo se avisa si la lista cambia.
 - Frontend: **270 passed**, typecheck OK.
 - **Próximo paso:** bloque I (UI, T-052…T-066).
+- **Visto bueno del usuario (2026-10-13)** a las desviaciones (a)–(i) del bloque H.
+
+## [2026-10-13] 0005-sync — Fase 4: T-052…T-066 (UI de sincronización y bóvedas sobre la réplica, bloque I)
+- **T-052/T-053:** `sync/SyncProvider.tsx` + `sync/useSync.ts` (réplica, replicador, estado, rechazos, conflictos, `vaults`, `dataVersion`, `requestLogout`) y su test.
+- **T-054/T-055:** `sync/SyncStatusBar.tsx` (región "Sincronización", textos por estado, última sync, enlaces con contador) y su test.
+- **T-056/T-057:** `sync/RejectionsPage.tsx` (motivo por código, "Corregir") y su test.
+- **T-058/T-059:** `sync/ConflictView.tsx` (campo a campo, elegir/combinar, valida con `vaultRules`, `conflicts.resolve`) y su test.
+- **T-060/T-061:** `sync/LogoutDialog.tsx` (sin conexión / sincronizar y salir / salir igual / cancelar) y su test.
+- **T-062/T-063:** `vaults/*` sobre `vaultStore` (P-1): páginas de 50 en memoria, recarga silenciosa con `dataVersion`, `errors.ts` (vista desfasada, cuota agotada), `vaults/fields.ts` compartido; `test-utils/sync.tsx` (`syncValue`, `WithSync`, `memoryEnv`, `seedStore`). 43 tests de bóvedas.
+- **T-064/T-065:** `App.tsx` (`SyncScope` con `key={user_id}`, `paused` con `must_change_password`, rutas `/rejections` y `/conflicts`, prop `syncEnv`) y `layout/AppLayout.tsx` (barra, `LogoutDialog`, `requestLogout`). 18 tests App/layout.
+- **T-066:** retirados `api/vaults.ts` y `api/vaults.test.ts` (sin importadores; la API REST sigue para agentes); `frontend/src/README.md` actualizado.
+- Desviaciones (a)–(i) registradas en PLAN-0005 §2.5 (pendientes de visto bueno).
+- Rebotes internos:
+  - El `wrapper` de `renderHook` no recibe props: `useVaultPages.test` usa un componente `Probe` con `render`/`rerender`.
+  - Un test de logout esperaba el encabezado "Iniciar sesión"; el de la pantalla es "Synapse" (se corrigió el test).
+- Frontend: **329 passed** (25 archivos), typecheck OK.
+- **Próximo paso:** bloque J (T-067…T-068).

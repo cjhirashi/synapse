@@ -1,150 +1,185 @@
+// Bóvedas activas sobre la réplica local (SPEC-0003 RF-018, RF-020; SPEC-0005 RF-009, RF-011).
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
-import { ApiError } from "../api/problems";
-import * as api from "../api/vaults";
-import type { Vault } from "../api/vaults";
+import type { SyncContextValue } from "../sync/useSync";
+import { StorageFullError } from "../sync/vaultStore";
+import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import VaultListPage from "./VaultListPage";
-
-function vault(n: number, fields: Partial<Vault> = {}): Vault {
-  return {
-    id: `id-${n}`,
-    name: `Bóveda ${n}`,
-    description: `Descripción ${n}`,
-    tags: [`tag${n}`, "común"],
-    owner_id: "u1",
-    created_at: "2026-10-12T09:00:00.000000Z",
-    updated_at: "2026-10-12T09:00:00.000000Z",
-    deleted_at: null,
-    etag: `"${n}-a"`,
-    ...fields,
-  };
-}
-
-function renderPage() {
-  render(
-    <MemoryRouter initialEntries={["/vaults"]}>
-      <Routes>
-        <Route path="/vaults" element={<VaultListPage />} />
-        <Route path="/vaults/new" element={<div>formulario nuevo</div>} />
-        <Route path="/vaults/:id/edit" element={<div>formulario edición</div>} />
-        <Route path="/login" element={<div>pantalla login</div>} />
-      </Routes>
-    </MemoryRouter>,
-  );
-  return userEvent.setup();
-}
-
-function item(name: string) {
-  return screen.getByRole("listitem", { name });
-}
 
 afterEach(() => vi.restoreAllMocks());
 
+function tree(value: SyncContextValue) {
+  return (
+    <WithSync value={value}>
+      <MemoryRouter initialEntries={["/vaults"]}>
+        <Routes>
+          <Route path="/vaults" element={<VaultListPage />} />
+          <Route path="/vaults/new" element={<div>formulario nuevo</div>} />
+          <Route path="/vaults/:id/edit" element={<div>formulario edición</div>} />
+        </Routes>
+      </MemoryRouter>
+    </WithSync>
+  );
+}
+
+/** Página sobre una réplica en memoria; `rerender` publica otro contexto (p. ej. otra `dataVersion`). */
+function renderPage(value: SyncContextValue) {
+  const { rerender } = render(tree(value));
+  return { user: userEvent.setup(), rerender: (next: SyncContextValue) => rerender(tree(next)) };
+}
+
+/** Siembra `n` bóvedas sin etiquetas ni descripción («Bóveda 1» es la más antigua). */
+async function seedMany(store: ReturnType<typeof seedStore>, n: number) {
+  for (let i = 1; i <= n; i += 1) await store.create({ name: `Bóveda ${i}`, description: null, tags: [] });
+}
+
+async function deleteButton(name: string) {
+  return within(await screen.findByRole("listitem", { name })).getByRole("button", { name: "Borrar" });
+}
+
 test("RF-018: muestra nombre, descripción y tags de cada bóveda", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [vault(1), vault(2, { description: null })], next_cursor: null });
-  renderPage();
-  const first = await screen.findByRole("listitem", { name: "Bóveda 1" });
-  expect(within(first).getByText("Descripción 1")).toBeInTheDocument();
-  expect(within(first).getByText("tag1")).toBeInTheDocument();
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: "Apuntes", tags: ["work", "común"] });
+  await seedStore(db).create({ name: "Otra", description: null, tags: [] });
+  renderPage(value);
+  const first = await screen.findByRole("listitem", { name: "Notas" });
+  expect(within(first).getByText("Apuntes")).toBeInTheDocument();
+  expect(within(first).getByText("work")).toBeInTheDocument();
   expect(within(first).getByText("común")).toBeInTheDocument();
-  expect(item("Bóveda 2")).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Otra" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
 });
 
+test("RF-018: ordena de la más nueva a la más antigua", async () => {
+  const { value, db } = syncValue();
+  await seedMany(seedStore(db), 3);
+  renderPage(value);
+  await screen.findByRole("listitem", { name: "Bóveda 1" });
+  expect(screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent)).toEqual([
+    "Bóveda 3",
+    "Bóveda 2",
+    "Bóveda 1",
+  ]);
+});
+
 test("RF-018: sin bóvedas lo dice y ofrece crear una", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [], next_cursor: null });
-  const user = renderPage();
+  const { value } = syncValue();
+  const { user } = renderPage(value);
   expect(await screen.findByText("Aún no tienes bóvedas.")).toBeInTheDocument();
   await user.click(screen.getByRole("link", { name: "Nueva bóveda" }));
   expect(screen.getByText("formulario nuevo")).toBeInTheDocument();
 });
 
-test("RF-018: «Cargar más» pide con `cursor`, añade la página y se oculta sin `next_cursor`", async () => {
-  const spy = vi
-    .spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [vault(1)], next_cursor: "c1" })
-    .mockResolvedValueOnce({ items: [vault(2)], next_cursor: null });
-  const user = renderPage();
-  await user.click(await screen.findByRole("button", { name: "Cargar más" }));
-  expect(await screen.findByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
-  expect(item("Bóveda 1")).toBeInTheDocument();
-  expect(spy.mock.calls).toEqual([[{ deleted: false }], [{ deleted: false, cursor: "c1" }]]);
+test("RF-009: «Cargar más» muestra las siguientes 50 desde la réplica y se oculta al final", async () => {
+  const { value, db } = syncValue();
+  await seedMany(seedStore(db), 51);
+  const list = vi.spyOn(value.vaults, "list");
+  const { user } = renderPage(value);
+  await screen.findByRole("listitem", { name: "Bóveda 51" });
+  expect(screen.getAllByRole("listitem")).toHaveLength(50);
+  expect(screen.queryByRole("listitem", { name: "Bóveda 1" })).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Cargar más" }));
+  expect(screen.getAllByRole("listitem")).toHaveLength(51);
+  expect(screen.getByRole("listitem", { name: "Bóveda 1" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
+  // Paginar es sólo mostrar más de lo ya leído: no vuelve a leer la réplica.
+  expect(list).toHaveBeenCalledOnce();
 });
 
-test("RF-018: si «Cargar más» falla, conserva la lista, avisa y permite reintentar", async () => {
-  vi.spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [vault(1)], next_cursor: "c1" })
-    .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }))
-    .mockResolvedValueOnce({ items: [vault(2)], next_cursor: null });
-  const user = renderPage();
+test("RF-009: un cambio en la réplica (`dataVersion`) recarga la lista sin perder lo ya mostrado", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  await seedMany(seed, 51);
+  const { user, rerender } = renderPage(value);
   await user.click(await screen.findByRole("button", { name: "Cargar más" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar más bóvedas.");
-  expect(item("Bóveda 1")).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Cargar más" }));
-  expect(await screen.findByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
-  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  // Llega una bóveda nueva (de la UI, del pull o de otra pestaña).
+  await seed.create({ name: "Recién llegada", description: null, tags: [] });
+  rerender({ ...value, dataVersion: 1 });
+  expect(await screen.findByRole("listitem", { name: "Recién llegada" })).toBeInTheDocument();
+  expect(screen.getAllByRole("listitem")).toHaveLength(52);
+  expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
 });
 
 test("RF-018: «Editar» lleva al formulario de esa bóveda", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [vault(1)], next_cursor: null });
-  const user = renderPage();
-  await user.click(within(await screen.findByRole("listitem", { name: "Bóveda 1" })).getByRole("link", { name: "Editar" }));
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  const { user } = renderPage(value);
+  await user.click(within(await screen.findByRole("listitem", { name: "Notas" })).getByRole("link", { name: "Editar" }));
   expect(screen.getByText("formulario edición")).toBeInTheDocument();
 });
 
-test("RF-020: borrar pide confirmación y cancelar no envía el DELETE", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [vault(1)], next_cursor: null });
-  const del = vi.spyOn(api, "deleteVault").mockResolvedValue();
-  const user = renderPage();
-  await user.click(within(await screen.findByRole("listitem", { name: "Bóveda 1" })).getByRole("button", { name: "Borrar" }));
-  const dialog = screen.getByRole("alertdialog", { name: "¿Mover «Bóveda 1» a la papelera?" });
+test("RF-020: borrar pide confirmación y cancelar no la mueve a la papelera", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Notas"));
+  const dialog = screen.getByRole("alertdialog", { name: "¿Mover «Notas» a la papelera?" });
   await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
-  expect(del).not.toHaveBeenCalled();
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
-  expect(item("Bóveda 1")).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Notas" })).toBeInTheDocument();
+  expect(await value.vaults.list({ deleted: true })).toEqual([]);
 });
 
-test("RF-020: confirmar envía el DELETE con su etag y la quita de la lista", async () => {
-  vi.spyOn(api, "listVaults").mockResolvedValue({ items: [vault(1), vault(2)], next_cursor: null });
-  const del = vi.spyOn(api, "deleteVault").mockResolvedValue();
-  const user = renderPage();
-  await user.click(within(await screen.findByRole("listitem", { name: "Bóveda 1" })).getByRole("button", { name: "Borrar" }));
+test("RF-011: confirmar la mueve a la papelera de la réplica y la quita de la lista", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  await seedMany(seed, 2);
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Bóveda 1"));
   await user.click(screen.getByRole("button", { name: "Mover a la papelera" }));
-  expect(del).toHaveBeenCalledWith("id-1", '"1-a"');
   expect(await screen.findByRole("status")).toHaveTextContent("«Bóveda 1» se movió a la papelera.");
   expect(screen.queryByRole("listitem", { name: "Bóveda 1" })).not.toBeInTheDocument();
-  expect(item("Bóveda 2")).toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Bóveda 2" })).toBeInTheDocument();
+  expect((await value.vaults.list({ deleted: true })).map((vault) => vault.name)).toEqual(["Bóveda 1"]);
 });
 
-test("RF-020: si la bóveda cambió (412) avisa y recarga la lista", async () => {
-  const list = vi
-    .spyOn(api, "listVaults")
-    .mockResolvedValueOnce({ items: [vault(1)], next_cursor: null })
-    .mockResolvedValueOnce({ items: [vault(1, { name: "Renombrada", etag: '"2-b"' })], next_cursor: null });
-  vi.spyOn(api, "deleteVault").mockRejectedValue(new ApiError(412, { type: api.VAULT_PROBLEM.preconditionFailed }));
-  const user = renderPage();
-  await user.click(within(await screen.findByRole("listitem", { name: "Bóveda 1" })).getByRole("button", { name: "Borrar" }));
+test("RF-020: si la bóveda cambió desde que se cargó avisa y recarga la lista", async () => {
+  const { value, db } = syncValue();
+  const seed = seedStore(db);
+  const vault = await seed.create({ name: "Notas", description: null, tags: [] });
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Notas"));
+  // Otra pestaña (o el pull) la renombra mientras el diálogo está abierto.
+  await seed.update(vault.id, { name: "Renombrada" }, vault.rev);
   await user.click(screen.getByRole("button", { name: "Mover a la papelera" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent("cambió");
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "«Notas» cambió desde que se cargó la lista; se muestra la versión actual.",
+  );
   expect(await screen.findByRole("listitem", { name: "Renombrada" })).toBeInTheDocument();
-  expect(list).toHaveBeenCalledTimes(2);
+  expect(await value.vaults.list({ deleted: true })).toEqual([]);
 });
 
-test("RF-018: una sesión cerrada (401) lleva a /login", async () => {
-  vi.spyOn(api, "listVaults").mockRejectedValue(new ApiError(401, { type: "urn:synapse:problem:invalid-token" }));
-  renderPage();
-  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+test("R-11: sin espacio en el dispositivo lo avisa", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  vi.spyOn(value.vaults, "softDelete").mockRejectedValue(new StorageFullError());
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Notas"));
+  await user.click(screen.getByRole("button", { name: "Mover a la papelera" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "No queda espacio en este dispositivo para guardar cambios. Libera espacio e inténtalo de nuevo.",
+  );
+  expect(screen.getByRole("listitem", { name: "Notas" })).toBeInTheDocument();
 });
 
-test("RF-018: si la lista no carga, avisa y permite reintentar", async () => {
-  vi.spyOn(api, "listVaults")
-    .mockRejectedValueOnce(new ApiError(503, { type: "urn:synapse:problem:storage-unavailable" }))
-    .mockResolvedValueOnce({ items: [vault(1)], next_cursor: null });
-  const user = renderPage();
+test("RF-020: otro error al borrar da un aviso genérico", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  vi.spyOn(value.vaults, "softDelete").mockRejectedValue(new Error("fallo de IndexedDB"));
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Notas"));
+  await user.click(screen.getByRole("button", { name: "Mover a la papelera" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo mover «Notas» a la papelera. Inténtalo de nuevo.");
+});
+
+test("RF-018: si la réplica no se puede leer, avisa y permite reintentar", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  vi.spyOn(value.vaults, "list").mockRejectedValueOnce(new Error("fallo de IndexedDB"));
+  const { user } = renderPage(value);
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudieron cargar las bóvedas.");
   await user.click(screen.getByRole("button", { name: "Reintentar" }));
-  expect(await screen.findByRole("listitem", { name: "Bóveda 1" })).toBeInTheDocument();
+  expect(await screen.findByRole("listitem", { name: "Notas" })).toBeInTheDocument();
 });

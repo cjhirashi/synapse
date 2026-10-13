@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { deleteVault, Vault } from "../api/vaults";
-import { isSessionClosed, isStale } from "./errors";
+import { Link } from "react-router-dom";
+import { useSync } from "../sync/useSync";
+import type { Vault } from "../sync/vaultStore";
+import { isStale, isStorageFull, STORAGE_FULL } from "./errors";
 import { useVaultPages } from "./useVaultPages";
 
 type Notice = { kind: "status" | "alert"; text: string } | null;
 
-/** Bóvedas activas (RF-018) con borrado confirmado (RF-020). */
+/** Bóvedas activas de la réplica local (RF-018) con borrado confirmado (RF-020; SPEC-0005 RF-011). */
 export default function VaultListPage() {
-  const navigate = useNavigate();
-  const { items, nextCursor, status, loadingMore, moreFailed, loadMore, reload, remove } = useVaultPages(false);
+  const { vaults } = useSync();
+  const { items, hasMore, status, loadMore, reload, remove } = useVaultPages(false);
   const [confirming, setConfirming] = useState<Vault | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
@@ -18,18 +19,16 @@ export default function VaultListPage() {
     setBusy(true);
     setNotice(null);
     try {
-      await deleteVault(vault.id, vault.etag);
+      // Una revisión nueva con `deleted_at`: viaja por el push como cualquier edición (RF-011).
+      await vaults.softDelete(vault.id, vault.rev);
       remove(vault.id);
       setNotice({ kind: "status", text: `«${vault.name}» se movió a la papelera.` });
     } catch (err) {
-      if (isSessionClosed(err)) return navigate("/login", { replace: true });
       const stale = isStale(err);
-      setNotice({
-        kind: "alert",
-        text: stale
-          ? `«${vault.name}» cambió desde que se cargó la lista; se muestra la versión actual.`
-          : `No se pudo mover «${vault.name}» a la papelera. Inténtalo de nuevo.`,
-      });
+      let text = `No se pudo mover «${vault.name}» a la papelera. Inténtalo de nuevo.`;
+      if (stale) text = `«${vault.name}» cambió desde que se cargó la lista; se muestra la versión actual.`;
+      else if (isStorageFull(err)) text = STORAGE_FULL;
+      setNotice({ kind: "alert", text });
       if (stale) void reload();
     } finally {
       setBusy(false);
@@ -76,9 +75,8 @@ export default function VaultListPage() {
         </ul>
       )}
 
-      {status === "ready" && moreFailed && <p role="alert">No se pudieron cargar más bóvedas. Vuelve a intentarlo.</p>}
-      {status === "ready" && nextCursor && (
-        <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
+      {status === "ready" && hasMore && (
+        <button type="button" onClick={loadMore}>
           Cargar más
         </button>
       )}

@@ -52,7 +52,7 @@ interface StoredState {
  * Secuencias como número. Los adaptadores del navegador usan enteros; CouchDB, cadenas que
  * empiezan por el número (`"12-g1A…"`). Es la misma lectura que hace PouchDB al replicar.
  */
-function seqNumber(seq: number | string): number {
+export function seqNumber(seq: number | string): number {
   return typeof seq === "number" ? seq : parseInt(seq, 10) || 0;
 }
 

@@ -1,18 +1,17 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ApiError } from "../api/problems";
-import { restoreVault, Vault, VAULT_PROBLEM } from "../api/vaults";
-import { isSessionClosed, isStale } from "./errors";
+import { useSync } from "../sync/useSync";
+import { VaultNameTakenError, type Vault } from "../sync/vaultStore";
+import { isStale, isStorageFull, STORAGE_FULL } from "./errors";
 import { useVaultPages } from "./useVaultPages";
 
 type Notice = { kind: "status" | "alert"; text: string } | null;
 
 const DATE_FORMAT = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" });
 
-/** Bóvedas borradas con su `deleted_at` y "Restaurar" (RF-028). */
+/** Bóvedas borradas de la réplica local con su `deleted_at` y "Restaurar" (RF-028; SPEC-0005 RF-011). */
 export default function TrashPage() {
-  const navigate = useNavigate();
-  const { items, nextCursor, status, loadingMore, moreFailed, loadMore, reload, remove } = useVaultPages(true);
+  const { vaults } = useSync();
+  const { items, hasMore, status, loadMore, reload, remove } = useVaultPages(true);
   const [restoring, setRestoring] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
 
@@ -20,18 +19,19 @@ export default function TrashPage() {
     setRestoring(vault.id);
     setNotice(null);
     try {
-      // El `etag` viene del propio listado: una borrada no se puede pedir por id (PLAN-0003 §13).
-      await restoreVault(vault.id, vault.etag);
+      // La revisión viene del propio listado: `get` sólo ve bóvedas activas.
+      await vaults.restore(vault.id, vault.rev);
       remove(vault.id);
       setNotice({ kind: "status", text: `«${vault.name}» se restauró.` });
     } catch (err) {
-      if (isSessionClosed(err)) return navigate("/login", { replace: true });
       const stale = isStale(err);
       let text = `No se pudo restaurar «${vault.name}». Inténtalo de nuevo.`;
-      if (err instanceof ApiError && err.type === VAULT_PROBLEM.nameTaken) {
+      if (err instanceof VaultNameTakenError) {
         text = `No se puede restaurar «${vault.name}»: ya tienes otra bóveda con ese nombre.`;
       } else if (stale) {
         text = `«${vault.name}» cambió desde que se cargó la papelera; se muestra la versión actual.`;
+      } else if (isStorageFull(err)) {
+        text = STORAGE_FULL;
       }
       setNotice({ kind: "alert", text });
       if (stale) void reload();
@@ -74,9 +74,8 @@ export default function TrashPage() {
         </ul>
       )}
 
-      {status === "ready" && moreFailed && <p role="alert">No se pudieron cargar más bóvedas. Vuelve a intentarlo.</p>}
-      {status === "ready" && nextCursor && (
-        <button type="button" onClick={() => void loadMore()} disabled={loadingMore}>
+      {status === "ready" && hasMore && (
+        <button type="button" onClick={loadMore}>
           Cargar más
         </button>
       )}

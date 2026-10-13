@@ -279,6 +279,42 @@ el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
   `vaultRules` y escribe igual que la combinación automática; `ConflictView` (bloque I) sólo
   la llama. `vaultStore.ts` exporta `ID_PREFIX` para no repetir el prefijo.
 
+**Notas de implementación (Fase 4, bloque I; sin cambio de requisitos):**
+- (a) **Sesión y alcance.** `RequireAuth` publica el usuario verificado con `useMe()`; un
+  fallo de la re-verificación que no es 401 conserva la sesión. `App.tsx` monta
+  `SyncProvider` dentro de un `SyncScope` con `key={user_id}` (otro usuario, otra instancia)
+  y `paused` mientras `must_change_password` (el canal respondería 403, RF-002).
+- (b) **`SyncProvider`.** Las operaciones de arranque, cierre y logout pasan por una cola
+  `serial()` para no solaparse. Los rechazos cuentan como cambios sin confirmar en el aviso
+  de logout. El push único de "Sincronizar y salir" reutiliza `listenPush` (y `status.ts`
+  exporta `seqNumber`). Si `logout()` falla no se destruye nada y se muestra el error. Un
+  logout directo (sin pendientes) mantiene la fase "closed" con una guarda `leaving`.
+  `SyncEnv` (réplica, remota y replicador) es la costura de pruebas; `App` la recibe en la
+  prop `syncEnv`.
+- (c) **`dataVersion` como refresco en vivo.** Cualquier escritura en la réplica incrementa
+  `dataVersion`; lista y papelera se releen en silencio (sin volver a "cargando" y
+  conservando cuántas se ven). El formulario no se recarga: lo escrito no se pierde y un
+  cambio ajeno aparece al guardar como "la bóveda cambió".
+- (d) **Páginas en memoria.** `useVaultPages` lee la lista entera y muestra páginas de 50;
+  "Cargar más" no lee de nuevo, así que no tiene estado de "falló al cargar más". Una
+  lectura anterior a la última se descarta por generación.
+- (e) **Errores en las páginas.** `vaults/errors.ts`: `VaultChangedError` o
+  `VaultNotFoundError` = vista desfasada (aviso y recarga); `StorageFullError` muestra el
+  texto nuevo de R-11 ("No queda espacio en este dispositivo…"). Las páginas ya no tratan el
+  401 ni "sesión cerrada": la réplica local no los produce y la sesión caducada la muestra
+  la barra de estado.
+- (f) **`vaults/fields.ts`** reúne los textos de las reglas por campo y la lectura de
+  etiquetas y descripción; lo comparten `VaultForm` y `ConflictView`.
+- (g) **`RejectionsPage`.** "Corregir" de una bóveda que está en la papelera lleva a
+  `/vaults/trash` (el formulario sólo edita activas).
+- (h) **`ConflictView`** trata el estado (activa / en la papelera) como un campo más que se
+  elige.
+- (i) **`SyncStatusBar`** es una región "Sincronización" con un `status` ("Sincronizado",
+  "Sin conexión", con " · cambios pendientes" si los hay, "Sincronizando…", "Cambios
+  pendientes", "La sesión caducó: inicia sesión para seguir sincronizando."), la hora de la
+  última sincronización y enlaces con contador a rechazos y conflictos. `LogoutDialog` se
+  monta dentro de la navegación "Cuenta" de `AppLayout`.
+
 ### 2.6 Algoritmo de combinación (`merge.ts`, ADR-003)
 Entrada: la ganadora `W` (la que elige CouchDB/PouchDB, determinista e igual en todas las
 réplicas), cada perdedora viva `L` y el ancestro común `A` (la revisión más reciente que

@@ -1,7 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import userEvent from "@testing-library/user-event";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { vi } from "vitest";
-import RequireAuth from "./RequireAuth";
+import RequireAuth, { useMe } from "./RequireAuth";
 import * as api from "../api/auth";
 
 function renderAt(path: string) {
@@ -46,4 +47,44 @@ test("la página de cambio es accesible también con el indicador desactivado (t
   vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "guest", must_change_password: false });
   renderAt("/settings/password");
   expect(await screen.findByText("cambio de clave")).toBeInTheDocument();
+});
+
+function ShowMe() {
+  const me = useMe();
+  return <div>usuario {me.user_id}</div>;
+}
+
+test("SPEC-0005: `useMe()` da el usuario verificado a las rutas privadas", async () => {
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "u-7", role: "guest", must_change_password: false });
+  render(
+    <MemoryRouter initialEntries={["/"]}>
+      <Routes>
+        <Route path="/" element={<RequireAuth><ShowMe /></RequireAuth>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  expect(await screen.findByText("usuario u-7")).toBeInTheDocument();
+});
+
+test("SPEC-0005 RF-009: si al navegar la comprobación falla sin red, la sesión verificada sigue", async () => {
+  vi.spyOn(api, "getMe")
+    .mockResolvedValueOnce({ user_id: "1", role: "guest", must_change_password: false })
+    .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+  render(
+    <MemoryRouter initialEntries={["/"]}>
+      <Routes>
+        <Route path="/" element={<RequireAuth><Link to="/otra">ir</Link></RequireAuth>} />
+        <Route path="/otra" element={<RequireAuth><div>otra privada</div></RequireAuth>} />
+      </Routes>
+    </MemoryRouter>,
+  );
+  await userEvent.click(await screen.findByRole("link", { name: "ir" }));
+  expect(await screen.findByText("otra privada")).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("sin una sesión verificada antes, un fallo de red lo avisa", async () => {
+  vi.spyOn(api, "getMe").mockRejectedValue(new TypeError("Failed to fetch"));
+  renderAt("/");
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo verificar la sesión.");
 });
