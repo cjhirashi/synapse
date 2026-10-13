@@ -68,4 +68,4 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-**0003-vault-crud** cerrada en `implemented`: verificación adversarial (Fase 4) y, con la regla de salida, decisión del usuario sobre `verified`. Decidir si se añade `@vitest/coverage-v8` para medir la cobertura del frontend. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg), diagrama T-003 y merge de PR #3.
+**0003-vault-crud** en `implemented`: la verificación adversarial (2026-10-13) dio **REJECTED** por VA-1 (mayor: carrera liberar/reservar que permite dos activas con el mismo nombre) y 9 menores (VA-2…VA-10, ver `history.md`). Pendiente: que el usuario apruebe el plan de corrección (enmienda), corregir y lanzar una nueva ronda; después, decisión del usuario sobre `verified`. Decidir si se añade `@vitest/coverage-v8` para medir la cobertura del frontend. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg), diagrama T-003 y merge de PR #3.
