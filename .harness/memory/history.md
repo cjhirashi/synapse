@@ -426,7 +426,7 @@
   integración (sin aprobaciones): renumerado a **0006-integration-real-db** (frontmatter, TAREAS.md).
 - Descartado antes, a la espera del usuario: el tablero `.harness/TAREAS.md` ("Week 1
   Foundation") — contradice `state.md` (motor de sync propio, sobrescribe CLAUDE.md/AGENTS.md).
-  Sigue sin versionar.
+  Nunca se versionó y ya no está en el árbol.
 - Rúbrica: carril SDD, Fase 1 (cruza frontend, backend y CouchDB; nueva frontera).
 - `specs/0005-sync/spec.md` en `draft`: hechos del repo (CouchDB sólo con admin en la red
   interna; invariantes de 0003 aplicados por el servicio, con reservas `vault-name:*`), alcance
@@ -444,6 +444,5 @@
 - **Rebotes:** ninguno.
 - **Gate:** verde (avisos: spectral; `covers` de 0005/0006 aún sin archivos).
 - **Docs:** `specs/0005-sync/` (spec + diagrams), `state.md`, `ARCHIFY.md`, `TAREAS.md`.
-- **Decisiones del usuario pendientes:** D-1…D-6 y backoff/RNF-001 de 0005; las 3 de 0006; destino
-  de `.harness/TAREAS.md`; merge de PR #3; SPEC-0002 → `verified`.
+- **Decisiones del usuario pendientes:** D-1…D-6 y backoff/RNF-001 de 0005; las 3 de 0006; merge de PR #3; SPEC-0002 → `verified`.
 - **Próximo paso:** converger la Fase 1 de 0005 con las respuestas del usuario (Gate 1).
