@@ -42,8 +42,10 @@
       "enabled": true,
       "use_cases": [
         "Sistema de diseño profesional (79 estilos, 192 paletas)",
-        "Componentes UI reusables (vault, auth, documents)",
-        "Design tokens automatizados",
+        "Control de temas: light/dark mode con toggle",
+        "Responsive design: mobile-first, breakpoints (320px, 768px, 1024px, 1440px)",
+        "Componentes UI reusables (vault, auth, documents, theme switcher)",
+        "Design tokens automatizados (colores, tipografía, espaciado, sombras)",
         "Guía de estilo para frontend React"
       ],
       "output_path": "src/frontend/design-system/",
