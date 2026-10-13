@@ -109,7 +109,7 @@ actualizado: 2026-10-13
 - [x] T-067 — `vaults/useVaultPages.ts`, `VaultListPage.tsx`, `TrashPage.tsx` (VA-9) (cubre RF-018, RF-028) [zona: frontend]
 - [x] T-068 — trazabilidad: `RF-` en los tests que no lo llevaban (VA-7); `covers` con `api/vaults.test.ts` (VA-6) (cubre RF-010, RF-014, RF-018, RF-019, RF-020, RF-028) [doc]
 - [x] T-069 — docs: `backend/README.md` (nombres equivalentes, caracteres de control, cursor, id canónico), `adapters/README.md` (404 al borrar), `frontend/src/README.md` (VA-9) [doc]
-- [ ] T-070 (cierre) — tabla de cobertura con la evidencia, `state.md`, `history.md`, `anchor_commit` (cubre RF-003, RF-005, RF-007, RF-014, RF-021) [doc]
+- [x] T-070 (cierre) — tabla de cobertura con la evidencia, `state.md`, `history.md`, `anchor_commit` (cubre RF-003, RF-005, RF-007, RF-014, RF-021) [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` se rellena con la evidencia de la verificación)
 | RF / doc | Tareas | Test(s) | Estado |

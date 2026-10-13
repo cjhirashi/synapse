@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: 4a07556   # re-anclaje por SPEC-0003 (PLAN-0003 §10)
+anchor_commit: d730de9   # re-anclaje por SPEC-0003 enmienda 1 (core/schemas.py)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**

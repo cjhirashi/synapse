@@ -4,7 +4,7 @@ tipo: spec
 feature: 0003-vault-crud
 estado: implemented
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 4a07556   # cierre de la Fase 4 (T-051)
+anchor_commit: d730de9   # cierre de la enmienda 1 (T-070)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py
