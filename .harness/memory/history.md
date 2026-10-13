@@ -492,3 +492,33 @@
 
 - Usuario: «así es» → **GATE 1 aprobado**: `aprobaciones.fase_1` registrada, `estado: approved`.
 - Sigue la Fase 2 (`plan.md`) de SPEC-0005.
+
+## [2026-10-13] 0005-sync — PLAN-0005 en borrador (Fase 2)
+
+- `specs/0005-sync/plan.md` creado (`draft`, `fase_2: pendiente`):
+  - rutas exactas `/sync/` y `/sync/db/…`, comodín → 404, lista blanca de parámetros;
+  - `_changes` en streaming async con selector `vault:*`;
+  - push validado con códigos `reason` y lápidas sólo para cerrar ramas;
+  - reserva por rama viva (`_holder` multi-hoja);
+  - ancestro leído del árbol local;
+  - merge determinista que converge;
+  - cliente `src/sync/` (réplica, replicador con Web Lock, estado, rechazos, conflictos, diálogo de salida);
+  - tests con dos réplicas PouchDB reales contra backend y CouchDB reales.
+- Para el GATE 2, decisiones del usuario:
+  - P-1: tocar código de SPEC-0003 (`verified`) y re-anclarla al cierre;
+  - P-2: dependencia `pouchdb-browser`.
+- P-3…P-5 se explican para confirmarlas.
+- No me autoapruebo: `fase_2` sigue pendiente.
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** Fase 2 de SPEC-0005; el plan está listo para el GATE 2.
+- **Rebotes:** ninguno.
+- **Gate:** verde (avisos conocidos).
+- **Docs:** `specs/0005-sync/plan.md`, `state.md`.
+- **Decisiones del usuario pendientes:**
+  - GATE 2 de 0005 con P-1/P-2;
+  - las 3 de 0006;
+  - merge de PR #3;
+  - SPEC-0002 → `verified`.
+- **Próximo paso:** con el GATE 2, fijar `covers` en el spec y empezar la Fase 3 (`tasks.md`).
