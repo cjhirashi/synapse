@@ -50,8 +50,9 @@ fm_list() {  # $1=archivo  $2=clave de lista  →  ítems (uno por línea)
   awk -v k="$2" '
     /^---[[:space:]]*$/ { n++; next }
     n!=1 { next }
-    $0 ~ "^"k":[[:space:]]*$" { inlist=1; next }
-    inlist && /^[[:space:]]*-[[:space:]]/ { sub(/^[[:space:]]*-[[:space:]]*/,""); gsub(/["'\'']/,""); print; next }
+    # La clave puede llevar un comentario YAML detrás (como en la plantilla de spec).
+    $0 ~ "^"k":[[:space:]]*(#.*)?$" { inlist=1; next }
+    inlist && /^[[:space:]]*-[[:space:]]/ { sub(/^[[:space:]]*-[[:space:]]*/,""); sub(/[[:space:]]+#.*$/,""); gsub(/["'\'']/,""); print; next }
     inlist && /^[^[:space:]-]/ { inlist=0 }
   ' "$1"
 }

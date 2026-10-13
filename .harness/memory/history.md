@@ -531,3 +531,41 @@
 - Plan en `approved` con `fase_2` registrada; P-3…P-5 confirmadas con el plan.
 - En la spec: `fase_2` registrada y `covers` fijados según PLAN-0005 §9.
 - Sigue la Fase 3 (`tasks.md`).
+
+## [2026-10-13] Gate — `fm_list` acepta comentarios en la clave
+
+- **Causa:** el aviso "0005-sync: sin covers[]" venía de un comentario YAML detrás de `covers:`, que la plantilla de spec también usa. `fm_list` sólo reconocía la clave si no había nada detrás.
+- **Arreglo de raíz:** en `check.sh`, `fm_list` acepta `clave:  # comentario` y quita también los comentarios al final de cada ítem.
+- Gate: 25 ok · 1 aviso (`spectral`) · 0 errores.
+
+## [2026-10-13] 0005-sync — TASKS-0005 en borrador (Fase 3)
+
+- `specs/0005-sync/tasks.md`: 84 tareas (T-001…T-084), con el test siempre antes que el código.
+- Bloques A–L según PLAN-0005 §6:
+  - A: contrato y errores;
+  - B: filtros;
+  - C: puertos, adaptadores y `leaves`;
+  - D: `_holder`;
+  - E: push validado;
+  - F: rutas y aislamiento;
+  - G: base del frontend;
+  - H: replicación, estado, rechazos y conflictos;
+  - I: UI y pantallas de 0003 sobre `vaultStore`;
+  - J: nginx y vite;
+  - K: sincronización real y rendimiento;
+  - L: documentación y re-anclajes.
+- Cobertura: RF-001…RF-019, RNF-001…003 y 9 filas de documentación, todas en `Pendiente`.
+- `fase_3` queda pendiente; espera el GATE 3.
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** Fase 3 de SPEC-0005; `tasks.md` está listo para el GATE 3.
+- **Rebotes:** ninguno.
+- **Gate:** verde; único aviso, `spectral`.
+- **Docs:** `tasks.md`, `state.md`, `check.sh`.
+- **Decisiones del usuario pendientes:**
+  - GATE 3 de 0005;
+  - las 3 de 0006;
+  - merge de PR #3;
+  - SPEC-0002 → `verified`.
+- **Próximo paso:** con el GATE 3, la Fase 4 empieza por el bloque A (T-001).
