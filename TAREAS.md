@@ -210,7 +210,7 @@ Generar diagrama narrativo mostrando cómo el sistema garantiza aislamiento:
 
 ### [T-006] Tests de integración (Real DB)
 
-**Estado:** En Fase 1 — SPEC-0005 en `draft` (preguntas abiertas para el usuario)  
+**Estado:** En Fase 1 — SPEC-0006 en `draft` (preguntas abiertas para el usuario)  
 **Prioridad:** P1  
 **Estimación:** 8 horas  
 **Fecha asignación:** 2026-10-18 (después T-002)  
@@ -247,7 +247,7 @@ Ver P5 rule en `.harness/memory/state.md`
 | T-003 | Hecha | 100% | revisión del usuario |
 | T-004 | Pendiente | — | T-001 |
 | T-005 | Pendiente | — | T-002 |
-| T-006 | Fase 1 (SPEC-0005 draft) | — | respuestas del usuario |
+| T-006 | Fase 1 (SPEC-0006 draft) | — | respuestas del usuario |
 
 **Crítico Path:**
 1. T-001 (auth) → 2. T-002 (vaults) → 3. T-006 (integration tests)

@@ -54,7 +54,7 @@
 
 ---
 
-### 2. **Flujo de Sincronización** (Sprint 4 — Sincronización; número de spec por reservar, `0004` lo tomó `api-problem-details`)
+### 2. **Flujo de Sincronización** (SPEC-0005 `0005-sync`)
 
 **Tipo:** Dataflow  
 **Qué mostrar:**
@@ -74,11 +74,16 @@
 
 **Guardar en:**
 ```
-.harness/specs/NNNN-sync-offline-first/diagrams/
-├── sync-dataflow.html
-├── sync-dataflow.svg
-└── sync-dataflow-light.png
+.harness/specs/0005-sync/diagrams/
+├── sync-flow.html (interactivo; SVG desde «Exportar»)
+├── sync-flow.candidate.json
+├── sync-flow-light.png
+└── sync-flow-dark.png
 ```
+
+> **Estado (2026-10-13):** primera versión como *workflow* (carriles navegador / servidor /
+> conflictos), con las opciones recomendadas de la Fase 1 de SPEC-0005; se actualiza al
+> cerrar sus decisiones. Índice en `.harness/specs/0005-sync/diagrams/README.md`.
 
 ---
 
@@ -212,8 +217,8 @@ sequenceDiagram
 - [ ] (No requiere diagramas nuevos, puede reutilizar arquitectura)
 
 ### **Sprint 4 — Sincronización**
-- [ ] Generar **Flujo de Sincronización (Dataflow)**
-- [ ] Guardar en `.harness/specs/NNNN-sync-offline-first/diagrams/`
+- [x] Generar **Flujo de Sincronización** (borrador de Fase 1, workflow)
+- [x] Guardar en `.harness/specs/0005-sync/diagrams/`
 
 ### **Sprint 5+ — Editor + OpenClaw**
 - [ ] Generar **Integración OpenClaw (Architecture)**

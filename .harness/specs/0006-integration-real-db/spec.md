@@ -1,7 +1,7 @@
 ---
-id: SPEC-0005
+id: SPEC-0006
 tipo: spec
-feature: 0005-integration-real-db
+feature: 0006-integration-real-db
 estado: draft            # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: d7927ad   # último commit reconciliado (lo mueve el cierre)
@@ -15,11 +15,13 @@ aprobaciones:
 actualizado: 2026-10-13
 ---
 
-# SPEC-0005 · Tests de integración contra backends reales
+# SPEC-0006 · Tests de integración contra backends reales
 
 > Borrador de apertura de la Fase 1 (elicitación con el usuario, `method.md §3`). Nace de
 > T-006 de `TAREAS.md` y del backlog 4 de `state.md`. Nada de lo de abajo está decidido:
 > las preguntas abiertas están en «Marcadores abiertos».
+>
+> Renumerada de 0005 a 0006 el 2026-10-13: el usuario asignó 0005 a la sincronización.
 
 ## 1. Contexto del dominio
 - **Problema:** la suite prueba CouchDB real, pero el control plane (usuarios, refresh

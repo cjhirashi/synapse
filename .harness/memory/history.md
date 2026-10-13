@@ -419,3 +419,31 @@
 - **Decisiones del usuario pendientes:** 3 `[NEEDS CLARIFICATION]` de SPEC-0005; merge de PR #3;
   SPEC-0002 → `verified`; revisar el diagrama T-003.
 - **Próximo paso:** converger la Fase 1 de SPEC-0005 con las respuestas del usuario.
+
+## [2026-10-13] 0005-sync (PouchDB ↔ CouchDB) — Fase 1 abierta (borrador)
+
+- Petición del usuario: SPEC-0005 = sincronización. El número lo tenía el borrador de tests de
+  integración (sin aprobaciones): renumerado a **0006-integration-real-db** (frontmatter, TAREAS.md).
+- Descartado antes, a la espera del usuario: el tablero `.harness/TAREAS.md` ("Week 1
+  Foundation") — contradice `state.md` (motor de sync propio, sobrescribe CLAUDE.md/AGENTS.md).
+  Sigue sin versionar.
+- Rúbrica: carril SDD, Fase 1 (cruza frontend, backend y CouchDB; nueva frontera).
+- `specs/0005-sync/spec.md` en `draft`: hechos del repo (CouchDB sólo con admin en la red
+  interna; invariantes de 0003 aplicados por el servicio, con reservas `vault-name:*`), alcance
+  propuesto, RF-001…RF-010 borrador, riesgos R-1…R-12 (incluye el hazard 1 y el 3), decisiones
+  D-1…D-6 con alternativas y recomendación, 7 `[NEEDS CLARIFICATION]`.
+- Diagrama Archify `diagrams/sync-flow.*` (workflow, opciones recomendadas): validate, deliver,
+  check, browser-check y visual-check en verde; capturas revisadas. Un primer intento con 5
+  carriles falló por altura (`composition/viewport-height`) → 3 carriles; un timeout CDP de
+  Chrome en el contenedor se resolvió con `--ipc=host`.
+- `state.md`, `ARCHIFY.md` y `TAREAS.md` actualizados.
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** SPEC-0005 (sync) en Fase 1 `draft`; SPEC-0006 (integración) en `draft`.
+- **Rebotes:** ninguno.
+- **Gate:** verde (avisos: spectral; `covers` de 0005/0006 aún sin archivos).
+- **Docs:** `specs/0005-sync/` (spec + diagrams), `state.md`, `ARCHIFY.md`, `TAREAS.md`.
+- **Decisiones del usuario pendientes:** D-1…D-6 y backoff/RNF-001 de 0005; las 3 de 0006; destino
+  de `.harness/TAREAS.md`; merge de PR #3; SPEC-0002 → `verified`.
+- **Próximo paso:** converger la Fase 1 de 0005 con las respuestas del usuario (Gate 1).

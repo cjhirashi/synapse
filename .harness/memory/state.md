@@ -71,3 +71,5 @@ sprint_actual: 2
 ## Próximo paso inmediato
 
 **0003-vault-crud** en `verified` (2026-10-13). Observación para la futura feature de sincronización: el servidor sólo acepta ids UUID canónicos. Diagrama T-003 generado en `diagrams/` (2026-10-13). Pendiente aparte: merge de PR #3.
+
+**0005-sync** (PouchDB ↔ CouchDB) en Fase 1 `draft` (2026-10-13): requisitos, riesgos R-1…R-12 y decisiones D-1…D-6 para el usuario; diagrama de flujo propuesto en `specs/0005-sync/diagrams/`. **0006-integration-real-db** (renumerada desde 0005) sigue en `draft` con sus 3 preguntas.
