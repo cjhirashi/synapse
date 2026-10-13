@@ -213,6 +213,35 @@ límite de respuesta menor de 90 s (`longpoll`). Estos requisitos se documentan
 sólo de la API: las vistas nuevas son `/rejections` y `/conflicts`, así que no hace falta
 el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
 
+**Notas de implementación (Fase 4, bloque G; sin cambio de requisitos):**
+- (a) **Dependencias.** Además de las dos de P-2, los tipos en desarrollo
+  `@types/pouchdb-browser` 6.1.5 y `@types/pouchdb-adapter-memory` 6.1.6 (versiones exactas,
+  sólo tipos). `tsconfig.json` activa `resolveJsonModule` para que `vaultRules.test.ts` lea la
+  batería común `backend/tests/fixtures/vault_rules_cases.json` sin copiarla.
+- (b) **Reglas espejo exactas a pydantic-core, no a Python.** El `strip` de pydantic es el de
+  Rust (`str::trim`, propiedad Unicode `White_Space`): quita U+0085 y no quita U+001C…U+001F
+  ni U+FEFF. Las longitudes cuentan puntos de código y se miden tras el `strip` y **antes**
+  de pasar a minúsculas (`"İ"*32` es una etiqueta válida que se alarga al bajarla). La
+  batería incluye esos casos.
+- (c) **`nameKey`.** `toLocaleLowerCase` no equivale a `casefold`: NFKC, después una tabla de
+  los 97 puntos de código donde `casefold` ≠ minúsculas (estables bajo NFKC), el pliegue de
+  cherokee por rangos y por último `toLowerCase`. Comprobado contra todo Unicode: sólo
+  difieren 29 puntos de código nuevos de Unicode 17 (el navegador puede conocerlos y Python
+  3.14 no). Es un aviso local; la última palabra es del servidor.
+- (d) **`localDb`.** Siempre que el dueño guardado no sea el `sub` (otro usuario o dueño
+  desconocido) se destruye la base entera, también sus documentos `_local`, antes de crearla.
+- (e) **`vaultStore`.** `update` valida sólo los campos enviados (el PATCH parcial de 0003).
+  El orden de los errores es el de 0003: validación, bóveda en el estado pedido
+  (`VaultNotFoundError`), `rev` actual (`VaultChangedError`, también ante el 409 de PouchDB) y
+  nombre libre (`VaultNameTakenError`, también al restaurar). Cuota agotada →
+  `StorageFullError` (`indexed_db_went_bad` con `reason: "QuotaExceededError"`).
+- (f) **`merge`.** El paso 7 ("sólo difieren en `updated_at`", etiquetas en el mismo orden) se
+  comprueba antes que el ancestro: así la convergencia no depende de conservarlo. Para el
+  paso 4 un lado "cambió algún campo" si cambió `name`, `description` o el conjunto de
+  `tags` (reordenarlas no es una edición); un cambio de `deleted_at` sin oposición se aplica
+  también cuando es una restauración. El resultado manual indica el motivo (`no-ancestor`,
+  `clash` o `invalid`) y los campos afectados.
+
 ### 2.6 Algoritmo de combinación (`merge.ts`, ADR-003)
 Entrada: la ganadora `W` (la que elige CouchDB/PouchDB, determinista e igual en todas las
 réplicas), cada perdedora viva `L` y el ancestro común `A` (la revisión más reciente que

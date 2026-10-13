@@ -70,16 +70,16 @@ actualizado: 2026-10-13
 - [x] T-031 — `main.py`: `include_router(sync.router)`; re-export de `0005-sync/contracts/openapi.yaml` (cubre RF-001, RF-003) [zona: ruta]
 
 ### G · Frontend base
-- [ ] T-032 — `package.json`: `pouchdb-browser` y, en desarrollo, `pouchdb-adapter-memory`, versiones exactas (P-2); `npm ci` y suite actual en verde (cubre RF-009) [zona: config]
-- [ ] T-033 — `backend/tests/fixtures/vault_rules_cases.json` + test `test_sync_rules_mirror.py`: cada caso (entrada, veredicto, normalizado) coincide con `core/schemas.py` (cubre RF-005, RF-015) [zona: test]
-- [ ] T-034 — test (rojo) `sync/vaultRules.test.ts`: la misma batería JSON → mismo veredicto y normalización; `nameKey` (cubre RF-005, RF-015) [zona: test]
-- [ ] T-035 — `sync/vaultRules.ts` (cubre RF-005, RF-015) [zona: cliente]
-- [ ] T-036 — test (rojo) `sync/localDb.test.ts`: `_local/synapse-owner`; usuario distinto → réplica destruida y vacía antes de replicar; mismo usuario → se conserva; almacenamiento borrado → réplica vacía nueva (cubre RF-018) [zona: test]
-- [ ] T-037 — `sync/localDb.ts` (sin `auto_compaction`) (cubre RF-018) [zona: cliente]
-- [ ] T-038 — test (rojo) `sync/vaultStore.test.ts`: `create`/`update`/`softDelete`/`restore`/`list`/`get` sobre PouchDB en memoria; normaliza; nombre ocupado en local → error; `_rev` viejo → error de "la bóveda cambió"; orden `created_at` desc, `_id` desc; fechas con formato de `utc_now`; cuota agotada → error claro (cubre RF-009, RF-011) [zona: test]
-- [ ] T-039 — `sync/vaultStore.ts` (cubre RF-009, RF-011) [zona: cliente]
-- [ ] T-040 — test (rojo) `sync/merge.test.ts`: tabla de ADR-003 — campos distintos, mismo campo (choque), sin ancestro, tags altas/bajas y orden, borrado vs edición (restaurada), ambos borrados, sólo `updated_at` distinto, resultado inválido (> 20 tags) → manual, convergencia de dos resoluciones simultáneas (cubre RF-012, RF-013, RF-014, RF-015) [zona: test]
-- [ ] T-041 — `sync/merge.ts` (cubre RF-012, RF-013, RF-014, RF-015) [zona: cliente]
+- [x] T-032 — `package.json`: `pouchdb-browser` y, en desarrollo, `pouchdb-adapter-memory`, versiones exactas (P-2); `npm ci` y suite actual en verde (cubre RF-009) [zona: config]
+- [x] T-033 — `backend/tests/fixtures/vault_rules_cases.json` + test `test_sync_rules_mirror.py`: cada caso (entrada, veredicto, normalizado) coincide con `core/schemas.py` (cubre RF-005, RF-015) [zona: test]
+- [x] T-034 — test (rojo) `sync/vaultRules.test.ts`: la misma batería JSON → mismo veredicto y normalización; `nameKey` (cubre RF-005, RF-015) [zona: test]
+- [x] T-035 — `sync/vaultRules.ts` (cubre RF-005, RF-015) [zona: cliente]
+- [x] T-036 — test (rojo) `sync/localDb.test.ts`: `_local/synapse-owner`; usuario distinto → réplica destruida y vacía antes de replicar; mismo usuario → se conserva; almacenamiento borrado → réplica vacía nueva (cubre RF-018) [zona: test]
+- [x] T-037 — `sync/localDb.ts` (sin `auto_compaction`) (cubre RF-018) [zona: cliente]
+- [x] T-038 — test (rojo) `sync/vaultStore.test.ts`: `create`/`update`/`softDelete`/`restore`/`list`/`get` sobre PouchDB en memoria; normaliza; nombre ocupado en local → error; `_rev` viejo → error de "la bóveda cambió"; orden `created_at` desc, `_id` desc; fechas con formato de `utc_now`; cuota agotada → error claro (cubre RF-009, RF-011) [zona: test]
+- [x] T-039 — `sync/vaultStore.ts` (cubre RF-009, RF-011) [zona: cliente]
+- [x] T-040 — test (rojo) `sync/merge.test.ts`: tabla de ADR-003 — campos distintos, mismo campo (choque), sin ancestro, tags altas/bajas y orden, borrado vs edición (restaurada), ambos borrados, sólo `updated_at` distinto, resultado inválido (> 20 tags) → manual, convergencia de dos resoluciones simultáneas (cubre RF-012, RF-013, RF-014, RF-015) [zona: test]
+- [x] T-041 — `sync/merge.ts` (cubre RF-012, RF-013, RF-014, RF-015) [zona: cliente]
 
 ### H · Replicación, estado, rechazos y conflictos
 - [ ] T-042 — test (rojo) `sync/remote.test.ts`: `credentials: "include"`; 401 → `refreshSession()` y reintento; refresh fallido → evento "sesión caducada" (cubre RF-002, RF-016) [zona: test]

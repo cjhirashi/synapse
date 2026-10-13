@@ -689,3 +689,23 @@
     - Después, el `receive` reproducido delega en el original, para que `StreamingResponse` siga recibiendo el `http.disconnect`.
 - Suite completa: **659 passed**.
 - **Próximo paso:** bloque G.
+
+## [2026-10-13] 0005-sync — Fase 4: T-032…T-041 (cliente base, bloque G)
+- **T-032:** `pouchdb-browser` 9.0.0 y, en desarrollo, `pouchdb-adapter-memory` 9.0.0 más sus tipos (`@types/*`, versiones exactas).
+- **T-033:** batería común `backend/tests/fixtures/vault_rules_cases.json` y `test_sync_rules_mirror.py` (79 tests contra `_FIELD_RULES` y `name_key`).
+- **T-034/T-035:** `sync/vaultRules.ts` y su test sobre la misma batería (81 tests).
+- **T-036/T-037:** `sync/localDb.ts` (dueño en `_local/synapse-owner`, sin `auto_compaction`) y su test (7).
+- **T-038/T-039:** `sync/vaultStore.ts` (list/get/create/update/softDelete/restore con la semántica de 0003) y su test (21).
+- **T-040/T-041:** `sync/merge.ts` (ADR-003, función pura) y su test (22), con convergencia.
+- Desviaciones (a)–(f), registradas en PLAN-0005 §2.5 (pendientes de visto bueno):
+  - (a) tipos `@types/*` y `resolveJsonModule`;
+  - (b) `strip` por `White_Space` (pydantic-core), longitudes en puntos de código, medidas antes de bajar a minúsculas;
+  - (c) `nameKey` por tabla en vez de `toLocaleLowerCase`, con la salvedad de Unicode 17;
+  - (d) `localDb` destruye siempre que el dueño no sea el `sub`;
+  - (e) orden de errores de `vaultStore`;
+  - (f) `merge`: paso 7 antes que el ancestro; reordenar tags no es edición; motivo del manual.
+- Rebotes internos:
+  - La batería marcaba inválido `"\u0085Notas\u001c\u001f"` en el servidor: el espejo usaba el `strip` de Python. Corregido de raíz con `\p{White_Space}` y casos separados.
+  - Un caso de `merge.test` tenía la expectativa mal escrita (`tags: ["c"]` es quitar a y b, no añadir c); se corrigió el test, no el código.
+- Frontend: **218 passed**, typecheck OK. Python espejo: 79 passed.
+- **Próximo paso:** bloque H.
