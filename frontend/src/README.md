@@ -10,7 +10,7 @@ src/
 ├── settings/   # ajustes de cuenta (cambiar contraseña)
 ├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
 ├── vaults/     # bóvedas sobre la réplica local: lista, formulario crear/editar, papelera (SPEC-0003)
-├── test-utils/ # utilidades de prueba (réplica en memoria, contexto de sync)
+├── test-utils/ # utilidades de prueba (réplica en memoria, contexto de sync, dispositivos simulados)
 ├── App.tsx     # rutas
 └── main.tsx
 ```
@@ -44,6 +44,10 @@ publica por `useSync()`. `layout/AppLayout.tsx` muestra `SyncStatusBar` y su «C
 sesión» llama a `requestLogout()`: con cambios sin confirmar abre `LogoutDialog`; al salir,
 `logout()` y, si el servidor cerró la sesión, se borra la réplica. `test-utils/sync.tsx`
 da réplicas en memoria, un replicador falso y un contexto mínimo (`syncValue`, `WithSync`).
+`sync/resources.ts` abre réplica, remota y replicador (lo comparten el proveedor y las
+pruebas de integración). Éstas (`sync/*.integration.test.ts`, `npm run test:sync`) usan
+`test-utils/device.ts`: cada `Device` es un navegador con sus cookies, su red simulable
+(sin red, backend caído) y su réplica, contra el backend real.
 
 **Bóvedas (SPEC-0003 sobre la réplica, P-1):** las páginas leen y escriben
 `useSync().vaults` (`sync/vaultStore.ts`) en lugar de la API REST, que sigue igual para los

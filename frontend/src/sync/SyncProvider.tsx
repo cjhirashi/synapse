@@ -18,29 +18,13 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout as logoutSession } from "../api/auth";
-import { openConflicts, type ConflictsStore, type ManualConflict } from "./conflicts";
-import { destroyLocalDb, openLocalDb, type LocalDbOptions } from "./localDb";
-import { openRejections, type Rejection, type RejectionsStore } from "./rejections";
-import { createRemoteDb } from "./remote";
-import {
-  BATCH_SIZE,
-  createReplicator,
-  listenPush,
-  type Replicator,
-  type ReplicatorOptions,
-  type RuntimeReplication,
-  type SyncEvent,
-} from "./replicator";
-import { openSyncStatus, seqNumber, type SyncStatus, type SyncStatusStore } from "./status";
+import type { ManualConflict } from "./conflicts";
+import { destroyLocalDb } from "./localDb";
+import type { Rejection } from "./rejections";
+import { openSyncResources, pushOnce, type SyncEnv, type SyncResources } from "./resources";
+import type { SyncStatus } from "./status";
 import { SyncContext, type LogoutFailure, type LogoutPhase, type SyncContextValue } from "./useSync";
-import { createVaultStore, ID_PREFIX, type VaultStore } from "./vaultStore";
-
-/** Dependencias sustituibles en las pruebas (réplica en memoria, remota y replicador falsos). */
-export interface SyncEnv {
-  localDb?: LocalDbOptions;
-  createRemote?: (onSessionExpired: () => void) => PouchDB.Database;
-  createReplicator?: (options: ReplicatorOptions) => Replicator;
-}
+import { ID_PREFIX } from "./vaultStore";
 
 interface Props {
   /** Usuario de la sesión: dueño de la réplica y de las bóvedas nuevas. */
@@ -49,20 +33,6 @@ interface Props {
   paused: boolean;
   env?: SyncEnv;
   children: ReactNode;
-}
-
-/** Lo que abre una instancia del proveedor; `close()` lo detiene una sola vez. */
-interface Resources {
-  db: PouchDB.Database;
-  remote: PouchDB.Database;
-  vaults: VaultStore;
-  status: SyncStatusStore;
-  rejections: RejectionsStore;
-  conflicts: ConflictsStore;
-  replicator: Replicator;
-  /** Cada escritura en una bóveda de la réplica (para `dataVersion`). */
-  feed: PouchDB.Core.Changes<{}>;
-  close(): Promise<void>;
 }
 
 const DEFAULT_ENV: SyncEnv = {};
@@ -76,76 +46,7 @@ function serial<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
-async function openResources(sub: string, env: SyncEnv): Promise<Resources> {
-  const db = await openLocalDb(sub, env.localDb);
-  const status = await openSyncStatus(db);
-  const rejections = await openRejections(db);
-  const conflicts = await openConflicts(db);
-  // El replicador se crea después que la remota, pero la remota avisa de la sesión caducada:
-  // el aviso llega siempre más tarde, cuando el replicador ya existe.
-  let replicator: Replicator | null = null;
-  const onSessionExpired = () => replicator?.sessionExpired();
-  const remote = (env.createRemote ?? ((expired) => createRemoteDb({ onSessionExpired: expired })))(onSessionExpired);
-  const onEvent = (event: SyncEvent) => {
-    void status.handle(event);
-    void rejections.handle(event);
-  };
-  replicator = (env.createReplicator ?? createReplicator)({ local: db, remote, onEvent });
-  const feed = db.changes({ live: true, since: "now" });
-
-  let closed: Promise<void> | null = null;
-  const resources: Resources = {
-    db,
-    remote,
-    vaults: createVaultStore(db, sub),
-    status,
-    rejections,
-    conflicts,
-    replicator,
-    feed,
-    close() {
-      closed ??= (async () => {
-        feed.cancel();
-        await resources.replicator.stop();
-        status.close();
-        rejections.close();
-        conflicts.close();
-      })();
-      return closed;
-    },
-  };
-  return resources;
-}
-
-/**
- * Push de una vez para "Sincronizar y salir". Sus escritas y rechazos van a los mismos
- * almacenes que los de la replicación continua. Devuelve si el servidor confirmó todo: sin
- * fallos de escritura, sin rechazos pendientes y con la secuencia local entera recorrida.
- */
-async function pushOnce(resources: Resources): Promise<boolean> {
-  const handled: Promise<void>[] = [];
-  const emit = (event: SyncEvent) => {
-    handled.push(resources.status.handle(event), resources.rejections.handle(event));
-  };
-  try {
-    const replication = resources.db.replicate.to(resources.remote, { batch_size: BATCH_SIZE });
-    listenPush(replication as unknown as RuntimeReplication, emit);
-    const result = await replication;
-    await Promise.all(handled);
-    const { update_seq } = await resources.db.info();
-    return (
-      result.ok &&
-      result.doc_write_failures === 0 &&
-      resources.rejections.list().length === 0 &&
-      seqNumber(result.last_seq) >= seqNumber(update_seq)
-    );
-  } catch {
-    // Sin conexión, 503 o sesión caducada a mitad: no se confirmó nada.
-    return false;
-  }
-}
-
-type Phase = { kind: "loading" } | { kind: "ready"; resources: Resources } | { kind: "error" };
+type Phase = { kind: "loading" } | { kind: "ready"; resources: SyncResources } | { kind: "error" };
 
 export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children }: Props) {
   const navigate = useNavigate();
@@ -163,7 +64,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     let alive = true;
     const unsubscribe: (() => void)[] = [];
     setPhase({ kind: "loading" });
-    const opened = serial(() => openResources(sub, env));
+    const opened = serial(() => openSyncResources(sub, env));
     opened.then(
       (resources) => {
         if (!alive) return;

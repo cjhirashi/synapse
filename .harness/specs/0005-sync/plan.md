@@ -315,6 +315,44 @@ el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
   última sincronización y enlaces con contador a rechazos y conflictos. `LogoutDialog` se
   monta dentro de la navegación "Cuenta" de `AppLayout`.
 
+**Notas de implementación (Fase 4, bloque K; sin cambio de requisitos):**
+- (a) **Costura de `remote.ts`.** `RemoteOptions` acepta `fetch` y `refresh` (por defecto el
+  `fetch` global y `refreshSession()`): cada dispositivo simulado usa sus propias cookies y
+  su propia red.
+- (b) **`sync/resources.ts`.** La apertura de réplica, remota y replicador (`SyncEnv`,
+  `openSyncResources`) y el push único (`pushOnce`) salen de `SyncProvider` para que la
+  integración arme dispositivos sin React con el mismo código que la app.
+- (c) **Usuarios por prueba.** `sync-integration.sh` levanta backend (SQLite temporal +
+  CouchDB de test) y borra sólo las bases `synapse_user_*` que creó; no crea usuarios: cada
+  prueba crea los suyos con la API de administración (el `globalSetup` cambia antes la
+  contraseña del admin de arranque, RF-002 de 0002). Así ninguna prueba hereda datos de otra.
+- (d) **Config propia.** `vitest.sync.config.ts` (entorno `node`, archivos en serie, URL y
+  credenciales por `provide`/`inject`); la suite normal excluye `*.integration.test.ts`. La
+  prueba de rendimiento sólo corre con `SYNC_PERF=1` (`npm run test:sync:perf`).
+- (e) **Red simulada** (`test-utils/device.ts`). "Sin red" = el `fetch` del dispositivo falla
+  con `TypeError` y aborta lo que está en curso —contando como en curso hasta que termina el
+  cuerpo, porque el `_changes` longpoll del canal manda cabeceras al instante—; "backend
+  caído" = peticiones a un origen muerto.
+- (f) **Sesión invalidada a mitad.** Se provoca cambiando la contraseña desde otra sesión
+  del mismo usuario; "volver a entrar" es cerrar, iniciar sesión y abrir la misma réplica
+  (lo que hace la app al pasar por `/login`).
+- (g) **Corte a mitad de lote.** La red se corta en el primer `checkpoint` del push; se
+  comprueba que ningún id del primer lote vuelve a subir y que no hay duplicados.
+- (h) **PouchDB en Node.** `pouchdb-browser` lee el global `self`; la preparación lo define
+  antes de cargarlo. Las réplicas locales usan el adaptador `memory`.
+- (i) **Defecto de PouchDB 9.** Tras escribir cada lote, `replicate` hace
+  `src.info().then(...)` sin `catch`: si la red cae en ese momento queda un rechazo sin
+  manejar (en el navegador, un "Uncaught (in promise)" en consola; la replicación sigue
+  bien). Sólo en las pruebas de integración, el adaptador `http` se envuelve para que las
+  promesas de `info()` de la remota nazcan observadas. Pendiente de decisión: reportarlo
+  aguas arriba y/o aplicar la corrección también en la app.
+- (j) **Cobertura** excluye `src/test-utils/**` (andamiaje de pruebas, no código de la app).
+- (k) **`synced()` del dispositivo** espera a que el `push_seq` persistido alcance la
+  secuencia local del momento de la llamada (el "pendientes" se recalcula de forma
+  asíncrona y podía parecer al día antes de tiempo).
+- (l) **Aviso de PouchDB filtrado.** `onConsoleLog` descarta "The above 404 is totally
+  normal…" (lectura de un `_local` aún inexistente).
+
 ### 2.6 Algoritmo de combinación (`merge.ts`, ADR-003)
 Entrada: la ganadora `W` (la que elige CouchDB/PouchDB, determinista e igual en todas las
 réplicas), cada perdedora viva `L` y el ancestro común `A` (la revisión más reciente que

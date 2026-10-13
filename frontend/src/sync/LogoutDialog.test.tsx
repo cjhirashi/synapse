@@ -7,7 +7,8 @@ import * as api from "../api/auth";
 import { memoryDb, memoryEnv } from "../test-utils/sync";
 import LogoutDialog from "./LogoutDialog";
 import { OWNER_DOC_ID } from "./localDb";
-import SyncProvider, { type SyncEnv } from "./SyncProvider";
+import type { SyncEnv } from "./resources";
+import SyncProvider from "./SyncProvider";
 import { useSync } from "./useSync";
 
 afterEach(() => vi.restoreAllMocks());

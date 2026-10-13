@@ -61,6 +61,15 @@ describe("syncFetch", () => {
     expect(refresh).not.toHaveBeenCalled();
     expect(expired).not.toHaveBeenCalled();
   });
+
+  it("con una renovación propia (otro dispositivo en las pruebas de integración) usa ésa", async () => {
+    const base = vi.fn().mockResolvedValueOnce(unauthorized()).mockResolvedValueOnce(json({ ok: true }));
+    const ownRefresh = vi.fn().mockResolvedValue(true);
+    const res = await syncFetch(vi.fn(), base, ownRefresh)("https://app.test/sync/db/");
+    expect(res.status).toBe(200);
+    expect(ownRefresh).toHaveBeenCalledOnce();
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
 
 describe("createRemoteDb", () => {
@@ -85,5 +94,21 @@ describe("createRemoteDb", () => {
       // El canal no permite crear la base (`PUT /sync/db/` → 404): `skip_setup`.
       expect(init.method ?? "GET").not.toBe("PUT");
     }
+  });
+
+  it("con `fetch` y `refresh` propios no usa los globales (un dispositivo por instancia)", async () => {
+    const global = vi.fn();
+    vi.stubGlobal("fetch", global);
+    const own = vi.fn()
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValue(json({ db_name: "db", update_seq: "0", instance_start_time: "0" }));
+    const ownRefresh = vi.fn().mockResolvedValue(true);
+    const remote = createRemoteDb({ onSessionExpired: vi.fn(), origin: "http://127.0.0.1:1", fetch: own, refresh: ownRefresh });
+
+    await remote.info();
+    expect(own).toHaveBeenCalled();
+    expect(ownRefresh).toHaveBeenCalledOnce();
+    expect(global).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
   });
 });

@@ -6,7 +6,8 @@ import { expect, test, vi } from "vitest";
 import { useEffect, useState } from "react";
 import { memoryDb, memoryEnv, uniqueName } from "../test-utils/sync";
 import { createReplicator } from "./replicator";
-import SyncProvider, { type SyncEnv } from "./SyncProvider";
+import type { SyncEnv } from "./resources";
+import SyncProvider from "./SyncProvider";
 import { useSync } from "./useSync";
 
 const VAULT_ID = "vault:11111111-1111-4111-8111-111111111111";

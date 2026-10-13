@@ -755,3 +755,19 @@
 - **T-068:** `frontend/vite.config.ts`: `"/sync": BACKEND` (sin `bypass`: `/sync` no es ruta de la SPA). Comprobado con el servidor de Vite: `/sync/` se reenvía al backend.
 - Sin desviaciones. Typecheck OK.
 - **Próximo paso:** bloque K (sincronización real, T-069…T-075).
+
+## [2026-10-13] 0005-sync — Fase 4: T-069…T-075 (sincronización real, bloque K)
+- **T-069:** `frontend/scripts/sync-integration.sh` (SQLite temporal + `alembic upgrade head`, uvicorn en puerto libre, CouchDB de test, borra sólo las `synapse_user_*` que creó) + `npm run test:sync` / `test:sync:perf`; `vitest.sync.config.ts`; `test-utils/{integration-setup,integration-global,device}.ts`.
+- **T-070…T-074:** `sync/{offline,rejections,conflicts,session,isolation}.integration.test.ts` — 14 tests en 5 archivos contra backend y CouchDB reales.
+- **T-075:** `sync/sync.perf.integration.test.ts` — p95 ≈ 360–400 ms (umbral 5 s).
+- Código de la app: costura `fetch`/`refresh` en `remote.ts` (+ tests) y `sync/resources.ts` extraído de `SyncProvider`.
+- Desviaciones (a)–(l) registradas en PLAN-0005 §2.5 (pendientes de visto bueno). La (i) es un defecto de PouchDB 9 (`src.info().then` sin `catch`) rodeado sólo en las pruebas; decisión pendiente sobre reportarlo y/o corregirlo en la app.
+- Rebotes internos:
+  - `self is not defined` (pouchdb-browser en Node) → se define antes de cargarlo.
+  - El estado "sin conexión" no llegaba: el longpoll seguía vivo tras las cabeceras → la petición cuenta como en curso hasta terminar el cuerpo.
+  - `synced()` se adelantaba al "pendientes" → espera al `push_seq` persistido.
+  - El primer rodeo del defecto de PouchDB parcheaba `PouchDB.prototype.info`, pero PouchDB asigna `info` por instancia: no tenía efecto (verde por suerte). Ahora envuelve el adaptador `http` y observa también la promesa derivada.
+  - Corte a mitad de lote: la espera de "sin conexión" ya se cumplía antes del corte → se espera al corte mismo.
+- READMEs de `frontend/` y `frontend/src/` actualizados.
+- Frontend: **331 passed** (suite normal), integración **14 passed** (dos corridas seguidas sin rechazos sin manejar), perf **1 passed**; typecheck OK.
+- **Próximo paso:** bloque L (T-076…T-084).

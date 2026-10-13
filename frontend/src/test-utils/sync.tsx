@@ -5,7 +5,7 @@ import memory from "pouchdb-adapter-memory";
 import { ReactNode } from "react";
 import { vi } from "vitest";
 import type { Replicator, ReplicatorOptions, SyncEvent } from "../sync/replicator";
-import type { SyncEnv } from "../sync/SyncProvider";
+import type { SyncEnv } from "../sync/resources";
 import { SyncContext, type SyncContextValue } from "../sync/useSync";
 import { createVaultStore, utcNow } from "../sync/vaultStore";
 

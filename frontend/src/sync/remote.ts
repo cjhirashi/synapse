@@ -13,26 +13,38 @@ import { refreshSession } from "../api/auth";
 /** Ruta de la base del usuario en el canal (PLAN-0005 §2.1). */
 export const REMOTE_PATH = "/sync/db";
 
-type Fetch = (url: string | Request, init?: RequestInit) => Promise<Response>;
+export type Fetch = (url: string | Request, init?: RequestInit) => Promise<Response>;
+/** Renueva la sesión; `true` si el servidor emitió cookies nuevas. */
+export type Refresh = () => Promise<boolean>;
 
 export interface RemoteOptions {
   /** Se llama cuando un 401 no se puede resolver renovando la sesión. */
   onSessionExpired: () => void;
   /** Origen de la SPA; por defecto el de la página. */
   origin?: string;
+  /**
+   * `fetch` y renovación de sesión; por defecto los del navegador y `refreshSession()`. Las
+   * pruebas de integración dan los de cada dispositivo simulado (sus propias cookies).
+   */
+  fetch?: Fetch;
+  refresh?: Refresh;
 }
 
 /**
  * `fetch` para PouchDB con la política de sesión del canal. Los 503 y los fallos de red
  * pasan tal cual: PouchDB los trata como "sin conexión" y reintenta (RF-019).
  */
-export function syncFetch(onSessionExpired: () => void, baseFetch: Fetch = (url, init) => fetch(url, init)): Fetch {
+export function syncFetch(
+  onSessionExpired: () => void,
+  baseFetch: Fetch = (url, init) => fetch(url, init),
+  refresh: Refresh = refreshSession,
+): Fetch {
   return async (url, init = {}) => {
     const send = () => baseFetch(url, { ...init, credentials: "include" });
     let res = await send();
     if (res.status !== 401) return res;
     // Los cuerpos de PouchDB son cadenas JSON, así que la petición se puede repetir igual.
-    if (await refreshSession()) {
+    if (await refresh()) {
       res = await send();
       if (res.status !== 401) return res;
     }
@@ -42,12 +54,17 @@ export function syncFetch(onSessionExpired: () => void, baseFetch: Fetch = (url,
 }
 
 /** Base PouchDB remota del usuario (`{origen}/sync/db`). */
-export function createRemoteDb({ onSessionExpired, origin = window.location.origin }: RemoteOptions): PouchDB.Database {
+export function createRemoteDb({
+  onSessionExpired,
+  origin = window.location.origin,
+  fetch: baseFetch,
+  refresh,
+}: RemoteOptions): PouchDB.Database {
   // PouchDB sólo usa el adaptador HTTP con una URL absoluta: una ruta relativa sería el
   // nombre de otra base local. `skip_setup`: el canal no permite crear la base (404).
   return new PouchDB(origin + REMOTE_PATH, {
     adapter: "http",
     skip_setup: true,
-    fetch: syncFetch(onSessionExpired),
+    fetch: syncFetch(onSessionExpired, baseFetch, refresh),
   } as PouchDB.Configuration.RemoteDatabaseConfiguration);
 }

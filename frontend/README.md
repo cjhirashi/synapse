@@ -8,7 +8,11 @@ React + TypeScript + Vite. Sincronización offline-first con CouchDB/PouchDB (sp
 npm install
 npm run dev        # Vite; /auth, /admin y /vaults (fetch) van por proxy al backend
                    # (localhost:8000, o BACKEND_URL si está definida)
-npm test           # vitest + Testing Library
+npm test           # vitest + Testing Library (sin las pruebas de integración)
+npm run test:sync  # sincronización real (SPEC-0005): levanta uvicorn con SQLite temporal
+                   # contra la CouchDB de test (COUCHDB_URL, por defecto localhost:15984)
+                   # y corre src/sync/*.integration.test.ts con réplicas en memoria
+npm run test:sync:perf  # igual, sólo la prueba de rendimiento (p95 ≤ 5 s, RNF-001)
 npm run test:cov   # con cobertura v8 (umbral 80 %; informe HTML en coverage/)
 npm run typecheck  # src/ (tsconfig.json) y vite.config.ts (tsconfig.node.json)
 npm run build      # typecheck + build

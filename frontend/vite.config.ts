@@ -1,5 +1,6 @@
 /// <reference types="vitest" />
 import { defineConfig } from "vite";
+import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
 
 // En el contenedor de desarrollo (docker-compose.dev.yml) el backend no está en localhost:
@@ -27,11 +28,13 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test-setup.ts",
+    // La sincronización real necesita backend y CouchDB: va aparte (`npm run test:sync`).
+    exclude: [...configDefaults.exclude, "src/**/*.integration.test.ts"],
     // `npm run test:cov`: mismo umbral que el backend (`backend/.coveragerc`, 80 %).
     coverage: {
       provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.{ts,tsx}", "src/test-setup.ts"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test-setup.ts", "src/test-utils/**"],
       reporter: ["text", "html"],
       thresholds: { lines: 80, statements: 80, branches: 80, functions: 80 },
     },

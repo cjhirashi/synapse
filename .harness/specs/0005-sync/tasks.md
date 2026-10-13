@@ -115,13 +115,13 @@ actualizado: 2026-10-13
 - [x] T-068 — `frontend/vite.config.ts`: `"/sync": BACKEND` (cubre RF-001) [zona: config]
 
 ### K · Sincronización real (RNF-002)
-- [ ] T-069 — `frontend/scripts/sync-integration.sh` (levanta uvicorn contra la base de test y CouchDB de test, crea dos usuarios, ejecuta `vitest --environment node` sobre `sync/*.integration.test.ts`, apaga) + script `npm run test:sync` (cubre RNF-002) [zona: test]
-- [ ] T-070 — `sync/offline.integration.test.ts`: dos réplicas reales; crear/editar/borrar/restaurar sin conexión, volver la red y ver los cambios en la otra; "pendientes" hasta confirmar (cubre RF-009, RF-010, RF-011, RNF-002) [zona: test]
-- [ ] T-071 — `sync/rejections.integration.test.ts`: dos bóvedas con el mismo nombre creadas sin conexión → la segunda rechazada, conserva su cambio, al renombrarla se sincroniza; REST y sync con el mismo nombre → nunca dos activas (cubre RF-005, RF-006, RF-008, RNF-002) [zona: test]
-- [ ] T-072 — `sync/conflicts.integration.test.ts`: campos distintos → combinado en ambas; mismo campo → vista manual con ambas versiones en cualquier orden; borrado vs edición → restaurada; resolución con nombre ocupado → rechazo (cubre RF-012, RF-013, RF-014, RF-015, RNF-002) [zona: test]
-- [ ] T-073 — `sync/session.integration.test.ts`: cookie invalidada a mitad → se detiene y conserva pendientes; tras login del mismo usuario reanuda; corte a mitad de lote reanuda desde el checkpoint sin duplicados; backend caído → "sin conexión" y recupera (cubre RF-016, RF-019, RNF-002) [zona: test]
-- [ ] T-074 — `sync/isolation.integration.test.ts`: dos usuarios en dos réplicas; ninguno recibe ni puede subir datos del otro (cubre RF-001, RNF-003) [zona: test]
-- [ ] T-075 — `sync/sync.perf.integration.test.ts` (marca `perf`): 20 ediciones, p95 ≤ 5 s hasta la otra réplica (cubre RNF-001) [zona: test]
+- [x] T-069 — `frontend/scripts/sync-integration.sh` (levanta uvicorn contra la base de test y CouchDB de test, crea dos usuarios, ejecuta `vitest --environment node` sobre `sync/*.integration.test.ts`, apaga) + script `npm run test:sync` (cubre RNF-002) [zona: test]
+- [x] T-070 — `sync/offline.integration.test.ts`: dos réplicas reales; crear/editar/borrar/restaurar sin conexión, volver la red y ver los cambios en la otra; "pendientes" hasta confirmar (cubre RF-009, RF-010, RF-011, RNF-002) [zona: test]
+- [x] T-071 — `sync/rejections.integration.test.ts`: dos bóvedas con el mismo nombre creadas sin conexión → la segunda rechazada, conserva su cambio, al renombrarla se sincroniza; REST y sync con el mismo nombre → nunca dos activas (cubre RF-005, RF-006, RF-008, RNF-002) [zona: test]
+- [x] T-072 — `sync/conflicts.integration.test.ts`: campos distintos → combinado en ambas; mismo campo → vista manual con ambas versiones en cualquier orden; borrado vs edición → restaurada; resolución con nombre ocupado → rechazo (cubre RF-012, RF-013, RF-014, RF-015, RNF-002) [zona: test]
+- [x] T-073 — `sync/session.integration.test.ts`: cookie invalidada a mitad → se detiene y conserva pendientes; tras login del mismo usuario reanuda; corte a mitad de lote reanuda desde el checkpoint sin duplicados; backend caído → "sin conexión" y recupera (cubre RF-016, RF-019, RNF-002) [zona: test]
+- [x] T-074 — `sync/isolation.integration.test.ts`: dos usuarios en dos réplicas; ninguno recibe ni puede subir datos del otro (cubre RF-001, RNF-003) [zona: test]
+- [x] T-075 — `sync/sync.perf.integration.test.ts` (marca `perf`): 20 ediciones, p95 ≤ 5 s hasta la otra réplica (cubre RNF-001) [zona: test]
 
 ### L · Documentación y re-anclajes (PLAN-0005 §8)
 - [ ] T-076 — verificar que `0005-sync/contracts/openapi.yaml` exportado incluye los códigos `reason` y errores de §4 [doc]

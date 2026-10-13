@@ -8,7 +8,9 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "build": "npm run typecheck && vite build",
     "test": "vitest run",
-    "test:cov": "vitest run --coverage"
+    "test:cov": "vitest run --coverage",
+    "test:sync": "scripts/sync-integration.sh",
+    "test:sync:perf": "SYNC_PERF=1 scripts/sync-integration.sh"
   },
   "dependencies": {
     "pouchdb-browser": "9.0.0",
