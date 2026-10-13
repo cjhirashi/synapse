@@ -128,6 +128,7 @@ class InMemoryVaultPort(VaultPort):
 
     def __init__(self):
         self.docs: dict[str, dict[str, dict]] = {}
+        self.branches: dict[str, dict[str, list[dict]]] = {}  # hojas perdedoras (SPEC-0005)
         self._failures: list[tuple[str, Callable[..., bool], Exception]] = []
         self._interleaved: list[tuple[str, Callable[..., bool], Callable[[], None]]] = []
 
@@ -168,12 +169,19 @@ class InMemoryVaultPort(VaultPort):
         doc = self.docs.get(db, {}).get(doc_id)
         return copy.deepcopy(doc)
 
+    def add_branch(self, db: str, doc: dict) -> None:
+        """Añade una hoja perdedora viva a `doc["_id"]`, como las que deja la sincronización.
+
+        La ganadora sigue en `docs` (lo que devuelve `get`); las ramas sólo se ven con
+        `leaves` y no cambian con `put`/`delete` de la ganadora, igual que en CouchDB.
+        """
+        self.branches.setdefault(db, {}).setdefault(doc["_id"], []).append(copy.deepcopy(doc))
+
     def leaves(self, db, doc_id):
-        # Sin ramas todavía: el documento vigente es la única hoja (las ramas en conflicto
-        # llegan con SPEC-0005 T-016).
         self._maybe_fail("leaves", db, doc_id)
-        doc = self.docs.get(db, {}).get(doc_id)
-        return [copy.deepcopy(doc)] if doc else []
+        winner = self.docs.get(db, {}).get(doc_id)
+        losers = self.branches.get(db, {}).get(doc_id, [])
+        return copy.deepcopy(([winner] if winner else []) + losers)
 
     def put(self, db, doc):
         self._maybe_interleave("put", doc)
@@ -738,6 +746,75 @@ def test_rf_010_delete_and_restore_need_a_current_if_match(service, port, operat
         getattr(service, operation)(created.id, None)
     with pytest.raises(PreconditionFailed):
         getattr(service, operation)(created.id, stale)
+
+
+# --- SPEC-0005 T-016: reservas con ramas en conflicto (RF-008 de 0005, P-4) ---
+# Invariante de PLAN-0005 §2.3: toda hoja viva y activa tiene su nombre reservado. Una rama
+# perdedora (llegada por la sincronización) cuenta igual que la ganadora; si no, la API REST
+# reasignaría su nombre y, al resolverse el conflicto a su favor, habría dos activas iguales.
+
+def _with_losing_branch(service, port, clock, winner_name="Otro", loser_name="Proyecto",
+                        **loser_fields):
+    """Bóveda cuya ganadora se llama `winner_name` y con una rama perdedora `loser_name`.
+
+    La reserva de la rama se escribe como lo haría el push y se deja vencer su
+    arrendamiento: sólo `_holder` puede impedir que se reasigne.
+    """
+    vault, _ = _create(service, name=winner_name)
+    doc = port.docs[DB][f"vault:{vault.id}"]
+    port.add_branch(DB, {**doc, "_rev": "2-loser", "name": loser_name, **loser_fields})
+    reservation = {"_id": f"vault-name:{name_key(loser_name)}", "type": "vault-name",
+                   "vault_id": vault.id, "reserved_at": clock()}
+    existing = _reservation(port, loser_name)  # la de la ganadora, si comparten nombre
+    if existing:
+        reservation["_rev"] = existing["_rev"]
+    port.put(DB, reservation)
+    _past_the_lease(clock)
+    return vault
+
+
+def test_rf_008_create_does_not_take_a_name_used_by_a_losing_branch(service, port, clock):
+    vault = _with_losing_branch(service, port, clock)
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="PROYECTO")
+    assert _reservation(port, "proyecto")["vault_id"] == vault.id
+
+
+def test_rf_008_restore_does_not_take_a_name_used_by_a_losing_branch(service, port, clock):
+    created, etag = _create(service, name="Proyecto")
+    service.delete(created.id, etag)
+    _with_losing_branch(service, port, clock)
+    with pytest.raises(VaultNameTaken):
+        service.restore(created.id, _current_etag(port, created.id))
+    assert port.docs[DB][f"vault:{created.id}"]["deleted_at"] is not None
+
+
+def test_rf_008_renaming_the_winner_keeps_the_name_still_used_by_a_branch(service, port, clock):
+    vault = _with_losing_branch(service, port, clock, winner_name="Proyecto", loser_name="Proyecto")
+    service.update(vault.id, VaultUpdate(name="Nuevo"), _current_etag(port, vault.id))
+    assert _reservation(port, "proyecto")["vault_id"] == vault.id
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="Proyecto")
+
+
+def test_rf_008_deleting_the_winner_keeps_the_name_still_used_by_a_branch(service, port, clock):
+    vault = _with_losing_branch(service, port, clock, winner_name="Proyecto", loser_name="Proyecto")
+    service.delete(vault.id, _current_etag(port, vault.id))
+    assert _reservation(port, "proyecto")["vault_id"] == vault.id
+
+
+def test_rf_008_a_deleted_losing_branch_does_not_hold_its_name(service, port, clock):
+    _with_losing_branch(service, port, clock, deleted_at=WHEN)
+    other, _ = _create(service, name="Proyecto")
+    assert _reservation(port, "proyecto")["vault_id"] == other.id
+
+
+def test_rf_008_without_branches_the_winner_alone_decides(service, port, clock):
+    vault, _ = _create(service, name="Proyecto")
+    assert [leaf["name"] for leaf in port.leaves(DB, f"vault:{vault.id}")] == ["Proyecto"]
+    _past_the_lease(clock)
+    with pytest.raises(VaultNameTaken):
+        _create(service, name="proyecto")
 
 
 # --- T-023: list (RF-001, RF-002, RF-003, RF-012, RF-024) ---

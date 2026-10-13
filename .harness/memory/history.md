@@ -620,3 +620,19 @@
   - El doble `InMemoryVaultPort` recibe un `leaves` mínimo (sin ramas) para que la suite siga en verde; T-016 le añade conflictos.
 - Suite completa: **532 passed**.
 - **Próximo paso:** bloque D (T-016/T-017, `_holder` sobre todas las hojas vivas).
+
+## [2026-10-13] 0005-sync — Fase 4: T-016/T-017 (`_holder` con todas las hojas, P-4)
+
+- **T-016:** `test_vault_service.py`.
+  - El doble `InMemoryVaultPort` admite ramas perdedoras (`add_branch`), que sólo se ven con `leaves`, como en CouchDB.
+  - 6 tests nuevos:
+    - `create` y `restore` no toman un nombre que usa una rama perdedora, ni siquiera vencido el arrendamiento;
+    - renombrar o borrar la ganadora conserva la reserva que la rama sigue usando;
+    - una rama con `deleted_at` no retiene su nombre;
+    - sin ramas, todo sigue igual.
+  - Comprobado: 4 tests fallan sin el cambio del servicio.
+- **T-017:** `VaultService._holder` (código de 0003, P-1) recorre `VaultPort.leaves` en vez de leer sólo la ganadora.
+  - Esto cubre también `_release`: no se libera un nombre que aún usa una rama viva y activa.
+  - Ningún test REST cambió.
+- Suite completa: **538 passed**.
+- **Próximo paso:** bloque E (T-018…T-023, `SyncPushService`).

@@ -226,13 +226,18 @@ class VaultService:
             raise PreconditionFailed(f"{doc['_id']} changed before the write") from None
 
     def _holder(self, reservation: dict, name: str) -> bool:
-        """¿La bóveda de la reserva existe, está activa y tiene un nombre equivalente a `name`?"""
-        vault = self._port.get(self._db, _doc_id(reservation["vault_id"]))
-        return (
-            vault is not None
-            and vault.get("type") == "vault"
-            and not vault["deleted_at"]
-            and name_key(vault["name"]) == name_key(name)
+        """¿Alguna hoja viva de la bóveda de la reserva está activa y usa un nombre equivalente?
+
+        Se miran **todas** las hojas, no sólo la ganadora (SPEC-0005 RF-008, PLAN-0005 P-4):
+        una rama perdedora llegada por la sincronización puede ganar al resolverse el
+        conflicto, y su nombre debe seguir reservado. Sin conflictos hay una sola hoja.
+        """
+        key = name_key(name)
+        return any(
+            leaf.get("type") == "vault"
+            and not leaf.get("deleted_at")
+            and name_key(leaf["name"]) == key
+            for leaf in self._port.leaves(self._db, _doc_id(reservation["vault_id"]))
         )
 
     def _leased(self, reservation: dict) -> bool:

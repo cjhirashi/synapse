@@ -48,8 +48,8 @@ actualizado: 2026-10-13
 - [x] T-015 — `VaultPort.leaves` + implementación en `adapters/vault_repository.py` (`open_revs=all&revs=true`) (cubre RF-008) [zona: puerto/adaptador]
 
 ### D · `VaultService._holder` con todas las hojas (P-4)
-- [ ] T-016 — test (rojo) `test_vault_service.py`: `InMemoryVaultPort` con hojas en conflicto; una reserva usada por una rama perdedora no se reasigna (ni por `create` ni por `restore`); sin conflictos el comportamiento no cambia (cubre RF-008) [zona: test]
-- [ ] T-017 — `services/vault_service.py`: `_holder` mira todas las hojas vivas y activas vía `leaves` (cubre RF-008) [zona: servicio]
+- [x] T-016 — test (rojo) `test_vault_service.py`: `InMemoryVaultPort` con hojas en conflicto; una reserva usada por una rama perdedora no se reasigna (ni por `create` ni por `restore`); sin conflictos el comportamiento no cambia (cubre RF-008) [zona: test]
+- [x] T-017 — `services/vault_service.py`: `_holder` mira todas las hojas vivas y activas vía `leaves` (cubre RF-008) [zona: servicio]
 
 ### E · Push validado (`services/sync_push.py`, dobles)
 - [ ] T-018 — dobles `InMemoryReplicationPort` (ramas, `_revisions`, ganadora determinista de CouchDB, fallos inyectables, escritura intercalada) en `test_sync_push.py` (cubre RF-005, RF-008) [zona: test]
