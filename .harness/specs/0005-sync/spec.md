@@ -6,11 +6,15 @@ estado: approved         # draft | in-review | approved | implemented | verified
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 5704bf9   # último commit reconciliado (lo mueve el cierre)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
-covers:                  # borrador: se cierra en la Fase 2 (plan)
+covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py
   - backend/app/services/sync_*.py
+  - backend/app/core/ports/replication_port.py
+  - backend/app/adapters/replication_repository.py
   - backend/tests/test_sync*.py
+  - backend/tests/fixtures/vault_rules_cases.json
   - frontend/src/sync/**
+  - frontend/scripts/sync-integration.sh
   - .harness/specs/0005-sync/contracts/**
   - .harness/specs/0005-sync/diagrams/**
 # --- aprobaciones humanas ---
@@ -18,7 +22,7 @@ aprobaciones:
   decisiones_d1_d6: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §8, ADR-002, ADR-003
   aclaraciones_c1_c4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 } # §8
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # «así es»
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # PLAN-0005, P-1 (a) y P-2
 actualizado: 2026-10-13
 ---
 
@@ -28,7 +32,9 @@ actualizado: 2026-10-13
 > de `state.md` ("Conflictos PouchDB ↔ CouchDB"), del hazard 3 ("Offline → datos
 > obsoletos") y de la observación de 0003 (el servidor sólo acepta ids UUID canónicos).
 >
-> **GATE 1 aprobado (2026-10-13):** el usuario confirmó «así es»; sigue la Fase 2 (`plan.md`).
+> **GATE 1 aprobado (2026-10-13):** el usuario confirmó «así es».
+> **GATE 2 aprobado (2026-10-13):** `plan.md` con P-1 (a) y P-2; `covers` fijados. Sigue la
+> Fase 3 (`tasks.md`).
 >
 > **Tanda 1 (2026-10-13):** el usuario aprobó las recomendaciones D-1…D-6 (§8; ADR-002 y
 > ADR-003). **Tanda 2 (2026-10-13):** aprobó C-1…C-4 (§8). Sin marcadores de aclaración abiertos.

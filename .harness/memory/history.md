@@ -522,3 +522,12 @@
   - merge de PR #3;
   - SPEC-0002 → `verified`.
 - **Próximo paso:** con el GATE 2, fijar `covers` en el spec y empezar la Fase 3 (`tasks.md`).
+
+## [2026-10-13] 0005-sync — GATE 2 aprobado
+
+- El usuario aprobó el GATE 2 con P-1 opción (a) y P-2.
+  - P-1 (a): se modifica el código de SPEC-0003 y se re-ancla al cierre.
+  - P-2: dependencia `pouchdb-browser`.
+- Plan en `approved` con `fase_2` registrada; P-3…P-5 confirmadas con el plan.
+- En la spec: `fase_2` registrada y `covers` fijados según PLAN-0005 §9.
+- Sigue la Fase 3 (`tasks.md`).

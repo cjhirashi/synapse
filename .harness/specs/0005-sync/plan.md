@@ -2,9 +2,9 @@
 id: PLAN-0005
 tipo: plan
 feature: 0005-sync
-estado: draft
+estado: approved
 aprobaciones:
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
 actualizado: 2026-10-13
 ---
 
@@ -16,8 +16,9 @@ actualizado: 2026-10-13
 > **Prerrequisitos cumplidos:** SPEC-0002 (sesión), SPEC-0003 (bóvedas, `verified`),
 > SPEC-0004 (RFC 9457, `verified`). Este plan sólo lanza errores de dominio; el formato
 > `application/problem+json` lo pone el traductor de 0004.
-> **Decisiones que necesitan al usuario en el GATE 2:** P-1 y P-2 (§7). P-3…P-5 son
-> consecuencias técnicas del protocolo que se explican para que se confirmen.
+> **GATE 2 aprobado (2026-10-13):** el usuario aprobó el plan con P-1 opción (a) (se toca el
+> código de 0003 y se re-ancla al cierre) y P-2 (dependencia `pouchdb-browser`); P-3…P-5
+> quedan confirmadas con el plan (§7).
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — el backend reenvía el protocolo de replicación de CouchDB, que ya existe,
