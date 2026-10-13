@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "receiptId": "3c92628a-659c-446b-9243-0d56abb949bc",
+  "receiptId": "db1201f9-6d84-4a9b-8dfb-6b77b1139630",
   "status": "current",
   "command": "deliver",
   "type": "workflow",
   "input": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.candidate.json",
   "output": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
   "specification": {
-    "sha256": "47824c4c9156dcbc65cec4ca662d59b08621733e8f621285b609a79b3ed0bf45",
-    "bytes": 31905
+    "sha256": "aa26591efc026b56bebe3df8c14a1ec5f50d0fad9987a04ba6569284d378928e",
+    "bytes": 31952
   },
   "artifact": {
-    "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
-    "bytes": 764258
+    "sha256": "870b641ed7174572fd677b57435cb4ff0eab88386af4642dfd983bd6d24d8193",
+    "bytes": 764474
   }
 }

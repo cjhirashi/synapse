@@ -4,7 +4,7 @@ tipo: spec
 feature: 0003-vault-crud
 estado: verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: e5ec154   # cierre de los menores de la verificación 2 (T-075)
+anchor_commit: 461517f   # re-anclaje por SPEC-0005 (P-1, T-083 de TASKS-0005)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py
@@ -13,8 +13,6 @@ covers:
   - backend/app/adapters/vault_repository.py
   - backend/tests/test_vault*.py
   - frontend/src/vaults/**
-  - frontend/src/api/vaults.ts
-  - frontend/src/api/vaults.test.ts
   - .harness/specs/0003-vault-crud/contracts/**
   - .harness/specs/0003-vault-crud/diagrams/**
 # --- aprobaciones humanas ---
@@ -39,6 +37,16 @@ actualizado: 2026-10-13
 > caracteres de control en `name` (RF-005); un cursor válido es sólo uno emitido por el
 > servidor (RF-003); `vault_id` sólo en forma canónica (RF-014). Aprobada por el usuario;
 > el *cómo* en PLAN-0003 §15.
+>
+> **Re-anclaje 2026-10-13** (PLAN-0005 §7 y P-1, T-083 de TASKS-0005): SPEC-0005
+> (sincronización) tocó estos `covers` sin cambiar ningún requisito de esta spec. Las
+> pantallas (`VaultListPage`, `VaultForm`, `TrashPage`, `useVaultPages`, `errors.ts`, nuevo
+> `fields.ts`) leen y escriben la réplica local (`sync/vaultStore`) en vez de la API REST, y
+> siguen cumpliendo RF-018/019/020/028; `api/vaults.ts` y su test se retiraron, por eso salen
+> de `covers`. En el backend, `VaultPort.leaves`, `vault_repository.leaves` (`open_revs=all`)
+> y `vault_service._holder` consideran todas las ramas de un documento (RF-008 de 0005), con
+> sus pruebas en `test_vault_repository.py` y `test_vault_service.py`. La API REST de
+> bóvedas no cambia. Ancla movida a `461517f`. Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores

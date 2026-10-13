@@ -1,6 +1,6 @@
 ---
 ultima_actualizacion: 2026-10-13
-fase: Sprint 2 — 0002-auth con PR aprobado; 0003-vault-crud `verified` por el usuario (2026-10-13; T-001…T-075; verificación 1 REJECTED → enmienda 1; verificación 2 APPROVED con menores VB-1…VB-5 cerrados sin nueva ronda); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
+fase: Sprint 2 — 0005-sync `implemented` (Fase 4 cerrada, pendiente verificación); 0002-auth con PR aprobado; 0003-vault-crud `verified` por el usuario (2026-10-13; T-001…T-075; verificación 1 REJECTED → enmienda 1; verificación 2 APPROVED con menores VB-1…VB-5 cerrados sin nueva ronda); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -46,8 +46,9 @@ sprint_actual: 2
 | Feature | Estado | Notas |
 |---|---|---|
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
-| 0003-vault-crud | `verified` (por el usuario, 2026-10-13) · verificación adversarial 1 REJECTED (VA-1 mayor + VA-2…VA-10) corregida con la enmienda 1 (plan §15; VA-4: NFKC + `casefold`; VA-10: sin caracteres `Cc`) · verificación 2 APPROVED con menores VB-1…VB-5 (tests y docs; T-071…T-075, sin nueva ronda) · backend 422 tests (cobertura 99 %) + `perf` 1/1 · frontend 87/87 · ancla en e5ec154 | RF-001…RF-028 + RNF-001 (cobertura 28 RF en `Pass`, RF-016 diferido → backlog 7) · contrato en `specs/0003-vault-crud/contracts/openapi.yaml` · 0002 re-anclada a d730de9 · residuales: `frontend/vite.config.ts` sin spec que lo cubra (plan §14); cobertura del frontend medida con `@vitest/coverage-v8` (95,5 % líneas, umbral 80 %) · T-002 de `TAREAS.md` |
+| 0003-vault-crud | `verified` (por el usuario, 2026-10-13) · verificación adversarial 1 REJECTED (VA-1 mayor + VA-2…VA-10) corregida con la enmienda 1 (plan §15; VA-4: NFKC + `casefold`; VA-10: sin caracteres `Cc`) · verificación 2 APPROVED con menores VB-1…VB-5 (tests y docs; T-071…T-075, sin nueva ronda) · backend 422 tests (cobertura 99 %) + `perf` 1/1 · frontend 87/87 · ancla en 461517f (re-anclada por 0005, P-1) | RF-001…RF-028 + RNF-001 (cobertura 28 RF en `Pass`, RF-016 diferido → backlog 7) · contrato en `specs/0003-vault-crud/contracts/openapi.yaml` · 0002 re-anclada a d730de9 · residuales: `frontend/vite.config.ts` sin spec que lo cubra (plan §14); cobertura del frontend medida con `@vitest/coverage-v8` (95,5 % líneas, umbral 80 %) · T-002 de `TAREAS.md` |
 | 0004-api-problem-details | `verified` (por el usuario, 2026-10-12) · T-001…T-088 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · re-verificaciones 3 y 4 APPROVED con menores X-1…X-4 (enmienda 4: guardián por ruta atendida, códigos del catálogo) e Y-1…Y-3 (enmienda 5: prohibida la construcción a mano de errores de validación fuera del catálogo y el traductor) · re-verificación 5 APPROVED con menores Z-1…Z-4 (enmienda 6: vías permitidas entre campos y entre fuentes, residual del análisis estático aceptado) · re-verificación 6 APPROVED con menores AA-1…AA-4 (enmienda 7: `ValidationFailed` como base de todo 422, `detail` de dominio de texto fijo) · re-verificación 7 APPROVED con menores (enmienda 8: `detail` raíz fijo; cerrada sin nueva ronda) | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 185 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
+| 0005-sync | `implemented` (2026-10-13) · T-001…T-084 hechas (bloques A–L) · pendiente la verificación adversarial (Fase 5) | RF-001…RF-019 + RNF-001…RNF-003 en `Pass` · canal `/sync/db` (base `synapse_user_{sub}` del token, lista blanca, push validado con las reglas de 0003, motivos de rechazo) · UI de bóvedas sobre la réplica local (P-1) · integración real 14/14 (`npm run test:sync`), p95 ≈ 0,4 s (RNF-001) · contrato en `specs/0005-sync/contracts/` · 0002 y 0003 re-ancladas a 461517f · decisión abierta: defecto de PouchDB 9 (`finishBatch` sin `catch`), hoy contenido en las pruebas (PLAN-0005 §2.5, bloque K, nota (i)) |
 
 ## Backlog / deuda conocida
 
@@ -70,13 +71,22 @@ sprint_actual: 2
 
 ## Hazards conocidos
 
-1. Conflictos PouchDB ↔ CouchDB — tests de sync + documentación.
-2. Usuario A ve datos de B — validación en todo endpoint (test de aislamiento en 0002).
-3. Offline → datos obsoletos — UI clara de estado.
+1. Conflictos PouchDB ↔ CouchDB — **mitigado por 0005**: ninguna rama se descarta sin
+   decisión (merge por campo contra el ancestro, `ConflictView`), con pruebas unitarias y de
+   integración real (`conflicts.integration`).
+2. Usuario A ve datos de B — validación en todo endpoint (test de aislamiento en 0002); en
+   el canal de sync, la base sale sólo del token (`test_sync_isolation`, `isolation.integration`).
+3. Offline → datos obsoletos — **mitigado por 0005**: barra de estado (sin conexión,
+   pendientes, sesión caducada) y aviso al cerrar sesión con cambios sin confirmar.
 4. Borrar bóveda sin backup — soft delete + 30 días de gracia.
 
 ## Próximo paso inmediato
 
-**0003-vault-crud** en `verified` (2026-10-13). Observación para la futura feature de sincronización: el servidor sólo acepta ids UUID canónicos. Diagrama T-003 generado en `diagrams/` (2026-10-13). Pendiente aparte: merge de PR #3.
-
-**0005-sync** (PouchDB ↔ CouchDB) con **GATE 1 aprobado** (`approved`, 2026-10-13); **GATE 2 aprobado** (PLAN-0005, 2026-10-13, con P-1 (a): se toca el código de 0003 y se re-ancla al cierre; P-2: dependencia `pouchdb-browser`), con **GATE 3 aprobado** (TASKS-0005, 84 tareas T-001…T-084; enmienda: sin nginx, Caddy externo), en Fase 4 (Implement): D-1…D-6 aprobadas por el usuario (proxy `/sync` validado, offline lectura+escritura, merge por campo, sólo `vault:*`, borrar réplica al salir, sin PWA; ADR-002, ADR-003); C-1…C-4 aprobadas (backoff 1→60 s, ≤ 5 s, merge contra ancestro, aviso al salir); RF-001…RF-019 EARS, 0 marcadores. **0006-integration-real-db** (renumerada desde 0005) sigue en `draft` con sus 3 preguntas.
+**0005-sync** `implemented` (2026-10-13): Fase 4 cerrada (T-001…T-084, bloques A–L), gate
+verde, 0002 y 0003 re-ancladas a 461517f. **Siguiente:** verificación adversarial (Fase 5),
+que necesita al usuario; nada se marca `verified` sin su aprobación. Decisiones abiertas para
+el usuario: el defecto de PouchDB 9 (`finishBatch` sin `catch`: reportarlo upstream y/o
+corregirlo en la app; hoy sólo se contiene en las pruebas), las 3 preguntas de
+**0006-integration-real-db** (`draft`), el merge de PR #3 y el paso de SPEC-0002 a `verified`.
+Después de 0005: la spec de "FastAPI sirve la SPA" (sustituye el nginx que aún describe
+`frontend/README.md`).

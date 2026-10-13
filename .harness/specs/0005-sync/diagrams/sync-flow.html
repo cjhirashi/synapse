@@ -5033,12 +5033,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <path data-edge-from="conflict" data-edge-to="resolve" data-edge-key="0" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="732.4000000000001,372;760.4000000000001,372" d="M 732.4000000000001 372 L 760.4000000000001 372" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="denied" data-edge-to="resolve" data-edge-key="1" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="519.6,406;519.6,422;820.4000000000001,422;820.4000000000001,406" d="M 519.6 406 L 519.6 422 L 820.4000000000001 422 L 820.4000000000001 406" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="edit" data-edge-to="local_write" data-edge-key="2" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="140,120;168,120" d="M 140 120 L 168 120" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="local_write" data-edge-to="push" data-edge-label="push al volver la red" data-edge-key="3" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="228,146;228,168;337.6,168;337.6,246;353.6,246" d="M 228 146 L 228 168 L 337.6 168 L 337.6 246 L 353.6 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="local_write" data-edge-to="push" data-edge-label="POST _bulk_docs" data-edge-key="3" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="228,146;228,168;337.6,168;337.6,246;353.6,246" d="M 228 146 L 228 168 L 337.6 168 L 337.6 246 L 353.6 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="local_write" data-edge-to="status" data-edge-label="sin red" data-edge-key="4" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="288,120;339.6,120" d="M 288 120 L 339.6 120" class="a-dashed" stroke-width="1.4" marker-end="url(#arrowhead-dashed)"/>
         <path data-edge-from="push" data-edge-to="validate" data-edge-key="5" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="445.6,246;473.6,246" d="M 445.6 246 L 473.6 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="store" data-edge-to="conflict" data-edge-label="_conflicts" data-edge-key="6" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="672.4000000000001,272;672.4000000000001,338" d="M 672.4000000000001 272 L 672.4000000000001 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
-        <path data-edge-from="store" data-edge-to="pull" data-edge-label="_changes" data-edge-key="7" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="672.4000000000001,220;672.4000000000001,120;760.4000000000001,120" d="M 672.4000000000001 220 L 672.4000000000001 120 L 760.4000000000001 120" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="validate" data-edge-to="denied" data-edge-label="inválido" data-edge-key="8" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="519.6,280;519.6,338" d="M 519.6 280 L 519.6 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="store" data-edge-to="pull" data-edge-label="GET _changes" data-edge-key="7" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="672.4000000000001,220;672.4000000000001,120;760.4000000000001,120" d="M 672.4000000000001 220 L 672.4000000000001 120 L 760.4000000000001 120" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
+        <path data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. vault-name-taken" data-edge-key="8" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="519.6,280;519.6,338" d="M 519.6 280 L 519.6 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="validate" data-edge-to="store" data-edge-label="válido" data-edge-key="9" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="565.6,246;612.4000000000001,246" d="M 565.6 246 L 612.4000000000001 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
@@ -5056,8 +5056,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="94" y="132" class="t-muted" font-size="6" text-anchor="middle">crear · editar · borrar</text>
         </g>
 
-        <g id="node-local_write" data-node-id="local_write" data-node-label="Escritura local" tabindex="0" role="button" aria-label="Enfocar Escritura local, siempre, con o sin red, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="siempre, con o sin red" data-node-context="Navegador · UI + PouchDB">
-          <title>Escritura local · siempre, con o sin red · Navegador · UI + PouchDB</title>
+        <g id="node-local_write" data-node-id="local_write" data-node-label="Escritura local" tabindex="0" role="button" aria-label="Enfocar Escritura local, PouchDB · con o sin red, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="PouchDB · con o sin red" data-node-context="Navegador · UI + PouchDB">
+          <title>Escritura local · PouchDB · con o sin red · Navegador · UI + PouchDB</title>
           <rect x="168" y="94" width="120" height="52" rx="6" class="c-mask"/>
           <rect x="168" y="94" width="120" height="52" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(174 100) scale(0.6875)">
@@ -5065,11 +5065,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="228" y="126.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Escritura local</text>
-          <text data-detail="context" x="228" y="141.1" class="t-muted" font-size="8" text-anchor="middle">siempre, con o sin red</text>
+          <text data-detail="context" x="228" y="141.1" class="t-muted" font-size="8" text-anchor="middle">PouchDB · con o sin red</text>
         </g>
 
-        <g id="node-status" data-node-id="status" data-node-label="Estado de sync" tabindex="0" role="button" aria-label="Enfocar Estado de sync, offline · pendientes, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="offline · pendientes" data-node-tag="RF-009" data-node-context="Navegador · UI + PouchDB">
-          <title>Estado de sync · offline · pendientes · Navegador · UI + PouchDB · RF-009</title>
+        <g id="node-status" data-node-id="status" data-node-label="Estado de sync" tabindex="0" role="button" aria-label="Enfocar Estado de sync, offline · pendientes · sesión, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="offline · pendientes · sesión" data-node-tag="RF-009/019" data-node-context="Navegador · UI + PouchDB">
+          <title>Estado de sync · offline · pendientes · sesión · Navegador · UI + PouchDB · RF-009/019</title>
           <rect x="339.6" y="86" width="120" height="68" rx="6" class="c-mask"/>
           <rect x="339.6" y="86" width="120" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(345.6 92) scale(0.6875)">
@@ -5079,12 +5079,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="404.8" y="107" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Estado de sync</text>
-          <text data-detail="context" x="399.6" y="124" class="t-muted" font-size="8" text-anchor="middle">offline · pendientes</text>
-        <text data-detail="fine" x="399.6" y="142" class="t-frontend" font-size="7" text-anchor="middle">RF-009</text>
+          <text data-detail="context" x="399.6" y="124" class="t-muted" font-size="6.4" text-anchor="middle">offline · pendientes · sesión</text>
+        <text data-detail="fine" x="399.6" y="142" class="t-frontend" font-size="7" text-anchor="middle">RF-009/019</text>
         </g>
 
-        <g id="node-pull" data-node-id="pull" data-node-label="Pull continuo" tabindex="0" role="button" aria-label="Enfocar Pull continuo, otros dispositivos, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="otros dispositivos" data-node-context="Navegador · UI + PouchDB">
-          <title>Pull continuo · otros dispositivos · Navegador · UI + PouchDB</title>
+        <g id="node-pull" data-node-id="pull" data-node-label="Pull continuo" tabindex="0" role="button" aria-label="Enfocar Pull continuo, _changes · otras réplicas, Navegador · UI + PouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="_changes · otras réplicas" data-node-context="Navegador · UI + PouchDB">
+          <title>Pull continuo · _changes · otras réplicas · Navegador · UI + PouchDB</title>
           <rect x="760.4000000000001" y="94" width="120" height="52" rx="6" class="c-mask"/>
           <rect x="760.4000000000001" y="94" width="120" height="52" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(766.4000000000001 100) scale(0.6875)">
@@ -5092,32 +5092,32 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="822.3000000000001" y="115" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Pull continuo</text>
-          <text data-detail="context" x="820.4000000000001" y="132" class="t-muted" font-size="8" text-anchor="middle">otros dispositivos</text>
+          <text data-detail="context" x="820.4000000000001" y="132" class="t-muted" font-size="7.4" text-anchor="middle">_changes · otras réplicas</text>
         </g>
 
-        <g id="node-push" data-node-id="push" data-node-label="Proxy /sync" tabindex="0" role="button" aria-label="Enfocar Proxy /sync, JWT → synapse_user_{id}, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT → synapse_user_{id}" data-node-tag="RF-001/002" data-node-context="Servidor · proxy /sync → CouchDB">
-          <title>Proxy /sync · JWT → synapse_user_{id} · Servidor · proxy /sync → CouchDB · RF-001/002</title>
+        <g id="node-push" data-node-id="push" data-node-label="Canal /sync" tabindex="0" role="button" aria-label="Enfocar Canal /sync, JWT → synapse_user_{id}, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="security" data-node-sublabel="JWT → synapse_user_{id}" data-node-tag="RF-001/002" data-node-context="Servidor · proxy /sync → CouchDB">
+          <title>Canal /sync · JWT → synapse_user_{id} · Servidor · proxy /sync → CouchDB · RF-001/002</title>
           <rect x="353.6" y="212" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="353.6" y="212" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(359.6 218) scale(0.6875)">
             <path d="M8 2.2 13 4v3.5c0 3.1-1.8 5.4-5 6.5-3.2-1.1-5-3.4-5-6.5V4Z"/>
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="399.6" y="244.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Proxy /sync</text>
+          <text data-node-label="" data-detail-anchor="" x="399.6" y="244.2" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Canal /sync</text>
           <text data-detail="context" x="399.6" y="256.7" class="t-muted" font-size="6" text-anchor="middle">JWT → synapse_user_{id}</text>
         <text data-detail="fine" x="399.6" y="268.9" class="t-security" font-size="7" text-anchor="middle">RF-001/002</text>
         </g>
 
-        <g id="node-validate" data-node-id="validate" data-node-label="Validación" tabindex="0" role="button" aria-label="Enfocar Validación, reglas de SPEC-0003, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="backend" data-node-sublabel="reglas de SPEC-0003" data-node-tag="RF-005" data-node-context="Servidor · proxy /sync → CouchDB">
-          <title>Validación · reglas de SPEC-0003 · Servidor · proxy /sync → CouchDB · RF-005</title>
+        <g id="node-validate" data-node-id="validate" data-node-label="Push validado" tabindex="0" role="button" aria-label="Enfocar Push validado, reglas de SPEC-0003, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="backend" data-node-sublabel="reglas de SPEC-0003" data-node-tag="RF-005" data-node-context="Servidor · proxy /sync → CouchDB">
+          <title>Push validado · reglas de SPEC-0003 · Servidor · proxy /sync → CouchDB · RF-005</title>
           <rect x="473.6" y="212" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="473.6" y="212" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(479.6 218) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
-          <text data-node-label="" data-detail-anchor="" x="525.6" y="233" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Validación</text>
-          <text data-detail="context" x="519.6" y="250" class="t-muted" font-size="7.3" text-anchor="middle">reglas de SPEC-0003</text>
-        <text data-detail="fine" x="519.6" y="268" class="t-backend" font-size="7" text-anchor="middle">RF-005</text>
+          <text data-node-label="" data-detail-anchor="" x="519.6" y="243.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Push validado</text>
+          <text data-detail="context" x="519.6" y="257.9" class="t-muted" font-size="7.3" text-anchor="middle">reglas de SPEC-0003</text>
+        <text data-detail="fine" x="519.6" y="270.5" class="t-backend" font-size="7" text-anchor="middle">RF-005</text>
         </g>
 
         <g id="node-store" data-node-id="store" data-node-label="synapse_user_{id}" tabindex="0" role="button" aria-label="Enfocar synapse_user_{id}, sólo vault:* (D-4), Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="sólo vault:* (D-4)" data-node-context="Servidor · proxy /sync → CouchDB">
@@ -5132,8 +5132,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <text data-detail="context" x="672.4000000000001" y="267" class="t-muted" font-size="8" text-anchor="middle">sólo vault:* (D-4)</text>
         </g>
 
-        <g id="node-denied" data-node-id="denied" data-node-label="Rechazo" tabindex="0" role="button" aria-label="Enfocar Rechazo, p. ej. nombre ocupado, Conflictos y rechazos" aria-pressed="false" data-node-kind="security" data-node-sublabel="p. ej. nombre ocupado" data-node-tag="RF-006" data-node-context="Conflictos y rechazos">
-          <title>Rechazo · p. ej. nombre ocupado · Conflictos y rechazos · RF-006</title>
+        <g id="node-denied" data-node-id="denied" data-node-label="Rechazo" tabindex="0" role="button" aria-label="Enfocar Rechazo, forbidden + reason, Conflictos y rechazos" aria-pressed="false" data-node-kind="security" data-node-sublabel="forbidden + reason" data-node-tag="RF-006" data-node-context="Conflictos y rechazos">
+          <title>Rechazo · forbidden + reason · Conflictos y rechazos · RF-006</title>
           <rect x="473.6" y="338" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="473.6" y="338" width="92" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(479.6 344) scale(0.6875)">
@@ -5141,12 +5141,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="519.6" y="359" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Rechazo</text>
-          <text data-detail="context" x="519.6" y="376" class="t-muted" font-size="6.6" text-anchor="middle">p. ej. nombre ocupado</text>
+          <text data-detail="context" x="519.6" y="376" class="t-muted" font-size="7.7" text-anchor="middle">forbidden + reason</text>
         <text data-detail="fine" x="519.6" y="394" class="t-security" font-size="7" text-anchor="middle">RF-006</text>
         </g>
 
-        <g id="node-conflict" data-node-id="conflict" data-node-label="Conflicto _rev" tabindex="0" role="button" aria-label="Enfocar Conflicto _rev, ambas versiones, Conflictos y rechazos" aria-pressed="false" data-node-kind="security" data-node-sublabel="ambas versiones" data-node-tag="RF-013" data-node-context="Conflictos y rechazos">
-          <title>Conflicto _rev · ambas versiones · Conflictos y rechazos · RF-013</title>
+        <g id="node-conflict" data-node-id="conflict" data-node-label="Conflicto _rev" tabindex="0" role="button" aria-label="Enfocar Conflicto _rev, ramas new_edits:false, Conflictos y rechazos" aria-pressed="false" data-node-kind="security" data-node-sublabel="ramas new_edits:false" data-node-tag="RF-013" data-node-context="Conflictos y rechazos">
+          <title>Conflicto _rev · ramas new_edits:false · Conflictos y rechazos · RF-013</title>
           <rect x="612.4000000000001" y="338" width="120" height="68" rx="6" class="c-mask"/>
           <rect x="612.4000000000001" y="338" width="120" height="68" rx="6" class="c-security" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="security" class="semantic-sigil s-security" transform="translate(618.4000000000001 344) scale(0.6875)">
@@ -5154,12 +5154,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="m5.8 8 1.5 1.5 3-3"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="677.6000000000001" y="359" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Conflicto _rev</text>
-          <text data-detail="context" x="672.4000000000001" y="376" class="t-muted" font-size="8" text-anchor="middle">ambas versiones</text>
+          <text data-detail="context" x="672.4000000000001" y="376" class="t-muted" font-size="8" text-anchor="middle">ramas new_edits:false</text>
         <text data-detail="fine" x="672.4000000000001" y="394" class="t-security" font-size="7" text-anchor="middle">RF-013</text>
         </g>
 
-        <g id="node-resolve" data-node-id="resolve" data-node-label="Resolver" tabindex="0" role="button" aria-label="Enfocar Resolver, auto o el usuario, Conflictos y rechazos" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="auto o el usuario" data-node-tag="ADR-003" data-node-context="Conflictos y rechazos">
-          <title>Resolver · auto o el usuario · Conflictos y rechazos · ADR-003</title>
+        <g id="node-resolve" data-node-id="resolve" data-node-label="Resolver" tabindex="0" role="button" aria-label="Enfocar Resolver, merge.ts · ConflictView, Conflictos y rechazos" aria-pressed="false" data-node-kind="frontend" data-node-sublabel="merge.ts · ConflictView" data-node-tag="ADR-003" data-node-context="Conflictos y rechazos">
+          <title>Resolver · merge.ts · ConflictView · Conflictos y rechazos · ADR-003</title>
           <rect x="760.4000000000001" y="338" width="120" height="68" rx="6" class="c-mask"/>
           <rect x="760.4000000000001" y="338" width="120" height="68" rx="6" class="c-frontend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="frontend" class="semantic-sigil s-frontend" transform="translate(766.4000000000001 344) scale(0.6875)">
@@ -5169,7 +5169,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <circle cx="6.3" cy="4.8" r=".7" class="sigil-fill"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="820.4000000000001" y="359" class="t-primary" font-size="11" font-weight="600" text-anchor="middle">Resolver</text>
-          <text data-detail="context" x="820.4000000000001" y="376" class="t-muted" font-size="8" text-anchor="middle">auto o el usuario</text>
+          <text data-detail="context" x="820.4000000000001" y="376" class="t-muted" font-size="8" text-anchor="middle">merge.ts · ConflictView</text>
         <text data-detail="fine" x="820.4000000000001" y="394" class="t-frontend" font-size="7" text-anchor="middle">ADR-003</text>
         </g>
 
@@ -5177,9 +5177,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 
 
-        <g data-detail="context" data-edge-from="local_write" data-edge-to="push" data-edge-label="push al volver la red" data-edge-key="3">
-          <rect x="227.4" y="148" width="110.8" height="14" rx="3" class="c-mask"/>
-          <text x="282.8" y="158" class="t-edge-emphasis" font-size="8" text-anchor="middle">push al volver la red</text>
+        <g data-detail="context" data-edge-from="local_write" data-edge-to="push" data-edge-label="POST _bulk_docs" data-edge-key="3">
+          <rect x="241.8" y="148" width="82" height="14" rx="3" class="c-mask"/>
+          <text x="282.8" y="158" class="t-edge-emphasis" font-size="8" text-anchor="middle">POST _bulk_docs</text>
         </g>
         <g data-detail="context" data-edge-from="local_write" data-edge-to="status" data-edge-label="sin red" data-edge-key="4">
           <rect x="292" y="100" width="43.6" height="14" rx="3" class="c-mask"/>
@@ -5190,13 +5190,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="643.4000000000001" y="295" width="58" height="14" rx="3" class="c-mask"/>
           <text x="672.4000000000001" y="305" class="t-edge-security" font-size="8" text-anchor="middle">_conflicts</text>
         </g>
-        <g data-detail="context" data-edge-from="store" data-edge-to="pull" data-edge-label="_changes" data-edge-key="7">
-          <rect x="692.2" y="100" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="716.4000000000001" y="110" class="t-edge-emphasis" font-size="8" text-anchor="middle">_changes</text>
+        <g data-detail="context" data-edge-from="store" data-edge-to="pull" data-edge-label="GET _changes" data-edge-key="7">
+          <rect x="682.6000000000001" y="100" width="67.6" height="14" rx="3" class="c-mask"/>
+          <text x="716.4000000000001" y="110" class="t-edge-emphasis" font-size="8" text-anchor="middle">GET _changes</text>
         </g>
-        <g data-detail="context" data-edge-from="validate" data-edge-to="denied" data-edge-label="inválido" data-edge-key="8">
-          <rect x="495.40000000000003" y="299" width="48.4" height="14" rx="3" class="c-mask"/>
-          <text x="519.6" y="309" class="t-edge-security" font-size="8" text-anchor="middle">inválido</text>
+        <g data-detail="context" data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. vault-name-taken" data-edge-key="8">
+          <rect x="459.40000000000003" y="299" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
+          <text x="519.6" y="309" class="t-edge-security" font-size="8" text-anchor="middle">p. ej. vault-name-taken</text>
         </g>
         <g data-detail="context" data-edge-from="validate" data-edge-to="store" data-edge-label="válido" data-edge-key="9">
           <rect x="569.6" y="226" width="38.8" height="14" rx="3" class="c-mask"/>
@@ -5426,12 +5426,12 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="card">
         <div class="card-header">
           <div class="card-dot amber"></div>
-          <h3>Estado de la Fase 1</h3>
+          <h3>Estado</h3>
         </div>
         <ul>
-          <li>D-1…D-6 y C-1…C-4 aprobados</li>
-          <li>Sin marcadores abiertos; falta el Gate 1</li>
-          <li>Nada está implementado todavía</li>
+          <li>Implementada (Fase 4, bloques A–K)</li>
+          <li>Integración real: 14 pruebas; p95 ≈ 0,4 s</li>
+          <li>Pendiente: verificación (Fase 5)</li>
         </ul>
       </div>
     </div>

@@ -76,7 +76,9 @@ if [ -z "$SPECS" ]; then skip "sin specs todavía"; else
     d="$(dirname "$sp")"; name="$(basename "$d")"; st="$(fm_value "$sp" estado)"
     case "$st" in implemented|verified) ;; *) ok "$name ($st) — no exige trazabilidad aún"; continue ;; esac
     tk="$d/tasks.md"; [ -f "$tk" ] || { err "$name en $st sin tasks.md"; continue; }
-    rf_spec=$(grep -oE 'RF-[0-9]+' "$sp" | sort -u | wc -l | tr -d ' ')
+    # Sólo los RF que la spec define (`- **RF-NNN**`, formato de la plantilla); las
+    # referencias a requisitos de otras specs (p. ej. "RF-021 de 0003") no son suyos.
+    rf_spec=$(grep -oE '^- \*\*RF-[0-9]+' "$sp" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
     rf_cov=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
     pend=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -Eiv '\| *(Pass|hecho) *\|? *$' | grep -c . || true)
     if [ "$rf_spec" -gt 0 ] && [ "$rf_cov" -lt "$rf_spec" ]; then err "$name: $rf_cov/$rf_spec RF en la tabla de cobertura"

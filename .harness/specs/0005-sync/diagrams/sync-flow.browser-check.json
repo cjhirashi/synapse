@@ -6,11 +6,11 @@
   "status": "pass",
   "visualReview": "not-requested",
   "provenance": "current",
-  "deliveryReceiptId": "3c92628a-659c-446b-9243-0d56abb949bc",
+  "deliveryReceiptId": "db1201f9-6d84-4a9b-8dfb-6b77b1139630",
   "artifact": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
-    "sha256": "9e73e7e21280a1ab308caf624590193c1db5e840ea3afdb0c997f32207af6556",
-    "bytes": 764258
+    "sha256": "870b641ed7174572fd677b57435cb4ff0eab88386af4642dfd983bd6d24d8193",
+    "bytes": 764474
   },
   "state": {
     "detail": "read",
@@ -18,7 +18,7 @@
   },
   "chrome": {
     "status": "available",
-    "executable": "/ms-playwright/chromium-1148/chrome-linux/chrome"
+    "executable": "/ms-playwright/chromium_headless_shell-1194/chrome-linux/headless_shell"
   },
   "diagnostics": [],
   "containment": {

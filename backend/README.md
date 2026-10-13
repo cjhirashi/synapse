@@ -148,6 +148,60 @@ Todas pueden responder además 401, 403 y 503 (`storage-unavailable`). Contrato 
 `.harness/specs/0003-vault-crud/contracts/openapi.yaml`. Rendimiento (RNF-001):
 `tests/test_vaults_perf.py`, marca `perf` (ver Comandos).
 
+## Sincronización (SPEC-0005)
+
+La SPA replica la base del usuario con PouchDB por el canal `/sync`, un subconjunto del
+protocolo de replicación de CouchDB servido por el backend (nunca CouchDB directo). Capas:
+`routers/sync.py` → `services/sync_filter.py` (filtros puros) y `services/sync_push.py`
+(push validado) → `core/ports/replication_port.py` (`ReplicationPort`, async) →
+`adapters/replication_repository.py` (`ReplicationRepository`, httpx contra CouchDB).
+
+- **Aislamiento (RF-001):** el cliente abre `origin + "/sync/db"`; `db` es un nombre fijo y
+  la base real (`synapse_user_{sub}`) sale sólo del token. Toda ruta exige sesión (401) y el
+  cambio de contraseña hecho (403), también la comodín.
+- **Lista blanca (RF-003):** sólo existen las rutas de la tabla; cualquier otra ruta o
+  método bajo `/sync` responde 404 `sync-endpoint-not-found` sin llegar a CouchDB.
+- **Sólo bóvedas (RF-004, RF-007):** viajan los documentos `vault:{uuid}` canónico; las
+  reservas `vault-name:*` y `_design/vaults` nunca salen y ninguna respuesta cuenta
+  documentos. Los parámetros fuera de la lista blanca se descartan; uno conocido con valor
+  inválido es 422 `validation-error`. Las esperas de `_changes` se acotan a 60 s
+  (`MAX_WAIT_MS`).
+- **Push validado (RF-005…RF-008, RF-011):** `_bulk_docs` exige `new_edits: false` y
+  responde 201 con la lista de rechazos (`[]` si se aceptó todo). Cada revisión rechazada
+  va como `{id, rev, error: "forbidden", reason}`; PouchDB la trata como *denied*: avisa al
+  cliente y sigue con el resto. Una revisión ya almacenada se acepta sin tocar nada (reenvío
+  de un lote cortado). El nombre se reserva con el mismo mecanismo que la API REST, así que
+  REST y sync nunca dejan dos bóvedas activas con el mismo nombre.
+- **Límites:** 200 documentos por `_bulk_docs` y 4 MiB por cuerpo (413
+  `payload-too-large`); 64 KiB por checkpoint `_local`.
+
+Códigos `reason` de un rechazo (orden en que se comprueban):
+
+| `reason` | Cuándo |
+|---|---|
+| `invalid-id` | id que no es `vault:{uuid}` canónico |
+| `delete-not-allowed` | lápida que no cierra una rama dejando otra hoja viva (el borrado es `deleted_at`) |
+| `validation-error:<campo>` | `_rev`/`_revisions` mal formados (antes que la lápida), o un campo que falta, sobra o tiene un tipo o valor inválido |
+| `not-normalized:<campo>` | valor válido pero sin normalizar como lo haría la API |
+| `owner-mismatch` | `owner_id` distinto del usuario del token |
+| `immutable-field:created_at` | `created_at` distinto del de las demás hojas |
+| `vault-name-taken` | otra bóveda activa del usuario tiene un nombre equivalente |
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /sync/` | 200 raíz, sin `uuid` ni versión |
+| `GET /sync/db/` | 200 `db_name`, `update_seq`, `instance_start_time` · 503 |
+| `GET`/`POST /sync/db/_changes` | 200 en streaming (`normal` o `longpoll`), sólo bóvedas · 422 · 503 |
+| `POST /sync/db/_revs_diff` | 200 · 422 · 503 |
+| `POST /sync/db/_bulk_get` | 200 · 422 · 503 |
+| `GET`/`POST /sync/db/_all_docs` | 200 sólo bóvedas, `total_rows` sólo las cuenta · 422 · 503 |
+| `POST /sync/db/_bulk_docs` `{docs, new_edits: false}` | 201 lista de rechazos · 413 · 422 · 503 |
+| `GET /sync/db/_local/{id}` | 200 · 404 `checkpoint-not-found` · 503 |
+| `PUT /sync/db/_local/{id}` | 201 `{ok, id, rev}` · 413 · 422 · 503 |
+
+Todas pueden responder además 401 y 403. Requisitos del proxy inverso: ver "Despliegue".
+Contrato completo: `.harness/specs/0005-sync/contracts/openapi.yaml`.
+
 ## Errores (SPEC-0004)
 
 > **Cambio incompatible:** desde SPEC-0004 los errores ya no son `{"detail": "..."}`.
@@ -200,6 +254,9 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `precondition-required` | 428 | escritura de bóveda sin `If-Match` |
 | `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña; `cursor` inválido |
 | `storage-unavailable` | 503 | CouchDB inaccesible |
+| `sync-endpoint-not-found` | 404 | ruta o método bajo `/sync` fuera del subconjunto del canal |
+| `checkpoint-not-found` | 404 | `GET /sync/db/_local/{id}` sin checkpoint guardado |
+| `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite |
 
 **Añadir un error de dominio:**
 1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y
@@ -242,7 +299,8 @@ lo variable va en `errors`.
 ## Contratos OpenAPI por feature
 
 `python scripts/export_openapi.py` escribe un contrato por feature (`FEATURES` en el script):
-`0002-auth` (rutas `/auth`, `/admin`, `/health`), `0003-vault-crud` (rutas `/vaults`) y
+`0002-auth` (rutas `/auth`, `/admin`, `/health`), `0003-vault-crud` (rutas `/vaults`),
+`0005-sync` (rutas `/sync`, sin la comodín) y
 `0004-api-problem-details` (sólo los
 esquemas `Problem`/`ProblemError`, el canon). Cada contrato lleva una copia de `Problem` para
 ser autocontenido; `tests/test_contract.py` falla si un contrato difiere de la app, si una

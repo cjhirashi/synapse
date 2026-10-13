@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: d730de9   # re-anclaje por SPEC-0003 enmienda 1 (core/schemas.py)
+anchor_commit: 461517f   # re-anclaje por SPEC-0005 (T-083 de TASKS-0005)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -84,6 +84,16 @@ actualizado: 2026-10-12
 > de 0003), `App.tsx` (rutas `/vaults/**`, `/` → `/vaults`), `layout/AppLayout.tsx` y su test
 > (navegación Bóvedas/Papelera) y `api/auth.ts` (`request` exportado para `api/vaults.ts`).
 > Ancla movida a `4a07556`. Sin cambio de requisitos.
+>
+> **Re-anclaje 2026-10-13** (PLAN-0005 §7, T-083 de TASKS-0005): SPEC-0005
+> (sincronización) tocó archivos de estos `covers` sin cambiar ningún requisito de esta
+> spec: `App.tsx` (la sesión abre `SyncProvider` del usuario, en pausa mientras deba cambiar
+> la contraseña; rutas `/rejections` y `/conflicts`), `auth/RequireAuth.tsx` y su test
+> (`useMe()`; un fallo sin 401 al navegar no cierra una sesión ya verificada, para seguir
+> sobre la réplica local), `layout/AppLayout.tsx` y su test (barra de estado de
+> sincronización; "Cerrar sesión" avisa antes si hay cambios sin confirmar), `scripts/export_openapi.py` (feature `0005-sync`) y
+> `tests/test_contract.py` (contrato de 0005). Ancla movida a `461517f`. Sin cambio de
+> requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

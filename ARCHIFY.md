@@ -81,9 +81,11 @@
 └── sync-flow-dark.png
 ```
 
-> **Estado (2026-10-13):** primera versión como *workflow* (carriles navegador / servidor /
-> conflictos), con las opciones recomendadas de la Fase 1 de SPEC-0005; se actualiza al
-> cerrar sus decisiones. Índice en `.harness/specs/0005-sync/diagrams/README.md`.
+> **Estado (T-081, 2026-10-13):** *workflow* (carriles navegador / servidor / conflictos)
+> redibujado con la implementación de SPEC-0005 (Fase 4): canal `/sync/db` con la base del
+> token, push validado (`sync_push`), motivos de rechazo y resolución con `merge.ts`.
+> Pendiente de la verificación (Fase 5). Índice y cómo regenerarlo en
+> `.harness/specs/0005-sync/diagrams/README.md`.
 
 ---
 
@@ -217,7 +219,7 @@ sequenceDiagram
 - [ ] (No requiere diagramas nuevos, puede reutilizar arquitectura)
 
 ### **Sprint 4 — Sincronización**
-- [x] Generar **Flujo de Sincronización** (borrador de Fase 1, workflow)
+- [x] Generar **Flujo de Sincronización** (workflow; redibujado con la implementación, T-081)
 - [x] Guardar en `.harness/specs/0005-sync/diagrams/`
 
 ### **Sprint 5+ — Editor + OpenClaw**

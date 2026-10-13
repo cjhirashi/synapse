@@ -2,7 +2,7 @@
 id: TASKS-0005
 tipo: tasks
 feature: 0005-sync
-estado: approved
+estado: implemented
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
 actualizado: 2026-10-13
@@ -124,50 +124,50 @@ actualizado: 2026-10-13
 - [x] T-075 — `sync/sync.perf.integration.test.ts` (marca `perf`): 20 ediciones, p95 ≤ 5 s hasta la otra réplica (cubre RNF-001) [zona: test]
 
 ### L · Documentación y re-anclajes (PLAN-0005 §8)
-- [ ] T-076 — verificar que `0005-sync/contracts/openapi.yaml` exportado incluye los códigos `reason` y errores de §4 [doc]
-- [ ] T-077 — `backend/README.md`: sección "Sincronización (SPEC-0005)" [doc]
-- [ ] T-078 — `backend/app/{core/ports,adapters,services,routers}/README.md`: `ReplicationPort`, `ReplicationRepository`, `VaultPort.leaves`, `sync_push`, `sync_filter`, `sync.py` [doc]
-- [ ] T-079 — `frontend/src/README.md`: carpeta `sync/`, estados, rechazos, conflictos, salida, proxys `/sync`, pantallas sobre la réplica [doc]
-- [ ] T-080 — `frontend/README.md` (o scripts de `package.json`): `npm run test:sync` y `sync-integration.sh` [doc]
-- [ ] T-081 — `0005-sync/diagrams/`: candidato con estado y rutas exactas, regenerar, `README.md` [doc]
-- [ ] T-082 — `ARCHIFY.md`: estado del diagrama de sync [doc]
-- [ ] T-083 — re-anclajes en el cierre: notas en `0003-vault-crud/spec.md` (P-1) y `0002-auth/spec.md` (App, layout, export) sin cambio de requisitos [doc]
-- [ ] T-084 — `.harness/memory/state.md`: estado de 0005, hazards 1 y 3 mitigados [doc]
+- [x] T-076 — verificar que `0005-sync/contracts/openapi.yaml` exportado incluye los códigos `reason` y errores de §4 [doc]
+- [x] T-077 — `backend/README.md`: sección "Sincronización (SPEC-0005)" [doc]
+- [x] T-078 — `backend/app/{core/ports,adapters,services,routers}/README.md`: `ReplicationPort`, `ReplicationRepository`, `VaultPort.leaves`, `sync_push`, `sync_filter`, `sync.py` [doc]
+- [x] T-079 — `frontend/src/README.md`: carpeta `sync/`, estados, rechazos, conflictos, salida, proxys `/sync`, pantallas sobre la réplica [doc]
+- [x] T-080 — `frontend/README.md` (o scripts de `package.json`): `npm run test:sync` y `sync-integration.sh` [doc]
+- [x] T-081 — `0005-sync/diagrams/`: candidato con estado y rutas exactas, regenerar, `README.md` [doc]
+- [x] T-082 — `ARCHIFY.md`: estado del diagrama de sync [doc]
+- [x] T-083 — re-anclajes en el cierre: notas en `0003-vault-crud/spec.md` (P-1) y `0002-auth/spec.md` (App, layout, export) sin cambio de requisitos [doc]
+- [x] T-084 — `.harness/memory/state.md`: estado de 0005, hazards 1 y 3 mitigados [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-001, T-002, T-009, T-020, T-028, T-029, T-031, T-067, T-068, T-074 | test_contract, test_sync_isolation, test_sync_push, isolation.integration | Pendiente |
-| RF-002 | T-024, T-029, T-042, T-043 | test_sync_api, remote.test | Pendiente |
-| RF-003 | T-001, T-003, T-004, T-024, T-029, T-031 | test_sync_errors, test_sync_api | Pendiente |
-| RF-004 | T-005…T-011, T-013, T-025, T-029, T-030 | test_sync_filter, test_sync_repository, test_sync_api | Pendiente |
-| RF-005 | T-018…T-022, T-026, T-029, T-033…T-035, T-071 | test_sync_push, test_sync_api, test_sync_rules_mirror, vaultRules.test, rejections.integration | Pendiente |
-| RF-006 | T-021, T-023, T-026, T-029, T-048, T-049, T-056, T-057, T-071 | test_sync_push, test_sync_api, rejections.test, RejectionsPage.test, rejections.integration | Pendiente |
-| RF-007 | T-005…T-008, T-019, T-022, T-026 | test_sync_filter, test_sync_push, test_sync_api | Pendiente |
-| RF-008 | T-014…T-018, T-021, T-023, T-071 | test_vault_repository, test_vault_service, test_sync_push, rejections.integration | Pendiente |
-| RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pendiente |
-| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pendiente |
-| RF-011 | T-021, T-023, T-038, T-039, T-062, T-063, T-070 | test_sync_push, vaultStore.test, vaults/*.test, offline.integration | Pendiente |
-| RF-012 | T-011, T-040, T-041, T-050, T-051, T-072 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pendiente |
-| RF-013 | T-040, T-041, T-050, T-051, T-058, T-059, T-072 | merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pendiente |
-| RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pendiente |
-| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072 | test_sync_rules_mirror, vaultRules.test, merge.test, ConflictView.test, conflicts.integration | Pendiente |
-| RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pendiente |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests | Pendiente |
-| RF-018 | T-036, T-037, T-052, T-053 | localDb.test, SyncProvider.test | Pendiente |
-| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073 | test_sync_repository, test_sync_api, replicator.test, status.test, session.integration | Pendiente |
-| RNF-001 | T-075 | sync.perf.integration | Pendiente |
-| RNF-002 | T-069…T-073 | *.integration (sync-integration.sh) | Pendiente |
-| RNF-003 | T-028, T-074 | test_sync_isolation, isolation.integration | Pendiente |
-| doc: contrato | T-076 | test_contract | Pendiente |
-| doc: backend/README | T-077 | — | Pendiente |
-| doc: app/*/README | T-078 | — | Pendiente |
-| doc: frontend/src/README | T-079 | — | Pendiente |
-| doc: frontend scripts | T-080 | — | Pendiente |
-| doc: diagrams | T-081 | — | Pendiente |
-| doc: ARCHIFY.md | T-082 | — | Pendiente |
-| doc: re-anclajes 0002/0003 | T-083 | — | Pendiente |
-| doc: state.md | T-084 | — | Pendiente |
+| RF-001 | T-001, T-002, T-009, T-020, T-028, T-029, T-031, T-067, T-068, T-074 | test_contract, test_sync_isolation, test_sync_push, isolation.integration | Pass |
+| RF-002 | T-024, T-029, T-042, T-043 | test_sync_api, remote.test | Pass |
+| RF-003 | T-001, T-003, T-004, T-024, T-029, T-031 | test_sync_errors, test_sync_api | Pass |
+| RF-004 | T-005…T-011, T-013, T-025, T-029, T-030 | test_sync_filter, test_sync_repository, test_sync_api | Pass |
+| RF-005 | T-018…T-022, T-026, T-029, T-033…T-035, T-071 | test_sync_push, test_sync_api, test_sync_rules_mirror, vaultRules.test, rejections.integration | Pass |
+| RF-006 | T-021, T-023, T-026, T-029, T-048, T-049, T-056, T-057, T-071 | test_sync_push, test_sync_api, rejections.test, RejectionsPage.test, rejections.integration | Pass |
+| RF-007 | T-005…T-008, T-019, T-022, T-026 | test_sync_filter, test_sync_push, test_sync_api | Pass |
+| RF-008 | T-014…T-018, T-021, T-023, T-071 | test_vault_repository, test_vault_service, test_sync_push, rejections.integration | Pass |
+| RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pass |
+| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
+| RF-011 | T-021, T-023, T-038, T-039, T-062, T-063, T-070 | test_sync_push, vaultStore.test, vaults/*.test, offline.integration | Pass |
+| RF-012 | T-011, T-040, T-041, T-050, T-051, T-072 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
+| RF-013 | T-040, T-041, T-050, T-051, T-058, T-059, T-072 | merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
+| RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
+| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072 | test_sync_rules_mirror, vaultRules.test, merge.test, ConflictView.test, conflicts.integration | Pass |
+| RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests | Pass |
+| RF-018 | T-036, T-037, T-052, T-053 | localDb.test, SyncProvider.test | Pass |
+| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073 | test_sync_repository, test_sync_api, replicator.test, status.test, session.integration | Pass |
+| RNF-001 | T-075 | sync.perf.integration | Pass |
+| RNF-002 | T-069…T-073 | *.integration (sync-integration.sh) | Pass |
+| RNF-003 | T-028, T-074 | test_sync_isolation, isolation.integration | Pass |
+| doc: contrato | T-076 | test_contract | Pass |
+| doc: backend/README | T-077 | — | hecho |
+| doc: app/*/README | T-078 | — | hecho |
+| doc: frontend/src/README | T-079 | — | hecho |
+| doc: frontend scripts | T-080 | — | hecho |
+| doc: diagrams | T-081 | — | hecho |
+| doc: ARCHIFY.md | T-082 | — | hecho |
+| doc: re-anclajes 0002/0003 | T-083 | — | hecho |
+| doc: state.md | T-084 | — | hecho |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

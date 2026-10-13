@@ -2,7 +2,7 @@
 id: PLAN-0005
 tipo: plan
 feature: 0005-sync
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
 actualizado: 2026-10-13

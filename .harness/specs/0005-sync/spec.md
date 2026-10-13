@@ -2,9 +2,9 @@
 id: SPEC-0005
 tipo: spec
 feature: 0005-sync
-estado: approved         # draft | in-review | approved | implemented | verified | deprecated
+estado: implemented      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 5704bf9   # último commit reconciliado (lo mueve el cierre)
+anchor_commit: 461517f   # cierre de la Fase 4 (bloque K; T-083)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py

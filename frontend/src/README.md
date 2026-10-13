@@ -49,6 +49,22 @@ pruebas de integración). Éstas (`sync/*.integration.test.ts`, `npm run test:sy
 `test-utils/device.ts`: cada `Device` es un navegador con sus cookies, su red simulable
 (sin red, backend caído) y su réplica, contra el backend real.
 
+Módulos de `sync/`:
+
+| Módulo | Qué hace |
+|---|---|
+| `localDb.ts` | réplica local PouchDB (IndexedDB); se borra si era de otro usuario |
+| `remote.ts` | base remota `origin + "/sync/db"` con cookies; ante un 401 renueva la sesión una vez y, si sigue, avisa «sesión caducada» |
+| `replicator.ts` | replicación continua en ambos sentidos, lotes de 50, espera de 1 s doblando hasta 60 s; una sola pestaña replica (Web Lock `synapse-sync`) y difunde los eventos por `BroadcastChannel` |
+| `status.ts` | estado (`online`, `offline`, `syncing`, `pending`, `session-expired`), «pendientes» (la secuencia local frente a la última que confirmó el servidor) y hora de la última sincronización, en `_local/synapse-sync-state` |
+| `rejections.ts` | cambios que el servidor rechazó (uno por documento, con su `reason`); se quitan cuando una revisión de ese documento se sube bien |
+| `merge.ts`, `conflicts.ts` | conflictos: combinación automática por campos (ADR-003) o lista manual con las dos versiones; `resolve()` aplica la elección |
+| `vaultRules.ts` | réplica de las reglas del servidor (normalización y validación), para no escribir lo que el push rechazaría |
+| `vaultStore.ts` | CRUD de bóvedas sobre la réplica (con `rev`) |
+| `resources.ts` | abre réplica, remota y replicador; push único de «Sincronizar y salir» |
+| `SyncProvider.tsx`, `useSync.ts` | ciclo de vida por usuario y contexto para la UI |
+| `SyncStatusBar.tsx`, `RejectionsPage.tsx`, `ConflictView.tsx`, `LogoutDialog.tsx` | barra de estado, rechazos, conflictos y aviso al salir con cambios sin confirmar |
+
 **Bóvedas (SPEC-0003 sobre la réplica, P-1):** las páginas leen y escriben
 `useSync().vaults` (`sync/vaultStore.ts`) en lugar de la API REST, que sigue igual para los
 agentes. Cada bóveda lleva su `rev`, que las escrituras mandan para no pisar un cambio
@@ -61,6 +77,9 @@ vigente—, o cuota agotada (R-11). `vaults/fields.ts` reúne los textos de las 
 campo y la lectura de etiquetas y descripción, compartidos con la vista de conflictos.
 
 En desarrollo, `vite.config.ts` reenvía `/vaults` al backend salvo las navegaciones del
-navegador (`Accept: text/html`), que reciben `index.html` para que React Router pinte la ruta.
+navegador (`Accept: text/html`), que reciben `index.html` para que React Router pinte la ruta,
+y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy externo, en el
+mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
+(`backend/README.md`, «Despliegue»).
 
 El resto de la estructura (editor) se define en su propia spec.

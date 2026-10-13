@@ -501,7 +501,7 @@
    "col": 1,
    "type": "database",
    "label": "Escritura local",
-   "sublabel": "siempre, con o sin red",
+   "sublabel": "PouchDB · con o sin red",
    "width": 120
   },
   {
@@ -510,8 +510,8 @@
    "col": 2,
    "type": "frontend",
    "label": "Estado de sync",
-   "sublabel": "offline · pendientes",
-   "tag": "RF-009",
+   "sublabel": "offline · pendientes · sesión",
+   "tag": "RF-009/019",
    "width": 120
   },
   {
@@ -519,7 +519,7 @@
    "lane": "server",
    "col": 2,
    "type": "security",
-   "label": "Proxy /sync",
+   "label": "Canal /sync",
    "sublabel": "JWT → synapse_user_{id}",
    "tag": "RF-001/002"
   },
@@ -528,7 +528,7 @@
    "lane": "server",
    "col": 3,
    "type": "backend",
-   "label": "Validación",
+   "label": "Push validado",
    "sublabel": "reglas de SPEC-0003",
    "tag": "RF-005"
   },
@@ -547,7 +547,7 @@
    "col": 5,
    "type": "database",
    "label": "Pull continuo",
-   "sublabel": "otros dispositivos",
+   "sublabel": "_changes · otras réplicas",
    "width": 120
   },
   {
@@ -556,7 +556,7 @@
    "col": 3,
    "type": "security",
    "label": "Rechazo",
-   "sublabel": "p. ej. nombre ocupado",
+   "sublabel": "forbidden + reason",
    "tag": "RF-006"
   },
   {
@@ -565,7 +565,7 @@
    "col": 4,
    "type": "security",
    "label": "Conflicto _rev",
-   "sublabel": "ambas versiones",
+   "sublabel": "ramas new_edits:false",
    "tag": "RF-013",
    "width": 120
   },
@@ -575,7 +575,7 @@
    "col": 5,
    "type": "frontend",
    "label": "Resolver",
-   "sublabel": "auto o el usuario",
+   "sublabel": "merge.ts · ConflictView",
    "tag": "ADR-003",
    "width": 120
   }
@@ -589,7 +589,7 @@
   {
    "from": "local_write",
    "to": "push",
-   "label": "push al volver la red",
+   "label": "POST _bulk_docs",
    "variant": "emphasis"
   },
   {
@@ -612,13 +612,13 @@
   {
    "from": "store",
    "to": "pull",
-   "label": "_changes",
+   "label": "GET _changes",
    "variant": "emphasis"
   },
   {
    "from": "validate",
    "to": "denied",
-   "label": "inválido",
+   "label": "p. ej. vault-name-taken",
    "variant": "security",
    "role": "error"
   },
@@ -660,11 +660,11 @@
   },
   {
    "dot": "amber",
-   "title": "Estado de la Fase 1",
+   "title": "Estado",
    "items": [
-    "D-1…D-6 y C-1…C-4 aprobados",
-    "Sin marcadores abiertos; falta el Gate 1",
-    "Nada está implementado todavía"
+    "Implementada (Fase 4, bloques A–K)",
+    "Integración real: 14 pruebas; p95 ≈ 0,4 s",
+    "Pendiente: verificación (Fase 5)"
    ]
   }
  ]
