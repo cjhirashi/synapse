@@ -37,6 +37,17 @@
       ],
       "output_path": ".harness/diagrams/",
       "format": "json"
+    },
+    "ui-ux-pro-max": {
+      "enabled": true,
+      "use_cases": [
+        "Sistema de diseño profesional (79 estilos, 192 paletas)",
+        "Componentes UI reusables (vault, auth, documents)",
+        "Design tokens automatizados",
+        "Guía de estilo para frontend React"
+      ],
+      "output_path": "src/frontend/design-system/",
+      "format": "json"
     }
   },
   "context_gates": {

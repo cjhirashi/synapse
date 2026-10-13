@@ -23,6 +23,7 @@ Almacén de bóvedas colaborativo. Sin IA interna: agentes OpenClaw acceden vía
 
 ## Skills disponibles
 - **Archify:** Diagramas para specs y ADRs
+- **UI UX Pro Max:** Sistema de diseño profesional (79 estilos, 192 paletas, componentes reusables)
 
 ## Próximo
 - SPEC-0005: Sincronización PouchDB ↔ CouchDB
