@@ -168,6 +168,13 @@ class InMemoryVaultPort(VaultPort):
         doc = self.docs.get(db, {}).get(doc_id)
         return copy.deepcopy(doc)
 
+    def leaves(self, db, doc_id):
+        # Sin ramas todavía: el documento vigente es la única hoja (las ramas en conflicto
+        # llegan con SPEC-0005 T-016).
+        self._maybe_fail("leaves", db, doc_id)
+        doc = self.docs.get(db, {}).get(doc_id)
+        return [copy.deepcopy(doc)] if doc else []
+
     def put(self, db, doc):
         self._maybe_interleave("put", doc)
         self._maybe_fail("put", db, doc)

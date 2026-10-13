@@ -23,6 +23,9 @@ sprint_actual: 2
 - **Bitácora:** cada tarea concluida se registra en `history.md` en el momento, no sólo al cierre.
 - **Sin nginx (2026-10-13, GATE 3 de 0005):** el proxy inverso de producción es un **Caddy
   externo** al repo. Ninguna feature añade configuración de nginx.
+- **FastAPI sirve la SPA (2026-10-13):** decisión del usuario para sustituir el nginx de
+  `frontend/Dockerfile` (estáticos + enrutado `/auth`, `/admin`, `/vaults`). Es un cambio con
+  spec propia, **después de 0005**; no se implementa dentro de 0005.
 - **Regla de salida de la verificación (2026-10-12):** sólo hay otra ronda si hubo un hallazgo
   bloqueante o mayor, o si la corrección cambia el comportamiento; los menores de docs,
   trazabilidad, estilo o tests que endurecen se corrigen y registran sin nueva ronda
@@ -53,9 +56,9 @@ sprint_actual: 2
 2. ~~`docker-compose.yml` con Qdrant/Gotenberg y sin `Dockerfile` del frontend~~ → resuelto
    (2026-10-13, prompt directo): fuera Qdrant y Gotenberg; `frontend/Dockerfile` (Node →
    nginx) con `nginx.conf` que replica el proxy de Vite; override de desarrollo sobre la
-   etapa `build`. **Pendiente por la corrección "sin nginx":** decidir cómo se sirven los
-   estáticos y quién enruta `/auth`, `/admin` y `/vaults` (con el `map` de `Accept`) cuando
-   se retire el nginx de `frontend/Dockerfile`. Residual: `test_contract.py` no corre dentro de la imagen del backend
+   etapa `build`. **Decidido por el usuario (2026-10-13): FastAPI sirve la SPA** en lugar del
+   nginx de `frontend/Dockerfile` (estáticos y la distinción por `Accept` de `/auth`, `/admin`,
+   `/vaults`). Pendiente su spec, como feature propia tras 0005. Residual: `test_contract.py` no corre dentro de la imagen del backend
    (necesita `specs/` y `scripts/` del repo).
 3. Migraciones 002, 003 y 004 probadas en SQLite y PostgreSQL 15 real (round-trip; 003 aborta si hay duplicados por mayúsculas).
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.

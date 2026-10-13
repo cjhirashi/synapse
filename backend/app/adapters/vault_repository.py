@@ -72,6 +72,20 @@ class VaultRepository(VaultPort):
         response = self._request("GET", self._doc_path(db, doc_id), (200, 404))
         return response.json() if response.status_code == 200 else None
 
+    def leaves(self, db: str, doc_id: str) -> list[dict]:
+        # `open_revs=all` con `Accept: application/json` da `[{"ok": doc}, ...]`, una por hoja
+        # (vivas y lápidas); sin documento, 404.
+        response = self._request(
+            "GET", self._doc_path(db, doc_id), (200, 404),
+            params={"open_revs": "all", "revs": "true"}, headers={"Accept": "application/json"},
+        )
+        if response.status_code == 404:
+            return []
+        return [
+            entry["ok"] for entry in response.json()
+            if "ok" in entry and not entry["ok"].get("_deleted")
+        ]
+
     def put(self, db: str, doc: dict) -> str:
         response = self._request("PUT", self._doc_path(db, doc["_id"]), (201, 202, 409), json=doc)
         if response.status_code == 409:

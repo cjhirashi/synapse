@@ -14,6 +14,15 @@ class VaultPort(ABC):
         """El documento con su `_rev`, o `None` si no existe."""
 
     @abstractmethod
+    def leaves(self, db: str, doc_id: str) -> list[dict]:
+        """Todas las hojas vivas del documento, cada una con su `_revisions` (SPEC-0005 RF-008).
+
+        Sin conflicto hay una; con ramas en conflicto (escritas por la sincronización) hay
+        varias, y `get` sólo devolvería la ganadora. Las lápidas no cuentan. Documento
+        inexistente o borrado → lista vacía. Orden no especificado.
+        """
+
+    @abstractmethod
     def put(self, db: str, doc: dict) -> str:
         """Crea (sin `_rev`) o reemplaza (con el `_rev` vigente) `doc`; devuelve el `_rev` nuevo.
 

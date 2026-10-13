@@ -597,3 +597,26 @@
 - **Comprobado contra CouchDB:** el rango `vault:`…`vault:￰` usa orden de bytes y deja fuera `vault-name:*`; `_bulk_get` devuelve un resultado por pedido, en orden.
 - `vault_service.py` (0003, P-1): `is_canonical_uuid` e `is_timestamp` pasan a públicas para que la sincronización reutilice el mismo canon. Se re-ancla al cierre.
 - T-001/T-002 (contrato) se hacen junto con las rutas (bloque F) para no dejar la suite en rojo entre commits.
+
+## [2026-10-13] Decisión del usuario: FastAPI sirve la SPA
+
+- El usuario eligió **FastAPI** para sustituir el nginx de `frontend/Dockerfile`: sirve los estáticos y enruta `/auth`, `/admin` y `/vaults` según `Accept`.
+- Es un cambio fuera de 0005: llevará su propia spec después de esta feature.
+- Registrado en `state.md`, en las correcciones del usuario y en el punto 2 del backlog.
+
+## [2026-10-13] 0005-sync — Fase 4: T-009…T-015 (puerto de replicación y hojas)
+
+- **T-009:** `core/ports/replication_port.py`, con `ReplicationPort` async.
+- **T-010…T-012:** `test_sync_repository.py`, 43 tests contra CouchDB real. Las caídas, los 5xx/401 y los cortes a mitad de flujo se simulan con transportes de httpx.
+- **T-013:** `adapters/replication_repository.py`.
+  - Abre un `httpx.AsyncClient` por operación, para no atar el pool a un event loop.
+  - `changes` hace streaming con `send(stream=True)`: un fallo al abrir se lanza antes de responder y uno a mitad, al iterar. Cierra cliente y respuesta en `finally`.
+  - La lectura de un `longpoll` admite la espera pedida (≤ 60 s) más 10 s.
+- **Hallazgos sobre CouchDB 3.5.2 real**, que corrigen supuestos míos (no del plan):
+  - un `_local` no valida `_rev`: gana la última escritura, y un PUT sin `_rev` lo reinicia a `0-1`. El puerto refleja eso y no inventa un `RevisionConflict`, así que se descarta la idea de un 409 de catálogo para checkpoints en el bloque F.
+  - `_revs_diff` añade `possible_ancestors`, que forma parte del protocolo y se reenvía tal cual.
+- **T-014/T-015:** `VaultPort.leaves(db, doc_id)`, implementado con `GET doc?open_revs=all&revs=true` (`Accept: application/json`).
+  - Devuelve las hojas vivas con `_revisions`, sin lápidas; si el documento no existe, una lista vacía.
+  - El doble `InMemoryVaultPort` recibe un `leaves` mínimo (sin ramas) para que la suite siga en verde; T-016 le añade conflictos.
+- Suite completa: **532 passed**.
+- **Próximo paso:** bloque D (T-016/T-017, `_holder` sobre todas las hojas vivas).

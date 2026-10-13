@@ -201,10 +201,58 @@ def test_rnf_001_design_doc_is_written_once_per_db_and_process():
     assert sum(method == "GET" for method, _ in requests) == 4
 
 
+# --- SPEC-0005 T-014: hojas vivas de un documento, también en conflicto (RF-008) ---
+
+def _replicate(db: str, docs: list[dict]) -> None:
+    """Escribe revisiones con historia explícita (`new_edits: false`), como el replicador."""
+    response = httpx.post(
+        f"{settings.COUCHDB_URL}/{db}/_bulk_docs", json={"docs": docs, "new_edits": False}, auth=AUTH
+    )
+    response.raise_for_status()
+    assert response.json() == []
+
+
+def _revision(doc_id: str, rev: str, parents: list[str] = (), **fields) -> dict:
+    start, rev_hash = rev.split("-")
+    return {
+        "_id": doc_id, "_rev": rev, **fields,
+        "_revisions": {"start": int(start), "ids": [rev_hash, *(p.split("-")[1] for p in parents)]},
+    }
+
+
+def test_rf_008_leaves_of_a_doc_without_conflict_is_the_current_revision(repo, db):
+    doc = _vault("2026-10-01T00:00:00Z")
+    rev = repo.put(db, doc)
+    leaves = repo.leaves(db, doc["_id"])
+    assert [leaf["_rev"] for leaf in leaves] == [rev]
+    assert leaves[0]["name"] == doc["name"] and leaves[0]["_revisions"]["start"] == 1
+
+
+def test_rf_008_leaves_returns_every_live_branch_and_skips_tombstones(repo, db):
+    doc_id = f"vault:{uuid.uuid4()}"
+    _replicate(db, [
+        _revision(doc_id, "1-aaa", type="vault", name="base"),
+        _revision(doc_id, "2-bbb", ["1-aaa"], type="vault", name="rama b"),
+        _revision(doc_id, "2-ccc", ["1-aaa"], _deleted=True),
+        _revision(doc_id, "2-ddd", ["1-aaa"], type="vault", name="rama d"),
+    ])
+    leaves = repo.leaves(db, doc_id)
+    assert sorted((leaf["_rev"], leaf["name"]) for leaf in leaves) == [("2-bbb", "rama b"), ("2-ddd", "rama d")]
+    assert all(leaf["_revisions"]["ids"][-1] == "aaa" for leaf in leaves)
+
+
+def test_rf_008_leaves_of_a_missing_or_deleted_doc_is_empty(repo, db):
+    assert repo.leaves(db, f"vault:{uuid.uuid4()}") == []
+    doc = _vault("2026-10-01T00:00:00Z")
+    repo.delete(db, doc["_id"], repo.put(db, doc))
+    assert repo.leaves(db, doc["_id"]) == []
+
+
 # --- T-013: almacén inaccesible o 5xx → StorageUnavailable (RF-017) ---
 
 _CALLS = {
     "get": lambda r: r.get("synapse_user_x", "vault:a"),
+    "leaves": lambda r: r.leaves("synapse_user_x", "vault:a"),
     "put": lambda r: r.put("synapse_user_x", {"_id": "vault:a"}),
     "delete": lambda r: r.delete("synapse_user_x", "vault:a", "1-a"),
     "list_page": lambda r: r.list_page("synapse_user_x", deleted=False, limit=10, after=None),

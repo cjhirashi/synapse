@@ -39,13 +39,13 @@ actualizado: 2026-10-13
 - [x] T-008 — `sync_filter.py`: recortes de `_revs_diff`, `_bulk_get`, `_all_docs` y `sanitize_db_info` (cubre RF-004, RF-007) [zona: servicio]
 
 ### C · Puertos y adaptadores (CouchDB real)
-- [ ] T-009 — `core/ports/replication_port.py`: `ReplicationPort` (ABC async) con `db_info`, `changes`, `revs_diff`, `bulk_get`, `all_docs`, `bulk_docs_replicated`, `get_local`, `put_local`, documentados (cubre RF-001, RF-004) [zona: puerto]
-- [ ] T-010 — test (rojo) `test_sync_repository.py`: `db_info`, `revs_diff`, `bulk_get` con `revs`, `all_docs` con rango y `keys`, `get_local`/`put_local` (cubre RF-004, RF-010) [zona: test]
-- [ ] T-011 — test (rojo) `test_sync_repository.py`: `bulk_docs_replicated` con `new_edits:false` crea dos ramas en conflicto sin 409; `changes` con selector y `feed=longpoll` entrega bytes en streaming y termina al llegar un cambio (cubre RF-004, RF-012) [zona: test]
-- [ ] T-012 — test (rojo) `test_sync_repository.py`: CouchDB inaccesible y 5xx → `StorageUnavailable` en cada método, también a mitad del streaming (cubre RF-019) [zona: test]
-- [ ] T-013 — `adapters/replication_repository.py`: `httpx.AsyncClient` con credencial admin y mapeo de errores (cubre RF-004, RF-010, RF-019) [zona: adaptador]
-- [ ] T-014 — test (rojo) `test_vault_repository.py`: `leaves` devuelve todas las hojas vivas con `_revisions` (sin conflicto, una; con conflicto, ambas; lápidas fuera) (cubre RF-008) [zona: test]
-- [ ] T-015 — `VaultPort.leaves` + implementación en `adapters/vault_repository.py` (`open_revs=all&revs=true`) (cubre RF-008) [zona: puerto/adaptador]
+- [x] T-009 — `core/ports/replication_port.py`: `ReplicationPort` (ABC async) con `db_info`, `changes`, `revs_diff`, `bulk_get`, `all_docs`, `bulk_docs_replicated`, `get_local`, `put_local`, documentados (cubre RF-001, RF-004) [zona: puerto]
+- [x] T-010 — test (rojo) `test_sync_repository.py`: `db_info`, `revs_diff`, `bulk_get` con `revs`, `all_docs` con rango y `keys`, `get_local`/`put_local` (cubre RF-004, RF-010) [zona: test]
+- [x] T-011 — test (rojo) `test_sync_repository.py`: `bulk_docs_replicated` con `new_edits:false` crea dos ramas en conflicto sin 409; `changes` con selector y `feed=longpoll` entrega bytes en streaming y termina al llegar un cambio (cubre RF-004, RF-012) [zona: test]
+- [x] T-012 — test (rojo) `test_sync_repository.py`: CouchDB inaccesible y 5xx → `StorageUnavailable` en cada método, también a mitad del streaming (cubre RF-019) [zona: test]
+- [x] T-013 — `adapters/replication_repository.py`: `httpx.AsyncClient` con credencial admin y mapeo de errores (cubre RF-004, RF-010, RF-019) [zona: adaptador]
+- [x] T-014 — test (rojo) `test_vault_repository.py`: `leaves` devuelve todas las hojas vivas con `_revisions` (sin conflicto, una; con conflicto, ambas; lápidas fuera) (cubre RF-008) [zona: test]
+- [x] T-015 — `VaultPort.leaves` + implementación en `adapters/vault_repository.py` (`open_revs=all&revs=true`) (cubre RF-008) [zona: puerto/adaptador]
 
 ### D · `VaultService._holder` con todas las hojas (P-4)
 - [ ] T-016 — test (rojo) `test_vault_service.py`: `InMemoryVaultPort` con hojas en conflicto; una reserva usada por una rama perdedora no se reasigna (ni por `create` ni por `restore`); sin conflictos el comportamiento no cambia (cubre RF-008) [zona: test]
