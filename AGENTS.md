@@ -28,7 +28,7 @@ Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 | Módulo | Stack | Tests | Arranque |
 |--------|-------|-------|----------|
 | **Backend** | FastAPI + CouchDB | `pytest tests/ --cov=app` | `docker compose up -d` |
-| **Frontend** | React | `npm test --coverage` | `docker compose up -d` |
+| **Frontend** | React | `npm run test:cov` | `docker compose up -d` |
 | **Sync** | PouchDB + offline-first | Incluido en tests | Automático |
 
 ## Convenciones

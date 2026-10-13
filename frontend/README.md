@@ -9,6 +9,7 @@ npm install
 npm run dev        # Vite; /auth, /admin y /vaults (fetch) van por proxy al backend
                    # (localhost:8000, o BACKEND_URL si está definida)
 npm test           # vitest + Testing Library
+npm run test:cov   # con cobertura v8 (umbral 80 %; informe HTML en coverage/)
 npm run typecheck  # src/ (tsconfig.json) y vite.config.ts (tsconfig.node.json)
 npm run build      # typecheck + build
 ```

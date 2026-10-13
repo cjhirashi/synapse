@@ -20,5 +20,17 @@ export default defineConfig({
       },
     },
   },
-  test: { environment: "jsdom", globals: true, setupFiles: "./src/test-setup.ts" },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: "./src/test-setup.ts",
+    // `npm run test:cov`: mismo umbral que el backend (`backend/.coveragerc`, 80 %).
+    coverage: {
+      provider: "v8",
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/test-setup.ts"],
+      reporter: ["text", "html"],
+      thresholds: { lines: 80, statements: 80, branches: 80, functions: 80 },
+    },
+  },
 });

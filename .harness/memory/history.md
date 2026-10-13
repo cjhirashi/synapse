@@ -381,3 +381,13 @@
   una cadena lineal (dos archivos `001_*`, una sola raíz). Gate: 22 ok, 2 avisos (spectral; 0005
   sin archivos en `covers` todavía).
 - Pendiente: respuestas del usuario para converger la Fase 1 (Gate 1).
+
+## [2026-10-13] Cobertura del frontend — hecho (prompt directo)
+
+- Rúbrica: herramienta de desarrollo/config, sin lógica ni contrato → prompt directo.
+- `@vitest/coverage-v8` 2.1.2 (fijado igual que vitest); `vite.config.ts` con proveedor v8,
+  `src/**` sin tests, informes text + html y umbral 80 % (líneas, sentencias, ramas, funciones),
+  igual que `backend/.coveragerc`; `coverage/` en `.gitignore`; AGENTS.md y frontend/README.md
+  con `npm run test:cov`.
+- Evidencia: 87/87; cobertura 95,5 % líneas · 92,96 % ramas · 91,04 % funciones; con el umbral
+  forzado a 99 % la ejecución falla (rc=1); typecheck limpio. Residual de 0003 cerrado.
