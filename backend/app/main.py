@@ -7,6 +7,7 @@ from app.bootstrap import run_bootstrap
 from app.core.problems import install_problem_handlers, install_problem_openapi
 from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
+from app.routers.sync import router as sync_router
 from app.routers.vaults import router as vaults_router
 
 
@@ -25,6 +26,7 @@ install_problem_openapi(app)
 app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(vaults_router)
+app.include_router(sync_router)
 
 
 @app.get("/health")

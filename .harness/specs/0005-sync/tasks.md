@@ -27,8 +27,8 @@ actualizado: 2026-10-13
 
 ## Tareas
 ### A · Contrato y errores (PLAN-0005 §4)
-- [ ] T-001 — test (rojo) en `test_contract.py`: el contrato de `0005-sync` documenta las rutas de PLAN-0005 §2.1 (`GET /sync/`, `GET /sync/db/`, `GET`·`POST /sync/db/_changes`, `POST _revs_diff`, `POST _bulk_get`, `GET`·`POST _all_docs`, `POST _bulk_docs`, `GET`·`PUT _local/{id}`) y no la comodín (cubre RF-001, RF-003) [zona: test]
-- [ ] T-002 — `scripts/export_openapi.py`: `"0005-sync": {"paths": ("/sync",), "schemas": ()}` en `FEATURES` (cubre RF-001) [zona: script]
+- [x] T-001 — test (rojo) en `test_contract.py`: el contrato de `0005-sync` documenta las rutas de PLAN-0005 §2.1 (`GET /sync/`, `GET /sync/db/`, `GET`·`POST /sync/db/_changes`, `POST _revs_diff`, `POST _bulk_get`, `GET`·`POST _all_docs`, `POST _bulk_docs`, `GET`·`PUT _local/{id}`) y no la comodín (cubre RF-001, RF-003) [zona: test]
+- [x] T-002 — `scripts/export_openapi.py`: `"0005-sync": {"paths": ("/sync",), "schemas": ()}` en `FEATURES` (cubre RF-001) [zona: script]
 - [x] T-003 — test (rojo) `test_sync_errors.py`: `SyncEndpointNotFound` (404, `sync-endpoint-not-found`) y `PayloadTooLarge` (413, `payload-too-large`) son `DomainError` con su `slug` (cubre RF-003) [zona: test]
 - [x] T-004 — `core/errors.py`: las dos clases, comentadas (cubre RF-003) [zona: núcleo]
 
@@ -60,14 +60,14 @@ actualizado: 2026-10-13
 - [x] T-023 — `SyncPushService` pasos 7–9 (reserva con `VaultService._reserve`, escritura `new_edits:false`, liberación) y formato de rechazo `forbidden` + `reason` (cubre RF-006, RF-008, RF-011) [zona: servicio]
 
 ### F · Rutas (TestClient + CouchDB real)
-- [ ] T-024 — test (rojo) `test_sync_api.py`: sin cookie → 401 y con cambio pendiente → 403 en cada ruta y en la comodín; fuera del subconjunto → 404 problem+json sin llegar a CouchDB (`PUT /sync/db/x`, `DELETE /sync/db/_local/x`, `_find`, `_purge`, `_security`, `_design/vaults`, `/sync/synapse_user_x/…`) (cubre RF-002, RF-003) [zona: test]
-- [ ] T-025 — test (rojo) `test_sync_api.py`: con una reserva y `_design/vaults` en la base, no aparecen en `_changes` (normal y `longpoll`), `_all_docs` ni `_bulk_get`; `GET /sync/db/` sin `doc_count`; `GET /sync/` (cubre RF-004) [zona: test]
-- [ ] T-026 — test (rojo) `test_sync_api.py`: `_bulk_docs` válido guardado con su `_rev`; inválido rechazado por documento; `new_edits:true` → 422; > 200 docs o > 4 MiB → 413; `_local` > 64 KiB → 413 (cubre RF-005, RF-006, RF-007) [zona: test]
-- [ ] T-027 — test (rojo) `test_sync_api.py`: secuencia de PouchDB completa (raíz, info, `_local` checkpoint, `_changes`, `_revs_diff`, `_bulk_docs`, `_bulk_get`) reanudable desde el checkpoint; reenvío del mismo lote sin duplicados; CouchDB inaccesible → 503 problem+json (cubre RF-010, RF-019) [zona: test]
-- [ ] T-028 — test (rojo) `test_sync_isolation.py`: A y B con datos; B no ve nada de A por ninguna ruta; no escribe en la base de A (base en la URL → 404, `owner_id` de A → `owner-mismatch`); la base de A no cambia (cubre RF-001, RNF-003) [zona: test]
-- [ ] T-029 — `routers/sync.py`: router con `require_password_changed`, `get_sync_db`, rutas síncronas (`/`, `db/`, `_revs_diff`, `_bulk_get`, `_all_docs`, `_bulk_docs`, `_local`), límites de tamaño y comodín final (cubre RF-001, RF-002, RF-003, RF-004, RF-005, RF-006) [zona: ruta]
-- [ ] T-030 — `routers/sync.py`: `_changes` `async` con `StreamingResponse` sobre `ReplicationPort.changes` (cubre RF-004, RF-010) [zona: ruta]
-- [ ] T-031 — `main.py`: `include_router(sync.router)`; re-export de `0005-sync/contracts/openapi.yaml` (cubre RF-001, RF-003) [zona: ruta]
+- [x] T-024 — test (rojo) `test_sync_api.py`: sin cookie → 401 y con cambio pendiente → 403 en cada ruta y en la comodín; fuera del subconjunto → 404 problem+json sin llegar a CouchDB (`PUT /sync/db/x`, `DELETE /sync/db/_local/x`, `_find`, `_purge`, `_security`, `_design/vaults`, `/sync/synapse_user_x/…`) (cubre RF-002, RF-003) [zona: test]
+- [x] T-025 — test (rojo) `test_sync_api.py`: con una reserva y `_design/vaults` en la base, no aparecen en `_changes` (normal y `longpoll`), `_all_docs` ni `_bulk_get`; `GET /sync/db/` sin `doc_count`; `GET /sync/` (cubre RF-004) [zona: test]
+- [x] T-026 — test (rojo) `test_sync_api.py`: `_bulk_docs` válido guardado con su `_rev`; inválido rechazado por documento; `new_edits:true` → 422; > 200 docs o > 4 MiB → 413; `_local` > 64 KiB → 413 (cubre RF-005, RF-006, RF-007) [zona: test]
+- [x] T-027 — test (rojo) `test_sync_api.py`: secuencia de PouchDB completa (raíz, info, `_local` checkpoint, `_changes`, `_revs_diff`, `_bulk_docs`, `_bulk_get`) reanudable desde el checkpoint; reenvío del mismo lote sin duplicados; CouchDB inaccesible → 503 problem+json (cubre RF-010, RF-019) [zona: test]
+- [x] T-028 — test (rojo) `test_sync_isolation.py`: A y B con datos; B no ve nada de A por ninguna ruta; no escribe en la base de A (base en la URL → 404, `owner_id` de A → `owner-mismatch`); la base de A no cambia (cubre RF-001, RNF-003) [zona: test]
+- [x] T-029 — `routers/sync.py`: router con `require_password_changed`, `get_sync_db`, rutas síncronas (`/`, `db/`, `_revs_diff`, `_bulk_get`, `_all_docs`, `_bulk_docs`, `_local`), límites de tamaño y comodín final (cubre RF-001, RF-002, RF-003, RF-004, RF-005, RF-006) [zona: ruta]
+- [x] T-030 — `routers/sync.py`: `_changes` `async` con `StreamingResponse` sobre `ReplicationPort.changes` (cubre RF-004, RF-010) [zona: ruta]
+- [x] T-031 — `main.py`: `include_router(sync.router)`; re-export de `0005-sync/contracts/openapi.yaml` (cubre RF-001, RF-003) [zona: ruta]
 
 ### G · Frontend base
 - [ ] T-032 — `package.json`: `pouchdb-browser` y, en desarrollo, `pouchdb-adapter-memory`, versiones exactas (P-2); `npm ci` y suite actual en verde (cubre RF-009) [zona: config]

@@ -73,6 +73,30 @@ El cliente abre la base remota `new PouchDB(origin + "/sync/db", { skip_setup: t
   cliente usa `batch_size: 50`, así que un cliente sano nunca llega al límite.
 - `main.py`: `include_router(sync.router)`.
 
+**Notas de implementación (Fase 4, bloque F; sin cambio de requisitos):**
+- **(a) Todas las rutas son `async def`.** El puerto de replicación es async y `_bulk_docs`
+  ya lo era (nota de §2.3). Las demás rutas sólo esperan al puerto, así que tampoco ocupan
+  un hilo del pool.
+- **(b) Tope de cuerpo en toda ruta del canal:** 4 MiB, salvo `_local` (64 KiB). Va en una
+  `APIRoute` propia (`SyncRoute`). FastAPI lee el cuerpo antes de las dependencias y
+  convierte en 400 cualquier error durante esa lectura. Por eso la ruta lee el cuerpo con el
+  tope, también sin `Content-Length` (chunked), y después lo entrega a FastAPI. Todas las
+  operaciones declaran el 413.
+- **(c) Dependencia de router `get_sync_user`** en lugar de `require_password_changed`. Hace
+  las mismas comprobaciones (401/403), pero con `get_db` en `scope="function"`: la sesión
+  SQL se cierra antes de enviar la respuesta, así que un `longpoll` no retiene una conexión
+  del pool hasta 60 s.
+- **(d) `CheckpointNotFound`** (404, `checkpoint-not-found`) es una entrada nueva del
+  catálogo. Es la respuesta de `GET _local/{id}` sin checkpoint, que PouchDB interpreta como
+  "empezar desde 0".
+- **(e) Códigos de éxito:**
+  - `_bulk_docs` responde 201 con la lista de rechazos (vacía si se aceptó todo), igual
+    que CouchDB.
+  - `PUT _local/{id}` responde 201.
+- **(f) Comodín también en `/sync`,** sin barra final, además de `/sync/{rest:path}`.
+- **(g) `id` y `rev` de `BulkDocsRejection` son `JsonValue`:** devuelven tal cual lo que
+  envió el cliente, incluso un `_id` que no es texto (rechazado con `invalid-id`).
+
 ### 2.2 Fronteras de salida
 | Frontera | Para qué | Implementación concreta |
 |---|---|---|
@@ -247,7 +271,8 @@ ocupado), sigue el flujo de RF-006.
   `vault-name-taken`, `delete-not-allowed`).
 - Errores: `SESSION_ERRORS`, `PasswordChangeRequired`, `SyncEndpointNotFound` (404,
   `sync-endpoint-not-found`, nuevo), `PayloadTooLarge` (413, `payload-too-large`, nuevo),
-  `ValidationFailed` (422), `StorageUnavailable` (503).
+  `ValidationFailed` (422), `StorageUnavailable` (503). Fase 4, bloque F: además
+  `CheckpointNotFound` (404, `checkpoint-not-found`, nuevo; nota (d) de §2.1).
 
 ## 5. Estrategia de pruebas (TDD)
 | Zona | Qué se prueba | Herramienta |

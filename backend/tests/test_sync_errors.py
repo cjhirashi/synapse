@@ -11,6 +11,7 @@ from app.core.errors import DomainError, InvalidSyncRequest, ValidationFailed
 SYNC_ENTRIES = {
     "SyncEndpointNotFound": ("sync-endpoint-not-found", 404),  # RF-003
     "PayloadTooLarge": ("payload-too-large", 413),             # RF-003 (límites de PLAN-0005 §2.1)
+    "CheckpointNotFound": ("checkpoint-not-found", 404),       # RF-010 (checkpoint ausente)
 }
 
 

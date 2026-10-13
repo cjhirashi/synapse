@@ -94,3 +94,40 @@ def test_contract_documents_every_endpoint_of_the_vault_spec():
     }
     documented = {(path, method) for path, ops in paths.items() for method in ops}
     assert expected <= documented, sorted(expected - documented)
+
+
+def test_contract_documents_exactly_the_sync_channel_of_plan_0005():
+    """PLAN-0005 §2.1: el subconjunto del protocolo, sin la ruta comodín (RF-001, RF-003)."""
+    paths = _committed("0005-sync").get("paths", {})
+    expected = {
+        ("/sync/", "get"),
+        ("/sync/db/", "get"),
+        ("/sync/db/_changes", "get"),
+        ("/sync/db/_changes", "post"),
+        ("/sync/db/_revs_diff", "post"),
+        ("/sync/db/_bulk_get", "post"),
+        ("/sync/db/_all_docs", "get"),
+        ("/sync/db/_all_docs", "post"),
+        ("/sync/db/_bulk_docs", "post"),
+        ("/sync/db/_local/{local_id}", "get"),
+        ("/sync/db/_local/{local_id}", "put"),
+    }
+    documented = {(path, method) for path, ops in paths.items() for method in ops}
+    assert documented == expected, sorted(documented ^ expected)
+
+
+def test_sync_contract_closes_the_push_schemas():
+    """PLAN-0005 §4: `BulkDocsRequest` exige `new_edits: false`; el rechazo es `forbidden`
+    con un `reason` de los códigos de §2.3."""
+    schemas = _committed("0005-sync")["components"]["schemas"]
+    request, rejection = schemas["BulkDocsRequest"], schemas["BulkDocsRejection"]
+    assert request["additionalProperties"] is False
+    assert set(request["required"]) == {"docs", "new_edits"}
+    assert request["properties"]["new_edits"]["const"] is False
+    assert rejection["additionalProperties"] is False
+    assert set(rejection["required"]) == {"id", "rev", "error", "reason"}
+    assert rejection["properties"]["error"]["const"] == "forbidden"
+    reason = rejection["properties"]["reason"]["pattern"]
+    for code in ("invalid-id", "validation-error:", "not-normalized:", "owner-mismatch",
+                 "immutable-field:created_at", "vault-name-taken", "delete-not-allowed"):
+        assert code in reason, code

@@ -193,6 +193,19 @@ class SyncEndpointNotFound(DomainError):
     detail = "Sync endpoint not found"
 
 
+class CheckpointNotFound(DomainError):
+    """`GET /sync/db/_local/{id}` de un checkpoint que no existe (PLAN-0005 §2.1).
+
+    El replicador de PouchDB lee el 404 como "sin checkpoint" y replica desde el principio;
+    es el único 404 del canal que no es `SyncEndpointNotFound` (la ruta sí existe).
+    """
+
+    slug = "checkpoint-not-found"
+    title = "Checkpoint not found"
+    status = 404
+    detail = "Checkpoint not found"
+
+
 class InvalidSyncRequest(ValidationFailed):
     """Parámetro o cuerpo del protocolo de replicación mal formado (SPEC-0005 RF-004).
 

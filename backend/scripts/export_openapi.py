@@ -19,6 +19,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0002-auth": {"paths": ("/auth", "/admin", "/health"), "schemas": ()},
     "0003-vault-crud": {"paths": ("/vaults",), "schemas": ()},
     "0004-api-problem-details": {"paths": (), "schemas": ("Problem",)},
+    "0005-sync": {"paths": ("/sync",), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"

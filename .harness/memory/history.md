@@ -657,3 +657,35 @@
   - Test que lo fija, rojo sin la corrección.
 - Gate abierto (24 ok · 2 warn). Suite completa: **618 passed**.
 - **Próximo paso:** bloque F (rutas `/sync`, T-001/T-002 contrato y `FEATURES`).
+
+## [2026-10-13] 0005-sync — Fase 4: T-001, T-002, T-024…T-031 (rutas `/sync`, bloque F)
+- **T-001/T-002:** contrato `0005-sync/contracts/openapi.yaml` y `"0005-sync"` en `FEATURES`.
+  - Nuevos tests en `test_contract.py`:
+    - el contrato documenta exactamente las 11 operaciones de §2.1, sin la comodín;
+    - `BulkDocsRequest` y `BulkDocsRejection` son esquemas cerrados.
+- **T-024…T-028:** `tests/test_sync_api.py` y `tests/test_sync_isolation.py` (37 tests).
+  - Sesión: 401/403 en cada ruta y en la comodín.
+  - Comodín: 404 sin llegar a CouchDB.
+  - Filtrado de reservas y `_design`.
+  - Push válido e inválido.
+  - Límites de tamaño, incluido un cuerpo chunked.
+  - Secuencia completa de PouchDB, reanudable e idempotente.
+  - CouchDB caído → 503.
+  - La sesión SQL se cierra antes del streaming.
+  - Aislamiento A/B (RNF-003).
+- **T-029…T-031:** `app/routers/sync.py` (`SyncRoute` con tope de cuerpo y comodín final), `CheckpointNotFound` en el catálogo y `include_router` en `main.py`.
+- Desviaciones (a)–(g), registradas en PLAN-0005 §2.1 y §4:
+  - (a) todas las rutas son async;
+  - (b) tope de 4 MiB en todo el canal, 64 KiB en `_local`;
+  - (c) `get_sync_user` con `get_db` en `scope="function"`;
+  - (d) `CheckpointNotFound`;
+  - (e) `_bulk_docs` y `PUT _local` responden 201;
+  - (f) comodín también en `/sync`;
+  - (g) `id` y `rev` del rechazo son `JsonValue`.
+- Rebotes internos:
+  - `_changes` GET+POST en un solo `api_route` duplicaba el operation id. Se separó en dos funciones.
+  - Un cuerpo chunked de más de 4 MiB daba 400, porque FastAPI envuelve los errores de lectura del cuerpo.
+    - Corregido de raíz: la ruta lee el cuerpo con el tope y se lo reproduce a FastAPI.
+    - Después, el `receive` reproducido delega en el original, para que `StreamingResponse` siga recibiendo el `http.disconnect`.
+- Suite completa: **659 passed**.
+- **Próximo paso:** bloque G.
