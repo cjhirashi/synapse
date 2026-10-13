@@ -446,3 +446,24 @@
 - **Docs:** `specs/0005-sync/` (spec + diagrams), `state.md`, `ARCHIFY.md`, `TAREAS.md`.
 - **Decisiones del usuario pendientes:** D-1…D-6 y backoff/RNF-001 de 0005; las 3 de 0006; merge de PR #3; SPEC-0002 → `verified`.
 - **Próximo paso:** converger la Fase 1 de 0005 con las respuestas del usuario (Gate 1).
+
+## [2026-10-13] 0005-sync — decisiones D-1…D-6 aprobadas
+
+- El usuario aprobó las recomendaciones D-1…D-6. D-2 se registró como la opción (a):
+  lectura y escritura sin conexión con validación por documento en el push.
+- ADR-002 (canal por proxy `/sync`, push validado, sólo `vault:*`) y ADR-003 (conflictos:
+  merge automático por campo, el usuario decide si chocan, la edición gana al borrado), los dos `accepted`.
+- `spec.md` reescrita: alcance cerrado (PWA fuera), §3 con las fronteras del proxy,
+  RF-001…RF-018 en EARS (401/403 en `/sync` alineados con SPEC-0002 RF-019, conflictos
+  RF-012…RF-015), R-13, RNF-003 (aislamiento), §8 con decisiones y descartes. Marcadores:
+  7 → 4 (C-1 backoff, C-2 RNF-001, C-3 merge contra el ancestro, C-4 aviso al cerrar sesión).
+- Diagrama `sync-flow` regenerado con la numeración nueva (Archify finalize + visual-check en verde).
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** SPEC-0005 en Fase 1 `draft`, con las decisiones D-1…D-6 aprobadas.
+- **Rebotes:** ninguno.
+- **Gate:** verde (avisos conocidos: spectral; `covers` de 0005/0006 aún sin archivos).
+- **Docs:** `specs/0005-sync/spec.md`, `diagrams/`, ADR-002, ADR-003, `state.md`.
+- **Decisiones del usuario pendientes:** C-1…C-4 y el «así es» de 0005; las 3 preguntas de 0006; merge de PR #3; SPEC-0002 → `verified`.
+- **Próximo paso:** cerrar C-1…C-4 → Gate 1 de SPEC-0005.

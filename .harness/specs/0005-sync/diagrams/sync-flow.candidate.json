@@ -2,7 +2,7 @@
  "schema_version": 2,
  "diagram_type": "workflow",
  "meta": {
-  "title": "Synapse · Sincronización offline-first (propuesta)",
+  "title": "Synapse · Sincronización offline-first",
   "output": ".harness/specs/0005-sync/diagrams/sync-flow.html",
   "quality_profile": "showcase",
   "locale": "es",
@@ -511,7 +511,7 @@
    "type": "frontend",
    "label": "Estado de sync",
    "sublabel": "offline · pendientes",
-   "tag": "RF-003",
+   "tag": "RF-009",
    "width": 120
   },
   {
@@ -566,7 +566,7 @@
    "type": "security",
    "label": "Conflicto _rev",
    "sublabel": "ambas versiones",
-   "tag": "RF-007",
+   "tag": "RF-013",
    "width": 120
   },
   {
@@ -576,7 +576,7 @@
    "type": "frontend",
    "label": "Resolver",
    "sublabel": "auto o el usuario",
-   "tag": "D-3",
+   "tag": "ADR-003",
    "width": 120
   }
  ],
@@ -642,7 +642,7 @@
  "cards": [
   {
    "dot": "emerald",
-   "title": "Garantías propuestas",
+   "title": "Garantías",
    "items": [
     "Sólo la base del usuario del token (P2)",
     "Mismos invariantes que la API REST de 0003",
@@ -660,11 +660,11 @@
   },
   {
    "dot": "amber",
-   "title": "Pendiente de decisión",
+   "title": "Estado de la Fase 1",
    "items": [
-    "Muestra las opciones recomendadas de D-1…D-4",
-    "D-2b (sólo lectura) quitaría la rama de push",
-    "Borrador de Fase 1: nada está implementado"
+    "D-1…D-4 aprobados (ADR-002, ADR-003)",
+    "Abierto: backoff, RNF-001, reglas del merge",
+    "Nada está implementado todavía"
    ]
   }
  ]

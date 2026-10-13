@@ -1,9 +1,9 @@
 # Diagramas (Archify) — SPEC-0005
 
-## Flujo de sincronización (propuesta)
+## Flujo de sincronización
 
-**Tipo:** Workflow · **Estado:** borrador de Fase 1 — dibuja las opciones *recomendadas* de
-D-1…D-4 (`spec.md` §7), no un diseño aprobado ni implementado.
+**Tipo:** Workflow · **Estado:** Fase 1 — dibuja D-1…D-4 tal como los aprobó el usuario el
+2026-10-13 (`spec.md` §8, ADR-002, ADR-003). Todavía no está implementado.
 
 | Archivo | Qué es |
 |---|---|
@@ -16,7 +16,7 @@ D-1…D-4 (`spec.md` §7), no un diseño aprobado ni implementado.
 estado; con red, el push pasa por el proxy `/sync` (base sólo del token) y la validación con
 las reglas de SPEC-0003 antes de llegar a CouchDB; los demás dispositivos reciben los cambios
 por `_changes`. Un documento inválido se rechaza (RF-006) y un conflicto de `_rev` conserva
-ambas versiones (RF-007); los dos acaban en "Resolver" (D-3).
+ambas versiones (RF-013); los dos acaban en "Resolver" (D-3, RF-012…RF-015).
 
 **Regenerar:** igual que en `0003-vault-crud/diagrams/README.md`, con
 `finalize workflow`. Si las decisiones de la Fase 1 cambian el flujo, se actualiza el

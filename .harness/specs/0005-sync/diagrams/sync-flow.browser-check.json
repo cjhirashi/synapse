@@ -6,11 +6,11 @@
   "status": "pass",
   "visualReview": "not-requested",
   "provenance": "current",
-  "deliveryReceiptId": "95cd4101-6ba4-48de-8beb-0ec4b27c24ed",
+  "deliveryReceiptId": "1bd0734c-01d9-4b4b-89c2-fa4427daf473",
   "artifact": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
-    "sha256": "fc5f0c1d8025705dab1f69434ffe488defd7129db08320a7bcc8e07558418f19",
-    "bytes": 764328
+    "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
+    "bytes": 764268
   },
   "state": {
     "detail": "read",

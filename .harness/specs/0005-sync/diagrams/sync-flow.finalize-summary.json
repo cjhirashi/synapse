@@ -7,13 +7,13 @@
   "quality": "showcase",
   "specification": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.candidate.json",
-    "sha256": "e163c42bd45e6f7f35895f9ee26274aabc0ebfebb30103e02ab4659af0539ed4",
-    "bytes": 31959
+    "sha256": "7098012244f45f2b9d05c9305ac1b182f57530af471867740c781151f11551b2",
+    "bytes": 31915
   },
   "artifact": {
     "path": "/repo/.harness/specs/0005-sync/diagrams/sync-flow.html",
-    "sha256": "fc5f0c1d8025705dab1f69434ffe488defd7129db08320a7bcc8e07558418f19",
-    "bytes": 764328
+    "sha256": "8fad0063042710176fbbf86c2d65dba563b4e5ea4dbdc4fe62bb231e8f88d38b",
+    "bytes": 764268
   },
   "gates": {
     "validate": "pass",
@@ -37,13 +37,13 @@
     "installedVersion": "3.0.1",
     "availableVersion": "3.0.1",
     "releaseNotes": null,
-    "checkedAt": "2026-10-13T04:21:09.956Z",
+    "checkedAt": "2026-10-13T04:49:48.839Z",
     "source": "network",
     "noticeRequired": false,
     "noticeText": null
   },
   "visualReview": "not-requested",
-  "durationMs": 5109,
+  "durationMs": 4995,
   "visualReviewRecommendation": {
     "action": "inspect-route-readability",
     "signals": {
