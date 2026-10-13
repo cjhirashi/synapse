@@ -39,6 +39,39 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `JWT_SECRET` | Firma HS256 de los JWT |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
 
+## Despliegue: proxy inverso externo
+
+El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). En producción lo
+pone el **Caddy externo**, que sirve la SPA y lleva al backend las rutas de la API en el
+**mismo origen**: las cookies de sesión (`HttpOnly`, `SameSite`) y la réplica PouchDB
+(`origin + "/sync/db"`, `credentials: "include"`) no funcionan entre orígenes distintos.
+
+Requisitos del canal de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
+
+| Requisito | Motivo |
+|---|---|
+| `/sync` y `/sync/*` van al backend, en el mismo origen que la SPA | La ruta comodín del backend responde 404 a todo lo que no es el subconjunto del canal; `/sync` no es ruta de la SPA. |
+| Sin búfer de respuesta (`flush_interval -1`) | `_changes` responde en streaming; con búfer, los cambios y los latidos no llegan hasta cerrar la respuesta. |
+| Ningún tiempo límite de respuesta menor de 90 s (`timeouts` del servidor y `read_timeout`/`response_header_timeout` del transporte) | Un `longpoll` de `_changes` puede retener la conexión hasta 60 s (`MAX_WAIT_MS` en `services/sync_filter.py`); el margen cubre la latencia. |
+
+Ejemplo orientativo (el dominio y la dirección del backend son del despliegue):
+
+```caddyfile
+synapse.example.com {
+	@sync path /sync /sync/*
+	handle @sync {
+		reverse_proxy backend:8000 {
+			# Streaming de `_changes`: sin búfer.
+			flush_interval -1
+		}
+	}
+	# … el resto de rutas de la API (`/auth`, `/admin`, `/vaults` para `fetch`) y la SPA.
+}
+```
+
+Caddy no impone tiempo límite de respuesta por defecto; si el despliegue define `timeouts`
+o un `transport http` con `read_timeout`, deben ser de 90 s o más.
+
 ## Autenticación (SPEC-0002)
 
 - **Bootstrap:** al arrancar, si no existe el admin se crea con `ADMIN_EMAIL`/`ADMIN_PASSWORD`

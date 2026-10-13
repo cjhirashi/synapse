@@ -18,6 +18,9 @@ export default defineConfig({
         target: BACKEND,
         bypass: (req) => (req.headers.accept?.includes("text/html") ? "/index.html" : undefined),
       },
+      // Canal de sincronización (SPEC-0005): sólo API, sin pantallas propias, así que no
+      // necesita `bypass`. En producción lo lleva el Caddy externo (ver backend/README.md).
+      "/sync": BACKEND,
     },
   },
   test: {

@@ -748,3 +748,10 @@
   - Un test de logout esperaba el encabezado "Iniciar sesión"; el de la pantalla es "Synapse" (se corrigió el test).
 - Frontend: **329 passed** (25 archivos), typecheck OK.
 - **Próximo paso:** bloque J (T-067…T-068).
+- **Visto bueno del usuario (2026-10-13)** a las desviaciones (a)–(i) del bloque I.
+
+## [2026-10-13] 0005-sync — Fase 4: T-067…T-068 (mismo origen, bloque J)
+- **T-067:** `backend/README.md`, sección "Despliegue: proxy inverso externo": Caddy externo en el mismo origen que la SPA, `/sync` y `/sync/*` al backend, `flush_interval -1`, ningún tiempo límite < 90 s (longpoll acotado a 60 s); ejemplo orientativo de Caddyfile; sin nginx.
+- **T-068:** `frontend/vite.config.ts`: `"/sync": BACKEND` (sin `bypass`: `/sync` no es ruta de la SPA). Comprobado con el servidor de Vite: `/sync/` se reenvía al backend.
+- Sin desviaciones. Typecheck OK.
+- **Próximo paso:** bloque K (sincronización real, T-069…T-075).

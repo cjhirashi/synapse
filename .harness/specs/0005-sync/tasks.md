@@ -111,8 +111,8 @@ actualizado: 2026-10-13
 - [x] T-066 — retirar `frontend/src/api/vaults.ts` y `vaults.test.ts` (sin importadores; la API REST no cambia) (cubre RF-009) [zona: cliente]
 
 ### J · Mismo origen (Caddy externo + Vite)
-- [ ] T-067 — `backend/README.md`, sección de despliegue: requisitos del Caddy externo para `/sync/*` (mismo origen que la SPA, `flush_interval -1`, sin tiempo límite de respuesta < 90 s); sin nginx (enmienda del GATE 3) (cubre RF-001, RF-010) [doc]
-- [ ] T-068 — `frontend/vite.config.ts`: `"/sync": BACKEND` (cubre RF-001) [zona: config]
+- [x] T-067 — `backend/README.md`, sección de despliegue: requisitos del Caddy externo para `/sync/*` (mismo origen que la SPA, `flush_interval -1`, sin tiempo límite de respuesta < 90 s); sin nginx (enmienda del GATE 3) (cubre RF-001, RF-010) [doc]
+- [x] T-068 — `frontend/vite.config.ts`: `"/sync": BACKEND` (cubre RF-001) [zona: config]
 
 ### K · Sincronización real (RNF-002)
 - [ ] T-069 — `frontend/scripts/sync-integration.sh` (levanta uvicorn contra la base de test y CouchDB de test, crea dos usuarios, ejecuta `vitest --environment node` sobre `sync/*.integration.test.ts`, apaga) + script `npm run test:sync` (cubre RNF-002) [zona: test]
