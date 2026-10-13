@@ -73,6 +73,41 @@ def test_rf_003_unreadable_cursor_is_invalid(cursor):
     assert exc.value.errors == CURSOR_ERROR
 
 
+def _compact_cursor(raw_json: str) -> str:
+    return base64.urlsafe_b64encode(raw_json.encode()).decode().rstrip("=")
+
+
+EMITTED_CURSOR_LENGTH = len(encode_cursor(False, WHEN, SOME_ID))
+
+
+@pytest.mark.parametrize(
+    "cursor",
+    [
+        # PLAN-0003 §15 (VA-3, VB-3): cursores de papelera (`true` es un carácter más corto
+        # que `false`) que caben en la longitud máxima; sólo los rechaza la ida y vuelta.
+        _compact_cursor(f'{{"i":"{SOME_ID}","c":"{WHEN}","d":true}}'),   # claves en otro orden
+        _compact_cursor(f'{{"d": true,"c":"{WHEN}","i":"{SOME_ID}"}}'),  # un espacio
+    ],
+    ids=["reordered-keys", "inner-space"],
+)
+def test_rf_003_cursor_that_fits_but_was_not_emitted_is_invalid(cursor):
+    assert len(cursor) <= EMITTED_CURSOR_LENGTH  # llega de verdad a la ida y vuelta
+    with pytest.raises(InvalidCursor) as exc:
+        decode_cursor(cursor, True)
+    assert exc.value.errors == CURSOR_ERROR
+
+
+def test_rf_003_cursor_one_char_too_long_is_rejected_before_decoding(monkeypatch):
+    # VA-2/VB-3: el límite es exactamente la longitud de un cursor emitido.
+    def no_decoding(*args, **kwargs):
+        raise AssertionError("an over-long cursor must not reach json.loads")
+
+    monkeypatch.setattr("app.services.vault_service.json.loads", no_decoding)
+    with pytest.raises(InvalidCursor) as exc:
+        decode_cursor("A" * (EMITTED_CURSOR_LENGTH + 1), False)
+    assert exc.value.errors == CURSOR_ERROR
+
+
 def test_rf_003_cursor_from_the_other_list_is_invalid():
     trash_cursor = encode_cursor(True, WHEN, SOME_ID)
     with pytest.raises(InvalidCursor) as exc:
@@ -308,6 +343,38 @@ def test_rf_007_expired_orphan_reservation_is_reassigned(service, port):
     _expired_orphan(port, "Notas")
     vault, _ = _create(service, name="Notas")
     assert _reservation(port, "notas")["vault_id"] == vault.id
+
+
+@pytest.mark.parametrize(("first", "second"), EQUIVALENT_NAMES)
+def test_rf_007_equivalent_name_is_taken_after_the_lease(service, port, clock, first, second):
+    # VB-1: vencido el arrendamiento, sólo la comprobación de la bóveda que usa la reserva
+    # (`_holder`, por `name_key`) impide el duplicado.
+    _create(service, name=first)
+    _past_the_lease(clock)
+    with pytest.raises(VaultNameTaken):
+        _create(service, name=second)
+
+
+def test_rf_025_restore_with_an_equivalent_name_taken_after_the_lease_is_409(service, port, clock):
+    created, etag = _create(service, name="Notas")
+    service.delete(created.id, etag)
+    _create(service, name="NOTAS")
+    _past_the_lease(clock)
+    with pytest.raises(VaultNameTaken):
+        service.restore(created.id, _current_etag(port, created.id))
+    assert port.docs[DB][f"vault:{created.id}"]["deleted_at"] is not None
+
+
+@pytest.mark.parametrize(("age", "leased"), [
+    (RESERVATION_LEASE - timedelta(microseconds=1), True),
+    (RESERVATION_LEASE, False),  # VB-4: al cumplir el arrendamiento ya no bloquea
+])
+def test_rf_021_lease_ends_exactly_at_its_duration(port, age, leased):
+    reserved = datetime(2026, 10, 12, 10, 0, tzinfo=UTC)
+    now = (reserved + age).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    service = VaultService(port, DB, clock=lambda: now)
+    reservation = {"reserved_at": reserved.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
+    assert service._leased(reservation) is leased
 
 
 def test_rf_021_create_while_another_create_is_in_flight_is_409(service, port, clock):
@@ -558,6 +625,30 @@ def test_rf_021_late_release_after_renaming_back_keeps_the_name_reserved(service
     assert _reservation(port, "notas")["vault_id"] == created.id
     with pytest.raises(VaultNameTaken):
         _create(service, name="NOTAS")
+
+
+def test_rf_021_restore_refreshes_its_expired_reservation_so_a_rival_is_blocked(
+        service, port, clock):
+    # VB-2: la liberación de "Notas" falló y la reserva propia ya venció. Al restaurar, la
+    # reserva se reescribe con `reserved_at` nuevo: mientras la restauración escribe la
+    # bóveda (aún borrada), ese arrendamiento es lo único que frena una creación rival.
+    created, etag = _create(service, name="Notas")
+    port.fail_next("delete")
+    service.delete(created.id, etag)
+    _past_the_lease(clock)
+    rival = VaultService(port, DB, clock=clock)
+    outcome = {}
+
+    def rival_create():
+        with pytest.raises(VaultNameTaken):
+            _create(rival, name="NOTAS")
+        outcome["blocked"] = True
+
+    port.before_next_put(rival_create, when=lambda doc: doc["_id"] == f"vault:{created.id}")
+    service.restore(created.id, _current_etag(port, created.id))
+    assert outcome == {"blocked": True}
+    assert [d["name"] for d in port.docs[DB].values() if d.get("type") == "vault"] == ["Notas"]
+    assert _reservation(port, "notas")["vault_id"] == created.id
 
 
 def test_rf_021_release_that_wins_the_race_makes_the_restore_reserve_again(service, port):

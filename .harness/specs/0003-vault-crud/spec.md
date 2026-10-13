@@ -222,7 +222,7 @@ actualizado: 2026-10-13
 | P4 · Bóveda ajena → 404 | Un 403 confirma que el id existe (filtración) | 403 como decía T-002 | — |
 | P5 · RFC 9457 en toda la API en una feature previa | Constitución Art. 6; un solo formato en auth y bóvedas | Mantener `{"detail"}`; RFC 9457 sólo en bóvedas | — |
 | P6 · UI incluida; paginación por cursor con `limit` (50, máx. 200) | Prueba manual de la feature; agentes pueden crear muchas bóvedas | Sólo API; lista sin paginar; paginación por offset | — |
-| P7 · Unicidad del nombre con un documento de reserva `vault-name:{minúsculas}` | CouchDB no tiene restricciones únicas; el conflicto de escritura deja un solo ganador | Comprobar y luego escribir (admite duplicados raros) | — |
+| P7 · Unicidad del nombre con un documento de reserva `vault-name:{minúsculas}` (la clave pasa a NFKC + `casefold` con E1) | CouchDB no tiene restricciones únicas; el conflicto de escritura deja un solo ganador | Comprobar y luego escribir (admite duplicados raros) | — |
 | P8 · Restaurar con nombre ocupado → 409; borrar ya borrada / restaurar no borrada → 404 | Coherente con la vista normal y la papelera; nunca se pierde una bóveda por restaurar | Renombrar solo al restaurar; 409 o 204 idempotente | — |
 | P9 · Orden por `created_at` desc + `id`; p95 < 300 ms (RNF-001) | Lo más reciente primero y cursor estable | Orden alfabético; sin objetivo de rendimiento | — |
 | P10 · `id` UUID v4 del servidor (`vault:{uuid}` en CouchDB) | No adivinable ni enumerable; prefijo listo para otros tipos de documento | Id del cliente; slug del nombre | — |

@@ -115,15 +115,15 @@ class Versioned(NamedTuple):
 class VaultService:
     """Operaciones de bóvedas sobre la base de un usuario (una instancia por petición).
 
-    Unicidad del nombre (RF-007, RF-021, RF-027): documento `vault-name:{minúsculas}` que
-    apunta a la bóveda que lo usa y guarda cuándo se tomó (`reserved_at`). Una reserva
-    **bloquea** si esa bóveda existe, no está borrada y se llama así, o si todavía está
-    dentro de su arrendamiento (`RESERVATION_LEASE`): la reserva se escribe antes que la
-    bóveda, y sin el arrendamiento una escritura en curso no se distingue de una que falló
-    (PLAN-0003 §12). Fuera de esos casos es huérfana y se reasigna, así que una escritura
-    que falla a medias bloquea el nombre como mucho lo que dura el arrendamiento. La
-    liberación es de mejor esfuerzo: sólo se intenta tras una escritura confirmada que deja
-    el nombre sin usar (borrado o renombrado).
+    Unicidad del nombre (RF-007, RF-021, RF-027): documento `vault-name:{name_key}` (NFKC +
+    `casefold`) que apunta a la bóveda que lo usa y guarda cuándo se tomó (`reserved_at`).
+    Una reserva **bloquea** si esa bóveda existe, no está borrada y tiene un nombre
+    equivalente, o si todavía está dentro de su arrendamiento (`RESERVATION_LEASE`): la
+    reserva se escribe antes que la bóveda, y sin el arrendamiento una escritura en curso no
+    se distingue de una que falló (PLAN-0003 §12). Fuera de esos casos es huérfana y se
+    reasigna, así que una escritura que falla a medias bloquea el nombre como mucho lo que
+    dura el arrendamiento. La liberación es de mejor esfuerzo: sólo se intenta tras una
+    escritura confirmada que deja el nombre sin usar (borrado o renombrado).
     """
 
     def __init__(self, port: VaultPort, db: str, clock: Callable[[], str] = utc_now):

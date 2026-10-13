@@ -79,20 +79,21 @@ actualizado: 2026-10-13
 | `list(deleted, limit, cursor)` | decodifica cursor → `list_page(limit+1)` → si sobra uno, `next_cursor` = cursor del último devuelto | RF-001, 002, 003, 012, 024 |
 | `create(data, owner_id)` | `id = uuid4()` → `_reserve(name, id)` → `put(vault)`; si falla el `put`, la reserva queda huérfana (§11) | RF-004…007, 021, 022 |
 | `get(id)` | `get("vault:{id}")`; inexistente, de otro tipo o borrada → `VaultNotFound` | RF-008, 014 |
-| `update(id, data, if_match)` | precondición → si cambia el nombre (sin mayúsculas), `_reserve(nuevo)` → `put` con `_rev` = `if_match` (conflicto → 412; la reserva nueva queda huérfana, §11) → libera la anterior | RF-009, 010, 021, 027 |
+| `update(id, data, if_match)` | precondición → si cambia el nombre (por `name_key`, §15), `_reserve(nuevo)` → `put` con `_rev` = `if_match` (conflicto → 412; la reserva nueva queda huérfana, §11) → libera la anterior | RF-009, 010, 021, 027 |
 | `delete(id, if_match)` | precondición → `deleted_at = now` con `put` → libera la reserva | RF-010, 011, 026, 027 |
 | `restore(id, if_match)` | precondición (debe estar borrada; si no, 404) → `_reserve(name)` (ocupado → 409) → `deleted_at = null` con `put` | RF-010, 013, 025, 026 |
 
 **Reserva de nombre** (`_reserve(name, vault_id)`, RF-007/RF-021/RF-027) — documento
-`vault-name:{name.lower()}` = `{ type: "vault-name", vault_id, reserved_at }` (`reserved_at` y
-el arrendamiento: §12):
+`vault-name:{name_key(name)}` (NFKC + `casefold`, enmienda 1 / §15) =
+`{ type: "vault-name", vault_id, reserved_at }` (`reserved_at` y el arrendamiento: §12):
 1. `put` sin `_rev` (creación). Si CouchDB acepta → reservado.
 2. Si choca (`RevisionConflict`): se lee la reserva y la bóveda a la que apunta. Si esa
-   bóveda existe, no está borrada y su `name.lower()` coincide, **o la reserva sigue dentro
+   bóveda existe, no está borrada y su `name_key(name)` coincide, **o la reserva sigue dentro
    de su arrendamiento de 30 s (§12)** → `VaultNameTaken` (409).
    Si no (reserva **huérfana**: un `put` que falló, un borrado o un renombrado que no
-   alcanzó a liberarla) → se reasigna con `put` usando el `_rev` leído; si ese `put`
-   choca, otra petición ganó → 409.
+   alcanzó a liberarla) → se reasigna con `put` usando el `_rev` leído. La reserva propia
+   también se reescribe sobre su `_rev` con `reserved_at` nuevo (VA-1). Si ese `put` choca,
+   se vuelve a leer y a decidir con el estado nuevo (bucle optimista de §15).
 - Consecuencia: la liberación es "mejor esfuerzo"; una reserva que quede atrás bloquea como
   mucho lo que dura su arrendamiento y luego se detecta como huérfana (§12). Así no hay escrituras a medias que dejen un
   nombre bloqueado (RF-017) sin necesitar transacciones entre documentos.
@@ -143,7 +144,7 @@ decodifica o su `d` no coincide con el `deleted` pedido → `InvalidCursor` (422
 - **Bóveda** `_id: "vault:{uuid}"`:
   `{ type: "vault", name, description, tags, owner_id, created_at, updated_at, deleted_at }`.
   `owner_id` se guarda para los agentes (la base ya define el dueño).
-- **Reserva** `_id: "vault-name:{name.lower()}"`: `{ type: "vault-name", vault_id }`.
+- **Reserva** `_id: "vault-name:{name_key(name)}"` (§15): `{ type: "vault-name", vault_id }`.
 - **Índice** `_design/vaults`, vista `by_created`:
   `emit([doc.deleted_at ? 1 : 0, doc.created_at], null)` para `type == "vault"`.
   Consulta `descending=true`, `startkey=[d, {}]`, `endkey=[d]`, `include_docs=true`,
