@@ -370,3 +370,14 @@
   `/vaults` HTML vs JSON, `If-Match`/`ETag`, `/auth`, `/admin`); suite del backend dentro de la
   imagen (Python 3.11, versiones fijadas): 414 pasan, `test_contract.py` necesita el repo;
   frontend 87/87, typecheck limpio; `docker compose config` válido.
+
+## [2026-10-13] 0005-integration-real-db — Fase 1 abierta (borrador)
+
+- Siguiente feature del camino crítico del sprint: T-006 de `TAREAS.md` + backlog 4 (control
+  plane en PostgreSQL real, cierra la excepción a P5). Rúbrica: carril SDD (cruza servicios y
+  cambia la infraestructura de pruebas).
+- `specs/0005-integration-real-db/spec.md` en `draft`: contexto, alcance propuesto, RF-001…RF-003
+  borrador y 3 `[NEEDS CLARIFICATION]` para el usuario. Comprobado: las migraciones Alembic forman
+  una cadena lineal (dos archivos `001_*`, una sola raíz). Gate: 22 ok, 2 avisos (spectral; 0005
+  sin archivos en `covers` todavía).
+- Pendiente: respuestas del usuario para converger la Fase 1 (Gate 1).
