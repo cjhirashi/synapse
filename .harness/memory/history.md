@@ -355,3 +355,18 @@
 **Proyecto:** Synapse  
 **Creado:** 2026-10-10 (CORREGIDA)  
 **Estado:** Génesis completada (v2.0)
+
+## [2026-10-13] Limpieza de `docker-compose.yml` (backlog 2) — hecho (prompt directo)
+
+- Rúbrica: sólo config/infra, sin lógica ni contrato, alineado con la corrección del usuario
+  ("almacén puro") → prompt directo.
+- Fuera Qdrant y Gotenberg del compose y la dependencia `backend → qdrant`; fuera de
+  `.env.example` las claves de Qdrant, LiteLLM, Ollama, OpenAI y Tavily; README con el stack real.
+- Nuevo `frontend/Dockerfile` (Node 20 → nginx 1.27) + `nginx.conf` (réplica del proxy de
+  `vite.config.ts`, incl. `/vaults` según `Accept`) + `.dockerignore` en backend y frontend.
+- `docker-compose.dev.yml`: frontend sobre la etapa `build`; `vite.config.ts` lee `BACKEND_URL`
+  (tipos en `tsconfig.node.json`, `@types/node` 20.19.43 fijado; script `typecheck`).
+- Evidencia: imágenes construidas; enrutado de nginx probado contra un backend falso (SPA,
+  `/vaults` HTML vs JSON, `If-Match`/`ETag`, `/auth`, `/admin`); suite del backend dentro de la
+  imagen (Python 3.11, versiones fijadas): 414 pasan, `test_contract.py` necesita el repo;
+  frontend 87/87, typecheck limpio; `docker compose config` válido.

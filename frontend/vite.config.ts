@@ -2,7 +2,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const BACKEND = "http://localhost:8000";
+// En el contenedor de desarrollo (docker-compose.dev.yml) el backend no está en localhost:
+// lo nombra BACKEND_URL. Fuera de Docker vale el valor por defecto.
+const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export default defineConfig({
   plugins: [react()],

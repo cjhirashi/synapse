@@ -2,7 +2,7 @@
 
 Implementaciones concretas de los puertos. `factory.py` selecciona según `HIRA_DEPLOY_MODE`.
 
-Aquí viven las dependencias concretas: CouchDB, Qdrant, psycopg2, etc.
+Aquí viven las dependencias concretas: CouchDB, httpx, psycopg2, etc.
 
 - `vault_repository.py` (`VaultRepository`, SPEC-0003): `VaultPort` sobre la API HTTP de
   CouchDB. Traduce el 409 de `_rev` a `RevisionConflict` (también el 404 al borrar un

@@ -7,8 +7,12 @@ services:
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   frontend:
+    # La etapa `build` del Dockerfile tiene Node; la final (nginx) no puede correr Vite.
+    build:
+      context: ./frontend
+      target: build
     volumes:
       - ./frontend/src:/app/src
     environment:
-      - VITE_DEV=true
-    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+      - BACKEND_URL=http://backend:8000
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "3000"]

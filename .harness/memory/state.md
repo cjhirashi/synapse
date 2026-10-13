@@ -48,9 +48,11 @@ sprint_actual: 2
 
 1. **PR #3 aprobado por el usuario** (2026-10-11): falta el merge a `dev` y el paso de SPEC-0002 a `verified` (lo hace el usuario, no el agente). Residuales de diseño: access token válido 24 h tras logout / RF-022. ~~Contrato sin respuestas de error~~ → resuelto por SPEC-0004 (T-031).
    El test de aislamiento recorre todo GET protegido: reforzar con casos de datos en 0003.
-2. **`docker-compose.yml`** aún declara Qdrant y Gotenberg (contradice "almacén puro"),
-   el backend depende de `qdrant`, y `frontend/` no tiene `Dockerfile`. Requiere decisión
-   (fuera del alcance de 0002).
+2. ~~`docker-compose.yml` con Qdrant/Gotenberg y sin `Dockerfile` del frontend~~ → resuelto
+   (2026-10-13, prompt directo): fuera Qdrant y Gotenberg; `frontend/Dockerfile` (Node →
+   nginx) con `nginx.conf` que replica el proxy de Vite; override de desarrollo sobre la
+   etapa `build`. Residual: `test_contract.py` no corre dentro de la imagen del backend
+   (necesita `specs/` y `scripts/` del repo).
 3. Migraciones 002, 003 y 004 probadas en SQLite y PostgreSQL 15 real (round-trip; 003 aborta si hay duplicados por mayúsculas).
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
 5. `.harness/gate/services.txt` vacío (bloque por perfil inactivo); `spectral` no instalado (lint de contrato omitido).
@@ -68,4 +70,4 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-**0003-vault-crud** en `verified` (2026-10-13). Observación para la futura feature de sincronización: el servidor sólo acepta ids UUID canónicos. Decidir si se añade `@vitest/coverage-v8` para medir la cobertura del frontend. Pendiente aparte: limpieza de `docker-compose.yml` (Qdrant/Gotenberg), diagrama T-003 y merge de PR #3.
+**0003-vault-crud** en `verified` (2026-10-13). Observación para la futura feature de sincronización: el servidor sólo acepta ids UUID canónicos. Decidir si se añade `@vitest/coverage-v8` para medir la cobertura del frontend. Pendiente aparte: diagrama T-003 y merge de PR #3.
