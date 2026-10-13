@@ -242,6 +242,43 @@ el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
   también cuando es una restauración. El resultado manual indica el motivo (`no-ancestor`,
   `clash` o `invalid`) y los campos afectados.
 
+**Notas de implementación (Fase 4, bloque H; sin cambio de requisitos):**
+- (a) **`remote.ts`.** PouchDB sólo usa el adaptador HTTP con una URL absoluta
+  (`origin + "/sync/db"`); `skip_setup: true` evita el `PUT` de creación de la base (el canal
+  responde 404). El `fetch` propio envía siempre `credentials: "include"` y, ante un 401,
+  renueva con `refreshSession()` y reintenta una vez; si sigue en 401 avisa "sesión caducada".
+- (b) **`replicator.ts` escucha `sync.push` y `sync.pull`.** El `paused` del objeto `Sync`
+  pierde el error que distingue "al día" de "sin conexión", así que se escuchan las dos
+  replicaciones (existen en tiempo de ejecución, no en los tipos). `change` (→ `written`),
+  `denied` y `checkpoint` sólo se leen del push.
+- (c) **Saludo entre pestañas.** Una pestaña nueva envía un saludo por el `BroadcastChannel` y
+  la que replica le contesta con su último `active`/`paused` de cada sentido (y "sesión
+  caducada" si lo está); sin esto, con la replicación parada, no recibiría estado nunca.
+- (d) **Reinicio de la espera.** `backOff` es la función del plan; la vuelta a 1 s la hace
+  PouchDB (reinicia la espera a 0 al pasar a `active` tras un error). El test unitario cubre
+  la función; el reinicio real lo comprueba la integración (bloque J).
+- (e) **`status.ts`.** Estado inicial "sincronizando" (cada sentido intenta hasta su primer
+  `paused`); un `error` (PouchDB abandonó) cuenta como "sin conexión". "Pendientes" compara
+  la secuencia local con la del evento `checkpoint` del push (la secuencia local exacta que el
+  servidor confirmó). Esa secuencia se persiste junto a la hora: el documento
+  `_local/synapse-sync-state` es `{ last_sync_at, push_seq }` (amplía §3). Los contadores de
+  rechazos y conflictos salen de `rejections.ts` y `conflicts.ts`; los junta `SyncProvider`.
+- (f) **Documentos `_local` compartidos.** Todas las pestañas procesan los mismos eventos, así
+  que `synapse-sync-state` y `synapse-rejections` se escriben leyendo, aplicando el cambio y
+  reintentando ante el 409 de otra pestaña; el estado sólo avanza (hora y secuencia máximas).
+- (g) **`rejections.ts`.** Una entrada por documento (la del último rechazo). Se quita con
+  cualquier revisión de ese id que el push escriba: PouchDB sólo sube hojas, y las rechazadas
+  nunca aparecen en `written`.
+- (h) **`conflicts.ts` escribe con `new_edits: false`.** Un `bulkDocs` normal no es atómico por
+  documento: si llegaba otra hija de `W`, la hija fallaba con 409 y la lápida sobre `L` se
+  escribía igual, perdiendo los cambios de `L`. Con revisiones generadas en el cliente (como
+  las trae la replicación) nada falla: un resultado que llega tarde queda como otra rama y la
+  siguiente pasada lo funde. Las perdedoras se combinan de una en una (cada escritura cambia
+  `W`); la lista manual vive en memoria y se recalcula al arrancar y en cada cambio.
+- (i) **Resolución manual en `conflicts.ts`.** `resolve(id, loserRev, elección)` normaliza con
+  `vaultRules` y escribe igual que la combinación automática; `ConflictView` (bloque I) sólo
+  la llama. `vaultStore.ts` exporta `ID_PREFIX` para no repetir el prefijo.
+
 ### 2.6 Algoritmo de combinación (`merge.ts`, ADR-003)
 Entrada: la ganadora `W` (la que elige CouchDB/PouchDB, determinista e igual en todas las
 réplicas), cada perdedora viva `L` y el ancestro común `A` (la revisión más reciente que

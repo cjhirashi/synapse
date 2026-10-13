@@ -709,3 +709,25 @@
   - Un caso de `merge.test` tenía la expectativa mal escrita (`tags: ["c"]` es quitar a y b, no añadir c); se corrigió el test, no el código.
 - Frontend: **218 passed**, typecheck OK. Python espejo: 79 passed.
 - **Próximo paso:** bloque H.
+
+## [2026-10-13] 0005-sync — Fase 4: T-042…T-051 (replicador, estado, rechazos y conflictos, bloque H)
+- **T-042/T-043:** `sync/remote.ts` (`/sync/db` absoluto, `credentials: "include"`, 401 → `refreshSession()` y un reintento, si no "sesión caducada") y su test (6).
+- **T-044/T-045:** `sync/replicator.ts` (`live`, `retry`, `batch_size: 50`, `backOff` 1 s → 60 s, Web Lock `synapse-sync` + `BroadcastChannel`, saludo para pestañas nuevas) y su test (13).
+- **T-046/T-047:** `sync/status.ts` (en línea / sin conexión / sincronizando / pendientes / sesión caducada; `_local/synapse-sync-state` con `last_sync_at` y `push_seq`) y su test (12).
+- **T-048/T-049:** `sync/rejections.ts` (`_local/synapse-rejections`, una entrada por documento, se limpia con `written`) y su test (8).
+- **T-050/T-051:** `sync/conflicts.ts` (barrido al arrancar + `changes`, ancestro del árbol local, `mergeVault`, hija de W + lápida de L en un `bulkDocs` con `new_edits: false`, lista manual y `resolve`) y su test (13).
+- Desviaciones (a)–(i), registradas en PLAN-0005 §2.5 (pendientes de visto bueno):
+  - (a) URL absoluta y `skip_setup`;
+  - (b) escucha `sync.push`/`sync.pull` (no tipados);
+  - (c) saludo entre pestañas;
+  - (d) reinicio de la espera a cargo de PouchDB (se comprueba en el bloque J);
+  - (e) estado inicial "sincronizando", `error` = sin conexión, pendientes por `checkpoint`, `push_seq` en el documento de estado, contadores en `SyncProvider`;
+  - (f) *upsert* con reintento ante 409 en los `_local` compartidos;
+  - (g) rechazos: se limpian con cualquier revisión escrita del id;
+  - (h) conflictos con `new_edits: false` (un `bulkDocs` normal podía cerrar L sin combinarla);
+  - (i) `resolve()` en `conflicts.ts`; `ID_PREFIX` exportado de `vaultStore`.
+- Rebotes internos:
+  - Una pestaña nueva no recibía estado con el líder parado. Se añadió el saludo con dos tests.
+  - `conflicts`: los suscriptores recibían avisos repetidos con la misma lista. Ahora sólo se avisa si la lista cambia.
+- Frontend: **270 passed**, typecheck OK.
+- **Próximo paso:** bloque I (UI, T-052…T-066).

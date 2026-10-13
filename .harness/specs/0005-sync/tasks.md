@@ -82,16 +82,16 @@ actualizado: 2026-10-13
 - [x] T-041 — `sync/merge.ts` (cubre RF-012, RF-013, RF-014, RF-015) [zona: cliente]
 
 ### H · Replicación, estado, rechazos y conflictos
-- [ ] T-042 — test (rojo) `sync/remote.test.ts`: `credentials: "include"`; 401 → `refreshSession()` y reintento; refresh fallido → evento "sesión caducada" (cubre RF-002, RF-016) [zona: test]
-- [ ] T-043 — `sync/remote.ts` (cubre RF-002, RF-016) [zona: cliente]
-- [ ] T-044 — test (rojo) `sync/replicator.test.ts` (temporizadores falsos): espera 1, 2, 4… 60, 60 s y vuelta a 1 s tras éxito; sesión caducada → `cancel()` sin tocar la réplica y reanuda con el mismo usuario; Web Lock: sólo una instancia replica (cubre RF-010, RF-016, RF-019) [zona: test]
-- [ ] T-045 — `sync/replicator.ts` (`live`, `retry`, `batch_size: 50`, `back_off_function`, Web Lock + `BroadcastChannel`) (cubre RF-010, RF-016, RF-019) [zona: cliente]
-- [ ] T-046 — test (rojo) `sync/status.test.ts`: transiciones en línea / sin conexión (503 o sin respuesta) / sincronizando / pendientes / sesión caducada; hora de la última sync persistida en `_local/synapse-sync-state` (cubre RF-009, RF-010, RF-019) [zona: test]
-- [ ] T-047 — `sync/status.ts` (cubre RF-009, RF-010, RF-019) [zona: cliente]
-- [ ] T-048 — test (rojo) `sync/rejections.test.ts`: `denied` → entrada persistente con id, rev y motivo; se limpia al escribirse una revisión posterior; sobrevive a recargar (cubre RF-006) [zona: test]
-- [ ] T-049 — `sync/rejections.ts` (cubre RF-006) [zona: cliente]
-- [ ] T-050 — test (rojo) `sync/conflicts.test.ts`: detecta conflictos en `changes` y al arrancar; ancestro leído del árbol local; combina y escribe hija de la ganadora + lápida de la perdedora en un `bulkDocs`; lo no combinable queda en la lista con ambas versiones (cubre RF-012, RF-013, RF-014, RF-015) [zona: test]
-- [ ] T-051 — `sync/conflicts.ts` (cubre RF-012, RF-013, RF-014, RF-015) [zona: cliente]
+- [x] T-042 — test (rojo) `sync/remote.test.ts`: `credentials: "include"`; 401 → `refreshSession()` y reintento; refresh fallido → evento "sesión caducada" (cubre RF-002, RF-016) [zona: test]
+- [x] T-043 — `sync/remote.ts` (cubre RF-002, RF-016) [zona: cliente]
+- [x] T-044 — test (rojo) `sync/replicator.test.ts` (temporizadores falsos): espera 1, 2, 4… 60, 60 s y vuelta a 1 s tras éxito; sesión caducada → `cancel()` sin tocar la réplica y reanuda con el mismo usuario; Web Lock: sólo una instancia replica (cubre RF-010, RF-016, RF-019) [zona: test]
+- [x] T-045 — `sync/replicator.ts` (`live`, `retry`, `batch_size: 50`, `back_off_function`, Web Lock + `BroadcastChannel`) (cubre RF-010, RF-016, RF-019) [zona: cliente]
+- [x] T-046 — test (rojo) `sync/status.test.ts`: transiciones en línea / sin conexión (503 o sin respuesta) / sincronizando / pendientes / sesión caducada; hora de la última sync persistida en `_local/synapse-sync-state` (cubre RF-009, RF-010, RF-019) [zona: test]
+- [x] T-047 — `sync/status.ts` (cubre RF-009, RF-010, RF-019) [zona: cliente]
+- [x] T-048 — test (rojo) `sync/rejections.test.ts`: `denied` → entrada persistente con id, rev y motivo; se limpia al escribirse una revisión posterior; sobrevive a recargar (cubre RF-006) [zona: test]
+- [x] T-049 — `sync/rejections.ts` (cubre RF-006) [zona: cliente]
+- [x] T-050 — test (rojo) `sync/conflicts.test.ts`: detecta conflictos en `changes` y al arrancar; ancestro leído del árbol local; combina y escribe hija de la ganadora + lápida de la perdedora en un `bulkDocs`; lo no combinable queda en la lista con ambas versiones (cubre RF-012, RF-013, RF-014, RF-015) [zona: test]
+- [x] T-051 — `sync/conflicts.ts` (cubre RF-012, RF-013, RF-014, RF-015) [zona: cliente]
 
 ### I · UI
 - [ ] T-052 — test (rojo) `sync/SyncProvider.test.tsx`: arranca réplica y replicador con el `sub`; expone estado, rechazos, conflictos y `requestLogout` (cubre RF-009, RF-017, RF-018) [zona: test]
