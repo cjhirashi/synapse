@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1176fd6f-f212-45fe-a3a9-d187b8d3d0e0",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/repo/.harness/specs/0003-vault-crud/diagrams/architecture.candidate.json",
+  "output": "/repo/.harness/specs/0003-vault-crud/diagrams/architecture.html",
+  "specification": {
+    "sha256": "b119074019bca277e3e982ae16974ce531d484f1761bb0043f85da346b85b6bf",
+    "bytes": 33489
+  },
+  "artifact": {
+    "sha256": "8e6c8432541c536d3b3398600f3fe6d7c9f3a796368f52b75a3d95a0e25743bb",
+    "bytes": 764780
+  }
+}

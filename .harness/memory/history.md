@@ -391,3 +391,31 @@
   con `npm run test:cov`.
 - Evidencia: 87/87; cobertura 95,5 % líneas · 92,96 % ramas · 91,04 % funciones; con el umbral
   forzado a 99 % la ejecución falla (rc=1); typecheck limpio. Residual de 0003 cerrado.
+
+## [2026-10-13] T-003 · Diagrama de arquitectura general — hecho (prompt directo)
+
+- Rúbrica: documentación/diagrama, sin código ni contrato; `diagrams/**` está en los `covers`
+  de 0003 → prompt directo, sin tocar su `spec.md` (`verified`).
+- Archify `finalize architecture` (showcase, locale `es`, revisión `8acb3f4`): 8 componentes con
+  evidencia del repo, 3 fronteras (navegador, servidor Compose, red `synapse_internal`), lo
+  previsto (PouchDB, agentes OpenClaw) en línea discontinua. validate, deliver, check y
+  browser-check en verde; visual-check en verde (claro/oscuro), capturas revisadas a ojo.
+- Salidas: `architecture.html`, `architecture-light.png`, `architecture-dark.png`, candidato y
+  recibos; índice y cómo regenerar en `diagrams/README.md`. Desviación: no hay `architecture.svg`
+  suelto (la CLI no lo genera; sale del botón «Exportar» del HTML), y los links van en el README
+  de `diagrams/`, no en `spec.md`.
+- Entorno: al Chromium del host le faltan librerías del sistema; browser-check se corrió en el
+  contenedor de Playwright con `ARCHIFY_CHROME_NO_SANDBOX=1`.
+- `TAREAS.md` al día (T-001 implementada, T-002 completada, T-003 hecha, T-006 → SPEC-0005);
+  `ARCHIFY.md` y `state.md` actualizados.
+
+## [2026-10-13] Session-End
+
+- **Fase alcanzada:** cuatro tareas encargadas por el usuario: limpieza de compose (hecho),
+  SPEC-0005 en Fase 1 `draft` (esperando respuestas), cobertura del frontend (hecho), T-003 (hecho).
+- **Rebotes:** ninguno en el carril SDD; incidencias de entorno con Chromium (resueltas en contenedor).
+- **Gate:** verde (avisos conocidos: spectral; 0005 sin archivos en `covers`).
+- **Docs:** README, frontend/README, AGENTS.md, ARCHIFY.md, TAREAS.md, state.md, `diagrams/README.md`.
+- **Decisiones del usuario pendientes:** 3 `[NEEDS CLARIFICATION]` de SPEC-0005; merge de PR #3;
+  SPEC-0002 → `verified`; revisar el diagrama T-003.
+- **Próximo paso:** converger la Fase 1 de SPEC-0005 con las respuestas del usuario.

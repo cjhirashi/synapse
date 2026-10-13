@@ -43,11 +43,14 @@
 **Guardar en:**
 ```
 .harness/specs/0003-vault-crud/diagrams/
-├── architecture.html (interactivo)
-├── architecture.svg  (escalable)
+├── architecture.html (interactivo; SVG/PNG/WebP desde su botón «Exportar»)
+├── architecture.candidate.json (fuente — editar aquí y re-finalizar)
 ├── architecture-light.png
 └── architecture-dark.png
 ```
+
+> **Estado (T-003, 2026-10-13):** generado. Índice y cómo regenerarlo en
+> [`.harness/specs/0003-vault-crud/diagrams/README.md`](.harness/specs/0003-vault-crud/diagrams/README.md).
 
 ---
 
@@ -196,7 +199,7 @@ sequenceDiagram
 ## 🔄 Procedimiento por Sprint
 
 ### **Sprint 2 — Gestión de Bóvedas**
-- [ ] Generar **Arquitectura General**
+- [x] Generar **Arquitectura General** (T-003)
 - [ ] Generar **Autenticación (Sequence)**
 - [ ] Generar **Aislamiento (Narrative)**
 - [ ] Guardar en `.harness/specs/0003-vault-crud/diagrams/`

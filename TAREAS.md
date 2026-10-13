@@ -1,7 +1,7 @@
 ---
 nombre: TAREAS
 responsable: AIRA
-fecha_actualizacion: 2026-10-11
+fecha_actualizacion: 2026-10-13
 sprint_actual: 2
 ---
 
@@ -17,7 +17,7 @@ sprint_actual: 2
 
 ### [T-001] Setup de autenticación con JWT y Argon2id
 
-**Estado:** Asignada  
+**Estado:** Implementada — SPEC-0002 en `implemented` (la verificación la decide el usuario)  
 **Prioridad:** P1  
 **Estimación:** 12 horas  
 **Fecha asignación:** 2026-10-11
@@ -60,7 +60,7 @@ Crea `.harness/specs/0002-auth/spec.md` con esta descripción como base (ver `Ac
 
 ### [T-002] CRUD de bóvedas (Get/Create/Update/Delete)
 
-**Estado:** En curso — SPEC-0003 en Fase 4 (implementada, pendiente de verificación)  
+**Estado:** Completada — SPEC-0003 `verified` (2026-10-13)  
 **Prioridad:** P1  
 **Estimación:** 16 horas  
 **Fecha asignación:** 2026-10-12 (después T-001 completada)  
@@ -111,7 +111,7 @@ Especificado en `.harness/specs/0003-vault-crud/spec.md` (manda sobre esta ficha
 
 ### [T-003] Diagrama de Arquitectura General (Archify)
 
-**Estado:** Pendiente  
+**Estado:** Hecha (2026-10-13) — pendiente de revisión del usuario  
 **Prioridad:** P2  
 **Estimación:** 4 horas  
 **Fecha asignación:** 2026-10-13 (paralelo a T-002)  
@@ -129,13 +129,13 @@ Generar diagrama de arquitectura general con Archify mostrando:
 Ver `.harness/specs/0003-vault-crud/diagrams/` y ARCHIFY.md
 
 **Aceptación:**
-- [ ] Diagrama tipo C4 Context creado
-- [ ] HTML interactivo en `diagrams/architecture.html`
-- [ ] SVG escalable en `diagrams/architecture.svg`
-- [ ] PNG light en `diagrams/architecture-light.png`
-- [ ] PNG dark en `diagrams/architecture-dark.png`
-- [ ] Documentado en spec.md con links
-- [ ] Probados links en navegador
+- [x] Diagrama tipo C4 Context creado
+- [x] HTML interactivo en `diagrams/architecture.html`
+- [ ] SVG escalable en `diagrams/architecture.svg` — se exporta desde el botón «Exportar» del HTML (la CLI de Archify no genera SVG suelto)
+- [x] PNG light en `diagrams/architecture-light.png`
+- [x] PNG dark en `diagrams/architecture-dark.png`
+- [x] Documentado con links — en `diagrams/README.md`, no en `spec.md` (0003 está `verified`; editarlo reabriría su anclaje)
+- [x] Probados en navegador (browser-check y visual-check de Archify en verde)
 
 **Bloqueadores:** Ninguno (puede hacer mientras T-002 en progreso)
 
@@ -210,7 +210,7 @@ Generar diagrama narrativo mostrando cómo el sistema garantiza aislamiento:
 
 ### [T-006] Tests de integración (Real DB)
 
-**Estado:** Pendiente  
+**Estado:** En Fase 1 — SPEC-0005 en `draft` (preguntas abiertas para el usuario)  
 **Prioridad:** P1  
 **Estimación:** 8 horas  
 **Fecha asignación:** 2026-10-18 (después T-002)  
@@ -242,12 +242,12 @@ Ver P5 rule en `.harness/memory/state.md`
 
 | Tarea | Estado | Progreso | Bloqueador |
 |-------|--------|----------|-----------|
-| T-001 | Asignada | 0% | — |
-| T-002 | Pendiente | — | T-001 |
-| T-003 | Pendiente | — | — |
+| T-001 | Implementada (SPEC-0002) | 100% | verificación del usuario |
+| T-002 | Completada (SPEC-0003 verified) | 100% | — |
+| T-003 | Hecha | 100% | revisión del usuario |
 | T-004 | Pendiente | — | T-001 |
 | T-005 | Pendiente | — | T-002 |
-| T-006 | Pendiente | — | T-001, T-002 |
+| T-006 | Fase 1 (SPEC-0005 draft) | — | respuestas del usuario |
 
 **Crítico Path:**
 1. T-001 (auth) → 2. T-002 (vaults) → 3. T-006 (integration tests)
