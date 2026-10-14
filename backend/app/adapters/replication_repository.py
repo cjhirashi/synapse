@@ -111,8 +111,9 @@ class ReplicationRepository(ReplicationPort):
 
 
 def _check_status(response: httpx.Response, expected: tuple[int, ...], method: str, path: str) -> None:
-    # `expected` incluye los estados que el llamador interpreta (404, 409): el resto (5xx,
-    # 401…) significa que el almacén no está disponible para esta operación.
+    # `expected` incluye los estados que el llamador interpreta (sólo el 404 de `get_local`):
+    # el resto (5xx, 401, un 409 que CouchDB no da en estas rutas…) significa que el almacén
+    # no está disponible para esta operación (VD-5).
     if response.status_code not in expected:
         raise StorageUnavailable(f"CouchDB respondió {response.status_code} a {method} {path}")
 

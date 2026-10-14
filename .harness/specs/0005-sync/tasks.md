@@ -6,7 +6,8 @@ estado: implemented
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque M, VC-1…VC-8
-actualizado: 2026-10-13
+  enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque N, VD-1…VD-5
+actualizado: 2026-10-14
 ---
 
 # TASKS-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
@@ -154,6 +155,16 @@ actualizado: 2026-10-13
 - [x] T-100 — `check.sh`: spec `implemented`/`verified` sin ningún RF → ❌ (VC-8) (cubre la trazabilidad del arnés) [zona: arnés]
 - [x] T-101 — READMEs (`backend/`, `backend/app/{services,adapters}/`, `frontend/src/`) y `contracts/openapi.yaml` exportado (cubre RF-003, RF-015) [doc]
 
+### N · Menores de la verificación 2 (enmienda 2, PLAN-0005 §11)
+- [x] T-102 — enmienda 2 de SPEC-0005 (RF-017, §5) y PLAN-0005 §9 y §11; bloque N (cubre RF-017) [doc]
+- [x] T-103 — `resources.test.ts` (rojo): `hasUnconfirmed` con un rechazo aún en escritura → `true`; con `db.info()` en error → `true`; todo confirmado → `false` (VD-1, VD-3) (cubre RF-017) [zona: test]
+- [x] T-104 — `hasUnconfirmed` en `resources.ts`; `requestLogout` la usa (VD-1, VD-3) (cubre RF-017) [zona: sync]
+- [x] T-105 — `pushOnce` con `ok: false` y 0 fallos → `false` (VD-2) (cubre RF-017, RF-018) [zona: test]
+- [x] T-106 — `conflicts.test.ts` (rojo): `canonical()` independiente del orden de claves, omite `undefined` en objetos y lo da como `null` en listas; corrección en `conflicts.ts` (VD-4) (cubre RF-015) [zona: sync]
+- [x] T-107 — 409 de CouchDB en `put_local` → `StorageUnavailable` fijado por test; comentario de `_check_status` (VD-5) (cubre RF-010, RF-019) [zona: adapters]
+- [x] T-108 — `check.sh`: `rf_cov` cuenta sólo los RF que la spec define (VD-5) (cubre la trazabilidad del arnés) [zona: arnés]
+- [x] T-109 — `frontend/src/README.md` y READMEs afectados (cubre RF-017) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -166,16 +177,16 @@ actualizado: 2026-10-13
 | RF-007 | T-005…T-008, T-019, T-022, T-026, T-089 | test_sync_filter, test_sync_push, test_sync_api | Pass |
 | RF-008 | T-014…T-018, T-021, T-023, T-071 | test_vault_repository, test_vault_service, test_sync_push, rejections.integration | Pass |
 | RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pass |
-| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070, T-090, T-091 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
+| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070, T-090, T-091, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
 | RF-011 | T-021, T-023, T-038, T-039, T-062, T-063, T-070 | test_sync_push, vaultStore.test, vaults/*.test, offline.integration | Pass |
 | RF-012 | T-011, T-040, T-041, T-050, T-051, T-072, T-092, T-093 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
 | RF-013 | T-040, T-041, T-050, T-051, T-058, T-059, T-072 | merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
-| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
+| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101, T-106 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
-| RF-018 | T-036, T-037, T-052, T-053, T-095 | localDb.test, SyncProvider.test, resources.test, rejections.integration | Pass |
-| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
+| RF-018 | T-036, T-037, T-052, T-053, T-095, T-105 | localDb.test, SyncProvider.test, resources.test, rejections.integration | Pass |
+| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
 | RNF-001 | T-075 | sync.perf.integration | Pass |
 | RNF-002 | T-069…T-073, T-094, T-096 | *.integration (sync-integration.sh) | Pass |
 | RNF-003 | T-028, T-074 | test_sync_isolation, isolation.integration | Pass |

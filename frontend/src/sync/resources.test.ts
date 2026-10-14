@@ -1,4 +1,5 @@
-// `pushOnce`: la guarda de "Sincronizar y salir" (SPEC-0005 RF-017, RF-018; PLAN-0005 §10 VC-3).
+// `pushOnce`: la guarda de "Sincronizar y salir" (SPEC-0005 RF-017, RF-018; PLAN-0005 §10 VC-3),
+// y `hasUnconfirmed`: la decisión de avisar al cerrar sesión (RF-017; PLAN-0005 §11 VD-1, VD-3).
 //
 // La réplica y los almacenes de estado y rechazos son los reales (en memoria); sólo el push
 // se sustituye por una replicación falsa que emite los eventos de PouchDB que dicte cada
@@ -6,7 +7,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { openRejections } from "./rejections";
-import { pushOnce, type SyncResources } from "./resources";
+import { hasUnconfirmed, pushOnce, type SyncResources } from "./resources";
 import { openSyncStatus } from "./status";
 
 PouchDB.plugin(memory);
@@ -104,8 +105,50 @@ describe("pushOnce", () => {
     expect(await pushOnce(await resources())).toBe(false);
   });
 
+  it("el push no terminó bien (`ok: false`) aunque no haya fallos ni rechazos → false (VD-2)", async () => {
+    fakePush([], { ok: false, doc_write_failures: 0, last_seq: 1 });
+    expect(await pushOnce(await resources())).toBe(false);
+  });
+
   it("sin conexión (el push termina con error) → false", async () => {
     fakePush([], Object.assign(new Error("Failed to fetch"), { status: 0 }));
     expect(await pushOnce(await resources())).toBe(false);
+  });
+});
+
+describe("hasUnconfirmed", () => {
+  /** Recursos con la secuencia local (1) ya confirmada por el checkpoint del push. */
+  async function confirmed(): Promise<SyncResources> {
+    const res = await resources();
+    await res.status.handle({ type: "checkpoint", seq: 1 });
+    return res;
+  }
+
+  it("todo confirmado y sin rechazos → false", async () => {
+    expect(await hasUnconfirmed(await confirmed())).toBe(false);
+  });
+
+  it("un cambio local sin confirmar → true", async () => {
+    expect(await hasUnconfirmed(await resources())).toBe(true);
+  });
+
+  it("un rechazo que aún se está guardando cuenta como no confirmado (VD-1)", async () => {
+    const res = await confirmed();
+    // La escritura del rechazo tarda más que releer la secuencia: sólo esperándola se ve.
+    const put = db.put.bind(db);
+    vi.spyOn(db, "put").mockImplementation((async (doc: never) => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return put(doc);
+    }) as never);
+    void res.rejections.handle({ type: "denied", id: ID, rev: "1-x", reason: "vault-name-taken" });
+    expect(await hasUnconfirmed(res)).toBe(true);
+  });
+
+  it("si la réplica no puede leerse, avisa en lugar de fallar (VD-3)", async () => {
+    const res = await confirmed();
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(db, "info").mockRejectedValue(new Error("IndexedDB no disponible"));
+    expect(await hasUnconfirmed(res)).toBe(true);
+    expect(error).toHaveBeenCalledOnce();
   });
 });

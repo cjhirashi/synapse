@@ -89,6 +89,23 @@ export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise
 }
 
 /**
+ * Si al pedir la salida quedan cambios sin confirmar (RF-017), con el estado actual de la
+ * réplica: espera las escrituras de rechazos en curso, relee la secuencia y cuenta los
+ * rechazos (un cambio rechazado tampoco está en el servidor). Si la réplica no puede leerse
+ * no se puede afirmar que todo esté confirmado: cuenta como pendiente y se avisa (VD-3).
+ */
+export async function hasUnconfirmed(resources: SyncResources): Promise<boolean> {
+  try {
+    await resources.rejections.settled();
+    const { pending } = await resources.status.refresh();
+    return pending || resources.rejections.list().length > 0;
+  } catch (err) {
+    console.error(err);
+    return true;
+  }
+}
+
+/**
  * Push de una vez para "Sincronizar y salir". Sus escritas y rechazos van a los mismos
  * almacenes que los de la replicación continua. Devuelve si el servidor confirmó todo: sin
  * fallos de escritura, sin rechazos pendientes y con la secuencia local entera recorrida.

@@ -24,7 +24,8 @@ aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # «así es»
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # PLAN-0005, P-1 (a) y P-2
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }         # verificación adversarial VC-1…VC-8
-actualizado: 2026-10-13
+  enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 2, menores VD-1…VD-5
+actualizado: 2026-10-14
 ---
 
 # SPEC-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
@@ -46,6 +47,11 @@ actualizado: 2026-10-13
 > la misma revisión; RF-017 decide el aviso con el estado actual de la réplica; §5 añade
 > la resolución simultánea en dos dispositivos y las entradas mal formadas del cliente
 > (siempre 4xx, nunca 503). El *cómo* está en PLAN-0005 §10.
+>
+> **Enmienda 2 2026-10-14** (verificación 2 APPROVED con menores VD-1…VD-5; aprobada por el
+> usuario): RF-017 precisa que, si el estado de la réplica no puede leerse al pedir la
+> salida, el cliente avisa como si hubiera cambios pendientes; §5 añade ese caso. El *cómo*
+> está en PLAN-0005 §11.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al
@@ -173,7 +179,8 @@ actualizado: 2026-10-13
   los cambios; si alguno se rechaza o falla, vuelve al aviso. Si hay o no cambios pendientes
   se decide con el estado de la réplica en el momento de pedir la salida (incluidos un
   cambio recién escrito y un rechazo aún sin registrar), no con el último estado mostrado
-  (enmienda 1).
+  (enmienda 1); si ese estado no puede leerse, cuenta como cambios pendientes y se avisa
+  (enmienda 2).
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -196,6 +203,9 @@ actualizado: 2026-10-13
   campos reservados `_*` no admitidos en un checkpoint, `_id` del checkpoint distinto del de
   la ruta) (enmienda 1): el proxy responde 4xx `application/problem+json` sin reenviarlas;
   nunca 503, que queda para el almacén no disponible.
+- La réplica local no puede leerse al pedir la salida (IndexedDB con error) (enmienda 2):
+  el cliente no puede afirmar que todo esté confirmado, así que avisa con las opciones de
+  RF-017; nunca sale sin aviso ni deja la petición sin respuesta.
 
 ## 6. Riesgos identificados
 | ID | Riesgo | Impacto | Mitigación |

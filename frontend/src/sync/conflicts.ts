@@ -82,10 +82,11 @@ function history(doc: VaultRevision): string[] {
 
 /**
  * JSON canónico: claves ordenadas en todos los niveles y sin las de valor `undefined`, para
- * que el mismo contenido dé el mismo texto en cualquier réplica.
+ * que el mismo contenido dé el mismo texto en cualquier réplica. Dentro de una lista un
+ * `undefined` pasa a `null`, como en `JSON.stringify` (VD-4): el resultado siempre es JSON.
  */
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+export function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map((item) => (item === undefined ? "null" : canonical(item))).join(",")}]`;
   if (value !== null && typeof value === "object") {
     const entries = Object.entries(value).filter(([, v]) => v !== undefined);
     entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));

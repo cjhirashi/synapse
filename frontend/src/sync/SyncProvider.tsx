@@ -22,7 +22,7 @@ import { logout as logoutSession } from "../api/auth";
 import type { ManualConflict } from "./conflicts";
 import { destroyLocalDb } from "./localDb";
 import type { Rejection } from "./rejections";
-import { openSyncResources, pushOnce, type SyncEnv, type SyncResources } from "./resources";
+import { hasUnconfirmed, openSyncResources, pushOnce, type SyncEnv, type SyncResources } from "./resources";
 import type { SyncStatus } from "./status";
 import { SyncContext, type LogoutFailure, type LogoutPhase, type SyncContextValue } from "./useSync";
 import { ID_PREFIX } from "./vaultStore";
@@ -141,11 +141,8 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       resolveConflict: resources.conflicts.resolve,
       async requestLogout() {
         setLogoutFailure(null);
-        // Estado actual (VC-4): las escrituras de rechazos en curso y la secuencia releída.
-        await resources.rejections.settled();
-        const { pending } = await resources.status.refresh();
-        // Un cambio rechazado tampoco está en el servidor: cuenta como no confirmado.
-        if (pending || resources.rejections.list().length > 0) setLogoutPhase("asking");
+        // Decide con el estado actual de la réplica (VC-4, VD-1); sin estado legible, avisa (VD-3).
+        if (await hasUnconfirmed(resources)) setLogoutPhase("asking");
         else await exit();
       },
       logout: {

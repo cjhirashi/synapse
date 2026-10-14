@@ -1,7 +1,7 @@
 // Conflictos de la réplica local (SPEC-0005 RF-012…RF-015; PLAN-0005 §2.6).
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
-import { openConflicts, type ConflictsStore } from "./conflicts";
+import { canonical, openConflicts, type ConflictsStore } from "./conflicts";
 import { VaultValidationError } from "./vaultStore";
 
 PouchDB.plugin(memory);
@@ -258,5 +258,26 @@ describe("revisiones deterministas (VC-2, enmienda 1)", () => {
     const second = await onReplica(resolveAt(T2));
     expect(second.filter((leaf) => leaf.deleted)).toEqual(first.filter((leaf) => leaf.deleted));
     first.filter((leaf) => leaf.rev.startsWith("3-")).forEach((leaf) => expect(leaf.rev).toMatch(HEX32));
+  });
+});
+
+describe("canonical (VD-4, enmienda 2)", () => {
+  it("el orden de las claves no cambia el texto, en ningún nivel", () => {
+    expect(canonical({ b: 1, a: { d: [1, 2], c: "x" } })).toBe(canonical({ a: { c: "x", d: [1, 2] }, b: 1 }));
+    expect(canonical({ b: 1, a: { d: [1, 2], c: "x" } })).toBe('{"a":{"c":"x","d":[1,2]},"b":1}');
+  });
+
+  it("omite las claves de valor `undefined` en los objetos", () => {
+    expect(canonical({ a: undefined, b: null })).toBe('{"b":null}');
+  });
+
+  it("da `null` para un `undefined` dentro de una lista, como JSON.stringify", () => {
+    const list = [1, undefined, "x"];
+    expect(canonical(list)).toBe("[1,null,\"x\"]");
+    expect(canonical(list)).toBe(JSON.stringify(list));
+  });
+
+  it("escapa los textos como JSON", () => {
+    expect(canonical({ 'a"b': 'c"d' })).toBe(JSON.stringify({ 'a"b': 'c"d' }));
   });
 });

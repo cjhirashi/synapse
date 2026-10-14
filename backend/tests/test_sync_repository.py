@@ -185,8 +185,11 @@ async def test_rf_019_unreachable_couchdb_raises_storage_unavailable(operation):
 
 
 @pytest.mark.parametrize("operation", sorted(OPERATIONS))
-@pytest.mark.parametrize("status", [500, 503, 401])
+@pytest.mark.parametrize("status", [500, 503, 401, 409])
 async def test_rf_019_unexpected_status_raises_storage_unavailable(operation, status):
+    """Ninguna operación del canal interpreta un 409: CouchDB 3 no comprueba la revisión de un
+    `_local` (`test_rf_010_local_put_with_stale_rev_keeps_the_last_write`) y el push usa
+    `new_edits: false`. Si llegara, es una respuesta inesperada del almacén → 503 (VD-5)."""
     repo = ReplicationRepository(transport=_failing(status))
     with pytest.raises(StorageUnavailable):
         await OPERATIONS[operation](repo, "synapse_user_x")

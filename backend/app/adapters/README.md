@@ -16,4 +16,5 @@ Aquí viven las dependencias concretas: CouchDB, httpx, psycopg2, etc.
   queda atado al bucle de otra petición). Los ids `_local` van con los puntos codificados
   (`%2E`): `httpx` normalizaría `..` y la ruta saldría de `_local`. `changes` devuelve el cuerpo en flujo y mantiene la
   conexión hasta agotarlo, con una espera de lectura de la pedida (máx. 60 s) más 10 s de
-  margen; el resto, 10 s. Fallos de red o respuestas inesperadas → `StorageUnavailable`.
+  margen; el resto, 10 s. Fallos de red o respuestas inesperadas (también un 409, que CouchDB
+  no da en estas rutas: los `_local` no comprueban la revisión) → `StorageUnavailable`.

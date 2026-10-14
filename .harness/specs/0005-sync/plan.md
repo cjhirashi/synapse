@@ -6,7 +6,8 @@ estado: implemented
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §10, VC-1…VC-8
-actualizado: 2026-10-13
+  enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §11, VD-1…VD-5
+actualizado: 2026-10-14
 ---
 
 # PLAN-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
@@ -514,7 +515,7 @@ La resolución se escribe como una edición más y pasa por el push validado. Te
 ### Implementación de RF-016
 `remote.ts` (401 → `refreshSession()`; si falla, sesión caducada), `replicator.ts` (`cancel` sin borrar). Tests: vitest con 401 tras refresh fallido → se detiene y conserva pendientes; tras login del mismo usuario reanuda; integración con cookie invalidada.
 ### Implementación de RF-017
-`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4).
+`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4). Enmienda 2: la decisión pasa a `hasUnconfirmed()` en `resources.ts`, con pruebas propias; sin estado legible, avisa (§11, VD-1…VD-3).
 ### Implementación de RF-018
 `localDb.ts` (`_local/synapse-owner`). Tests vitest: usuario distinto → réplica destruida antes de replicar; mismo usuario → se conserva.
 ### Implementación de RF-019
@@ -606,3 +607,48 @@ del adaptador en la preparación de integración se retira (§2.5 nota (i)).
 Documentación afectada: `backend/README.md` y `backend/app/{services,adapters}/README.md`
 (formato de `_local`, revisiones hexadecimales), `frontend/src/README.md` (revisiones
 deterministas, contención de PouchDB), `0005-sync/contracts/openapi.yaml` (404 en `_local`).
+
+## 11. Enmienda 2 · Menores de la verificación 2 (APROBADA el 2026-10-14)
+La Fase 5 sobre `ba54882` devolvió APPROVED con cinco menores (`history.md`). El usuario
+aprobó corregirlos con TDD. Bloque N de `tasks.md` (T-102 en adelante). Ningún requisito
+nuevo: RF-017 se precisa (enmienda 2 de la spec).
+
+**Decisión de salida en un solo lugar (VD-1, VD-3).** La lógica de `requestLogout` (esperar
+los rechazos en curso, releer la secuencia, contar los rechazos) estaba dentro del
+`useMemo` de `SyncProvider`, sin pruebas que aislaran cada paso. Pasa a
+`hasUnconfirmed(resources)` en `resources.ts`, junto a `pushOnce`, su pareja:
+- **VD-1.** `resources.test.ts` prueba que un rechazo aún en escritura cuenta: con la
+  escritura del almacén retenida, `hasUnconfirmed` espera a `rejections.settled()` y da
+  `true`; sin esa espera daría `false` (mutación detectada).
+- **VD-3.** Si releer el estado falla (`db.info()` de IndexedDB con error), devuelve `true`
+  y registra el error: no se puede afirmar que todo esté confirmado, así que se avisa
+  (RF-017, enmienda 2). `requestLogout` nunca deja un rechazo sin manejar.
+- **Alternativa descartada:** un `try/catch` dentro de `requestLogout`. Arregla el síntoma
+  pero deja la decisión sin pruebas unitarias; con la función separada, `SyncProvider` sólo
+  elige entre el aviso y la salida.
+
+**VD-2 · `ok:false` sin fallos.** Caso de `pushOnce` con `ok: false`,
+`doc_write_failures: 0` y la secuencia recorrida → `false`; quitar `result.ok` de la guarda
+lo rompe.
+
+**VD-4 · `canonical()` sin pruebas.** Se exporta y se prueba: el orden de las claves no
+cambia el texto; una clave `undefined` se omite; un `undefined` dentro de una lista pasa a
+`null` (como `JSON.stringify`; antes daba `[1,]`, que no es JSON). Los cuerpos reales no
+llevan `undefined` en listas (`tags` son textos), así que ninguna revisión ya escrita
+cambia.
+
+**VD-5 · 409 en `put_local` y `rf_cov` del gate.**
+- *409.* CouchDB 3 no comprueba la revisión de un `_local` (sondeo de la enmienda 1 y de
+  esta: `PUT` con `_rev` viejo → 201; ya fijado por
+  `test_rf_010_local_put_with_stale_rev_keeps_the_last_write`). Un 409 sería, por tanto,
+  una respuesta inesperada del almacén y le corresponde el 503 como a cualquier otra
+  (`_check_status`). Se decide así, sin código nuevo: el test de estados inesperados añade
+  el 409 y el comentario de `_check_status` deja de citar el 409 como estado que todo
+  llamador interpreta. **Alternativa descartada:** traducir el 409 a un 4xx propio; sería
+  código para una respuesta que el almacén no produce.
+- *Gate.* `rf_cov` contaba cualquier `RF-NNN` de la tabla de cobertura, aunque la spec no
+  lo definiera: una fila de un RF ajeno podía tapar uno propio sin cubrir. Pasa a contar
+  sólo los RF de la tabla que la spec define (intersección); probado en una copia.
+
+Documentación afectada: `frontend/src/README.md` (`hasUnconfirmed`, aviso sin estado
+legible), `backend/app/adapters/README.md` si cita el 409 de `_local`.

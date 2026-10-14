@@ -78,8 +78,12 @@ if [ -z "$SPECS" ]; then skip "sin specs todavía"; else
     tk="$d/tasks.md"; [ -f "$tk" ] || { err "$name en $st sin tasks.md"; continue; }
     # Sólo los RF que la spec define (`- **RF-NNN**`, formato de la plantilla); las
     # referencias a requisitos de otras specs (p. ej. "RF-021 de 0003") no son suyos.
-    rf_spec=$(grep -oE '^- \*\*RF-[0-9]+' "$sp" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
-    rf_cov=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
+    rf_defs=$(grep -oE '^- \*\*RF-[0-9]+' "$sp" | grep -oE 'RF-[0-9]+' | sort -u)
+    rf_spec=$(printf '%s' "$rf_defs" | grep -c . || true)
+    # Cubiertos = los RF que la spec define y tienen fila propia en la tabla (primera
+    # columna). Un RF ajeno a la spec no tapa uno propio sin cubrir (VD-5).
+    rf_cov=$(comm -12 <(printf '%s\n' "$rf_defs") \
+      <(grep -oE '^\| *RF-[0-9]+' "$tk" | grep -oE 'RF-[0-9]+' | sort -u) | grep -c . || true)
     pend=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -Eiv '\| *(Pass|hecho) *\|? *$' | grep -c . || true)
     # Una spec implementada sin ningún RF reconocible no prueba nada: o no define requisitos
     # o no sigue el formato de la plantilla, y en ambos casos la cobertura sería vacía (VC-8).
