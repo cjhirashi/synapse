@@ -9,6 +9,7 @@ aprobaciones:
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque N, VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque O, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque P, VF-4 opción (b), VF-1…VF-3
+  enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # menores de la verificación 5, VG-1…VG-4 (pruebas y texto)
   verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
@@ -181,10 +182,16 @@ actualizado: 2026-10-14
 - [x] T-117 — enmienda 4 de SPEC-0005 (RF-017, §5) y PLAN-0005 §9 y §13; bloque P (cubre RF-017, RF-018) [doc]
 - [x] T-118 — `localDb.test.ts` (rojo): con la marca de borrado pendiente la réplica se destruye también para el mismo usuario y la marca se quita; destruir con error → rechaza y la marca sigue; `markDiscarded` sin `localStorage` → `false`; marca ilegible → ausente (VF-4) (cubre RF-017, RF-018) [zona: test]
 - [x] T-119 — marca de borrado pendiente en `localDb.ts` (`markDiscarded`, `destroyLocalDb`, `openLocalDb`) (VF-4) (cubre RF-017, RF-018) [zona: sync]
-- [x] T-120 — `LogoutDialog.test.tsx` y `App.test.tsx` (rojo): la salida con el borrado en error deja la marca y el aviso la anuncia; el mismo usuario vuelve y la réplica descartada no se sube; dos salidas seguidas → un `logout()`; reintento tras `logout()` fallido; fase «Cerrando sesión…»; petición durante el borrado sin releer la réplica (VF-1, VF-2, VF-4) (cubre RF-017, RF-018) [zona: test]
+- [x] T-120 — `LogoutDialog.test.tsx` (rojo): la salida con el borrado en error deja la marca y el aviso la anuncia; el mismo usuario vuelve y la réplica descartada no se sube; dos salidas seguidas → un `logout()`; reintento tras `logout()` fallido; fase «Cerrando sesión…»; petición durante el borrado sin releer la réplica (VF-1, VF-2, VF-4) (cubre RF-017, RF-018) [zona: test]
 - [x] T-121 — `exit()` marca antes de cerrar y pasa `discardPending`; guarda `leaving` en `requestLogout` y `syncAndExit` (VF-2, VF-4) (cubre RF-017) [zona: sync]
 - [x] T-122 — `LocalCopyNotice.test.tsx` (rojo) y `LocalCopyNotice.tsx`: texto con `discardPending`; quita el estado de la entrada y conserva el aviso (VF-3, VF-4) (cubre RF-017) [zona: sync]
 - [x] T-123 — `frontend/src/README.md` (filas de `localDb.ts` y `LocalCopyNotice.tsx`) (cubre RF-017) [doc]
+
+### Q · Menores de la verificación 5 (enmienda 5, PLAN-0005 §14)
+- [x] T-124 — enmienda 5 de SPEC-0005 (RF-017, §5: riesgo residual de la marca, VG-4) y PLAN-0005 §14; bloque Q (cubre RF-017) [doc]
+- [x] T-125 — `LogoutDialog.test.tsx`: con `close()` en error la marca queda escrita y el aviso la anuncia (VG-1) (cubre RF-017) [zona: test]
+- [x] T-126 — `LogoutDialog.test.tsx`: el mismo usuario que vuelve replica sobre una réplica sin la bóveda descartada, en lugar de la aserción sobre la remota (VG-3) (cubre RF-017, RF-018) [zona: test]
+- [x] T-127 — T-120 y fila RF-018 sin `App.test.tsx` (VG-2) (cubre RF-018) [doc]
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
@@ -205,8 +212,8 @@ actualizado: 2026-10-14
 | RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
 | RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101, T-106, T-116 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109…T-123 | SyncProvider.test, LogoutDialog.test, LocalCopyNotice.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
-| RF-018 | T-036, T-037, T-052, T-053, T-095, T-105, T-113, T-117…T-120 | localDb.test, SyncProvider.test, LogoutDialog.test, App.test, resources.test, rejections.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109…T-126 | SyncProvider.test, LogoutDialog.test, LocalCopyNotice.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
+| RF-018 | T-036, T-037, T-052, T-053, T-095, T-105, T-113, T-117…T-120, T-126, T-127 | localDb.test, SyncProvider.test, LogoutDialog.test, resources.test, rejections.integration | Pass |
 | RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
 | RNF-001 | T-075 | sync.perf.integration | Pass |
 | RNF-002 | T-069…T-073, T-094, T-096 | *.integration (sync-integration.sh) | Pass |

@@ -317,7 +317,7 @@ test("RF-017: si el mismo usuario vuelve, la réplica descartada que no se borr�
   vi.spyOn(api, "logout").mockResolvedValue();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.spyOn(localDb, "destroyLocalDb").mockRejectedValueOnce(new Error("IndexedDB no disponible"));
-  const { env, remote, localName } = memoryEnv();
+  const { env, fake, localName } = memoryEnv();
   const user = renderApp(env);
   const dialog = await openWithPending(user);
   await user.click(within(dialog).getByRole("button", { name: "Salir y descartar" }));
@@ -326,7 +326,13 @@ test("RF-017: si el mismo usuario vuelve, la réplica descartada que no se borr�
   expect(await screen.findByText("pendientes no")).toBeInTheDocument();
   const { rows } = await memoryDb(localName).allDocs({ startkey: "vault:", endkey: "vault:\ufff0" });
   expect(rows).toEqual([]);
-  expect((await remote.info()).doc_count).toBe(0);
+  // El replicador falso no sube nada: lo que se probaría es qué réplica recibe. El de la
+  // segunda sesión arranca sobre la réplica nueva, sin la bóveda descartada (VG-3).
+  expect(fake.create).toHaveBeenCalledTimes(2);
+  const replicated = fake.create.mock.calls[1][0].local;
+  const pushed = await replicated.allDocs({ startkey: "vault:", endkey: "vault:\ufff0" });
+  expect(pushed.rows).toEqual([]);
+  expect(fake.replicator.start).toHaveBeenCalledTimes(2);
   expect(localStorage.getItem(DISCARD_MARK_PREFIX + localName)).toBeNull();
 });
 
@@ -354,6 +360,10 @@ test("RF-017: si cerrar la réplica falla al salir, llega al login con el aviso 
   expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
   await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(2));
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+  // La marca se escribió antes de `close()`: el borrado ni se intentó y aun así el próximo
+  // inicio de sesión la borra, y el aviso lo promete (VG-1).
+  expect(screen.getByRole("alert")).toHaveTextContent(DISCARD_PENDING);
+  expect(localStorage.getItem(DISCARD_MARK_PREFIX + localName)).not.toBeNull();
 });
 
 test("RF-017: dos salidas seguidas cierran la sesión una sola vez (VF-1)", async () => {

@@ -9,6 +9,7 @@ aprobaciones:
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §11, VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §12, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §13, VF-4 opción (b), VF-1…VF-3
+  enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # menores de la verificación 5, VG-1…VG-4 (pruebas y texto)
   verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
@@ -765,3 +766,25 @@ página esté montada.
 
 Documentación afectada: `frontend/src/README.md` (fila de `localDb.ts` y de
 `LocalCopyNotice.tsx`).
+
+## 14. Enmienda 5 · Menores de la verificación 5 (APROBADA el 2026-10-14)
+
+La verificación 5 dio APPROVED con menores VG-1…VG-5; el usuario pasó SPEC-0005 a
+`verified` y pidió corregir VG-1…VG-4. Sólo pruebas y texto: sin cambio de comportamiento,
+así que por la regla de salida no hay otra ronda.
+
+- **VG-1:** la prueba «si cerrar la réplica falla al salir» de `LogoutDialog.test.tsx`
+  comprueba ahora la marca en `localStorage` y el texto del borrado pendiente: fija que
+  `exit()` marca **antes** de `close()` (la mutación que marca después ya no pasa).
+- **VG-2:** T-120 y la fila RF-018 de TASKS-0005 dejan de citar `App.test.tsx`, que la
+  enmienda 4 no tocó.
+- **VG-3:** con el replicador falso, «nada en remoto» se cumplía siempre. La prueba «el mismo
+  usuario vuelve» comprueba en su lugar que el replicador de la segunda sesión se crea sobre
+  una réplica sin la bóveda descartada y arranca.
+- **VG-4:** SPEC-0005 RF-017 y §5 matizan el «nunca»: `QuotaExceededError` en `setItem` más
+  un borrado fallido, o `removeItem` con error tras un `getItem` correcto, son dobles fallos
+  del almacenamiento aceptados como riesgo residual. Descartado añadir código: es el único uso
+  de `localStorage` del frontend, la clave es corta y otro almacén de la marca fallaría con el
+  mismo almacenamiento.
+- **VG-5** (varias pestañas del mismo usuario con el borrado fallido) queda en el backlog de
+  `state.md`, fuera de esta enmienda: es anterior a la enmienda 4 y necesita su propio análisis.

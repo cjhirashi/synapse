@@ -27,6 +27,7 @@ aprobaciones:
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 2, menores VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 3, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 4, VF-4 opción (b), VF-1…VF-3
+  enmienda_5: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # menores de la verificación 5, VG-1…VG-4 (pruebas y texto)
   verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
@@ -64,6 +65,11 @@ actualizado: 2026-10-14
 > eligió la opción (b) para VF-4): RF-017 precisa que la copia descartada que no pudo
 > borrarse nunca vuelve a usarse, tampoco por el mismo usuario; §5 añade ese caso. El *cómo*
 > está en PLAN-0005 §13.
+>
+> **Enmienda 5 2026-10-14** (verificación 5 APPROVED con menores VG-1…VG-5; el usuario pasó
+> 0005 a `verified` y aprobó corregir VG-1…VG-4): RF-017 remite al riesgo residual de §5,
+> que añade los dos dobles fallos del almacenamiento. Sin cambio de comportamiento. El *cómo*
+> está en PLAN-0005 §14.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al
@@ -198,7 +204,8 @@ actualizado: 2026-10-14
   la copia local de este dispositivo" (enmienda 3). La copia que se descarta al salir nunca
   vuelve a usarse: el cliente anota en el dispositivo que su borrado está pendiente y el
   próximo inicio de sesión, del mismo usuario o de otro, termina de borrarla antes de
-  abrirla y replicar; los cambios descartados nunca llegan al servidor (enmienda 4).
+  abrirla y replicar; los cambios descartados no llegan al servidor (enmienda 4), salvo
+  el doble fallo del almacenamiento que §5 deja como riesgo residual (enmienda 5).
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -233,6 +240,12 @@ actualizado: 2026-10-14
   ese borrado también falla, el cliente muestra el error de la réplica y no replica. Si el
   dispositivo no deja anotar el borrado pendiente (almacenamiento del sitio bloqueado), el
   aviso del login no promete el borrado; ese bloqueo impide también abrir la réplica (R-5).
+- Riesgo residual de la marca de borrado pendiente (enmienda 5): si la marca no puede
+  anotarse por otra causa que el bloqueo del sitio (`localStorage` lleno) y además falla el
+  borrado, el mismo usuario que vuelve reutiliza la réplica descartada y sus cambios se suben;
+  si la marca se lee pero no puede quitarse tras borrar, la siguiente apertura borra una
+  réplica ya en uso y se pierde lo que tuviera sin confirmar. Ambos exigen dos fallos seguidos
+  del almacenamiento del dispositivo; se aceptan sin código propio (PLAN-0005 §14).
 
 ## 6. Riesgos identificados
 | ID | Riesgo | Impacto | Mitigación |
