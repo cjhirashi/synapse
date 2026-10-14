@@ -45,8 +45,11 @@ export interface SyncContextValue {
   rejections: Rejection[];
   conflicts: ManualConflict[];
   resolveConflict: ConflictsStore["resolve"];
-  /** Cierra la sesión; con cambios sin confirmar abre antes el aviso (RF-017). */
-  requestLogout(): void;
+  /**
+   * Cierra la sesión; con cambios sin confirmar (según el estado actual, no el del último
+   * render) abre antes el aviso (RF-017).
+   */
+  requestLogout(): Promise<void>;
   logout: LogoutState;
 }
 

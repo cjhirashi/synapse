@@ -1,5 +1,5 @@
 // Aviso al cerrar sesión con cambios sin confirmar (SPEC-0005 RF-017; PLAN-0005 §2.5).
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -13,16 +13,29 @@ import { useSync } from "./useSync";
 
 afterEach(() => vi.restoreAllMocks());
 
+const NEW_VAULT = { name: "Notas", description: null, tags: [] };
+
 /** Botones de la página privada: crear una bóveda y cerrar sesión. */
 function Controls() {
-  const { vaults, requestLogout, rejections } = useSync();
+  const { vaults, requestLogout, rejections, status } = useSync();
   return (
     <>
       <p>rechazos {rejections.length}</p>
-      <button type="button" onClick={() => void vaults.create({ name: "Notas", description: null, tags: [] })}>
+      <p>pendientes {status.pending ? "sí" : "no"}</p>
+      <button type="button" onClick={() => void vaults.create(NEW_VAULT)}>
         crear
       </button>
-      <button type="button" onClick={requestLogout}>
+      {/* Escribe y pide salir enseguida, con el `requestLogout` de este render (VC-4). */}
+      <button
+        type="button"
+        onClick={async () => {
+          await vaults.create(NEW_VAULT);
+          await requestLogout();
+        }}
+      >
+        crear y salir
+      </button>
+      <button type="button" onClick={() => void requestLogout()}>
         Cerrar sesión
       </button>
       <LogoutDialog />
@@ -54,14 +67,15 @@ async function expectDestroyed(localName: string) {
   await expect(memoryDb(localName).get(OWNER_DOC_ID)).rejects.toMatchObject({ status: 404 });
 }
 
-/** Crea una bóveda (cambio sin confirmar) y abre el aviso. */
+/**
+ * Crea una bóveda (cambio sin confirmar) y abre el aviso. Espera a ver el pendiente antes de
+ * pulsar, y pulsa una sola vez: dentro de `waitFor` el clic se repetiría (VC-4).
+ */
 async function openWithPending(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole("button", { name: "crear" }));
-  await waitFor(async () => {
-    await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-    expect(screen.getByRole("dialog", { name: "Hay cambios sin sincronizar" })).toBeInTheDocument();
-  });
-  return screen.getByRole("dialog");
+  expect(await screen.findByText("pendientes sí")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  return screen.findByRole("dialog", { name: "Hay cambios sin sincronizar" });
 }
 
 test("RF-017: sin cambios pendientes sale directo y borra la réplica", async () => {
@@ -93,6 +107,18 @@ test("RF-017: sin conexión sólo ofrece salir y descartar o cancelar", async ()
   fake.emit({ type: "paused", direction: "push", offline: true });
   const dialog = await openWithPending(user);
   expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Salir y descartar", "Cancelar"]);
+});
+
+test("RF-017: decide con el estado actual aunque la pantalla aún no muestre el cambio (VC-4)", async () => {
+  const logout = vi.spyOn(api, "logout").mockResolvedValue();
+  const { env, localName } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "crear y salir" }));
+  expect(await screen.findByRole("dialog", { name: "Hay cambios sin sincronizar" })).toBeInTheDocument();
+  expect(logout).not.toHaveBeenCalled();
+  expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+  // La pantalla termina por mostrar el cambio: se espera para no dejar el render en el aire.
+  expect(await screen.findByText("pendientes sí")).toBeInTheDocument();
 });
 
 test("un cambio rechazado también cuenta como no confirmado", async () => {

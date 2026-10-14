@@ -174,6 +174,13 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   REST y sync nunca dejan dos bóvedas activas con el mismo nombre.
 - **Límites:** 200 documentos por `_bulk_docs` y 4 MiB por cuerpo (413
   `payload-too-large`); 64 KiB por checkpoint `_local`.
+- **Checkpoints `_local` (RF-003):** el id sigue el formato de PouchDB
+  (`[A-Za-z0-9._=-]{1,128}`, nunca `.` ni `..`); otro id es 404 `sync-endpoint-not-found`
+  sin llegar a CouchDB. El cuerpo sólo admite como campos reservados `_id` (igual a
+  `_local/{id}`) y `_rev` (`0-N`); lo demás es 422 `validation-error`.
+- **Revisiones:** `_rev` y los ids de `_revisions` son `{generación}-{hash}` con hash
+  hexadecimal en minúscula, como los generan CouchDB, PouchDB y el cliente; otro formato es
+  el rechazo `validation-error:_rev` (o `validation-error:_revisions`), nunca un 503.
 
 Códigos `reason` de un rechazo (orden en que se comprueban):
 

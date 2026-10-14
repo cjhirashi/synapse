@@ -45,9 +45,11 @@ _VAULT_KEYS = (
 # Una lápida no lleva nada más (P-5): el borrado de una bóveda es el soft delete de 0003.
 _TOMBSTONE_KEYS = {"_id", "_rev", "_revisions", "_deleted"}
 
-# `{generación}-{hash}`: generación ≥ 1; hash alfanumérico (CouchDB y PouchDB usan hex).
-_REV_HASH = re.compile(r"[0-9A-Za-z]+")
-_REV = re.compile(r"([1-9][0-9]*)-([0-9A-Za-z]+)")
+# `{generación}-{hash}`: generación ≥ 1; hash hexadecimal en minúscula, el que generan
+# CouchDB, PouchDB y el cliente determinista (`conflicts.ts`). Otro hash CouchDB lo guardaría
+# y fallaría más tarde con un error del almacén, no del cliente (enmienda 1, VC-5).
+_REV_HASH = re.compile(r"[0-9a-f]+")
+_REV = re.compile(r"([1-9][0-9]*)-([0-9a-f]+)")
 
 # Reglas de REST (`core/schemas.py`) en modo estricto: sin conversión de tipos (un número no
 # pasa por texto). Lo que sí normalizan (espacios, minúsculas, repetidos) se compara aparte.

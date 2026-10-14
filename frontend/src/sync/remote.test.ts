@@ -111,4 +111,41 @@ describe("createRemoteDb", () => {
     expect(global).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  describe("defecto de PouchDB 9: `info()` sin `catch` en la replicación (VC-7, enmienda 1)", () => {
+    /** Base remota cuya red cae en cada petición. */
+    const offline = () =>
+      createRemoteDb({
+        onSessionExpired: vi.fn(),
+        origin: "https://app.test",
+        fetch: vi.fn().mockRejectedValue(new TypeError("Failed to fetch")),
+        refresh: vi.fn(),
+      });
+
+    /** Rechazos sin manejar que Node detecta durante `run` (tras vaciar las microtareas). */
+    async function unhandledDuring(run: () => void): Promise<unknown[]> {
+      const seen: unknown[] = [];
+      const listener = (reason: unknown) => seen.push(reason);
+      process.prependListener("unhandledRejection", listener);
+      try {
+        run();
+        // Node avisa de los rechazos sin manejar al acabar cada macrotarea.
+        for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
+      } finally {
+        process.off("unhandledRejection", listener);
+      }
+      return seen;
+    }
+
+    it("una derivada de `info()` que nadie mira no es un rechazo sin manejar", async () => {
+      const remote = offline();
+      // Lo que hace PouchDB al actualizar `activeTasks`: `then` sin `catch`, descartado.
+      expect(await unhandledDuring(() => void remote.info().then(() => undefined))).toEqual([]);
+    });
+
+    it("quien espera `info()` recibe el rechazo igual", async () => {
+      await expect(offline().info()).rejects.toThrow();
+      await expect(offline().info().then(() => "nunca")).rejects.toThrow();
+    });
+  });
 });

@@ -209,3 +209,54 @@ describe("conflictos manuales", () => {
     expect(store.list()).toHaveLength(1);
   });
 });
+
+describe("revisiones deterministas (VC-2, enmienda 1)", () => {
+  const HEX32 = /^\d+-[0-9a-f]{32}$/;
+
+  /**
+   * Prepara el mismo conflicto en una réplica nueva, deja que `run` lo resuelva y devuelve
+   * sus hojas. Cada réplica es un dispositivo distinto con su propio reloj.
+   */
+  async function onReplica(run: () => Promise<unknown>) {
+    counter += 1;
+    db = new PouchDB(`conflicts-test-${counter}`, { adapter: "memory" });
+    await run();
+    await vi.waitFor(async () => expect((await winner())._conflicts).toBeUndefined());
+    return leaves();
+  }
+
+  it("la misma combinación en dos réplicas escribe las mismas revisiones", async () => {
+    const combine = async () => {
+      await conflict({ name: "Uno W" }, { description: "desc L" });
+      await open();
+    };
+    const first = await onReplica(combine);
+    const second = await onReplica(combine);
+    expect(second).toEqual(first);
+    first.filter((leaf) => leaf.rev.startsWith("3-")).forEach((leaf) => expect(leaf.rev).toMatch(HEX32));
+  });
+
+  it("con relojes distintos, la lápida sobre L es la misma revisión en ambas réplicas", async () => {
+    const combineAt = (now: string) => async () => {
+      await conflict({ name: "Uno W" }, { description: "desc L" });
+      await open(() => now);
+    };
+    const tombstone = (tree: Awaited<ReturnType<typeof leaves>>) => tree.find((leaf) => leaf.deleted && leaf.parent === L);
+    const first = tombstone(await onReplica(combineAt(NOW)));
+    const second = tombstone(await onReplica(combineAt(T2)));
+    expect(first?.rev).toMatch(HEX32);
+    expect(second).toEqual(first);
+  });
+
+  it("la misma resolución manual en dos réplicas cierra L con la misma lápida", async () => {
+    const resolveAt = (now: string) => async () => {
+      await conflict({ name: "Nombre W" }, { name: "Nombre L" });
+      const store = await open(() => now);
+      await store.resolve(ID, `2-${L}`, { name: "Elegido", description: null, tags: ["a"], deleted_at: null });
+    };
+    const first = await onReplica(resolveAt(NOW));
+    const second = await onReplica(resolveAt(T2));
+    expect(second.filter((leaf) => leaf.deleted)).toEqual(first.filter((leaf) => leaf.deleted));
+    first.filter((leaf) => leaf.rev.startsWith("3-")).forEach((leaf) => expect(leaf.rev).toMatch(HEX32));
+  });
+});

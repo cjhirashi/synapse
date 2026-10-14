@@ -10,10 +10,11 @@ cliente no puede elegir filtro, vista ni selector); lo que está pero no tiene u
 válido → `InvalidSyncRequest` (422) con un texto fijo por parámetro.
 """
 import json
+import re
 from collections.abc import Mapping
 from typing import NamedTuple
 
-from app.core.errors import InvalidSyncRequest, StorageUnavailable
+from app.core.errors import InvalidSyncRequest, StorageUnavailable, SyncEndpointNotFound
 from app.services.vault_service import is_canonical_uuid
 
 VAULT_PREFIX = "vault:"
@@ -49,8 +50,8 @@ def _invalid_parameter(name: str, detail: str) -> InvalidSyncRequest:
     return InvalidSyncRequest(f"invalid sync parameter {name}", errors=[{"parameter": name, "detail": detail}])
 
 
-def _invalid_body(detail: str) -> InvalidSyncRequest:
-    return InvalidSyncRequest("invalid sync body", errors=[{"pointer": "#", "detail": detail}])
+def _invalid_body(detail: str, pointer: str = "#") -> InvalidSyncRequest:
+    return InvalidSyncRequest("invalid sync body", errors=[{"pointer": pointer, "detail": detail}])
 
 
 def _non_negative_int(params: Mapping[str, str], name: str) -> int | None:
@@ -236,3 +237,37 @@ def sanitize_db_info(info: dict) -> dict:
         "update_seq": info["update_seq"],
         "instance_start_time": info["instance_start_time"],
     }
+
+
+# --- Checkpoints `_local` ---
+
+# Formato de los ids de checkpoint de PouchDB: md5 en base64 con `/`→`.` y `+`→`_` (más `-`,
+# que no usa pero es inocuo). Ni `.` ni `..`: como segmento de ruta, `httpx` los normaliza y
+# la petición acabaría en la raíz de la base (enmienda 1, VC-1).
+_CHECKPOINT_ID = re.compile(r"(?!\.\.?$)[A-Za-z0-9._=-]{1,128}")
+
+
+def checkpoint_id(local_id: str) -> str:
+    """Id de checkpoint aceptado o `SyncEndpointNotFound`: para otro id la ruta no existe (RF-003)."""
+    if not _CHECKPOINT_ID.fullmatch(local_id):
+        raise SyncEndpointNotFound()
+    return local_id
+
+
+# Revisión de un `_local` en CouchDB: `0-N`, la que devuelve la lectura del checkpoint.
+_CHECKPOINT_REV = re.compile(r"0-[1-9][0-9]*")
+_CHECKPOINT_RESERVED = {"_id", "_rev"}
+
+
+def check_checkpoint_doc(local_id: str, doc: dict) -> None:
+    """El checkpoint tal como lo escribe PouchDB o `InvalidSyncRequest` (enmienda 1, VC-5).
+
+    CouchDB respondería a lo demás con 200 (`_deleted` borra el checkpoint), 400 o 500, y el
+    proxy lo convertiría en un 503 de almacén: se rechaza antes, como error del cliente.
+    """
+    if any(key.startswith("_") and key not in _CHECKPOINT_RESERVED for key in doc):
+        raise _invalid_body("Only _id and _rev may start with an underscore.")
+    if "_id" in doc and doc["_id"] != f"_local/{local_id}":
+        raise _invalid_body("Must be the checkpoint of the request path.", "#/_id")
+    if "_rev" in doc and not (isinstance(doc["_rev"], str) and _CHECKPOINT_REV.fullmatch(doc["_rev"])):
+        raise _invalid_body("Must be a checkpoint revision (0-N).", "#/_rev")

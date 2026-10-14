@@ -1,6 +1,7 @@
 // Conflictos entre dos réplicas reales (SPEC-0005 RF-012, RF-013, RF-014, RF-015, RNF-002).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createUser, Device, eventually } from "../test-utils/device";
+import { pushOnce } from "./resources";
 import type { Vault, VaultStore } from "./vaultStore";
 
 describe("conflictos (integración)", () => {
@@ -125,5 +126,53 @@ describe("conflictos (integración)", () => {
     await eventually(() =>
       expect(phone.sync.rejections.list()).toEqual([expect.objectContaining({ id: conflict.id, reason: "vault-name-taken" })]),
     );
+  });
+
+  it("los dos dispositivos resuelven a la vez el mismo conflicto: sin rechazos y «Sincronizar y salir» funciona (VC-2)", async () => {
+    await editApart([
+      (vaults) => vaults.update(base.id, { name: "Notas del portátil" }, base.rev),
+      (vaults) => vaults.update(base.id, { name: "Notas del móvil" }, base.rev),
+    ]);
+    const pairs = await Promise.all(
+      [laptop, phone].map((device) =>
+        eventually(() => {
+          const [conflict] = device.sync.conflicts.list();
+          expect(conflict).toBeDefined();
+          return conflict;
+        }),
+      ),
+    );
+    // Ambas réplicas ven la misma pareja: la ganadora es determinista.
+    expect(pairs[0].loser.rev).toBe(pairs[1].loser.rev);
+
+    // Sin red, cada uno elige lo mismo (a horas distintas) y luego vuelven los dos.
+    laptop.setNetwork("offline");
+    phone.setNetwork("offline");
+    for (const [device, conflict] of [[laptop, pairs[0]], [phone, pairs[1]]] as const) {
+      await device.sync.conflicts.resolve(conflict.id, conflict.loser.rev, {
+        name: "Notas de ambos",
+        description: conflict.winner.doc.description,
+        tags: conflict.winner.doc.tags,
+        deleted_at: null,
+      });
+    }
+    laptop.setNetwork("online");
+    phone.setNetwork("online");
+
+    // RF-015: las lápidas iguales no se rechazan; las dos hijas de W se funden (paso 7) y
+    // ambas réplicas convergen en la misma revisión, sin conflictos ni rechazos.
+    await eventually(async () => {
+      const [a, b] = await Promise.all([laptop.sync.vaults.get(base.id), phone.sync.vaults.get(base.id)]);
+      expect(a).toMatchObject({ name: "Notas de ambos" });
+      expect(b.rev).toBe(a.rev);
+      for (const device of [laptop, phone]) {
+        expect(device.sync.conflicts.list()).toEqual([]);
+        expect(device.sync.rejections.list()).toEqual([]);
+      }
+    });
+    for (const device of [laptop, phone]) {
+      await device.synced();
+      expect(await pushOnce(device.sync)).toBe(true);
+    }
   });
 });

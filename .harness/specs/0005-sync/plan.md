@@ -5,6 +5,7 @@ feature: 0005-sync
 estado: implemented
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §10, VC-1…VC-8
 actualizado: 2026-10-13
 ---
 
@@ -21,6 +22,8 @@ actualizado: 2026-10-13
 > **GATE 2 aprobado (2026-10-13):** el usuario aprobó el plan con P-1 opción (a) (se toca el
 > código de 0003 y se re-ancla al cierre) y P-2 (dependencia `pouchdb-browser`); P-3…P-5
 > quedan confirmadas con el plan (§7).
+> **Enmienda 1 (2026-10-13, aprobada por el usuario):** correcciones de la verificación
+> adversarial VC-1…VC-8 en §10; cambian §2.5 nota (i), §7 P-5 y §9 (RF-003, RF-015, RF-017).
 
 ## 0. Gates de simplicidad
 - [x] Simplicity — el backend reenvía el protocolo de replicación de CouchDB, que ya existe,
@@ -343,9 +346,10 @@ el `map` de `Accept` que necesita `/vaults` (ruta compartida entre API y SPA).
 - (i) **Defecto de PouchDB 9.** Tras escribir cada lote, `replicate` hace
   `src.info().then(...)` sin `catch`: si la red cae en ese momento queda un rechazo sin
   manejar (en el navegador, un "Uncaught (in promise)" en consola; la replicación sigue
-  bien). Sólo en las pruebas de integración, el adaptador `http` se envuelve para que las
-  promesas de `info()` de la remota nazcan observadas. Pendiente de decisión: reportarlo
-  aguas arriba y/o aplicar la corrección también en la app.
+  bien). **Decidido en la enmienda 1 (VC-7):** la contención vive en la app —
+  `createRemoteDb` hace que las promesas de `info()` de la remota nazcan observadas— y el
+  envoltorio del adaptador `http` de las pruebas de integración desaparece (§10). Reportarlo
+  aguas arriba queda a decisión del usuario.
 - (j) **Cobertura** excluye `src/test-utils/**` (andamiaje de pruebas, no código de la app).
 - (k) **`synced()` del dispositivo** espera a que el `push_seq` persistido alcance la
   secuencia local del momento de la llamada (el "pendientes" se recalcula de forma
@@ -455,7 +459,7 @@ ocupado), sigue el flujo de RF-006.
 | **P-2 · Dependencia nueva `pouchdb-browser` (y `pouchdb-adapter-memory` sólo en tests)** | Implementar el protocolo de replicación a mano es justo lo que ADR-002 descartó. Versión exacta fijada (`9.0.0`, la estable actual; se comprueba al instalar). Aumenta el bundle (~45 kB gzip). |
 | P-3 · El servidor no normaliza en el push | El contenido de una revisión no puede cambiar sin cambiar su `_rev`: si el proxy normalizara, servidor y cliente tendrían contenidos distintos bajo la misma revisión. El cliente normaliza antes de escribir y el servidor rechaza lo no normalizado (`not-normalized:<campo>`). Para el usuario es igual que en REST porque su cliente ya normaliza. |
 | P-4 · Una reserva por cada rama viva y activa | Más estricto que "una por bóveda": una rama perdedora con un nombre que ya usa otra bóveda se rechaza al llegar (RF-006) en lugar de esperar a la resolución. Es lo que impide que una rama perdedora se convierta en ganadora sin reserva (§2.3). |
-| P-5 · Lápidas sólo para cerrar ramas en conflicto | El borrado de bóvedas sigue siendo el *soft delete* de 0003; una lápida que dejaría la bóveda sin hojas vivas se rechaza. **Riesgo residual aceptado:** dos lápidas *simultáneas* de un cliente modificado sobre las dos ramas podrían borrar del todo una bóveda propia. No afecta a otro usuario (P2) y el cliente oficial nunca lo hace (siempre conserva la ganadora determinista, §2.6). |
+| P-5 · Lápidas sólo para cerrar ramas en conflicto | El borrado de bóvedas sigue siendo el *soft delete* de 0003; una lápida que dejaría la bóveda sin hojas vivas se rechaza. **Riesgo residual aceptado:** dos lápidas *simultáneas* de un cliente modificado sobre las dos ramas podrían borrar del todo una bóveda propia. No afecta a otro usuario (P2) y el cliente oficial nunca lo hace (siempre conserva la ganadora determinista, §2.6). **Enmienda 1 (VC-2):** dos dispositivos oficiales que resuelven a la vez el mismo conflicto escribían lápidas con revisiones aleatorias distintas sobre la misma rama y la segunda se rechazaba (`delete-not-allowed`, persistente). Se corrige en el origen con revisiones deterministas en el cliente (§10): las dos lápidas son la misma revisión y la segunda se acepta sin escribir (paso 2). |
 | Re-anclaje de 0002 | 0005 modifica `App.tsx`, `layout/**` y `scripts/export_openapi.py` (de `covers` de 0002) y `core/errors.py`/`main.py` (sin dueño). Al cerrar, se mueve el ancla de 0002 con una nota, como en 0003/0004. |
 | `frontend/vite.config.ts`, `package.json` sin `covers` | Configuración compartida por varias features (precedente PLAN-0003 §14): no se anclan a 0005; se documentan en `frontend/src/README.md`. |
 | Tests de sync real necesitan el backend levantado | `sync-integration.sh` lo levanta contra la base de test (SQLite, excepción P5) y CouchDB de test; fuera de `npm test` por defecto, obligatorio en la verificación. |
@@ -482,7 +486,7 @@ ocupado), sigue el flujo de RF-006.
 ### Implementación de RF-002
 `dependencies=[Depends(require_password_changed)]` en el router, comodín incluida. Tests: `test_sync_api.py`, sin cookie → 401 y con cambio pendiente → 403 en cada ruta.
 ### Implementación de RF-003
-Rutas explícitas de §2.1 y comodín final → `SyncEndpointNotFound`. Tests: `test_sync_api.py` con `PUT /sync/db/x`, `DELETE /sync/db/_local/x`, `_find`, `_purge`, `_design/vaults`, `_security`; comprobar que no llega nada a CouchDB (doble del puerto en la prueba de ruta).
+Rutas explícitas de §2.1 y comodín final → `SyncEndpointNotFound`. Tests: `test_sync_api.py` con `PUT /sync/db/x`, `DELETE /sync/db/_local/x`, `_find`, `_purge`, `_design/vaults`, `_security`; comprobar que no llega nada a CouchDB (doble del puerto en la prueba de ruta). Enmienda 1: identificadores `_local` fuera de formato (`.`, `..`, `%2E%2E`) → `SyncEndpointNotFound` (§10, VC-1).
 ### Implementación de RF-004
 `sync_filter.py` (selector fijo, recortes) + rutas. Tests: `test_sync_filter.py`; `test_sync_api.py` con una reserva y el diseño `_design/vaults` presentes, que no aparecen en `_changes`, `_all_docs` ni `_bulk_get`.
 ### Implementación de RF-005
@@ -506,11 +510,11 @@ Pasos 7 y 9 del push, invariante de P-4 y `_holder` multi-hoja. Tests: `test_syn
 ### Implementación de RF-014
 `merge.ts` paso 4. Tests: borrar en una réplica y editar en otra → restaurada con la edición; con el nombre ya ocupado → rechazo (RF-015).
 ### Implementación de RF-015
-La resolución se escribe como una edición más y pasa por el push validado. Tests: integración, resolución con nombre ocupado → rechazo visible.
+La resolución se escribe como una edición más y pasa por el push validado. Tests: integración, resolución con nombre ocupado → rechazo visible. Enmienda 1: revisiones deterministas en `conflicts.ts`; integración con dos dispositivos que resuelven a la vez (§10, VC-2).
 ### Implementación de RF-016
 `remote.ts` (401 → `refreshSession()`; si falla, sesión caducada), `replicator.ts` (`cancel` sin borrar). Tests: vitest con 401 tras refresh fallido → se detiene y conserva pendientes; tras login del mismo usuario reanuda; integración con cookie invalidada.
 ### Implementación de RF-017
-`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso.
+`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4).
 ### Implementación de RF-018
 `localDb.ts` (`_local/synapse-owner`). Tests vitest: usuario distinto → réplica destruida antes de replicar; mismo usuario → se conserva.
 ### Implementación de RF-019
@@ -533,3 +537,72 @@ Archivos compartidos que 0005 modifica sin reclamarlos: de 0003 (P-1) `vault_ser
 `frontend/src/api/vaults.ts` (se retira); de 0002 `App.tsx`, `layout/**`,
 `scripts/export_openapi.py`, `test_contract.py`; sin dueño `core/errors.py`, `main.py`,
 `vite.config.ts`, `package.json`. Se re-anclan al cierre (§7).
+
+## 10. Enmienda 1 · Correcciones de la verificación adversarial (APROBADA el 2026-10-13)
+La Fase 5 sobre `4476820` devolvió REJECTED (3 mayores, 5 menores; `history.md`). El
+usuario aprobó corregir todo de raíz con TDD y, para VC-7, contener el defecto en la app.
+Bloque M de `tasks.md` (T-085 en adelante). Ningún requisito nuevo: RF-003, RF-015 y
+RF-017 se precisan (enmienda 1 de la spec).
+
+**VC-1 · `_local/..` alcanzaba la raíz de la base (mayor, RF-003/RF-004).** `httpx`
+normaliza los segmentos punto: `/db/_local/..` → `/db` (db info sin sanear) y `PUT` → crear
+base con la credencial admin. Dos barreras:
+- (a) **Ruta.** `sync_filter.checkpoint_id(local_id)` exige el formato de PouchDB
+  (`md5` en base64 con `/`→`.` y `+`→`_`): `^(?!\.\.?$)[A-Za-z0-9._=-]{1,128}$`. Si no casa
+  → `SyncEndpointNotFound` (la ruta no existe para ese id), declarado en las dos rutas
+  `_local`. Starlette decodifica `%2E%2E` antes de casar, así que la regla lo cubre; `%2F`
+  ya cae en el comodín.
+- (b) **Adaptador.** `_local_path` codifica además `.` como `%2E`: ningún id llega a
+  `httpx` con un segmento punto aunque cambie la regla (a). Comprobado contra CouchDB 3:
+  `PUT _local/a%2Eb` guarda `_local/a.b`.
+
+**VC-2 · Resolución simultánea en dos dispositivos (mayor, RF-015, P-5).** `child()` usaba
+`crypto.randomUUID`: dos dispositivos que cerraban la misma rama escribían lápidas distintas
+y el servidor rechazaba la segunda (dejaría la rama sin hojas vivas). Se corrige en el
+origen con **revisiones deterministas**, como `deterministic_revs` de CouchDB/PouchDB:
+- `child(parent, body)` pasa a ser asíncrona; el hash es SHA-256 (`crypto.subtle`) de un
+  JSON canónico (claves ordenadas) con la revisión padre y el cuerpo nuevo (incluido
+  `_deleted`), recortado a 32 hexadecimales.
+- Lápidas iguales → misma revisión → el servidor la acepta sin escribir (paso 2 del push).
+  Dos combinaciones que sólo difieren en `updated_at` dan dos hijas de `W` que la siguiente
+  pasada cierra con el paso 7 (ganadora determinista), otra vez con lápidas iguales.
+- **Alternativa descartada:** hacer idempotente la lápida en el servidor (aceptar una lápida
+  sobre una rama ya cerrada). Ensancha la regla de P-5 para todos los clientes y deja dos
+  revisiones distintas para el mismo hecho; la determinista no cambia el servidor.
+- Prueba de integración con dos `Device` que resuelven el mismo conflicto a la vez: sin
+  rechazos, la misma ganadora en ambos y "Sincronizar y salir" funciona.
+
+**VC-3 · La guarda de `pushOnce` sin pruebas (mayor, RF-017/RF-018).** Tests unitarios de
+`pushOnce`: un `denied` durante el push o un lote parcial (`last_seq` por debajo de la
+secuencia local) → `false`; e integración de "Sincronizar y salir" con un rechazo → vuelve
+al aviso y la réplica sigue intacta.
+
+**VC-4 · Aviso de salida con estado viejo (menor, RF-017).** En el producto,
+`requestLogout` pasa a asíncrona y decide con el estado actual: `status.refresh()` relee
+`db.info()` antes de comparar con la secuencia confirmada y `rejections.settled()` espera las
+escrituras de rechazos en curso. En el test, se espera un estado observable antes de pulsar
+(nunca se pulsa dentro de `waitFor`, que reintentaría la acción).
+
+**VC-5 · Entradas del cliente → 503 (menor).** El 503 queda para el almacén caído:
+- Revisiones del push sólo hexadecimales (`[0-9a-f]+`), como las generan CouchDB, PouchDB y
+  el cliente determinista; lo demás → `validation-error:_rev` (o `validation-error:_revisions` si falla un ancestro).
+- Cuerpo de `PUT _local/{id}`: los únicos campos reservados admitidos son `_id` (igual a
+  `_local/{id}`) y `_rev` (`0-N`); lo demás → `InvalidSyncRequest` (422) con `errors` de
+  texto fijo, sin reenviar. Comprobado contra CouchDB 3: `_deleted` daba 200 (fuera de lo
+  esperado), un `_rev` mal formado 400/500 y un `_*` desconocido 400; los `_local` no
+  comprueban la revisión, así que no hay 409 que traducir.
+
+**VC-6 · Límites atados a la constante (menor).** Los tests de límites usan los literales
+200, 4 MiB y 64 KiB: cambiar la constante rompe la prueba.
+
+**VC-7 · Defecto de PouchDB 9 (menor, decisión del usuario).** `ObservedPromise` y
+`observeInfo` pasan de `test-utils/integration-setup.ts` a `sync/remote.ts`;
+`createRemoteDb` los aplica a la instancia remota. Test en `remote.test.ts`; el envoltorio
+del adaptador en la preparación de integración se retira (§2.5 nota (i)).
+
+**VC-8 · El gate acepta una spec cerrada sin RF (menor).** `check.sh` falla si una spec
+`implemented` o `verified` no define ningún `RF-NNN`.
+
+Documentación afectada: `backend/README.md` y `backend/app/{services,adapters}/README.md`
+(formato de `_local`, revisiones hexadecimales), `frontend/src/README.md` (revisiones
+deterministas, contención de PouchDB), `0005-sync/contracts/openapi.yaml` (404 en `_local`).

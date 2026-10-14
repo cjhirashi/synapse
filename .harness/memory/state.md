@@ -1,6 +1,6 @@
 ---
 ultima_actualizacion: 2026-10-13
-fase: Sprint 2 — 0005-sync `implemented` (Fase 4 cerrada, pendiente verificación); 0002-auth con PR aprobado; 0003-vault-crud `verified` por el usuario (2026-10-13; T-001…T-075; verificación 1 REJECTED → enmienda 1; verificación 2 APPROVED con menores VB-1…VB-5 cerrados sin nueva ronda); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
+fase: Sprint 2 — 0005-sync `implemented` (verificación 1 REJECTED → enmienda 1 hecha, T-085…T-101; pendiente la verificación 2); 0002-auth con PR aprobado; 0003-vault-crud `verified` por el usuario (2026-10-13; T-001…T-075; verificación 1 REJECTED → enmienda 1; verificación 2 APPROVED con menores VB-1…VB-5 cerrados sin nueva ronda); 0004-api-problem-details implementada y re-verificada (APPROVED; menores W-1…W-4 corregidos con enmiendas 2 y 3; re-verificación 3 APPROVED con menores X-1…X-4 corregidos con enmienda 4; re-verificación 4 APPROVED con menores Y-1…Y-3 corregidos con enmienda 5; re-verificación 5 APPROVED con menores Z-1…Z-4 resueltos con enmienda 6; re-verificación 6 APPROVED con menores AA-1…AA-4 resueltos con enmienda 7; re-verificación 7 APPROVED con menores BB-1/BB-2 cerrados con enmienda 8 sin nueva ronda, por la regla de salida), pasada a `verified` por el usuario (2026-10-12)
 arquitectura_verificada: True
 sprint_actual: 2
 ---
@@ -48,7 +48,7 @@ sprint_actual: 2
 | 0002-auth | `implemented` · PR #3 aprobado por el usuario (pendiente merge y paso a `verified`) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
 | 0003-vault-crud | `verified` (por el usuario, 2026-10-13) · verificación adversarial 1 REJECTED (VA-1 mayor + VA-2…VA-10) corregida con la enmienda 1 (plan §15; VA-4: NFKC + `casefold`; VA-10: sin caracteres `Cc`) · verificación 2 APPROVED con menores VB-1…VB-5 (tests y docs; T-071…T-075, sin nueva ronda) · backend 422 tests (cobertura 99 %) + `perf` 1/1 · frontend 87/87 · ancla en 461517f (re-anclada por 0005, P-1) | RF-001…RF-028 + RNF-001 (cobertura 28 RF en `Pass`, RF-016 diferido → backlog 7) · contrato en `specs/0003-vault-crud/contracts/openapi.yaml` · 0002 re-anclada a d730de9 · residuales: `frontend/vite.config.ts` sin spec que lo cubra (plan §14); cobertura del frontend medida con `@vitest/coverage-v8` (95,5 % líneas, umbral 80 %) · T-002 de `TAREAS.md` |
 | 0004-api-problem-details | `verified` (por el usuario, 2026-10-12) · T-001…T-088 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · re-verificaciones 3 y 4 APPROVED con menores X-1…X-4 (enmienda 4: guardián por ruta atendida, códigos del catálogo) e Y-1…Y-3 (enmienda 5: prohibida la construcción a mano de errores de validación fuera del catálogo y el traductor) · re-verificación 5 APPROVED con menores Z-1…Z-4 (enmienda 6: vías permitidas entre campos y entre fuentes, residual del análisis estático aceptado) · re-verificación 6 APPROVED con menores AA-1…AA-4 (enmienda 7: `ValidationFailed` como base de todo 422, `detail` de dominio de texto fijo) · re-verificación 7 APPROVED con menores (enmienda 8: `detail` raíz fijo; cerrada sin nueva ronda) | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 185 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
-| 0005-sync | `implemented` (2026-10-13) · T-001…T-084 hechas (bloques A–L) · pendiente la verificación adversarial (Fase 5) | RF-001…RF-019 + RNF-001…RNF-003 en `Pass` · canal `/sync/db` (base `synapse_user_{sub}` del token, lista blanca, push validado con las reglas de 0003, motivos de rechazo) · UI de bóvedas sobre la réplica local (P-1) · integración real 14/14 (`npm run test:sync`), p95 ≈ 0,4 s (RNF-001) · contrato en `specs/0005-sync/contracts/` · 0002 y 0003 re-ancladas a 461517f · decisión abierta: defecto de PouchDB 9 (`finishBatch` sin `catch`), hoy contenido en las pruebas (PLAN-0005 §2.5, bloque K, nota (i)) |
+| 0005-sync | `implemented` (2026-10-13) · T-001…T-084 hechas (bloques A–L) · verificación 1 REJECTED (VC-1…VC-3 mayores, VC-4…VC-8 menores) corregida con la enmienda 1 (T-085…T-101, bloque M, 2026-10-14) · pendiente la verificación 2 | RF-001…RF-019 + RNF-001…RNF-003 en `Pass` · canal `/sync/db` (base `synapse_user_{sub}` del token, lista blanca, push validado con las reglas de 0003, motivos de rechazo) · UI de bóvedas sobre la réplica local (P-1) · integración real 16/16 (`npm run test:sync`), p95 ≈ 0,4 s (RNF-001) · contrato en `specs/0005-sync/contracts/` · 0002 y 0003 re-ancladas a 461517f · defecto de PouchDB 9 (`finishBatch` sin `catch`) contenido en la app (`createRemoteDb`, VC-7); reportarlo upstream sigue abierto |
 
 ## Backlog / deuda conocida
 
@@ -82,11 +82,13 @@ sprint_actual: 2
 
 ## Próximo paso inmediato
 
-**0005-sync** `implemented` (2026-10-13): Fase 4 cerrada (T-001…T-084, bloques A–L), gate
-verde, 0002 y 0003 re-ancladas a 461517f. **Siguiente:** verificación adversarial (Fase 5),
-que necesita al usuario; nada se marca `verified` sin su aprobación. Decisiones abiertas para
-el usuario: el defecto de PouchDB 9 (`finishBatch` sin `catch`: reportarlo upstream y/o
-corregirlo en la app; hoy sólo se contiene en las pruebas), las 3 preguntas de
-**0006-integration-real-db** (`draft`), el merge de PR #3 y el paso de SPEC-0002 a `verified`.
+**0005-sync** `implemented`: verificación 1 REJECTED (2026-10-13) corregida con la
+enmienda 1 (T-085…T-101, 2026-10-14): `_local` acotado (VC-1), revisiones deterministas en la
+resolución (VC-2), `pushOnce` probado (VC-3), salida con el estado actual (VC-4), entradas del
+cliente → 422/rechazo (VC-5), límites con literales (VC-6), PouchDB contenido en `remote.ts`
+(VC-7), gate con 0 RF → ❌ (VC-8). **Siguiente:** verificación adversarial 2; nada se marca
+`verified` sin el usuario. Decisiones abiertas: reportar el defecto de PouchDB 9 upstream, las
+3 preguntas de **0006-integration-real-db** (`draft`), el merge de PR #3, SPEC-0002 →
+`verified` y consolidar `history.md`.
 Después de 0005: la spec de "FastAPI sirve la SPA" (sustituye el nginx que aún describe
 `frontend/README.md`).

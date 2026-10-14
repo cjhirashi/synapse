@@ -548,7 +548,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Checkpoint not found
+          description: Sync endpoint not found / Checkpoint not found
         '413':
           content:
             application/problem+json:
@@ -615,6 +615,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Sync endpoint not found
         '413':
           content:
             application/problem+json:

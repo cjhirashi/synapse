@@ -23,7 +23,7 @@ export default function AppLayout() {
       </nav>
       <nav aria-label="Cuenta">
         <Link to={CHANGE_PASSWORD_PATH}>Cambiar contraseña</Link>{" "}
-        <button type="button" onClick={requestLogout}>
+        <button type="button" onClick={() => void requestLogout()}>
           Cerrar sesión
         </button>
         <LogoutDialog />

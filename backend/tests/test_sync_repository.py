@@ -104,6 +104,16 @@ async def test_rf_010_local_documents_round_trip(repo, db):
     assert (await repo.get_local(db, "checkpoint-1"))["_rev"] == again["rev"]
 
 
+@pytest.mark.parametrize("local_id", ["..", ".", "a.b", ".x"])
+async def test_rf_004_local_ids_with_dots_never_leave_the_local_namespace(repo, db, local_id):
+    """Segunda barrera de VC-1 (enmienda 1): un id con puntos nunca se vuelve un segmento
+    `.`/`..` que `httpx` normalizaría hacia la raíz de la base; siempre es un `_local`."""
+    await repo.put_local(db, local_id, {"last_seq": "1"})
+    stored = await repo.get_local(db, local_id)
+    assert stored["_id"] == f"_local/{local_id}"
+    assert stored["last_seq"] == "1"
+
+
 async def test_rf_010_local_put_with_stale_rev_keeps_the_last_write(repo, db):
     """CouchDB no valida el `_rev` de un `_local`: el puerto refleja eso, no lo inventa."""
     saved = await repo.put_local(db, "checkpoint-1", {"last_seq": "1"})

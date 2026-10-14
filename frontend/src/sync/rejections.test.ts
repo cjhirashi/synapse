@@ -99,3 +99,31 @@ describe("rechazos", () => {
     expect(doc.items.map((item) => item.id).sort()).toEqual([A, B]);
   });
 });
+
+describe("settled (VC-4, enmienda 1)", () => {
+  it("espera las escrituras en curso aunque nadie esperara a `handle`", async () => {
+    const store = await open();
+    void store.handle({ type: "denied", id: A, rev: "2-a", reason: "vault-name-taken" });
+    void store.handle({ type: "denied", id: B, rev: "1-b", reason: "invalid-name" });
+    await store.settled();
+    expect(store.list()).toEqual([
+      { id: A, rev: "2-a", reason: "vault-name-taken" },
+      { id: B, rev: "1-b", reason: "invalid-name" },
+    ]);
+  });
+
+  it("sin escrituras pendientes termina enseguida", async () => {
+    const store = await open();
+    await expect(store.settled()).resolves.toBeUndefined();
+  });
+
+  it("una escritura fallida no bloquea las siguientes ni deja `settled` rechazada", async () => {
+    const store = await open();
+    const put = vi.spyOn(db, "put").mockRejectedValueOnce(new Error("disco lleno"));
+    await expect(store.handle({ type: "denied", id: A, rev: "2-a", reason: "x" })).rejects.toThrow("disco lleno");
+    put.mockRestore();
+    await expect(store.settled()).resolves.toBeUndefined();
+    await store.handle({ type: "denied", id: B, rev: "1-b", reason: "invalid-name" });
+    expect(store.list()).toEqual([{ id: B, rev: "1-b", reason: "invalid-name" }]);
+  });
+});

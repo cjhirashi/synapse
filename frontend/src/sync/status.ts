@@ -37,6 +37,11 @@ export interface SyncStatusStore {
   subscribe(listener: (status: SyncStatus) => void): () => void;
   /** Aplica un evento; la promesa termina cuando el estado persistido está escrito. */
   handle(event: SyncEvent): Promise<void>;
+  /**
+   * Relee la secuencia de la réplica sin esperar al feed de cambios y devuelve el estado
+   * actual. Lo usa el cierre de sesión para decidir con lo último escrito (RF-017, VC-4).
+   */
+  refresh(): Promise<SyncStatus>;
   /** Deja de seguir la réplica y de avisar a los suscriptores. */
   close(): void;
 }
@@ -119,23 +124,34 @@ export async function openSyncStatus(
     listeners.forEach((listener) => listener(status));
   }
 
-  /** Encola la escritura del estado persistido (en orden dentro de esta pestaña). */
+  /**
+   * Encola la escritura del estado persistido (en orden dentro de esta pestaña). Quien la
+   * espera recibe su fallo; la cola sigue con la siguiente (cada escritura parte del
+   * documento recién leído, así que no arrastra nada de la fallida).
+   */
   function persist(): Promise<void> {
     const [at, seq] = [lastSyncAt, confirmedSeq];
-    writes = writes.then(() => advanceStored(db, at, seq));
-    return writes;
+    const run = writes.then(() => advanceStored(db, at, seq));
+    writes = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Lee la secuencia de la réplica y avisa a los suscriptores. */
+  async function readLocalSeq(): Promise<SyncStatus> {
+    localSeq = seqNumber((await db.info()).update_seq);
+    notify();
+    return current();
   }
 
   // Cada escritura en la réplica (de la UI o del pull) puede cambiar los pendientes.
   const feed = db.changes({ live: true, since: "now" }).on("change", () => {
-    void db.info().then((info) => {
-      localSeq = seqNumber(info.update_seq);
-      notify();
-    });
+    void readLocalSeq();
   });
 
   return {
     current,
+
+    refresh: readLocalSeq,
 
     subscribe(listener) {
       listeners.add(listener);

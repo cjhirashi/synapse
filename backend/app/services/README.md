@@ -8,7 +8,10 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
 - `sync_filter.py` (SPEC-0005): funciones puras del canal: lista blanca de parámetros,
   selector fijo de bóvedas para `_changes`, rango `vault:*` de `_all_docs`, saneado de
   respuestas (sin recuentos ni reservas) y `MAX_WAIT_MS` (60 s). Inválido → `InvalidSyncRequest`.
+  `checkpoint_id` admite sólo ids `_local` con el formato de PouchDB (otro →
+  `SyncEndpointNotFound`) y `check_checkpoint_doc` valida el cuerpo del checkpoint.
 - `sync_push.py` (`SyncPushService`, SPEC-0005): push validado de `_bulk_docs`. Comprueba cada
-  revisión en orden (id, reenvío, lápida, forma, normalización, reglas, nombre), escribe las
+  revisión en orden (id, reenvío, lápida, forma —revisiones hexadecimales—, normalización,
+  reglas, nombre), escribe las
   aceptadas juntas y responde los rechazos `{id, rev, error: "forbidden", reason}`. Usa
   `VaultService` para reservar y liberar nombres (en un hilo: es síncrono).

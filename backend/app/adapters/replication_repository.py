@@ -53,7 +53,10 @@ class ReplicationRepository(ReplicationPort):
 
     @staticmethod
     def _local_path(db: str, local_id: str) -> str:
-        return f"/{db}/_local/{quote(local_id, safe='')}"
+        # `quote` deja los puntos en claro y `httpx` normaliza los segmentos `.`/`..`
+        # (`/db/_local/..` → `/db`); codificados como `%2E` CouchDB los decodifica y el id
+        # sigue siendo un `_local`. Segunda barrera tras `sync_filter.checkpoint_id` (VC-1).
+        return f"/{db}/_local/{quote(local_id, safe='').replace('.', '%2E')}"
 
     # --- Lecturas del replicador ---
 

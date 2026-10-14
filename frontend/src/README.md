@@ -41,7 +41,9 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 proveedor abre la réplica local (`sync/localDb.ts`, que la borra si era de otro usuario), el
 replicador continuo con `/sync` y los almacenes de estado, rechazos y conflictos, y los
 publica por `useSync()`. `layout/AppLayout.tsx` muestra `SyncStatusBar` y su «Cerrar
-sesión» llama a `requestLogout()`: con cambios sin confirmar abre `LogoutDialog`; al salir,
+sesión» llama a `requestLogout()` (asíncrona): espera las escrituras de rechazos en curso
+(`rejections.settled()`), relee la secuencia local (`status.refresh()`) y, con cambios sin
+confirmar o rechazados, abre `LogoutDialog`; al salir,
 `logout()` y, si el servidor cerró la sesión, se borra la réplica. `test-utils/sync.tsx`
 da réplicas en memoria, un replicador falso y un contexto mínimo (`syncValue`, `WithSync`).
 `sync/resources.ts` abre réplica, remota y replicador (lo comparten el proveedor y las
@@ -54,14 +56,14 @@ Módulos de `sync/`:
 | Módulo | Qué hace |
 |---|---|
 | `localDb.ts` | réplica local PouchDB (IndexedDB); se borra si era de otro usuario |
-| `remote.ts` | base remota `origin + "/sync/db"` con cookies; ante un 401 renueva la sesión una vez y, si sigue, avisa «sesión caducada» |
+| `remote.ts` | base remota `origin + "/sync/db"` con cookies; ante un 401 renueva la sesión una vez y, si sigue, avisa «sesión caducada». Contiene un defecto de PouchDB 9: las promesas derivadas de `info()` que nadie espera no acaban como rechazos sin manejar (`observeInfo`) |
 | `replicator.ts` | replicación continua en ambos sentidos, lotes de 50, espera de 1 s doblando hasta 60 s; una sola pestaña replica (Web Lock `synapse-sync`) y difunde los eventos por `BroadcastChannel` |
-| `status.ts` | estado (`online`, `offline`, `syncing`, `pending`, `session-expired`), «pendientes» (la secuencia local frente a la última que confirmó el servidor) y hora de la última sincronización, en `_local/synapse-sync-state` |
-| `rejections.ts` | cambios que el servidor rechazó (uno por documento, con su `reason`); se quitan cuando una revisión de ese documento se sube bien |
-| `merge.ts`, `conflicts.ts` | conflictos: combinación automática por campos (ADR-003) o lista manual con las dos versiones; `resolve()` aplica la elección |
+| `status.ts` | estado (`online`, `offline`, `syncing`, `pending`, `session-expired`), «pendientes» (la secuencia local frente a la última que confirmó el servidor) y hora de la última sincronización, en `_local/synapse-sync-state`; `refresh()` relee la secuencia local |
+| `rejections.ts` | cambios que el servidor rechazó (uno por documento, con su `reason`); se quitan cuando una revisión de ese documento se sube bien; `settled()` espera las escrituras en cola |
+| `merge.ts`, `conflicts.ts` | conflictos: combinación automática por campos (ADR-003) o lista manual con las dos versiones; `resolve()` aplica la elección. Las revisiones que escribe son deterministas (SHA-256 de la revisión madre y el contenido): dos réplicas que resuelven igual escriben las mismas |
 | `vaultRules.ts` | réplica de las reglas del servidor (normalización y validación), para no escribir lo que el push rechazaría |
 | `vaultStore.ts` | CRUD de bóvedas sobre la réplica (con `rev`) |
-| `resources.ts` | abre réplica, remota y replicador; push único de «Sincronizar y salir» |
+| `resources.ts` | abre réplica, remota y replicador; push único de «Sincronizar y salir» (`pushOnce`: confirma sólo sin fallos, sin rechazos y con la secuencia local recorrida) |
 | `SyncProvider.tsx`, `useSync.ts` | ciclo de vida por usuario y contexto para la UI |
 | `SyncStatusBar.tsx`, `RejectionsPage.tsx`, `ConflictView.tsx`, `LogoutDialog.tsx` | barra de estado, rechazos, conflictos y aviso al salir con cambios sin confirmar |
 

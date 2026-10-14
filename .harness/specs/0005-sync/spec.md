@@ -23,6 +23,7 @@ aprobaciones:
   aclaraciones_c1_c4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 } # §8
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # «así es»
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # PLAN-0005, P-1 (a) y P-2
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }         # verificación adversarial VC-1…VC-8
 actualizado: 2026-10-13
 ---
 
@@ -38,6 +39,13 @@ actualizado: 2026-10-13
 >
 > **Tanda 1 (2026-10-13):** el usuario aprobó las recomendaciones D-1…D-6 (§8; ADR-002 y
 > ADR-003). **Tanda 2 (2026-10-13):** aprobó C-1…C-4 (§8). Sin marcadores de aclaración abiertos.
+>
+> **Enmienda 1 2026-10-13** (verificación adversarial, VC-1…VC-8; aprobada por el usuario):
+> RF-003 cubre los identificadores de checkpoint fuera del formato de PouchDB (`.` y `..`
+> incluidos); RF-015 exige que dos dispositivos que guardan la misma resolución produzcan
+> la misma revisión; RF-017 decide el aviso con el estado actual de la réplica; §5 añade
+> la resolución simultánea en dos dispositivos y las entradas mal formadas del cliente
+> (siempre 4xx, nunca 503). El *cómo* está en PLAN-0005 §10.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al
@@ -104,6 +112,9 @@ actualizado: 2026-10-13
   ENTONCES DEBE responder 403, como el resto de endpoints protegidos (SPEC-0002 RF-019).
 - **RF-003** — SI una petición a `/sync` pide un endpoint de CouchDB fuera del subconjunto
   de §3 ENTONCES el sistema DEBE responder 404 `application/problem+json` sin reenviarla.
+  Un checkpoint `_local` cuyo identificador no tiene el formato de los de PouchDB
+  (incluidos `.` y `..`, en claro o codificados) es un endpoint fuera del subconjunto
+  (enmienda 1).
 - **RF-004** — El proxy DEBE devolver en `_changes`, `_all_docs` y `_bulk_get` sólo
   documentos `vault:*`; nunca `vault-name:*` ni `_design/*`.
 
@@ -147,7 +158,9 @@ actualizado: 2026-10-13
 - **RF-014** — SI una versión en conflicto borra la bóveda y otra la edita ENTONCES gana la
   edición y la bóveda DEBE quedar restaurada.
 - **RF-015** — CUANDO se guarda una resolución, DEBE pasar por la validación del push
-  (RF-005); si la incumple, sigue el flujo de rechazo (RF-006).
+  (RF-005); si la incumple, sigue el flujo de rechazo (RF-006). Dos dispositivos que
+  guardan la misma resolución del mismo conflicto DEBEN producir la misma revisión, de
+  modo que converjan sin rechazos ni conflictos nuevos (enmienda 1).
 
 **Sesión**
 - **RF-016** — SI la sesión caduca durante la sincronización ENTONCES el cliente DEBE
@@ -157,7 +170,10 @@ actualizado: 2026-10-13
   SI hay cambios pendientes ENTONCES DEBE avisar antes de borrarla con las opciones
   "Sincronizar y salir", "Salir y descartar" y "Cancelar" (sin conexión, sólo las dos
   últimas). "Sincronizar y salir" cierra la sesión sólo cuando el servidor confirma todos
-  los cambios; si alguno se rechaza o falla, vuelve al aviso.
+  los cambios; si alguno se rechaza o falla, vuelve al aviso. Si hay o no cambios pendientes
+  se decide con el estado de la réplica en el momento de pedir la salida (incluidos un
+  cambio recién escrito y un rechazo aún sin registrar), no con el último estado mostrado
+  (enmienda 1).
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -173,6 +189,13 @@ actualizado: 2026-10-13
   avisa; con almacenamiento borrado vuelve a replicar desde el servidor.
 - Versión antigua del cliente escribe un documento viejo (R-9): la validación del push lo
   rechaza con motivo.
+- Dos dispositivos resuelven a la vez el mismo conflicto (enmienda 1): producen las mismas
+  revisiones (RF-015) y convergen sin rechazos; si sus resoluciones difieren sólo en
+  `updated_at`, la combinación las funde sin pedir nada al usuario.
+- Entradas mal formadas del cliente en el canal (revisiones que no son hexadecimales,
+  campos reservados `_*` no admitidos en un checkpoint, `_id` del checkpoint distinto del de
+  la ruta) (enmienda 1): el proxy responde 4xx `application/problem+json` sin reenviarlas;
+  nunca 503, que queda para el almacén no disponible.
 
 ## 6. Riesgos identificados
 | ID | Riesgo | Impacto | Mitigación |

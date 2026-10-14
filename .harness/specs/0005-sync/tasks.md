@@ -5,6 +5,7 @@ feature: 0005-sync
 estado: implemented
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
+  enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque M, VC-1…VC-8
 actualizado: 2026-10-13
 ---
 
@@ -134,30 +135,49 @@ actualizado: 2026-10-13
 - [x] T-083 — re-anclajes en el cierre: notas en `0003-vault-crud/spec.md` (P-1) y `0002-auth/spec.md` (App, layout, export) sin cambio de requisitos [doc]
 - [x] T-084 — `.harness/memory/state.md`: estado de 0005, hazards 1 y 3 mitigados [doc]
 
+### M · Correcciones de la verificación adversarial (enmienda 1, PLAN-0005 §10)
+- [x] T-085 — enmienda 1 de SPEC-0005 (RF-003, RF-015, RF-017, §5) y PLAN-0005 §2.5 (i), §7 P-5, §9 y §10; bloque M (cubre RF-003, RF-015, RF-017) [doc]
+- [x] T-086 — tests (rojo): `GET`/`PUT /sync/db/_local/{..|.|%2E%2E|id con espacio}` → 404 `sync-endpoint-not-found` sin llegar al puerto; `%2F` → comodín (cubre RF-003, RF-004) [zona: test]
+- [x] T-087 — `sync_filter.checkpoint_id` y las dos rutas `_local` con `SyncEndpointNotFound` declarado (VC-1 a) (cubre RF-003, RF-004) [zona: services/routers]
+- [x] T-088 — test (rojo) con CouchDB real: `_local` con `.` en el id ida y vuelta; `_local_path` codifica `.` como `%2E` (VC-1 b) (cubre RF-004) [zona: adapters]
+- [x] T-089 — tests (rojo) y regla: `_rev` y `_revisions.ids` no hexadecimales → `validation-error:_rev` / `validation-error:_revisions` (VC-5) (cubre RF-007) [zona: services]
+- [x] T-090 — tests (rojo) y validación del cuerpo de `PUT _local/{id}`: sólo `_id` (igual a la ruta) y `_rev` `0-N` como campos reservados → 422 sin reenviar (VC-5) (cubre RF-010) [zona: services/routers]
+- [x] T-091 — tests de límites con los literales 200, 4 MiB y 64 KiB (VC-6) (cubre RF-005, RF-010) [zona: test]
+- [x] T-092 — `conflicts.test.ts` (rojo): misma resolución en dos réplicas → mismas revisiones; revisiones hexadecimales de 32 (VC-2) (cubre RF-012, RF-015) [zona: test]
+- [x] T-093 — `conflicts.ts`: `child()` determinista con SHA-256 del padre y el cuerpo (VC-2) (cubre RF-012, RF-015) [zona: sync]
+- [x] T-094 — `conflicts.integration.test.ts`: dos dispositivos resuelven a la vez el mismo conflicto → sin rechazos, misma ganadora, "Sincronizar y salir" funciona (VC-2) (cubre RF-015, RF-017, RNF-002) [zona: test]
+- [x] T-095 — `resources.test.ts`: `pushOnce` con un `denied` o con un lote parcial → `false`; todo confirmado → `true` (VC-3) (cubre RF-017, RF-018) [zona: test]
+- [x] T-096 — integración: "Sincronizar y salir" con un rechazo vuelve al aviso y conserva la réplica (VC-3) (cubre RF-017, RNF-002) [zona: test]
+- [x] T-097 — tests (rojo) e implementación de `status.refresh()` y `rejections.settled()` (VC-4) (cubre RF-017) [zona: sync]
+- [x] T-098 — `requestLogout` asíncrona con el estado actual; `LogoutDialog.test.tsx` espera un estado observable antes de pulsar (VC-4) (cubre RF-017) [zona: sync]
+- [x] T-099 — `remote.test.ts` (rojo) y `ObservedPromise`/`observeInfo` en `remote.ts`; fuera de `integration-setup.ts` (VC-7) (cubre RF-019) [zona: sync]
+- [x] T-100 — `check.sh`: spec `implemented`/`verified` sin ningún RF → ❌ (VC-8) (cubre la trazabilidad del arnés) [zona: arnés]
+- [x] T-101 — READMEs (`backend/`, `backend/app/{services,adapters}/`, `frontend/src/`) y `contracts/openapi.yaml` exportado (cubre RF-003, RF-015) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
 | RF-001 | T-001, T-002, T-009, T-020, T-028, T-029, T-031, T-067, T-068, T-074 | test_contract, test_sync_isolation, test_sync_push, isolation.integration | Pass |
 | RF-002 | T-024, T-029, T-042, T-043 | test_sync_api, remote.test | Pass |
-| RF-003 | T-001, T-003, T-004, T-024, T-029, T-031 | test_sync_errors, test_sync_api | Pass |
-| RF-004 | T-005…T-011, T-013, T-025, T-029, T-030 | test_sync_filter, test_sync_repository, test_sync_api | Pass |
-| RF-005 | T-018…T-022, T-026, T-029, T-033…T-035, T-071 | test_sync_push, test_sync_api, test_sync_rules_mirror, vaultRules.test, rejections.integration | Pass |
+| RF-003 | T-001, T-003, T-004, T-024, T-029, T-031, T-085…T-087, T-101 | test_sync_errors, test_sync_api | Pass |
+| RF-004 | T-005…T-011, T-013, T-025, T-029, T-030, T-086…T-088 | test_sync_filter, test_sync_repository, test_sync_api | Pass |
+| RF-005 | T-018…T-022, T-026, T-029, T-033…T-035, T-071, T-091 | test_sync_push, test_sync_api, test_sync_rules_mirror, vaultRules.test, rejections.integration | Pass |
 | RF-006 | T-021, T-023, T-026, T-029, T-048, T-049, T-056, T-057, T-071 | test_sync_push, test_sync_api, rejections.test, RejectionsPage.test, rejections.integration | Pass |
-| RF-007 | T-005…T-008, T-019, T-022, T-026 | test_sync_filter, test_sync_push, test_sync_api | Pass |
+| RF-007 | T-005…T-008, T-019, T-022, T-026, T-089 | test_sync_filter, test_sync_push, test_sync_api | Pass |
 | RF-008 | T-014…T-018, T-021, T-023, T-071 | test_vault_repository, test_vault_service, test_sync_push, rejections.integration | Pass |
 | RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pass |
-| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
+| RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070, T-090, T-091 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
 | RF-011 | T-021, T-023, T-038, T-039, T-062, T-063, T-070 | test_sync_push, vaultStore.test, vaults/*.test, offline.integration | Pass |
-| RF-012 | T-011, T-040, T-041, T-050, T-051, T-072 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
+| RF-012 | T-011, T-040, T-041, T-050, T-051, T-072, T-092, T-093 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
 | RF-013 | T-040, T-041, T-050, T-051, T-058, T-059, T-072 | merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
-| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072 | test_sync_rules_mirror, vaultRules.test, merge.test, ConflictView.test, conflicts.integration | Pass |
+| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests | Pass |
-| RF-018 | T-036, T-037, T-052, T-053 | localDb.test, SyncProvider.test | Pass |
-| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073 | test_sync_repository, test_sync_api, replicator.test, status.test, session.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
+| RF-018 | T-036, T-037, T-052, T-053, T-095 | localDb.test, SyncProvider.test, resources.test, rejections.integration | Pass |
+| RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
 | RNF-001 | T-075 | sync.perf.integration | Pass |
-| RNF-002 | T-069…T-073 | *.integration (sync-integration.sh) | Pass |
+| RNF-002 | T-069…T-073, T-094, T-096 | *.integration (sync-integration.sh) | Pass |
 | RNF-003 | T-028, T-074 | test_sync_isolation, isolation.integration | Pass |
 | doc: contrato | T-076 | test_contract | Pass |
 | doc: backend/README | T-077 | — | hecho |

@@ -30,6 +30,11 @@ export interface RejectionsStore {
   subscribe(listener: (items: Rejection[]) => void): () => void;
   /** Aplica un evento; la promesa termina cuando la lista persistida está escrita. */
   handle(event: SyncEvent): Promise<void>;
+  /**
+   * Termina cuando están aplicadas todas las escrituras encoladas hasta ahora (nunca falla).
+   * Lo usa el cierre de sesión para decidir con la lista al día (RF-017, VC-4).
+   */
+  settled(): Promise<void>;
   /** Deja de avisar a los suscriptores. */
   close(): void;
 }
@@ -102,15 +107,19 @@ export async function openRejections(db: PouchDB.Database): Promise<RejectionsSt
     handle(event) {
       const change = changeFor(event);
       if (!change) return Promise.resolve();
-      // En orden dentro de la pestaña; cada escritura parte del documento recién leído.
-      writes = writes.then(async () => {
+      // En orden dentro de la pestaña; cada escritura parte del documento recién leído, así
+      // que un fallo sólo se devuelve a quien lo espera y la cola sigue con la siguiente.
+      const run = writes.then(async () => {
         const next = await applyStored(db, change);
         const changed = !sameItems(next, items);
         items = next;
         if (changed) listeners.forEach((listener) => listener(items));
       });
-      return writes;
+      writes = run.catch(() => undefined);
+      return run;
     },
+
+    settled: () => writes,
 
     close() {
       listeners.clear();

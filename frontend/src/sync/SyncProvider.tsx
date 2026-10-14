@@ -11,7 +11,8 @@
  * que nunca hay dos replicadores ni dos `destroy()` cruzados.
  *
  * Cierre de sesión (RF-017): sin cambios sin confirmar sale directo; con ellos abre el aviso
- * (`LogoutDialog`). "Sincronizar y salir" es un push de una vez junto a la replicación
+ * (`LogoutDialog`). Lo decide con el estado actual de la réplica y de los rechazos, no con el
+ * del último render: una escritura recién hecha cuenta aunque la pantalla aún no la muestre. "Sincronizar y salir" es un push de una vez junto a la replicación
  * continua y sale sólo si el servidor confirmó todo. Salir es `logout()` y, sólo si el
  * servidor cerró la sesión, detener todo y borrar la réplica.
  */
@@ -130,8 +131,6 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
 
   const value = useMemo<SyncContextValue | null>(() => {
     if (!resources || !status) return null;
-    // Un cambio rechazado tampoco está en el servidor: cuenta como no confirmado.
-    const unconfirmed = status.pending || rejections.length > 0;
     return {
       vaults: resources.vaults,
       dataVersion,
@@ -140,10 +139,14 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       rejections,
       conflicts,
       resolveConflict: resources.conflicts.resolve,
-      requestLogout() {
+      async requestLogout() {
         setLogoutFailure(null);
-        if (unconfirmed) setLogoutPhase("asking");
-        else void exit();
+        // Estado actual (VC-4): las escrituras de rechazos en curso y la secuencia releída.
+        await resources.rejections.settled();
+        const { pending } = await resources.status.refresh();
+        // Un cambio rechazado tampoco está en el servidor: cuenta como no confirmado.
+        if (pending || resources.rejections.list().length > 0) setLogoutPhase("asking");
+        else await exit();
       },
       logout: {
         phase: logoutPhase,

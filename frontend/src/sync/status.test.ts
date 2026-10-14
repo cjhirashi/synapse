@@ -150,3 +150,34 @@ describe("suscripción y varias pestañas", () => {
     expect(await db.get(SYNC_STATE_DOC_ID)).toMatchObject({ push_seq: seq, last_sync_at: T2 });
   });
 });
+
+describe("refresh (VC-4, enmienda 1)", () => {
+  it("relee la secuencia local sin esperar al feed y avisa del pendiente", async () => {
+    const store = await open();
+    await caughtUp(store);
+    const seen: boolean[] = [];
+    store.subscribe((status) => seen.push(status.pending));
+    await db.put({ _id: "vault:11111111-1111-4111-8111-111111111111", type: "vault" });
+    // Justo después de escribir, antes de que el feed de cambios lo procese.
+    expect(await store.refresh()).toEqual({ state: "pending", pending: true, lastSyncAt: T1 });
+    expect(store.current().pending).toBe(true);
+    expect(seen).toContain(true);
+  });
+
+  it("sin cambios nuevos devuelve el mismo estado", async () => {
+    const store = await open();
+    await caughtUp(store);
+    expect(await store.refresh()).toEqual({ state: "online", pending: false, lastSyncAt: T1 });
+  });
+});
+
+describe("persistencia tras un fallo", () => {
+  it("una escritura fallida del estado no bloquea las siguientes", async () => {
+    const store = await open();
+    const put = vi.spyOn(db, "put").mockRejectedValueOnce(new Error("disco lleno"));
+    await expect(store.handle({ type: "checkpoint", seq: 1 })).rejects.toThrow("disco lleno");
+    put.mockRestore();
+    await store.handle({ type: "checkpoint", seq: 2 });
+    expect(await db.get<{ push_seq: number }>(SYNC_STATE_DOC_ID)).toMatchObject({ push_seq: 2 });
+  });
+});

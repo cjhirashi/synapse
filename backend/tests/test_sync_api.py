@@ -16,7 +16,7 @@ from app.core.config import settings
 from app.core.models.user import User
 from app.core.ports.replication_port import ReplicationPort
 from app.main import app
-from app.routers.sync import MAX_BODY_BYTES, MAX_BULK_DOCS, MAX_LOCAL_BYTES, get_replication_port
+from app.routers.sync import get_replication_port
 from app.routers.vaults import get_vault_port
 from app.services.vault_service import name_key, utc_now
 from tests.conftest import SEED_EMAIL
@@ -24,6 +24,12 @@ from tests.test_vaults_api import AUTH, assert_problem, create, stored_docs, use
 
 CHECKPOINT = "_local/2f1a9c0d6b7e4c35"  # id de replicación de PouchDB (opaco)
 CHECKPOINT_ID = CHECKPOINT.removeprefix("_local/")
+
+# Límites de PLAN-0005 §2.1 con sus valores literales, no con las constantes del router:
+# cambiar un límite debe romper la prueba (enmienda 1, VC-6).
+BULK_DOCS_LIMIT = 200
+BODY_LIMIT = 4 * 1024 * 1024
+LOCAL_LIMIT = 64 * 1024
 
 
 # --- Helpers ---
@@ -56,6 +62,12 @@ def child_of(doc: dict, **changes) -> dict:
 
 def push(client, docs: list[dict], **extra):
     return client.post("/sync/db/_bulk_docs", json={"docs": docs, "new_edits": False, **extra})
+
+
+def json_of_size(size: int, **fields) -> bytes:
+    """JSON de exactamente `size` bytes: `fields` más un relleno `pad` de ASCII."""
+    overhead = len(json.dumps({**fields, "pad": ""}).encode())
+    return json.dumps({**fields, "pad": "x" * (size - overhead)}).encode()
 
 
 def couch_get(db_name: str, doc_id: str, **params) -> httpx.Response:
@@ -172,6 +184,16 @@ OUT_OF_SUBSET = [
     ("GET", "/sync/_all_dbs", {}),
     ("GET", "/sync/synapse_user_x/_all_docs", {}),
     ("GET", "/sync/db/_local/a/b", {}),
+    # Ids de checkpoint fuera del formato de PouchDB (enmienda 1, VC-1). Codificados porque
+    # `httpx` normaliza `..` en claro antes de enviar; Starlette los decodifica al casar la
+    # ruta, así que llegan como `..` y `.`, igual que un `..` en claro desde otro cliente.
+    ("GET", "/sync/db/_local/%2E%2E", {}),
+    ("PUT", "/sync/db/_local/%2E%2E", {"json": {}}),
+    ("GET", "/sync/db/_local/%2E", {}),
+    ("PUT", "/sync/db/_local/%2E", {"json": {}}),
+    ("GET", "/sync/db/_local/a%20b", {}),
+    ("GET", "/sync/db/_local/a%2Fb", {}),
+    ("GET", f"/sync/db/_local/{'a' * 129}", {}),
 ]
 
 
@@ -356,17 +378,33 @@ def test_rf_005_bulk_docs_body_outside_the_protocol_is_422(ready_admin, body):
     assert_problem(ready_admin.post("/sync/db/_bulk_docs", json=body), 422, "validation-error")
 
 
-def test_rf_005_more_than_max_documents_is_413(ready_admin, db, couch_override):
+def test_rf_005_more_than_200_documents_is_413(ready_admin, db, couch_override):
     couch_override(UntouchablePort())
-    docs = [vault_doc(owner_of(db), name=f"V{i}") for i in range(MAX_BULK_DOCS + 1)]
+    docs = [vault_doc(owner_of(db), name=f"V{i}") for i in range(BULK_DOCS_LIMIT + 1)]
     assert_problem(push(ready_admin, docs), 413, "payload-too-large")
 
 
-def test_rf_005_body_over_the_byte_limit_is_413(ready_admin, couch_override):
+def test_rf_005_exactly_200_documents_are_stored(ready_admin, db):
+    docs = [vault_doc(owner_of(db), name=f"V{i}") for i in range(BULK_DOCS_LIMIT)]
+    res = push(ready_admin, docs)
+    assert res.status_code == 201 and res.json() == []
+
+
+def bulk_docs_bytes(client, body: bytes):
+    return client.post("/sync/db/_bulk_docs", content=body, headers={"content-type": "application/json"})
+
+
+def test_rf_005_body_over_4_mib_is_413(ready_admin, couch_override):
     couch_override(UntouchablePort())
-    body = json.dumps({"docs": [{"pad": "x" * MAX_BODY_BYTES}], "new_edits": False})
-    res = ready_admin.post("/sync/db/_bulk_docs", content=body, headers={"content-type": "application/json"})
-    assert_problem(res, 413, "payload-too-large")
+    body = json_of_size(BODY_LIMIT + 1, docs=[], new_edits=False)
+    assert_problem(bulk_docs_bytes(ready_admin, body), 413, "payload-too-large")
+
+
+def test_rf_005_body_of_exactly_4_mib_passes_the_cap(ready_admin, couch_override):
+    """Dentro del tope el cuerpo llega a la validación: el campo `pad` sobra (422, no 413)."""
+    couch_override(UntouchablePort())
+    body = json_of_size(BODY_LIMIT, docs=[], new_edits=False)
+    assert_problem(bulk_docs_bytes(ready_admin, body), 422, "validation-error")
 
 
 def test_rf_005_chunked_body_over_the_limit_is_413(ready_admin, couch_override):
@@ -379,15 +417,44 @@ def test_rf_005_chunked_body_over_the_limit_is_413(ready_admin, couch_override):
     assert_problem(res, 413, "payload-too-large")
 
 
+def put_checkpoint_bytes(client, body: bytes):
+    return client.put(f"/sync/db/{CHECKPOINT}", content=body, headers={"content-type": "application/json"})
+
+
 def test_rf_005_local_over_64_kib_is_413(ready_admin, couch_override):
     couch_override(UntouchablePort())
-    res = ready_admin.put(f"/sync/db/{CHECKPOINT}", json={"pad": "x" * MAX_LOCAL_BYTES})
+    res = put_checkpoint_bytes(ready_admin, json_of_size(LOCAL_LIMIT + 1, session_id="s"))
     assert_problem(res, 413, "payload-too-large")
 
 
-def test_rf_005_local_within_the_limit_is_stored(ready_admin):
-    doc = {"session_id": "s", "pad": "x" * (MAX_LOCAL_BYTES - 1024)}
-    assert ready_admin.put(f"/sync/db/{CHECKPOINT}", json=doc).status_code == 201
+def test_rf_005_local_of_exactly_64_kib_is_stored(ready_admin):
+    res = put_checkpoint_bytes(ready_admin, json_of_size(LOCAL_LIMIT, session_id="s"))
+    assert res.status_code == 201
+
+
+# --- T-090: cuerpo de un checkpoint (RF-010, enmienda 1 · VC-5) ---
+
+@pytest.mark.parametrize("doc", [
+    {"last_seq": "1", "_deleted": True},          # CouchDB respondería 200 y lo borraría
+    {"last_seq": "1", "_foo": 1},                 # CouchDB: 400 "Bad special document member"
+    {"last_seq": "1", "_id": "_local/otro"},      # otro checkpoint distinto del de la ruta
+    {"last_seq": "1", "_id": CHECKPOINT_ID},      # sin el prefijo `_local/`
+    {"last_seq": "1", "_rev": "zz"},              # CouchDB: 400 "Invalid rev format"
+    {"last_seq": "1", "_rev": "1-abc"},           # CouchDB: 500 (sólo admite `0-N`)
+    {"last_seq": "1", "_rev": 3},
+])
+def test_rf_010_malformed_checkpoint_is_422_without_reaching_couchdb(ready_admin, couch_override, doc):
+    couch_override(UntouchablePort())
+    assert_problem(ready_admin.put(f"/sync/db/{CHECKPOINT}", json=doc), 422, "validation-error")
+
+
+def test_rf_010_checkpoint_as_pouchdb_writes_it_is_stored(ready_admin):
+    """Como lo reescribe el replicador: con su `_id` y el `_rev` que devolvió la lectura."""
+    first = ready_admin.put(f"/sync/db/{CHECKPOINT}", json={"_id": CHECKPOINT, "last_seq": "1"})
+    assert first.status_code == 201
+    again = {"_id": CHECKPOINT, "_rev": first.json()["rev"], "last_seq": "2"}
+    assert ready_admin.put(f"/sync/db/{CHECKPOINT}", json=again).status_code == 201
+    assert ready_admin.get(f"/sync/db/{CHECKPOINT}").json()["last_seq"] == "2"
 
 
 # --- T-027: protocolo completo de PouchDB, reanudable e idempotente (RF-010, RF-019) ---

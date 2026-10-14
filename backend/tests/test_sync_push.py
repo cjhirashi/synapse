@@ -362,7 +362,7 @@ async def test_rf_005_each_batch_reads_the_current_leaves(push, couch, vaults):
 
 @pytest.mark.parametrize("tombstone", [
     pytest.param(lambda doc_id: _tombstone(doc_id, "3-ddd", ("2-ccc", "1-aaa"), name="x"), id="extra-body"),
-    pytest.param(lambda doc_id: _tombstone(doc_id, "3-ddd", ("2-zzz", "1-aaa")), id="unknown-parent"),
+    pytest.param(lambda doc_id: _tombstone(doc_id, "3-ddd", ("2-fff", "1-aaa")), id="unknown-parent"),
     pytest.param(lambda doc_id: _tombstone(doc_id, "2-ddd", ("1-aaa",)), id="parent-not-a-leaf"),
     pytest.param(lambda doc_id: _tombstone(doc_id, "1-ddd", ()), id="no-parent"),
 ])
@@ -390,6 +390,11 @@ SHAPE_CASES = [
     ({"_revisions": {"start": 1, "ids": ["bbb"]}}, "validation-error:_revisions"),
     ({"_revisions": {"start": 1, "ids": []}}, "validation-error:_revisions"),
     ({"_revisions": None}, "validation-error:_revisions"),
+    # Hashes sólo hexadecimales en minúscula, como los generan CouchDB, PouchDB y el cliente
+    # determinista; CouchDB guardaría otros y fallarían después (enmienda 1, VC-5).
+    ({"_rev": "1-zz", "_revisions": {"start": 1, "ids": ["zz"]}}, "validation-error:_rev"),
+    ({"_rev": "1-AAA", "_revisions": {"start": 1, "ids": ["AAA"]}}, "validation-error:_rev"),
+    ({"_rev": "2-aaa", "_revisions": {"start": 2, "ids": ["aaa", "zz"]}}, "validation-error:_revisions"),
 ]
 
 

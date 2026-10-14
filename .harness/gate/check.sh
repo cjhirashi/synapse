@@ -81,7 +81,10 @@ if [ -z "$SPECS" ]; then skip "sin specs todavía"; else
     rf_spec=$(grep -oE '^- \*\*RF-[0-9]+' "$sp" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
     rf_cov=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -oE 'RF-[0-9]+' | sort -u | wc -l | tr -d ' ')
     pend=$(grep -E '^\| *RF-[0-9]+' "$tk" | grep -Eiv '\| *(Pass|hecho) *\|? *$' | grep -c . || true)
-    if [ "$rf_spec" -gt 0 ] && [ "$rf_cov" -lt "$rf_spec" ]; then err "$name: $rf_cov/$rf_spec RF en la tabla de cobertura"
+    # Una spec implementada sin ningún RF reconocible no prueba nada: o no define requisitos
+    # o no sigue el formato de la plantilla, y en ambos casos la cobertura sería vacía (VC-8).
+    if [ "$rf_spec" -eq 0 ]; then err "$name en $st sin ningún RF (\`- **RF-NNN**\`) en spec.md"
+    elif [ "$rf_cov" -lt "$rf_spec" ]; then err "$name: $rf_cov/$rf_spec RF en la tabla de cobertura"
     elif [ "$pend" -gt 0 ]; then err "$name: $pend fila(s) de cobertura sin 'Pass'/'hecho'"
     else ok "$name: cobertura completa ($rf_cov RF, 0 pendientes)"; fi
   done <<< "$SPECS"

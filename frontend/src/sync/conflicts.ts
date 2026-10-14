@@ -15,8 +15,13 @@
  * replicación: nunca falla por un 409. Si entre la lectura y la escritura llegó otra hoja
  * (otra pestaña que resolvía a la vez, el pull), el resultado queda como una rama más y la
  * siguiente pasada lo funde; nunca se cierra una rama cuyos cambios no se hayan combinado.
- * Dos resoluciones simultáneas parten de la misma `W`, así que sus resultados sólo pueden
- * diferir en `updated_at` y se funden cerrando una rama (paso 7, convergencia).
+ *
+ * Las revisiones son deterministas (enmienda 1, VC-2): el hash depende sólo de la revisión
+ * padre y del contenido nuevo. Dos dispositivos que cierran la misma rama escriben la misma
+ * lápida, y el servidor la recibe como una revisión que ya tiene (no la rechaza). Dos
+ * resoluciones simultáneas parten de la misma `W`, así que sus resultados sólo pueden
+ * diferir en `updated_at` y se funden cerrando una rama (paso 7, convergencia), otra vez con
+ * lápidas iguales en todas las réplicas.
  *
  * Las resoluciones son ediciones normales para el push: el servidor las valida (RF-015) y,
  * si las rechaza, siguen el flujo de `rejections.ts` (RF-006).
@@ -75,9 +80,29 @@ function history(doc: VaultRevision): string[] {
   return ids.map((hash, i) => `${start - i}-${hash}`);
 }
 
-/** Revisión hija de `parent` con un hash nuevo (32 hex, como los de PouchDB). */
-function child(parent: VaultRevision): Pick<VaultRevision, "_rev" | "_revisions"> {
-  const hash = crypto.randomUUID().replace(/-/g, "");
+/**
+ * JSON canónico: claves ordenadas en todos los niveles y sin las de valor `undefined`, para
+ * que el mismo contenido dé el mismo texto en cualquier réplica.
+ */
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const entries = Object.entries(value).filter(([, v]) => v !== undefined);
+    entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/**
+ * Revisión hija de `parent` con `content` (su cuerpo nuevo, `_deleted` incluido). El hash es
+ * SHA-256 del JSON canónico de la revisión padre y el contenido, recortado a 32 hex como los
+ * de PouchDB: la misma escritura da la misma revisión en todas las réplicas (VC-2).
+ */
+async function child(parent: VaultRevision, content: object): Promise<Pick<VaultRevision, "_rev" | "_revisions">> {
+  const input = new TextEncoder().encode(canonical({ parent: parent._rev, content }));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", input));
+  const hash = Array.from(digest.subarray(0, 16), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const start = parent._revisions.start + 1;
   return { _rev: `${start}-${hash}`, _revisions: { start, ids: [hash, ...parent._revisions.ids] } };
 }
@@ -145,8 +170,12 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
   /** Hija de `w` con `result` (si lo hay) + lápida sobre `l`, en un solo lote. */
   async function writeResolution(w: VaultRevision, l: VaultRevision, result: MergeBody | null): Promise<void> {
     const docs: object[] = [];
-    if (result) docs.push({ _id: w._id, ...child(w), type: "vault", ...result });
-    docs.push({ _id: l._id, ...child(l), _deleted: true });
+    if (result) {
+      const content = { type: "vault", ...result };
+      docs.push({ _id: w._id, ...(await child(w, content)), ...content });
+    }
+    const tombstone = { _deleted: true };
+    docs.push({ _id: l._id, ...(await child(l, tombstone)), ...tombstone });
     await db.bulkDocs(docs as PouchDB.Core.PutDocument<{}>[], { new_edits: false });
   }
 

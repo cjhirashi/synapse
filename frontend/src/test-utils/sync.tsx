@@ -75,7 +75,7 @@ export function syncValue(overrides: Partial<SyncContextValue> = {}, db = memory
     rejections: [],
     conflicts: [],
     resolveConflict: vi.fn(async () => undefined),
-    requestLogout: vi.fn(),
+    requestLogout: vi.fn(async () => undefined),
     logout: {
       phase: "closed",
       failure: null,

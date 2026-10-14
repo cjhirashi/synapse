@@ -1,6 +1,8 @@
 // Rechazos del servidor con réplicas reales (SPEC-0005 RF-005, RF-006, RF-008, RNF-002).
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createUser, Device, eventually } from "../test-utils/device";
+import { OWNER_DOC_ID } from "./localDb";
+import { pushOnce } from "./resources";
 import type { Vault } from "./vaultStore";
 
 /** Nombres de las bóvedas activas según la API REST (la verdad del servidor). */
@@ -77,5 +79,29 @@ describe("rechazos (integración)", () => {
       ]),
     );
     expect(await serverNames(phone)).toEqual(["Lecturas", "Proyectos"]);
+  });
+
+  it("«Sincronizar y salir» con un cambio que el servidor rechaza no confirma y conserva la réplica (VC-3)", async () => {
+    // El móvil, sin red y sin replicación continua, crea "Diario"; el portátil crea otra con
+    // el mismo nombre y la sincroniza antes. El rechazo sólo puede llegar por el push de una
+    // vez de "Sincronizar y salir".
+    phone.setNetwork("offline");
+    await phone.sync.replicator.stop();
+    const taken = await phone.sync.vaults.create({ name: "Diario", description: "del móvil", tags: [] });
+    await laptop.sync.vaults.create({ name: "Diario", description: null, tags: [] });
+    await laptop.synced();
+    phone.setNetwork("online");
+
+    expect(await pushOnce(phone.sync)).toBe(false);
+    expect(phone.sync.rejections.list()).toEqual([{ id: `vault:${taken.id}`, rev: taken.rev, reason: "vault-name-taken" }]);
+    // La réplica sigue intacta: el cambio rechazado y su dueño (RF-017, RF-018).
+    await expect(phone.sync.vaults.get(taken.id)).resolves.toMatchObject({ name: "Diario", description: "del móvil" });
+    await expect(phone.sync.db.get(OWNER_DOC_ID)).resolves.toMatchObject({ _id: OWNER_DOC_ID });
+
+    // Corregido el nombre, el mismo push confirma todo y ya se puede salir.
+    await phone.sync.vaults.update(taken.id, { name: "Diario del móvil" }, taken.rev);
+    expect(await pushOnce(phone.sync)).toBe(true);
+    expect(phone.sync.rejections.list()).toEqual([]);
+    expect(await serverNames(laptop)).toEqual(["Diario", "Diario del móvil"]);
   });
 });

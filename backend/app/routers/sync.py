@@ -300,13 +300,20 @@ async def bulk_docs(body: BulkDocsRequest, service: Annotated[SyncPushService, D
 
 # --- Checkpoints del replicador ---
 
-LocalId = Annotated[str, Path(description="Id del checkpoint, sin el prefijo `_local/`.")]
+def get_checkpoint_id(
+    local_id: Annotated[str, Path(description="Id del checkpoint, sin el prefijo `_local/`.")],
+) -> str:
+    """Id con el formato de PouchDB; cualquier otro (`.`, `..`…) → `SyncEndpointNotFound`."""
+    return sync_filter.checkpoint_id(local_id)
+
+
+LocalId = Annotated[str, Depends(get_checkpoint_id)]
 
 
 @router.get(
     "/db/_local/{local_id}",
     responses={200: _json("Documento `_local` guardado.")}
-    | problem_responses(CheckpointNotFound, StorageUnavailable),
+    | problem_responses(SyncEndpointNotFound, CheckpointNotFound, StorageUnavailable),
 )
 async def get_checkpoint(local_id: LocalId, db: Db, port: Port):
     doc = await port.get_local(db, local_id)
@@ -319,9 +326,10 @@ async def get_checkpoint(local_id: LocalId, db: Db, port: Port):
     "/db/_local/{local_id}",
     status_code=status.HTTP_201_CREATED,
     responses={201: _json("`{ok, id, rev}` de CouchDB.")}
-    | problem_responses(InvalidSyncRequest, StorageUnavailable),
+    | problem_responses(SyncEndpointNotFound, InvalidSyncRequest, StorageUnavailable),
 )
 async def put_checkpoint(local_id: LocalId, doc: Annotated[dict[str, Any], Body()], db: Db, port: Port):
+    sync_filter.check_checkpoint_doc(local_id, doc)
     return await port.put_local(db, local_id, doc)
 
 

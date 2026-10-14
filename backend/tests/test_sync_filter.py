@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from app.core.errors import InvalidSyncRequest, StorageUnavailable
+from app.core.errors import InvalidSyncRequest, StorageUnavailable, SyncEndpointNotFound
 from app.services import sync_filter as sf
 
 VAULT_A = "vault:6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f"
@@ -233,3 +233,21 @@ def test_rf_004_db_info_exposes_neither_name_nor_counts():
     assert sf.sanitize_db_info(info) == {
         "db_name": "db", "update_seq": "7-g1", "instance_start_time": "1791",
     }
+
+
+# --- Ids de checkpoint `_local` (RF-003, enmienda 1 · VC-1) ---
+
+@pytest.mark.parametrize("local_id", [
+    "kV5X.b8w9Vxxc_dQqXvGNg==",   # md5 en base64 de PouchDB (`/`→`.`, `+`→`_`)
+    ".Bq1zv4R_2cJ9pYt0lN8wQ==",   # puede empezar por punto
+    "2f1a9c0d6b7e4c35",
+    "a" * 128,
+])
+def test_rf_003_pouchdb_checkpoint_ids_are_accepted(local_id):
+    assert sf.checkpoint_id(local_id) == local_id
+
+
+@pytest.mark.parametrize("local_id", ["", ".", "..", "a b", "a/b", "a%2Eb", "ñ", "a" * 129])
+def test_rf_003_other_checkpoint_ids_are_not_an_endpoint(local_id):
+    with pytest.raises(SyncEndpointNotFound):
+        sf.checkpoint_id(local_id)
