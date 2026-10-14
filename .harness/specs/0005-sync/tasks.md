@@ -2,13 +2,14 @@
 id: TASKS-0005
 tipo: tasks
 feature: 0005-sync
-estado: implemented
+estado: verified
 aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque M, VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque N, VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque O, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque P, VF-4 opción (b), VF-1…VF-3
+  verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
 

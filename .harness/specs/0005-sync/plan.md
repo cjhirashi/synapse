@@ -2,13 +2,14 @@
 id: PLAN-0005
 tipo: plan
 feature: 0005-sync
-estado: implemented
+estado: verified
 aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §10, VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §11, VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §12, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §13, VF-4 opción (b), VF-1…VF-3
+  verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
 

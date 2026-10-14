@@ -2,9 +2,9 @@
 id: SPEC-0005
 tipo: spec
 feature: 0005-sync
-estado: implemented      # draft | in-review | approved | implemented | verified | deprecated
+estado: verified      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 461517f   # cierre de la Fase 4 (bloque K; T-083)
+anchor_commit: 1289337   # cierre de 0005 (verified; enmienda 4 + verificación 5)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py
@@ -27,6 +27,7 @@ aprobaciones:
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 2, menores VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 3, VE-1 opción (a), VE-2…VE-5
   enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 4, VF-4 opción (b), VF-1…VF-3
+  verified: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }           # verificación 5 APPROVED con menores; VG-1…VG-5 → backlog 9
 actualizado: 2026-10-14
 ---
 
