@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: implemented
-anchor_commit: 461517f   # re-anclaje por SPEC-0005 (T-083 de TASKS-0005)
+anchor_commit: 0c45404   # re-anclaje por SPEC-0005 (T-116 de TASKS-0005, enmienda 3)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -94,6 +94,11 @@ actualizado: 2026-10-12
 > sincronización; "Cerrar sesión" avisa antes si hay cambios sin confirmar), `scripts/export_openapi.py` (feature `0005-sync`) y
 > `tests/test_contract.py` (contrato de 0005). Ancla movida a `461517f`. Sin cambio de
 > requisitos.
+>
+> **Re-anclaje 2026-10-14** (PLAN-0005 §12, T-116 de TASKS-0005): la enmienda 3 de SPEC-0005
+> añadió a `App.tsx` el aviso `LocalCopyNotice` en la ruta `/login` (la réplica no se pudo
+> borrar al cerrar sesión, RF-017 de 0005). `LoginPage` no cambia. Ancla movida a `0c45404`.
+> Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
