@@ -4,7 +4,7 @@ tipo: spec
 feature: 0005-sync
 estado: verified      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 4a7b740   # cierre de la enmienda 5 (VG-1…VG-4)
+anchor_commit: 84b8be3   # enmienda 6 (backlog 8, T-128…T-132)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py
