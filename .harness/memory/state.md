@@ -97,9 +97,9 @@ la opción (b) del usuario: la réplica descartada queda marcada en `localStorag
 (`markDiscarded`) antes de cerrarla, y `openLocalDb` la borra antes de abrirla aunque vuelva
 el mismo usuario, así que lo descartado nunca se sube. Además: guarda `leaving` en
 `requestLogout`/`syncAndExit` (VF-2), pruebas de la guarda, del reintento y de la fase
-(VF-1), y `LocalCopyNotice` quita su estado del historial (VF-3). **Siguiente:** ronda corta
-de verificación 5 sobre la enmienda 4 (cambia el comportamiento), después el usuario decide
-SPEC-0005 → `verified`. Decisiones abiertas: reportar el defecto de PouchDB 9 upstream, las
+(VF-1), y `LocalCopyNotice` quita su estado del historial (VF-3). Verificación 5: APPROVED con
+menores VG-1…VG-5 (pruebas y texto; ver history). **Siguiente:** el usuario decide si se
+corrigen VG-1…VG-4 en una enmienda 5 y después SPEC-0005 → `verified`. Decisiones abiertas: reportar el defecto de PouchDB 9 upstream, las
 3 preguntas de **0006-integration-real-db** (`draft`), el merge de PR #3, SPEC-0002 →
 `verified` y consolidar `history.md`.
 Después de 0005: la spec de "FastAPI sirve la SPA" (sustituye el nginx que aún describe
