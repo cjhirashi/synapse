@@ -1,5 +1,5 @@
 // Bóvedas activas sobre la réplica local (SPEC-0003 RF-018, RF-020; SPEC-0005 RF-009, RF-011).
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -92,12 +92,19 @@ test("RF-009: un cambio en la réplica (`dataVersion`) recarga la lista sin perd
   const { value, db } = syncValue();
   const seed = seedStore(db);
   await seedMany(seed, 51);
+  const list = vi.spyOn(value.vaults, "list");
   const { user, rerender } = renderPage(value);
   await user.click(await screen.findByRole("button", { name: "Cargar más" }));
   // Llega una bóveda nueva (de la UI, del pull o de otra pestaña).
   await seed.create({ name: "Recién llegada", description: null, tags: [] });
   rerender({ ...value, dataVersion: 1 });
-  expect(await screen.findByRole("listitem", { name: "Recién llegada" })).toBeInTheDocument();
+  // Se espera la relectura misma y no su efecto en el DOM: sondear con `findBy*` un DOM de
+  // 51 bóvedas (nombre accesible, estilos y el mensaje de error de cada intento fallido)
+  // ocupa el hilo que necesita esa lectura y, con la máquina cargada, la hacía llegar tarde
+  // (backlog 8, VE-6). `act` aplica su resultado antes de consultar una sola vez.
+  expect(list).toHaveBeenCalledTimes(2);
+  await act(() => list.mock.results[1].value);
+  expect(screen.getByRole("listitem", { name: "Recién llegada" })).toBeInTheDocument();
   expect(screen.getAllByRole("listitem")).toHaveLength(52);
   expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
 });

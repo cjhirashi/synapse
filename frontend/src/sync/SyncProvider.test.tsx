@@ -52,7 +52,9 @@ test("abre la réplica antes de mostrar las páginas y arranca el replicador", a
   renderProvider(env);
   expect(screen.getByText("Cargando…")).toBeInTheDocument();
   expect(await screen.findByText("estado syncing")).toBeInTheDocument();
-  expect(fake.replicator.start).toHaveBeenCalledTimes(1);
+  // `start()` va en un efecto posterior al commit que muestra las páginas: se espera, no se
+  // da por hecho en el instante en que aparece el texto (backlog 8).
+  await waitFor(() => expect(fake.replicator.start).toHaveBeenCalledTimes(1));
 });
 
 test("RF-009: replica con el canal las bóvedas del usuario de la sesión (`owner_id = sub`)", async () => {

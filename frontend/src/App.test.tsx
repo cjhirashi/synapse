@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -60,7 +60,8 @@ test("RF-009: con la sesión verificada abre la réplica del usuario, replica y 
   renderAt("/vaults", env);
   const bar = await screen.findByRole("region", { name: "Sincronización" });
   expect(within(bar).getByRole("status")).toBeInTheDocument();
-  expect(fake.replicator.start).toHaveBeenCalled();
+  // `start()` va en un efecto posterior al commit que muestra la barra (backlog 8).
+  await waitFor(() => expect(fake.replicator.start).toHaveBeenCalled());
 });
 
 test("RF-002: mientras deba cambiar la contraseña no replica (el canal respondería 403)", async () => {

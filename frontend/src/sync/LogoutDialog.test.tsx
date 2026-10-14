@@ -1,5 +1,5 @@
 // Aviso al cerrar sesión con cambios sin confirmar (SPEC-0005 RF-017; PLAN-0005 §2.5, §12).
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -23,10 +23,11 @@ const NEW_VAULT = { name: "Notas", description: null, tags: [] };
 
 /** Botones de la página privada: crear una bóveda y cerrar sesión. */
 function Controls() {
-  const { vaults, requestLogout, rejections, status, logout } = useSync();
+  const { vaults, requestLogout, rejections, status, logout, dataVersion } = useSync();
   return (
     <>
       <p>rechazos {rejections.length}</p>
+      <p>versión {dataVersion}</p>
       <p>pendientes {status.pending ? "sí" : "no"}</p>
       <button type="button" onClick={() => void vaults.create(NEW_VAULT)}>
         crear
@@ -158,9 +159,12 @@ test("RF-017: decide con el estado actual aunque la pantalla aún no muestre el 
   await user.click(await screen.findByRole("button", { name: "crear y salir" }));
   expect(await screen.findByRole("dialog", { name: "Hay cambios sin sincronizar" })).toBeInTheDocument();
   expect(logout).not.toHaveBeenCalled();
+  expect(screen.getByText("pendientes sí")).toBeInTheDocument();
+  // La escritura llega también al feed de `dataVersion`, que puede ir detrás del aviso: se
+  // espera antes de leer la réplica fuera de React para no dejar ese render en el aire
+  // (backlog 8: era el aviso `act(...)` intermitente de este test).
+  expect(await screen.findByText("versión 1")).toBeInTheDocument();
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
-  // La pantalla termina por mostrar el cambio: se espera para no dejar el render en el aire.
-  expect(await screen.findByText("pendientes sí")).toBeInTheDocument();
 });
 
 test("un cambio rechazado también cuenta como no confirmado", async () => {
@@ -332,7 +336,8 @@ test("RF-017: si el mismo usuario vuelve, la réplica descartada que no se borr�
   const replicated = fake.create.mock.calls[1][0].local;
   const pushed = await replicated.allDocs({ startkey: "vault:", endkey: "vault:\ufff0" });
   expect(pushed.rows).toEqual([]);
-  expect(fake.replicator.start).toHaveBeenCalledTimes(2);
+  // `start()` va en un efecto posterior al commit que muestra la página (backlog 8).
+  await waitFor(() => expect(fake.replicator.start).toHaveBeenCalledTimes(2));
   expect(localStorage.getItem(DISCARD_MARK_PREFIX + localName)).toBeNull();
 });
 

@@ -141,6 +141,31 @@ describe("suscripción y varias pestañas", () => {
     expect(listener).toHaveBeenCalledTimes(1);
   });
 
+  it("no avisa si el estado no cambió (backlog 8)", async () => {
+    const store = await open();
+    await caughtUp(store);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    await db.put({ _id: "vault:11111111-1111-4111-8111-111111111111", type: "vault" });
+    await store.refresh();
+    expect(listener).toHaveBeenCalledTimes(1);
+    // Releer la misma secuencia (como hace el feed tras un `refresh()`) no vuelve a avisar.
+    await store.refresh();
+    await store.handle({ type: "error", message: "caído" });
+    await store.handle({ type: "error", message: "caído" });
+    expect(listener.mock.calls.map(([status]) => status.state)).toEqual(["pending", "offline"]);
+  });
+
+  it("avisa si sólo cambia la hora de la última sincronización", async () => {
+    const times = [T1, T2];
+    const store = await open(() => times.shift() ?? T2);
+    await caughtUp(store);
+    const listener = vi.fn();
+    store.subscribe(listener);
+    await caughtUp(store);
+    expect(listener).toHaveBeenLastCalledWith({ state: "online", pending: false, lastSyncAt: T2 });
+  });
+
   it("dos pestañas que procesan los mismos eventos escriben el estado sin conflicto", async () => {
     const a = await open();
     const b = await open(() => T2);

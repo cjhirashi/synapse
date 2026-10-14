@@ -193,6 +193,13 @@ actualizado: 2026-10-14
 - [x] T-126 — `LogoutDialog.test.tsx`: el mismo usuario que vuelve replica sobre una réplica sin la bóveda descartada, en lugar de la aserción sobre la remota (VG-3) (cubre RF-017, RF-018) [zona: test]
 - [x] T-127 — T-120 y fila RF-018 sin `App.test.tsx` (VG-2) (cubre RF-018) [doc]
 
+### R · Tests inestables del frontend (enmienda 6, PLAN-0005 §15; backlog 8)
+- [x] T-128 — PLAN-0005 §15 y bloque R; re-anclajes de SPEC-0003 y SPEC-0005 (cubre RF-009, RF-017) [doc]
+- [x] T-129 — `status.ts`: avisa sólo si el estado cambia; `status.test.ts` (sin cambio no avisa; sólo la hora sí avisa) (cubre RF-009) [zona: sync]
+- [x] T-130 — `VaultListPage.test.tsx`: la recarga por `dataVersion` espera la relectura (`vaults.list` en `act`) y no sondea el DOM (VE-6) (cubre RF-009) [zona: test]
+- [x] T-131 — `SyncProvider.test.tsx`, `App.test.tsx`, `LogoutDialog.test.tsx`: `replicator.start()` se espera con `waitFor` (efecto posterior al commit) (cubre RF-009, RF-017) [zona: test]
+- [x] T-132 — `LogoutDialog.test.tsx` VC-4: espera el render de `dataVersion` antes de leer la réplica fuera de React (aviso `act`) (cubre RF-017) [zona: test]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -204,7 +211,7 @@ actualizado: 2026-10-14
 | RF-006 | T-021, T-023, T-026, T-029, T-048, T-049, T-056, T-057, T-071 | test_sync_push, test_sync_api, rejections.test, RejectionsPage.test, rejections.integration | Pass |
 | RF-007 | T-005…T-008, T-019, T-022, T-026, T-089 | test_sync_filter, test_sync_push, test_sync_api | Pass |
 | RF-008 | T-014…T-018, T-021, T-023, T-071 | test_vault_repository, test_vault_service, test_sync_push, rejections.integration | Pass |
-| RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pass |
+| RF-009 | T-032, T-038, T-039, T-046, T-047, T-052…T-055, T-062…T-066, T-070, T-128…T-131 | vaultStore.test, status.test, SyncStatusBar.test, vaults/*.test, offline.integration | Pass |
 | RF-010 | T-010, T-013, T-027, T-030, T-044…T-047, T-054, T-055, T-067, T-070, T-090, T-091, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, offline.integration | Pass |
 | RF-011 | T-021, T-023, T-038, T-039, T-062, T-063, T-070 | test_sync_push, vaultStore.test, vaults/*.test, offline.integration | Pass |
 | RF-012 | T-011, T-040, T-041, T-050, T-051, T-072, T-092, T-093 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
@@ -212,7 +219,7 @@ actualizado: 2026-10-14
 | RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
 | RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101, T-106, T-116 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109…T-126 | SyncProvider.test, LogoutDialog.test, LocalCopyNotice.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109…T-126, T-128, T-131, T-132 | SyncProvider.test, LogoutDialog.test, LocalCopyNotice.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
 | RF-018 | T-036, T-037, T-052, T-053, T-095, T-105, T-113, T-117…T-120, T-126, T-127 | localDb.test, SyncProvider.test, LogoutDialog.test, resources.test, rejections.integration | Pass |
 | RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
 | RNF-001 | T-075 | sync.perf.integration | Pass |

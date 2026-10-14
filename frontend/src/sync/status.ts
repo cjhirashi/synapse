@@ -68,6 +68,11 @@ function latest(a: string | null, b: string | null): string | null {
   return a > b ? a : b;
 }
 
+/** Mismo estado visible (los tres campos de `SyncStatus`). */
+function sameStatus(a: SyncStatus, b: SyncStatus): boolean {
+  return a.state === b.state && a.pending === b.pending && a.lastSyncAt === b.lastSyncAt;
+}
+
 async function readStored(db: PouchDB.Database): Promise<StoredState> {
   try {
     return (await db.get(SYNC_STATE_DOC_ID)) as unknown as StoredState;
@@ -119,8 +124,17 @@ export async function openSyncStatus(
     return { state, pending, lastSyncAt };
   }
 
+  let notified: SyncStatus | null = null;
+
+  /**
+   * Avisa a los suscriptores sólo si el estado cambió. Cada escritura en la réplica relee la
+   * secuencia y casi nunca cambia lo que se muestra (p. ej. el feed tras un `refresh()` que
+   * ya la leyó): un aviso repetido volvería a pintar toda la app sin cambio visible.
+   */
   function notify(): void {
     const status = current();
+    if (notified && sameStatus(notified, status)) return;
+    notified = status;
     listeners.forEach((listener) => listener(status));
   }
 
