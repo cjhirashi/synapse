@@ -26,6 +26,7 @@ aprobaciones:
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }         # verificación adversarial VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 2, menores VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 3, VE-1 opción (a), VE-2…VE-5
+  enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 4, VF-4 opción (b), VF-1…VF-3
 actualizado: 2026-10-14
 ---
 
@@ -53,6 +54,15 @@ actualizado: 2026-10-14
 > usuario): RF-017 precisa que, si el estado de la réplica no puede leerse al pedir la
 > salida, el cliente avisa como si hubiera cambios pendientes; §5 añade ese caso. El *cómo*
 > está en PLAN-0005 §11.
+>
+> **Enmienda 3 2026-10-14** (verificación 3 REJECTED por VE-1; el usuario eligió la opción
+> (a)): RF-017 precisa el aviso de la réplica ilegible y la salida al login cuando la réplica
+> no puede borrarse; §5 añade ese caso. El *cómo* está en PLAN-0005 §12.
+>
+> **Enmienda 4 2026-10-14** (verificación 4 APPROVED con menores VF-1…VF-4; el usuario
+> eligió la opción (b) para VF-4): RF-017 precisa que la copia descartada que no pudo
+> borrarse nunca vuelve a usarse, tampoco por el mismo usuario; §5 añade ese caso. El *cómo*
+> está en PLAN-0005 §13.
 
 ## 1. Contexto del dominio
 - **Problema:** el usuario debe poder leer y editar sus bóvedas sin conexión y que, al
@@ -184,8 +194,10 @@ actualizado: 2026-10-14
   (enmienda 2), diciendo que no se pudo comprobar y sin "Sincronizar y salir", que tampoco
   podría leer la réplica (enmienda 3). SI el servidor ya cerró la sesión pero la réplica no
   puede borrarse ENTONCES el cliente DEBE ir igualmente al login y avisar "No se pudo borrar
-  la copia local de este dispositivo"; la copia se borra antes de replicar si entra otro
-  usuario (RF-018) y la reutiliza el mismo usuario (enmienda 3).
+  la copia local de este dispositivo" (enmienda 3). La copia que se descarta al salir nunca
+  vuelve a usarse: el cliente anota en el dispositivo que su borrado está pendiente y el
+  próximo inicio de sesión, del mismo usuario o de otro, termina de borrarla antes de
+  abrirla y replicar; los cambios descartados nunca llegan al servidor (enmienda 4).
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -215,6 +227,11 @@ actualizado: 2026-10-14
   (enmienda 3): la sesión ya no existe, así que el cliente no se queda en "Cerrando sesión…"
   ni bloquea al usuario; va al login con el aviso de RF-017. Los datos siguen en el
   dispositivo hasta el próximo inicio de sesión (R-5): RF-018 los borra si es otro usuario.
+- La réplica descartada no pudo borrarse y vuelve el mismo usuario (enmienda 4): el próximo
+  inicio de sesión la borra antes de replicar (RF-017), así que lo descartado no se sube; si
+  ese borrado también falla, el cliente muestra el error de la réplica y no replica. Si el
+  dispositivo no deja anotar el borrado pendiente (almacenamiento del sitio bloqueado), el
+  aviso del login no promete el borrado; ese bloqueo impide también abrir la réplica (R-5).
 
 ## 6. Riesgos identificados
 | ID | Riesgo | Impacto | Mitigación |

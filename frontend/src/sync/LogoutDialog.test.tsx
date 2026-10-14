@@ -1,25 +1,29 @@
 // Aviso al cerrar sesión con cambios sin confirmar (SPEC-0005 RF-017; PLAN-0005 §2.5, §12).
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import * as api from "../api/auth";
 import { memoryDb, memoryEnv } from "../test-utils/sync";
 import LocalCopyNotice from "./LocalCopyNotice";
 import LogoutDialog from "./LogoutDialog";
 import * as localDb from "./localDb";
-import { OWNER_DOC_ID } from "./localDb";
+import { DISCARD_MARK_PREFIX, OWNER_DOC_ID } from "./localDb";
+import * as resourcesModule from "./resources";
 import type { SyncEnv } from "./resources";
 import SyncProvider from "./SyncProvider";
 import { useSync } from "./useSync";
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  localStorage.clear();
+});
 
 const NEW_VAULT = { name: "Notas", description: null, tags: [] };
 
 /** Botones de la página privada: crear una bóveda y cerrar sesión. */
 function Controls() {
-  const { vaults, requestLogout, rejections, status } = useSync();
+  const { vaults, requestLogout, rejections, status, logout } = useSync();
   return (
     <>
       <p>rechazos {rejections.length}</p>
@@ -40,6 +44,20 @@ function Controls() {
       <button type="button" onClick={() => void requestLogout()}>
         Cerrar sesión
       </button>
+      {/* Dos salidas en el mismo render, antes de que la fase desactive nada (VF-1). */}
+      <button
+        type="button"
+        onClick={() => {
+          void logout.discardAndExit();
+          void logout.discardAndExit();
+        }}
+      >
+        salir dos veces
+      </button>
+      {/* "Sincronizar y salir" sin pasar por el aviso (VF-2). */}
+      <button type="button" onClick={() => void logout.syncAndExit()}>
+        sincronizar directo
+      </button>
       <LogoutDialog />
     </>
   );
@@ -56,6 +74,8 @@ function renderApp(env: SyncEnv) {
             <>
               <LocalCopyNotice />
               <p>pantalla login</p>
+              {/* Vuelve a entrar el mismo usuario (VF-4). */}
+              <Link to="/">entrar</Link>
             </>
           }
         />
@@ -74,6 +94,14 @@ function renderApp(env: SyncEnv) {
 }
 
 const COPY_KEPT = "No se pudo borrar la copia local de este dispositivo.";
+const DISCARD_PENDING = "Se borrará la próxima vez que se inicie sesión en este dispositivo.";
+
+/** Promesa que el test resuelve cuando quiere (una llamada en curso). */
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => (resolve = done));
+  return { promise, resolve };
+}
 
 /** La réplica se borró: al reabrir con ese nombre ya no tiene el documento de dueño. */
 async function expectDestroyed(localName: string) {
@@ -262,10 +290,44 @@ test("RF-017: si la réplica no se borra tras cerrar la sesión, va al login y l
   await user.click(within(dialog).getByRole("button", { name: "Salir y descartar" }));
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
+  expect(screen.getByRole("alert")).toHaveTextContent(DISCARD_PENDING);
   expect(logout).toHaveBeenCalledOnce();
   expect(destroy).toHaveBeenCalledOnce();
-  // La copia sigue en el dispositivo: la borra RF-018 si entra otro usuario.
+  // La copia sigue en el dispositivo, marcada: la borra el próximo inicio de sesión (VF-4).
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+  expect(localStorage.getItem(DISCARD_MARK_PREFIX + localName)).not.toBeNull();
+});
+
+test("RF-017: si tampoco puede anotarse el borrado pendiente, el aviso no lo promete (VF-4)", async () => {
+  vi.spyOn(api, "logout").mockResolvedValue();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new DOMException("bloqueado", "SecurityError");
+  });
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
+  expect(screen.getByRole("alert")).not.toHaveTextContent(DISCARD_PENDING);
+});
+
+test("RF-017: si el mismo usuario vuelve, la réplica descartada que no se borró no se usa ni se sube (VF-4)", async () => {
+  vi.spyOn(api, "logout").mockResolvedValue();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(localDb, "destroyLocalDb").mockRejectedValueOnce(new Error("IndexedDB no disponible"));
+  const { env, remote, localName } = memoryEnv();
+  const user = renderApp(env);
+  const dialog = await openWithPending(user);
+  await user.click(within(dialog).getByRole("button", { name: "Salir y descartar" }));
+  await user.click(await screen.findByRole("link", { name: "entrar" }));
+  // Abre una réplica nueva y vacía: la bóveda descartada no está y nada queda pendiente.
+  expect(await screen.findByText("pendientes no")).toBeInTheDocument();
+  const { rows } = await memoryDb(localName).allDocs({ startkey: "vault:", endkey: "vault:\ufff0" });
+  expect(rows).toEqual([]);
+  expect((await remote.info()).doc_count).toBe(0);
+  expect(localStorage.getItem(DISCARD_MARK_PREFIX + localName)).toBeNull();
 });
 
 test("RF-017: la salida directa también llega al login con el aviso si el borrado falla (VE-1)", async () => {
@@ -292,4 +354,57 @@ test("RF-017: si cerrar la réplica falla al salir, llega al login con el aviso 
   expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
   await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(2));
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+});
+
+test("RF-017: dos salidas seguidas cierran la sesión una sola vez (VF-1)", async () => {
+  const logout = vi.spyOn(api, "logout").mockResolvedValue();
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "salir dos veces" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(logout).toHaveBeenCalledOnce();
+});
+
+test("RF-017: tras un cierre de sesión fallido se puede volver a intentar (VF-1)", async () => {
+  const logout = vi.spyOn(api, "logout").mockRejectedValueOnce(new Error("sin red")).mockResolvedValueOnce();
+  const { env, localName } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cerrar la sesión.");
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(logout).toHaveBeenCalledTimes(2);
+  await expectDestroyed(localName);
+});
+
+test("RF-017: mientras cierra la sesión el aviso lo dice y no deja pulsar nada (VF-1)", async () => {
+  const pending = deferred();
+  vi.spyOn(api, "logout").mockReturnValue(pending.promise);
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  const dialog = await openWithPending(user);
+  await user.click(within(dialog).getByRole("button", { name: "Salir y descartar" }));
+  expect(await within(dialog).findByRole("status")).toHaveTextContent("Cerrando sesión…");
+  for (const button of within(dialog).getAllByRole("button")) expect(button).toBeDisabled();
+  pending.resolve();
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+});
+
+test("RF-017: pedir otra salida mientras se borra la réplica no la vuelve a leer ni a subir (VF-2)", async () => {
+  vi.spyOn(api, "logout").mockResolvedValue();
+  const destroying = deferred();
+  const destroy = vi.spyOn(localDb, "destroyLocalDb").mockReturnValue(destroying.promise);
+  const unconfirmed = vi.spyOn(resourcesModule, "unconfirmedState");
+  const push = vi.spyOn(resourcesModule, "pushOnce");
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  await vi.waitFor(() => expect(destroy).toHaveBeenCalledOnce());
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  await user.click(screen.getByRole("button", { name: "sincronizar directo" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(unconfirmed).toHaveBeenCalledOnce();
+  expect(push).not.toHaveBeenCalled();
+  destroying.resolve();
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
 });

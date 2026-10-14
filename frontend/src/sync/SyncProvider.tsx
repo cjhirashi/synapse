@@ -15,15 +15,18 @@
  * del último render: una escritura recién hecha cuenta aunque la pantalla aún no la muestre.
  * Si la réplica no puede leerse también avisa, diciendo por qué (VE-2). "Sincronizar y salir"
  * es un push de una vez junto a la replicación continua y sale sólo si el servidor confirmó
- * todo. Salir es `logout()` y, sólo si el servidor cerró la sesión, detener todo y borrar la
- * réplica; si el borrado falla la sesión ya no existe, así que va igualmente al login con el
- * aviso de la copia conservada (`LocalCopyNotice`; RF-017, enmienda 3).
+ * todo. Salir es `logout()` y, sólo si el servidor cerró la sesión, marcar la réplica como
+ * descartada, detener todo y borrarla; si el borrado falla la sesión ya no existe, así que va
+ * igualmente al login con el aviso de la copia conservada (`LocalCopyNotice`; RF-017,
+ * enmienda 3), y la marca hace que el próximo inicio de sesión la borre antes de abrirla,
+ * también si es el mismo usuario (enmienda 4). Mientras sale, ninguna otra petición de
+ * salida hace nada (`leaving`).
  */
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout as logoutSession } from "../api/auth";
 import type { ManualConflict } from "./conflicts";
-import { destroyLocalDb } from "./localDb";
+import { destroyLocalDb, markDiscarded } from "./localDb";
 import type { Rejection } from "./rejections";
 import type { LocalCopyState } from "./LocalCopyNotice";
 import { openSyncResources, pushOnce, type SyncEnv, type SyncResources, unconfirmedState } from "./resources";
@@ -134,6 +137,9 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     }
     // La sesión ya está cerrada: pase lo que pase con la réplica, se va al login. `leaving`
     // queda en `true` (no hay otra salida que lanzar) y el proveedor se desmonta con la ruta.
+    // Antes de tocar nada se anota que la réplica se descarta: si `close()` o el borrado
+    // fallan, el próximo `openLocalDb` termina el borrado y lo descartado no se sube (VF-4).
+    const discardPending = markDiscarded(resources.db);
     let state: LocalCopyState | null = null;
     try {
       await serial(async () => {
@@ -142,9 +148,10 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       });
     } catch (err) {
       // IndexedDB con error: la copia sigue en el dispositivo hasta el próximo inicio de
-      // sesión, que la borra si es otro usuario (RF-018) o la reutiliza si es el mismo.
+      // sesión, que la borra antes de abrirla si quedó la marca (RF-017) o si es de otro
+      // usuario (RF-018).
       console.error(err);
-      state = { localCopyKept: true };
+      state = { localCopyKept: true, discardPending };
     }
     navigate("/login", { replace: true, state });
   }, [resources, logoutPhase, navigate]);
@@ -160,6 +167,8 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       conflicts,
       resolveConflict: resources.conflicts.resolve,
       async requestLogout() {
+        // Durante una salida la réplica ya se está cerrando: releerla daría un aviso falso (VF-2).
+        if (leaving.current) return;
         setLogoutFailure(null);
         // Decide con el estado actual de la réplica (VC-4, VD-1); sin estado legible, avisa
         // diciendo por qué (VD-3, VE-2).
@@ -173,6 +182,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         reason: logoutReason,
         failure: logoutFailure,
         async syncAndExit() {
+          if (leaving.current) return;
           setLogoutPhase("syncing");
           setLogoutFailure(null);
           if (await pushOnce(resources)) return exit();

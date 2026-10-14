@@ -45,9 +45,11 @@ sesión» llama a `requestLogout()` (asíncrona), que decide con `unconfirmedSta
 `sync/resources.ts`: espera las escrituras de rechazos en curso (`rejections.settled()`),
 relee la secuencia local (`status.refresh()`) y, con cambios sin confirmar o rechazados
 —o si la réplica no puede leerse, con un texto propio y sin «Sincronizar y salir»—, abre
-`LogoutDialog`; al salir, `logout()` y, si el servidor cerró la sesión, se borra la réplica.
-Si ese borrado falla, va igualmente a `/login` y `sync/LocalCopyNotice.tsx` (montado por
-`App.tsx` junto a `LoginPage`) avisa de que la copia sigue en el dispositivo. `test-utils/sync.tsx`
+`LogoutDialog`; al salir, `logout()` y, si el servidor cerró la sesión, se marca la réplica
+como descartada (`markDiscarded`, en `localStorage`) y se borra. Si ese borrado falla, va
+igualmente a `/login` y `sync/LocalCopyNotice.tsx` (montado por `App.tsx` junto a
+`LoginPage`) avisa de que la copia sigue en el dispositivo; por la marca, el próximo inicio
+de sesión la borra antes de abrirla, también si es el mismo usuario. `test-utils/sync.tsx`
 da réplicas en memoria, un replicador falso y un contexto mínimo (`syncValue`, `WithSync`).
 `sync/resources.ts` abre réplica, remota y replicador (lo comparten el proveedor y las
 pruebas de integración). Éstas (`sync/*.integration.test.ts`, `npm run test:sync`) usan
@@ -58,7 +60,7 @@ Módulos de `sync/`:
 
 | Módulo | Qué hace |
 |---|---|
-| `localDb.ts` | réplica local PouchDB (IndexedDB); se borra si era de otro usuario |
+| `localDb.ts` | réplica local PouchDB (IndexedDB); se borra si era de otro usuario o si quedó marcada como descartada (`markDiscarded`) |
 | `remote.ts` | base remota `origin + "/sync/db"` con cookies; ante un 401 renueva la sesión una vez y, si sigue, avisa «sesión caducada». Contiene un defecto de PouchDB 9: las promesas derivadas de `info()` que nadie espera no acaban como rechazos sin manejar (`observeInfo`) |
 | `replicator.ts` | replicación continua en ambos sentidos, lotes de 50, espera de 1 s doblando hasta 60 s; una sola pestaña replica (Web Lock `synapse-sync`) y difunde los eventos por `BroadcastChannel` |
 | `status.ts` | estado (`online`, `offline`, `syncing`, `pending`, `session-expired`), «pendientes» (la secuencia local frente a la última que confirmó el servidor) y hora de la última sincronización, en `_local/synapse-sync-state`; `refresh()` relee la secuencia local |
@@ -69,7 +71,7 @@ Módulos de `sync/`:
 | `resources.ts` | abre réplica, remota y replicador; qué queda sin confirmar al pedir la salida (`unconfirmedState`: `none` / `pending` / `unreadable`); push único de «Sincronizar y salir» (`pushOnce`: confirma sólo sin fallos, sin rechazos y con la secuencia local recorrida) |
 | `SyncProvider.tsx`, `useSync.ts` | ciclo de vida por usuario y contexto para la UI |
 | `SyncStatusBar.tsx`, `RejectionsPage.tsx`, `ConflictView.tsx`, `LogoutDialog.tsx` | barra de estado, rechazos, conflictos y aviso al salir con cambios sin confirmar (o con la réplica ilegible) |
-| `LocalCopyNotice.tsx` | aviso en el login si al salir la réplica no se pudo borrar (estado de navegación `localCopyKept`) |
+| `LocalCopyNotice.tsx` | aviso en el login si al salir la réplica no se pudo borrar (estado de navegación `LocalCopyState`, que quita de la entrada del historial al montarse) |
 
 **Bóvedas (SPEC-0003 sobre la réplica, P-1):** las páginas leen y escriben
 `useSync().vaults` (`sync/vaultStore.ts`) en lugar de la API REST, que sigue igual para los

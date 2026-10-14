@@ -8,6 +8,7 @@ aprobaciones:
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §10, VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §11, VD-1…VD-5
   enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §12, VE-1 opción (a), VE-2…VE-5
+  enmienda_4: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §13, VF-4 opción (b), VF-1…VF-3
 actualizado: 2026-10-14
 ---
 
@@ -516,9 +517,9 @@ La resolución se escribe como una edición más y pasa por el push validado. Te
 ### Implementación de RF-016
 `remote.ts` (401 → `refreshSession()`; si falla, sesión caducada), `replicator.ts` (`cancel` sin borrar). Tests: vitest con 401 tras refresh fallido → se detiene y conserva pendientes; tras login del mismo usuario reanuda; integración con cookie invalidada.
 ### Implementación de RF-017
-`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4). Enmienda 2: la decisión pasa a `hasUnconfirmed()` en `resources.ts`, con pruebas propias; sin estado legible, avisa (§11, VD-1…VD-3). Enmienda 3: `unconfirmedState()` distingue la réplica ilegible; si la réplica no se borra tras cerrar la sesión, va al login con `LocalCopyNotice` (§12, VE-1…VE-3).
+`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4). Enmienda 2: la decisión pasa a `hasUnconfirmed()` en `resources.ts`, con pruebas propias; sin estado legible, avisa (§11, VD-1…VD-3). Enmienda 3: `unconfirmedState()` distingue la réplica ilegible; si la réplica no se borra tras cerrar la sesión, va al login con `LocalCopyNotice` (§12, VE-1…VE-3). Enmienda 4: la réplica descartada queda marcada como borrado pendiente y no se reutiliza; guarda de `leaving` en todas las entradas de la salida (§13, VF-1…VF-4).
 ### Implementación de RF-018
-`localDb.ts` (`_local/synapse-owner`). Tests vitest: usuario distinto → réplica destruida antes de replicar; mismo usuario → se conserva.
+`localDb.ts` (`_local/synapse-owner`). Tests vitest: usuario distinto → réplica destruida antes de replicar; mismo usuario → se conserva. Enmienda 4: con la marca de borrado pendiente se destruye también para el mismo usuario (§13, VF-4).
 ### Implementación de RF-019
 `back_off_function` (1 s → 60 s, reinicio tras éxito) y 503 → "sin conexión". Tests: vitest con temporizadores falsos (secuencia 1, 2, 4… 60, 60; reinicio); `test_sync_api.py` con CouchDB inaccesible → 503 problem+json.
 ### Implementación de RNF-001
@@ -708,3 +709,58 @@ sin código.
 requisitos de 0002.
 
 Documentación afectada: `frontend/src/README.md`, spec de 0002 (nota de re-anclaje).
+
+## 13. Enmienda 4 · Menores de la verificación 4 (APROBADA el 2026-10-14)
+La Fase 5 sobre `0c45404` devolvió APPROVED con cuatro menores (VF-1…VF-4, `history.md`). El
+usuario eligió la opción (b) para VF-4: corregirlo de raíz. Bloque P de `tasks.md` (T-117 en
+adelante). RF-017 se precisa (enmienda 4 de la spec); ningún requisito nuevo. Como la
+opción (b) cambia el comportamiento, sigue una ronda corta de verificación 5.
+
+**VF-4 · La copia descartada se reutiliza (opción b).** Con la enmienda 3, si el borrado
+fallaba tras «Salir y descartar» y volvía el mismo usuario, `openLocalDb` reutilizaba la
+réplica (el dueño coincide) y el replicador subía los cambios que el usuario había
+descartado. La decisión de descartar tiene que sobrevivir al fallo del borrado:
+- `localDb.ts` gana una **marca de borrado pendiente** en `localStorage`, por nombre de base
+  (`synapse-discarded:<nombre>`). Va fuera de la réplica a propósito: es IndexedDB la que
+  falla, y una marca dentro de ella fallaría con el borrado.
+  - `markDiscarded(db)` la escribe y devuelve si pudo; nunca lanza (registra el error).
+  - `destroyLocalDb(db)` borra la réplica y, sólo si lo consiguió, quita la marca.
+  - `openLocalDb(sub)` destruye la réplica también si tiene la marca, sea cual sea su dueño,
+    y la quita tras destruirla. Si destruir falla, `openLocalDb` rechaza: el proveedor
+    muestra el error de la réplica y no replica nada.
+- `exit()` llama a `markDiscarded()` en cuanto el servidor cerró la sesión y **antes** de
+  `close()`: si falla `close()` (el replicador no se detiene) el borrado ni se intenta, y la
+  marca cubre también ese caso (y una pestaña cerrada a mitad del borrado).
+- Si la marca no puede leerse, cuenta como ausente: los navegadores bloquean
+  `localStorage` e IndexedDB con la misma política del sitio, así que en ese caso tampoco
+  hay réplica que abrir, y tratarla como presente borraría en cada apertura los cambios sin
+  confirmar del usuario. Si no puede escribirse, la salida sigue igual y el aviso del login
+  no promete el borrado (riesgo residual del doble fallo, documentado en spec §5).
+- `LocalCopyState` gana `discardPending: boolean` (si la marca quedó escrita). El aviso dice
+  «No se pudo borrar la copia local de este dispositivo.» y, con la marca, añade «Se borrará
+  la próxima vez que se inicie sesión en este dispositivo.»
+- **Alternativas descartadas:** (a) aceptar el riesgo y documentarlo: lo descartado podía
+  llegar al servidor, contra la decisión explícita del usuario (C-4); marcar dentro de la
+  réplica (quitar `_local/synapse-owner`): falla junto con el borrado; tratar una marca
+  ilegible como presente: pérdida de datos en cada apertura con el almacenamiento bloqueado.
+
+**VF-2 · Una segunda petición durante la salida.** `requestLogout` y `syncAndExit` no
+miraban `leaving`: un segundo «Cerrar sesión» mientras se borraba la réplica la leía ya
+cerrada y abría un aviso `unreadable` falso. Ambas vuelven sin hacer nada si `leaving` es
+`true`, como `exit()`.
+
+**VF-1 · Pruebas de la guarda y de la fase.** `LogoutDialog.test.tsx`: dos salidas seguidas
+en el mismo render → un solo `logout()` (guarda `leaving`); `logout()` que falla y luego
+funciona → el segundo intento sale (se restablece `leaving`); con `logout()` en curso el
+aviso muestra «Cerrando sesión…» y desactiva sus botones (fase `exiting`); una petición de
+salida durante el borrado no vuelve a leer la réplica (VF-2).
+
+**VF-3 · El aviso del login vuelve con «Atrás».** Con `BrowserRouter` el estado de
+navegación se guarda en `history.state`: tras borrar la copia en un inicio de sesión
+posterior, volver con «Atrás» a esa entrada mostraba otra vez el aviso. `LocalCopyNotice`
+copia el estado a su estado local al montarse y lo quita de la entrada actual con
+`navigate(location, { replace: true, state: null })`; el aviso sigue visible mientras la
+página esté montada.
+
+Documentación afectada: `frontend/src/README.md` (fila de `localDb.ts` y de
+`LocalCopyNotice.tsx`).
