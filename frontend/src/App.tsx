@@ -6,6 +6,7 @@ import AppLayout from "./layout/AppLayout";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
+import LocalCopyNotice from "./sync/LocalCopyNotice";
 import SyncProvider from "./sync/SyncProvider";
 import type { SyncEnv } from "./sync/resources";
 import TrashPage from "./vaults/TrashPage";
@@ -35,7 +36,16 @@ export default function App({ syncEnv }: Props) {
   const navigate = useNavigate();
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage onLoggedIn={() => navigate("/")} />} />
+      {/* Si al cerrar sesión la réplica no se pudo borrar, el login lo avisa (SPEC-0005 RF-017). */}
+      <Route
+        path="/login"
+        element={
+          <>
+            <LocalCopyNotice />
+            <LoginPage onLoggedIn={() => navigate("/")} />
+          </>
+        }
+      />
       <Route
         element={
           <RequireAuth>

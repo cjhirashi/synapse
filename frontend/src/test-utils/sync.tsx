@@ -78,6 +78,7 @@ export function syncValue(overrides: Partial<SyncContextValue> = {}, db = memory
     requestLogout: vi.fn(async () => undefined),
     logout: {
       phase: "closed",
+      reason: "pending",
       failure: null,
       syncAndExit: vi.fn(async () => undefined),
       discardAndExit: vi.fn(async () => undefined),

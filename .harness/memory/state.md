@@ -85,7 +85,7 @@ sprint_actual: 2
 **0005-sync** `implemented`: verificación 2 APPROVED; sus menores VD-1…VD-5 corregidos con la
 enmienda 2 (T-102…T-109, 2026-10-14): `hasUnconfirmed()` en `resources.ts` con pruebas propias
 (VD-1) y aviso si la réplica no puede leerse (VD-3, RF-017 precisado), `pushOnce` con
-`ok:false` (VD-2), `canonical()` probada y siempre JSON (VD-4), 409 de `_local` → 503 fijado y
+`ok:false` (VD-2), `canonical()` probada, JSON para cuerpos JSON (VD-4), 409 de `_local` → 503 fijado y
 `rf_cov` del gate como intersección (VD-5). **Siguiente:** el usuario decide si VD-3 (cambia el
 comportamiento en una ruta de error) pide una ronda corta de verificación o pasa SPEC-0005 a
 `verified`; nada se marca `verified` sin él. Decisiones abiertas: reportar el defecto de

@@ -7,6 +7,7 @@ aprobaciones:
   fase_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # sin nginx: proxy con Caddy externo
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # bloque M, VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque N, VD-1…VD-5
+  enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # bloque O, VE-1 opción (a), VE-2…VE-5
 actualizado: 2026-10-14
 ---
 
@@ -165,6 +166,15 @@ actualizado: 2026-10-14
 - [x] T-108 — `check.sh`: `rf_cov` cuenta sólo los RF que la spec define (VD-5) (cubre la trazabilidad del arnés) [zona: arnés]
 - [x] T-109 — `frontend/src/README.md` y READMEs afectados (cubre RF-017) [doc]
 
+### O · Correcciones de la verificación 3 (enmienda 3, PLAN-0005 §12)
+- [x] T-110 — enmienda 3 de SPEC-0005 (RF-017, §5) y PLAN-0005 §9 y §12; bloque O (cubre RF-017) [doc]
+- [x] T-111 — `resources.test.ts` (rojo): `unconfirmedState` → `none` / `pending` / `unreadable` (VE-2) (cubre RF-017) [zona: test]
+- [x] T-112 — `unconfirmedState` en `resources.ts`; `LogoutState.reason`; `requestLogout` la usa (VE-2) (cubre RF-017) [zona: sync]
+- [x] T-113 — `LogoutDialog.test.tsx` (rojo): réplica ilegible → texto propio sin «Sincronizar y salir»; «Salir y descartar» y salida directa con el borrado en error → login con el aviso (VE-1, VE-3) (cubre RF-017, RF-018) [zona: test]
+- [x] T-114 — `exit()` captura el fallo del borrado y navega con `localCopyKept`; limpieza del efecto registra un `close()` fallido; textos de `LogoutDialog` (VE-1, VE-2) (cubre RF-017) [zona: sync]
+- [x] T-115 — `LocalCopyNotice.test.tsx` (rojo) y `LocalCopyNotice.tsx`; `App.tsx` la monta en `/login` (VE-1) (cubre RF-017) [zona: sync]
+- [x] T-116 — `frontend/src/README.md` (VE-4); docstring de `canonical()` y `state.md` (VE-5); re-anclaje de 0002 (cubre RF-015, RF-017) [doc]
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -182,10 +192,10 @@ actualizado: 2026-10-14
 | RF-012 | T-011, T-040, T-041, T-050, T-051, T-072, T-092, T-093 | test_sync_repository, merge.test, conflicts.test, conflicts.integration | Pass |
 | RF-013 | T-040, T-041, T-050, T-051, T-058, T-059, T-072 | merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-014 | T-040, T-041, T-050, T-051, T-072 | merge.test, conflicts.test, conflicts.integration | Pass |
-| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101, T-106 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
+| RF-015 | T-033…T-035, T-040, T-041, T-050, T-051, T-058, T-059, T-072, T-085, T-092…T-094, T-101, T-106, T-116 | test_sync_rules_mirror, vaultRules.test, merge.test, conflicts.test, ConflictView.test, conflicts.integration | Pass |
 | RF-016 | T-042…T-045, T-073 | remote.test, replicator.test, session.integration | Pass |
-| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109 | SyncProvider.test, LogoutDialog.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
-| RF-018 | T-036, T-037, T-052, T-053, T-095, T-105 | localDb.test, SyncProvider.test, resources.test, rejections.integration | Pass |
+| RF-017 | T-052, T-053, T-060, T-061, T-064, T-065, T-085, T-094…T-098, T-102…T-105, T-109…T-116 | SyncProvider.test, LogoutDialog.test, LocalCopyNotice.test, App/AppLayout tests, resources.test, status.test, rejections.test, conflicts.integration, rejections.integration | Pass |
+| RF-018 | T-036, T-037, T-052, T-053, T-095, T-105, T-113 | localDb.test, SyncProvider.test, resources.test, rejections.integration | Pass |
 | RF-019 | T-012, T-013, T-027, T-044…T-047, T-054, T-055, T-073, T-099, T-107 | test_sync_repository, test_sync_api, replicator.test, status.test, remote.test, session.integration | Pass |
 | RNF-001 | T-075 | sync.perf.integration | Pass |
 | RNF-002 | T-069…T-073, T-094, T-096 | *.integration (sync-integration.sh) | Pass |

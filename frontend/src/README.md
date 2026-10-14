@@ -41,11 +41,13 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 proveedor abre la réplica local (`sync/localDb.ts`, que la borra si era de otro usuario), el
 replicador continuo con `/sync` y los almacenes de estado, rechazos y conflictos, y los
 publica por `useSync()`. `layout/AppLayout.tsx` muestra `SyncStatusBar` y su «Cerrar
-sesión» llama a `requestLogout()` (asíncrona), que decide con `hasUnconfirmed()` de
+sesión» llama a `requestLogout()` (asíncrona), que decide con `unconfirmedState()` de
 `sync/resources.ts`: espera las escrituras de rechazos en curso (`rejections.settled()`),
 relee la secuencia local (`status.refresh()`) y, con cambios sin confirmar o rechazados
-—o si la réplica no puede leerse—, abre `LogoutDialog`; al salir,
-`logout()` y, si el servidor cerró la sesión, se borra la réplica. `test-utils/sync.tsx`
+—o si la réplica no puede leerse, con un texto propio y sin «Sincronizar y salir»—, abre
+`LogoutDialog`; al salir, `logout()` y, si el servidor cerró la sesión, se borra la réplica.
+Si ese borrado falla, va igualmente a `/login` y `sync/LocalCopyNotice.tsx` (montado por
+`App.tsx` junto a `LoginPage`) avisa de que la copia sigue en el dispositivo. `test-utils/sync.tsx`
 da réplicas en memoria, un replicador falso y un contexto mínimo (`syncValue`, `WithSync`).
 `sync/resources.ts` abre réplica, remota y replicador (lo comparten el proveedor y las
 pruebas de integración). Éstas (`sync/*.integration.test.ts`, `npm run test:sync`) usan
@@ -64,9 +66,10 @@ Módulos de `sync/`:
 | `merge.ts`, `conflicts.ts` | conflictos: combinación automática por campos (ADR-003) o lista manual con las dos versiones; `resolve()` aplica la elección. Las revisiones que escribe son deterministas (SHA-256 del JSON canónico —`canonical()`, claves ordenadas— de la revisión madre y el contenido): dos réplicas que resuelven igual escriben las mismas |
 | `vaultRules.ts` | réplica de las reglas del servidor (normalización y validación), para no escribir lo que el push rechazaría |
 | `vaultStore.ts` | CRUD de bóvedas sobre la réplica (con `rev`) |
-| `resources.ts` | abre réplica, remota y replicador; push único de «Sincronizar y salir» (`pushOnce`: confirma sólo sin fallos, sin rechazos y con la secuencia local recorrida) |
+| `resources.ts` | abre réplica, remota y replicador; qué queda sin confirmar al pedir la salida (`unconfirmedState`: `none` / `pending` / `unreadable`); push único de «Sincronizar y salir» (`pushOnce`: confirma sólo sin fallos, sin rechazos y con la secuencia local recorrida) |
 | `SyncProvider.tsx`, `useSync.ts` | ciclo de vida por usuario y contexto para la UI |
-| `SyncStatusBar.tsx`, `RejectionsPage.tsx`, `ConflictView.tsx`, `LogoutDialog.tsx` | barra de estado, rechazos, conflictos y aviso al salir con cambios sin confirmar |
+| `SyncStatusBar.tsx`, `RejectionsPage.tsx`, `ConflictView.tsx`, `LogoutDialog.tsx` | barra de estado, rechazos, conflictos y aviso al salir con cambios sin confirmar (o con la réplica ilegible) |
+| `LocalCopyNotice.tsx` | aviso en el login si al salir la réplica no se pudo borrar (estado de navegación `localCopyKept`) |
 
 **Bóvedas (SPEC-0003 sobre la réplica, P-1):** las páginas leen y escriben
 `useSync().vaults` (`sync/vaultStore.ts`) en lugar de la API REST, que sigue igual para los

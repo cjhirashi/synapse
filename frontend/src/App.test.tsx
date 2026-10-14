@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import App from "./App";
 import * as api from "./api/auth";
+import * as localDb from "./sync/localDb";
 import { memoryEnv } from "./test-utils/sync";
 
 afterEach(() => vi.restoreAllMocks());
@@ -88,4 +89,15 @@ test("RF-017: «Cerrar sesión» sin cambios pendientes cierra la sesión y llev
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Synapse" })).toBeInTheDocument();
   expect(logout).toHaveBeenCalledOnce();
+});
+
+test("RF-017: si la réplica no se borra al salir, el login avisa de la copia conservada (VE-1)", async () => {
+  const { env } = signedIn();
+  vi.spyOn(api, "logout").mockResolvedValue();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
+  const user = renderAt("/vaults", env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByRole("heading", { name: "Synapse" })).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
 });

@@ -83,7 +83,9 @@ function history(doc: VaultRevision): string[] {
 /**
  * JSON canónico: claves ordenadas en todos los niveles y sin las de valor `undefined`, para
  * que el mismo contenido dé el mismo texto en cualquier réplica. Dentro de una lista un
- * `undefined` pasa a `null`, como en `JSON.stringify` (VD-4): el resultado siempre es JSON.
+ * `undefined` pasa a `null`, como en `JSON.stringify` (VD-4). Con valores JSON (los cuerpos
+ * de documento) el resultado es JSON; otros valores (una función, un `undefined` suelto) no
+ * se contemplan porque PouchDB sólo guarda JSON.
  */
 export function canonical(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map((item) => (item === undefined ? "null" : canonical(item))).join(",")}]`;

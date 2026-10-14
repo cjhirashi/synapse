@@ -89,19 +89,24 @@ export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise
 }
 
 /**
- * Si al pedir la salida quedan cambios sin confirmar (RF-017), con el estado actual de la
- * réplica: espera las escrituras de rechazos en curso, relee la secuencia y cuenta los
- * rechazos (un cambio rechazado tampoco está en el servidor). Si la réplica no puede leerse
- * no se puede afirmar que todo esté confirmado: cuenta como pendiente y se avisa (VD-3).
+ * Qué queda sin confirmar al pedir la salida (RF-017), con el estado actual de la réplica:
+ * espera las escrituras de rechazos en curso, relee la secuencia y cuenta los rechazos (un
+ * cambio rechazado tampoco está en el servidor).
+ * - `none`: el servidor confirmó todo; se puede salir sin aviso.
+ * - `pending`: hay cambios locales sin confirmar o rechazados.
+ * - `unreadable`: la réplica no pudo leerse; no se puede afirmar que todo esté confirmado,
+ *   así que también se avisa, diciendo por qué (VD-3, VE-2).
  */
-export async function hasUnconfirmed(resources: SyncResources): Promise<boolean> {
+export type Unconfirmed = "none" | "pending" | "unreadable";
+
+export async function unconfirmedState(resources: SyncResources): Promise<Unconfirmed> {
   try {
     await resources.rejections.settled();
     const { pending } = await resources.status.refresh();
-    return pending || resources.rejections.list().length > 0;
+    return pending || resources.rejections.list().length > 0 ? "pending" : "none";
   } catch (err) {
     console.error(err);
-    return true;
+    return "unreadable";
   }
 }
 

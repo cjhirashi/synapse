@@ -20,15 +20,26 @@ import type { VaultStore } from "./vaultStore";
  */
 export type LogoutPhase = "closed" | "asking" | "syncing" | "exiting";
 
+/**
+ * Por qué se abrió el aviso (RF-017): `pending` (hay cambios sin confirmar) o `unreadable`
+ * (la réplica no pudo leerse y no se sabe si los hay; VE-2).
+ */
+export type LogoutReason = "pending" | "unreadable";
+
 /** Último fallo del cierre: `sync` (el push no confirmó todo) o `logout` (el servidor no cerró la sesión). */
 export type LogoutFailure = "sync" | "logout" | null;
 
 export interface LogoutState {
   phase: LogoutPhase;
+  reason: LogoutReason;
   failure: LogoutFailure;
   /** Push de una vez; sale sólo si el servidor confirmó todo, si no vuelve al aviso. */
   syncAndExit(): Promise<void>;
-  /** Sale descartando los cambios no confirmados. */
+  /**
+   * Sale descartando los cambios no confirmados. Nunca rechaza: si el servidor no cierra la
+   * sesión vuelve al aviso con `failure`; si la cierra pero la réplica no se borra, va al
+   * login con el aviso de la copia conservada (VE-1).
+   */
   discardAndExit(): Promise<void>;
   /** Cierra el aviso sin salir. */
   cancel(): void;

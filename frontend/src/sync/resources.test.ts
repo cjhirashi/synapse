@@ -1,5 +1,5 @@
 // `pushOnce`: la guarda de "Sincronizar y salir" (SPEC-0005 RF-017, RF-018; PLAN-0005 §10 VC-3),
-// y `hasUnconfirmed`: la decisión de avisar al cerrar sesión (RF-017; PLAN-0005 §11 VD-1, VD-3).
+// y `unconfirmedState`: la decisión de avisar al cerrar sesión (RF-017; PLAN-0005 §11 VD-1, VD-3; §12 VE-2).
 //
 // La réplica y los almacenes de estado y rechazos son los reales (en memoria); sólo el push
 // se sustituye por una replicación falsa que emite los eventos de PouchDB que dicte cada
@@ -7,7 +7,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { openRejections } from "./rejections";
-import { hasUnconfirmed, pushOnce, type SyncResources } from "./resources";
+import { pushOnce, unconfirmedState, type SyncResources } from "./resources";
 import { openSyncStatus } from "./status";
 
 PouchDB.plugin(memory);
@@ -116,7 +116,7 @@ describe("pushOnce", () => {
   });
 });
 
-describe("hasUnconfirmed", () => {
+describe("unconfirmedState", () => {
   /** Recursos con la secuencia local (1) ya confirmada por el checkpoint del push. */
   async function confirmed(): Promise<SyncResources> {
     const res = await resources();
@@ -124,12 +124,12 @@ describe("hasUnconfirmed", () => {
     return res;
   }
 
-  it("todo confirmado y sin rechazos → false", async () => {
-    expect(await hasUnconfirmed(await confirmed())).toBe(false);
+  it("todo confirmado y sin rechazos → none", async () => {
+    expect(await unconfirmedState(await confirmed())).toBe("none");
   });
 
-  it("un cambio local sin confirmar → true", async () => {
-    expect(await hasUnconfirmed(await resources())).toBe(true);
+  it("un cambio local sin confirmar → pending", async () => {
+    expect(await unconfirmedState(await resources())).toBe("pending");
   });
 
   it("un rechazo que aún se está guardando cuenta como no confirmado (VD-1)", async () => {
@@ -141,14 +141,14 @@ describe("hasUnconfirmed", () => {
       return put(doc);
     }) as never);
     void res.rejections.handle({ type: "denied", id: ID, rev: "1-x", reason: "vault-name-taken" });
-    expect(await hasUnconfirmed(res)).toBe(true);
+    expect(await unconfirmedState(res)).toBe("pending");
   });
 
-  it("si la réplica no puede leerse, avisa en lugar de fallar (VD-3)", async () => {
+  it("si la réplica no puede leerse lo dice en lugar de fallar (VD-3, VE-2)", async () => {
     const res = await confirmed();
     const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     vi.spyOn(db, "info").mockRejectedValue(new Error("IndexedDB no disponible"));
-    expect(await hasUnconfirmed(res)).toBe(true);
+    expect(await unconfirmedState(res)).toBe("unreadable");
     expect(error).toHaveBeenCalledOnce();
   });
 });

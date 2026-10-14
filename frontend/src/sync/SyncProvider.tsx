@@ -12,9 +12,12 @@
  *
  * Cierre de sesión (RF-017): sin cambios sin confirmar sale directo; con ellos abre el aviso
  * (`LogoutDialog`). Lo decide con el estado actual de la réplica y de los rechazos, no con el
- * del último render: una escritura recién hecha cuenta aunque la pantalla aún no la muestre. "Sincronizar y salir" es un push de una vez junto a la replicación
- * continua y sale sólo si el servidor confirmó todo. Salir es `logout()` y, sólo si el
- * servidor cerró la sesión, detener todo y borrar la réplica.
+ * del último render: una escritura recién hecha cuenta aunque la pantalla aún no la muestre.
+ * Si la réplica no puede leerse también avisa, diciendo por qué (VE-2). "Sincronizar y salir"
+ * es un push de una vez junto a la replicación continua y sale sólo si el servidor confirmó
+ * todo. Salir es `logout()` y, sólo si el servidor cerró la sesión, detener todo y borrar la
+ * réplica; si el borrado falla la sesión ya no existe, así que va igualmente al login con el
+ * aviso de la copia conservada (`LocalCopyNotice`; RF-017, enmienda 3).
  */
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -22,9 +25,10 @@ import { logout as logoutSession } from "../api/auth";
 import type { ManualConflict } from "./conflicts";
 import { destroyLocalDb } from "./localDb";
 import type { Rejection } from "./rejections";
-import { hasUnconfirmed, openSyncResources, pushOnce, type SyncEnv, type SyncResources } from "./resources";
+import type { LocalCopyState } from "./LocalCopyNotice";
+import { openSyncResources, pushOnce, type SyncEnv, type SyncResources, unconfirmedState } from "./resources";
 import type { SyncStatus } from "./status";
-import { SyncContext, type LogoutFailure, type LogoutPhase, type SyncContextValue } from "./useSync";
+import { SyncContext, type LogoutFailure, type LogoutPhase, type LogoutReason, type SyncContextValue } from "./useSync";
 import { ID_PREFIX } from "./vaultStore";
 
 interface Props {
@@ -57,6 +61,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
   const [conflicts, setConflicts] = useState<ManualConflict[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [logoutPhase, setLogoutPhase] = useState<LogoutPhase>("closed");
+  const [logoutReason, setLogoutReason] = useState<LogoutReason>("pending");
   const [logoutFailure, setLogoutFailure] = useState<LogoutFailure>(null);
   const leaving = useRef(false);
 
@@ -90,10 +95,12 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     return () => {
       alive = false;
       unsubscribe.forEach((stop) => stop());
+      // Un `close()` que falla (también el de una salida cuyo borrado falló, VE-1) se
+      // registra: la cola sigue y no queda un rechazo sin manejar.
       void serial(async () => {
         const resources = await opened.catch(() => null);
         await resources?.close();
-      });
+      }).catch((err: unknown) => console.error(err));
     };
   }, [sub, env]);
 
@@ -104,7 +111,10 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     if (resources && !paused) resources.replicator.start();
   }, [resources, paused]);
 
-  /** Cierra la sesión en el servidor y, sólo si lo consiguió, borra la réplica y va al login. */
+  /**
+   * Cierra la sesión en el servidor y, sólo si lo consiguió, borra la réplica y va al login.
+   * Nunca rechaza (lo llaman botones con `void`).
+   */
   const exit = useCallback(async () => {
     // Un segundo clic mientras sale no lanza otra salida.
     if (!resources || leaving.current) return;
@@ -122,11 +132,21 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       setLogoutPhase(fromDialog ? "asking" : "closed");
       return;
     }
-    await serial(async () => {
-      await resources.close();
-      await destroyLocalDb(resources.db);
-    });
-    navigate("/login", { replace: true });
+    // La sesión ya está cerrada: pase lo que pase con la réplica, se va al login. `leaving`
+    // queda en `true` (no hay otra salida que lanzar) y el proveedor se desmonta con la ruta.
+    let state: LocalCopyState | null = null;
+    try {
+      await serial(async () => {
+        await resources.close();
+        await destroyLocalDb(resources.db);
+      });
+    } catch (err) {
+      // IndexedDB con error: la copia sigue en el dispositivo hasta el próximo inicio de
+      // sesión, que la borra si es otro usuario (RF-018) o la reutiliza si es el mismo.
+      console.error(err);
+      state = { localCopyKept: true };
+    }
+    navigate("/login", { replace: true, state });
   }, [resources, logoutPhase, navigate]);
 
   const value = useMemo<SyncContextValue | null>(() => {
@@ -141,12 +161,16 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       resolveConflict: resources.conflicts.resolve,
       async requestLogout() {
         setLogoutFailure(null);
-        // Decide con el estado actual de la réplica (VC-4, VD-1); sin estado legible, avisa (VD-3).
-        if (await hasUnconfirmed(resources)) setLogoutPhase("asking");
-        else await exit();
+        // Decide con el estado actual de la réplica (VC-4, VD-1); sin estado legible, avisa
+        // diciendo por qué (VD-3, VE-2).
+        const unconfirmed = await unconfirmedState(resources);
+        if (unconfirmed === "none") return exit();
+        setLogoutReason(unconfirmed);
+        setLogoutPhase("asking");
       },
       logout: {
         phase: logoutPhase,
+        reason: logoutReason,
         failure: logoutFailure,
         async syncAndExit() {
           setLogoutPhase("syncing");
@@ -162,7 +186,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         },
       },
     };
-  }, [resources, status, rejections, conflicts, dataVersion, paused, logoutPhase, logoutFailure, exit]);
+  }, [resources, status, rejections, conflicts, dataVersion, paused, logoutPhase, logoutReason, logoutFailure, exit]);
 
   if (phase.kind === "error") return <p role="alert">No se pudo abrir la copia local de tus bóvedas.</p>;
   if (!value) return <p>Cargando…</p>;

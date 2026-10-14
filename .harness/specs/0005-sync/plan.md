@@ -7,6 +7,7 @@ aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # con P-1 (a) y P-2
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }   # §10, VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §11, VD-1…VD-5
+  enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }   # §12, VE-1 opción (a), VE-2…VE-5
 actualizado: 2026-10-14
 ---
 
@@ -515,7 +516,7 @@ La resolución se escribe como una edición más y pasa por el push validado. Te
 ### Implementación de RF-016
 `remote.ts` (401 → `refreshSession()`; si falla, sesión caducada), `replicator.ts` (`cancel` sin borrar). Tests: vitest con 401 tras refresh fallido → se detiene y conserva pendientes; tras login del mismo usuario reanuda; integración con cookie invalidada.
 ### Implementación de RF-017
-`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4). Enmienda 2: la decisión pasa a `hasUnconfirmed()` en `resources.ts`, con pruebas propias; sin estado legible, avisa (§11, VD-1…VD-3).
+`LogoutDialog.tsx` + `requestLogout()`; `AppLayout.tsx` lo usa. Tests vitest: sin pendientes sale y destruye; con pendientes, las tres opciones (sin red, dos); "Sincronizar y salir" con un rechazo vuelve al aviso. Enmienda 1: `requestLogout` lee el estado actual; `pushOnce` con pruebas propias (§10, VC-3, VC-4). Enmienda 2: la decisión pasa a `hasUnconfirmed()` en `resources.ts`, con pruebas propias; sin estado legible, avisa (§11, VD-1…VD-3). Enmienda 3: `unconfirmedState()` distingue la réplica ilegible; si la réplica no se borra tras cerrar la sesión, va al login con `LocalCopyNotice` (§12, VE-1…VE-3).
 ### Implementación de RF-018
 `localDb.ts` (`_local/synapse-owner`). Tests vitest: usuario distinto → réplica destruida antes de replicar; mismo usuario → se conserva.
 ### Implementación de RF-019
@@ -652,3 +653,58 @@ cambia.
 
 Documentación afectada: `frontend/src/README.md` (`hasUnconfirmed`, aviso sin estado
 legible), `backend/app/adapters/README.md` si cita el 409 de `_local`.
+
+## 12. Enmienda 3 · Correcciones de la verificación 3 (APROBADA el 2026-10-14)
+La Fase 5 sobre `c55a292` devolvió REJECTED por un mayor (VE-1) y cinco menores
+(`history.md`). El usuario eligió la opción (a) para VE-1 y pidió tratar VE-6 aparte (test
+inestable previo de `VaultListPage`; backlog de `state.md`). Bloque O de `tasks.md` (T-110
+en adelante). RF-017 se precisa (enmienda 3 de la spec); ningún requisito nuevo.
+
+**VE-1 · La réplica no se borra tras cerrar la sesión (opción a).** En `exit()` de
+`SyncProvider`, `close()` + `destroyLocalDb()` no tenían manejo de errores: con IndexedDB en
+error la sesión ya estaba cerrada en el servidor, pero `leaving` y la fase `exiting` se
+quedaban colgados, no se navegaba y `LogoutDialog` dejaba un rechazo sin manejar.
+- `exit()` captura el fallo del borrado, lo registra y navega igualmente a `/login` con el
+  estado de navegación `{ localCopyKept: true }`. `leaving` sigue en `true`: la sesión ya
+  no existe y no hay segunda salida que lanzar; el proveedor se desmonta al cambiar de ruta.
+  `exit()` deja de poder rechazar.
+- `sync/LocalCopyNotice.tsx` lee ese estado y muestra «No se pudo borrar la copia local de
+  este dispositivo» (`role="alert"`). `App.tsx` la monta en la ruta `/login` junto a
+  `LoginPage`: el aviso pertenece a la sincronización y `LoginPage` (0002) no cambia.
+- La copia que queda la resuelve el próximo inicio de sesión: otro usuario → RF-018 la
+  borra antes de replicar; el mismo → la reutiliza (sin código nuevo).
+- La limpieza del efecto de apertura (`void serial(... close())`) captura y registra un
+  fallo de `close()`: sin eso, un `close()` fallido al desmontar dejaba otro rechazo sin
+  manejar.
+- **Alternativas descartadas:** (b) quedarse en el aviso con «reintentar el borrado»: la
+  sesión ya está cerrada en el servidor y el usuario quedaría atrapado en una página
+  privada sin sesión; (c) borrar antes de cerrar la sesión: si luego el servidor no la
+  cierra, se habrían perdido los cambios con la sesión abierta (contradice RF-017).
+
+**VE-2 · El aviso no distingue la réplica ilegible.** `hasUnconfirmed()` pasa a
+`unconfirmedState()` → `"none" | "pending" | "unreadable"`. `LogoutState` expone `reason`
+(`"pending" | "unreadable"`) y `LogoutDialog` usa, con `unreadable`, el título «No se pudo
+comprobar si hay cambios sin sincronizar» y un texto propio, sin «Sincronizar y salir»: el
+push leería la misma réplica que no se pudo leer y acabaría en el mensaje de rechazos, que
+no aplica. **Alternativa descartada:** mantener el booleano y añadir otro estado aparte;
+dos fuentes para una misma decisión.
+
+**VE-3 · Sin pruebas de proveedor/UI de la ruta de error.** `LogoutDialog.test.tsx`: con
+`info()` en error, el aviso sale con el texto de VE-2 y sólo dos opciones; «Salir y
+descartar» con `destroyLocalDb` en error llega al login con el aviso. `SyncProvider.test.tsx`
+(o el mismo archivo): la salida directa con el borrado en error también llega con el aviso.
+`LocalCopyNotice.test.tsx`: con y sin el estado. Cada prueba falla sin su corrección.
+
+**VE-4 · README.** La fila de `resources.ts` en la tabla de `frontend/src/README.md` cita
+`unconfirmedState` y `pushOnce`; se añade `LocalCopyNotice.tsx`.
+
+**VE-5 · «Siempre JSON».** El docstring de `canonical()` y `state.md` decían que el
+resultado siempre es JSON: lo es para los valores JSON y para `undefined` dentro de objetos
+y listas, no para otros valores (una función, un `undefined` suelto). Se precisa el texto;
+sin código.
+
+**Re-anclaje de 0002.** `App.tsx` (de `covers` de 0002) gana una línea (el aviso en
+`/login`). Al cerrar se mueve el ancla de 0002 con una nota, como en §7. Sin cambio de
+requisitos de 0002.
+
+Documentación afectada: `frontend/src/README.md`, spec de 0002 (nota de re-anclaje).

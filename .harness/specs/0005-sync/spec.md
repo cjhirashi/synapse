@@ -25,6 +25,7 @@ aprobaciones:
   fase_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }             # PLAN-0005, P-1 (a) y P-2
   enmienda_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-13 }         # verificación adversarial VC-1…VC-8
   enmienda_2: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 2, menores VD-1…VD-5
+  enmienda_3: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-14 }         # verificación 3, VE-1 opción (a), VE-2…VE-5
 actualizado: 2026-10-14
 ---
 
@@ -180,7 +181,11 @@ actualizado: 2026-10-14
   se decide con el estado de la réplica en el momento de pedir la salida (incluidos un
   cambio recién escrito y un rechazo aún sin registrar), no con el último estado mostrado
   (enmienda 1); si ese estado no puede leerse, cuenta como cambios pendientes y se avisa
-  (enmienda 2).
+  (enmienda 2), diciendo que no se pudo comprobar y sin "Sincronizar y salir", que tampoco
+  podría leer la réplica (enmienda 3). SI el servidor ya cerró la sesión pero la réplica no
+  puede borrarse ENTONCES el cliente DEBE ir igualmente al login y avisar "No se pudo borrar
+  la copia local de este dispositivo"; la copia se borra antes de replicar si entra otro
+  usuario (RF-018) y la reutiliza el mismo usuario (enmienda 3).
 - **RF-018** — SI inicia sesión un usuario distinto del dueño de la réplica local ENTONCES
   el cliente DEBE borrarla antes de replicar.
 
@@ -206,6 +211,10 @@ actualizado: 2026-10-14
 - La réplica local no puede leerse al pedir la salida (IndexedDB con error) (enmienda 2):
   el cliente no puede afirmar que todo esté confirmado, así que avisa con las opciones de
   RF-017; nunca sale sin aviso ni deja la petición sin respuesta.
+- La réplica no puede borrarse tras cerrar la sesión en el servidor (IndexedDB con error)
+  (enmienda 3): la sesión ya no existe, así que el cliente no se queda en "Cerrando sesión…"
+  ni bloquea al usuario; va al login con el aviso de RF-017. Los datos siguen en el
+  dispositivo hasta el próximo inicio de sesión (R-5): RF-018 los borra si es otro usuario.
 
 ## 6. Riesgos identificados
 | ID | Riesgo | Impacto | Mitigación |

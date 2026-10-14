@@ -1,11 +1,13 @@
-// Aviso al cerrar sesión con cambios sin confirmar (SPEC-0005 RF-017; PLAN-0005 §2.5).
+// Aviso al cerrar sesión con cambios sin confirmar (SPEC-0005 RF-017; PLAN-0005 §2.5, §12).
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import * as api from "../api/auth";
 import { memoryDb, memoryEnv } from "../test-utils/sync";
+import LocalCopyNotice from "./LocalCopyNotice";
 import LogoutDialog from "./LogoutDialog";
+import * as localDb from "./localDb";
 import { OWNER_DOC_ID } from "./localDb";
 import type { SyncEnv } from "./resources";
 import SyncProvider from "./SyncProvider";
@@ -47,7 +49,16 @@ function renderApp(env: SyncEnv) {
   render(
     <MemoryRouter>
       <Routes>
-        <Route path="/login" element={<p>pantalla login</p>} />
+        {/* Como en `App.tsx`: el aviso de la copia que no se pudo borrar va en el login (VE-1). */}
+        <Route
+          path="/login"
+          element={
+            <>
+              <LocalCopyNotice />
+              <p>pantalla login</p>
+            </>
+          }
+        />
         <Route
           path="*"
           element={
@@ -61,6 +72,8 @@ function renderApp(env: SyncEnv) {
   );
   return userEvent.setup();
 }
+
+const COPY_KEPT = "No se pudo borrar la copia local de este dispositivo.";
 
 /** La réplica se borró: al reabrir con ese nombre ya no tiene el documento de dueño. */
 async function expectDestroyed(localName: string) {
@@ -86,6 +99,7 @@ test("RF-017: sin cambios pendientes sale directo y borra la réplica", async ()
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
   expect(logout).toHaveBeenCalledOnce();
   expect(fake.replicator.stop).toHaveBeenCalled();
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   await expectDestroyed(localName);
 });
 
@@ -202,5 +216,80 @@ test("si el servidor no cierra la sesión no borra nada y lo avisa", async () =>
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cerrar la sesión. Inténtalo de nuevo.");
   expect(screen.queryByText("pantalla login")).not.toBeInTheDocument();
+  expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+});
+
+/**
+ * Réplica en error (IndexedDB): guarda la que abre el proveedor y, al llamar a la función
+ * devuelta, hace que leerla falle desde ese momento. `info()` es propio de cada instancia de
+ * PouchDB, así que el espía va sobre la réplica abierta, no sobre un prototipo.
+ */
+function replicaThatBreaks() {
+  const open = localDb.openLocalDb;
+  let replica: PouchDB.Database | null = null;
+  vi.spyOn(localDb, "openLocalDb").mockImplementation(async (...args) => (replica = await open(...args)));
+  return () => {
+    if (!replica) throw new Error("el proveedor aún no abrió la réplica");
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    vi.spyOn(replica, "info").mockRejectedValue(new Error("IndexedDB no disponible"));
+  };
+}
+
+test("RF-017: si la réplica no puede leerse, lo dice y no ofrece sincronizar (VE-2)", async () => {
+  const logout = vi.spyOn(api, "logout").mockResolvedValue();
+  const breakReads = replicaThatBreaks();
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  await screen.findByRole("button", { name: "crear" });
+  breakReads();
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  const dialog = await screen.findByRole("dialog", { name: "No se pudo comprobar si hay cambios sin sincronizar" });
+  expect(dialog).toHaveTextContent("No se pudo leer la copia de tus bóvedas en este dispositivo.");
+  expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Salir y descartar", "Cancelar"]);
+  expect(logout).not.toHaveBeenCalled();
+});
+
+test("RF-017: si la réplica no se borra tras cerrar la sesión, va al login y lo avisa (VE-1)", async () => {
+  const logout = vi.spyOn(api, "logout").mockResolvedValue();
+  const destroy = vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
+  const breakReads = replicaThatBreaks();
+  const { env, localName } = memoryEnv();
+  const user = renderApp(env);
+  await screen.findByRole("button", { name: "crear" });
+  breakReads();
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  const dialog = await screen.findByRole("dialog");
+  await user.click(within(dialog).getByRole("button", { name: "Salir y descartar" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
+  expect(logout).toHaveBeenCalledOnce();
+  expect(destroy).toHaveBeenCalledOnce();
+  // La copia sigue en el dispositivo: la borra RF-018 si entra otro usuario.
+  expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
+});
+
+test("RF-017: la salida directa también llega al login con el aviso si el borrado falla (VE-1)", async () => {
+  vi.spyOn(api, "logout").mockResolvedValue();
+  vi.spyOn(console, "error").mockImplementation(() => undefined);
+  vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
+  const { env } = memoryEnv();
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
+  expect(console.error).toHaveBeenCalled();
+});
+
+test("RF-017: si cerrar la réplica falla al salir, llega al login con el aviso y sin rechazos sueltos (VE-1)", async () => {
+  vi.spyOn(api, "logout").mockResolvedValue();
+  const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+  const { env, fake, localName } = memoryEnv();
+  // `close()` falla en la salida y otra vez (la misma promesa) al desmontar el proveedor.
+  vi.mocked(fake.replicator.stop).mockRejectedValue(new Error("IndexedDB no disponible"));
+  const user = renderApp(env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
+  await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(2));
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
 });
