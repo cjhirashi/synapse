@@ -21,6 +21,13 @@ sprint_actual: 2
 - **Patrón:** monolito modular por capas con puertos (ADR-001).
 - **Rama de trabajo:** `feature/sprint-1-auth` (no `dev`).
 - **Bitácora:** cada tarea concluida se registra en `history.md` en el momento, no sólo al cierre.
+- **Binding de agentes de Claude Code realineado (2026-10-15, ADR-004, autorizado por
+  Carlos directo vía AIRA):** `.claude/agents/` tenía 9 agentes RAG-era de un diseño
+  anterior (`backend-rag`, `backend-gateway`, etc., ya descartado); se reemplazó por
+  los 7 agentes vigentes de `.harness/.claude/agents/` (6 base + `experto-ux-ui`).
+  `.claude/settings.json`: `readFiles` corregido (`backend/`/`frontend/`, sin `src/`);
+  se retiró la skill `ui-ux-pro-max` (decisión de Carlos) y se añadieron
+  `security-review` y `verify`.
 - **Sin nginx (2026-10-13, GATE 3 de 0005):** el proxy inverso de producción es un **Caddy
   externo** al repo. Ninguna feature añade configuración de nginx.
 - **FastAPI sirve la SPA (2026-10-13):** decisión del usuario para sustituir el nginx de

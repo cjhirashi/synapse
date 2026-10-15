@@ -1,5 +1,16 @@
 # History — Synapse
 
+## [2026-10-15] Harness — realineación de agentes de Claude Code y skills (ADR-004)
+- **Fase alcanzada:** no es feature de producto — mantenimiento de arnés, registrado por ADR (sin fases SDD).
+- **Origen:** Carlos directo pidió a AIRA "ejecutar claude code setup" (sugerir agentes/skills según el tipo de proyecto) sobre el estado actual de Synapse; AIRA diagnosticó el drift y propuso el cambio; Carlos aprobó con una modificación (quitar `ui-ux-pro-max`).
+- **Diagnóstico:** `.claude/agents/` (binding real de Claude Code) tenía 9 agentes de un diseño anterior con RAG/Qdrant/LlamaIndex, descartado desde el 2026-10-13; el conjunto vigente del método (`orquestador`, `autor-de-spec`, `arquitecto`, `implementador`, `revisor`, `explorador`, `experto-ux-ui`) sólo existía como plantilla en `.harness/.claude/agents/`, nunca copiado — el `orquestador` no tenía a quién delegar. `readFiles` de `.claude/settings.json` apuntaba a `src/backend/`/`src/frontend/` inexistentes.
+- **Cambios:** `.claude/agents/` reemplazado por los 7 agentes vigentes; 9 agentes RAG-era retirados; `experto-ux-ui.md` con nota de proyecto apuntando a `diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md`; `readFiles` corregido a `backend/`/`frontend/`; skill `ui-ux-pro-max` retirada (decisión de Carlos) y añadidas `security-review` y `verify`. Decisión completa en `ADR-004-realineacion-agentes-claude-code-y-skills.md`.
+- **Gate:** no aplica (sin cambios de código de aplicación; no se corrió `check.sh`).
+- **Docs actualizadas:** `.claude/agents/*`, `.claude/settings.json`, `.harness/decisions/ADR-004-…`, `state.md`, `history.md`.
+- **Pendiente (fuera de este cambio, sin tocar):** `.claude/worktrees/` con 2 worktrees de subagentes abandonados y `test.db` suelto en la raíz — Carlos aún no confirma si se pueden limpiar; cambios sin commitear en `status.test.ts`/`VaultListPage.test.tsx`/`.harness/specs/0005-sync/plan.md` (posible verificación 6 de la enmienda 6 en curso) tampoco se tocaron.
+- **Próximo paso:** ninguno de este cambio; el backlog de Synapse sigue igual (SPEC-0006 con preguntas abiertas, merge PR #3, etc.).
+
+
 ## [2026-10-11] 0004-api-problem-details — Fase 1 (Specify) abierta
 - **Fase alcanzada:** verified (Fase 4 completa: T-001…T-088 tras ocho enmiendas; pasada a `verified` por el usuario el 2026-10-12)
 - **Rebotes del verificador:** 7 (verificación adversarial 2026-10-11: APROBABLE CON RESIDUALES, V-1…V-8 → T-038…T-050, enmienda 1; re-verificación: APPROVED con menores W-1…W-4 → T-051…T-056, enmienda 2; W-1 y W-4 de raíz → T-057…T-063, enmienda 3; re-verificación 3: APPROVED con menores X-1…X-4 → T-064…T-069, enmienda 4; re-verificación 4: APPROVED con menores Y-1…Y-3 → T-070…T-074, enmienda 5; re-verificación 5: APPROVED con menores Z-1…Z-4 → T-075…T-078, enmienda 6; re-verificación 6: APPROVED con menores AA-1…AA-4 → T-079…T-083, enmienda 7; re-verificación 7: APPROVED con menores BB-1…BB-3 → T-084…T-088, enmienda 8, cerrada sin nueva ronda)

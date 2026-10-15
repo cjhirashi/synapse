@@ -6,8 +6,8 @@
     ".harness/method.md",
     ".harness/memory/state.md",
     ".harness/specs/",
-    "src/backend/",
-    "src/frontend/"
+    "backend/",
+    "frontend/"
   ],
   "ignorePatterns": [
     "node_modules/",
@@ -38,18 +38,22 @@
       "output_path": ".harness/diagrams/",
       "format": "json"
     },
-    "ui-ux-pro-max": {
+    "security-review": {
       "enabled": true,
       "use_cases": [
-        "Sistema de diseño profesional (79 estilos, 192 paletas)",
-        "Control de temas: light/dark mode con toggle",
-        "Responsive design: mobile-first, breakpoints (320px, 768px, 1024px, 1440px)",
-        "Componentes UI reusables (vault, auth, documents, theme switcher)",
-        "Design tokens automatizados (colores, tipografía, espaciado, sombras)",
-        "Guía de estilo para frontend React"
+        "Diffs que tocan auth, JWT, cookies o permisos (P2/P3)",
+        "Cambios en vault_service.py, auth_service.py o el canal /sync/db",
+        "Nuevos endpoints o adaptadores con acceso a datos de usuario"
       ],
-      "output_path": "src/frontend/design-system/",
-      "format": "json"
+      "when": "antes de entregar al `revisor` en Fase 4, si la tarea toca auth/permisos/datos de otro usuario"
+    },
+    "verify": {
+      "enabled": true,
+      "use_cases": [
+        "Confirmar en runtime una feature antes de marcarla `implemented` en state.md",
+        "Reproducir un flujo completo (login -> CRUD de bóveda -> sync) con la app corriendo, no sólo pytest/vitest"
+      ],
+      "when": "cierre de Fase 4, antes de pedir la verificación adversarial del usuario"
     }
   },
   "context_gates": {
