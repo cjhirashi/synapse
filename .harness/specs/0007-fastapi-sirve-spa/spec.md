@@ -4,7 +4,7 @@ tipo: spec
 feature: 0007-fastapi-sirve-spa
 estado: implemented      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 148da42   # último commit reconciliado (lo mueve el cierre)
+anchor_commit: fd298f9   # último commit reconciliado (lo mueve el cierre)
 anchor_mode: strict      # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # globs de archivos que ESTA feature posee: código, tests y doc
   - backend/app/spa.py

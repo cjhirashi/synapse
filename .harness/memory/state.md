@@ -55,6 +55,7 @@ sprint_actual: 2
 | 0002-auth | `verified` (por el usuario, 2026-10-17: aprobó y mergeó PR #3 a `dev`, merge `b75e99c`; sin verificación adversarial propia de esta pasada) | T-001–T-072 hechas · backend 85 tests · frontend 24 tests · contrato en `specs/0002-auth/contracts/openapi.yaml` · enmienda 1 aprobada · enmienda 2 (R-1…R-6, RF-021…RF-023) aprobada · W-1/W-2 de la re-verificación corregidos (T-069–T-072) · re-verificado sin hallazgos · formato de errores cedido a SPEC-0004 (cuerpos Problem, mismos códigos) · contrato re-exportado con respuestas de error · ancla en f28e063 |
 | 0003-vault-crud | `verified` (por el usuario, 2026-10-13) · verificación adversarial 1 REJECTED (VA-1 mayor + VA-2…VA-10) corregida con la enmienda 1 (plan §15; VA-4: NFKC + `casefold`; VA-10: sin caracteres `Cc`) · verificación 2 APPROVED con menores VB-1…VB-5 (tests y docs; T-071…T-075, sin nueva ronda) · backend 422 tests (cobertura 99 %) + `perf` 1/1 · frontend 87/87 · ancla en 84b8be3 (re-anclada por 0005: P-1 y enmienda 6) | RF-001…RF-028 + RNF-001 (cobertura 28 RF en `Pass`, RF-016 diferido → backlog 7) · contrato en `specs/0003-vault-crud/contracts/openapi.yaml` · 0002 re-anclada a d730de9 · residuales: `frontend/vite.config.ts` sin spec que lo cubra (plan §14); cobertura del frontend medida con `@vitest/coverage-v8` (95,5 % líneas, umbral 80 %) · T-002 de `TAREAS.md` |
 | 0004-api-problem-details | `verified` (por el usuario, 2026-10-12) · T-001…T-088 hechas · verificación adversarial (V-1…V-8) corregida con enmienda 1 · re-verificación APPROVED con menores W-1…W-4 corregidos (enmienda 2; W-1 y W-4 de raíz en enmienda 3: catálogo de mensajes de validación y `ContractGuard` en toda la suite) · re-verificaciones 3 y 4 APPROVED con menores X-1…X-4 (enmienda 4: guardián por ruta atendida, códigos del catálogo) e Y-1…Y-3 (enmienda 5: prohibida la construcción a mano de errores de validación fuera del catálogo y el traductor) · re-verificación 5 APPROVED con menores Z-1…Z-4 (enmienda 6: vías permitidas entre campos y entre fuentes, residual del análisis estático aceptado) · re-verificación 6 APPROVED con menores AA-1…AA-4 (enmienda 7: `ValidationFailed` como base de todo 422, `detail` de dominio de texto fijo) · re-verificación 7 APPROVED con menores (enmienda 8: `detail` raíz fijo; cerrada sin nueva ronda) | errores RFC 9457 en toda la API · RF-001…RF-014 · backend 185 tests · frontend 32 tests · contrato propio (`Problem`/`ProblemError`) en `specs/0004-api-problem-details/contracts/openapi.yaml` · contratos repartidos por feature · 0002 re-anclada · desbloquea la Fase 4 de 0003 |
+| 0007-fastapi-sirve-spa | `implemented` (2026-10-17; **NO** `verified` — falta la aprobación del usuario) · T-001…T-021 hechas · cierre inicial sin revisor dejó pasar 2 regresiones que destapó la suite completa (405 en vez de 404 en `POST` a ruta desconocida → rompía RF-001 de 0002; `HTTPException` en `spa.py` → violaba RF-008 de 0004) · re-anchor 2026-10-17: arquitecto añadió RF-007 (D-7 reclasificación 405→404 en `core/problems.py::_framework_error` excluyendo el catch-all nombrado; D-8 nuevo error de dominio `SpaResourceNotFound`), implementador aplicó T-016…T-021 TDD, **revisor APPROVED** (trazabilidad RF-001…RF-007 fila por fila, colateral de `_framework_error` descartado) · suite backend completa **791 passed, 1 deselected, 0 failed** (13:02) · frontend **382/382** (27 files) · ancla en fd298f9 · menor del revisor (README `about:blank`) corregido sin nueva ronda | FastAPI monta `frontend/dist` (`StaticFiles`), negocia `/vaults` por `Accept`, fallback `index.html` para React Router; nginx del frontend retirado (`frontend/Dockerfile`/`nginx.conf` borrados); `backend/Dockerfile` multi-stage (Node build → copia `dist`), `docker-compose` sin servicio `frontend`, backend sirve todo en 8000 · RF-001…RF-007 en `Pass` · sin contrato nuevo (rutas SPA `include_in_schema=False`) · 0004 re-anclada advisory (tocó `core/problems.py`/`core/errors.py`) |
 | 0005-sync | `verified` (por el usuario, 2026-10-14; implementada el 2026-10-13) · T-001…T-084 hechas (bloques A–L) · verificación 1 REJECTED (VC-1…VC-3 mayores, VC-4…VC-8 menores) corregida con la enmienda 1 (T-085…T-101, bloque M, 2026-10-14) · verificación 2 APPROVED (2026-10-14) con menores VD-1…VD-5 corregidos con la enmienda 2 (T-102…T-109, bloque N; 2026-10-14) · verificación 3 REJECTED (VE-1 mayor, VE-2…VE-6 menores) corregida con la enmienda 3 (T-110…T-116, bloque O; VE-1 opción (a) del usuario; VE-6 aparte) · verificación 4 APPROVED con menores VF-1…VF-4 corregidos con la enmienda 4 (T-117…T-123, bloque P; VF-4 opción (b) del usuario: marca de borrado pendiente) · verificación 5 APPROVED con menores VG-1…VG-5; VG-1…VG-4 cerrados con la enmienda 5 (T-124…T-127, bloque Q, sólo pruebas y texto, sin nueva ronda); VG-5 → backlog 9 · enmienda 6 (backlog 8, T-128…T-132, bloque R; `status.ts` avisa sólo si cambia: pide verificación 6) · ancla en 84b8be3 | RF-001…RF-019 + RNF-001…RNF-003 en `Pass` · canal `/sync/db` (base `synapse_user_{sub}` del token, lista blanca, push validado con las reglas de 0003, motivos de rechazo) · UI de bóvedas sobre la réplica local (P-1) · integración real 16/16 (`npm run test:sync`), p95 ≈ 0,4 s (RNF-001) · contrato en `specs/0005-sync/contracts/` · 0002 y 0003 re-ancladas a 461517f · defecto de PouchDB 9 (`finishBatch` sin `catch`) contenido en la app (`createRemoteDb`, VC-7); reportarlo upstream sigue abierto |
 
 ## Backlog / deuda conocida
@@ -66,7 +67,8 @@ sprint_actual: 2
    nginx) con `nginx.conf` que replica el proxy de Vite; override de desarrollo sobre la
    etapa `build`. **Decidido por el usuario (2026-10-13): FastAPI sirve la SPA** en lugar del
    nginx de `frontend/Dockerfile` (estáticos y la distinción por `Accept` de `/auth`, `/admin`,
-   `/vaults`). Pendiente su spec, como feature propia tras 0005. Residual: `test_contract.py` no corre dentro de la imagen del backend
+   `/vaults`). → **resuelto (2026-10-17): SPEC-0007 `implemented`** (FastAPI sirve la SPA;
+   nginx del frontend retirado). Residual: `test_contract.py` no corre dentro de la imagen del backend
    (necesita `specs/` y `scripts/` del repo).
 3. Migraciones 002, 003 y 004 probadas en SQLite y PostgreSQL 15 real (round-trip; 003 aborta si hay duplicados por mayúsculas).
 4. **Tests del control plane en PostgreSQL real** (cierra la excepción a P5) — feature aparte.
@@ -90,6 +92,12 @@ sprint_actual: 2
    siga con la réplica abierta podría reanudar la replicación tras un nuevo inicio de sesión
    antes de que `openLocalDb` destruya la réplica marcada. Anterior a la enmienda 4, sin
    probar; necesita su propio análisis (relacionado con R-10 de SPEC-0005).
+10. **Dato operativo de la suite backend (2026-10-17):** la suite completa
+    (`cd backend && python3 -m pytest -q`) tarda **~13 min** (791 tests) y **NO se cuelga**
+    — por su duración rebasa cortes de 600 s y "parece" colgada, pero termina en verde.
+    `pytest-timeout` **no está instalado**: para diagnosticar un cuelgue real, usar
+    `timeout <s>` desde el inicio volcando a archivo, y `-o faulthandler_timeout=<s>` para
+    volcar el stack del hilo atascado. Prohibido `pkill`/`killall` con patrón (mata el shell).
 
 ## Hazards conocidos
 
@@ -111,5 +119,15 @@ backlog 9. El backlog 8 (tests inestables) quedó corregido desde la raíz con l
 ronda, commit `ccbc885`, 2026-10-17); SPEC-0005 sigue en `verified`. Decisiones abiertas del
 usuario: el backlog 9, reportar el defecto de PouchDB 9 upstream, las 3 preguntas de
 **0006-integration-real-db** (`draft`) y consolidar `history.md`.
-Después de 0005: la spec de "FastAPI sirve la SPA" (sustituye el nginx que aún describe
-`frontend/README.md`).
+**0007-fastapi-sirve-spa** quedó `implemented` el 2026-10-17 (re-anchor a `fd298f9`; suite
+backend 791 passed / 0 failed, frontend 382/382, gate ✅). **Falta la aprobación del usuario
+para pasarla a `verified`** (la puerta humana es suya, no la cruza ninguna AI). Pendientes
+abiertos tras 0007:
+- 🔴 **Alta del Caddy externo (acción de infraestructura del usuario, fuera del repo):** con
+  FastAPI sirviendo la SPA en el puerto 8000 y sin el contenedor `frontend`, el reverse
+  proxy de producción (Caddy externo, ver corrección "sin nginx") debe apuntar al backend
+  (8000) para los estáticos y la API. SPEC-0007 no lo toca; queda como alta pendiente de
+  Carlos.
+- Decisiones abiertas previas del usuario: backlog 9, reportar el defecto de PouchDB 9
+  upstream, las 3 preguntas de **0006-integration-real-db** (`draft`) y consolidar
+  `history.md` (>600 líneas, warn del gate).
