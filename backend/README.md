@@ -17,13 +17,14 @@ backend/
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
 │   ├── services/     # Lógica de negocio (auth_service.py, vault_service.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB: vault_repository.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, vaults.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, vaults.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
+│   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
 ├── scripts/          # export_openapi.py
 ├── tests/
-├── Dockerfile
+├── Dockerfile        # Multi-stage: compila la SPA (Node) y la copia a la imagen (contexto = raíz)
 └── requirements.txt
 ```
 
@@ -39,12 +40,31 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `JWT_SECRET` | Firma HS256 de los JWT |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
 
+## Sirve la SPA (SPEC-0007)
+
+El backend sirve también el frontend: ya no hay contenedor `frontend`/nginx. `app/spa.py`
+monta el build de `frontend/dist` y replica la tabla de rutas del nginx retirado —todo en el
+**mismo origen** y puerto (8000), así las cookies y la réplica siguen funcionando:
+
+| Ruta | Comportamiento |
+|---|---|
+| `/assets/*` y archivos del build | `StaticFiles`: directo; inexistente → **404 real** |
+| `/vaults`, `/vaults/*` con `Accept: text/html` (`GET`/`HEAD`) | navegación → `index.html` (la SPA) |
+| `/vaults`, `/vaults/*` sin `text/html` (un `fetch`) | handler de API real (SPEC-0003) |
+| ruta sin extensión, sin archivo ni API | `index.html` (React Router: `try_files $uri /index.html`) |
+| subruta desconocida bajo `/auth`,`/admin`,`/sync`,`/vaults`,`/health` | **404 Problem** (SPEC-0004), nunca HTML |
+
+El `Dockerfile` (multi-stage, contexto = raíz del repo) compila la SPA con Node y la copia a
+`/app/static`; `FRONTEND_DIST` apunta ahí. En dev sin build la app arranca como API pura
+(RF-006) y la SPA la sirve Vite en el host.
+
 ## Despliegue: proxy inverso externo
 
 El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). En producción lo
-pone el **Caddy externo**, que sirve la SPA y lleva al backend las rutas de la API en el
-**mismo origen**: las cookies de sesión (`HttpOnly`, `SameSite`) y la réplica PouchDB
-(`origin + "/sync/db"`, `credentials: "include"`) no funcionan entre orígenes distintos.
+pone el **Caddy externo**, que reenvía al backend (8000) —ahora **la SPA la sirve el propio
+backend**, el Caddy ya no la monta—. API y SPA van en el **mismo origen**: las cookies de
+sesión (`HttpOnly`, `SameSite`) y la réplica PouchDB (`origin + "/sync/db"`,
+`credentials: "include"`) no funcionan entre orígenes distintos.
 
 Requisitos del canal de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
 
@@ -65,7 +85,8 @@ synapse.example.com {
 			flush_interval -1
 		}
 	}
-	# … el resto de rutas de la API (`/auth`, `/admin`, `/vaults` para `fetch`) y la SPA.
+	# … todo lo demás (API `/auth`,`/admin`,`/vaults` y la SPA) lo sirve el backend.
+	reverse_proxy backend:8000
 }
 ```
 
@@ -229,7 +250,10 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 
 - `type` identifica el error y es lo que deben comparar los clientes: `urn:synapse:problem:<slug>`
   para los del catálogo, `about:blank` para los genéricos (404, 405, 500…), cuyo `title` es la
-  frase HTTP. `title` y `detail` van en inglés; la UI traduce a partir de `type`.
+  frase HTTP. `title` y `detail` van en inglés; la UI traduce a partir de `type`. Excepción: con
+  la SPA montada (ver "Sirve la SPA (SPEC-0007)"), los 404 que ésta reclasifica —archivo con
+  extensión inexistente, subruta de API desconocida y el 405 reclasificado a método no-GET en
+  ruta desconocida— llevan `type: urn:synapse:problem:spa-resource-not-found`, no `about:blank`.
 - `instance` es la ruta pedida, sin query. `detail` y `errors` pueden faltar, nunca valen `null`.
 - `errors` (sólo en 422) lleva un fallo por entrada con **una** ubicación: `pointer`
   (JSON Pointer al cuerpo; `#` si el JSON es inválido o falta), `parameter` (query/path) o

@@ -1,0 +1,13 @@
+# Contexto de build = raíz del repo (backend/Dockerfile, SPEC-0007). Se excluye todo lo
+# que no entra en la imagen: historia, dependencias instaladas, artefactos y gobernanza.
+.git
+.gitignore
+.harness
+**/node_modules
+**/dist
+**/coverage
+**/__pycache__
+**/.pytest_cache
+**/*.db
+**/.coverage
+.claude

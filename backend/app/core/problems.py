@@ -15,14 +15,20 @@ from pydantic import BaseModel, ConfigDict, Field
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticKnownError
 from starlette.exceptions import HTTPException
+from starlette.routing import Match
 
-from app.core.errors import FIELD_ERROR_MESSAGES, DomainError, ValidationFailed
+from app.core.errors import FIELD_ERROR_MESSAGES, DomainError, SpaResourceNotFound, ValidationFailed
 
 logger = logging.getLogger(__name__)
 
 PROBLEM_MEDIA_TYPE = "application/problem+json"
 GENERIC_TYPE = "about:blank"
 UNEXPECTED_DETAIL = "An unexpected error occurred."
+# Nombre de ruta reservado para el catch-all de la SPA (SPEC-0007 RF-007/D-7). `spa.py`
+# registra su catch-all GET/HEAD con este `name=`; aquí se usa para EXCLUIRLO al decidir si
+# un 405 es legítimo (alguna ruta real coincide) o es el catch-all "robándose" el partial
+# match que Starlette habría resuelto como 404 nativo si el catch-all no existiera.
+CATCH_ALL_ROUTE_NAME = "spa-catch-all"
 # Los 422 de pydantic comparten la entrada `validation-error` del catálogo (RF-005).
 VALIDATION_ERROR = ValidationFailed
 VALIDATION_DETAIL = VALIDATION_ERROR.detail
@@ -151,7 +157,32 @@ def _status_phrase(status: int) -> str:
         return HTTPStatus(400 if 400 <= status < 500 else 500).phrase
 
 
+def _any_real_route_matches(request: Request) -> bool:
+    """¿Alguna ruta real de la app (excluyendo el catch-all de la SPA) coincide con la
+    petición, total o parcialmente? (SPEC-0007 RF-007/D-7).
+
+    Starlette ya decidió el 405 comparando contra **todas** las rutas, catch-all incluido;
+    aquí se repite esa comparación pero excluyendo la ruta reservada `CATCH_ALL_ROUTE_NAME`
+    para saber si el 405 lo ganó una ruta real (legítimo) o únicamente el catch-all GET/HEAD
+    (en cuyo caso Starlette, sin el catch-all, habría respondido 404 nativo).
+    """
+    for route in request.app.router.routes:
+        if getattr(route, "name", None) == CATCH_ALL_ROUTE_NAME:
+            continue
+        match, _ = route.matches(request.scope)
+        if match in (Match.FULL, Match.PARTIAL):
+            return True
+    return False
+
+
 async def _framework_error(request: Request, exc: HTTPException) -> Response:
+    # RF-007/D-7: un 405 causado únicamente por el catch-all GET/HEAD de la SPA (ninguna ruta
+    # real coincide) se reclasifica a 404 Problem del catálogo — reproduce la decisión nativa
+    # de `Router.not_found` que el catch-all, al existir, le robó a Starlette. Un 405 con
+    # alguna ruta real coincidente (p. ej. `/health`) se conserva intacto, con su `Allow`.
+    if exc.status_code == 405 and not _any_real_route_matches(request):
+        return await _domain_error(request, SpaResourceNotFound())
+
     # Todo el cálculo, frase incluida, va dentro de `_safely` (RF-013).
     def build() -> Response:
         phrase = _status_phrase(exc.status_code)

@@ -18,12 +18,19 @@ npm run typecheck  # src/ (tsconfig.json) y vite.config.ts (tsconfig.node.json)
 npm run build      # typecheck + build
 ```
 
-## Contenedor
+## Despliegue
 
-- `Dockerfile` — etapa `build` (Node: compila la SPA) y etapa final (nginx en el puerto 3000).
-- `nginx.conf` — réplica del proxy de `vite.config.ts`: misma tabla de rutas, mismo
-  origen para la SPA y la API. Si cambia una, cambia la otra.
-- `docker-compose.dev.yml` usa la etapa `build` con `npm run dev` y `BACKEND_URL=http://backend:8000`.
+**FastAPI sirve la SPA (SPEC-0007).** Ya no hay contenedor `frontend`/nginx: el build de
+`npm run build` (`frontend/dist`) lo monta el backend con `StaticFiles` y lo entrega junto
+a la API en su puerto 8000. El `Dockerfile` multi-stage que compila esta SPA y la copia a la
+imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
+
+- **Producción:** el reverse proxy externo (Caddy, fuera del repo) apunta al backend (8000),
+  que sirve API + SPA. El enrutado (assets directos, `/vaults` por `Accept`, fallback a
+  `index.html`) lo hace `backend/app/spa.py`.
+- **Desarrollo:** `npm run dev` en el host levanta Vite con el proxy de `vite.config.ts`
+  (`/auth`, `/admin`, `/vaults`, `/sync` → backend). El backend en dev
+  (`docker-compose.dev.yml`) corre como API pura; la SPA la sirve Vite con hot-reload.
 
 ## Autenticación (SPEC-0002, RF-020)
 

@@ -15,6 +15,9 @@ dist/
 .DS_Store
 test.db
 backend/test.db
+# Sidecar de SQLite que pytest deja al vuelo (journal/WAL); nunca se commitean.
+*.db-journal
+*.db-wal
 .coverage
 coverage/
 htmlcov/

@@ -238,6 +238,23 @@ class ProvisioningError(StorageUnavailable):
     detail = "Storage provisioning unavailable"
 
 
+# --- SPA / catch-all HTTP (SPEC-0007) ---
+
+class SpaResourceNotFound(DomainError):
+    """Ninguna ruta de la SPA ni de la API atiende la petición (SPEC-0007 RF-004/005/007).
+
+    Un solo cuerpo para "esta petición no corresponde a ningún recurso que la SPA o la API
+    sirvan": archivo del build inexistente (RF-004), subruta de API desconocida (RF-005) o
+    ruta/método completamente fuera de la app (RF-007, reclasificado desde el 405 nativo de
+    Starlette por `core/problems.py::_framework_error`, ver D-7/D-8).
+    """
+
+    slug = "spa-resource-not-found"
+    title = "Resource not found"
+    status = 404
+    detail = "Resource not found"
+
+
 # --- Fallos internos de puertos (no son entradas del catálogo) ---
 
 class RevisionConflict(Exception):

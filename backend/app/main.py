@@ -9,6 +9,7 @@ from app.routers.admin import router as admin_router
 from app.routers.auth import router as auth_router
 from app.routers.sync import router as sync_router
 from app.routers.vaults import router as vaults_router
+from app.spa import install_spa
 
 
 @asynccontextmanager
@@ -32,3 +33,8 @@ app.include_router(sync_router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# FastAPI sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router.
+# Al final, tras los routers de API, para que las rutas de API ganen al catch-all.
+install_spa(app)
