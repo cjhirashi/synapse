@@ -2,7 +2,7 @@
 id: SPEC-0002
 tipo: spec
 feature: 0002-auth
-estado: implemented
+estado: verified         # verified por el usuario (2026-10-17): aprobó y mergeó PR #3 (merge b75e99c)
 anchor_commit: 0c45404   # re-anclaje por SPEC-0005 (T-116 de TASKS-0005, enmienda 3)
 anchor_mode: advisory
 covers:
