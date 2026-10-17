@@ -1,10 +1,45 @@
+import os
+
+# Entorno de prueba: debe fijarse antes de importar la app (Settings no tiene defaults).
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
+os.environ.setdefault("COUCHDB_URL", "http://localhost:15984")
+os.environ.setdefault("COUCHDB_USER", "admin")
+os.environ.setdefault("COUCHDB_PASSWORD", "testpass")
+os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
+os.environ.setdefault("ADMIN_EMAIL", "cjhirashi@gmail.com")
+os.environ.setdefault("ADMIN_PASSWORD", "admin1234")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.adapters.database import Base, get_db
+from app.adapters.database import Base, SessionLocal, get_db
 from app.main import app
+from tests.contract_guard import ContractGuard
+
+# RF-009 (SPEC-0004): todo cliente de la app real, en cualquier test, pasa por la
+# comprobación «emitido ⊆ declarado». Se instala antes de la primera petición, cuando
+# Starlette aún no ha construido la pila de middlewares.
+app.add_middleware(ContractGuard, schema_provider=app.openapi)
+
+
+# --- Marca `perf` (RNF-001 de SPEC-0003, T-033) ---
+# Los tests con tiempos quedan fuera de la corrida por defecto para no volverla inestable;
+# se ejecutan a propósito con `-m perf` (p. ej. en la verificación).
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "perf: test de rendimiento con tiempos; sólo con `-m perf`")
+
+
+def pytest_collection_modifyitems(config, items):
+    if "perf" in (config.getoption("markexpr") or ""):
+        return  # la expresión de `-m` ya decide qué tests `perf` corren
+    deselected = [item for item in items if item.get_closest_marker("perf")]
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
+        items[:] = [item for item in items if not item.get_closest_marker("perf")]
+
 
 TEST_DATABASE_URL = "sqlite:///./test.db"
 
@@ -18,6 +53,18 @@ def override_get_db():
         yield db
     finally:
         db.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def require_real_couchdb():
+    """P5: sin CouchDB real la suite se detiene en vez de pasar en falso."""
+    import httpx
+    from app.core.config import settings
+
+    try:
+        httpx.get(settings.COUCHDB_URL, timeout=5).raise_for_status()
+    except httpx.HTTPError as exc:
+        pytest.exit(f"CouchDB de pruebas no disponible en {settings.COUCHDB_URL}: {exc}", returncode=2)
 
 
 @pytest.fixture(autouse=True)
@@ -37,17 +84,67 @@ def setup_db():
 @pytest.fixture
 def client():
     app.dependency_overrides[get_db] = override_get_db
+    app.state.session_factory = TestingSessionLocal
     with TestClient(app, raise_server_exceptions=True, base_url="https://testserver") as c:
         yield c
     app.dependency_overrides.clear()
+    app.state.session_factory = SessionLocal
+
+
+SEED_EMAIL = "cjhirashi@gmail.com"
+SEED_PASSWORD = "admin1234"
+
+
+def login(client, email=SEED_EMAIL, password=SEED_PASSWORD):
+    return client.post("/auth/login", json={"email": email, "password": password})
 
 
 @pytest.fixture
 def admin_user(client):
-    client.post("/auth/register", json={"email": "admin@test.com", "password": "secret"})
+    """El admin sembrado en el arranque (ADMIN_EMAIL / ADMIN_PASSWORD)."""
+    return {"email": SEED_EMAIL, "password": SEED_PASSWORD}
 
 
 @pytest.fixture
 def auth_cookies(client, admin_user):
-    client.post("/auth/login", json={"email": "admin@test.com", "password": "secret"})
+    login(client)
     return client.cookies
+
+
+@pytest.fixture
+def ready_admin(client, db):
+    """Admin autenticado con el cambio de contraseña obligatorio ya resuelto."""
+    from app.core.models.user import User
+
+    db.query(User).filter(User.email == SEED_EMAIL).update({"must_change_password": False})
+    db.commit()
+    assert login(client).status_code == 200
+    return client
+
+
+@pytest.fixture
+def db():
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+
+
+@pytest.fixture(autouse=True)
+def clean_test_couchdb():
+    """Borra las bases synapse_user_* del CouchDB de pruebas (sólo si es local)."""
+    yield
+    import httpx
+    from app.core.config import settings
+
+    if not any(h in settings.COUCHDB_URL for h in ("localhost", "127.0.0.1")):
+        return
+    auth = (settings.COUCHDB_USER, settings.COUCHDB_PASSWORD)
+    try:
+        names = httpx.get(f"{settings.COUCHDB_URL}/_all_dbs", auth=auth, timeout=5).json()
+        for name in names:
+            if name.startswith("synapse_user_"):
+                httpx.delete(f"{settings.COUCHDB_URL}/{name}", auth=auth, timeout=5)
+    except httpx.HTTPError:
+        pass

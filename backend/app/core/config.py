@@ -2,11 +2,15 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "postgresql://synapse:synapse@postgres:5432/synapse_control"
-    COUCHDB_URL: str = "http://couchdb:5984"
-    COUCHDB_USER: str = "admin"
-    COUCHDB_PASSWORD: str = "password"
-    JWT_SECRET: str = "changeme"
+    """Toda la configuración viene del entorno; nada tiene valor por defecto (P4)."""
+
+    DATABASE_URL: str
+    COUCHDB_URL: str
+    COUCHDB_USER: str
+    COUCHDB_PASSWORD: str
+    JWT_SECRET: str
+    ADMIN_EMAIL: str
+    ADMIN_PASSWORD: str
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

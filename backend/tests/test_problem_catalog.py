@@ -1,0 +1,218 @@
+"""Catálogo de errores de dominio (SPEC-0004 RF-003, RF-008, RF-014)."""
+import ast
+import re
+from pathlib import Path
+
+import pytest
+from pydantic_core import PydanticKnownError
+
+from app.core import errors
+from app.core.errors import DomainError
+
+APP_DIR = Path(__file__).resolve().parents[1] / "app"
+TYPE_PATTERN = re.compile(r"^urn:synapse:problem:[a-z0-9]+(-[a-z0-9]+)*$")
+
+# Catálogo inicial de SPEC-0004 §3: clase → (slug, código HTTP).
+INITIAL_CATALOG = {
+    "NotAuthenticated": ("not-authenticated", 401),
+    "InvalidToken": ("invalid-token", 401),
+    "InvalidCredentials": ("invalid-credentials", 401),
+    "InvalidRefreshToken": ("invalid-refresh-token", 401),
+    "AdminRequired": ("admin-required", 403),
+    "PasswordChangeRequired": ("password-change-required", 403),
+    "WrongCurrentPassword": ("wrong-current-password", 400),
+    "EmailTaken": ("email-taken", 409),
+    "ValidationFailed": ("validation-error", 422),
+    "PasswordPolicyViolation": ("validation-error", 422),
+    "StorageUnavailable": ("storage-unavailable", 503),
+}
+
+
+def _all_subclasses(cls):
+    for sub in cls.__subclasses__():
+        yield sub
+        yield from _all_subclasses(sub)
+
+
+def _catalog_entries():
+    """Clases que definen su propio `slug` (una entrada del catálogo cada una)."""
+    return [c for c in _all_subclasses(DomainError) if "slug" in vars(c)]
+
+
+def test_every_domain_error_declares_slug_title_status_and_detail():
+    for cls in _all_subclasses(DomainError):
+        for attr, kind in (("slug", str), ("title", str), ("status", int), ("detail", str)):
+            assert isinstance(getattr(cls, attr, None), kind), (cls.__name__, attr)
+        assert 400 <= cls.status <= 599, cls.__name__
+
+
+def test_types_are_well_formed_urns():
+    for cls in _all_subclasses(DomainError):
+        assert TYPE_PATTERN.match(cls.type_uri()), (cls.__name__, cls.type_uri())
+
+
+def test_types_are_unique_across_the_catalog():
+    types = [cls.type_uri() for cls in _catalog_entries()]
+    assert len(types) == len(set(types)), types
+
+
+def test_same_type_always_has_the_same_title_and_status():
+    # Una subclase sin slug propio (p. ej. ProvisioningError) hereda type, title y código.
+    by_type = {}
+    for cls in _all_subclasses(DomainError):
+        by_type.setdefault(cls.type_uri(), set()).add((cls.title, cls.status))
+    for type_uri, variants in by_type.items():
+        assert len(variants) == 1, (type_uri, variants)
+
+
+@pytest.mark.parametrize("name, expected", sorted(INITIAL_CATALOG.items()))
+def test_initial_catalog_entry_exists(name, expected):
+    cls = getattr(errors, name)
+    assert issubclass(cls, DomainError)
+    assert (cls.slug, cls.status) == expected
+
+
+def test_provisioning_error_is_a_storage_unavailable():
+    assert issubclass(errors.ProvisioningError, errors.StorageUnavailable)
+
+
+def test_every_422_is_a_validation_failed():
+    # RF-005: todo 422 lleva `type` `validation-error`. Un 422 de dominio hereda de
+    # `ValidationFailed` sin slug propio; uno con slug propio rompería el contrato con el
+    # cliente, que reconoce el 422 por ese `type` (enmienda 7, AA-1).
+    for cls in _all_subclasses(DomainError):
+        is_validation = issubclass(cls, errors.ValidationFailed)
+        assert (cls.status == 422) == is_validation, cls.__name__
+        if is_validation:
+            assert cls.type_uri() == errors.ValidationFailed.type_uri(), cls.__name__
+            # El `detail` raíz del 422 es fijo; lo variable va en `errors` (enmienda 8, BB-1).
+            assert cls.detail == errors.ValidationFailed.detail, cls.__name__
+
+
+def test_password_policy_violation_is_a_validation_failed():
+    assert issubclass(errors.PasswordPolicyViolation, errors.ValidationFailed)
+    assert "slug" not in vars(errors.PasswordPolicyViolation)
+
+
+def test_internal_message_is_separate_from_public_detail():
+    exc = errors.StorageUnavailable("CouchDB inaccesible: connection refused")
+    assert str(exc) == "CouchDB inaccesible: connection refused"
+    assert exc.public_detail == errors.StorageUnavailable.detail
+    assert errors.InvalidToken(detail="Token expired").public_detail == "Token expired"
+
+
+def test_only_the_problem_translator_imports_http_exception():
+    """RF-008: servicios, dependencias y rutas lanzan errores de dominio, nunca HTTPException."""
+    offenders = []
+    for path in APP_DIR.rglob("*.py"):
+        if path.relative_to(APP_DIR).as_posix() == "core/problems.py":
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = []
+            if isinstance(node, ast.ImportFrom):
+                names = [alias.name for alias in node.names]
+            elif isinstance(node, ast.Attribute):
+                names = [node.attr]
+            if "HTTPException" in names:
+                offenders.append(path.relative_to(APP_DIR).as_posix())
+    assert not offenders, sorted(set(offenders))
+
+
+# --- Mensajes de validación propios (RF-011, enmienda 3) ---
+
+# Módulos de `app/` que pueden construir errores de validación: el catálogo los construye y
+# el traductor los renderiza. Fuera de ellos, un error construido a mano con un `type`
+# conocido haría que el traductor rellenara su plantilla con un `ctx` del validador, que
+# puede llevar valores del cliente. La regla mira la construcción (llamadas y subclases,
+# con alias de import resueltos), no el nombre: capturar el error (`except`) es legítimo
+# (enmienda 5). `pydantic_core` entero queda reservado a los dueños. Residual aceptado
+# (enmiendas 6 y 7): una referencia a la clase que no sea una llamada o una base escrita por
+# nombre, alias o atributo (variable, parámetro, `partial`, `getattr`, `type()`) se escapa.
+PYDANTIC_ERROR_OWNERS = {"core/errors.py", "core/problems.py"}
+PYDANTIC_ERROR_MODULE = "pydantic_core"
+VALIDATION_ERROR_BUILDERS = {
+    "ValidationError", "RequestValidationError", "InitErrorDetails",
+    "PydanticCustomError", "PydanticKnownError", "from_exception_data",
+}
+
+
+def _called_name(node: ast.expr, aliases: dict[str, str]) -> str | None:
+    """Nombre original de lo que se llama o hereda: `VE` → `ValidationError`, `m.X` → `X`."""
+    if isinstance(node, ast.Name):
+        return aliases.get(node.id, node.id)
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return None
+
+
+def _validation_error_constructions(source: str) -> list[str]:
+    """Usos en `source` de `pydantic_core` y construcciones de errores de validación."""
+    tree = ast.parse(source)
+    aliases = {
+        alias.asname: alias.name
+        for node in ast.walk(tree) if isinstance(node, ast.ImportFrom)
+        for alias in node.names if alias.asname
+    }
+    found = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            found += [a.name for a in node.names if a.name.split(".")[0] == PYDANTIC_ERROR_MODULE]
+        elif isinstance(node, ast.ImportFrom):
+            if (node.module or "").split(".")[0] == PYDANTIC_ERROR_MODULE:
+                found.append(node.module)
+        elif isinstance(node, ast.Call):
+            name = _called_name(node.func, aliases)
+            if name in VALIDATION_ERROR_BUILDERS:
+                found.append(name)
+        elif isinstance(node, ast.ClassDef):
+            bases = (_called_name(base, aliases) for base in node.bases)
+            found += [name for name in bases if name in VALIDATION_ERROR_BUILDERS]
+    return found
+
+
+@pytest.mark.parametrize("source", [
+    "from pydantic_core import PydanticCustomError",
+    "import pydantic_core as pc",
+    "from pydantic_core.core_schema import ValidatorFunctionWrapHandler",
+    "from pydantic_core import InitErrorDetails",
+    "import pydantic\nraise pydantic.ValidationError.from_exception_data('m', [])",
+    "from pydantic import ValidationError as VE\nraise VE.from_exception_data('m', [])",
+    "from fastapi.exceptions import RequestValidationError\nraise RequestValidationError([])",
+    "from fastapi.exceptions import RequestValidationError as RVE\nraise RVE([])",
+    "from fastapi import exceptions\nraise exceptions.RequestValidationError([])",
+    "from fastapi.exceptions import RequestValidationError\nclass Mine(RequestValidationError): ...",
+])
+def test_scan_catches_hand_built_validation_errors(source):
+    assert _validation_error_constructions(source), source
+
+
+@pytest.mark.parametrize("source", [
+    "raise ValueError('bad')",  # sale con el texto genérico
+    "from pydantic import ValidationError\ntry:\n    pass\nexcept ValidationError:\n    pass",
+    "from fastapi.exceptions import RequestValidationError\nhandlers = {RequestValidationError: None}",
+])
+def test_scan_allows_plain_validators_and_catching(source):
+    assert _validation_error_constructions(source) == []
+
+
+def test_only_the_catalog_and_translator_build_validation_errors():
+    offenders = {
+        relative: found
+        for path in APP_DIR.rglob("*.py")
+        if (relative := path.relative_to(APP_DIR).as_posix()) not in PYDANTIC_ERROR_OWNERS
+        and (found := _validation_error_constructions(path.read_text()))
+    }
+    assert not offenders, offenders
+
+
+def test_field_error_catalog_is_well_formed():
+    assert errors.FIELD_ERROR_MESSAGES, "catálogo vacío"
+    for code, message in errors.FIELD_ERROR_MESSAGES.items():
+        assert re.fullmatch(r"[a-z][a-z0-9_]*", code), code
+        assert message and "{" not in message, (code, message)  # plantilla sin `ctx`
+        # El traductor resuelve antes los tipos conocidos: con ese nombre, la entrada del
+        # catálogo nunca se publicaría (enmienda 4, X-3).
+        with pytest.raises(KeyError):
+            PydanticKnownError(code)
+        raised = errors.field_error(code)
+        assert (raised.type, raised.message()) == (code, message)

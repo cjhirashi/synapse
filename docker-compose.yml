@@ -13,7 +13,6 @@ services:
     depends_on:
       - postgres
       - couchdb
-      - qdrant
     networks:
       - synapse_internal
       - infraestructura_default
@@ -22,6 +21,8 @@ services:
     build: ./frontend
     container_name: synapse-frontend
     restart: unless-stopped
+    depends_on:
+      - backend
     ports:
       - "3000:3000"
     networks:
@@ -40,17 +41,6 @@ services:
     networks:
       - synapse_internal
 
-  qdrant:
-    image: qdrant/qdrant
-    container_name: synapse-qdrant
-    restart: unless-stopped
-    environment:
-      - QDRANT__SERVICE__API_KEY=${QDRANT_API_KEY}
-    volumes:
-      - /mnt/disco1/synapse-data/qdrant:/qdrant/storage
-    networks:
-      - synapse_internal
-
   postgres:
     image: postgres:15
     container_name: synapse-postgres
@@ -61,18 +51,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - /mnt/disco1/synapse-data/postgres:/var/lib/postgresql/data
-    networks:
-      - synapse_internal
-
-  gotenberg:
-    image: gotenberg/gotenberg:8
-    container_name: synapse-gotenberg
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
-    command:
-      - "gotenberg"
-      - "--api-port=3001"
     networks:
       - synapse_internal
 

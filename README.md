@@ -1,9 +1,9 @@
 # Synapse
 
-Plataforma personal self-hosted para gestión del conocimiento con agentes de IA.
-Reemplaza Claude Desktop + Obsidian.
+Almacén personal self-hosted de bóvedas de conocimiento. Sin IA interna: los agentes
+externos (OpenClaw) acceden vía API.
 
-**Stack:** FastAPI · CouchDB/PouchDB · Qdrant · LangGraph · LiteLLM · React  
+**Stack:** FastAPI · PostgreSQL (control plane) · CouchDB/PouchDB · React  
 **Despliegue:** Docker Compose en servidor local Ubuntu (self-hosted)
 
 ## Estructura

@@ -1,0 +1,672 @@
+components:
+  schemas:
+    Problem:
+      additionalProperties: false
+      description: 'RFC 9457 Problem Details: body of every API error response.'
+      properties:
+        detail:
+          title: Detail
+          type: string
+        errors:
+          items:
+            $ref: '#/components/schemas/ProblemError'
+          title: Errors
+          type: array
+        instance:
+          title: Instance
+          type: string
+        status:
+          title: Status
+          type: integer
+        title:
+          title: Title
+          type: string
+        type:
+          title: Type
+          type: string
+      required:
+      - type
+      - title
+      - status
+      - instance
+      title: Problem
+      type: object
+    ProblemError:
+      additionalProperties: false
+      description: 'A single validation failure. Carries exactly one location: pointer,
+        parameter or header.'
+      properties:
+        detail:
+          title: Detail
+          type: string
+        header:
+          title: Header
+          type: string
+        parameter:
+          title: Parameter
+          type: string
+        pointer:
+          title: Pointer
+          type: string
+      required:
+      - detail
+      title: ProblemError
+      type: object
+    VaultCreate:
+      additionalProperties: false
+      description: Cuerpo de `POST /vaults`; cualquier otro campo → 422 (RF-023).
+      properties:
+        description:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          title: Description
+        name:
+          maxLength: 100
+          minLength: 1
+          title: Name
+          type: string
+        tags:
+          items:
+            maxLength: 32
+            minLength: 1
+            type: string
+          maxItems: 20
+          title: Tags
+          type: array
+      required:
+      - name
+      title: VaultCreate
+      type: object
+    VaultListItem:
+      properties:
+        created_at:
+          title: Created At
+          type: string
+        deleted_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Deleted At
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        etag:
+          title: Etag
+          type: string
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+        owner_id:
+          title: Owner Id
+          type: string
+        tags:
+          items:
+            type: string
+          title: Tags
+          type: array
+        updated_at:
+          title: Updated At
+          type: string
+      required:
+      - id
+      - name
+      - description
+      - tags
+      - owner_id
+      - created_at
+      - updated_at
+      - deleted_at
+      - etag
+      title: VaultListItem
+      type: object
+    VaultOut:
+      properties:
+        created_at:
+          title: Created At
+          type: string
+        deleted_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Deleted At
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+        owner_id:
+          title: Owner Id
+          type: string
+        tags:
+          items:
+            type: string
+          title: Tags
+          type: array
+        updated_at:
+          title: Updated At
+          type: string
+      required:
+      - id
+      - name
+      - description
+      - tags
+      - owner_id
+      - created_at
+      - updated_at
+      - deleted_at
+      title: VaultOut
+      type: object
+    VaultPage:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/VaultListItem'
+          title: Items
+          type: array
+        next_cursor:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Next Cursor
+      required:
+      - items
+      - next_cursor
+      title: VaultPage
+      type: object
+    VaultUpdate:
+      additionalProperties: false
+      description: 'Cuerpo de `PATCH /vaults/{id}`: se aplican sólo los campos enviados
+        (RF-009).
+
+
+        `name` y `tags` no admiten `null`: su tipo no es anulable y el valor por defecto
+        `None`
+
+        no se valida (pydantic no valida defaults), así que "ausente" se distingue
+        de un
+
+        `null` explícito, que da 422. `description: null` sí vale: borra la descripción.
+
+        Se lee con `model_dump(exclude_unset=True)`.'
+      properties:
+        description:
+          anyOf:
+          - maxLength: 2000
+            type: string
+          - type: 'null'
+          title: Description
+        name:
+          maxLength: 100
+          minLength: 1
+          title: Name
+          type: string
+        tags:
+          items:
+            maxLength: 32
+            minLength: 1
+            type: string
+          maxItems: 20
+          title: Tags
+          type: array
+      title: VaultUpdate
+      type: object
+info:
+  title: Synapse
+  version: 0.1.0
+openapi: 3.1.0
+paths:
+  /vaults:
+    get:
+      operationId: list_vaults_vaults_get
+      parameters:
+      - in: query
+        name: limit
+        required: false
+        schema:
+          default: 50
+          maximum: 200
+          minimum: 1
+          title: Limit
+          type: integer
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Cursor
+      - in: query
+        name: deleted
+        required: false
+        schema:
+          default: false
+          title: Deleted
+          type: boolean
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultPage'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: List Vaults
+      tags:
+      - vaults
+    post:
+      operationId: create_vault_vaults_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultCreate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la bóveda; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault name already in use
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Create Vault
+      tags:
+      - vaults
+  /vaults/{vault_id}:
+    delete:
+      operationId: delete_vault_vaults__vault_id__delete
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Delete Vault
+      tags:
+      - vaults
+    get:
+      operationId: get_vault_vaults__vault_id__get
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la bóveda; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Get Vault
+      tags:
+      - vaults
+    patch:
+      operationId: update_vault_vaults__vault_id__patch
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VaultUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la bóveda; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault name already in use
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Update Vault
+      tags:
+      - vaults
+  /vaults/{vault_id}/restore:
+    post:
+      operationId: restore_vault_vaults__vault_id__restore_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VaultOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la bóveda; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault name already in use
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Restore Vault
+      tags:
+      - vaults
