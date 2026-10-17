@@ -789,7 +789,7 @@ así que por la regla de salida no hay otra ronda.
 - **VG-5** (varias pestañas del mismo usuario con el borrado fallido) queda en el backlog de
   `state.md`, fuera de esta enmienda: es anterior a la enmienda 4 y necesita su propio análisis.
 
-## 15. Enmienda 6 · Tests inestables del frontend (backlog 8; pendiente de verificación)
+## 15. Enmienda 6 · Tests inestables del frontend (backlog 8; verificación 6 APPROVED)
 
 El usuario pidió corregir desde la raíz el backlog 8: cuatro pruebas que fallaban o avisaban
 de vez en cuando, sobre todo con la máquina cargada (con dos suites a la vez fallaban 2 de 12
@@ -805,12 +805,20 @@ corridas incluso tras un primer arreglo). Causas y correcciones:
   `start()` va en un efecto posterior al commit que pinta lo que la prueba espera, así que
   afirmarlo justo al verlo era una carrera; se espera con `waitFor`.
 - **Aviso `act(...)` de VC-4 (`LogoutDialog.test.tsx`):** la escritura que precede a la salida
-  produce, después de abrirse el aviso, dos renders de `SyncProvider`: el de `dataVersion`
-  (visible: la prueba muestra la versión y la espera) y un aviso repetido del almacén de
-  estado, cuyo feed relee la misma secuencia que ya leyó `refresh()`. Este segundo no cambia
-  nada en pantalla, así que ninguna prueba puede esperarlo, y en la app vuelve a pintar todo
-  el árbol en cada escritura. **Cambio de código:** `status.ts` sólo avisa a los suscriptores
-  cuando el estado (`state`, `pending`, `lastSyncAt`) cambia.
+  produce, después de abrirse el aviso, el render de `dataVersion`, que la prueba no esperaba
+  antes de leer la réplica fuera de React. La prueba muestra ahora la versión y la espera:
+  ésa es la corrección demostrada del aviso (verificación 6, VH-2: sin esa espera reaparece
+  aunque esté el cambio de `status.ts`; sin el cambio de `status.ts` no reapareció).
+- **Avisos repetidos del almacén de estado (`status.ts`):** el feed de cambios relee la
+  secuencia tras cada escritura y avisaba aunque nada cambiara (p. ej. tras un `refresh()` que
+  ya la leyó), lo que volvía a pintar todo el árbol sin cambio visible; se observó en VC-4
+  junto al render de `dataVersion`. **Cambio de código:** `status.ts` sólo avisa a los
+  suscriptores cuando el estado (`state`, `pending`, `lastSyncAt`) cambia. Es una mejora
+  (menos renders), no la causa demostrada del aviso `act`.
+- **Verificación 6 (2026-10-14): APPROVED** con menores VH-1 (la prueba de VE-6 no comprobaba
+  que la relectura fuese silenciosa: ahora comprueba la lista entera y sin «Cargando…» tras
+  el cambio de versión) y VH-2 (este párrafo; prueba unitaria propia para un cambio sólo de
+  `pending`), corregidos sin nueva ronda (sólo pruebas y texto).
 
 El cambio de `status.ts` cambia la lógica del almacén (menos avisos, mismos estados), así que
 por la regla de salida (b) pide una ronda de verificación; el resto son pruebas. Validado con

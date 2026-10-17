@@ -98,6 +98,9 @@ test("RF-009: un cambio en la réplica (`dataVersion`) recarga la lista sin perd
   // Llega una bóveda nueva (de la UI, del pull o de otra pestaña).
   await seed.create({ name: "Recién llegada", description: null, tags: [] });
   rerender({ ...value, dataVersion: 1 });
+  // La relectura es silenciosa: mientras dura, la lista sigue entera y sin «Cargando…» (VH-1).
+  expect(screen.queryByText("Cargando…")).not.toBeInTheDocument();
+  expect(screen.getAllByRole("listitem")).toHaveLength(51);
   // Se espera la relectura misma y no su efecto en el DOM: sondear con `findBy*` un DOM de
   // 51 bóvedas (nombre accesible, estilos y el mensaje de error de cada intento fallido)
   // ocupa el hilo que necesita esa lectura y, con la máquina cargada, la hacía llegar tarde
