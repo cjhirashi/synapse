@@ -1,7 +1,7 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, test } from "vitest";
 import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
@@ -10,10 +10,16 @@ import VaultWorkspacePage from "./VaultWorkspacePage";
 
 afterEach(() => localStorage.clear());
 
-function tree(value: SyncContextValue, path: string) {
+/** Estado de navegación actual, para comprobar que el espacio de trabajo lo consume. */
+function NavState() {
+  return <p data-testid="nav-state">{JSON.stringify(useLocation().state)}</p>;
+}
+
+function tree(value: SyncContextValue, path: string, state?: unknown) {
   return (
     <WithSync value={value}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={[{ pathname: path, state }]}>
+        <NavState />
         <Routes>
           <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
           <Route path="/vaults" element={<div>lista de bóvedas</div>} />
@@ -125,4 +131,23 @@ test("RF-010: borrar la nota abierta cierra el editor; la papelera de la bóveda
   expect(screen.getByText("Hola.md")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Volver a las notas" }));
   expect(screen.queryByRole("heading", { level: 2, name: "Papelera de la bóveda" })).toBeNull();
+});
+
+// «Corregir» de una nota rechazada (RejectionsPage) abre la bóveda con la nota en el estado de navegación.
+test("RF-004, RF-013: abre la nota indicada en el estado de navegación, en lectura, y consume el estado", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Rechazada");
+  render(tree(value, `/vaults/${vault.id}`, { noteId: note.id }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Rechazada" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Editar" })).toBeInTheDocument();
+  // El estado vive en el historial del navegador y sobreviviría a recargar: se limpia al usarlo (RF-015).
+  await waitFor(() => expect(screen.getByTestId("nav-state")).toHaveTextContent("null"));
+});
+
+test("RF-015: un id de nota de otra bóveda en el estado de navegación se ignora", async () => {
+  const { value, vault } = await setup();
+  const foreign = "note:33333333-3333-4333-8333-333333333333:44444444-4444-4444-8444-444444444444";
+  render(tree(value, `/vaults/${vault.id}`, { noteId: foreign }));
+  expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });

@@ -11,9 +11,10 @@
  *   descarga (P-3).
  */
 import { lazy, Suspense, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
+import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar from "./NoteSidebar";
 import NoteTrash from "./NoteTrash";
 import "./notes.css";
@@ -59,9 +60,27 @@ export default function VaultWorkspacePage() {
   return <Workspace key={load.vault.id} vault={load.vault} />;
 }
 
+/**
+ * Nota que pide el estado de navegación (el "Corregir" de un rechazo, SPEC-0008 RF-004),
+ * sólo si es de esta bóveda: el id de nota lleva el de su bóveda.
+ */
+function requestedNote(state: unknown, vaultId: string): string | null {
+  const noteId = (state as { noteId?: unknown } | null)?.noteId;
+  return typeof noteId === "string" && noteId.startsWith(`${NOTE_ID_PREFIX}${vaultId}:`) ? noteId : null;
+}
+
 function Workspace({ vault }: { vault: Vault }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
+
+  // El estado de navegación vive en el historial del navegador y sobreviviría a recargar:
+  // una vez usado se limpia, para que entrar de nuevo a la bóveda siga abriendo vacía (RF-015).
+  useEffect(() => {
+    if (location.state !== null) navigate(location.pathname, { replace: true, state: null });
+    // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
+  }, []);
   /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);

@@ -4,10 +4,18 @@
  * El cambio rechazado sigue en la réplica local: la vista lo explica con el motivo en español
  * y "Corregir" abre la bóveda (su formulario, o la papelera si está borrada). Al guardarla
  * corregida, el push sube la revisión nueva y el rechazo desaparece de la lista.
+ *
+ * También las notas (SPEC-0008 RF-004, RF-013, RF-014): su motivo sale de `notes/messages.ts`
+ * y "Corregir" abre la bóveda de la nota (`/vaults/{vault_id}`) con el id de la nota en el
+ * estado de navegación (no persistido: RF-015), para que el espacio de trabajo la abra. Los
+ * rechazos de notas de una bóveda en la papelera no se muestran: viven y reaparecen con ella.
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { noteReasonText } from "../notes/messages";
+import { NOTE_ID_PREFIX } from "../notes/noteRules";
 import { FIELD_MESSAGES, NAME_TAKEN } from "../vaults/fields";
+import type { Rejection } from "./rejections";
 import { useSync } from "./useSync";
 import { ID_PREFIX, type Vault } from "./vaultStore";
 
@@ -38,10 +46,17 @@ export function reasonText(code: string): string {
   return `El servidor rechazó el cambio (${code}).`;
 }
 
+/** Id de la bóveda de un id de nota (`note:{vault_id}:{uuid}`), o `null` si no es de nota. */
+function noteVaultId(id: string): string | null {
+  return id.startsWith(NOTE_ID_PREFIX) ? id.slice(NOTE_ID_PREFIX.length).split(":", 1)[0] : null;
+}
+
 export default function RejectionsPage() {
-  const { vaults, rejections, dataVersion } = useSync();
+  const { vaults, notes, rejections, dataVersion, notesVersion } = useSync();
   // Bóvedas de la réplica por id completo (activas y en la papelera), o `null` mientras carga.
   const [byId, setById] = useState<Map<string, Vault> | null>(null);
+  // Ruta de cada nota rechazada (`null` si ya no está activa en la réplica).
+  const [notePaths, setNotePaths] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     let alive = true;
@@ -53,18 +68,59 @@ export default function RejectionsPage() {
     };
   }, [vaults, dataVersion]);
 
+  useEffect(() => {
+    let alive = true;
+    const ids = rejections.map((rejection) => rejection.id).filter((id) => noteVaultId(id) !== null);
+    void Promise.all(ids.map((id) => notes.get(id).then((note) => [id, note.path] as const, () => [id, null] as const))).then(
+      (entries) => {
+        if (alive) setNotePaths(new Map(entries));
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [notes, rejections, notesVersion]);
+
+  /** Fila de una nota rechazada (las de bóvedas en la papelera ya se quitaron en `visible`). */
+  function noteItem(rejection: Rejection, vaultId: string) {
+    const vault = byId?.get(ID_PREFIX + vaultId);
+    const path = notePaths.get(rejection.id);
+    return (
+      <li key={rejection.id}>
+        {path ? `«${path}»` : rejection.id}
+        {vault ? ` (${vault.name})` : ""}: {noteReasonText(rejection.reason)}
+        {vault && (
+          <>
+            {" "}
+            <Link to={`/vaults/${vault.id}`} state={{ noteId: rejection.id }}>
+              Corregir
+            </Link>
+          </>
+        )}
+      </li>
+    );
+  }
+
+  // Sin las notas de bóvedas en la papelera (RF-014): lo que queda por mostrar.
+  const visible = byId === null ? rejections : rejections.filter((rejection) => {
+    const vaultId = noteVaultId(rejection.id);
+    return vaultId === null || !byId.get(ID_PREFIX + vaultId)?.deleted_at;
+  });
+
   return (
     <section>
       <h1>Cambios rechazados</h1>
       {byId === null ? (
         <p>Cargando…</p>
-      ) : rejections.length === 0 ? (
+      ) : visible.length === 0 ? (
         <p>No hay cambios rechazados.</p>
       ) : (
         <>
           <p>El servidor no aceptó estos cambios. Siguen guardados en este dispositivo: corrígelos para que se sincronicen.</p>
           <ul>
-            {rejections.map((rejection) => {
+            {visible.map((rejection) => {
+              const vaultId = noteVaultId(rejection.id);
+              if (vaultId !== null) return noteItem(rejection, vaultId);
               const vault = byId.get(rejection.id);
               return (
                 <li key={rejection.id}>
