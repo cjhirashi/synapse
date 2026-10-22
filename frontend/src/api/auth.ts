@@ -5,6 +5,7 @@ export { ApiError } from "./problems";
 
 export interface Me {
   user_id: string;
+  email: string;
   role: "admin" | "guest";
   must_change_password: boolean;
 }

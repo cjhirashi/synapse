@@ -11,7 +11,7 @@ afterEach(() => vi.restoreAllMocks());
 
 /** Sesión válida; la réplica local es una base en memoria nueva en cada prueba. */
 function signedIn(mustChangePassword = false) {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "guest", must_change_password: mustChangePassword });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: mustChangePassword });
   return memoryEnv();
 }
 
@@ -24,16 +24,22 @@ function renderAt(path: string, env = memoryEnv().env) {
   return userEvent.setup();
 }
 
+/** «Cambiar contraseña»/«Cerrar sesión» viven dentro del menú de cuenta: hay que abrirlo. */
+async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByRole("button", { name: /^Menú de cuenta/ }));
+}
+
 test("RF-023: las rutas privadas muestran la navegación de cuenta", async () => {
   const { env } = signedIn();
-  renderAt("/", env);
-  expect(await screen.findByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
+  const user = renderAt("/", env);
+  await openAccountMenu(user);
+  expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Cambiar contraseña" })).toBeInTheDocument();
 });
 
 test("la pantalla de login no muestra la navegación de cuenta", () => {
   renderAt("/login");
-  expect(screen.queryByRole("button", { name: "Cerrar sesión" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /^Menú de cuenta/ })).not.toBeInTheDocument();
 });
 
 test("RF-018: `/` redirige a la lista de bóvedas de la réplica", async () => {
@@ -87,7 +93,8 @@ test("RF-017: «Cerrar sesión» sin cambios pendientes cierra la sesión y llev
   const { env } = signedIn();
   const logout = vi.spyOn(api, "logout").mockResolvedValue();
   const user = renderAt("/vaults", env);
-  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  await openAccountMenu(user);
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(logout).toHaveBeenCalledOnce();
 });
@@ -98,7 +105,8 @@ test("RF-017: si la réplica no se borra al salir, el login avisa de la copia co
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
   const user = renderAt("/vaults", env);
-  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
+  await openAccountMenu(user);
+  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
 });

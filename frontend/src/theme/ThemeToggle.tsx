@@ -15,17 +15,16 @@ export default function ThemeToggle() {
 
   return (
     <div className="theme-toggle" role="group" aria-label="Tema">
-      <span className="theme-toggle-thumb" style={{ transform: `translateX(${activeIndex * 30}px)` }} aria-hidden="true" />
+      <span className="theme-toggle-thumb" style={{ transform: `translateX(${activeIndex * 32}px)` }} aria-hidden="true" />
       {OPTIONS.map(({ mode: optionMode, label, Icon }) => (
         <button
           key={optionMode}
           type="button"
           aria-label={label}
           aria-pressed={mode === optionMode}
-          className={mode === optionMode ? "active" : undefined}
           onClick={() => setMode(optionMode)}
         >
-          <Icon size={14} strokeWidth={2} aria-hidden="true" />
+          <Icon size={16} strokeWidth={2} aria-hidden="true" />
         </button>
       ))}
     </div>

@@ -2,40 +2,52 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
+import { MeContext } from "../auth/RequireAuth";
 import type { SyncContextValue } from "../sync/useSync";
 import { syncValue, WithSync } from "../test-utils/sync";
 import AppLayout from "./AppLayout";
 
+const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false };
+
 function renderAt(value: SyncContextValue, path = "/") {
   render(
-    <WithSync value={value}>
-      <MemoryRouter initialEntries={[path]}>
-        <Routes>
-          <Route element={<AppLayout />}>
-            <Route path="/" element={<div>inicio privado</div>} />
-            <Route path="/settings/password" element={<div>cambio de clave</div>} />
-            <Route path="/vaults" element={<div>sección bóvedas</div>} />
-            <Route path="/vaults/trash" element={<div>sección papelera</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </WithSync>,
+    <MeContext.Provider value={ME}>
+      <WithSync value={value}>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/" element={<div>inicio privado</div>} />
+              <Route path="/settings/password" element={<div>cambio de clave</div>} />
+              <Route path="/vaults" element={<div>sección bóvedas</div>} />
+              <Route path="/vaults/trash" element={<div>sección papelera</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>,
   );
   return userEvent.setup();
 }
 
+/** El enlace/botón de cuenta vive dentro del menú desplegable: hay que abrirlo primero. */
+async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("button", { name: `Menú de cuenta (${ME.email})` }));
+}
+
 afterEach(() => vi.restoreAllMocks());
 
-test("RF-023: muestra el enlace a Cambiar contraseña y lleva a la sección", async () => {
+test("RF-023: el menú de cuenta lleva a Cambiar contraseña", async () => {
   const user = renderAt(syncValue().value);
   expect(screen.getByText("inicio privado")).toBeInTheDocument();
+  await openAccountMenu(user);
   await user.click(screen.getByRole("link", { name: "Cambiar contraseña" }));
   expect(screen.getByText("cambio de clave")).toBeInTheDocument();
 });
 
-test("RF-017: «Cerrar sesión» pide el cierre a la sincronización (que decide si avisar)", async () => {
+test("RF-017: «Cerrar sesión» (en el menú de cuenta) pide el cierre a la sincronización (que decide si avisar)", async () => {
   const { value } = syncValue();
   const user = renderAt(value);
+  await openAccountMenu(user);
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(value.requestLogout).toHaveBeenCalledOnce();
 });

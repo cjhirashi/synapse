@@ -89,6 +89,7 @@ def me(
         raise InvalidToken("user missing or inactive")
     return {
         "user_id": user.id,
+        "email": user.email,
         "role": current_user.role,
         "must_change_password": user.must_change_password,
     }

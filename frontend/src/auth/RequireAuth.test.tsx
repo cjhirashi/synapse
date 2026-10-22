@@ -20,13 +20,13 @@ function renderAt(path: string) {
 afterEach(() => vi.restoreAllMocks());
 
 test("RF-020: redirige a /settings/password mientras must_change_password sea true", async () => {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "admin", must_change_password: true });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "admin", must_change_password: true });
   renderAt("/");
   expect(await screen.findByText("cambio de clave")).toBeInTheDocument();
 });
 
 test("RF-020: la propia página de cambio es accesible con el indicador activo (sin bucle)", async () => {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "admin", must_change_password: true });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "admin", must_change_password: true });
   renderAt("/settings/password");
   expect(await screen.findByText("cambio de clave")).toBeInTheDocument();
 });
@@ -38,13 +38,13 @@ test("RF-006: sin sesión (401) redirige a /login", async () => {
 });
 
 test("usuario con clave ya cambiada ve la ruta privada", async () => {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "guest", must_change_password: false });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false });
   renderAt("/");
   expect(await screen.findByText("inicio privado")).toBeInTheDocument();
 });
 
 test("la página de cambio es accesible también con el indicador desactivado (todo usuario autenticado)", async () => {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", role: "guest", must_change_password: false });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false });
   renderAt("/settings/password");
   expect(await screen.findByText("cambio de clave")).toBeInTheDocument();
 });
@@ -55,7 +55,7 @@ function ShowMe() {
 }
 
 test("SPEC-0005: `useMe()` da el usuario verificado a las rutas privadas", async () => {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "u-7", role: "guest", must_change_password: false });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "u-7", email: "test@synapse.local", role: "guest", must_change_password: false });
   render(
     <MemoryRouter initialEntries={["/"]}>
       <Routes>
@@ -68,7 +68,7 @@ test("SPEC-0005: `useMe()` da el usuario verificado a las rutas privadas", async
 
 test("SPEC-0005 RF-009: si al navegar la comprobación falla sin red, la sesión verificada sigue", async () => {
   vi.spyOn(api, "getMe")
-    .mockResolvedValueOnce({ user_id: "1", role: "guest", must_change_password: false })
+    .mockResolvedValueOnce({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false })
     .mockRejectedValueOnce(new TypeError("Failed to fetch"));
   render(
     <MemoryRouter initialEntries={["/"]}>

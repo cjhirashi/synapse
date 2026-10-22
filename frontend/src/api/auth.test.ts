@@ -12,7 +12,7 @@ function problem(status: number, slug: string, title: string, path = "/auth/me")
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/problem+json" } });
 }
 
-const ME = { user_id: "1", role: "guest", must_change_password: false };
+const ME = { user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false };
 
 afterEach(() => {
   vi.unstubAllGlobals();

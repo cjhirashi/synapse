@@ -1,9 +1,8 @@
-import { Link, NavLink, Outlet } from "react-router-dom";
-import { CHANGE_PASSWORD_PATH } from "../auth/RequireAuth";
+import { NavLink, Outlet } from "react-router-dom";
 import ThemeToggle from "../theme/ThemeToggle";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
-import { useSync } from "../sync/useSync";
+import AccountMenu from "./AccountMenu";
 import "./AppLayout.css";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "active" : undefined);
@@ -11,11 +10,10 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "activ
 /**
  * Marco de las rutas privadas: secciones (SPEC-0003), navegación de cuenta (RF-023) y
  * estado de la sincronización (SPEC-0005 RF-009). "Cerrar sesión" pasa por la
- * sincronización: con cambios sin confirmar abre antes el aviso (RF-017).
+ * sincronización: con cambios sin confirmar abre antes el aviso (RF-017) — ver
+ * `AccountMenu`, que dispara `requestLogout()` de `useSync()`.
  */
 export default function AppLayout() {
-  const { requestLogout } = useSync();
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -33,11 +31,8 @@ export default function AppLayout() {
           </NavLink>
         </nav>
         <nav aria-label="Cuenta" className="app-nav-account">
-          <Link to={CHANGE_PASSWORD_PATH}>Cambiar contraseña</Link>
-          <button type="button" onClick={() => void requestLogout()}>
-            Cerrar sesión
-          </button>
           <ThemeToggle />
+          <AccountMenu />
           <LogoutDialog />
         </nav>
       </header>

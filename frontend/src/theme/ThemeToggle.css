@@ -13,11 +13,13 @@
   position: absolute;
   top: 3px;
   left: 3px;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
-  background: var(--accent);
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+  box-shadow: 0 0 15px var(--accent-soft);
   transition: transform var(--dur-base) var(--ease-standard);
+  pointer-events: none;
   z-index: 0;
 }
 
@@ -26,8 +28,8 @@
 .theme-toggle button {
   position: relative;
   z-index: 1;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   padding: 0;
   border-radius: 50%;
   border: none;
@@ -36,13 +38,24 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
   transition: color var(--dur-base) var(--ease-standard);
 }
 
 .theme-toggle button:hover {
   border-color: transparent;
+  color: var(--accent-hover);
 }
 
-.theme-toggle button.active {
+.theme-toggle button[aria-pressed="true"] {
   color: #fff;
+}
+
+/* El <svg> de lucide-react solo trae tamaño por atributo (width/height), no por CSS.
+   Dentro de un contenedor flex eso colapsa el ancho calculado a 0 (el alto sí lo respeta) —
+   hay que fijarlo explícito en CSS para que el motor de layout lo considere. */
+.theme-toggle button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }

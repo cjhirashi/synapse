@@ -6,7 +6,9 @@ export const CHANGE_PASSWORD_PATH = "/settings/password";
 
 type State = { status: "loading" } | { status: "anon" } | { status: "ok"; me: Me } | { status: "error" };
 
-const MeContext = createContext<Me | null>(null);
+// Exportado para que las pruebas de componentes que cuelgan de `useMe()` (p. ej.
+// AppLayout/AccountMenu) puedan proveer un `Me` sin pasar por `RequireAuth` + `getMe()`.
+export const MeContext = createContext<Me | null>(null);
 
 /** Usuario de la sesión verificada; sólo dentro de `RequireAuth`. */
 export function useMe(): Me {
