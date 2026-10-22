@@ -19,6 +19,7 @@
 import type { RejectionsStore } from "../sync/rejections";
 import { listenPush, type RuntimeReplication, type SyncEvent } from "../sync/replicator";
 import type { SyncStatusStore } from "../sync/status";
+import { vaultIsActive } from "../sync/vaultActive";
 import { ID_PREFIX } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX } from "./noteRules";
 
@@ -47,16 +48,6 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
   /** Bóvedas con un reintento esperando turno: varios cambios seguidos dan un solo push. */
   const queued = new Set<string>();
 
-  /** ¿Está activa la bóveda en la réplica? */
-  async function vaultIsActive(vaultId: string): Promise<boolean> {
-    try {
-      return (await db.get<{ deleted_at: string | null }>(ID_PREFIX + vaultId)).deleted_at === null;
-    } catch (err) {
-      if ((err as { status?: number }).status === 404) return false;
-      throw err;
-    }
-  }
-
   /** Push de una vez de `docIds`; sus eventos van a los mismos almacenes que los de `pushOnce`. */
   async function pushNotes(docIds: string[]): Promise<void> {
     const handled: Promise<void>[] = [];
@@ -76,7 +67,7 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
       .list()
       .filter((item) => item.reason === VAULT_NOT_FOUND && item.id.startsWith(prefix))
       .map((item) => item.id);
-    if (docIds.length === 0 || !(await vaultIsActive(vaultId))) return;
+    if (docIds.length === 0 || !(await vaultIsActive(db, vaultId))) return;
     await pushNotes(docIds);
   }
 

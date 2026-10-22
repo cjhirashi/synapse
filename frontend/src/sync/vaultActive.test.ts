@@ -23,7 +23,7 @@ async function leaf(hash: string, deletedAt: string | null, deleted = false): Pr
       _id: `vault:${V}`, _rev: `1-${hash}`, _revisions: { start: 1, ids: [hash] }, type: "vault", name: "N",
       description: null, tags: [], owner_id: "u", created_at: T, updated_at: T, deleted_at: deletedAt,
       ...(deleted ? { _deleted: true } : {}),
-    }] as PouchDB.Core.PutDocument<{}>[],
+    }] as unknown as PouchDB.Core.PutDocument<{}>[],
     { new_edits: false },
   );
 }

@@ -37,6 +37,7 @@ import { mergeNote, type NoteBody } from "../notes/mergeNote";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { canonical } from "./canonical";
 import { mergeVault, type MergeBody, type MergeResult } from "./merge";
+import { vaultIsActive } from "./vaultActive";
 import { validateVault, type VaultField, type VaultFields } from "./vaultRules";
 import { ID_PREFIX, VaultChangedError, VaultValidationError, utcNow } from "./vaultStore";
 
@@ -254,16 +255,6 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
     }
   }
 
-  /** ¿Está activa la bóveda `vaultId`? (RF-014: sólo entonces cuentan los conflictos de sus notas). */
-  async function vaultIsActive(vaultId: string): Promise<boolean> {
-    try {
-      return (await db.get<{ deleted_at: string | null }>(ID_PREFIX + vaultId)).deleted_at === null;
-    } catch (err) {
-      if (isStatus(err, 404)) return false;
-      throw err;
-    }
-  }
-
   async function decideVault(id: string, w: VaultRevision, l: VaultRevision): Promise<Decision> {
     const a = await readAncestor(w, l);
     const result = mergeVault(vaultBody(w), vaultBody(l), a && vaultBody(a), now());
@@ -307,7 +298,7 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
       const losers = w?._conflicts ?? [];
       if (!w || losers.length === 0) return setManual(id, []);
       // RF-014: sin bóveda activa no se lista ni se escribe nada; se reevalúa cuando ella cambie.
-      if (kind === "note" && !(await vaultIsActive(w.vault_id as string))) return setManual(id, []);
+      if (kind === "note" && !(await vaultIsActive(db, w.vault_id as string))) return setManual(id, []);
 
       const pending: ManualConflict[] = [];
       let wrote = false;
