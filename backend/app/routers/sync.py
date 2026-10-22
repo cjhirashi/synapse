@@ -280,10 +280,21 @@ async def all_docs_with_keys(
 
 
 async def _all_docs(request: Request, body: dict | None, db: str, port: ReplicationPort) -> dict:
-    query, forward = sync_filter.all_docs_query(request.query_params, body)
+    queries, forward = sync_filter.all_docs_query(request.query_params, body)
     if forward is not None and not forward["keys"]:
         return sync_filter.sanitize_all_docs_response({"rows": []})  # sólo había ids internos
-    return sync_filter.sanitize_all_docs_response(await port.all_docs(db, query, forward))
+    # Un rango por tipo, en orden de bytes; `limit` corta sobre el conjunto: lo que falta tras
+    # un rango se pide al siguiente. Se cuentan las filas de CouchDB (antes de sanear), que es
+    # lo que `limit` limita.
+    limit = int(queries[0]["limit"]) if "limit" in queries[0] else None
+    rows: list[dict] = []
+    for query in queries:
+        if limit is not None:
+            if len(rows) >= limit:
+                break
+            query = {**query, "limit": str(limit - len(rows))}
+        rows += (await port.all_docs(db, query, forward))["rows"]
+    return sync_filter.sanitize_all_docs_response({"rows": rows})
 
 
 # --- Escritura (push) ---

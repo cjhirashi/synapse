@@ -1,9 +1,10 @@
-"""Filtros del canal de sincronización (SPEC-0005 RF-004, RF-007; PLAN-0005 §2.4).
+"""Filtros del canal de sincronización (SPEC-0005 RF-004, RF-007; SPEC-0008 RF-006; PLAN-0005 §2.4).
 
 Funciones puras sobre los parámetros y cuerpos del protocolo de replicación de CouchDB.
 Deciden qué llega a CouchDB y qué ve el cliente: sólo se replican las bóvedas
-(`vault:{uuid}` canónico); las reservas `vault-name:*` y `_design/vaults` nunca salen, y
-ninguna respuesta cuenta documentos (eso revelaría las reservas).
+(`vault:{uuid}` canónico) y las notas (`note:{vault_uuid}:{uuid}` canónico); las reservas
+`vault-name:*` y `note-path:*` y `_design/vaults` nunca salen, y ninguna respuesta cuenta
+documentos (eso revelaría las reservas).
 
 Regla común de parámetros: lo que no está en la lista blanca se **descarta** sin error (el
 cliente no puede elegir filtro, vista ni selector); lo que está pero no tiene un valor
@@ -18,30 +19,39 @@ from app.core.errors import InvalidSyncRequest, StorageUnavailable, SyncEndpoint
 from app.services.vault_service import is_canonical_uuid
 
 VAULT_PREFIX = "vault:"
+NOTE_PREFIX = "note:"
 
-# Selector fijo de `_changes` (filtro `_selector` de CouchDB): sólo documentos de bóveda.
-VAULT_SELECTOR = {"_id": {"$regex": "^" + VAULT_PREFIX}}
+# Selector fijo de `_changes` (filtro `_selector` de CouchDB): sólo bóvedas y notas.
+# `note-path:` no casa con `^note:` (`-` != `:`), igual que `vault-name:` con `^vault:`.
+REPLICATED_SELECTOR = {"_id": {"$regex": "^(vault|note):"}}
 
 # Esperas de `_changes` acotadas (ms): un `longpoll` nunca retiene la conexión más de 60 s.
 MAX_WAIT_MS = 60_000
 
-# Rango de `_all_docs` con orden de bytes de CouchDB: incluye todo `vault:*` y nada más
-# (`vault-name:*` queda antes porque `-` < `:`).
-_ALL_DOCS_RANGE = {
-    "startkey": json.dumps(VAULT_PREFIX),
-    "endkey": json.dumps(VAULT_PREFIX + "￰"),
-}
+# Rangos de `_all_docs` con orden de bytes de CouchDB, en ese orden (`note:` < `vault:`): cada
+# uno incluye todo su prefijo y nada más (`note-path:*` y `vault-name:*` quedan antes de
+# `note:`/`vault:` porque `-` < `:`). Un rango por prefijo; la ruta los consulta uno tras otro.
+_ALL_DOCS_RANGES = tuple(
+    {"startkey": json.dumps(prefix), "endkey": json.dumps(prefix + "￰")}
+    for prefix in (NOTE_PREFIX, VAULT_PREFIX)
+)
 
 _BOOLEANS = {"true", "false"}
 
 
 def is_replicable_id(doc_id: object) -> bool:
-    """¿El documento viaja por el canal? Sólo bóvedas con id canónico (RF-004, RF-007)."""
-    return (
-        isinstance(doc_id, str)
-        and doc_id.startswith(VAULT_PREFIX)
-        and is_canonical_uuid(doc_id[len(VAULT_PREFIX):])
-    )
+    """¿El documento viaja por el canal? Bóvedas y notas con id canónico (RF-004, RF-007; SPEC-0008 RF-006).
+
+    `vault:{uuid}` o `note:{vault_uuid}:{note_uuid}`, todos los UUID en forma canónica.
+    """
+    if not isinstance(doc_id, str):
+        return False
+    if doc_id.startswith(VAULT_PREFIX):
+        return is_canonical_uuid(doc_id[len(VAULT_PREFIX):])
+    if doc_id.startswith(NOTE_PREFIX):
+        parts = doc_id[len(NOTE_PREFIX):].split(":")
+        return len(parts) == 2 and all(is_canonical_uuid(part) for part in parts)
+    return False
 
 
 # --- Validación de parámetros (texto fijo, nunca interpolado con datos del cliente) ---
@@ -95,7 +105,7 @@ def _compact(values: dict[str, str | int | None]) -> dict[str, str]:
 def changes_query(params: Mapping[str, str]) -> tuple[dict[str, str], dict]:
     """Query y cuerpo de `POST _changes?filter=_selector` a partir de los del cliente.
 
-    El cuerpo del cliente no se usa nunca: el selector es siempre `VAULT_SELECTOR`.
+    El cuerpo del cliente no se usa nunca: el selector es siempre `REPLICATED_SELECTOR`.
     """
     query = _compact({
         "since": params.get("since"),  # secuencia opaca: CouchDB la valida
@@ -109,7 +119,7 @@ def changes_query(params: Mapping[str, str]) -> tuple[dict[str, str], dict]:
         "conflicts": _boolean(params, "conflicts"),
     })
     query["filter"] = "_selector"
-    return query, {"selector": VAULT_SELECTOR}
+    return query, {"selector": REPLICATED_SELECTOR}
 
 
 # --- `_revs_diff` ---
@@ -186,8 +196,11 @@ def merge_bulk_get_response(plan: BulkGetPlan, couch: dict) -> dict:
 
 # --- `_all_docs` ---
 
-def all_docs_query(params: Mapping[str, str], body: dict | None) -> tuple[dict[str, str], dict | None]:
-    """Query y cuerpo de `_all_docs`: rango forzado a `vault:*`, o `keys` sin las internas.
+def all_docs_query(
+    params: Mapping[str, str], body: dict | None
+) -> tuple[list[dict[str, str]], dict | None]:
+    """Queries y cuerpo de `_all_docs`: un rango forzado por tipo (notas, luego bóvedas), o
+    una sola consulta con `keys` sin las internas.
 
     `keys` puede llegar en el cuerpo (`POST`) o en la query (JSON). Rango, `key`, `skip` y
     `descending` del cliente se descartan: sólo se elige qué campos incluir y cuántos.
@@ -199,9 +212,8 @@ def all_docs_query(params: Mapping[str, str], body: dict | None) -> tuple[dict[s
     })
     keys = _requested_keys(params, body)
     if keys is None:
-        query.update(_ALL_DOCS_RANGE)
-        return query, None
-    return query, {"keys": [key for key in keys if is_replicable_id(key)]}
+        return [{**query, **replicated_range} for replicated_range in _ALL_DOCS_RANGES], None
+    return [query], {"keys": [key for key in keys if is_replicable_id(key)]}
 
 
 def _requested_keys(params: Mapping[str, str], body: dict | None) -> list[str] | None:
@@ -220,7 +232,7 @@ def _requested_keys(params: Mapping[str, str], body: dict | None) -> list[str] |
 
 
 def sanitize_all_docs_response(couch: dict) -> dict:
-    """Sólo filas de bóvedas, y sin `total_rows`/`offset` reales (contarían las reservas).
+    """Sólo filas de bóvedas y notas, y sin `total_rows`/`offset` reales (contarían las reservas).
 
     Una fila de `keys` sin documento no lleva `id`: se mira su `key`.
     """

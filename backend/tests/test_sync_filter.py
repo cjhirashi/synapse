@@ -41,10 +41,11 @@ def test_rf_007_other_ids_are_not_replicable(doc_id):
 
 # --- `_changes` (RF-004) ---
 
-def test_rf_004_changes_forces_the_vault_selector():
+def test_rf_004_changes_forces_the_replicated_selector():
     query, body = sf.changes_query({})
     assert query["filter"] == "_selector"
-    assert body == {"selector": {"_id": {"$regex": "^vault:"}}}
+    # SPEC-0008 RF-006 amplió el selector a las notas (`test_note_sync_filter.py`).
+    assert body == {"selector": {"_id": {"$regex": "^(vault|note):"}}}
 
 
 def test_rf_004_changes_keeps_only_whitelisted_parameters():
@@ -173,12 +174,13 @@ def test_rf_004_bulk_get_query_rejects_non_boolean_flags():
 # --- `_all_docs` (RF-004) ---
 
 def test_rf_004_all_docs_forces_the_vault_range():
-    query, body = sf.all_docs_query({
+    queries, body = sf.all_docs_query({
         "include_docs": "true", "limit": "10",
         "startkey": '"vault-name:"', "endkey": '"zzz"', "key": '"_design/vaults"',
         "descending": "true", "skip": "3",
     }, None)
-    assert query == {
+    # SPEC-0008 RF-006: un rango por tipo, `note:` antes que `vault:` (el de bóvedas, el último).
+    assert queries[-1] == {
         "include_docs": "true", "limit": "10",
         "startkey": json.dumps("vault:"), "endkey": json.dumps("vault:￰"),
     }
@@ -186,9 +188,9 @@ def test_rf_004_all_docs_forces_the_vault_range():
 
 
 def test_rf_004_all_docs_drops_non_replicable_keys_from_the_body():
-    query, body = sf.all_docs_query({}, {"keys": [VAULT_A, "vault-name:x", "_design/vaults"]})
+    queries, body = sf.all_docs_query({}, {"keys": [VAULT_A, "vault-name:x", "_design/vaults"]})
     assert body == {"keys": [VAULT_A]}
-    assert "startkey" not in query and "endkey" not in query
+    assert all("startkey" not in q and "endkey" not in q for q in queries)
 
 
 def test_rf_004_all_docs_drops_non_replicable_keys_from_the_query():
