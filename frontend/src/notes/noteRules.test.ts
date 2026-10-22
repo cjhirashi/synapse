@@ -16,6 +16,7 @@ interface Case {
   code?: string | null;
   normalized?: string;
   valid?: boolean;
+  nonfinite?: { at: (string | number)[]; token: string };
 }
 
 /** Valor del caso: `prefix + repeat*times + suffix` si trae `build`, si no `input`. */
@@ -24,7 +25,17 @@ function built(c: Case): string {
 }
 const value = (c: Case): unknown => (c.build ? built(c) : c.input);
 /** En frontmatter el texto construido es el valor de una clave. */
-const frontmatter = (c: Case): unknown => (c.build ? { [c.build.key as string]: built(c) } : c.input);
+const frontmatter = (c: Case): unknown => {
+  if (c.nonfinite) {
+    // Un número no finito no cabe en el JSON de la batería: se pone tras leerla (VB-1).
+    const value = structuredClone(c.input) as Record<string | number, unknown>;
+    const { at, token } = c.nonfinite;
+    const parent = at.slice(0, -1).reduce<Record<string | number, unknown>>((node, step) => node[step] as never, value);
+    parent[at[at.length - 1]] = Number(token);
+    return value;
+  }
+  return c.build ? { [c.build.key as string]: built(c) } : c.input;
+};
 const label = (c: Case): string => JSON.stringify(value(c)).slice(0, 40);
 
 describe("RF-005: checkPath da el mismo veredicto que el servidor", () => {
@@ -62,7 +73,7 @@ describe("RF-016: checkContent respeta el tope de 2 MiB en bytes UTF-8", () => {
 });
 
 describe("RF-005: checkFrontmatter respeta el tope de 64 KiB serializado", () => {
-  it.each((cases.frontmatter as Case[]).map((c) => [JSON.stringify(frontmatter(c)).slice(0, 40), c] as const))(
+  it.each((cases.frontmatter as Case[]).map((c) => [String(JSON.stringify(frontmatter(c))).slice(0, 40), c] as const))(
     "%s",
     (_label, c) => {
       expect(checkFrontmatter(frontmatter(c))).toBe(c.valid ? null : "validation-error:frontmatter");

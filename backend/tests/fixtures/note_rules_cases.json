@@ -1,5 +1,5 @@
 {
- "_doc": "Bater\u00eda com\u00fan de PLAN-0008 \u00a75: reglas de core/note_rules.py frente a frontend/src/notes/noteRules.ts. La verifican test_note_rules.py y noteRules.test.ts. `input` es el valor tal cual; si el caso trae `build`, el valor es `prefix + repeat*times + suffix` (para los topes de 2 MiB y 64 KiB sin inflar el archivo), y en frontmatter `{key: <valor construido>}`. path: `code` es el rechazo de check_path (null si pasa) y `normalized` la salida de normalize_path.",
+ "_doc": "Bater\u00eda com\u00fan de PLAN-0008 \u00a75: reglas de core/note_rules.py frente a frontend/src/notes/noteRules.ts. La verifican test_note_rules.py y noteRules.test.ts. `input` es el valor tal cual; si el caso trae `build`, el valor es `prefix + repeat*times + suffix` (para los topes de 2 MiB y 64 KiB sin inflar el archivo), y en frontmatter `{key: <valor construido>}`. path: `code` es el rechazo de check_path (null si pasa) y `normalized` la salida de normalize_path. Un caso de frontmatter con `nonfinite` ({at: ruta de claves/\u00edndices, token}) sustituye ese valor por el n\u00famero no finito del token (NaN, Infinity, -Infinity, 1e999) tras leer el JSON: el JSON est\u00e1ndar no puede escribirlos (VB-1).",
  "path": [
   {
    "input": "Nota.md",
@@ -351,6 +351,91 @@
   {
    "input": true,
    "valid": false
+  },
+  {
+   "input": {
+    "k": 0
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "k"
+    ],
+    "token": "NaN"
+   }
+  },
+  {
+   "input": {
+    "k": 0
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "k"
+    ],
+    "token": "Infinity"
+   }
+  },
+  {
+   "input": {
+    "k": 0
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "k"
+    ],
+    "token": "-Infinity"
+   }
+  },
+  {
+   "input": {
+    "k": 0
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "k"
+    ],
+    "token": "1e999"
+   }
+  },
+  {
+   "input": {
+    "a": [
+     {
+      "b": 0
+     }
+    ]
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "a",
+     0,
+     "b"
+    ],
+    "token": "NaN"
+   }
+  },
+  {
+   "input": {
+    "a": {
+     "b": [
+      0,
+      1
+     ]
+    }
+   },
+   "valid": false,
+   "nonfinite": {
+    "at": [
+     "a",
+     "b",
+     1
+    ],
+    "token": "1e999"
+   }
   }
  ],
  "path_key": [

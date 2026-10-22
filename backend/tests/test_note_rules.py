@@ -3,6 +3,7 @@
 Recorre la batería común `fixtures/note_rules_cases.json`; el cliente (`noteRules.ts`) la
 recorre con su propio test, así que cada caso fija que ambos lados coinciden.
 """
+import copy
 import json
 from pathlib import Path
 
@@ -50,6 +51,15 @@ def test_rf_016_check_content_matches_the_battery(case):
 
 def _frontmatter(case: dict):
     # En frontmatter el texto construido es el valor de una clave.
+    if "nonfinite" in case:
+        # Un número no finito no cabe en el JSON de la batería: se pone tras leerla (VB-1).
+        value = copy.deepcopy(case["input"])
+        *parents, last = case["nonfinite"]["at"]
+        target = value
+        for step in parents:
+            target = target[step]
+        target[last] = float(case["nonfinite"]["token"])
+        return value
     if "build" not in case:
         return case["input"]
     return {case["build"]["key"]: _built(case)}

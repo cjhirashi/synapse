@@ -4,6 +4,7 @@ RF-016; PLAN-0008 §2.4, §2.5, §5).
 Reutiliza los helpers de `test_sync_api.py` (peticiones del replicador, documentos de bóveda y
 `UntouchablePort`). Aquí se comprueba lo que queda en CouchDB y lo que ve el cliente.
 """
+import json
 import uuid
 
 import pytest
@@ -167,3 +168,18 @@ def test_rf_016_other_routes_keep_the_4_mib_cap(ready_admin, couch_override):  #
     couch_override(UntouchablePort())
     body = json_of_size(4 * 1024 * 1024 + 1)
     assert_problem(revs_diff_bytes(ready_admin, body), 413, "payload-too-large")
+
+
+# --- Números no finitos en `frontmatter` (VB-1) ---
+
+@pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity", "1e999"])
+def test_rf_005_frontmatter_with_a_non_finite_number_is_rejected_not_a_500(vault, ready_admin, token):
+    # El JSON estándar no los admite, pero el decodificador de Python sí (`NaN`, `Infinity`, y
+    # `1e999` desborda a infinito) y CouchDB los rechazaría al reenviar: el lote quedaría
+    # atascado con un 500. Se escriben a mano en el cuerpo, porque el cliente HTTP no los emite.
+    note = note_doc(vault["id"], frontmatter={"outer": {"k": "@@"}})
+    body = json.dumps({"docs": [note], "new_edits": False}).replace('"@@"', token)
+    res = bulk_docs_bytes(ready_admin, body.encode())
+    assert res.status_code == 201, res.text
+    assert res.json() == [rejection(note, "validation-error:frontmatter")]
+    assert couch_get(vault["db"], note["_id"]).status_code == 404
