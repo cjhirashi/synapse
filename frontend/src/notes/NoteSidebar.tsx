@@ -26,6 +26,11 @@ interface NoteSidebarProps {
   /** La nota se mandó a la papelera (el padre cierra el editor si era la abierta). */
   onDeleted: (id: string) => void;
   onShowTrash: () => void;
+  /**
+   * Antes de borrar la nota abierta: el editor decide si se puede descartar su borrador (VF-2).
+   * Sin esta función se borra sin preguntar.
+   */
+  confirmDelete?: () => Promise<boolean>;
 }
 
 /** Carpetas que contienen a `path`: `a/b/c.md` → `a`, `a/b`. */
@@ -34,7 +39,7 @@ function ancestors(path: string): string[] {
   return segments.map((_, i) => segments.slice(0, i + 1).join("/"));
 }
 
-export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash }: NoteSidebarProps) {
+export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete }: NoteSidebarProps) {
   const { notes, notesVersion } = useSync();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -112,6 +117,8 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   }
 
   async function remove(note: NoteSummary) {
+    // Sólo la nota abierta tiene un borrador que perder.
+    if (note.id === openId && confirmDelete && !(await confirmDelete())) return;
     const ok = await run(async () => {
       await notes.softDelete(note.id, note.rev);
       await reload();

@@ -10,8 +10,9 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX } from "./noteRules";
@@ -84,6 +85,8 @@ function Workspace({ vault }: { vault: Vault }) {
   /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
+  const editorRef = useRef<NoteEditorHandle>(null);
 
   function open(id: string, options?: { edit: boolean }) {
     setOpenId(id);
@@ -101,6 +104,7 @@ function Workspace({ vault }: { vault: Vault }) {
           onOpen={open}
           onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
           onShowTrash={() => setShowTrash(true)}
+          confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
         />
       </div>
       <div className="vault-workspace-main">
@@ -113,7 +117,7 @@ function Workspace({ vault }: { vault: Vault }) {
             <p>Abre o crea una nota para empezar.</p>
           ) : (
             <Suspense fallback={<p>Cargando el editor…</p>}>
-              <NoteEditor noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} />
             </Suspense>
           )}
         </div>

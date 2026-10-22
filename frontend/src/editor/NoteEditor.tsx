@@ -12,9 +12,11 @@
  * decide si abre ya o pregunta; si el usuario sigue editando avisa con `onCancelOpen`).
  * Salir de la ruta por navegación interna (riel, "Bóvedas"…) con cambios sin guardar lo
  * bloquea `useBlocker` (sólo existe en data routers: `main.tsx` usa `createBrowserRouter`) y
- * pregunta con el mismo patrón de diálogo (VF-1).
+ * pregunta con el mismo patrón de diálogo (VF-1). El borrado de la nota abierta, que pide el
+ * árbol (un componente hermano), pasa por `confirmDiscard` del manejador del editor: con el
+ * borrador sucio pregunta antes de descartarlo (VF-2).
  */
-import { ComponentType, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent } from "../notes/noteRules";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -52,6 +54,12 @@ interface NoteEditorProps {
   views?: NoteEditorViews;
 }
 
+/** Lo que el padre puede pedirle al editor por `ref`. */
+export interface NoteEditorHandle {
+  /** ¿Se puede descartar el borrador? Sin cambios, sí al instante; con cambios, pregunta al usuario. */
+  confirmDiscard(): Promise<boolean>;
+}
+
 type Mode = "read" | "edit";
 type View = "visual" | "code";
 
@@ -60,7 +68,10 @@ function title(path: string): string {
   return path.replace(/\.md$/i, "");
 }
 
-export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS }: NoteEditorProps) {
+const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS },
+  ref,
+) {
   const { notes, notesVersion, conflicts } = useSync();
   const { Visual, Code } = views;
 
@@ -70,6 +81,8 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
   const [openId, setOpenId] = useState(noteId);
   /** Nota pedida por el padre a la espera de la respuesta del usuario (cambios sin guardar). */
   const [pendingId, setPendingId] = useState<string | null>(null);
+  /** Pregunta de descarte abierta por `confirmDiscard`: quien espera la respuesta. */
+  const [discardAsk, setDiscardAsk] = useState<{ answer: (ok: boolean) => void } | null>(null);
   const [draft, setDraft] = useState("");
   const [mode, setMode] = useState<Mode>("read");
   const [view, setView] = useState<View>("visual");
@@ -88,6 +101,15 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
   dirtyRef.current = dirty;
   const editOnOpenRef = useRef(editOnOpen);
   editOnOpenRef.current = editOnOpen;
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      confirmDiscard: () =>
+        dirtyRef.current ? new Promise<boolean>((answer) => setDiscardAsk({ answer })) : Promise.resolve(true),
+    }),
+    [],
+  );
 
   // Carga la nota abierta; al terminar, lectura (o edición si el padre lo pidió).
   useEffect(() => {
@@ -115,18 +137,27 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
     };
   }, [notes, openId]);
 
-  // Otra revisión llegó (el pull, otra pestaña, un renombrado): sin cambios locales se
-  // muestra tal cual. Con cambios sin guardar se respeta el borrador; guardarlo sobre la
-  // revisión vieja lo deja como rama en conflicto, no se pierde (P-8).
+  // Otra revisión llegó (el pull, otra pestaña, un renombrado). Sin cambios locales se muestra
+  // tal cual. Con cambios sin guardar el borrador se respeta: si la revisión nueva conserva el
+  // contenido de la base (sólo cambió la ruta o la metadata, p. ej. un renombrado desde el
+  // árbol), el editor se rebasa sobre ella (`baseRev` y ruta) y guardar no crea un conflicto
+  // autoinfligido (VF-3); si el contenido cambió, guardar lo deja como rama en conflicto (P-8).
   useEffect(() => {
     const current = noteRef.current;
-    if (current === null || dirtyRef.current) return;
+    if (current === null) return;
     let alive = true;
     notes.get(current.id).then(
       (latest) => {
-        if (!alive || dirtyRef.current || latest.rev === noteRef.current?.rev) return;
-        setNote(latest);
-        setDraft(latest.content);
+        const base = noteRef.current;
+        if (!alive || base === null || latest.rev === base.rev) return;
+        if (!dirtyRef.current) {
+          setNote(latest);
+          setDraft(latest.content);
+          setMissing(false);
+        } else if (latest.content === base.content) {
+          setNote(latest);
+          setMissing(false);
+        }
       },
       (err) => {
         if (alive && err instanceof NoteNotFoundError) setMissing(true);
@@ -218,6 +249,11 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
     if (blocker.state === "blocked" && (await save())) blocker.proceed();
   }
 
+  function answerDiscard(ok: boolean) {
+    discardAsk?.answer(ok);
+    setDiscardAsk(null);
+  }
+
   function onKeyDown(event: KeyboardEvent) {
     if (mode === "edit" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       // Sin esto el navegador abriría su propio "Guardar página como".
@@ -302,6 +338,18 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
         </div>
       )}
 
+      {discardAsk !== null && (
+        <div role="alertdialog" aria-labelledby="note-discard-title" className="note-editor-confirm">
+          <p id="note-discard-title">Esta nota tiene cambios sin guardar.</p>
+          <button type="button" onClick={() => answerDiscard(true)}>
+            Borrar y descartar cambios
+          </button>
+          <button type="button" onClick={() => answerDiscard(false)}>
+            Seguir editando
+          </button>
+        </div>
+      )}
+
       <div className="note-editor-body">
         {mode === "read" ? (
           <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly />
@@ -313,4 +361,6 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
       </div>
     </section>
   );
-}
+});
+
+export default NoteEditor;
