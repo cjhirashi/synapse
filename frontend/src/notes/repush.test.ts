@@ -128,6 +128,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
 
   it("un evento written de otra cosa no dispara nada", async () => {
     await putVault(V);
+    await settle(); // el cambio de la bóveda ya se atendió (sin rechazos aún)
     await rejectNote(NOTE_1);
     toSpy.mockClear();
     repush.handle({ type: "written", docs: [{ id: NOTE_2, rev: "1-a" }] });

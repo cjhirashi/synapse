@@ -11,6 +11,11 @@
  * (`doc_ids`, sin tocar el checkpoint) y no escribe revisiones nuevas. Cubre también la
  * bóveda restaurada de la papelera.
  *
+ * Otros dos disparadores cubren lo que el feed de la bóveda no ve (RD-2): al abrirse, las
+ * notas con `vault-not-found` persistidas cuya bóveda ya está activa (la bóveda no volverá a
+ * cambiar), y cada vuelta a "en línea" tras un fallo de red. Un fallo del push no se
+ * reintenta por sí mismo: el rechazo sigue en la lista y espera a esos disparadores.
+ *
  * Un rechazo nuevo **no** dispara el reintento: si la bóveda sigue sin estar en el servidor
  * volvería a rechazarse y se encadenarían pushes sin fin; el siguiente disparador es la
  * propia bóveda llegando al servidor. Los eventos del push van a `rejections.ts` y
@@ -62,6 +67,8 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
 
   async function retry(vaultId: string): Promise<void> {
     if (closed) return;
+    // El rechazo del mismo lote puede estar aún escribiéndose (RD-3): se lee la lista al día.
+    await rejections.settled();
     const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
     const docIds = rejections
       .list()
@@ -87,6 +94,27 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
       .catch(() => undefined);
   }
 
+  /** Reintenta todas las bóvedas con notas rechazadas por `vault-not-found` (arranque, reconexión). */
+  function enqueueAll(): void {
+    const prefixLength = NOTE_ID_PREFIX.length;
+    const vaults = new Set(
+      rejections
+        .list()
+        .filter((item) => item.reason === VAULT_NOT_FOUND && item.id.startsWith(NOTE_ID_PREFIX))
+        // `note:{vault_id}:{note_id}`: el id de la bóveda es el primer UUID (36 caracteres).
+        .map((item) => item.id.slice(prefixLength, prefixLength + 36)),
+    );
+    vaults.forEach(enqueue);
+  }
+
+  // Reconexión: sólo la transición hacia "online" dispara (no cada aviso en línea).
+  let wasOnline = false;
+  const unsubscribe = status.subscribe(({ state }) => {
+    if (state === "online" && !wasOnline && !closed) enqueueAll();
+    wasOnline = state === "online";
+  });
+  enqueueAll();
+
   const feed = db.changes({ live: true, since: "now" }).on("change", (change) => {
     if (change.id.startsWith(ID_PREFIX)) enqueue(change.id.slice(ID_PREFIX.length));
   });
@@ -101,6 +129,7 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
 
     close() {
       closed = true;
+      unsubscribe();
       feed.cancel();
     },
   };
