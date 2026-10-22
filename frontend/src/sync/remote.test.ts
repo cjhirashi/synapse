@@ -95,7 +95,8 @@ describe("reparto de `_bulk_docs` en sub-peticiones (SPEC-0008 RF-016; PLAN-0008
   });
 
   it("un lote de más de 8 MiB se parte en sub-peticiones de ≤ 8 MiB, en orden", async () => {
-    const base = vi.fn().mockResolvedValue(json([], 201));
+    // Una `Response` nueva por llamada: su cuerpo sólo se puede leer una vez.
+    const base = vi.fn().mockImplementation(async () => json([], 201));
     const docs = [doc("a", 4 * MIB), doc("b", 4 * MIB), doc("c", 1024), doc("d", 5 * MIB)];
     await syncFetch(vi.fn(), base)(URL_BULK, post(docs));
     expect(sentIds(base)).toEqual([["a"], ["b", "c"], ["d"]]);
@@ -122,7 +123,8 @@ describe("reparto de `_bulk_docs` en sub-peticiones (SPEC-0008 RF-016; PLAN-0008
   });
 
   it("un documento mayor de 8 MiB va solo", async () => {
-    const base = vi.fn().mockResolvedValue(json([], 201));
+    // Una `Response` nueva por llamada: su cuerpo sólo se puede leer una vez.
+    const base = vi.fn().mockImplementation(async () => json([], 201));
     await syncFetch(vi.fn(), base)(URL_BULK, post([doc("a", 1024), doc("big", 9 * MIB), doc("b", 1024)]));
     expect(sentIds(base)).toEqual([["a"], ["big"], ["b"]]);
   });
@@ -150,7 +152,7 @@ describe("reparto de `_bulk_docs` en sub-peticiones (SPEC-0008 RF-016; PLAN-0008
     const base = vi
       .fn()
       .mockResolvedValueOnce(unauthorized())
-      .mockResolvedValue(json([], 201));
+      .mockImplementation(async () => json([], 201));
     await syncFetch(vi.fn(), base)(URL_BULK, post([doc("a", 5 * MIB), doc("b", 5 * MIB)]));
     // 401 + reintento de la 1.ª, y la 2.ª.
     expect(base).toHaveBeenCalledTimes(3);

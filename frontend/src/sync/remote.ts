@@ -7,6 +7,10 @@
  * puede renovar, avisa "sesión caducada" y devuelve el 401 a PouchDB; el replicador se
  * detiene sin tocar la réplica (RF-016).
  *
+ * El `fetch` también parte un `POST _bulk_docs` de más de 8 MiB en sub-peticiones (SPEC-0008
+ * RF-016; PLAN-0008 P-6): PouchDB sólo limita el lote por número de documentos, no por bytes,
+ * y con notas de hasta 2 MiB un lote de 50 superaría el tope del servidor para siempre.
+ *
  * También contiene un defecto de PouchDB 9 (PLAN-0005 §2.5 nota (i), enmienda 1 VC-7): ver
  * `observeInfo`.
  */
@@ -33,6 +37,41 @@ export interface RemoteOptions {
   refresh?: Refresh;
 }
 
+/** Tope de una sub-petición de `_bulk_docs` (el servidor admite 16 MiB, PLAN-0008 P-6). */
+export const BULK_CHUNK_BYTES = 8 * 1024 * 1024;
+
+const BULK_DOCS_URL = /\/_bulk_docs(\?|$)/;
+const encoder = new TextEncoder();
+
+function utf8Bytes(text: string): number {
+  return encoder.encode(text).length;
+}
+
+/**
+ * Reparte los documentos de un lote en grupos cuyo cuerpo serializado pesa ≤ `BULK_CHUNK_BYTES`,
+ * conservando el orden. Un documento que por sí solo supera el tope va solo (el servidor decide).
+ */
+function chunkDocs(docs: unknown[], newEdits: unknown): unknown[][] {
+  // Lo que añade el sobre `{"docs":[…],"new_edits":…}` a la suma de sus documentos.
+  const envelope = utf8Bytes(JSON.stringify({ docs: [], new_edits: newEdits }));
+  const chunks: unknown[][] = [];
+  let current: unknown[] = [];
+  let size = envelope;
+  for (const doc of docs) {
+    // +1 por la coma que separa a los documentos.
+    const docSize = utf8Bytes(JSON.stringify(doc)) + 1;
+    if (current.length > 0 && size + docSize > BULK_CHUNK_BYTES) {
+      chunks.push(current);
+      current = [];
+      size = envelope;
+    }
+    current.push(doc);
+    size += docSize;
+  }
+  if (current.length > 0) chunks.push(current);
+  return chunks;
+}
+
 /**
  * `fetch` para PouchDB con la política de sesión del canal. Los 503 y los fallos de red
  * pasan tal cual: PouchDB los trata como "sin conexión" y reintenta (RF-019).
@@ -42,7 +81,8 @@ export function syncFetch(
   baseFetch: Fetch = (url, init) => fetch(url, init),
   refresh: Refresh = refreshSession,
 ): Fetch {
-  return async (url, init = {}) => {
+  /** Una petición con la política de sesión: cookies, y ante un 401 una renovación y un reintento. */
+  const sendOnce: Fetch = async (url, init = {}) => {
     const send = () => baseFetch(url, { ...init, credentials: "include" });
     let res = await send();
     if (res.status !== 401) return res;
@@ -53,6 +93,36 @@ export function syncFetch(
     }
     onSessionExpired();
     return res;
+  };
+
+  /**
+   * `POST _bulk_docs` de más de `BULK_CHUNK_BYTES`: sub-peticiones secuenciales y la
+   * concatenación de sus rechazos (el cuerpo de la respuesta es la lista de rechazos). Si una
+   * falla, se devuelve ese fallo tal cual y no se envían las siguientes: PouchDB reintenta el
+   * lote entero y el paso 2 del push del servidor es idempotente (PLAN-0008 P-6).
+   */
+  const sendSplit = async (url: string, init: RequestInit, text: string): Promise<Response> => {
+    const { docs, new_edits } = JSON.parse(text) as { docs: unknown[]; new_edits: unknown };
+    const rejections: unknown[] = [];
+    let last: Response | null = null;
+    for (const chunk of chunkDocs(docs, new_edits)) {
+      last = await sendOnce(url, { ...init, body: JSON.stringify({ docs: chunk, new_edits }) });
+      if (!last.ok) return last;
+      rejections.push(...((await last.json()) as unknown[]));
+    }
+    // `last` existe: un cuerpo de más de 8 MiB tiene al menos un documento.
+    return new Response(JSON.stringify(rejections), {
+      status: (last as Response).status,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  return (url, init = {}) => {
+    if (typeof url === "string" && init.method === "POST" && BULK_DOCS_URL.test(url)
+      && typeof init.body === "string" && utf8Bytes(init.body) > BULK_CHUNK_BYTES) {
+      return sendSplit(url, init, init.body);
+    }
+    return sendOnce(url, init);
   };
 }
 
