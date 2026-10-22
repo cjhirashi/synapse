@@ -11,6 +11,7 @@ import SyncProvider from "./SyncProvider";
 import { useSync } from "./useSync";
 
 const VAULT_ID = "vault:11111111-1111-4111-8111-111111111111";
+const NOTE_VAULT_ID = "22222222-2222-4222-8222-222222222222";
 
 /** Muestra lo que expone el contexto y deja crear una bóveda. */
 function Probe() {
@@ -21,8 +22,12 @@ function Probe() {
       <p>rechazos {sync.rejections.length}</p>
       <p>conflictos {sync.conflicts.length}</p>
       <p>versión {sync.dataVersion}</p>
+      <p>versión de notas {sync.notesVersion}</p>
       <button type="button" onClick={() => void sync.vaults.create({ name: "Notas", description: null, tags: [] })}>
         crear
+      </button>
+      <button type="button" onClick={() => void sync.notes.create(NOTE_VAULT_ID, "Ideas")}>
+        crear nota
       </button>
     </div>
   );
@@ -103,6 +108,25 @@ test("`dataVersion` cambia con cada escritura en una bóveda de la réplica", as
   await screen.findByText("versión 0");
   await userEvent.click(screen.getByRole("button", { name: "crear" }));
   expect(await screen.findByText("versión 1")).toBeInTheDocument();
+});
+
+test("RF-001: el contexto expone `notes` y `notesVersion` cambia con cada escritura de nota, sin tocar `dataVersion`", async () => {
+  const { env } = memoryEnv();
+  renderProvider(env);
+  await screen.findByText("versión de notas 0");
+  await userEvent.click(screen.getByRole("button", { name: "crear nota" }));
+  expect(await screen.findByText("versión de notas 1")).toBeInTheDocument();
+  // Guardar una nota no relee las listas de bóvedas (RF-019: la sidebar sólo relee notas).
+  expect(screen.getByText("versión 0")).toBeInTheDocument();
+});
+
+test("RF-001: una escritura de bóveda cambia `dataVersion` y no `notesVersion`", async () => {
+  const { env } = memoryEnv();
+  renderProvider(env);
+  await screen.findByText("versión 0");
+  await userEvent.click(screen.getByRole("button", { name: "crear" }));
+  expect(await screen.findByText("versión 1")).toBeInTheDocument();
+  expect(screen.getByText("versión de notas 0")).toBeInTheDocument();
 });
 
 test("RF-016: la sesión caducada en el canal detiene el replicador sin tocar la réplica", async () => {
