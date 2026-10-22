@@ -45,7 +45,7 @@ from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultDescription, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
-from app.services.note_service import NoteService
+from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
 from app.services.vault_service import VaultService, name_key
 
@@ -146,8 +146,8 @@ class _Kind(NamedTuple):
     check_server: Callable[..., Awaitable[None]]            # paso 6a/6b (self, doc, hojas)
     check_parent: Callable[..., Awaitable[None]] | None     # paso 6c, también en lápidas (self, id)
     use: Callable[[dict], tuple[str, str]]                  # clave de unicidad y etiqueta de una hoja
-    reserve: Callable[..., Awaitable[None]] | None          # paso 7 (self, doc)
-    release: Callable[..., Awaitable[None]] | None          # paso 9 (self, id, etiqueta)
+    reserve: Callable[..., Awaitable[None]]                 # paso 7 (self, doc)
+    release: Callable[..., Awaitable[None]]                 # paso 9 (self, id, etiqueta)
 
 
 def _kind_of(doc_id: str) -> _Kind:
@@ -276,7 +276,7 @@ class SyncPushService:
             await kind.check_server(self, doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
-        if not tombstone and doc["deleted_at"] is None and kind.reserve is not None:
+        if not tombstone and doc["deleted_at"] is None:
             await kind.reserve(self, doc)
             key, label = kind.use(doc)
             self._reserved.setdefault(doc["_id"], {})[key] = label
@@ -360,6 +360,16 @@ class SyncPushService:
     async def _release_vault_name(self, doc_id: str, name: str) -> None:
         await to_thread.run_sync(self._vaults.release, name, doc_id.removeprefix(VAULT_PREFIX))
 
+    async def _reserve_note_path(self, doc: dict) -> None:
+        """Paso 7 de una nota (RF-013, RF-017): la reserva `note-path:{vault_id}:{clave}`."""
+        try:
+            await to_thread.run_sync(self._notes.reserve_path, doc["_id"], doc["path"])
+        except NotePathTaken:
+            raise Rejected("note-path-taken") from None
+
+    async def _release_note_path(self, doc_id: str, path: str) -> None:
+        await to_thread.run_sync(self._notes.release_path, doc_id, path)
+
     # --- Pasos 8 y 9 ---
 
     async def _write(self, docs: list[dict]) -> None:
@@ -373,8 +383,6 @@ class SyncPushService:
         que ya no usa ninguna hoja viva y activa. La liberación vuelve a comprobarlo en el servidor."""
         for doc_id, leaves in self._leaves.items():
             kind = _kind_of(doc_id)
-            if kind.release is None:
-                continue
             in_use = _active_uses(leaves, kind)
             candidates = self._uses_before[doc_id] | self._reserved.get(doc_id, {})
             for key, label in candidates.items():
@@ -391,7 +399,7 @@ _KINDS = {
     NOTE_PREFIX: _Kind(
         "note", NOTE_KEYS, NOTE_REQUIRED, _check_note_fields,
         SyncPushService._check_note_rules, SyncPushService._check_vault_is_active,
-        _note_use, None, None),
+        _note_use, SyncPushService._reserve_note_path, SyncPushService._release_note_path),
 }
 
 
