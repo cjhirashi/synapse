@@ -78,6 +78,12 @@ interface VaultRevision extends MergeBody {
   _deleted?: boolean;
 }
 
+/** Identidad de una revisión y su historia (`_revs` de PouchDB): lo único que necesita `child`. */
+export interface RevisionRef {
+  _rev: string;
+  _revisions: { start: number; ids: string[] };
+}
+
 /** Historia de una revisión, de ella hacia la raíz (`["3-c", "2-b", "1-a"]`). */
 function history(doc: VaultRevision): string[] {
   const { start, ids } = doc._revisions;
@@ -89,7 +95,7 @@ function history(doc: VaultRevision): string[] {
  * SHA-256 del JSON canónico de la revisión padre y el contenido, recortado a 32 hex como los
  * de PouchDB: la misma escritura da la misma revisión en todas las réplicas (VC-2).
  */
-async function child(parent: VaultRevision, content: object): Promise<Pick<VaultRevision, "_rev" | "_revisions">> {
+export async function child(parent: RevisionRef, content: object): Promise<RevisionRef> {
   const input = new TextEncoder().encode(canonical({ parent: parent._rev, content }));
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", input));
   const hash = Array.from(digest.subarray(0, 16), (byte) => byte.toString(16).padStart(2, "0")).join("");

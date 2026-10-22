@@ -12,6 +12,7 @@
  * Los ids son `note:{vault_id}:{uuid v4}`: el prefijo lleva la bóveda, así que listar el
  * árbol de una bóveda es un rango de `_id` sobre el índice primario de PouchDB.
  */
+import { child } from "../sync/conflicts";
 import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { checkContent, checkPath, normalizePath, pathKey } from "./noteRules";
 import { nextUntitledPath } from "./untitled";
@@ -185,6 +186,43 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     }
   }
 
+  /**
+   * Guardado sobre una revisión desfasada (P-8): lo escrito no se pierde ni pisa lo que llegó
+   * entre tanto. Se escribe como rama hija de `baseRev` (con `new_edits: false` y una revisión
+   * determinista, igual que las resoluciones de `conflicts.ts`) y la nota queda en conflicto
+   * para que el usuario elija en la vista de conflictos. Dos guardados idénticos dan la misma
+   * revisión, así que reintentar no ramifica de más.
+   */
+  async function saveAsBranch(id: string, baseRev: string, content: string): Promise<Note> {
+    let base: NoteDoc & { _revisions: { start: number; ids: string[] }; _deleted?: boolean };
+    try {
+      base = await db.get(id, { rev: baseRev, revs: true });
+    } catch (err) {
+      // `baseRev` desconocida o sin cuerpo: no hay de qué colgar la rama.
+      if (isStatus(err, 404)) throw new NoteChangedError();
+      throw err;
+    }
+    if (base._deleted) throw new NoteChangedError();
+    const body = {
+      type: "note" as const,
+      vault_id: base.vault_id,
+      path: base.path,
+      frontmatter: base.frontmatter,
+      content,
+      created_at: base.created_at,
+      updated_at: now(),
+      deleted_at: base.deleted_at,
+    };
+    const revision = await child({ _rev: baseRev, _revisions: base._revisions }, body);
+    try {
+      await db.bulkDocs([{ _id: id, ...revision, ...body }] as PouchDB.Core.PutDocument<{}>[], { new_edits: false });
+    } catch (err) {
+      if (isQuotaError(err)) throw new StorageFullError();
+      throw err;
+    }
+    return toNote({ _id: id, _rev: revision._rev, ...body });
+  }
+
   /** La UI editaba `rev`; si ya no es la ganadora, otro cambio llegó antes (local o por sync). */
   function assertCurrent(doc: NoteDoc, rev: string): void {
     if (doc._rev !== rev) throw new NoteChangedError();
@@ -255,7 +293,15 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     async save(id, content, baseRev) {
       if (checkContent(content) !== null) throw new NoteValidationError(["content"]);
       const doc = await load(id, false);
-      return write({ ...doc, _rev: baseRev, content, updated_at: now() });
+      if (doc._rev === baseRev) {
+        try {
+          return await write({ ...doc, content, updated_at: now() });
+        } catch (err) {
+          // Otra escritura se coló entre la lectura y la nuestra: es el mismo caso de abajo.
+          if (!(err instanceof NoteChangedError)) throw err;
+        }
+      }
+      return saveAsBranch(id, baseRev, content);
     },
   };
 }
