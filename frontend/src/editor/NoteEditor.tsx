@@ -99,6 +99,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   noteRef.current = note;
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const editOnOpenRef = useRef(editOnOpen);
   editOnOpenRef.current = editOnOpen;
 
@@ -197,6 +199,30 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setSaved(false);
   }, []);
 
+  /**
+   * La nota está en la papelera (la mandó otro dispositivo) y aún hay borrador: lo restaura
+   * (sujeto a RF-013: con la ruta ocupada falla y el borrador queda como está) y lo guarda
+   * sobre la revisión restaurada (VF-4).
+   */
+  async function restoreAndSave() {
+    const current = noteRef.current;
+    if (current === null) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const trashed = (await notes.list(current.vault_id, { deleted: true })).find((item) => item.id === current.id);
+      if (!trashed) throw new NoteNotFoundError();
+      const restored = await notes.restore(current.id, trashed.rev);
+      setNote(await notes.save(current.id, draftRef.current, restored.rev));
+      setMissing(false);
+      setSaved(true);
+    } catch (err) {
+      setError(noteErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   /** Guarda el borrador; devuelve si quedó guardado. Un error se muestra y deja el borrador. */
   async function save(): Promise<boolean> {
     const current = noteRef.current;
@@ -262,7 +288,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     }
   }
 
-  if (missing) return <p role="status">{noteErrorMessage(new NoteNotFoundError())}</p>;
+  // Sin borrador, una nota que ya no existe no tiene nada que ofrecer; con borrador se conserva
+  // el editor y se ofrece restaurarla (VF-4).
+  if (missing && !dirty) return <p role="status">{noteErrorMessage(new NoteNotFoundError())}</p>;
   if (note === null) return error ? <p role="alert">{error}</p> : <p>Cargando…</p>;
 
   const inConflict = conflicts.some((conflict) => conflict.kind === "note" && conflict.id === note.id);
@@ -306,6 +334,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         <p className="note-editor-notice" role="status">
           Esta nota tiene versiones en conflicto. <Link to="/conflicts">Resolver en Conflictos</Link>
         </p>
+      )}
+      {missing && (
+        <div className="note-editor-notice" role="status">
+          <p>Esta nota se envió a la papelera desde otro dispositivo; tu borrador sigue aquí.</p>
+          <button type="button" onClick={() => void restoreAndSave()} disabled={saving}>
+            Restaurar y guardar
+          </button>
+        </div>
       )}
       {error && <p role="alert">{error}</p>}
       {pendingId !== null && (

@@ -223,8 +223,12 @@ describe("RD-2: disparadores de arranque y de reconexión", () => {
   });
 
   it("tras un fallo de red, el reintento queda pendiente y se repite al volver a estar en línea", async () => {
+    // Instancia nueva tras crear la bóveda: su feed no arrastra el cambio de `putVault`, que
+    // llegaría en un turno aleatorio y sumaría un reintento ajeno a lo que se prueba.
     await putVault(V);
     await settle();
+    repush.close();
+    repush = startRepush({ db, remote, status, rejections });
     await rejectNote(NOTE_1);
     toSpy.mockImplementationOnce((() => Object.assign(Promise.reject(new Error("sin red")), { on: vi.fn() })) as never);
     repush.handle({ type: "written", docs: [{ id: `vault:${V}`, rev: "1-a" }] });
