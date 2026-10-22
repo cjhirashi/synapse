@@ -138,7 +138,7 @@ function isStatus(err: unknown, status: number): boolean {
  * (`indexed_db_went_bad`) con la causa en `reason`; se acepta también el `DOMException`
  * sin envolver.
  */
-function isQuotaError(err: unknown): boolean {
+export function isQuotaError(err: unknown): boolean {
   const e = err as { name?: string; reason?: string } | null;
   return e?.name === "QuotaExceededError" || (e?.name === "indexed_db_went_bad" && e.reason === "QuotaExceededError");
 }

@@ -12,8 +12,8 @@
  * Los ids son `note:{vault_id}:{uuid v4}`: el prefijo lleva la bóveda, así que listar el
  * árbol de una bóveda es un rango de `_id` sobre el índice primario de PouchDB.
  */
-import { utcNow } from "../sync/vaultStore";
-import { checkPath, normalizePath, pathKey } from "./noteRules";
+import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
+import { checkContent, checkPath, normalizePath, pathKey } from "./noteRules";
 import { nextUntitledPath } from "./untitled";
 
 /** Prefijo de los ids de nota en CouchDB/PouchDB (PLAN-0008 §3). */
@@ -68,6 +68,11 @@ export interface NoteStore {
   list(vaultId: string, options?: { deleted?: boolean }): Promise<NoteSummary[]>;
   get(id: string): Promise<Note>;
   create(vaultId: string, title?: string): Promise<Note>;
+  rename(id: string, path: string, rev: string): Promise<Note>;
+  softDelete(id: string, rev: string): Promise<Note>;
+  restore(id: string, rev: string): Promise<Note>;
+  /** Guarda el contenido editado sobre la revisión `baseRev` que se cargó. */
+  save(id: string, content: string, baseRev: string): Promise<Note>;
 }
 
 // --- Errores (la UI los traduce con textos de `messages.ts`) ---
@@ -95,6 +100,17 @@ export class NoteNotFoundError extends Error {
     this.name = "NoteNotFoundError";
   }
 }
+
+/** La revisión que editaba la UI ya no es la actual (el 409 de PouchDB). */
+export class NoteChangedError extends Error {
+  constructor() {
+    super("la nota cambió desde que se cargó");
+    this.name = "NoteChangedError";
+  }
+}
+
+// La cuota agotada del navegador es la misma `StorageFullError` de 0005.
+export { StorageFullError };
 
 function toNote(doc: NoteDoc): Note {
   return {
@@ -157,10 +173,21 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     return doc;
   }
 
-  /** Escribe una revisión nueva y devuelve la nota con su `_rev`. */
+  /** Escribe una revisión nueva; traduce el 409 de PouchDB y la cuota agotada. */
   async function write(doc: NoteDoc): Promise<Note> {
-    const result = await db.put<NoteDoc>(doc as PouchDB.Core.PutDocument<NoteDoc>);
-    return toNote({ ...doc, _rev: result.rev });
+    try {
+      const result = await db.put<NoteDoc>(doc as PouchDB.Core.PutDocument<NoteDoc>);
+      return toNote({ ...doc, _rev: result.rev });
+    } catch (err) {
+      if (isStatus(err, 409)) throw new NoteChangedError();
+      if (isQuotaError(err)) throw new StorageFullError();
+      throw err;
+    }
+  }
+
+  /** La UI editaba `rev`; si ya no es la ganadora, otro cambio llegó antes (local o por sync). */
+  function assertCurrent(doc: NoteDoc, rev: string): void {
+    if (doc._rev !== rev) throw new NoteChangedError();
   }
 
   return {
@@ -199,6 +226,36 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
         updated_at: timestamp,
         deleted_at: null,
       });
+    },
+
+    async rename(id, path, rev) {
+      const normalized = normalizePath(path);
+      if (checkPath(normalized) !== null) throw new NoteValidationError(["path"]);
+      const doc = await load(id, false);
+      assertCurrent(doc, rev);
+      await assertPathFree(doc.vault_id, normalized, doc._id);
+      return write({ ...doc, path: normalized, updated_at: now() });
+    },
+
+    async softDelete(id, rev) {
+      const doc = await load(id, false);
+      assertCurrent(doc, rev);
+      const timestamp = now();
+      return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
+    },
+
+    async restore(id, rev) {
+      const doc = await load(id, true);
+      assertCurrent(doc, rev);
+      // Al volver a estar activa, su ruta vuelve a competir con las demás activas (RF-017).
+      await assertPathFree(doc.vault_id, doc.path, doc._id);
+      return write({ ...doc, deleted_at: null, updated_at: now() });
+    },
+
+    async save(id, content, baseRev) {
+      if (checkContent(content) !== null) throw new NoteValidationError(["content"]);
+      const doc = await load(id, false);
+      return write({ ...doc, _rev: baseRev, content, updated_at: now() });
     },
   };
 }
