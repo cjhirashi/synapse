@@ -1,0 +1,291 @@
+/**
+ * Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
+ *
+ * Es el dueño del estado de edición: el `draft` (markdown), la revisión que se cargó
+ * (`baseRev`), el modo (`read` por defecto, `edit`) y la vista (`visual`/`code`). Las dos
+ * vistas leen y escriben el mismo `draft`, así que alternar entre ellas no escribe ni relee
+ * nada: sólo cambia qué componente pinta el texto.
+ *
+ * Guardado explícito (P-5, la réplica no compacta): botón "Guardar", Ctrl/Cmd+S y "Leer" con
+ * cambios guarda antes. Hay aviso de cambios sin guardar al cerrar la pestaña (`beforeunload`)
+ * y al pedir otra nota (confirmación interna: el padre cambia `noteId` y este componente
+ * decide si abre ya o pregunta; si el usuario sigue editando avisa con `onCancelOpen`).
+ */
+import { ComponentType, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { checkContent } from "../notes/noteRules";
+import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
+import { noteErrorMessage } from "../notes/messages";
+import type { Note } from "../notes/noteStore";
+import { useSync } from "../sync/useSync";
+import { CodeView } from "./CodeView";
+import { MilkdownView } from "./MilkdownView";
+import "./editor.css";
+
+/** Contrato común de las dos vistas del markdown (reales o falsas en las pruebas). */
+export interface ViewProps {
+  value: string;
+  onChange: (value: string) => void;
+  /** Nombre accesible del área de texto. */
+  label: string;
+  readOnly: boolean;
+}
+
+export interface NoteEditorViews {
+  Visual: ComponentType<ViewProps>;
+  Code: ComponentType<ViewProps>;
+}
+
+const REAL_VIEWS: NoteEditorViews = { Visual: MilkdownView, Code: CodeView };
+
+interface NoteEditorProps {
+  /** Nota que el padre quiere mostrar. Cambiarla con cambios sin guardar abre la confirmación. */
+  noteId: string;
+  /** Abrir la nota en edición (la recién creada) en vez de en lectura. Sólo cuenta al cargarla. */
+  editOnOpen?: boolean;
+  /** El usuario decidió seguir editando: el padre debe volver a seleccionar `openId`. */
+  onCancelOpen?: (openId: string) => void;
+  /** Vistas inyectables (las pruebas del envoltorio usan editores falsos). */
+  views?: NoteEditorViews;
+}
+
+type Mode = "read" | "edit";
+type View = "visual" | "code";
+
+/** Nombre mostrado: la ruta sin la extensión `.md`, como en el árbol. */
+function title(path: string): string {
+  return path.replace(/\.md$/i, "");
+}
+
+export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS }: NoteEditorProps) {
+  const { notes, notesVersion, conflicts } = useSync();
+  const { Visual, Code } = views;
+
+  /** Nota cargada (`null` mientras carga o si desapareció). */
+  const [note, setNote] = useState<Note | null>(null);
+  const [missing, setMissing] = useState(false);
+  const [openId, setOpenId] = useState(noteId);
+  /** Nota pedida por el padre a la espera de la respuesta del usuario (cambios sin guardar). */
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [mode, setMode] = useState<Mode>("read");
+  const [view, setView] = useState<View>("visual");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const dirty = note !== null && draft !== note.content;
+
+  // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
+  const noteRef = useRef(note);
+  noteRef.current = note;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const editOnOpenRef = useRef(editOnOpen);
+  editOnOpenRef.current = editOnOpen;
+
+  // Carga la nota abierta; al terminar, lectura (o edición si el padre lo pidió).
+  useEffect(() => {
+    let alive = true;
+    setNote(null);
+    setMissing(false);
+    setError(null);
+    setSaved(false);
+    notes.get(openId).then(
+      (loaded) => {
+        if (!alive) return;
+        setNote(loaded);
+        setDraft(loaded.content);
+        setMode(editOnOpenRef.current ? "edit" : "read");
+        setView("visual");
+      },
+      (err) => {
+        if (!alive) return;
+        if (err instanceof NoteNotFoundError) setMissing(true);
+        else setError(noteErrorMessage(err));
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [notes, openId]);
+
+  // Otra revisión llegó (el pull, otra pestaña, un renombrado): sin cambios locales se
+  // muestra tal cual. Con cambios sin guardar se respeta el borrador; guardarlo sobre la
+  // revisión vieja lo deja como rama en conflicto, no se pierde (P-8).
+  useEffect(() => {
+    const current = noteRef.current;
+    if (current === null || dirtyRef.current) return;
+    let alive = true;
+    notes.get(current.id).then(
+      (latest) => {
+        if (!alive || dirtyRef.current || latest.rev === noteRef.current?.rev) return;
+        setNote(latest);
+        setDraft(latest.content);
+      },
+      (err) => {
+        if (alive && err instanceof NoteNotFoundError) setMissing(true);
+      },
+    );
+    return () => {
+      alive = false;
+    };
+    // Sólo cuando cambia la versión de las notas: el resto se lee por refs.
+  }, [notes, notesVersion]);
+
+  // El padre pide otra nota: abrirla ya, o preguntar si hay cambios sin guardar.
+  useEffect(() => {
+    if (noteId === openId) {
+      setPendingId(null);
+    } else if (dirtyRef.current) {
+      setPendingId(noteId);
+    } else {
+      setOpenId(noteId);
+    }
+  }, [noteId, openId]);
+
+  // Aviso del navegador al cerrar o recargar con cambios sin guardar.
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Algunos navegadores sólo muestran el aviso si hay `returnValue`.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
+  const onDraft = useCallback((value: string) => {
+    setDraft(value);
+    setSaved(false);
+  }, []);
+
+  /** Guarda el borrador; devuelve si quedó guardado. Un error se muestra y deja el borrador. */
+  async function save(): Promise<boolean> {
+    const current = noteRef.current;
+    if (current === null) return false;
+    if (!dirtyRef.current) return true;
+    // Aviso inmediato: el almacén también lo valida, pero así no hay ida y vuelta.
+    if (checkContent(draft) !== null) {
+      setError(noteErrorMessage(new NoteValidationError(["content"])));
+      return false;
+    }
+    setSaving(true);
+    setError(null);
+    try {
+      setNote(await notes.save(current.id, draft, current.rev));
+      setSaved(true);
+      return true;
+    } catch (err) {
+      setError(noteErrorMessage(err));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function leave() {
+    // "Leer" guarda antes: si no se pudo, se queda en edición con el borrador y el aviso.
+    if (await save()) setMode("read");
+  }
+
+  async function saveAndOpen() {
+    if (pendingId !== null && (await save())) {
+      setOpenId(pendingId);
+      setPendingId(null);
+    }
+  }
+
+  function discardAndOpen() {
+    if (pendingId === null) return;
+    setOpenId(pendingId);
+    setPendingId(null);
+  }
+
+  function keepEditing() {
+    setPendingId(null);
+    onCancelOpen?.(openId);
+  }
+
+  function onKeyDown(event: KeyboardEvent) {
+    if (mode === "edit" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      // Sin esto el navegador abriría su propio "Guardar página como".
+      event.preventDefault();
+      void save();
+    }
+  }
+
+  if (missing) return <p role="status">{noteErrorMessage(new NoteNotFoundError())}</p>;
+  if (note === null) return error ? <p role="alert">{error}</p> : <p>Cargando…</p>;
+
+  const inConflict = conflicts.some((conflict) => conflict.kind === "note" && conflict.id === note.id);
+
+  return (
+    <section className="note-editor" aria-label="Editor de nota" onKeyDown={onKeyDown}>
+      <header className="note-editor-header">
+        <h2>{title(note.path)}</h2>
+        <div className="note-editor-toolbar">
+          {mode === "edit" && (
+            <div role="group" aria-label="Vista del editor" className="note-editor-views">
+              <button type="button" aria-pressed={view === "visual"} onClick={() => setView("visual")}>
+                Visual
+              </button>
+              <button type="button" aria-pressed={view === "code"} onClick={() => setView("code")}>
+                Código
+              </button>
+            </div>
+          )}
+          {mode === "edit" && (
+            <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
+              Guardar
+            </button>
+          )}
+          {mode === "read" ? (
+            <button type="button" onClick={() => setMode("edit")}>
+              Editar
+            </button>
+          ) : (
+            <button type="button" onClick={() => void leave()} disabled={saving}>
+              Leer
+            </button>
+          )}
+          <span className="note-editor-state" role="status">
+            {dirty ? "Cambios sin guardar" : saved ? "Guardado" : ""}
+          </span>
+        </div>
+      </header>
+
+      {inConflict && (
+        <p className="note-editor-notice" role="status">
+          Esta nota tiene versiones en conflicto. <Link to="/conflicts">Resolver en Conflictos</Link>
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+      {pendingId !== null && (
+        <div role="alertdialog" aria-labelledby="note-switch-title" className="note-editor-confirm">
+          <p id="note-switch-title">Esta nota tiene cambios sin guardar.</p>
+          <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
+            Guardar y abrir
+          </button>
+          <button type="button" onClick={discardAndOpen}>
+            Descartar y abrir
+          </button>
+          <button type="button" onClick={keepEditing}>
+            Seguir editando
+          </button>
+        </div>
+      )}
+
+      <div className="note-editor-body">
+        {mode === "read" ? (
+          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly />
+        ) : view === "visual" ? (
+          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} />
+        ) : (
+          <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} />
+        )}
+      </div>
+    </section>
+  );
+}
