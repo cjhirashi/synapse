@@ -13,6 +13,7 @@ from functools import lru_cache
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, Path, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -91,9 +92,9 @@ class SyncRoute(APIRoute):
 
     FastAPI lee y parsea el cuerpo antes de resolver las dependencias, y convierte en 400
     cualquier excepción levantada durante esa lectura. Por eso el tope no puede ser una
-    dependencia ni vivir dentro del flujo: el manejador de la ruta lee el cuerpo con el tope
-    y entrega a FastAPI un `receive` que lo reproduce. `_local` admite 64 KiB, `_bulk_docs` 16 MiB
-    y el resto 4 MiB.
+    dependencia ni vivir dentro del flujo: el manejador de la ruta comprueba la sesión, lee el
+    cuerpo con el tope y entrega a FastAPI un `receive` que lo reproduce. `_local` admite
+    64 KiB, `_bulk_docs` 16 MiB y el resto 4 MiB.
     """
 
     def get_route_handler(self):
@@ -102,6 +103,10 @@ class SyncRoute(APIRoute):
             self.path_format, MAX_BODY_BYTES)
 
         async def limited(request: Request):
+            # Sesión primero (RF-002): sin ella un cuerpo de hasta 16 MiB no se lee. El usuario
+            # queda en `request.state` (compartido por el `Request` que recibe FastAPI) y la
+            # dependencia del router lo reutiliza: una sola consulta SQL por petición.
+            request.state.sync_user = await run_in_threadpool(get_sync_user, request)
             declared = request.headers.get("content-length", "")
             if declared.isdigit() and int(declared) > limit:
                 raise PayloadTooLarge(f"declared body of {declared} bytes over {limit}")
@@ -122,6 +127,9 @@ def get_sync_user(request: Request) -> TokenPayload:
     Con `Depends(get_db)` normal, el cierre (generador + `yield`) se difiere hasta que acaba
     la respuesta completa, y un `longpoll` de `_changes` retendría una conexión del pool hasta
     60 s pese a que esta comprobación ya no la necesita."""
+    already_checked = getattr(request.state, "sync_user", None)  # `SyncRoute` ya la hizo
+    if already_checked is not None:
+        return already_checked
     db = SessionLocal()
     try:
         return require_password_changed(get_current_user(request, db), db)
