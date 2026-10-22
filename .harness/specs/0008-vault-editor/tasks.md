@@ -29,7 +29,7 @@ actualizado: 2026-10-22
 ## Tareas
 
 ### 0 · Línea base
-- [ ] T-000 — Suites completas en verde antes de tocar nada; anotar los números en `history.md` (cubre RF-001…RF-019, RNF-001: referencia de no regresión) [zona: sistema]
+- [x] T-000 — Suites completas en verde antes de tocar nada; anotar los números en `history.md` (cubre RF-001…RF-019, RNF-001: referencia de no regresión) [zona: sistema]
   - CHECK: `bash .harness/gate/check.sh && (cd backend && python3 -m pytest -q) && (cd frontend && npx vitest run && npm run typecheck)`
   - EXPECT: gate "Compuerta abierta"; backend `passed` con 0 failed (≈ 791 tests, ~13 min); frontend todos los archivos `passed`, 0 failed; typecheck sin errores.
 
