@@ -14,13 +14,12 @@
  */
 import { child } from "../sync/conflicts";
 import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
-import { checkContent, checkPath, normalizePath, pathKey } from "./noteRules";
+import { NOTE_ID_PREFIX, checkContent, checkPath, normalizePath, pathKey } from "./noteRules";
+import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
 
-/** Prefijo de los ids de nota en CouchDB/PouchDB (PLAN-0008 §3). */
-export const ID_PREFIX = "note:";
-/** Campos de una nota que pueden fallar la validación (los de entrada de la UI). */
-export type NoteField = "path" | "content";
+// Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
+export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
 
 /** Documento de nota tal como se guarda (mismas claves que `note.schema.json`). */
 interface NoteDoc {
@@ -76,43 +75,6 @@ export interface NoteStore {
   save(id: string, content: string, baseRev: string): Promise<Note>;
 }
 
-// --- Errores (la UI los traduce con textos de `messages.ts`) ---
-
-/** Campos que no pasan las reglas de `noteRules` (el rechazo `validation-error:<campo>`). */
-export class NoteValidationError extends Error {
-  constructor(readonly fields: NoteField[]) {
-    super(`campos inválidos: ${fields.join(", ")}`);
-    this.name = "NoteValidationError";
-  }
-}
-
-/** Otra nota activa de la bóveda tiene una ruta equivalente (el `note-path-taken` del push). */
-export class NotePathTakenError extends Error {
-  constructor() {
-    super("ya existe una nota activa con esa ruta");
-    this.name = "NotePathTakenError";
-  }
-}
-
-/** No existe, o no está en el estado que pide la operación (activa / en la papelera). */
-export class NoteNotFoundError extends Error {
-  constructor() {
-    super("nota no encontrada");
-    this.name = "NoteNotFoundError";
-  }
-}
-
-/** La revisión que editaba la UI ya no es la actual (el 409 de PouchDB). */
-export class NoteChangedError extends Error {
-  constructor() {
-    super("la nota cambió desde que se cargó");
-    this.name = "NoteChangedError";
-  }
-}
-
-// La cuota agotada del navegador es la misma `StorageFullError` de 0005.
-export { StorageFullError };
-
 function toNote(doc: NoteDoc): Note {
   return {
     id: doc._id,
@@ -147,7 +109,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
 
   /** Ganadoras de las notas de una bóveda (las perdedoras en conflicto las resuelve `conflicts.ts`). */
   async function winners(vaultId: string): Promise<NoteDoc[]> {
-    const prefix = `${ID_PREFIX}${vaultId}:`;
+    const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
     const result = await db.allDocs<NoteDoc>({ startkey: prefix, endkey: `${prefix}￰`, include_docs: true });
     return result.rows.map((row) => row.doc as NoteDoc).filter((doc) => doc.type === "note");
   }
@@ -254,7 +216,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       await assertPathFree(vaultId, path, null);
       const timestamp = now();
       return write({
-        _id: `${ID_PREFIX}${vaultId}:${newId()}`,
+        _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
         type: "note",
         vault_id: vaultId,
         path,

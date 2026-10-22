@@ -18,6 +18,9 @@
  */
 import { nameKey } from "../sync/vaultRules";
 
+/** Prefijo de los ids de nota en CouchDB/PouchDB (PLAN-0008 §3). */
+export const NOTE_ID_PREFIX = "note:";
+
 // Límites de `core/note_rules.py`.
 export const PATH_MAX = 300;
 export const CONTENT_MAX_BYTES = 2 * 1024 * 1024;

@@ -2,6 +2,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { canonical, openConflicts, type ConflictsStore } from "./conflicts";
+import { NoteValidationError } from "../notes/errors";
 import { VaultValidationError } from "./vaultStore";
 
 PouchDB.plugin(memory);
@@ -150,6 +151,7 @@ describe("conflictos manuales", () => {
     const store = await open();
     expect(store.list()).toEqual([
       {
+        kind: "vault",
         id: ID,
         reason: "clash",
         fields: ["name"],
@@ -258,6 +260,143 @@ describe("revisiones deterministas (VC-2, enmienda 1)", () => {
     const second = await onReplica(resolveAt(T2));
     expect(second.filter((leaf) => leaf.deleted)).toEqual(first.filter((leaf) => leaf.deleted));
     first.filter((leaf) => leaf.rev.startsWith("3-")).forEach((leaf) => expect(leaf.rev).toMatch(HEX32));
+  });
+});
+
+// --- Notas (SPEC-0008 RF-009, RF-014; PLAN-0008 §2.6) ---
+
+const VAULT_ID = "33333333-3333-4333-8333-333333333333";
+const NOTE_ID = `note:${VAULT_ID}:44444444-4444-4444-8444-444444444444`;
+const VAULT_DOC_ID = `vault:${VAULT_ID}`;
+
+const NOTE_ANCESTOR = {
+  type: "note",
+  vault_id: VAULT_ID,
+  path: "a.md",
+  frontmatter: {},
+  content: "base",
+  created_at: T0,
+  updated_at: T0,
+  deleted_at: null as string | null,
+};
+type NoteDocBody = typeof NOTE_ANCESTOR;
+
+/** Bóveda activa (o en la papelera si `deleted_at`): la que da paso a sus conflictos de nota. */
+async function putVault(deletedAt: string | null = null): Promise<void> {
+  const existing = await db.get<{ _rev: string }>(VAULT_DOC_ID).catch(() => null);
+  await db.put({
+    _id: VAULT_DOC_ID, ...(existing ? { _rev: existing._rev } : {}), ...ANCESTOR, deleted_at: deletedAt,
+  });
+}
+
+/** Ancestro `1-aaaa` y dos hijas de la nota en conflicto: `2-ffff` (W) y `2-1111` (L). */
+async function noteConflict(w: Partial<NoteDocBody>, l: Partial<NoteDocBody>): Promise<void> {
+  const rev = (hashes: string[], body: Partial<NoteDocBody>) => ({
+    _id: NOTE_ID, _rev: `${hashes.length}-${hashes[0]}`, _revisions: { start: hashes.length, ids: hashes },
+    ...NOTE_ANCESTOR, ...body,
+  });
+  await db.bulkDocs([rev([A], {})], { new_edits: false });
+  await db.bulkDocs([rev([W, A], { updated_at: T1, ...w }), rev([L, A], { updated_at: T2, ...l })], { new_edits: false });
+}
+
+async function noteWinner() {
+  return db.get<NoteDocBody>(NOTE_ID, { conflicts: true, revs: true });
+}
+
+describe("RF-009: conflictos de nota", () => {
+  it("el barrido inicial detecta una nota en conflicto y la deja manual, con ambas versiones", async () => {
+    await putVault();
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    expect(store.list()).toEqual([
+      {
+        kind: "note",
+        id: NOTE_ID,
+        winner: { rev: `2-${W}`, doc: expect.objectContaining({ content: "texto W", path: "a.md" }) },
+        loser: { rev: `2-${L}`, doc: expect.objectContaining({ content: "texto L" }) },
+      },
+    ]);
+    // Nada se escribe ni se pierde: la rama perdedora sigue viva.
+    expect((await noteWinner())._conflicts).toEqual([`2-${L}`]);
+  });
+
+  it("el feed detecta una nota que entra en conflicto después de arrancar", async () => {
+    await putVault();
+    const store = await open();
+    await noteConflict({ path: "w.md" }, { path: "l.md" });
+    await vi.waitFor(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
+  });
+
+  it.each<[string, Partial<NoteDocBody>]>([
+    ["ruta", { path: "otra.md" }],
+    ["frontmatter", { frontmatter: { k: 1 } }],
+    ["borrado", { deleted_at: T2 }],
+  ])("una diferencia de %s también es manual", async (_label, change) => {
+    await putVault();
+    await noteConflict({}, change);
+    expect((await open()).list()).toEqual([expect.objectContaining({ kind: "note" })]);
+  });
+
+  it("mergeNote cierra la perdedora si sólo difiere en `updated_at` (convergencia)", async () => {
+    await putVault();
+    await noteConflict({ content: "igual" }, { content: "igual" });
+    const store = await open();
+    const doc = await noteWinner();
+    expect(doc._rev).toBe(`2-${W}`);
+    expect(doc._conflicts).toBeUndefined();
+    expect(store.list()).toEqual([]);
+  });
+
+  it("`resolve` de nota escribe la elección como hija de W y cierra la rama de L", async () => {
+    await putVault();
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    await store.resolve(NOTE_ID, `2-${L}`, { path: "a.md", content: "texto L", frontmatter: {}, deleted_at: null });
+    const doc = await noteWinner();
+    expect(doc._conflicts).toBeUndefined();
+    expect(doc).toMatchObject({ content: "texto L", path: "a.md", updated_at: NOW, created_at: T0, vault_id: VAULT_ID });
+    expect(doc._revisions?.ids[1]).toBe(W);
+    await vi.waitFor(() => expect(store.list()).toEqual([]));
+  });
+
+  it("`resolve` de nota con una elección inválida no escribe nada", async () => {
+    await putVault();
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    await expect(store.resolve(NOTE_ID, `2-${L}`, { path: "a//b.md", content: "x", frontmatter: {}, deleted_at: null }))
+      .rejects.toEqual(new NoteValidationError(["path"]));
+    expect((await noteWinner())._rev).toBe(`2-${W}`);
+  });
+});
+
+describe("RF-014: notas de una bóveda que no está activa", () => {
+  it("no se listan las de una bóveda desconocida (aún no llegó) ni las de una en la papelera", async () => {
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    expect((await open()).list()).toEqual([]); // sin documento de bóveda
+    counter += 1;
+    db = new PouchDB(`conflicts-test-${counter}`, { adapter: "memory" });
+    await putVault(T1);
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    expect((await open()).list()).toEqual([]); // bóveda en la papelera
+  });
+
+  it("al restaurar la bóveda sus conflictos de nota aparecen, y al borrarla desaparecen", async () => {
+    await putVault(T1);
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    expect(store.list()).toEqual([]);
+    await putVault(null);
+    await vi.waitFor(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
+    await putVault(T2);
+    await vi.waitFor(() => expect(store.list()).toEqual([]));
+  });
+
+  it("los conflictos de nota no se mezclan con los de bóveda en la lista", async () => {
+    await putVault();
+    await conflict({ name: "Nombre W" }, { name: "Nombre L" });
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    expect(store.list().map((item) => item.kind).sort()).toEqual(["note", "vault"]);
   });
 });
 
