@@ -26,9 +26,13 @@
  * Las resoluciones son ediciones normales para el push: el servidor las valida (RF-015) y,
  * si las rechaza, siguen el flujo de `rejections.ts` (RF-006).
  */
+import { canonical } from "./canonical";
 import { mergeVault, type MergeBody, type MergeResult } from "./merge";
 import { validateVault, type VaultField, type VaultFields } from "./vaultRules";
 import { ID_PREFIX, VaultChangedError, VaultValidationError, utcNow } from "./vaultStore";
+
+// `canonical` vive en su propio módulo (lo comparte `notes/mergeNote.ts` sin ciclo de imports).
+export { canonical };
 
 /** Una pareja ganadora/perdedora que el usuario debe resolver (RF-013). */
 export interface ManualConflict {
@@ -78,23 +82,6 @@ interface VaultRevision extends MergeBody {
 function history(doc: VaultRevision): string[] {
   const { start, ids } = doc._revisions;
   return ids.map((hash, i) => `${start - i}-${hash}`);
-}
-
-/**
- * JSON canónico: claves ordenadas en todos los niveles y sin las de valor `undefined`, para
- * que el mismo contenido dé el mismo texto en cualquier réplica. Dentro de una lista un
- * `undefined` pasa a `null`, como en `JSON.stringify` (VD-4). Con valores JSON (los cuerpos
- * de documento) el resultado es JSON; otros valores (una función, un `undefined` suelto) no
- * se contemplan porque PouchDB sólo guarda JSON.
- */
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map((item) => (item === undefined ? "null" : canonical(item))).join(",")}]`;
-  if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value).filter(([, v]) => v !== undefined);
-    entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
-  }
-  return JSON.stringify(value);
 }
 
 /**
