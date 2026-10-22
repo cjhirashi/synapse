@@ -529,7 +529,7 @@
    "col": 3,
    "type": "backend",
    "label": "Push validado",
-   "sublabel": "reglas de SPEC-0003",
+   "sublabel": "reglas de 0003 y 0008",
    "tag": "RF-005"
   },
   {
@@ -538,7 +538,7 @@
    "col": 4,
    "type": "database",
    "label": "synapse_user_{id}",
-   "sublabel": "sólo vault:* (D-4)",
+   "sublabel": "vault:* y note:* (SPEC-0008)",
    "width": 120
   },
   {
@@ -618,7 +618,7 @@
   {
    "from": "validate",
    "to": "denied",
-   "label": "p. ej. vault-name-taken",
+   "label": "p. ej. note-path-taken",
    "variant": "security",
    "role": "error"
   },
@@ -662,7 +662,7 @@
    "dot": "amber",
    "title": "Estado",
    "items": [
-    "Implementada (Fase 4, bloques A–K)",
+    "Implementada (Fase 4); canal ampliado a notas por SPEC-0008",
     "Integración real: 14 pruebas; p95 ≈ 0,4 s",
     "Pendiente: verificación (Fase 5)"
    ]
