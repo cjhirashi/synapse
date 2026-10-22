@@ -252,6 +252,63 @@ describe("cambiar de nota con cambios sin guardar", () => {
   });
 });
 
+describe("renombrar la nota abierta con borrador sucio (VF-3)", () => {
+  // RF-011
+  it("el borrador se conserva, la ruta se actualiza y guardar no crea un conflicto", async () => {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const note = await value.notes.create(VAULT, "Primera");
+    await value.notes.save(note.id, "uno", (await value.notes.get(note.id)).rev);
+    const tree = (version: number) => (
+      <DataMemoryRouter>
+        <WithSync value={{ ...value, notesVersion: version }}>
+          <NoteEditor noteId={note.id} views={views} />
+        </WithSync>
+      </DataMemoryRouter>
+    );
+    const { rerender } = render(tree(0));
+    await screen.findByRole("heading", { name: "Primera" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor visual" }), "!");
+    // Renombrado desde el árbol: sólo cambia la ruta, el contenido es el de la base.
+    await value.notes.rename(note.id, "Nueva.md", (await value.notes.get(note.id)).rev);
+    rerender(tree(1));
+    await screen.findByRole("heading", { name: "Nueva" });
+    expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveValue("uno!");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await screen.findByText("Guardado");
+    const stored = await db.get<{ content: string; path: string; _conflicts?: string[] }>(note.id, { conflicts: true });
+    expect(stored.content).toBe("uno!");
+    expect(stored.path).toBe("Nueva.md");
+    expect(stored._conflicts).toBeUndefined();
+  });
+
+  // RF-011
+  it("si el contenido también cambió sigue el camino de P-8 (rama en conflicto, nada se pierde)", async () => {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const note = await value.notes.create(VAULT, "Primera");
+    await value.notes.save(note.id, "uno", (await value.notes.get(note.id)).rev);
+    const tree = (version: number) => (
+      <DataMemoryRouter>
+        <WithSync value={{ ...value, notesVersion: version }}>
+          <NoteEditor noteId={note.id} views={views} />
+        </WithSync>
+      </DataMemoryRouter>
+    );
+    const { rerender } = render(tree(0));
+    await screen.findByRole("heading", { name: "Primera" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor visual" }), "!");
+    await value.notes.save(note.id, "desde otro", (await value.notes.get(note.id)).rev);
+    rerender(tree(1));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await screen.findByText("Guardado");
+    const stored = await db.get<{ _conflicts?: string[] }>(note.id, { conflicts: true });
+    expect(stored._conflicts).toHaveLength(1);
+  });
+});
+
 describe("conflicto y cambios de otros (RF-009 aviso)", () => {
   // RF-009
   it("avisa con enlace a /conflicts si la nota abierta está en conflicto", async () => {

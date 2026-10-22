@@ -1,5 +1,6 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { DataMemoryRouter } from "../test-utils/router";
@@ -156,4 +157,37 @@ test("RF-015: un id de nota de otra bóveda en el estado de navegación se ignor
   render(tree(value, `/vaults/${vault.id}`, { noteId: foreign }));
   expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
   expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
+});
+
+/** Abre "Hola" en edición con el editor de código y le añade texto: el borrador queda sucio. */
+async function openDirtyNote() {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  const view = EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!;
+  act(() => view.dispatch({ changes: { from: 0, insert: "borrador" } }));
+  await screen.findByText("Cambios sin guardar");
+  return { value, note };
+}
+
+// VF-2: el borrado de la nota abierta con borrador sucio pide confirmación antes de descartarlo.
+test("RF-010: borrar la nota abierta con cambios sin guardar pide confirmación y 'Seguir editando' no borra", async () => {
+  const { value } = await openDirtyNote();
+  await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(await value.notes.list((await value.vaults.list())[0].id, { deleted: true })).toEqual([]);
+  expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+});
+
+test("RF-010: 'Borrar y descartar cambios' manda la nota a la papelera y cierra el editor", async () => {
+  const { value, note } = await openDirtyNote();
+  await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Borrar y descartar cambios" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull());
+  expect((await value.notes.list(note.vault_id, { deleted: true })).map((n) => n.id)).toEqual([note.id]);
 });
