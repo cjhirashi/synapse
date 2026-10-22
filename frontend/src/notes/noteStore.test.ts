@@ -2,7 +2,10 @@
 // RF-016, RF-017; PLAN-0008 §2.6).
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
-import { NotePathTakenError, NoteNotFoundError, NoteValidationError, createNoteStore, type NoteStore } from "./noteStore";
+import { StorageFullError } from "../sync/vaultStore";
+import {
+  NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, createNoteStore, type NoteStore,
+} from "./noteStore";
 
 PouchDB.plugin(memory);
 
@@ -120,5 +123,116 @@ describe("RF-001, RF-019: list y get", () => {
     const a = await store.create(VAULT, "A");
     await trash(a.id);
     await expect(store.get(a.id)).rejects.toBeInstanceOf(NoteNotFoundError);
+  });
+});
+
+describe("RF-011, RF-013: rename", () => {
+  it("cambia la ruta en la misma nota (mismo _id) y renueva updated_at", async () => {
+    const a = await store.create(VAULT, "A");
+    const renamed = await store.rename(a.id, "carpeta / B.md", a.rev);
+    expect(renamed).toMatchObject({ id: a.id, path: "carpeta/B.md", updated_at: "2026-10-22T10:00:02.000000Z" });
+    expect(renamed.rev).not.toBe(a.rev);
+    expect((await store.get(a.id)).path).toBe("carpeta/B.md");
+  });
+
+  it("RF-013: una ruta ocupada por otra nota activa → NotePathTakenError, sin escribir", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.create(VAULT, "B");
+    await expect(store.rename(a.id, "b.MD", a.rev)).rejects.toBeInstanceOf(NotePathTakenError);
+    expect((await store.get(a.id)).rev).toBe(a.rev);
+  });
+
+  it("renombrar a su propia ruta (otra capitalización) no choca consigo misma", async () => {
+    const a = await store.create(VAULT, "a");
+    await expect(store.rename(a.id, "A.md", a.rev)).resolves.toMatchObject({ path: "A.md" });
+  });
+
+  it("RF-005: una ruta inválida → NoteValidationError(path)", async () => {
+    const a = await store.create(VAULT, "A");
+    const err = await store.rename(a.id, "x//y.md", a.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["path"]);
+  });
+
+  it("con una revisión desfasada → NoteChangedError", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.rename(a.id, "B.md", a.rev);
+    await expect(store.rename(a.id, "C.md", a.rev)).rejects.toBeInstanceOf(NoteChangedError);
+  });
+});
+
+describe("RF-010, RF-017: softDelete y restore", () => {
+  it("softDelete es una revisión con deleted_at, nunca una lápida", async () => {
+    const a = await store.create(VAULT, "A");
+    const deleted = await store.softDelete(a.id, a.rev);
+    expect(deleted.deleted_at).toBe("2026-10-22T10:00:02.000000Z");
+    const doc = await db.get<{ _deleted?: boolean; deleted_at: string; content: string }>(a.id);
+    expect(doc._deleted).toBeUndefined();
+    expect(doc.deleted_at).toBe(deleted.deleted_at);
+  });
+
+  it("una nota borrada sale del listado activo y entra en la papelera; borrar dos veces → no encontrada", async () => {
+    const a = await store.create(VAULT, "A");
+    const deleted = await store.softDelete(a.id, a.rev);
+    expect(await store.list(VAULT)).toEqual([]);
+    expect((await store.list(VAULT, { deleted: true })).map((n) => n.id)).toEqual([a.id]);
+    await expect(store.softDelete(a.id, deleted.rev)).rejects.toBeInstanceOf(NoteNotFoundError);
+  });
+
+  it("restore devuelve la nota a las activas con deleted_at null", async () => {
+    const a = await store.create(VAULT, "A");
+    const deleted = await store.softDelete(a.id, a.rev);
+    const restored = await store.restore(a.id, deleted.rev);
+    expect(restored.deleted_at).toBeNull();
+    expect((await store.list(VAULT)).map((n) => n.id)).toEqual([a.id]);
+  });
+
+  it("RF-017: restore con la ruta ocupada por otra nota activa → NotePathTakenError", async () => {
+    const a = await store.create(VAULT, "A");
+    const deleted = await store.softDelete(a.id, a.rev);
+    await store.create(VAULT, "a");
+    await expect(store.restore(a.id, deleted.rev)).rejects.toBeInstanceOf(NotePathTakenError);
+    expect((await store.list(VAULT, { deleted: true })).map((n) => n.id)).toEqual([a.id]);
+  });
+
+  it("restore de una nota activa → no encontrada", async () => {
+    const a = await store.create(VAULT, "A");
+    await expect(store.restore(a.id, a.rev)).rejects.toBeInstanceOf(NoteNotFoundError);
+  });
+});
+
+describe("RF-003, RF-016: save", () => {
+  it("guarda el contenido como revisión nueva y renueva updated_at", async () => {
+    const a = await store.create(VAULT, "A");
+    const saved = await store.save(a.id, "# Hola", a.rev);
+    expect(saved).toMatchObject({ id: a.id, content: "# Hola", path: "A.md", updated_at: "2026-10-22T10:00:02.000000Z" });
+    expect((await store.get(a.id)).content).toBe("# Hola");
+  });
+
+  it("RF-016: más de 2 MiB → NoteValidationError(content) sin escribir", async () => {
+    const a = await store.create(VAULT, "A");
+    const err = await store.save(a.id, "a".repeat(2 * 1024 * 1024 + 1), a.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["content"]);
+    expect((await store.get(a.id)).rev).toBe(a.rev);
+  });
+
+  it("RF-016: exactamente 2 MiB se guarda", async () => {
+    const a = await store.create(VAULT, "A");
+    await expect(store.save(a.id, "a".repeat(2 * 1024 * 1024), a.rev)).resolves.toBeDefined();
+  });
+
+  it("save sobre una nota inexistente → no encontrada", async () => {
+    await expect(store.save(`note:${VAULT}:${"3".repeat(8)}`, "x", "1-abc")).rejects.toBeInstanceOf(NoteNotFoundError);
+  });
+});
+
+describe("RF-010: cuota", () => {
+  it("la cuota de IndexedDB agotada → StorageFullError", async () => {
+    const a = await store.create(VAULT, "A");
+    // PouchDB envuelve el QuotaExceededError de IndexedDB en `indexed_db_went_bad`.
+    vi.spyOn(db, "put").mockRejectedValueOnce({ name: "indexed_db_went_bad", reason: "QuotaExceededError" });
+    await expect(store.save(a.id, "x", a.rev)).rejects.toBeInstanceOf(StorageFullError);
+    vi.restoreAllMocks();
   });
 });
