@@ -1,0 +1,128 @@
+// Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { afterEach, expect, test } from "vitest";
+import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
+import { createVaultStore } from "../sync/vaultStore";
+import type { SyncContextValue } from "../sync/useSync";
+import VaultWorkspacePage from "./VaultWorkspacePage";
+
+afterEach(() => localStorage.clear());
+
+function tree(value: SyncContextValue, path: string) {
+  return (
+    <WithSync value={value}>
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
+          <Route path="/vaults" element={<div>lista de bóvedas</div>} />
+        </Routes>
+      </MemoryRouter>
+    </WithSync>
+  );
+}
+
+async function setup() {
+  const { value, db } = syncValue({}, memoryDb());
+  const vault = await seedStore(db).create({ name: "Trabajo", description: null, tags: [] });
+  return { value, db, vault };
+}
+
+test("RF-001, RF-015: bóveda activa → su nombre, el árbol y el editor vacío", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  expect(await screen.findByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
+  expect(await screen.findByRole("tree", { name: "Notas" })).toBeInTheDocument();
+  expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
+});
+
+test.each([
+  ["no canónico", "no-es-un-uuid"],
+  ["mayúsculas", "11111111-1111-4111-8111-11111111111A"],
+  ["inexistente", "11111111-1111-4111-8111-111111111111"],
+])("RF-002: id %s → 404", async (_name, id) => {
+  const { value } = await setup();
+  render(tree(value, `/vaults/${id}`));
+  expect(await screen.findByRole("alert")).toHaveTextContent("Esta bóveda no existe o está en la papelera.");
+  expect(screen.queryByRole("tree")).toBeNull();
+  expect(screen.getByRole("link", { name: "Volver a las bóvedas" })).toHaveAttribute("href", "/vaults");
+});
+
+test("RF-002, RF-014: una bóveda en la papelera → 404", async () => {
+  const { value, vault } = await setup();
+  await value.vaults.softDelete(vault.id, vault.rev);
+  render(tree(value, `/vaults/${vault.id}`));
+  expect(await screen.findByRole("alert")).toHaveTextContent("no existe");
+});
+
+test("RF-002: una bóveda que llega después por el pull sustituye al 404", async () => {
+  const { value, db } = await setup();
+  const id = "33333333-3333-4333-8333-333333333333";
+  const { rerender } = render(tree(value, `/vaults/${id}`));
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  await createVaultStore(db, "u1", { newId: () => id }).create({ name: "Llegada", description: null, tags: [] });
+  rerender(tree({ ...value, dataVersion: 1 }, `/vaults/${id}`));
+  expect(await screen.findByRole("heading", { level: 1, name: "Llegada" })).toBeInTheDocument();
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+test("RF-014: una bóveda que se borra mientras está abierta pasa a 404", async () => {
+  const { value, vault } = await setup();
+  const { rerender } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  const current = await value.vaults.get(vault.id);
+  await value.vaults.softDelete(vault.id, current.rev);
+  rerender(tree({ ...value, dataVersion: 1 }, `/vaults/${vault.id}`));
+  expect(await screen.findByRole("alert")).toHaveTextContent("no existe");
+});
+
+test("RF-019, RF-007: un click en una nota la abre en modo lectura", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Editar" })).toBeInTheDocument();
+  expect(screen.getByRole("treeitem", { name: "Hola" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("RF-003: crear una nota la abre en edición", async () => {
+  const { value, vault } = await setup();
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("button", { name: "Nueva nota" }));
+  expect(await screen.findByRole("button", { name: "Leer" }, { timeout: 4000 })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: "Sin título" })).toBeInTheDocument();
+});
+
+test("RF-015: al volver a montar no hay ninguna nota abierta y nada se guarda en localStorage", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const first = render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  first.unmount();
+  render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(localStorage.length).toBe(0);
+  expect(sessionStorage.length).toBe(0);
+});
+
+test("RF-010: borrar la nota abierta cierra el editor; la papelera de la bóveda se abre y se cierra", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await waitFor(() => expect(screen.queryByRole("heading", { level: 2, name: "Hola" })).toBeNull());
+  expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Papelera de la bóveda" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Papelera de la bóveda" })).toBeInTheDocument();
+  expect(screen.getByText("Hola.md")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Volver a las notas" }));
+  expect(screen.queryByRole("heading", { level: 2, name: "Papelera de la bóveda" })).toBeNull();
+});

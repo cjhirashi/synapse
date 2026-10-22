@@ -130,3 +130,37 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
+
+/* --- Espacio de trabajo de la bóveda --- */
+.vault-workspace {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+.vault-workspace-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.vault-workspace-side h1 {
+  margin: 0;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.vault-workspace-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .vault-workspace {
+    flex-direction: column;
+  }
+  .vault-workspace-side,
+  .note-sidebar {
+    width: 100%;
+  }
+}
