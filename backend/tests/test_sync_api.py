@@ -534,20 +534,28 @@ class RecordingPort(UntouchablePort):
         return stream()
 
 
-def test_rf_010_changes_releases_the_sql_session_before_streaming(ready_admin, couch_override):
-    from app.adapters.database import get_db
-    from tests.conftest import override_get_db
+def test_rf_010_changes_releases_the_sql_session_before_streaming(ready_admin, couch_override, monkeypatch):
+    # `get_sync_user` ya no pasa por `Depends(get_db)` (ese generador solo se cierra cuando
+    # termina *toda* la respuesta, nunca antes - el mismo problema que esta prueba vigila).
+    # Abre y cierra su propia sesión a mano, así que la instrumentación tiene que envolver esa
+    # sesión directamente en vez de `app.dependency_overrides`.
+    import app.routers.sync as sync_module
 
     events: list[str] = []
+    real_session_local = sync_module.SessionLocal
 
-    def recording_get_db():
-        yield from override_get_db()
-        events.append("db closed")
+    def recording_session_local():
+        session = real_session_local()
+        real_close = session.close
 
+        def recording_close():
+            events.append("db closed")
+            real_close()
+
+        session.close = recording_close
+        return session
+
+    monkeypatch.setattr(sync_module, "SessionLocal", recording_session_local)
     couch_override(RecordingPort(events))
-    app.dependency_overrides[get_db] = recording_get_db
-    try:
-        assert ready_admin.get("/sync/db/_changes").status_code == 200
-    finally:
-        app.dependency_overrides[get_db] = override_get_db
+    assert ready_admin.get("/sync/db/_changes").status_code == 200
     assert events == ["db closed", "stream"]

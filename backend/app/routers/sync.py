@@ -16,10 +16,9 @@ from fastapi import APIRouter, Body, Depends, Path, Request, status
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
-from sqlalchemy.orm import Session
 from starlette.types import Message, Receive
 
-from app.adapters.database import get_db
+from app.adapters.database import SessionLocal
 from app.adapters.replication_repository import ReplicationRepository
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
@@ -105,16 +104,20 @@ class SyncRoute(APIRoute):
 
 # --- Dependencias ---
 
-def get_sync_user(
-    request: Request,
-    # `scope="function"`: la sesión SQL se cierra al volver el endpoint, antes de enviar la
-    # respuesta. Con el ámbito por defecto, cada `longpoll` de `_changes` retendría una
-    # conexión del pool hasta 60 s.
-    db: Annotated[Session, Depends(get_db, scope="function")],
-) -> TokenPayload:
+def get_sync_user(request: Request) -> TokenPayload:
     """Las mismas comprobaciones que el resto de la API: 401 sin sesión, 403 con cambio de
-    contraseña pendiente (RF-002), en toda ruta del canal, también la comodín."""
-    return require_password_changed(get_current_user(request, db), db)
+    contraseña pendiente (RF-002), en toda ruta del canal, también la comodín.
+
+    Sesión SQL de vida corta, administrada a mano (no vía `Depends(get_db)`): se abre, se usa
+    para esta comprobación, y se cierra antes de volver - no cuando termina toda la respuesta.
+    Con `Depends(get_db)` normal, el cierre (generador + `yield`) se difiere hasta que acaba
+    la respuesta completa, y un `longpoll` de `_changes` retendría una conexión del pool hasta
+    60 s pese a que esta comprobación ya no la necesita."""
+    db = SessionLocal()
+    try:
+        return require_password_changed(get_current_user(request, db), db)
+    finally:
+        db.close()
 
 
 @lru_cache
