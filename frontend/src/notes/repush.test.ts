@@ -3,7 +3,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { openRejections, type RejectionsStore } from "../sync/rejections";
-import type { SyncStatusStore } from "../sync/status";
+import type { SyncStatus, SyncStatusStore } from "../sync/status";
 import { startRepush, type Repush } from "./repush";
 
 PouchDB.plugin(memory);
@@ -23,6 +23,8 @@ let status: SyncStatusStore;
 let repush: Repush;
 let handlers: Record<string, (...args: unknown[]) => void>;
 let toSpy: ReturnType<typeof vi.fn>;
+let statusListener: ((status: SyncStatus) => void) | null;
+const unsubscribe = vi.fn();
 
 /** Réplica falsa: guarda los oyentes y se resuelve como una promesa (`await replication`). */
 function fakeReplication() {
@@ -41,7 +43,15 @@ beforeEach(async () => {
   db = new PouchDB(`repush-test-${counter}`, { adapter: "memory" });
   remote = new PouchDB(`repush-remote-${counter}`, { adapter: "memory" });
   rejections = await openRejections(db);
-  status = { handle: vi.fn(async () => undefined) } as unknown as SyncStatusStore;
+  statusListener = null;
+  unsubscribe.mockClear();
+  status = {
+    handle: vi.fn(async () => undefined),
+    subscribe: vi.fn((listener: (status: SyncStatus) => void) => {
+      statusListener = listener;
+      return unsubscribe;
+    }),
+  } as unknown as SyncStatusStore;
   toSpy = vi.spyOn(db.replicate, "to").mockImplementation((() => fakeReplication()) as never) as unknown as ReturnType<typeof vi.fn>;
   repush = startRepush({ db, remote, status, rejections });
 });
@@ -184,5 +194,80 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await putVault(V);
     await settle();
     expect(toSpy).not.toHaveBeenCalled();
+  });
+});
+
+/** Estado que emite `status` al cambiar la conexión. */
+const emitState = (state: SyncStatus["state"]) => statusListener?.({ state, pending: false, lastSyncAt: null });
+
+describe("RD-2: disparadores de arranque y de reconexión", () => {
+  it("al arrancar, un vault-not-found persistido con la bóveda ya activa se reintenta", async () => {
+    repush.close();
+    await putVault(V); // la bóveda ya está activa y no cambiará: sólo el arranque puede disparar
+    await rejectNote(NOTE_1);
+    toSpy.mockClear();
+    repush = startRepush({ db, remote, status, rejections });
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(1);
+    expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
+  });
+
+  it("al arrancar, con la bóveda aún en la papelera no reintenta", async () => {
+    repush.close();
+    await putVault(V, T);
+    await rejectNote(NOTE_1);
+    repush = startRepush({ db, remote, status, rejections });
+    await settle();
+    expect(toSpy).not.toHaveBeenCalled();
+  });
+
+  it("tras un fallo de red, el reintento queda pendiente y se repite al volver a estar en línea", async () => {
+    await putVault(V);
+    await settle();
+    await rejectNote(NOTE_1);
+    toSpy.mockImplementationOnce((() => Object.assign(Promise.reject(new Error("sin red")), { on: vi.fn() })) as never);
+    repush.handle({ type: "written", docs: [{ id: `vault:${V}`, rev: "1-a" }] });
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(1); // el fallo no tiene otro disparador por sí solo
+    emitState("offline");
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(1); // sólo la vuelta a "online" dispara
+    emitState("online");
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(2);
+    expect(toSpy).toHaveBeenLastCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
+  });
+
+  it("seguir en línea (sin transición) no dispara de nuevo", async () => {
+    await putVault(V);
+    await rejectNote(NOTE_1);
+    emitState("online");
+    await settle();
+    const calls = toSpy.mock.calls.length;
+    emitState("online");
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(calls);
+  });
+
+  it("close() deja de seguir el estado de la conexión", async () => {
+    repush.close();
+    expect(unsubscribe).toHaveBeenCalled();
+  });
+});
+
+describe("RD-3: espera los rechazos en curso", () => {
+  it("el reintento espera a rejections.settled() antes de leer la lista", async () => {
+    const order: string[] = [];
+    vi.spyOn(rejections, "settled").mockImplementation(async () => {
+      order.push("settled");
+    });
+    const list = rejections.list.bind(rejections);
+    vi.spyOn(rejections, "list").mockImplementation(() => {
+      order.push("list");
+      return list();
+    });
+    await putVault(V);
+    await settle();
+    expect(order.slice(0, 2)).toEqual(["settled", "list"]);
   });
 });
