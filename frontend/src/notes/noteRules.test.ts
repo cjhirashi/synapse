@@ -1,7 +1,7 @@
 // Reglas espejo (SPEC-0008 RF-005, RF-013, RF-016; PLAN-0008 §5): la misma batería que
 // `backend/tests/test_note_rules.py` fija contra `core/note_rules.py`.
 import cases from "../../../backend/tests/fixtures/note_rules_cases.json";
-import { checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
+import { checkContent, checkFrontmatter, checkPath, normalizePath, parseNoteId, pathKey } from "./noteRules";
 
 interface Built {
   key?: string;
@@ -68,4 +68,24 @@ describe("RF-005: checkFrontmatter respeta el tope de 64 KiB serializado", () =>
       expect(checkFrontmatter(frontmatter(c))).toBe(c.valid ? null : "validation-error:frontmatter");
     },
   );
+});
+
+// N-4: un solo lugar entiende `note:{vault_id}:{note_uuid}`.
+describe("parseNoteId (RF-004)", () => {
+  const V = "11111111-1111-4111-8111-111111111111";
+  const N = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+
+  it("separa la bóveda y la nota de un id canónico", () => {
+    expect(parseNoteId(`note:${V}:${N}`)).toEqual({ vaultId: V, noteUuid: N });
+  });
+
+  it.each([
+    ["un solo uuid", `note:${V}`],
+    ["prefijo de bóveda", `vault:${V}`],
+    ["mayúsculas", `note:${V.toUpperCase()}:${N}`],
+    ["resto sobrante", `note:${V}:${N}:x`],
+    ["vacío", ""],
+  ])("rechaza %s", (_name, id) => {
+    expect(parseNoteId(id)).toBeNull();
+  });
 });
