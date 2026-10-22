@@ -6,6 +6,8 @@ Código fuente React.
 src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
+├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
+├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
 ├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
 ├── settings/   # ajustes de cuenta (cambiar contraseña)
 ├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
@@ -32,6 +34,7 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults` | `vaults/VaultListPage.tsx` — bóvedas activas, «Cargar más», borrar con confirmación |
 | `/vaults/new` | `vaults/VaultForm.tsx` — crear |
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
+| `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
 | `/rejections` | `sync/RejectionsPage.tsx` — cambios que el servidor rechazó, con el motivo y «Corregir» |
 | `/conflicts` | `sync/ConflictView.tsx` — conflictos que el usuario elige o combina |
@@ -90,4 +93,47 @@ y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy 
 mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
 (`backend/README.md`, «Despliegue»).
 
-El resto de la estructura (editor) se define en su propia spec.
+## Notas y editor (SPEC-0008)
+
+**Ruta y marco.** `main.tsx` usa `createBrowserRouter` (una ruta comodín que monta `App`,
+cuyas `<Routes>` no cambian) porque `useBlocker` sólo existe en data routers. `/vaults/:id`
+(`notes/VaultWorkspacePage.tsx`) muestra a la izquierda el árbol de la bóveda y a la derecha el
+editor; la nota abierta vive sólo en el estado de la página (ni URL ni almacenamiento: al
+entrar el editor está vacío). `new` y `trash` ganan a `:id` por ser rutas estáticas. El
+**riel** (`notes/VaultRail.tsx`, montado por `layout/AppLayout.tsx` a la izquierda de toda
+pantalla privada) lista las bóvedas activas con sus iniciales y se relee con `dataVersion`.
+
+Módulos de `notes/`:
+
+| Módulo | Qué hace |
+|---|---|
+| `noteStore.ts` | operaciones sobre la réplica: crear (id `note:{vault}:{uuid v4}`, `Sin título.md` si no hay título), leer, guardar, renombrar/mover (mismo `_id`), borrar a la papelera (`deleted_at`, nunca lápida) y restaurar |
+| `noteRules.ts` | espejo de `core/note_rules.py` (ruta, 2 MiB, frontmatter, `pathKey`) sobre la batería compartida `note_rules_cases.json` |
+| `noteTree.ts`, `untitled.ts` | árbol a partir de las rutas (carpetas derivadas, sin carpetas vacías) y siguiente nombre libre por `pathKey` |
+| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"`, teclado WAI-ARIA), «Nueva nota», renombrar, borrar; papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
+| `mergeNote.ts`, `NoteConflictCard.tsx` | conflictos de nota: nunca se elige por fecha; sólo se cierra solo lo que difiere en `updated_at` y lo demás lo decide el usuario en `sync/ConflictView.tsx` |
+| `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
+| `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |
+
+**Editor** (`editor/`, cargado con `React.lazy`): `NoteEditor.tsx` es dueño del `draft`
+(markdown) y del modo; abre en **lectura** y «Editar»/«Leer» alterna. `MilkdownView.tsx`
+(Visual) y `CodeView.tsx` (Código) comparten el contrato `{value, onChange}` y el mismo
+`draft`: alternar de vista no escribe ni relee, y sólo una edición real reserializa el
+markdown. `safeUrl.ts` deja pasar enlaces `http`, `https`, `mailto` y relativos (imágenes sólo
+`http(s)`) y el HTML crudo se pinta como texto.
+
+**Guardado explícito:** «Guardar» y Ctrl/Cmd+S escriben una revisión; «Leer» con cambios guarda
+antes. Con un borrador sucio hay aviso al cerrar la pestaña (`beforeunload`), al abrir otra
+nota, al borrar la abierta y al navegar dentro de la app (riel, «Bóvedas»…, por `useBlocker`).
+El **cierre de sesión** también avisa: el editor se registra en `useSync().unsavedDrafts`
+mientras está sucio y `requestLogout()` lo consulta antes de cerrar nada (`LogoutDialog`,
+razón `draft`). La navegación a `/login` no se bloquea.
+
+**Reparto de `_bulk_docs`:** una nota de 2 MiB hace que un lote de 50 supere cualquier tope.
+`sync/remote.ts` parte un `POST _bulk_docs` de más de 8 MiB (`BULK_CHUNK_BYTES`) en
+sub-peticiones secuenciales; el servidor admite hasta 16 MiB por petición.
+
+**Pruebas:** `*.test.ts(x)` junto a cada módulo; integración con backend real en
+`notes/notes.integration.test.ts` (`npm run test:sync`) y rendimiento de RNF-001 en
+`notes/tree.perf.test.tsx` (`npm run test:perf`).
+
