@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 import { syncValue, WithSync } from "../test-utils/sync";
-import type { VaultConflict } from "./conflicts";
+import type { NoteConflict, VaultConflict } from "./conflicts";
 import ConflictView from "./ConflictView";
 import type { MergeBody } from "./merge";
 import type { SyncContextValue } from "./useSync";
@@ -128,4 +128,20 @@ test("si el conflicto cambió mientras se resolvía lo avisa", async () => {
 test("sin conflictos lo dice", () => {
   renderView({ conflicts: [] });
   expect(screen.getByText("No hay conflictos por resolver.")).toBeInTheDocument();
+});
+
+test("RF-009 (SPEC-0008): un conflicto de nota se pinta con su tarjeta; el de bóveda, como antes", async () => {
+  const note: NoteConflict = {
+    kind: "note",
+    id: "note:11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222",
+    winner: { rev: "2-w", doc: { vault_id: "v", path: "Ideas.md", content: "uno", frontmatter: {}, created_at: "t", updated_at: "t", deleted_at: null } },
+    loser: { rev: "2-l", doc: { vault_id: "v", path: "Ideas.md", content: "dos", frontmatter: {}, created_at: "t", updated_at: "t", deleted_at: null } },
+  };
+  const resolveConflict = vi.fn(async () => undefined);
+  renderView({ conflicts: [conflict(), note], resolveConflict });
+  expect(screen.getByRole("form", { name: "Conflicto en «Trabajo»" })).toBeInTheDocument();
+  const card = screen.getByRole("article", { name: "Conflicto en «Ideas.md»" });
+  await userEvent.click(within(within(card).getByRole("region", { name: "Versión B" })).getByRole("button", { name: "Quedarme con esta" }));
+  expect(resolveConflict).toHaveBeenCalledWith(note.id, "2-l", { path: "Ideas.md", content: "dos", frontmatter: {}, deleted_at: null });
+  expect(await screen.findByRole("status")).toHaveTextContent("Se guardó la resolución de «Ideas.md».");
 });

@@ -8,6 +8,7 @@
  * rechazos (RF-015). Ninguna versión se pierde hasta que el usuario guarda (RF-013).
  */
 import { FormEvent, useState } from "react";
+import NoteConflictCard from "../notes/NoteConflictCard";
 import { FIELD_MESSAGES, formatTags, parseTags, toDescription } from "../vaults/fields";
 import type { VaultConflict } from "./conflicts";
 import type { MergeBody } from "./merge";
@@ -42,7 +43,7 @@ function reasonText(conflict: VaultConflict): string {
 type Notice = { kind: "resolved"; name: string } | { kind: "changed" } | null;
 
 export default function ConflictView() {
-  const { conflicts } = useSync();
+  const { conflicts, resolveConflict } = useSync();
   const [notice, setNotice] = useState<Notice>(null);
 
   return (
@@ -56,16 +57,24 @@ export default function ConflictView() {
         <p>No hay conflictos por resolver.</p>
       ) : (
         conflicts.map((conflict) =>
-          // Los conflictos de nota los pinta `NoteConflictCard` (SPEC-0008 RF-009): este
-          // formulario es sólo de bóvedas (nombre, descripción y etiquetas).
-          conflict.kind === "vault" ? (
+          // Los conflictos de nota (SPEC-0008 RF-009) los pinta `NoteConflictCard`; el
+          // formulario de abajo es sólo de bóvedas (nombre, descripción y etiquetas).
+          conflict.kind === "note" ? (
+            <NoteConflictCard
+              key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
+              conflict={conflict}
+              resolve={resolveConflict}
+              onResolved={(path) => setNotice({ kind: "resolved", name: path })}
+              onChanged={() => setNotice({ kind: "changed" })}
+            />
+          ) : (
             // Con otra ganadora o perdedora es otro conflicto: el formulario parte de cero.
             <ConflictForm
               key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
               conflict={conflict}
               onNotice={setNotice}
             />
-          ) : null,
+          ),
         )
       )}
     </section>
