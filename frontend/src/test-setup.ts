@@ -44,3 +44,15 @@ if (typeof Range.prototype.getBoundingClientRect !== "function") {
 if (typeof document.elementFromPoint !== "function") {
   document.elementFromPoint = () => null;
 }
+
+// Los data routers de React Router (`createMemoryRouter`, necesarios para `useBlocker`)
+// construyen un `Request` con el `AbortSignal` de cada navegación. En jsdom ese signal es el
+// de jsdom, y el `Request` global es el de Node (undici), que sólo acepta el suyo: lanza
+// "Expected signal to be an instance of AbortSignal". Las pruebas no abortan navegaciones,
+// así que el `Request` descarta el signal ajeno (gap conocido de jsdom, no un bug de la app).
+const NativeRequest = globalThis.Request;
+globalThis.Request = class extends NativeRequest {
+  constructor(input: RequestInfo | URL, init?: RequestInit) {
+    super(input, init?.signal ? { ...init, signal: undefined } : init);
+  }
+} as typeof Request;
