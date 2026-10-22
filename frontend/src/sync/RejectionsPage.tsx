@@ -13,7 +13,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { noteReasonText } from "../notes/messages";
-import { NOTE_ID_PREFIX } from "../notes/noteRules";
+import { parseNoteId } from "../notes/noteRules";
 import { FIELD_MESSAGES, NAME_TAKEN } from "../vaults/fields";
 import type { Rejection } from "./rejections";
 import { useSync } from "./useSync";
@@ -48,7 +48,7 @@ export function reasonText(code: string): string {
 
 /** Id de la bóveda de un id de nota (`note:{vault_id}:{uuid}`), o `null` si no es de nota. */
 function noteVaultId(id: string): string | null {
-  return id.startsWith(NOTE_ID_PREFIX) ? id.slice(NOTE_ID_PREFIX.length).split(":", 1)[0] : null;
+  return parseNoteId(id)?.vaultId ?? null;
 }
 
 export default function RejectionsPage() {
