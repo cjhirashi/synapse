@@ -7,6 +7,12 @@ WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
+# vaultRules.test.ts importa este fixture como espejo de test_sync_rules_mirror.py
+# (SPEC-0005 RF-005/RF-015, misma batería que core/schemas.py) - el typecheck de
+# `npm run build` lo resuelve por ruta relativa (tsconfig resolveJsonModule), así
+# que tiene que existir en el mismo árbol fuera de /frontend aunque el runtime no
+# lo use.
+COPY backend/tests/fixtures /backend/tests/fixtures
 RUN npm run build
 
 # Etapa 2 — backend FastAPI; sirve `/auth`, `/admin`, `/sync`, `/vaults` y además la SPA.
