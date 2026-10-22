@@ -4,11 +4,13 @@ RF-016; PLAN-0008 §2.4, §2.5, §5).
 Reutiliza los helpers de `test_sync_api.py` (peticiones del replicador, documentos de bóveda y
 `UntouchablePort`). Aquí se comprueba lo que queda en CouchDB y lo que ve el cliente.
 """
+import asyncio
 import json
 import uuid
 
 import pytest
 
+from app.main import app
 from app.services.vault_service import utc_now
 from tests.test_sync_api import (
     UntouchablePort, bulk_docs_bytes, change_ids, child_of, couch_get, couch_override,  # noqa: F401
@@ -183,3 +185,37 @@ def test_rf_005_frontmatter_with_a_non_finite_number_is_rejected_not_a_500(vault
     assert res.status_code == 201, res.text
     assert res.json() == [rejection(note, "validation-error:frontmatter")]
     assert couch_get(vault["db"], note["_id"]).status_code == 404
+
+
+# --- Sesión antes de leer el cuerpo (VB-2) ---
+
+def _asgi_post(path: str, body: bytes) -> tuple[int, int]:
+    """POST sin sesión directo al ASGI; devuelve el estado y cuántas veces se leyó el cuerpo."""
+    reads = 0
+    sent: list[dict] = []
+
+    async def receive():
+        nonlocal reads
+        reads += 1
+        return {"type": "http.request", "body": body, "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {
+        "type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "POST",
+        "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"",
+        "root_path": "", "server": ("testserver", 80), "client": ("127.0.0.1", 1),
+        "headers": [(b"content-type", b"application/json"),
+                    (b"content-length", str(len(body)).encode()), (b"host", b"testserver")],
+    }
+    asyncio.run(app(scope, receive, send))
+    status = next(m["status"] for m in sent if m["type"] == "http.response.start")
+    return status, reads
+
+
+@pytest.mark.parametrize("path", ["/sync/db/_bulk_docs", "/sync/db/_revs_diff", "/sync/db/_local/abc"])
+def test_rf_006_unauthenticated_sync_request_is_401_without_reading_the_body(path):
+    # Sin sesión un cuerpo de hasta 16 MiB no debe llegar a memoria: la sesión se valida antes.
+    status, reads = _asgi_post(path, b'{"pad": "' + b"x" * (1024 * 1024) + b'"}')
+    assert (status, reads) == (401, 0)
