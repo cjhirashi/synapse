@@ -10,6 +10,7 @@ import pytest
 import pytest_asyncio
 
 from app.core.note_rules import CONTENT_MAX_BYTES, NOTE_REQUIRED, path_key
+from app.services.note_service import NoteService
 from app.services.sync_push import SyncPushService
 from app.services.vault_service import VaultService
 from tests.test_sync_push import DB, OWNER, T0, T1, InMemoryCouch, _revisions, _vault
@@ -35,7 +36,9 @@ def clock():
 
 @pytest.fixture
 def push(couch, clock):
-    return SyncPushService(VaultService(couch, DB, clock=clock), couch, couch, DB, OWNER)
+    return SyncPushService(
+        VaultService(couch, DB, clock=clock), NoteService(couch, DB, clock),
+        couch, couch, DB, OWNER)
 
 
 @pytest_asyncio.fixture
@@ -80,7 +83,7 @@ async def test_rf_005_note_shape_rejects_keys_outside_the_list(push, couch, vaul
     assert not _stored(couch, doc)
 
 
-@pytest.mark.parametrize("missing", [key for key in NOTE_REQUIRED if key != "_id"])
+@pytest.mark.parametrize("missing", [key for key in NOTE_REQUIRED if key not in ("_id", "_rev")])
 async def test_rf_005_note_shape_rejects_a_missing_required_key(push, vault, missing):
     doc = _note()
     del doc[missing]

@@ -32,6 +32,7 @@ from app.core.schemas import TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
 from app.services import sync_filter
+from app.services.note_service import NoteService
 from app.services.sync_push import SyncPushService
 from app.services.vault_service import VaultService
 
@@ -136,7 +137,9 @@ def get_push_service(
     vault_port: VaultPort = Depends(get_vault_port),
     replication: ReplicationPort = Depends(get_replication_port),
 ) -> SyncPushService:
-    return SyncPushService(VaultService(vault_port, db), vault_port, replication, db, current_user.sub)
+    return SyncPushService(
+        VaultService(vault_port, db), NoteService(vault_port, db), vault_port, replication, db,
+        current_user.sub)
 
 
 Db = Annotated[str, Depends(get_sync_db)]

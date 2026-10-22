@@ -1,41 +1,50 @@
 """Push validado de la sincronización: `_bulk_docs` con `new_edits:false` (SPEC-0005 RF-005…RF-008,
-RF-011; PLAN-0005 §2.3).
+RF-011; SPEC-0008 RF-004, RF-005; PLAN-0005 §2.3, PLAN-0008 §2.3).
 
 Cada revisión del lote se acepta o se rechaza con `{"id", "rev", "error": "forbidden",
 "reason": "<código>"}`; PouchDB trata `forbidden` como *denied*: avisa, no reintenta y sigue
 con el resto (RF-006). Las aceptadas se escriben juntas en una sola llamada.
 
 Orden de las comprobaciones por documento (la primera que falla da el código):
-1. id `vault:{uuid}` canónico → si no, `invalid-id` (RF-007);
+1. id `vault:{uuid}` o `note:{uuid}:{uuid}` canónico → si no, `invalid-id` (RF-007);
    después, `_rev` y `_revisions` bien formados (los pasos 2 y 3 dependen de ellos);
 2. ya almacenada → aceptada sin tocar nada (reenvío de un lote cortado);
 3. lápida → sólo si cierra una rama y queda otra hoja viva (`delete-not-allowed`);
 4. forma, 5. campos sin normalizar, 6. reglas del servidor;
-7. reserva del nombre (`vault-name-taken`).
-Luego 8. escritura y 9. liberación de los nombres que ya no usa ninguna hoja.
+7. reserva del nombre o de la ruta (`vault-name-taken`, `note-path-taken`).
+Luego 8. escritura y 9. liberación de los nombres y rutas que ya no usa ninguna hoja.
 
-**Proyección de hojas:** por bóveda se parte de sus hojas vivas en el servidor y se aplica
+Las comprobaciones 4–7 salen de una tabla por tipo de documento (`_KINDS`: `vault:` con las
+reglas de 0005, `note:` con las de `core/note_rules.py`); los pasos 1–3 y 8–9 son comunes.
+
+**Proyección de hojas:** por documento se parte de sus hojas vivas en el servidor y se aplica
 cada revisión aceptada del lote (quita las hojas que están en su historia y se añade si está
 viva). Así las reglas que miran "las hojas existentes" (lápidas, `created_at`, liberación)
 ven el estado que dejará la escritura, también entre documentos del mismo lote.
 
 **Invariante de reservas (P-4):** toda hoja viva con `deleted_at = null` tiene reservado su
-nombre; por eso se reserva cada revisión viva y activa antes de escribirla.
+nombre (o su ruta); por eso se reserva cada revisión viva y activa antes de escribirla.
 
-El puerto de bóvedas y `VaultService` son síncronos: sus llamadas corren en un hilo
+El puerto de bóvedas y los servicios son síncronos: sus llamadas corren en un hilo
 (`anyio.to_thread`) para no bloquear el bucle de eventos; el de replicación es async.
 """
 import re
+from collections.abc import Awaitable, Callable
+from typing import NamedTuple
 
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
 from app.core.errors import StorageUnavailable, VaultNameTaken
+from app.core.note_rules import (
+    NOTE_KEYS, NOTE_REQUIRED, check_content, check_frontmatter, check_path, path_key,
+)
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultDescription, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
-from app.services.sync_filter import is_replicable_id
+from app.services.note_service import NoteService
+from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
 from app.services.vault_service import VaultService, name_key
 
 # Claves de una revisión de bóveda, en el orden en que se informa la que falta (§2.3 paso 4).
@@ -75,20 +84,86 @@ def _history(doc: dict) -> list[str]:
     return [f"{revisions['start'] - i}-{rev_hash}" for i, rev_hash in enumerate(revisions["ids"])]
 
 
-def _active_names(leaves: dict[str, dict]) -> dict[str, str]:
-    """Nombres de las hojas activas (no en la papelera), por su clave de unicidad."""
-    return {
-        name_key(leaf["name"]): leaf["name"]
-        for leaf in leaves.values() if not leaf.get("deleted_at")
-    }
+def _vault_use(leaf: dict) -> tuple[str, str]:
+    """Clave de unicidad de una bóveda y el nombre con el que se reservó."""
+    return name_key(leaf["name"]), leaf["name"]
+
+
+def _note_use(leaf: dict) -> tuple[str, str]:
+    """Clave de unicidad de una nota (su ruta dentro de la bóveda) y la ruta tal cual."""
+    return path_key(leaf["path"]), leaf["path"]
+
+
+def _check_timestamps(doc: dict, leaves: dict[str, dict]) -> None:
+    """Formato de fechas y `created_at` inmutable (P2, R-8), comunes a todo tipo de documento.
+
+    Ninguna regla compara con el reloj: una réplica offline escribe con su hora.
+    """
+    for field in ("created_at", "updated_at", "deleted_at"):
+        value = doc[field]
+        if field == "deleted_at" and value is None:
+            continue
+        if not (isinstance(value, str) and is_timestamp(value)):
+            raise Rejected(f"validation-error:{field}")
+    if any(leaf["created_at"] != doc["created_at"] for leaf in leaves.values()):
+        raise Rejected("immutable-field:created_at")
+
+
+def _check_vault_fields(doc: dict) -> None:
+    """Paso 5 de una bóveda: reglas de REST sin normalizar (el contenido de una revisión no puede
+    cambiar sin cambiar su `_rev`, P-3); el cliente normaliza antes de escribir."""
+    for field, rule in _FIELD_RULES.items():
+        try:
+            normalized = rule.validate_python(doc[field], strict=True)
+        except ValidationError:
+            raise Rejected(f"validation-error:{field}") from None
+        if normalized != doc[field]:
+            raise Rejected(f"not-normalized:{field}")
+
+
+def _check_note_fields(doc: dict) -> None:
+    """Paso 5 de una nota (RF-005, RF-016): las reglas puras de `core/note_rules.py`.
+
+    El servidor no normaliza (P-3 de 0005): una ruta con espacios sobrantes es `not-normalized`.
+    """
+    checks = [("path", check_path), ("content", check_content)]
+    if "frontmatter" in doc:  # opcional (spec §3)
+        checks.append(("frontmatter", check_frontmatter))
+    for field, check in checks:
+        if (code := check(doc[field])) is not None:
+            raise Rejected(code)
+
+
+class _Kind(NamedTuple):
+    """Lo que cambia entre tipos de documento en los pasos 4–7 y 9 (una fila de `_KINDS`)."""
+
+    type: str                         # valor de `type`
+    keys: tuple[str, ...]             # claves admitidas (paso 4)
+    required: tuple[str, ...]         # claves obligatorias, en el orden en que se informan
+    check_fields: Callable[[dict], None]                    # paso 5
+    check_server: Callable[..., Awaitable[None]]            # paso 6 (self, doc, hojas)
+    use: Callable[[dict], tuple[str, str]]                  # clave de unicidad y etiqueta de una hoja
+    reserve: Callable[..., Awaitable[None]] | None          # paso 7 (self, doc)
+    release: Callable[..., Awaitable[None]] | None          # paso 9 (self, id, etiqueta)
+
+
+def _kind_of(doc_id: str) -> _Kind:
+    """El tipo de un id ya validado por el paso 1 (`vault:` o `note:`)."""
+    return _KINDS[doc_id.split(":", 1)[0] + ":"]
+
+
+def _active_uses(leaves: dict[str, dict], kind: _Kind) -> dict[str, str]:
+    """Claves de unicidad de las hojas activas (no en la papelera) y su nombre o ruta."""
+    return dict(kind.use(leaf) for leaf in leaves.values() if not leaf.get("deleted_at"))
 
 
 class SyncPushService:
     """Valida y escribe un lote del replicador en la base de un usuario (una instancia por petición)."""
 
-    def __init__(self, vaults: VaultService, port: VaultPort, replication: ReplicationPort,
-                 db: str, owner_id: str):
+    def __init__(self, vaults: VaultService, notes: NoteService, port: VaultPort,
+                 replication: ReplicationPort, db: str, owner_id: str):
         self._vaults = vaults
+        self._notes = notes
         self._port = port
         self._replication = replication
         self._db = db
@@ -97,11 +172,11 @@ class SyncPushService:
 
     def _start_batch(self) -> None:
         """Estado de un lote: cada `push` vuelve a leer las hojas del servidor."""
-        # Por bóveda: hojas vivas proyectadas (rev → revisión) y los nombres activos que
-        # había en el servidor (clave → nombre).
+        # Por documento: hojas vivas proyectadas (rev → revisión) y las claves activas que
+        # había en el servidor (clave → nombre o ruta).
         self._leaves: dict[str, dict[str, dict]] = {}
-        self._names_before: dict[str, dict[str, str]] = {}
-        # Nombres reservados en este lote por bóveda (clave → nombre), para la liberación.
+        self._uses_before: dict[str, dict[str, str]] = {}
+        # Nombres o rutas reservados en este lote por documento (clave → etiqueta), para la liberación.
         self._reserved: dict[str, dict[str, str]] = {}
 
     async def push(self, docs: list[dict]) -> list[dict]:
@@ -182,23 +257,26 @@ class SyncPushService:
     # --- Pasos 3–7 ---
 
     async def _accept(self, doc: dict) -> None:
-        """Valida una revisión nueva, reserva su nombre y la añade a la proyección."""
+        """Valida una revisión nueva, reserva su nombre o ruta y la añade a la proyección."""
+        kind = _kind_of(doc["_id"])
         leaves = await self._projected(doc["_id"])
         if doc.get("_deleted") is True:
             self._check_tombstone(doc, leaves)
         else:
-            self._check_shape(doc)
-            self._check_fields(doc)
-            self._check_server_rules(doc, leaves)
-            if doc["deleted_at"] is None:
-                await self._reserve(doc)
+            self._check_shape(doc, kind)
+            kind.check_fields(doc)
+            await kind.check_server(self, doc, leaves)
+            if doc["deleted_at"] is None and kind.reserve is not None:
+                await kind.reserve(self, doc)
+                key, label = kind.use(doc)
+                self._reserved.setdefault(doc["_id"], {})[key] = label
         self._project(doc, leaves)
 
     async def _projected(self, doc_id: str) -> dict[str, dict]:
         if doc_id not in self._leaves:
             leaves = await to_thread.run_sync(self._port.leaves, self._db, doc_id)
             self._leaves[doc_id] = {leaf["_rev"]: leaf for leaf in leaves}
-            self._names_before[doc_id] = _active_names(self._leaves[doc_id])
+            self._uses_before[doc_id] = _active_uses(self._leaves[doc_id], _kind_of(doc_id))
         return self._leaves[doc_id]
 
     @staticmethod
@@ -215,53 +293,16 @@ class SyncPushService:
             raise Rejected("delete-not-allowed")
 
     @staticmethod
-    def _check_shape(doc: dict) -> None:
-        """Paso 4 (RF-005): sólo las claves de una bóveda, todas presentes, y `type == "vault"`."""
+    def _check_shape(doc: dict, kind: _Kind) -> None:
+        """Paso 4 (RF-005): sólo las claves del tipo, las obligatorias presentes y su `type`."""
         for key in doc:
-            if key not in _VAULT_KEYS:
+            if key not in kind.keys:
                 raise Rejected(f"validation-error:{key}")
-        for key in _VAULT_KEYS:
+        for key in kind.required:
             if key not in doc:
                 raise Rejected(f"validation-error:{key}")
-        if doc["type"] != "vault":
+        if doc["type"] != kind.type:
             raise Rejected("validation-error:type")
-
-    @staticmethod
-    def _check_fields(doc: dict) -> None:
-        """Paso 5: reglas de REST sin normalizar (el contenido de una revisión no puede cambiar
-        sin cambiar su `_rev`, P-3); el cliente normaliza antes de escribir."""
-        for field, rule in _FIELD_RULES.items():
-            try:
-                normalized = rule.validate_python(doc[field], strict=True)
-            except ValidationError:
-                raise Rejected(f"validation-error:{field}") from None
-            if normalized != doc[field]:
-                raise Rejected(f"not-normalized:{field}")
-
-    def _check_server_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
-        """Paso 6 (P2, R-8): dueño del token, formato de fechas y `created_at` inmutable.
-
-        Ninguna regla compara con el reloj: una réplica offline escribe con su hora.
-        """
-        if doc["owner_id"] != self._owner_id:
-            raise Rejected("owner-mismatch")
-        for field in ("created_at", "updated_at", "deleted_at"):
-            value = doc[field]
-            if field == "deleted_at" and value is None:
-                continue
-            if not (isinstance(value, str) and is_timestamp(value)):
-                raise Rejected(f"validation-error:{field}")
-        if any(leaf["created_at"] != doc["created_at"] for leaf in leaves.values()):
-            raise Rejected("immutable-field:created_at")
-
-    async def _reserve(self, doc: dict) -> None:
-        """Paso 7 (RF-008, P-4): la misma reserva que REST, con su arrendamiento de 30 s."""
-        vault_id = doc["_id"].removeprefix("vault:")
-        try:
-            await to_thread.run_sync(self._vaults.reserve, doc["name"], vault_id)
-        except VaultNameTaken:
-            raise Rejected("vault-name-taken") from None
-        self._reserved.setdefault(doc["_id"], {})[name_key(doc["name"])] = doc["name"]
 
     @staticmethod
     def _project(doc: dict, leaves: dict[str, dict]) -> None:
@@ -270,6 +311,31 @@ class SyncPushService:
             leaves.pop(rev, None)
         if doc.get("_deleted") is not True:
             leaves[doc["_rev"]] = doc
+
+    # --- Paso 6 y 7 por tipo (las filas de `_KINDS` los referencian) ---
+
+    async def _check_vault_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """Paso 6 de una bóveda: dueño del token, fechas y `created_at` inmutable."""
+        if doc["owner_id"] != self._owner_id:
+            raise Rejected("owner-mismatch")
+        _check_timestamps(doc, leaves)
+
+    async def _check_note_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """Paso 6 de una nota: su `vault_id` es el del id (RF-005), fechas y `created_at` inmutable."""
+        if doc["vault_id"] != doc["_id"].split(":")[1]:
+            raise Rejected("validation-error:vault_id")
+        _check_timestamps(doc, leaves)
+
+    async def _reserve_vault_name(self, doc: dict) -> None:
+        """Paso 7 de una bóveda (RF-008, P-4): la misma reserva que REST, con su arrendamiento de 30 s."""
+        try:
+            await to_thread.run_sync(
+                self._vaults.reserve, doc["name"], doc["_id"].removeprefix(VAULT_PREFIX))
+        except VaultNameTaken:
+            raise Rejected("vault-name-taken") from None
+
+    async def _release_vault_name(self, doc_id: str, name: str) -> None:
+        await to_thread.run_sync(self._vaults.release, name, doc_id.removeprefix(VAULT_PREFIX))
 
     # --- Pasos 8 y 9 ---
 
@@ -280,15 +346,29 @@ class SyncPushService:
             raise StorageUnavailable(f"_bulk_docs rejected {len(errors)} revisions")
 
     async def _release_unused(self) -> None:
-        """Paso 9: libera los nombres que usaban las hojas (o se reservaron en el lote) y que
-        ya no usa ninguna hoja viva y activa. `release` vuelve a comprobarlo en el servidor."""
+        """Paso 9: libera los nombres y rutas que usaban las hojas (o se reservaron en el lote) y
+        que ya no usa ninguna hoja viva y activa. La liberación vuelve a comprobarlo en el servidor."""
         for doc_id, leaves in self._leaves.items():
-            in_use = _active_names(leaves)
-            candidates = self._names_before[doc_id] | self._reserved.get(doc_id, {})
-            vault_id = doc_id.removeprefix("vault:")
-            for key, name in candidates.items():
+            kind = _kind_of(doc_id)
+            if kind.release is None:
+                continue
+            in_use = _active_uses(leaves, kind)
+            candidates = self._uses_before[doc_id] | self._reserved.get(doc_id, {})
+            for key, label in candidates.items():
                 if key not in in_use:
-                    await to_thread.run_sync(self._vaults.release, name, vault_id)
+                    await kind.release(self, doc_id, label)
+
+
+# Una fila por tipo de documento; los métodos se enlazan sin instanciar (reciben `self`).
+_KINDS = {
+    VAULT_PREFIX: _Kind(
+        "vault", _VAULT_KEYS, _VAULT_KEYS, _check_vault_fields,
+        SyncPushService._check_vault_rules, _vault_use,
+        SyncPushService._reserve_vault_name, SyncPushService._release_vault_name),
+    NOTE_PREFIX: _Kind(
+        "note", NOTE_KEYS, NOTE_REQUIRED, _check_note_fields,
+        SyncPushService._check_note_rules, _note_use, None, None),
+}
 
 
 def _rejection(doc: dict, reason: str) -> dict:
