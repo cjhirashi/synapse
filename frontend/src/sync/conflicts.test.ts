@@ -391,6 +391,25 @@ describe("RF-014: notas de una bóveda que no está activa", () => {
     await vi.waitFor(() => expect(store.list()).toEqual([]));
   });
 
+  // N-3 / RD-1 (P-9): una bóveda con ramas vivas distintas cuenta como activa si alguna lo es.
+  it("una bóveda en conflicto (ganadora en la papelera, perdedora activa) deja pasar sus conflictos de nota", async () => {
+    // Los nombres chocan, así que la bóveda queda en conflicto manual (no se funde sola).
+    const rev = (hashes: string[], body: object) => ({
+      _id: VAULT_DOC_ID, _rev: `${hashes.length}-${hashes[0]}`, _revisions: { start: hashes.length, ids: hashes },
+      ...ANCESTOR, ...body,
+    });
+    await db.bulkDocs([rev([A], {})], { new_edits: false });
+    await db.bulkDocs(
+      [rev([W, A], { name: "Uno W", deleted_at: T1, updated_at: T1 }), rev([L, A], { name: "Uno L", updated_at: T2 })],
+      { new_edits: false },
+    );
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    expect(store.list().map((item) => item.kind).sort()).toEqual(["note", "vault"]);
+    // La bóveda sigue en conflicto: ganadora en la papelera, perdedora activa.
+    expect((await db.get(VAULT_DOC_ID, { conflicts: true }))._conflicts).toEqual([`2-${L}`]);
+  });
+
   it("los conflictos de nota no se mezclan con los de bóveda en la lista", async () => {
     await putVault();
     await conflict({ name: "Nombre W" }, { name: "Nombre L" });

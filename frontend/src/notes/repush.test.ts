@@ -116,6 +116,19 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     expect(toSpy).toHaveBeenCalledTimes(1);
   });
 
+  // N-3 / RD-1 (P-9): con la bóveda en conflicto basta una rama viva activa.
+  it("una bóveda en conflicto (ganadora en la papelera, perdedora activa) cuenta como activa", async () => {
+    const rev = (hashes: string[], deletedAt: string | null) => ({
+      _id: `vault:${V}`, _rev: `${hashes.length}-${hashes[0]}`, _revisions: { start: hashes.length, ids: hashes },
+      type: "vault", name: "N", description: null, tags: [], owner_id: "u", created_at: T, updated_at: T, deleted_at: deletedAt,
+    });
+    await rejectNote(NOTE_1);
+    await db.bulkDocs([rev(["aaaa"], null)] as never, { new_edits: false });
+    await db.bulkDocs([rev(["ffff", "aaaa"], T), rev(["1111", "aaaa"], null)] as never, { new_edits: false });
+    await settle();
+    expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
+  });
+
   it("una bóveda escrita por el push (evento written) también dispara el reintento", async () => {
     await putVault(V); // ya activa en la réplica cuando llega el rechazo
     await settle();
