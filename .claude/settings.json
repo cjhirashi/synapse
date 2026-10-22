@@ -21,7 +21,13 @@
     ".vite/"
   ],
   "tools": {
-    "allowed": ["Bash", "Read", "Edit", "Write", "Agent"],
+    "allowed": [
+      "Bash",
+      "Read",
+      "Edit",
+      "Write",
+      "Agent"
+    ],
     "restrictions": {
       "Bash": "Sin --no-verify ni --force-push. Tests con BD real (P5). Datos aislados por user_id (P2)."
     }
@@ -30,9 +36,9 @@
     "archify": {
       "enabled": true,
       "use_cases": [
-        "Flujo sincronización PouchDB ↔ CouchDB (SPEC-0005)",
+        "Flujo sincronizaci\u00f3n PouchDB \u2194 CouchDB (SPEC-0005)",
         "Arquitectura monolito por capas (ADR-001)",
-        "Flujo JWT + autorización",
+        "Flujo JWT + autorizaci\u00f3n",
         "Modelo datos vault+documents"
       ],
       "output_path": ".harness/diagrams/",
@@ -51,21 +57,45 @@
       "enabled": true,
       "use_cases": [
         "Confirmar en runtime una feature antes de marcarla `implemented` en state.md",
-        "Reproducir un flujo completo (login -> CRUD de bóveda -> sync) con la app corriendo, no sólo pytest/vitest"
+        "Reproducir un flujo completo (login -> CRUD de b\u00f3veda -> sync) con la app corriendo, no s\u00f3lo pytest/vitest"
       ],
-      "when": "cierre de Fase 4, antes de pedir la verificación adversarial del usuario"
+      "when": "cierre de Fase 4, antes de pedir la verificaci\u00f3n adversarial del usuario"
     }
   },
   "context_gates": {
     "before_touching_code": [
       "Lee .harness/memory/state.md (correcciones del usuario)",
-      "Aplica rúbrica de method.md §2",
-      "¿Hay spec.md que lo cubra? Si no → carril SDD Specify"
+      "Aplica r\u00fabrica de method.md \u00a72",
+      "\u00bfHay spec.md que lo cubra? Si no \u2192 carril SDD Specify"
     ],
     "after_each_session": [
       "Actualiza .harness/memory/history.md con Session-End",
       "Gate: check.sh debe pasar",
-      "Registra rebotes, decisiones, próximo paso"
+      "Registra rebotes, decisiones, pr\u00f3ximo paso"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/cjhirashi/.local/bin/graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/cjhirashi/.local/bin/graphify hook-guard read",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }
