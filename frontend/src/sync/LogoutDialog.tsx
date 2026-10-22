@@ -25,7 +25,14 @@ const COPY = {
     title: "No se pudo comprobar si hay cambios sin sincronizar",
     body: "No se pudo leer la copia de tus bóvedas en este dispositivo. Si cierras sesión, los cambios que el servidor aún no confirmó se perderán.",
   },
+  draft: {
+    title: "Hay cambios sin guardar en una nota",
+    body: "Al cerrar sesión se pierde el borrador de la nota que tienes abierta.",
+  },
 } as const;
+
+/** Línea extra cuando, además del motivo, hay un borrador sin guardar (SPEC-0008 N-1). */
+const DRAFT_NOTE = "Además, una nota abierta tiene cambios sin guardar: se perderán.";
 
 export default function LogoutDialog() {
   const { logout, replicating, status } = useSync();
@@ -45,6 +52,7 @@ export default function LogoutDialog() {
     <div role="dialog" aria-modal="true" aria-labelledby="logout-dialog-title">
       <h2 id="logout-dialog-title">{copy.title}</h2>
       <p>{copy.body}</p>
+      {logout.draft && reason !== "draft" && <p>{DRAFT_NOTE}</p>}
       {phase === "syncing" && <p role="status">Sincronizando…</p>}
       {phase === "exiting" && <p role="status">Cerrando sesión…</p>}
       {failure && <p role="alert">{failure === "sync" ? SYNC_FAILED : LOGOUT_FAILED}</p>}

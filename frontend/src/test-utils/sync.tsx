@@ -79,10 +79,12 @@ export function syncValue(overrides: Partial<SyncContextValue> = {}, db = memory
     conflicts: [],
     resolveConflict: vi.fn(async () => undefined),
     requestLogout: vi.fn(async () => undefined),
+    unsavedDrafts: { register: () => () => undefined, any: () => false },
     logout: {
       phase: "closed",
       reason: "pending",
       failure: null,
+      draft: false,
       syncAndExit: vi.fn(async () => undefined),
       discardAndExit: vi.fn(async () => undefined),
       cancel: vi.fn(),

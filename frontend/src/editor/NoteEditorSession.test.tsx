@@ -72,7 +72,9 @@ describe("cerrar sesión con el borrador sucio (N-1)", () => {
     const { user, logout, router } = await setup();
     await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("Hay cambios sin guardar en una nota")).toBeInTheDocument();
+    // La nota recién creada también está sin sincronizar: el aviso lleva el motivo del canal y,
+    // además, la línea del borrador.
+    expect(within(dialog).getByText(/nota abierta tiene cambios sin guardar/)).toBeInTheDocument();
     expect(logout).not.toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
     expect(logout).not.toHaveBeenCalled();

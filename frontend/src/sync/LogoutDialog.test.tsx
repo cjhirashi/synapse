@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import * as api from "../api/auth";
-import { memoryDb, memoryEnv } from "../test-utils/sync";
+import { memoryDb, memoryEnv, syncValue, WithSync } from "../test-utils/sync";
 import LocalCopyNotice from "./LocalCopyNotice";
 import LogoutDialog from "./LogoutDialog";
 import * as localDb from "./localDb";
@@ -422,4 +422,17 @@ test("RF-017: pedir otra salida mientras se borra la réplica no la vuelve a lee
   expect(push).not.toHaveBeenCalled();
   destroying.resolve();
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
+});
+
+// SPEC-0008 N-1: el borrador sin guardar de una nota abierta también obliga a avisar.
+test("RF-008: con motivo 'draft' el aviso habla del borrador y no ofrece sincronizar", () => {
+  const { value } = syncValue({ logout: { ...syncValue().value.logout, phase: "asking", reason: "draft", draft: true } });
+  render(
+    <WithSync value={value}>
+      <LogoutDialog />
+    </WithSync>,
+  );
+  expect(screen.getByRole("heading", { name: "Hay cambios sin guardar en una nota" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Sincronizar y salir" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Salir y descartar" })).toBeInTheDocument();
 });

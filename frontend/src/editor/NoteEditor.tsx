@@ -72,7 +72,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS },
   ref,
 ) {
-  const { notes, notesVersion, conflicts } = useSync();
+  const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
   const { Visual, Code } = views;
 
   /** Nota cargada (`null` mientras carga o si desapareció). */
@@ -91,8 +91,19 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [error, setError] = useState<string | null>(null);
 
   const dirty = note !== null && draft !== note.content;
-  /** Bloquea la navegación interna mientras haya cambios sin guardar (VF-1). */
-  const blocker = useBlocker(dirty);
+  /**
+   * Bloquea la navegación interna mientras haya cambios sin guardar (VF-1), pero sólo si
+   * cambia de pantalla (`pathname`; no una URL con otro search/hash) y el destino no es
+   * `/login`: ahí la sesión ya terminó (el aviso se dio en el cierre de sesión, N-1, o la
+   * sesión caducó en el servidor) y bloquear sólo dejaría la app a medias (N-2).
+   */
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      dirty && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login",
+  );
+
+  // Mientras hay borrador sucio, el cierre de sesión lo sabe y avisa antes de cerrar nada (N-1).
+  useEffect(() => (dirty ? unsavedDrafts.register() : undefined), [dirty, unsavedDrafts]);
 
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);

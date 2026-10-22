@@ -27,6 +27,8 @@ async function setup() {
   const db = memoryDb();
   const { value } = syncValue({}, db);
   const vault = await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  // Otra bóveda: el riel sólo bloquea al cambiar de pantalla (N-2), no al pulsar la abierta.
+  const other = await seedStore(db).create({ name: "Otra", description: null, tags: [] });
   const note = await createNoteStore(db).create(vault.id, "Primera");
   await value.notes.save(note.id, "uno", note.rev);
   const router = createMemoryRouter(
@@ -48,7 +50,7 @@ async function setup() {
   render(<RouterProvider router={router} />);
   await screen.findByRole("heading", { name: "Primera" });
   const user = userEvent.setup();
-  return { user, value, note, vault };
+  return { user, value, note, vault, other };
 }
 
 /** Deja la nota con un borrador sucio ("uno!"). */
@@ -59,14 +61,14 @@ async function makeDirty(user: ReturnType<typeof userEvent.setup>) {
 
 const links = [
   ["el enlace 'Bóvedas'", () => screen.getByRole("link", { name: "Bóvedas" }), "/vaults"],
-  ["el riel", () => screen.getByRole("link", { name: "Notas" }), null],
+  ["el riel", () => screen.getByRole("link", { name: "Otra" }), "/vaults/"],
 ] as const;
 
 describe.each(links)("navegar por %s con el borrador sucio", (_name, target, expected) => {
   // RF-008
   it("muestra el diálogo y no navega hasta decidir", async () => {
     const { user, vault } = await setup();
-    await screen.findByRole("link", { name: "Notas" }); // el riel ya cargó
+    await screen.findByRole("link", { name: "Otra" }); // el riel ya cargó
     await makeDirty(user);
     await user.click(target());
     const dialog = await screen.findByRole("alertdialog");
@@ -77,7 +79,7 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
   // RF-008
   it("'Seguir editando' se queda con el borrador", async () => {
     const { user, vault } = await setup();
-    await screen.findByRole("link", { name: "Notas" });
+    await screen.findByRole("link", { name: "Otra" });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seguir editando" }));
@@ -88,19 +90,19 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
 
   // RF-008
   it("'Descartar y salir' navega sin guardar", async () => {
-    const { user, value, note, vault } = await setup();
-    await screen.findByRole("link", { name: "Notas" });
+    const { user, value, note, other } = await setup();
+    await screen.findByRole("link", { name: "Otra" });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Descartar y salir" }));
-    expect(screen.getByTestId("where")).toHaveTextContent(expected ?? `/vaults/${vault.id}`);
+    expect(screen.getByTestId("where")).toHaveTextContent(expected === "/vaults/" ? `/vaults/${other.id}` : expected);
     expect((await value.notes.get(note.id)).content).toBe("uno");
   });
 
   // RF-008
   it("'Guardar y salir' guarda y navega", async () => {
     const { user, value, note } = await setup();
-    await screen.findByRole("link", { name: "Notas" });
+    await screen.findByRole("link", { name: "Otra" });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Guardar y salir" }));
