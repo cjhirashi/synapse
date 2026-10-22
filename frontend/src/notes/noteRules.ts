@@ -14,7 +14,8 @@
  *   `String.prototype.trim` (que quita U+FEFF y no U+0085).
  * - Los tamaños son en bytes UTF-8 (`TextEncoder`), y "Unicode bien formado" es la ausencia
  *   de sustitutos sueltos: `TextEncoder` los sustituiría por U+FFFD sin avisar, y
- *   `JSON.stringify` los escapa, así que se buscan a mano en el texto y en todo el JSON.
+ *   `JSON.stringify` los escapa, así que se buscan a mano en el texto y en todo el JSON. Los
+ *   números no finitos también se buscan a mano (`JSON.stringify` los vuelve `null`).
  */
 import { nameKey } from "../sync/vaultRules";
 
@@ -92,12 +93,17 @@ export function checkContent(value: unknown): string | null {
   return null;
 }
 
-/** ¿Algún texto (valor o clave) del JSON tiene sustitutos sueltos? */
-function hasLoneSurrogate(json: unknown): boolean {
+/**
+ * ¿Algo del JSON no se puede escribir? Textos (valor o clave) con sustitutos sueltos, o
+ * números no finitos (`NaN`, `Infinity`): el servidor los rechaza (VB-1) y `JSON.stringify`
+ * los convertiría en `null` sin avisar.
+ */
+function hasUnwritableValue(json: unknown): boolean {
   if (typeof json === "string") return !wellFormed(json);
-  if (Array.isArray(json)) return json.some(hasLoneSurrogate);
+  if (typeof json === "number") return !Number.isFinite(json);
+  if (Array.isArray(json)) return json.some(hasUnwritableValue);
   if (json !== null && typeof json === "object") {
-    return Object.entries(json).some(([key, item]) => !wellFormed(key) || hasLoneSurrogate(item));
+    return Object.entries(json).some(([key, item]) => !wellFormed(key) || hasUnwritableValue(item));
   }
   return false;
 }
@@ -105,6 +111,6 @@ function hasLoneSurrogate(json: unknown): boolean {
 /** `frontmatter`: objeto JSON cuya serialización compacta pesa ≤ 64 KiB en UTF-8. */
 export function checkFrontmatter(value: unknown): string | null {
   const invalid = "validation-error:frontmatter";
-  if (value === null || typeof value !== "object" || Array.isArray(value) || hasLoneSurrogate(value)) return invalid;
+  if (value === null || typeof value !== "object" || Array.isArray(value) || hasUnwritableValue(value)) return invalid;
   return utf8Bytes(JSON.stringify(value)) <= FRONTMATTER_MAX_BYTES ? null : invalid;
 }

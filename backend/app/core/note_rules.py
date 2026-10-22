@@ -84,11 +84,17 @@ def check_content(value: object) -> str | None:
 
 
 def check_frontmatter(value: object) -> str | None:
-    """`frontmatter`: objeto JSON cuya serialización compacta pesa ≤ 64 KiB en UTF-8."""
+    """`frontmatter`: objeto JSON cuya serialización compacta pesa ≤ 64 KiB en UTF-8.
+
+    Sólo valores del JSON estándar: `NaN`, `Infinity` y `1e999` (que Python lee como infinito)
+    no se pueden serializar y CouchDB los rechazaría al reenviar el lote (VB-1).
+    """
     if not isinstance(value, dict):
         return "validation-error:frontmatter"
     try:
-        size = len(json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8"))
-    except UnicodeEncodeError:  # sustituto suelto dentro de una cadena
+        # `allow_nan=False` lanza `ValueError` ante un número no finito.
+        size = len(json.dumps(
+            value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
+    except (UnicodeEncodeError, ValueError):  # sustituto suelto en una cadena; número no finito
         return "validation-error:frontmatter"
     return None if size <= FRONTMATTER_MAX_BYTES else "validation-error:frontmatter"
