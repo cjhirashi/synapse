@@ -388,3 +388,11 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | N-3 · RD-1 sólo probado en `vaultActive` | Medium | faltan pruebas en los consumidores | Test en `conflicts.test.ts` y en `repush.test.ts` con la bóveda en conflicto (ganadora en papelera, perdedora activa) que falla si vuelven al `db.get` simple. |
 | N-4 · `repush.enqueueAll` corta el id de bóveda por longitud fija | Low | supone UUID de 36 caracteres sin decirlo | Extraer el `vault_id` con el parser de ids de nota de `noteRules`/`noteStore` (un solo lugar que entiende `note:{vault}:{uuid}`). |
 | N-5/N-6 · VF-5, VF-6, VF-8 sin commit rojo previo | Low (proceso) | — | Registrado; no se reescribe historia. |
+
+## 12. Enmienda 3 (2026-10-22) — verificación del backend (REJECTED)
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VB-1 · `frontmatter` con `NaN`/`Infinity`/`1e999` → 500 en el push y lote atascado | High | `check_frontmatter` mide con `json.dumps` (que admite no finitos) y el fallo aparece al reenviar a CouchDB | `check_frontmatter` rechaza números no finitos (`allow_nan=False`) con `validation-error:frontmatter`; casos en `note_rules_cases.json`; el espejo TS (`noteRules.ts`) aplica la misma regla. Test de API: el push responde con el rechazo, nunca 500. |
+| VB-2 · `_bulk_docs` lee hasta 16 MiB sin sesión | Medium | `SyncRoute.limited` lee el cuerpo antes de la dependencia de sesión | La sesión se valida antes de leer el cuerpo en todas las rutas de `/sync` (401 sin leer el cuerpo); test que lo demuestra. |
+| VB-3 · JSON con anidamiento extremo → 400 no declarado | Low | `RecursionError` al decodificar el cuerpo no se trata como JSON inválido | Tratarlo igual que cualquier cuerpo JSON inválido, con la respuesta declarada en el contrato para ese caso; test. |
+| VB-4 · 413 de 0005 movidos a `_revs_diff` | Low | — | Aceptado (sin aserción debilitada). |

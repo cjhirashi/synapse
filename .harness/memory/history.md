@@ -1032,3 +1032,16 @@
 - [2026-10-22] N-8: test de repush con ids de nota no canónicos (ya pasaba con el código: no es rojo real); N-7: RejectionsPage usa parseNoteId — CHECK: vitest run verde, typecheck ok, gate abierta
 - [2026-10-22] T-023 (RF-004, RF-005, RF-006, RF-013, RF-016): suite backend completa con cobertura — CHECK: pytest -q --cov=app → 1029 passed, 1 deselected, 0 failed (15m55s); note_rules 100%, note_service 100%, reservations 100%, sync_push 100%, sync_filter 100%, routers/sync 99%, total 99%. Correcciones de historia: T-017 dio 14 failed/12 passed y T-018 83 passed en test_sync_push (+80 en test_note_sync_push); test_sync_repository.py (0005) ajustado a los rangos de _all_docs (commit aparte).
 - [2026-10-22] Carril backend A–C cerrado (T-001…T-023): suite completa `pytest -q --cov=app` **1029 passed, 1 deselected, 0 failed** (15m55s), cobertura total 99 % (módulos nuevos 100 %); gate abierto. Desviaciones declaradas: `core/timestamps.py` (evita import circular), `Reservations` como clase, `check_path` rechaza sustitutos sueltos; tests de 0005 ajustados (filter, push, api 413, repository) para el re-anclaje.
+- [2026-10-22] T-080 [doc]: note.schema.json sin cambios, coincide con core/note_rules.py — CHECK: pytest tests/test_note_contract.py tests/test_contract.py → 14 passed
+- [2026-10-22] T-081 [doc]: openapi.yaml de 0005 ya re-exportado en T-022 (6bf07cd); export_openapi.py no produce diff — CHECK: test_contract.py → passed (git diff vacío: sin cambios nuevos)
+- [2026-10-22] T-082 [doc]: backend/README.md — CHECK: grep -c → 11 (≥4)
+- [2026-10-22] T-083 [doc]: core/README.md note_rules/timestamps — CHECK: grep -c → 2 (≥1)
+- [2026-10-22] T-084 [doc]: services/README.md — CHECK: grep -c → 2 (≥2)
+- [2026-10-22] T-085 [doc]: routers/README.md — CHECK: grep -c '16 MiB' → 1 (≥1)
+- [2026-10-22] T-086 [doc]: tests/README.md — CHECK: grep -c → 6 (≥3)
+- [2026-10-22] T-087 [doc]: frontend/README.md — CHECK: grep -c → 3 (≥3)
+- [2026-10-22] T-088 [doc]: frontend/src/README.md — CHECK: grep -c → 12 (≥4)
+- [2026-10-22] T-089 [doc]: note-flow Archify (dataflow, finalize pass 4/4 gates en contenedor Playwright) — CHECK: ls diagrams/ → README.md, html, 2 PNG
+- [2026-10-22] T-090 [doc]: 0005 sync-flow regenerado (finalize pass) — CHECK: grep -c 'note:' 0005 diagrams/README.md → 1
+- [2026-10-22] T-091 [doc]: ARCHIFY.md entrada 2b — CHECK: grep -c 0008 → 3
+- [2026-10-22] Bloque I docs T-080…T-091 hechos (commits 19e065a…a90bf38; diagramas Archify de 0008 y 0005 regenerados). **Revisor backend A–C: REJECTED** — VB-1 High (`NaN`/`Infinity` en frontmatter → 500 y lote atascado), VB-2 Medium (16 MiB leídos antes de la sesión), VB-3/VB-4 Low; aislamiento, ids, reservas y mutaciones (10/10 muertas) resisten. Suite: 1022 passed, 7 transitorios de CouchDB por concurrencia con `test_contract` del agente de docs (35/35 al repetir). **Enmienda 3** (PLAN-0008 §12, T-114…T-119).

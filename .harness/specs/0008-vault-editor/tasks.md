@@ -287,40 +287,40 @@ actualizado: 2026-10-22
   - EXPECT: todos los archivos `*.integration.test.ts` de `sync/` y `notes/` `passed`, 0 failed.
 
 ### I · Documentación, diagrama, re-anclajes y verificación manual (PLAN-0008 §8)
-- [ ] T-080 — Revisar `contracts/note.schema.json` contra la implementación final; corregir sólo si `test_note_contract.py` o la batería lo exigen [doc]
+- [x] T-080 — Revisar `contracts/note.schema.json` contra la implementación final; corregir sólo si `test_note_contract.py` o la batería lo exigen [doc]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_contract.py`
   - EXPECT: `passed`; sin diferencias entre esquema y `core/note_rules.py`.
-- [ ] T-081 — `0005-sync/contracts/openapi.yaml` re-exportado y confirmado (sólo `reason` y 413) [doc]
+- [x] T-081 — `0005-sync/contracts/openapi.yaml` re-exportado y confirmado (sólo `reason` y 413) [doc]
   - CHECK: `git diff --stat -- .harness/specs/0005-sync/contracts/openapi.yaml && cd backend && python3 -m pytest -q tests/test_contract.py`
   - EXPECT: un archivo cambiado; `passed`.
-- [ ] T-082 — `backend/README.md`: "Sincronización" (tipos replicados, `note-path:*` sólo del servidor, motivos nuevos, topes 16 MiB / 2 MiB / 64 KiB) y sección "Notas (SPEC-0008)" [doc]
+- [x] T-082 — `backend/README.md`: "Sincronización" (tipos replicados, `note-path:*` sólo del servidor, motivos nuevos, topes 16 MiB / 2 MiB / 64 KiB) y sección "Notas (SPEC-0008)" [doc]
   - CHECK: `grep -c "note-path-taken\|vault-not-found\|SPEC-0008\|16 MiB" backend/README.md`
   - EXPECT: ≥ 4.
-- [ ] T-083 — `backend/app/core/README.md`: `note_rules.py` [doc]
+- [x] T-083 — `backend/app/core/README.md`: `note_rules.py` [doc]
   - CHECK: `grep -c "note_rules" backend/app/core/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-084 — `backend/app/services/README.md`: `reservations.py`, `note_service.py`, cambios de `sync_push`/`sync_filter` [doc]
+- [x] T-084 — `backend/app/services/README.md`: `reservations.py`, `note_service.py`, cambios de `sync_push`/`sync_filter` [doc]
   - CHECK: `grep -c "reservations\|note_service" backend/app/services/README.md`
   - EXPECT: ≥ 2.
-- [ ] T-085 — `backend/app/routers/README.md`: tope por ruta de `sync.py` [doc]
+- [x] T-085 — `backend/app/routers/README.md`: tope por ruta de `sync.py` [doc]
   - CHECK: `grep -c "16 MiB" backend/app/routers/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-086 — `backend/tests/README.md`: `test_note*.py`, `test_reservations.py`, `note_rules_cases.json` [doc]
+- [x] T-086 — `backend/tests/README.md`: `test_note*.py`, `test_reservations.py`, `note_rules_cases.json` [doc]
   - CHECK: `grep -c "test_note\|test_reservations\|note_rules_cases" backend/tests/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-087 — `frontend/README.md`: dependencias del editor, `npm run test:perf`, `test:sync` incluye notas [doc]
+- [x] T-087 — `frontend/README.md`: dependencias del editor, `npm run test:perf`, `test:sync` incluye notas [doc]
   - CHECK: `grep -c "test:perf\|Milkdown\|CodeMirror" frontend/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-088 — `frontend/src/README.md`: `notes/`, `editor/`, ruta `/vaults/:id`, riel, guardado explícito, reparto de `_bulk_docs`, reintento de `vault-not-found` [doc]
+- [x] T-088 — `frontend/src/README.md`: `notes/`, `editor/`, ruta `/vaults/:id`, riel, guardado explícito, reparto de `_bulk_docs`, reintento de `vault-not-found` [doc]
   - CHECK: `grep -c "notes/\|editor/\|/vaults/:id\|vault-not-found" frontend/src/README.md`
   - EXPECT: ≥ 4.
-- [ ] T-089 — Diagrama de la feature con Archify (dataflow "abrir bóveda → editar → réplica → push validado → reservas") en `.harness/specs/0008-vault-editor/diagrams/` + `README.md` [doc]
+- [x] T-089 — Diagrama de la feature con Archify (dataflow "abrir bóveda → editar → réplica → push validado → reservas") en `.harness/specs/0008-vault-editor/diagrams/` + `README.md` [doc]
   - CHECK: `ls .harness/specs/0008-vault-editor/diagrams/`
   - EXPECT: `README.md` y los artefactos HTML/PNG del diagrama.
-- [ ] T-090 — Regenerar `0005-sync/diagrams/` (el canal replica `vault:*` y `note:*`) [doc]
+- [x] T-090 — Regenerar `0005-sync/diagrams/` (el canal replica `vault:*` y `note:*`) [doc]
   - CHECK: `grep -c "note:" .harness/specs/0005-sync/diagrams/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-091 — `ARCHIFY.md`: entrada del diagrama de 0008 [doc]
+- [x] T-091 — `ARCHIFY.md`: entrada del diagrama de 0008 [doc]
   - CHECK: `grep -c "0008" ARCHIFY.md`
   - EXPECT: ≥ 1.
 - [ ] T-092 — Notas de re-anclaje (sin cambio de requisitos) en `spec.md` de 0002, 0003, 0005 y 0007 y anclas movidas al commit de cierre (P-2) [doc]
@@ -395,6 +395,27 @@ actualizado: 2026-10-22
 - [x] T-113 — Cierre de la enmienda 2: `npm run test:cov`, typecheck, build y gate (cubre RF-001…RF-019) [zona: sistema]
   - CHECK: `cd frontend && npm run test:cov && npm run typecheck && npm run build && cd .. && bash .harness/gate/check.sh`
   - EXPECT: 0 failed; ≥ 80 % por módulo (incluido `vaultActive.ts`); build ok; "Compuerta abierta".
+
+### L · Enmienda 3 (PLAN-0008 §12) — hallazgos VB-1…VB-3
+> Test rojo en commit propio antes de cada corrección.
+- [ ] T-114 — Test (rojo) VB-1: casos `NaN`, `Infinity`, `-Infinity`, `1e999` (anidados también) en `note_rules_cases.json` + `test_note_rules.py` + `noteRules.test.ts`; test de API: push con esos `frontmatter` → rechazo `validation-error:frontmatter`, nunca 500 (cubre RF-005) [zona: test]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_rules.py tests/test_note_sync_api.py -k "frontmatter" ; cd ../frontend && npx vitest run src/notes/noteRules.test.ts`
+  - EXPECT: fallan los casos nuevos (aceptados por la regla; 500 en la API).
+- [ ] T-115 — `check_frontmatter` y `noteRules.ts` rechazan no finitos (cubre RF-005) [zona: núcleo]
+  - CHECK: mismo de T-114
+  - EXPECT: `passed`.
+- [ ] T-116 — Test (rojo) VB-2: `POST /sync/db/_bulk_docs` sin sesión con cuerpo grande → 401 sin leer el cuerpo (p. ej. cuerpo en *stream* que falla si se consume) (cubre RF-006) [zona: test]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py -k "unauth or sin_sesion"`
+  - EXPECT: falla (el cuerpo se lee antes del 401).
+- [ ] T-117 — `routers/sync.py`: sesión antes de leer el cuerpo (cubre RF-006) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py`
+  - EXPECT: `passed`.
+- [ ] T-118 — Test (rojo) y corrección VB-3: anidamiento extremo → misma respuesta declarada que un JSON inválido (cubre RF-005) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
+  - EXPECT: `passed`; sin respuesta no declarada (`ContractGuard`).
+- [ ] T-119 — Cierre de la enmienda 3: suite backend completa (sola, sin otras suites contra el CouchDB de pruebas), vitest y gate (cubre RF-004…RF-006, RF-016) [zona: sistema]
+  - CHECK: `cd backend && timeout 1500 python3 -m pytest -q -p no:cacheprovider --cov=app ; cd ../frontend && npx vitest run ; cd .. && bash .harness/gate/check.sh`
+  - EXPECT: 0 failed; "Compuerta abierta".
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
