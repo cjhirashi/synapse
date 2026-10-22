@@ -219,3 +219,17 @@ def test_rf_006_unauthenticated_sync_request_is_401_without_reading_the_body(pat
     # Sin sesión un cuerpo de hasta 16 MiB no debe llegar a memoria: la sesión se valida antes.
     status, reads = _asgi_post(path, b'{"pad": "' + b"x" * (1024 * 1024) + b'"}')
     assert (status, reads) == (401, 0)
+
+
+# --- Anidamiento extremo (VB-3) ---
+
+@pytest.mark.parametrize("path", ["/sync/db/_bulk_docs", "/sync/db/_revs_diff", "/sync/db/_bulk_get"])
+def test_rf_005_extremely_nested_json_is_answered_like_any_invalid_json(ready_admin, path):
+    # `json.loads` lanza `RecursionError` con cientos de niveles: debe dar la misma respuesta
+    # declarada (422 `validation-error`) que un JSON truncado, no un 400 fuera del contrato.
+    headers = {"content-type": "application/json"}
+    truncated = ready_admin.post(path, content=b"{", headers=headers)
+    nested = ready_admin.post(path, content=b"[" * 100_000, headers=headers)
+    assert_problem(truncated, 422, "validation-error")
+    assert_problem(nested, 422, "validation-error")
+    assert nested.json()["errors"] == truncated.json()["errors"]
