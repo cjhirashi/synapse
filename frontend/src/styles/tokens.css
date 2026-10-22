@@ -1,0 +1,71 @@
+/*
+ * Tokens del sistema de diseño de Synapse — MD3+Cyan, claro/sistema/oscuro.
+ * Fuente: diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md (aprobado 2026-08-12).
+ * No inventar valores nuevos aquí: ese documento es la fuente de verdad del diseño.
+ */
+:root[data-theme="dark"] {
+  --bg-primary: #12121a;
+  --bg-secondary: #1a1a24;
+  --bg-tertiary: #22222e;
+  --border: #2e2e3d;
+  --text-primary: #e8e8ef;
+  --text-secondary: #9a9aab;
+  --text-muted: #6b6b7c;
+  --accent: #0891b2;
+  --accent-hover: #06b6d4;
+  --accent-soft: rgba(8, 145, 178, 0.18);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --danger-bg: rgba(220, 38, 38, 0.1);
+  --danger-border: rgba(220, 38, 38, 0.3);
+  --info: #38bdf8;
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --bg-gradient: radial-gradient(circle at 30% 20%, #182229 0%, var(--bg-primary) 60%);
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent: #0891b2;
+  --accent-hover: #0e7490;
+  --accent-soft: rgba(8, 145, 178, 0.1);
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+  --danger-bg: rgba(220, 38, 38, 0.08);
+  --danger-border: rgba(220, 38, 38, 0.25);
+  --info: #0284c7;
+  --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.12);
+  --bg-gradient: radial-gradient(circle at 30% 20%, #e6f6fa 0%, var(--bg-primary) 60%);
+}
+
+:root {
+  --font-ui: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+}

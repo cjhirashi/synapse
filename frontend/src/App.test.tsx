@@ -88,7 +88,7 @@ test("RF-017: «Cerrar sesión» sin cambios pendientes cierra la sesión y llev
   const logout = vi.spyOn(api, "logout").mockResolvedValue();
   const user = renderAt("/vaults", env);
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
-  expect(await screen.findByRole("heading", { name: "Synapse" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(logout).toHaveBeenCalledOnce();
 });
 
@@ -99,6 +99,6 @@ test("RF-017: si la réplica no se borra al salir, el login avisa de la copia co
   vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
   const user = renderAt("/vaults", env);
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
-  expect(await screen.findByRole("heading", { name: "Synapse" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
 });

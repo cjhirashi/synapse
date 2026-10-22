@@ -13,7 +13,9 @@
     "test:sync:perf": "SYNC_PERF=1 scripts/sync-integration.sh"
   },
   "dependencies": {
+    "@fontsource/inter": "5.3.0",
     "events": "3.3.0",
+    "lucide-react": "1.61.0",
     "pouchdb-browser": "9.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",

@@ -36,8 +36,9 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
   }
 
   return (
-    <form onSubmit={submit}>
+    <form className="card-form" onSubmit={submit}>
       <h1>Cambiar contraseña</h1>
+      {error && <p role="alert">{error}</p>}
       <label>
         Contraseña actual
         <input type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
@@ -50,7 +51,6 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
         Confirmar nueva contraseña
         <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       </label>
-      {error && <p role="alert">{error}</p>}
       <button type="submit" disabled={busy}>Cambiar contraseña</button>
     </form>
   );

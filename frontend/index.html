@@ -1,5 +1,18 @@
 <!doctype html>
 <html lang="es">
-  <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Synapse</title></head>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Synapse</title>
+    <script>
+      // Aplica el tema antes del primer paint - evita un parpadeo de tema equivocado
+      // mientras React monta (useTheme reacciona después del primer render).
+      (function () {
+        var mode = localStorage.getItem("synapse-theme") || "system";
+        var resolved = mode === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : mode;
+        document.documentElement.setAttribute("data-theme", resolved);
+      })();
+    </script>
+  </head>
   <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
 </html>

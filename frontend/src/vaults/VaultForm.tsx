@@ -140,7 +140,7 @@ export default function VaultForm() {
   }
 
   return (
-    <form onSubmit={submit} noValidate>
+    <form className="card-form" onSubmit={submit} noValidate>
       <h1>{editing ? "Editar bóveda" : "Nueva bóveda"}</h1>
       <label>
         Nombre

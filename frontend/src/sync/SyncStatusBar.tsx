@@ -36,8 +36,9 @@ export default function SyncStatusBar() {
   const text = status.state === "offline" && status.pending ? `${STATE_TEXT.offline} · cambios pendientes` : STATE_TEXT[status.state];
 
   return (
-    <section aria-label="Sincronización">
+    <section aria-label="Sincronización" className="sync-status-bar">
       <p role="status">
+        <span className="sync-status-dot" aria-hidden="true" />
         {text}
         {status.state === "session-expired" && (
           <>

@@ -38,8 +38,10 @@ export default function VaultListPage() {
 
   return (
     <section>
-      <h1>Bóvedas</h1>
-      <Link to="/vaults/new">Nueva bóveda</Link>
+      <div className="page-header">
+        <h1>Bóvedas</h1>
+        <Link to="/vaults/new">Nueva bóveda</Link>
+      </div>
       {notice && <p role={notice.kind}>{notice.text}</p>}
 
       {status === "loading" && <p>Cargando…</p>}
