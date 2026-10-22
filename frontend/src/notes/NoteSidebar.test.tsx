@@ -1,5 +1,5 @@
 // Sidebar con el árbol de notas de la bóveda (SPEC-0008 RF-003, RF-010…RF-013, RF-019).
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
@@ -166,4 +166,64 @@ test("RF-019: la carpeta de la nota abierta se despliega sola", async () => {
   rerender(ui(value, hoja.id));
   expect(await screen.findByRole("treeitem", { name: "Hoja" })).toHaveAttribute("aria-selected", "true");
   expect(screen.queryByRole("treeitem", { name: "X" })).toBeNull();
+});
+
+// VF-9: el árbol anuncia role="tree", así que responde al teclado del patrón WAI-ARIA.
+test("RF-019: roving tabindex, un solo treeitem tabulable y el foco lo sigue", async () => {
+  const { user } = await setup(["Carpeta/Otra.md", "Raíz.md"]);
+  const items = () => within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem");
+  expect(items().filter((item) => item.getAttribute("tabindex") === "0")).toHaveLength(1);
+  expect(items()[0]).toHaveAttribute("tabindex", "0");
+  act(() => items()[0].focus());
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  expect(items().filter((item) => item.getAttribute("tabindex") === "0")).toEqual([screen.getByRole("treeitem", { name: "Raíz" })]);
+});
+
+test("RF-019: ↑/↓ recorren los elementos visibles y Inicio/Fin saltan a los extremos", async () => {
+  const { user } = await setup(["Carpeta/Otra.md", "Raíz.md", "Zeta.md"]);
+  act(() => screen.getByRole("treeitem", { name: "Carpeta" }).focus());
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
+  await user.keyboard("{ArrowDown}"); // en el último no pasa nada
+  expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
+  await user.keyboard("{ArrowUp}");
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  await user.keyboard("{Home}");
+  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toHaveFocus();
+  await user.keyboard("{End}");
+  expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
+});
+
+test("RF-019: → abre la carpeta y baja al primer hijo; ← cierra o sube al padre", async () => {
+  const { user } = await setup(["Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
+  const folder = screen.getByRole("treeitem", { name: "Carpeta" });
+  act(() => folder.focus());
+  await user.keyboard("{ArrowRight}");
+  expect(folder).toHaveAttribute("aria-expanded", "true");
+  expect(folder).toHaveFocus();
+  await user.keyboard("{ArrowRight}");
+  expect(screen.getByRole("treeitem", { name: "Sub" })).toHaveFocus(); // carpetas antes que notas
+  await user.keyboard("{ArrowLeft}"); // Sub está cerrada: sube al padre
+  expect(folder).toHaveFocus();
+  await user.keyboard("{ArrowLeft}"); // Carpeta abierta: la cierra
+  expect(folder).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("treeitem", { name: "Otra" })).toBeNull();
+});
+
+test("RF-019: en una nota, → no hace nada, ← sube a su carpeta y Enter la abre", async () => {
+  const { user, value, onOpen } = await setup(["Carpeta/Otra.md"]);
+  const folder = screen.getByRole("treeitem", { name: "Carpeta" });
+  await user.click(folder);
+  const note = screen.getByRole("treeitem", { name: "Otra" });
+  act(() => note.focus());
+  await user.keyboard("{ArrowRight}");
+  expect(note).toHaveFocus();
+  await user.keyboard("{Enter}");
+  expect(onOpen).toHaveBeenCalledWith((await value.notes.list(VAULT))[0].id);
+  await user.keyboard("{ArrowLeft}");
+  expect(folder).toHaveFocus();
+  expect(folder).toHaveAttribute("aria-expanded", "true");
 });
