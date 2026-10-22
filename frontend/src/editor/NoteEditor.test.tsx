@@ -309,6 +309,68 @@ describe("renombrar la nota abierta con borrador sucio (VF-3)", () => {
   });
 });
 
+describe("nota abierta enviada a la papelera por sync (VF-4, VF-5)", () => {
+  /** Nota "Primera" abierta; devuelve cómo cambiar `notesVersion` y la tienda para manipularla por fuera. */
+  async function openTrashable(content = "uno") {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const note = await value.notes.create(VAULT, "Primera");
+    await value.notes.save(note.id, content, (await value.notes.get(note.id)).rev);
+    const tree = (version: number) => (
+      <DataMemoryRouter>
+        <WithSync value={{ ...value, notesVersion: version }}>
+          <NoteEditor noteId={note.id} views={views} />
+        </WithSync>
+      </DataMemoryRouter>
+    );
+    const utils = render(tree(0));
+    await screen.findByRole("heading", { name: "Primera" });
+    const trash = async () => value.notes.softDelete(note.id, (await value.notes.get(note.id)).rev);
+    return { ...utils, tree, value, note, trash };
+  }
+
+  // RF-017
+  it("'Restaurar y guardar' devuelve la nota con el borrador", async () => {
+    const { tree, rerender, value, note, trash } = await openTrashable();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor visual" }), "!");
+    await trash();
+    rerender(tree(1));
+    await userEvent.click(await screen.findByRole("button", { name: "Restaurar y guardar" }));
+    await screen.findByText("Guardado");
+    const stored = await value.notes.get(note.id);
+    expect(stored.content).toBe("uno!");
+    expect(stored.deleted_at).toBeNull();
+    expect(screen.queryByRole("button", { name: "Restaurar y guardar" })).toBeNull();
+  });
+
+  // RF-013
+  it("con la ruta ocupada muestra el mensaje y el borrador queda intacto", async () => {
+    const { tree, rerender, value, note, trash } = await openTrashable();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor visual" }), "!");
+    await trash();
+    await value.notes.create(VAULT, "Primera"); // otra nota ocupa la ruta
+    rerender(tree(1));
+    await userEvent.click(await screen.findByRole("button", { name: "Restaurar y guardar" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya hay una nota con esa ruta");
+    expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveValue("uno!");
+    expect((await value.notes.list(VAULT, { deleted: true })).map((n) => n.id)).toEqual([note.id]);
+  });
+
+  // RF-013
+  it("al reaparecer la nota desaparece el aviso 'no existe'", async () => {
+    const { tree, rerender, value, note, trash } = await openTrashable();
+    const trashed = await trash();
+    rerender(tree(1));
+    expect(await screen.findByText("La nota ya no existe.")).toBeInTheDocument();
+    await value.notes.restore(note.id, trashed.rev);
+    rerender(tree(2));
+    await screen.findByRole("heading", { name: "Primera" });
+    expect(screen.queryByText("La nota ya no existe.")).toBeNull();
+  });
+});
+
 describe("conflicto y cambios de otros (RF-009 aviso)", () => {
   // RF-009
   it("avisa con enlace a /conflicts si la nota abierta está en conflicto", async () => {
