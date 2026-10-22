@@ -4,7 +4,7 @@
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { DataMemoryRouter } from "../test-utils/router";
 import { describe, expect, it, vi } from "vitest";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { NoteConflict } from "../sync/conflicts";
@@ -46,11 +46,11 @@ async function setup(content = "# Hola\n", extra: Partial<SyncContextValue> = {}
   const onCancelOpen = vi.fn();
   function ui(noteId: string, editOnOpen = false) {
     return (
-      <MemoryRouter>
+      <DataMemoryRouter>
         <WithSync value={value}>
           <NoteEditor noteId={noteId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} views={views} />
         </WithSync>
-      </MemoryRouter>
+      </DataMemoryRouter>
     );
   }
   const utils = render(ui(first.id));
@@ -265,11 +265,11 @@ describe("conflicto y cambios de otros (RF-009 aviso)", () => {
       loser: { rev: "2-b", doc: {} as NoteConflict["loser"]["doc"] },
     };
     render(
-      <MemoryRouter>
+      <DataMemoryRouter>
         <WithSync value={{ ...value, conflicts: [conflict] }}>
           <NoteEditor noteId={note.id} views={views} />
         </WithSync>
-      </MemoryRouter>,
+      </DataMemoryRouter>,
     );
     const link = await screen.findByRole("link", { name: /conflictos/i });
     expect(link).toHaveAttribute("href", "/conflicts");
@@ -281,11 +281,11 @@ describe("conflicto y cambios de otros (RF-009 aviso)", () => {
     const { value } = syncValue({}, db);
     const note = await value.notes.create(VAULT, "Primera");
     const tree = (version: number) => (
-      <MemoryRouter>
+      <DataMemoryRouter>
         <WithSync value={{ ...value, notesVersion: version }}>
           <NoteEditor noteId={note.id} views={views} />
         </WithSync>
-      </MemoryRouter>
+      </DataMemoryRouter>
     );
     const { rerender } = render(tree(0));
     await screen.findByRole("heading", { name: "Primera" });
@@ -308,11 +308,11 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     const note = await value.notes.create(VAULT, "Real");
     await value.notes.save(note.id, content, note.rev);
     render(
-      <MemoryRouter>
+      <DataMemoryRouter>
         <WithSync value={value}>
           <NoteEditor noteId={note.id} editOnOpen />
         </WithSync>
-      </MemoryRouter>,
+      </DataMemoryRouter>,
     );
     await screen.findByRole("heading", { name: "Real" });
     return { value, note };

@@ -1,7 +1,8 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { DataMemoryRouter } from "../test-utils/router";
 import { afterEach, beforeAll, expect, test } from "vitest";
 import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
@@ -23,13 +24,13 @@ function NavState() {
 function tree(value: SyncContextValue, path: string, state?: unknown) {
   return (
     <WithSync value={value}>
-      <MemoryRouter initialEntries={[{ pathname: path, state }]}>
+      <DataMemoryRouter initialEntries={[{ pathname: path, state }]}>
         <NavState />
         <Routes>
           <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
           <Route path="/vaults" element={<div>lista de bóvedas</div>} />
         </Routes>
-      </MemoryRouter>
+      </DataMemoryRouter>
     </WithSync>
   );
 }

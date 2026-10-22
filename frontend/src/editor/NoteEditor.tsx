@@ -10,9 +10,12 @@
  * cambios guarda antes. Hay aviso de cambios sin guardar al cerrar la pestaña (`beforeunload`)
  * y al pedir otra nota (confirmación interna: el padre cambia `noteId` y este componente
  * decide si abre ya o pregunta; si el usuario sigue editando avisa con `onCancelOpen`).
+ * Salir de la ruta por navegación interna (riel, "Bóvedas"…) con cambios sin guardar lo
+ * bloquea `useBlocker` (sólo existe en data routers: `main.tsx` usa `createBrowserRouter`) y
+ * pregunta con el mismo patrón de diálogo (VF-1).
  */
 import { ComponentType, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useBlocker } from "react-router-dom";
 import { checkContent } from "../notes/noteRules";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { noteErrorMessage } from "../notes/messages";
@@ -75,6 +78,8 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
   const [error, setError] = useState<string | null>(null);
 
   const dirty = note !== null && draft !== note.content;
+  /** Bloquea la navegación interna mientras haya cambios sin guardar (VF-1). */
+  const blocker = useBlocker(dirty);
 
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);
@@ -208,6 +213,11 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
     onCancelOpen?.(openId);
   }
 
+  async function saveAndLeave() {
+    // Si no se pudo guardar, la navegación sigue bloqueada y el borrador intacto.
+    if (blocker.state === "blocked" && (await save())) blocker.proceed();
+  }
+
   function onKeyDown(event: KeyboardEvent) {
     if (mode === "edit" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       // Sin esto el navegador abriría su propio "Guardar página como".
@@ -272,6 +282,21 @@ export default function NoteEditor({ noteId, editOnOpen = false, onCancelOpen, v
             Descartar y abrir
           </button>
           <button type="button" onClick={keepEditing}>
+            Seguir editando
+          </button>
+        </div>
+      )}
+
+      {blocker.state === "blocked" && (
+        <div role="alertdialog" aria-labelledby="note-leave-title" className="note-editor-confirm">
+          <p id="note-leave-title">Esta nota tiene cambios sin guardar.</p>
+          <button type="button" onClick={() => void saveAndLeave()} disabled={saving}>
+            Guardar y salir
+          </button>
+          <button type="button" onClick={() => blocker.proceed()}>
+            Descartar y salir
+          </button>
+          <button type="button" onClick={() => blocker.reset()}>
             Seguir editando
           </button>
         </div>
