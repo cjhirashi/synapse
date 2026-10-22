@@ -1,0 +1,390 @@
+{
+ "_doc": "Bater\u00eda com\u00fan de PLAN-0008 \u00a75: reglas de core/note_rules.py frente a frontend/src/notes/noteRules.ts. La verifican test_note_rules.py y noteRules.test.ts. `input` es el valor tal cual; si el caso trae `build`, el valor es `prefix + repeat*times + suffix` (para los topes de 2 MiB y 64 KiB sin inflar el archivo), y en frontmatter `{key: <valor construido>}`. path: `code` es el rechazo de check_path (null si pasa) y `normalized` la salida de normalize_path.",
+ "path": [
+  {
+   "input": "Nota.md",
+   "code": null,
+   "normalized": "Nota.md"
+  },
+  {
+   "input": "Carpeta/Sub/Nota.md",
+   "code": null,
+   "normalized": "Carpeta/Sub/Nota.md"
+  },
+  {
+   "input": "a",
+   "code": null,
+   "normalized": "a"
+  },
+  {
+   "input": "Notas de hoy / ideas.md",
+   "code": "not-normalized:path",
+   "normalized": "Notas de hoy/ideas.md"
+  },
+  {
+   "input": "",
+   "code": "validation-error:path",
+   "normalized": ""
+  },
+  {
+   "input": "   ",
+   "code": "validation-error:path",
+   "normalized": ""
+  },
+  {
+   "input": "",
+   "code": null,
+   "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "build": {
+    "repeat": "a",
+    "times": 300,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "code": "validation-error:path",
+   "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "build": {
+    "repeat": "a",
+    "times": 301,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "code": null,
+   "normalized": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+   "build": {
+    "repeat": "\ud83d\ude00",
+    "times": 300,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "code": "validation-error:path",
+   "normalized": "\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00\ud83d\ude00",
+   "build": {
+    "repeat": "\ud83d\ude00",
+    "times": 301,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "code": "not-normalized:path",
+   "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "build": {
+    "repeat": "a",
+    "times": 300,
+    "suffix": ""
+   },
+   "prefix": " "
+  },
+  {
+   "input": "a\u0001b",
+   "code": "validation-error:path",
+   "normalized": "a\u0001b"
+  },
+  {
+   "input": "a\u007fb",
+   "code": "validation-error:path",
+   "normalized": "a\u007fb"
+  },
+  {
+   "input": "a\u0085b",
+   "code": "validation-error:path",
+   "normalized": "a\u0085b"
+  },
+  {
+   "input": "a\u001c",
+   "code": "validation-error:path",
+   "normalized": "a\u001c"
+  },
+  {
+   "input": "/a",
+   "code": "validation-error:path",
+   "normalized": "/a"
+  },
+  {
+   "input": "a/",
+   "code": "validation-error:path",
+   "normalized": "a/"
+  },
+  {
+   "input": "a//b",
+   "code": "validation-error:path",
+   "normalized": "a//b"
+  },
+  {
+   "input": "a/ /b",
+   "code": "validation-error:path",
+   "normalized": "a//b"
+  },
+  {
+   "input": " a / b ",
+   "code": "not-normalized:path",
+   "normalized": "a/b"
+  },
+  {
+   "input": " Nota.md",
+   "code": "not-normalized:path",
+   "normalized": "Nota.md"
+  },
+  {
+   "input": "a\u0085",
+   "code": "not-normalized:path",
+   "normalized": "a"
+  },
+  {
+   "input": "\u0085a",
+   "code": "not-normalized:path",
+   "normalized": "a"
+  },
+  {
+   "input": "a\u3000/b",
+   "code": "not-normalized:path",
+   "normalized": "a/b"
+  },
+  {
+   "input": "a\t",
+   "code": "not-normalized:path",
+   "normalized": "a"
+  },
+  {
+   "input": "\ufeffa",
+   "code": null,
+   "normalized": "\ufeffa"
+  },
+  {
+   "input": "a\u200b",
+   "code": null,
+   "normalized": "a\u200b"
+  },
+  {
+   "input": "a\ud800b",
+   "code": "validation-error:path",
+   "normalized": "a\ud800b"
+  },
+  {
+   "input": 5,
+   "code": "validation-error:path",
+   "normalized": null
+  },
+  {
+   "input": null,
+   "code": "validation-error:path",
+   "normalized": null
+  }
+ ],
+ "content": [
+  {
+   "input": "",
+   "valid": true
+  },
+  {
+   "input": "# T\u00edtulo\n\nTexto con \u00f1 y \ud83d\ude00",
+   "valid": true
+  },
+  {
+   "input": "a\u0000b\u0007\ufeff",
+   "valid": true
+  },
+  {
+   "input": "",
+   "valid": true,
+   "build": {
+    "repeat": "\u00e9",
+    "times": 1048576,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "valid": false,
+   "build": {
+    "repeat": "\u00e9",
+    "times": 1048576,
+    "suffix": "a"
+   }
+  },
+  {
+   "input": "",
+   "valid": true,
+   "build": {
+    "repeat": "\ud83d\ude00",
+    "times": 524288,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "valid": false,
+   "build": {
+    "repeat": "\ud83d\ude00",
+    "times": 524288,
+    "suffix": "a"
+   }
+  },
+  {
+   "input": "",
+   "valid": true,
+   "build": {
+    "repeat": "a",
+    "times": 2097152,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "",
+   "valid": false,
+   "build": {
+    "repeat": "a",
+    "times": 2097153,
+    "suffix": ""
+   }
+  },
+  {
+   "input": "a\ud800b",
+   "valid": false
+  },
+  {
+   "input": 5,
+   "valid": false
+  },
+  {
+   "input": null,
+   "valid": false
+  }
+ ],
+ "frontmatter": [
+  {
+   "input": {},
+   "valid": true
+  },
+  {
+   "input": {
+    "tags": [
+     "a",
+     "b"
+    ],
+    "n": 3,
+    "ok": true,
+    "x": null,
+    "o": {
+     "y": "\u00e9"
+    }
+   },
+   "valid": true
+  },
+  {
+   "input": {
+    "k": ""
+   },
+   "valid": true,
+   "build": {
+    "key": "k",
+    "repeat": "a",
+    "times": 65528,
+    "suffix": ""
+   }
+  },
+  {
+   "input": {
+    "k": ""
+   },
+   "valid": false,
+   "build": {
+    "key": "k",
+    "repeat": "a",
+    "times": 65529,
+    "suffix": ""
+   }
+  },
+  {
+   "input": {
+    "k": ""
+   },
+   "valid": true,
+   "build": {
+    "key": "k",
+    "repeat": "\u00e9",
+    "times": 32764,
+    "suffix": ""
+   }
+  },
+  {
+   "input": {
+    "k": ""
+   },
+   "valid": false,
+   "build": {
+    "key": "k",
+    "repeat": "\u00e9",
+    "times": 32765,
+    "suffix": ""
+   }
+  },
+  {
+   "input": {
+    "k": "\ud800"
+   },
+   "valid": false
+  },
+  {
+   "input": [],
+   "valid": false
+  },
+  {
+   "input": "x",
+   "valid": false
+  },
+  {
+   "input": null,
+   "valid": false
+  },
+  {
+   "input": 5,
+   "valid": false
+  },
+  {
+   "input": true,
+   "valid": false
+  }
+ ],
+ "path_key": [
+  {
+   "path": "Nota.md",
+   "key": "nota.md"
+  },
+  {
+   "path": "Stra\u00dfe.md",
+   "key": "strasse.md"
+  },
+  {
+   "path": "STRASSE.md",
+   "key": "strasse.md"
+  },
+  {
+   "path": "Cafe\u0301.md",
+   "key": "caf\u00e9.md"
+  },
+  {
+   "path": "Caf\u00e9.md",
+   "key": "caf\u00e9.md"
+  },
+  {
+   "path": "\uff21\uff42/\uff23.md",
+   "key": "ab/c.md"
+  },
+  {
+   "path": "\ufb01n.md",
+   "key": "fin.md"
+  },
+  {
+   "path": "A/B/c.MD",
+   "key": "a/b/c.md"
+  }
+ ]
+}
