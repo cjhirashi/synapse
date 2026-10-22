@@ -379,3 +379,12 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | RD-2 · `repush` se queda sin disparador tras un fallo de red o al arrancar | Medium | sólo se dispara por cambios de la bóveda; el `catch` traga el fallo | También se dispara al abrir `resources` (rechazos `vault-not-found` persistidos con bóveda ya activa) y al reconectar (`status` online); un fallo deja el reintento pendiente para el siguiente disparador. |
 | RD-3 · `retry` lee rechazos sin esperar `settled()` | Low | carrera con el registro del rechazo del mismo lote | `await rejections.settled()` antes de `list()`. |
 | VF-7 · pares test/código en un solo commit | Low (proceso) | — | Desde la enmienda, el test rojo se commitea aparte. |
+
+## 11. Enmienda 2 (2026-10-22) — re-verificación del frontend (hallazgos nuevos de la enmienda 1)
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| N-1 · `useBlocker(dirty)` intercepta el cierre de sesión y la redirección por 401 | High | El bloqueo es booleano y la salida de sesión se decide en `SyncProvider` sin saber que hay un borrador sucio: cuando el editor pregunta, la sesión y la réplica ya están cerradas | (a) Registro de borradores sucios en el proveedor de sync (`unsavedDrafts`: el editor se registra mientras está sucio). `LogoutDialog` lo consulta **antes** de cerrar la sesión y avisa "hay cambios sin guardar en una nota" (mismo diálogo de 0005: salir igualmente / cancelar). (b) El bloqueo pasa a función: no bloquea la navegación a `/login` (la sesión ya terminó; el aviso se dio en (a) o la sesión caducó en el servidor). |
+| N-2 · el bloqueo atrapa navegaciones que no cambian de pantalla | Medium | bloqueo booleano | La función bloquea sólo si cambia `pathname` (y no es `/login`). |
+| N-3 · RD-1 sólo probado en `vaultActive` | Medium | faltan pruebas en los consumidores | Test en `conflicts.test.ts` y en `repush.test.ts` con la bóveda en conflicto (ganadora en papelera, perdedora activa) que falla si vuelven al `db.get` simple. |
+| N-4 · `repush.enqueueAll` corta el id de bóveda por longitud fija | Low | supone UUID de 36 caracteres sin decirlo | Extraer el `vault_id` con el parser de ids de nota de `noteRules`/`noteStore` (un solo lugar que entiende `note:{vault}:{uuid}`). |
+| N-5/N-6 · VF-5, VF-6, VF-8 sin commit rojo previo | Low (proceso) | — | Registrado; no se reescribe historia. |
