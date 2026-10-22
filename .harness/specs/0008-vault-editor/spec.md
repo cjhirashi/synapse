@@ -4,7 +4,7 @@ tipo: spec
 feature: 0008-vault-editor
 estado: draft            # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: a88424e
+anchor_commit: f8c3a4e
 anchor_mode: advisory    # pasa a strict en implemented/verified
 covers:
   - backend/app/routers/notes.py
@@ -21,25 +21,23 @@ covers:
   - .harness/specs/0008-vault-editor/diagrams/**
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente
-  fase_2: pendiente
+  fase_1: { por: "Carlos Jiménez (cjhirashi), vía AIRA (delegación explícita 2026-10-22: \"Tú dirige a Claude Code\")", fecha: 2026-10-22 }
 actualizado: 2026-10-22
 ---
 
 # SPEC-0008 · Editor de documentos dentro de una bóveda
 
-> **Borrador seedeado por AIRA, no Fase 1 cerrada.** Carlos pidió (2026-10-22) que abrir
-> una bóveda deje de ser solo una tarjeta y dé una UX estilo Obsidian: riel de bóvedas +
-> sidebar con árbol + editor, **sin el panel de agente/chat por ahora** ("sin considerar
-> la ventana del chat que por ahora no la ocupamos"). Existe diseño original completo de
-> agosto 2026 en `diseño/1.1.4 - Diseño UI-UX/1.1.4.4` (vista), `diseño/1.1.2.../ADR-010`
-> (stack del editor) y `diseño/1.1.5.../1.1.5.2` (modelo de datos), escrito **antes** de
-> que existiera el modelo de seguridad actual (SPEC-0003/0005: aislamiento por bóveda vía
-> lista blanca de ids en `/sync`). Este spec reconcilia ambos. Carlos ya respondió una
-> pregunta de alcance (ver §6, decisión "Conflictos"); **el resto de §4 sigue sin pasar por
-> la elicitación interactiva de Fase 1 (`method.md §3`)** — quien tome esta spec (Claude
-> Code) debe cerrarla con Carlos antes de Fase 2, en particular los `[NEEDS CLARIFICATION]`
-> de la sección final.
+> Fase 1 (Specify) cerrada por AIRA a partir de: (a) el diseño original de agosto 2026
+> en `diseño/1.1.4 - Diseño UI-UX/1.1.4.4` (vista), `diseño/1.1.2.../ADR-010` (stack del
+> editor) y `diseño/1.1.5.../1.1.5.2`/`1.1.5.5` (modelo de datos y sincronización); (b) la
+> conversación directa con Carlos del 2026-10-22, incluida su decisión explícita sobre
+> conflictos (§6) y su delegación explícita para que AIRA dirija esta implementación
+> ("Tú dirige a Claude Code, para que implemente lo que te pedí y quede Synapse
+> funcional"). Todo el diseño original es anterior al modelo de seguridad actual
+> (SPEC-0003/0005: aislamiento por bóveda vía lista blanca de ids en `/sync`); este spec
+> lo reconcilia. **GATE 1 lo aprueba AIRA en nombre de Carlos para esta feature
+> puntual** — no es licencia para que Claude Code se autoapruebe fases futuras sin que
+> AIRA o Carlos lo autoricen explícitamente cada vez.
 
 ## 1. Contexto del dominio
 - **Problema:** hoy una bóveda (SPEC-0003) es solo metadatos — nombre, descripción, tags.
@@ -99,6 +97,7 @@ actualizado: 2026-10-22
   propias del diseño original, no tocadas por esta spec.
 - Purga automática de la papelera de notas a 30 días — igual que RF-016 de SPEC-0003,
   diferido.
+- "Última nota abierta" recordada entre sesiones — v1 abre siempre en estado vacío (§6).
 
 ## 3. Modelo de datos y contratos de E/S
 | Frontera | Dirección | Tipo | Contrato en `contracts/` |
@@ -111,88 +110,126 @@ id vault-scoped que exige la lista blanca de SPEC-0005):**
 
 | Campo | Tipo | Regla |
 |---|---|---|
-| `_id` | string | `note:{vault_id}:{note_uuid}` — `note_uuid` generado por el cliente (UUID v4), igual que hoy las bóvedas lo exigen en forma canónica; el id NO cambia al renombrar/mover (eso solo cambia `path`) |
+| `_id` | string | `note:{vault_id}:{note_uuid}` — `note_uuid` UUID v4 generado por el cliente, en forma canónica; el id NO cambia al renombrar/mover (eso solo cambia `path`) |
 | `type` | string | constante `"note"` |
-| `vault_id` | string (UUID) | debe ser una bóveda no borrada del propio usuario — si no, el push la rechaza (RF- a definir en Fase 1, mismo criterio que RF-008 de SPEC-0005 para bóvedas) |
-| `path` | string | ruta completa con carpetas, p. ej. `Carpeta/Nota.md`; único entre notas no borradas de la misma bóveda (reserva igual que `vault-name:*`, a definir el nombre exacto del documento de reserva en Fase 1) |
-| `frontmatter` | object | opcional, YAML-como-JSON (claves libres) — igual que el diseño original |
-| `content` | string | markdown crudo |
+| `vault_id` | string (UUID) | debe ser una bóveda no borrada del propio usuario |
+| `path` | string | ruta completa con carpetas, p. ej. `Carpeta/Nota.md`; 1–300 caracteres tras quitar espacios a los lados, sin caracteres de control (`Cc`); único entre notas no borradas de la misma bóveda |
+| `frontmatter` | object | opcional, claves libres (equivalente JSON del YAML del diseño original) |
+| `content` | string | markdown crudo; ≤ 2 MiB (RF-016) |
 | `created_at`, `updated_at` | string (RFC 3339, UTC) | igual criterio que bóvedas |
-| `deleted_at` | string \| null | soft delete + papelera, igual patrón que bóvedas (propuesta AIRA — el diseño original de agosto no lo decidía explícitamente; `[NEEDS CLARIFICATION]`, ver abajo) |
+| `deleted_at` | string \| null | `null` salvo en la papelera (soft delete, mismo patrón que bóvedas) |
 
+- Unicidad de `path` por bóveda: documento de reserva `note-path:{vault_id}:{path normalizado NFKC+casefold}` en la misma base — mismo mecanismo que `vault-name:{...}` de SPEC-0003 (§7 de PLAN-0003), aplicado por bóveda en vez de por usuario.
 - Nada de adjuntos binarios en esta versión (fuera de alcance).
 - Errores: `application/problem+json` (RFC 9457), igual que el resto de la API.
 
 ## 4. Criterios de aceptación (EARS)
-> **Placeholder de alcance, no Fase 1 cerrada.** Los números de RF son provisionales — se
-> fijan en la elicitación interactiva con Carlos. Lista aquí para que Claude Code no
-> arranque de cero:
 
-- **RF-◻︎** — CUANDO un usuario abre `/vaults/{vault_id}` de una bóveda propia no borrada
-  el sistema DEBE mostrar el riel de bóvedas, la sidebar con el árbol de notas de esa
-  bóveda y el editor (vacío o con la última nota abierta — a decidir en Fase 1).
-- **RF-◻︎** — SI `vault_id` no existe, está borrada o no es del usuario ENTONCES el
+**Apertura de bóveda**
+- **RF-001** — CUANDO un usuario abre `/vaults/{vault_id}` de una bóveda propia no
+  borrada el sistema DEBE mostrar el riel de bóvedas, la sidebar con el árbol de notas
+  de esa bóveda (carpetas vía `path`, sin aplanar) y el editor en estado vacío (RF-015).
+- **RF-002** — SI `vault_id` no existe, está borrada o no es del usuario ENTONCES el
   sistema DEBE responder/mostrar 404, igual criterio que RF-014 de SPEC-0003.
-- **RF-◻︎** — CUANDO el usuario crea una nota el sistema DEBE guardarla como `note:*` con
-  `vault_id` de la bóveda activa y abrirla en modo edición.
-- **RF-◻︎** — SI el push de `/sync` trae un documento `note:*` cuyo `vault_id` no
+- **RF-015** — El editor DEBE abrir sin ninguna nota seleccionada al entrar a
+  `/vaults/{vault_id}`; no se recuerda la última nota abierta entre sesiones (v1).
+
+**Crear, renombrar, mover**
+- **RF-003** — CUANDO el usuario crea una nota el sistema DEBE guardarla como `note:*`
+  con `vault_id` de la bóveda activa, `path` igual al título capturado (o "Sin título",
+  RF-012, si no captura ninguno) y abrirla en modo edición.
+- **RF-011** — CUANDO el usuario renombra o mueve una nota (cambia `path`) el sistema
+  DEBE actualizar el árbol sin cambiar el `_id`; la reserva de `path` (§3) libera el
+  nombre anterior y toma el nuevo, mismo mecanismo de RF-021/RF-027 de SPEC-0003.
+- **RF-012** — SI el usuario crea una nota sin indicar título/`path` ENTONCES el sistema
+  DEBE asignarle `path = "Sin título.md"`, o si ya existe una no borrada con ese nombre
+  en la bóveda, `"Sin título {n}.md"` con el menor `n` libre — nunca 422 por falta de
+  título.
+- **RF-013** — SI al crear, renombrar o restaurar una nota ya existe otra no borrada en
+  la misma bóveda con un `path` equivalente (NFKC + casefold, §3) ENTONCES el sistema
+  DEBE responder 409 sin guardar nada.
+
+**Edición**
+- **RF-007** — CUANDO el usuario abre una nota el sistema DEBE mostrarla primero en
+  modo lectura (renderizada, sin cursores visibles); el botón "Editar" DEBE activar el
+  modo edición y "Leer" debe volver a renderizarla.
+- **RF-008** — MIENTRAS esté en modo edición el sistema DEBE ofrecer alternar Visual
+  (Milkdown) y Código (CodeMirror 6) sobre el mismo contenido, sin pérdida de cambios ni
+  recarga al cambiar de modo.
+- **RF-016** — SI el `content` enviado supera 2 MiB ENTONCES el sistema DEBE rechazar el
+  guardado (413 o 422 vía el push) sin perder la versión previa.
+
+**Borrar, papelera, restaurar**
+- **RF-010** — CUANDO el usuario borra una nota el sistema DEBE marcar `deleted_at` (soft
+  delete), conservar el contenido y quitarla del árbol activo — mismo patrón que RF-011
+  de SPEC-0003 para bóvedas; la papelera de notas vive dentro de la bóveda (no mezclada
+  con la papelera de bóvedas).
+- **RF-017** — CUANDO el usuario restaura una nota de la papelera el sistema DEBE poner
+  `deleted_at = null`, sujeto a RF-013 (409 si el `path` quedó ocupado mientras tanto).
+- **RF-014** — CUANDO una bóveda se borra (soft delete, SPEC-0003) sus notas DEBEN dejar
+  de ser visibles/editables mientras la bóveda esté borrada, sin moverlas a su propia
+  papelera de notas; CUANDO la bóveda se restaura sus notas DEBEN reaparecer tal como
+  estaban — las notas no tienen ciclo de vida independiente del de su bóveda.
+
+**Sincronización y aislamiento (extiende SPEC-0005)**
+- **RF-004** — SI el push de `/sync` trae un documento `note:*` cuyo `vault_id` no
   corresponde a una bóveda no borrada del propio usuario ENTONCES el sistema DEBE
-  rechazarlo (mismo mecanismo de validación que RF-005/RF-006 de SPEC-0005 para `vault:*`).
-- **RF-◻︎** — CUANDO el push trae un documento `note:*` el sistema DEBE validarle forma
-  (type/vault_id/path/content) igual que `_check_shape()` ya hace para `vault:*`.
-- **RF-◻︎** — El sistema DEBE extender `is_replicable_id()` (SPEC-0005 RF-007) para aceptar
-  también `note:{vault_id}:{uuid}` canónico, sin abrir el canal a ningún otro tipo de id.
-- **RF-◻︎** — CUANDO el usuario abre una nota en modo lectura el sistema DEBE mostrarla
-  renderizada, sin cursores visibles; el botón "Editar" DEBE activar el modo edición.
-- **RF-◻︎** — MIENTRAS esté en modo edición el sistema DEBE ofrecer alternar Visual/Código
-  sobre el mismo contenido, sin pérdida de cambios al cambiar de modo.
-- **RF-◻︎** — CUANDO el cliente detecta una nota con revisiones en conflicto el sistema
-  DEBE mostrar ambas versiones (texto plano) y dejar que el usuario elija una — nunca
-  resolver automático por timestamp (ADR-001; decisión de Carlos 2026-10-22, §6: la UI
-  fina queda para después, pero la exposición del conflicto no).
-- **RF-◻︎** — CUANDO el usuario borra una nota el sistema DEBE soft-delete (papelera) igual
-  que bóvedas — `[NEEDS CLARIFICATION]`, ver abajo.
-- **RF-◻︎** — CUANDO el usuario renombra/mueve una nota (cambia `path`) el sistema DEBE
-  actualizar el árbol sin cambiar el `_id`.
+  rechazarlo, mismo mecanismo de validación que RF-005/RF-006 de SPEC-0005 usan para
+  `vault:*`.
+- **RF-005** — CUANDO el push trae un documento `note:*` el sistema DEBE validarle forma
+  (`type`, `vault_id`, `path`, `content`, límites de §3) igual que `_check_shape()` ya
+  hace para `vault:*`; cualquier campo fuera de esa lista rechaza el documento completo.
+- **RF-006** — El sistema DEBE extender `is_replicable_id()` (SPEC-0005 RF-007) para
+  aceptar también `note:{vault_id}:{uuid}` canónico (ambos UUID en forma canónica), sin
+  abrir el canal a ningún otro tipo de id.
+
+**Conflictos**
+- **RF-009** — CUANDO el cliente detecta una nota con revisiones en conflicto el sistema
+  DEBE mostrar ambas versiones (texto plano, sin diff visual en esta versión) y dejar
+  que el usuario elija una — nunca resolver automático por timestamp (ADR-001). La UI
+  fina de resolución (diff, merge campo a campo) queda fuera de esta versión (decisión
+  de Carlos, 2026-10-22).
+
+**UI**
+- **RF-018** — `VaultListPage` DEBE ofrecer, junto a "Editar", una acción "Abrir" que
+  lleve a `/vaults/{vault_id}`.
+- **RF-019** — La sidebar DEBE listar las notas de la bóveda activa en árbol según su
+  `path`; un click sobre una nota DEBE abrirla en modo lectura (RF-007) en el editor.
 
 ## 5. Casos límite y manejo de errores
-- Bóveda borrada mientras el usuario tiene notas suyas abiertas: igual criterio que
-  bóveda ajena, 404 (a confirmar si se "archivan" sus notas o quedan huérfanas visibles
-  solo en la papelera de la bóveda — `[NEEDS CLARIFICATION]`).
-- Dos ediciones simultáneas del mismo `path` en dispositivos distintos: conflicto expuesto
-  (RF de conflictos arriba), nunca silencioso.
-- Nota sin `path` o con `path` vacío tras recortar espacios: a rechazar igual que un
-  `name` de bóveda vacío (RF-005 de SPEC-0003) — `[NEEDS CLARIFICATION]`: ¿título por
-  defecto tipo "Sin título" o 422?
-- Dos notas con el mismo `path` en la misma bóveda (carrera de creación): solo una gana,
-  igual patrón de reserva que nombres de bóveda (RF-021 de SPEC-0003).
+- Bóveda borrada mientras el usuario tiene notas suyas abiertas: la vista de la bóveda
+  responde 404 (RF-002) como si la bóveda no existiera; las notas reaparecen intactas si
+  se restaura (RF-014).
+- Edición concurrente del mismo `path` en dispositivos distintos: conflicto expuesto
+  (RF-009), nunca silencioso.
+- Creación sin título: `"Sin título.md"`, `"Sin título 2.md"`, … (RF-012), nunca 422.
+- Dos notas con el mismo `path` en la misma bóveda (carrera de creación/renombrado):
+  sólo una gana, 409 a la otra (RF-013), igual patrón que RF-021 de SPEC-0003.
+- `content` que supera 2 MiB: rechazado sin perder la versión previa (RF-016).
+- `vault_id` ajeno o inexistente en un documento `note:*` que llega por push: rechazado
+  (RF-004), igual criterio de aislamiento que bóvedas (SPEC-0005 RF-005/RF-006).
 
 ## 6. Registro de decisiones y descartes
 | Decisión | Justificación | Alternativa descartada | ADR |
 |---|---|---|---|
 | Sin Panel de Agente en esta feature | Pedido explícito de Carlos (2026-10-22) | Incluirlo de una (lo que decía el diseño original) | ADR-011 (diferido) |
-| Conflictos: se exponen siempre al usuario; la UI de resolución fina queda para después, no en esta versión | Decisión de Carlos (2026-10-22): "La UI final queda para después, ya completa Synapse" — pero nunca se acordó resolver en silencio, eso violaría ADR-001 | Last-write-wins silencioso | ADR-001 |
-| Id de nota `note:{vault_id}:{uuid}`, no `notes/{slug}.md` del diseño original | El diseño de agosto es anterior al modelo de seguridad de SPEC-0005 (lista blanca por prefijo); el id debe traer el `vault_id` para que el push pueda validar pertenencia sin consultar la bóveda en cada doc | Mantener `notes/{slug}.md` y validar `vault_id` solo por campo (más débil: el id no ata la nota a su bóveda) | — |
+| Conflictos: se exponen siempre al usuario; la UI de resolución fina queda para después | Decisión de Carlos (2026-10-22): "La UI final queda para después, ya completa Synapse" — pero nunca se acordó resolver en silencio, eso violaría ADR-001 | Last-write-wins silencioso | ADR-001 |
+| Id de nota `note:{vault_id}:{uuid}`, no `notes/{slug}.md` del diseño original | El diseño de agosto es anterior al modelo de seguridad de SPEC-0005 (lista blanca por prefijo); el id debe traer el `vault_id` para que el push valide pertenencia sin una consulta extra por documento | Mantener `notes/{slug}.md` y validar `vault_id` solo por campo (más débil: el id no ata la nota a su bóveda) | — |
 | Carpetas como prefijos de `path`, no documentos propios | Así lo decidía ya el diseño original (`1.1.5.2`, `1.1.4.4`); evita un tipo de documento extra y conflictos de sync sobre "la carpeta" | Documento `folder:*` propio | — |
 | Editor Milkdown + CodeMirror 6, PWA, sin librería de diseño de terceros | Ya decidido en ADR-010, Carlos no lo cuestionó | Monaco, editor propio desde cero | ADR-010 |
-| Soft-delete + papelera para notas, igual que bóvedas | Consistencia de UX con SPEC-0003; el diseño original no lo decidía explícitamente | Borrado definitivo inmediato | — (propuesta AIRA, confirmar en Fase 1) |
+| Soft-delete + papelera para notas, igual que bóvedas, papelera por bóveda | Consistencia de UX con SPEC-0003; el diseño original no lo decidía explícitamente; mezclar con la papelera de bóvedas confundiría dos jerarquías distintas | Borrado definitivo inmediato; una papelera global | — (decisión AIRA, delegada por Carlos 2026-10-22) |
+| Reserva de `path` con documento `note-path:{vault_id}:{path normalizado}` | Mismo mecanismo ya probado para nombres de bóveda (SPEC-0003 §7); evita duplicados en la carrera de creación | Comprobar-y-luego-escribir (admite duplicados raros) | — |
+| Nota sin título → `"Sin título.md"` + sufijo numérico si colisiona | Menor fricción, estilo Obsidian: crear primero, titular después; nunca bloquear con 422 por algo tan común | 422 si falta título | — (decisión AIRA, delegada por Carlos 2026-10-22) |
+| Notas de una bóveda borrada: ocultas junto con la bóveda, reaparecen si se restaura; sin papelera propia en ese caso | Evita una tercera jerarquía de borrado (bóveda + papelera de bóveda + papelera de notas simultánea); la bóveda ya es la unidad de soft-delete | Mover las notas a su papelera individual al borrar la bóveda | — (decisión AIRA, delegada por Carlos 2026-10-22) |
+| `/vaults/{vault_id}` abre siempre en estado vacío (sin "última nota abierta") en v1 | Evita decidir ahora dónde persistir esa preferencia (¿local, por dispositivo, en el server?); se puede añadir después sin romper nada | Recordar la última nota por dispositivo (localStorage) | — (decisión AIRA, delegada por Carlos 2026-10-22) |
+| Límite de `content`: 2 MiB por nota | Generoso para texto markdown real (una nota de 2 MiB son cientos de páginas); evita abuso del almacén sin estorbar el uso normal | Sin límite; límite más ajustado tipo `description` (2000 caracteres, insuficiente para una nota) | — (decisión AIRA, delegada por Carlos 2026-10-22) |
 
 ## 7. Requisitos no funcionales (RNF)
-- *(a definir en Fase 1 — candidato: latencia de apertura del árbol de una bóveda con
-  varios cientos de notas, por analogía con RNF-001 de SPEC-0003).*
+- **RNF-001** — Abrir `/vaults/{vault_id}` con 1 000 notas en la bóveda DEBE renderizar
+  el árbol de la sidebar en p95 < 300 ms, por analogía con RNF-001 de SPEC-0003.
 
 ## Marcadores abiertos
-- `[NEEDS CLARIFICATION: nombre exacto del documento de reserva de `path` — análogo a
-  `vault-name:*` pero con el `vault_id` incluido para no colisionar entre bóvedas]`
-- `[NEEDS CLARIFICATION: soft-delete de notas con papelera — ¿se confirma el mismo patrón
-  que bóvedas, o algo más simple para la primera versión?]`
-- `[NEEDS CLARIFICATION: nota sin título/path — "Sin título" por defecto o 422?]`
-- `[NEEDS CLARIFICATION: qué pasa con las notas de una bóveda que se borra — se ocultan
-  junto con la bóveda (recuperables si se restaura la bóveda) o tienen su propio ciclo?]`
-- `[NEEDS CLARIFICATION: nota por defecto al abrir `/vaults/{vault_id}` — vacío, última
-  abierta, o la primera del árbol?]`
-- `[NEEDS CLARIFICATION: límite de tamaño de `content` — SPEC-0003 limita `description` a
-  2000 caracteres; una nota markdown puede ser mucho más larga, ¿qué tope es razonable?]`
-
-**Antes de Fase 2 (Plan):** cerrar todos los marcadores de arriba con Carlos y pasar
-`aprobaciones.fase_1` a `{por: "Carlos Jiménez (cjhirashi)", fecha: ...}` con el "así es".
+- Ninguno. Decisiones de producto cerradas por AIRA bajo delegación explícita de Carlos
+  (2026-10-22). El detalle técnico de implementación (contratos exactos de `/sync` para
+  `note:*`, estructura de componentes del editor, nombres de archivos) se fija en
+  Fase 2 (Plan), no aquí.
