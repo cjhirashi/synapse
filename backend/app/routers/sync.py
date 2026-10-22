@@ -9,6 +9,7 @@ Todas las rutas son `async def`: `ReplicationPort` es async (un `longpoll` de `_
 ocupa un hilo del pool), y lo síncrono (`VaultService` en el push) va en un hilo dentro del
 servicio.
 """
+import json
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 
@@ -87,6 +88,21 @@ def _replay(body: bytes, receive: Receive) -> Receive:
     return replay
 
 
+class _DeepJsonRequest(Request):
+    """`Request` cuyo `json()` trata el anidamiento extremo como cualquier JSON inválido.
+
+    `json.loads` lanza `RecursionError` con cientos de niveles; FastAPI sólo convierte en
+    `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo vuelve un 400
+    que el contrato no declara (VB-3).
+    """
+
+    async def json(self):
+        try:
+            return await super().json()
+        except RecursionError:
+            raise json.JSONDecodeError("JSON nested too deeply", "", 0) from None
+
+
 class SyncRoute(APIRoute):
     """Ruta del canal con tope de cuerpo aplicado **antes** de que FastAPI lo lea.
 
@@ -111,7 +127,7 @@ class SyncRoute(APIRoute):
             if declared.isdigit() and int(declared) > limit:
                 raise PayloadTooLarge(f"declared body of {declared} bytes over {limit}")
             body = await _read_capped(request.receive, limit)
-            return await handler(Request(request.scope, _replay(body, request.receive)))
+            return await handler(_DeepJsonRequest(request.scope, _replay(body, request.receive)))
 
         return limited
 
