@@ -359,3 +359,23 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 `layout/AppLayout.tsx` (+ test), `backend/tests/test_contract.py`; de 0007
 `backend/README.md`, `frontend/README.md`; sin dueño `test-setup.ts`, `vite.config.ts`,
 `vitest.sync.config.ts`, `package.json`, `package-lock.json` y los README por capa.
+
+## 10. Enmienda 1 (2026-10-22) — hallazgos de las verificaciones de D–E (APPROVED) y F–G (REJECTED)
+> Cambios técnicos dentro de lo aprobado (ningún RF ni decisión de §6 cambia). Se registran
+> aquí para revisión por *git diff* (method §5, Directiva de Pausa); coordinador: Claude
+> Code bajo la delegación de AIRA del 2026-10-22.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VF-1 · salir de `/vaults/:id` por navegación interna descarta el borrador | High | §2.6 pedía "aviso al salir", pero con `BrowserRouter` no hay forma de bloquear la navegación interna (`useBlocker` sólo existe en *data routers*) | `main.tsx` pasa a `createBrowserRouter([{ path: "*", element: <App/> }])` + `RouterProvider` (las `<Routes>` de `App.tsx` siguen igual, como rutas descendientes). `NoteEditor` usa `useBlocker(dirty)` y el mismo diálogo que al cambiar de nota ("Guardar y salir", "Descartar y salir", "Seguir editando"). Los tests de componentes con `useBlocker` montan con `createMemoryRouter`. `main.tsx`/`App.tsx` son de 0002: re-anclaje al cierre (P-2). |
+| VF-2 · borrar la nota abierta con borrador sucio lo descarta | Medium/High | `NoteSidebar` borra y desmonta el editor sin consultar su estado | El borrado de la nota abierta pasa por el editor: si está sucia, el mismo diálogo de confirmación antes de `softDelete`. |
+| VF-3 · renombrar la nota abierta con borrador sucio crea un conflicto autoinfligido | Medium/High | Con borrador sucio el editor no se rebasa sobre la revisión nueva y guarda sobre `baseRev` viejo (P-8 es para ediciones concurrentes, no para acciones locales) | Si la revisión nueva conserva el `content` de la base (sólo cambió `path`/metadatos), el editor actualiza `baseRev` y la ruta sin tocar el borrador. Si cambió el contenido, sigue P-8. |
+| VF-4 · nota abierta enviada a la papelera por sync con borrador sucio | Medium | El editor sólo ofrece guardar (falla con `NoteNotFoundError`) o descartar | Aviso en el editor con "Restaurar y guardar" (`restore` sujeto a RF-013 y después `save`); si la ruta está ocupada, mensaje y el borrador se conserva. |
+| VF-5 · `missing` no se limpia al reaparecer la nota | Low | la rama de éxito no hace `setMissing(false)` | Corregirlo. |
+| VF-6 · aserción débil en `MilkdownView.test.tsx` | Low | `link === null \|\| …` | Exigir el `<a>` presente. |
+| VF-8 · `#fff` fijo en `notes.css` | Low | color sin token | Token de `tokens.css`. |
+| VF-9 · `role="tree"` sin teclado de árbol | Low | los roles anuncian un patrón que no existe | Teclado WAI-ARIA del árbol: ↑/↓, →/← (abrir/cerrar carpeta o ir al padre), Inicio/Fin, *roving tabindex*. |
+| RD-1 · la bóveda "activa" se mira sólo en la ganadora | Medium | `conflicts.ts`/`repush.ts` no aplican P-9 | Función compartida `vaultIsActive(db, vaultId)`: activa si alguna rama viva (ganadora o `_conflicts`) tiene `deleted_at = null`. |
+| RD-2 · `repush` se queda sin disparador tras un fallo de red o al arrancar | Medium | sólo se dispara por cambios de la bóveda; el `catch` traga el fallo | También se dispara al abrir `resources` (rechazos `vault-not-found` persistidos con bóveda ya activa) y al reconectar (`status` online); un fallo deja el reintento pendiente para el siguiente disparador. |
+| RD-3 · `retry` lee rechazos sin esperar `settled()` | Low | carrera con el registro del rechazo del mismo lote | `await rejections.settled()` antes de `list()`. |
+| VF-7 · pares test/código en un solo commit | Low (proceso) | — | Desde la enmienda, el test rojo se commitea aparte. |
