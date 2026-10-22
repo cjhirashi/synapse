@@ -25,6 +25,7 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout as logoutSession } from "../api/auth";
+import { NOTE_ID_PREFIX } from "../notes/noteRules";
 import type { ManualConflict } from "./conflicts";
 import { destroyLocalDb, markDiscarded } from "./localDb";
 import type { Rejection } from "./rejections";
@@ -63,6 +64,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
   const [rejections, setRejections] = useState<Rejection[]>([]);
   const [conflicts, setConflicts] = useState<ManualConflict[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
+  const [notesVersion, setNotesVersion] = useState(0);
   const [logoutPhase, setLogoutPhase] = useState<LogoutPhase>("closed");
   const [logoutReason, setLogoutReason] = useState<LogoutReason>("pending");
   const [logoutFailure, setLogoutFailure] = useState<LogoutFailure>(null);
@@ -84,6 +86,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         );
         resources.feed.on("change", (change) => {
           if (change.id.startsWith(ID_PREFIX)) setDataVersion((version) => version + 1);
+          else if (change.id.startsWith(NOTE_ID_PREFIX)) setNotesVersion((version) => version + 1);
         });
         setStatus(resources.status.current());
         setRejections(resources.rejections.list());
@@ -160,7 +163,9 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     if (!resources || !status) return null;
     return {
       vaults: resources.vaults,
+      notes: resources.notes,
       dataVersion,
+      notesVersion,
       replicating: !paused,
       status,
       rejections,
@@ -196,7 +201,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         },
       },
     };
-  }, [resources, status, rejections, conflicts, dataVersion, paused, logoutPhase, logoutReason, logoutFailure, exit]);
+  }, [resources, status, rejections, conflicts, dataVersion, notesVersion, paused, logoutPhase, logoutReason, logoutFailure, exit]);
 
   if (phase.kind === "error") return <p role="alert">No se pudo abrir la copia local de tus bóvedas.</p>;
   if (!value) return <p>Cargando…</p>;

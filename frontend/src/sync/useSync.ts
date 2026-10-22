@@ -7,6 +7,7 @@
  */
 import { createContext, useContext } from "react";
 import type { ConflictsStore, ManualConflict } from "./conflicts";
+import type { NoteStore } from "../notes/noteStore";
 import type { Rejection } from "./rejections";
 import type { SyncStatus } from "./status";
 import type { VaultStore } from "./vaultStore";
@@ -48,8 +49,15 @@ export interface LogoutState {
 export interface SyncContextValue {
   /** Operaciones de la UI sobre las bóvedas de la réplica. */
   vaults: VaultStore;
+  /** Operaciones de la UI sobre las notas de la réplica (SPEC-0008). */
+  notes: NoteStore;
   /** Cambia con cada escritura en una bóveda de la réplica (de la UI, del pull o de otra pestaña). */
   dataVersion: number;
+  /**
+   * Cambia con cada escritura en una nota de la réplica. Va aparte de `dataVersion`: guardar
+   * una nota no debe releer las listas de bóvedas (ni al revés).
+   */
+  notesVersion: number;
   /** `false` mientras el usuario deba cambiar su contraseña: el canal respondería 403 (RF-002). */
   replicating: boolean;
   status: SyncStatus;

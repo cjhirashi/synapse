@@ -7,6 +7,7 @@ import { vi } from "vitest";
 import type { Replicator, ReplicatorOptions, SyncEvent } from "../sync/replicator";
 import type { SyncEnv } from "../sync/resources";
 import { SyncContext, type SyncContextValue } from "../sync/useSync";
+import { createNoteStore } from "../notes/noteStore";
 import { createVaultStore, utcNow } from "../sync/vaultStore";
 
 PouchDB.plugin(memory);
@@ -69,7 +70,9 @@ export function memoryEnv(overrides: Partial<SyncEnv> = {}) {
 export function syncValue(overrides: Partial<SyncContextValue> = {}, db = memoryDb()) {
   const value: SyncContextValue = {
     vaults: createVaultStore(db, "u1"),
+    notes: createNoteStore(db),
     dataVersion: 0,
+    notesVersion: 0,
     replicating: true,
     status: { state: "online", pending: false, lastSyncAt: null },
     rejections: [],
