@@ -9,8 +9,11 @@
  *
  * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y sus
  * acciones son botones propios fuera del `treeitem`, con el nombre de la nota en la etiqueta.
+ * Teclado del patrón WAI-ARIA (VF-9) con *roving tabindex*: un solo `treeitem` tabulable;
+ * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
+ * padre, Inicio/Fin saltan a los extremos.
  */
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSync } from "../sync/useSync";
 import { noteErrorMessage } from "./messages";
@@ -37,6 +40,30 @@ interface NoteSidebarProps {
 function ancestors(path: string): string[] {
   const segments = path.split("/").slice(0, -1);
   return segments.map((_, i) => segments.slice(0, i + 1).join("/"));
+}
+
+/** Fila visible del árbol, en orden de pantalla (lo que recorre el teclado). */
+interface Row {
+  /** `f:{ruta}` para carpetas, `n:{id}` para notas. */
+  key: string;
+  kind: "folder" | "note";
+  /** Ruta de la carpeta (sólo carpetas). */
+  path: string;
+  /** Clave de la carpeta que la contiene (`null` en la raíz). */
+  parent: string | null;
+}
+
+const folderKey = (path: string) => `f:${path}`;
+const noteKey = (id: string) => `n:${id}`;
+
+/** Filas visibles: las carpetas plegadas no muestran sus hijos. */
+function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<string>, parent: string | null = null): Row[] {
+  return nodes.flatMap((node): Row[] => {
+    if (node.kind === "note") return [{ key: noteKey(node.note.id), kind: "note", path: "", parent }];
+    const key = folderKey(node.path);
+    const self: Row = { key, kind: "folder", path: node.path, parent };
+    return expanded.has(node.path) ? [self, ...visibleRows(node.children, expanded, key)] : [self];
+  });
 }
 
 export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete }: NoteSidebarProps) {
@@ -70,6 +97,56 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   }, [items, openId]);
 
   const tree = useMemo(() => buildTree(items ?? []), [items]);
+  const rows = useMemo(() => visibleRows(tree, expanded), [tree, expanded]);
+
+  /** Fila con el foco del teclado (la única con `tabindex=0`); si desaparece, la primera. */
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const tabbable = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
+  const treeRef = useRef<HTMLUListElement>(null);
+
+  /** Mueve el foco real a la fila `key` y la hace la tabulable. */
+  function focusRow(key: string) {
+    setFocusKey(key);
+    const items = treeRef.current?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? [];
+    [...items].find((el) => el.dataset.key === key)?.focus();
+  }
+
+  function onTreeKeyDown(event: KeyboardEvent<HTMLUListElement>) {
+    const key = (event.target as HTMLElement).closest<HTMLElement>('[role="treeitem"]')?.dataset.key;
+    const index = rows.findIndex((row) => row.key === key);
+    if (index < 0) return; // el teclado de un campo o de una acción no es del árbol
+    const row = rows[index];
+    const open = row.kind === "folder" && expanded.has(row.path);
+    let target: string | undefined;
+    switch (event.key) {
+      case "ArrowDown":
+        target = rows[index + 1]?.key;
+        break;
+      case "ArrowUp":
+        target = rows[index - 1]?.key;
+        break;
+      case "Home":
+        target = rows[0].key;
+        break;
+      case "End":
+        target = rows[rows.length - 1].key;
+        break;
+      case "ArrowRight":
+        if (row.kind !== "folder") return;
+        if (!open) toggle(row.path);
+        else target = rows[index + 1]?.parent === row.key ? rows[index + 1].key : undefined;
+        break;
+      case "ArrowLeft":
+        if (open) toggle(row.path);
+        else target = row.parent ?? undefined;
+        break;
+      default:
+        return;
+    }
+    // Las flechas y Inicio/Fin no deben desplazar la página.
+    event.preventDefault();
+    if (target !== undefined) focusRow(target);
+  }
 
   function toggle(path: string) {
     setExpanded((prev) => {
@@ -136,6 +213,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               type="button"
               role="treeitem"
               aria-expanded={open}
+              data-key={folderKey(node.path)}
+              tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
+              onFocus={() => setFocusKey(folderKey(node.path))}
               className="note-tree-row note-tree-folder"
               onClick={() => toggle(node.path)}
             >
@@ -180,6 +260,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             type="button"
             role="treeitem"
             aria-selected={note.id === openId}
+            data-key={noteKey(note.id)}
+            tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
+            onFocus={() => setFocusKey(noteKey(note.id))}
             className="note-tree-row"
             onClick={() => onOpen(note.id)}
           >
@@ -215,7 +298,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       ) : items.length === 0 ? (
         <p>Esta bóveda aún no tiene notas.</p>
       ) : (
-        <ul role="tree" aria-label="Notas" className="note-tree">
+        <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
           {renderNodes(tree)}
         </ul>
       )}
