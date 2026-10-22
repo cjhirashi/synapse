@@ -22,7 +22,7 @@ let rejections: RejectionsStore;
 let status: SyncStatusStore;
 let repush: Repush;
 let handlers: Record<string, (...args: unknown[]) => void>;
-let toSpy: ReturnType<typeof vi.spyOn>;
+let toSpy: ReturnType<typeof vi.fn>;
 
 /** Réplica falsa: guarda los oyentes y se resuelve como una promesa (`await replication`). */
 function fakeReplication() {
@@ -42,7 +42,7 @@ beforeEach(async () => {
   remote = new PouchDB(`repush-remote-${counter}`, { adapter: "memory" });
   rejections = await openRejections(db);
   status = { handle: vi.fn(async () => undefined) } as unknown as SyncStatusStore;
-  toSpy = vi.spyOn(db.replicate, "to").mockImplementation((() => fakeReplication()) as never);
+  toSpy = vi.spyOn(db.replicate, "to").mockImplementation((() => fakeReplication()) as never) as unknown as ReturnType<typeof vi.fn>;
   repush = startRepush({ db, remote, status, rejections });
 });
 
@@ -51,6 +51,15 @@ afterEach(() => {
   rejections.close();
   vi.restoreAllMocks();
 });
+
+/**
+ * Deja que el feed de cambios de la réplica entregue lo escrito (PouchDB lo notifica en un
+ * turno posterior) y espera a que termine el reintento en curso.
+ */
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  await repush.settled();
+}
 
 const rejectNote = (id: string, reason = "vault-not-found") =>
   rejections.handle({ type: "denied", id, rev: "1-a", reason });
@@ -69,7 +78,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await rejectNote(NOTE_2);
     await rejectNote(OTHER_VAULT_NOTE); // de otra bóveda: no entra
     await putVault(V);
-    await repush.settled();
+    await settle();
     expect(toSpy).toHaveBeenCalledTimes(1);
     expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1, NOTE_2], checkpoint: false });
   });
@@ -77,33 +86,33 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
   it("sólo reintenta el motivo vault-not-found", async () => {
     await rejectNote(NOTE_1, "validation-error:content");
     await putVault(V);
-    await repush.settled();
+    await settle();
     expect(toSpy).not.toHaveBeenCalled();
   });
 
   it("sin rechazos no hace nada", async () => {
     await putVault(V);
-    await repush.settled();
+    await settle();
     expect(toSpy).not.toHaveBeenCalled();
   });
 
   it("RF-014: con la bóveda borrada (papelera) no hace nada, y reintenta al restaurarla", async () => {
     await rejectNote(NOTE_1);
     await putVault(V, T);
-    await repush.settled();
+    await settle();
     expect(toSpy).not.toHaveBeenCalled();
     await putVault(V, null);
-    await repush.settled();
+    await settle();
     expect(toSpy).toHaveBeenCalledTimes(1);
   });
 
   it("una bóveda escrita por el push (evento written) también dispara el reintento", async () => {
     await putVault(V); // ya activa en la réplica cuando llega el rechazo
-    await repush.settled();
+    await settle();
     await rejectNote(NOTE_1);
     expect(toSpy).not.toHaveBeenCalled(); // un rechazo nuevo no dispara: evitaría un bucle
     repush.handle({ type: "written", docs: [{ id: `vault:${V}`, rev: "1-a" }] });
-    await repush.settled();
+    await settle();
     expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
   });
 
@@ -113,7 +122,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     toSpy.mockClear();
     repush.handle({ type: "written", docs: [{ id: NOTE_2, rev: "1-a" }] });
     repush.handle({ type: "active", direction: "push" });
-    await repush.settled();
+    await settle();
     expect(toSpy).not.toHaveBeenCalled();
   });
 
@@ -129,7 +138,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
       return replication;
     }) as never);
     await putVault(V);
-    await repush.settled();
+    await settle();
     expect(status.handle).toHaveBeenCalledWith({ type: "written", docs: [{ id: NOTE_1, rev: "1-a" }] });
     expect(status.handle).toHaveBeenCalledWith({ type: "denied", id: NOTE_2, rev: "1-b", reason: "vault-not-found" });
     // La escrita quita su rechazo; la denegada pasa a la lista.
@@ -140,18 +149,40 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await rejectNote(NOTE_1);
     toSpy.mockImplementationOnce((() => Object.assign(Promise.reject(new Error("sin red")), { on: vi.fn() })) as never);
     await putVault(V);
-    await repush.settled();
+    await settle();
+    await putVault(V, T);
+    await settle();
+    await putVault(V, null);
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("varios cambios seguidos de la misma bóveda dan un solo push (se juntan los pendientes)", async () => {
+    await rejectNote(NOTE_1);
+    // Mientras el primer push está en curso, los cambios siguientes se juntan en uno.
+    let release!: () => void;
+    toSpy.mockImplementationOnce((() => {
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      const replication = fakeReplication();
+      return Object.assign(gate.then(() => replication), { on: replication.on });
+    }) as never);
+    await putVault(V);
+    await new Promise((resolve) => setTimeout(resolve, 20)); // el primer push queda en curso
     await putVault(V, T);
     await putVault(V, null);
-    await repush.settled();
-    expect(toSpy).toHaveBeenCalledTimes(2);
+    await putVault(V, T);
+    await putVault(V, null);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    release();
+    await settle();
+    expect(toSpy).toHaveBeenCalledTimes(2); // el primero y uno solo para todo lo acumulado
   });
 
   it("tras close() no reintenta", async () => {
     await rejectNote(NOTE_1);
     repush.close();
     await putVault(V);
-    await repush.settled();
+    await settle();
     expect(toSpy).not.toHaveBeenCalled();
   });
 });
