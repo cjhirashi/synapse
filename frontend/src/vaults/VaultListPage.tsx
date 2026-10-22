@@ -68,6 +68,8 @@ export default function VaultListPage() {
                   ))}
                 </ul>
               )}
+              {/* "Abrir" entra a las notas de la bóveda (SPEC-0008); "Editar" va a sus metadatos. */}
+              <Link to={`/vaults/${encodeURIComponent(vault.id)}`}>Abrir</Link>{" "}
               <Link to={`/vaults/${encodeURIComponent(vault.id)}/edit`}>Editar</Link>{" "}
               <button type="button" onClick={() => setConfirming(vault)}>
                 Borrar
