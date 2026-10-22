@@ -66,6 +66,7 @@ test("cuenta los rechazos y los conflictos con enlace a sus vistas", () => {
     ],
     conflicts: [
       {
+        kind: "vault",
         id: VAULT_ID,
         reason: "no-ancestor",
         fields: [],

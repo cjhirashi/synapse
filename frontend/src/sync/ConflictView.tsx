@@ -9,7 +9,7 @@
  */
 import { FormEvent, useState } from "react";
 import { FIELD_MESSAGES, formatTags, parseTags, toDescription } from "../vaults/fields";
-import type { ManualConflict } from "./conflicts";
+import type { VaultConflict } from "./conflicts";
 import type { MergeBody } from "./merge";
 import { useSync } from "./useSync";
 import type { VaultField } from "./vaultRules";
@@ -27,7 +27,7 @@ function listFields(fields: VaultField[]): string {
   return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 
-function reasonText(conflict: ManualConflict): string {
+function reasonText(conflict: VaultConflict): string {
   switch (conflict.reason) {
     case "no-ancestor":
       return "No se puede saber qué cambió en cada versión: elige o combina los datos.";
@@ -55,14 +55,18 @@ export default function ConflictView() {
       {conflicts.length === 0 ? (
         <p>No hay conflictos por resolver.</p>
       ) : (
-        conflicts.map((conflict) => (
-          // Con otra ganadora o perdedora es otro conflicto: el formulario parte de cero.
-          <ConflictForm
-            key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
-            conflict={conflict}
-            onNotice={setNotice}
-          />
-        ))
+        conflicts.map((conflict) =>
+          // Los conflictos de nota los pinta `NoteConflictCard` (SPEC-0008 RF-009): este
+          // formulario es sólo de bóvedas (nombre, descripción y etiquetas).
+          conflict.kind === "vault" ? (
+            // Con otra ganadora o perdedora es otro conflicto: el formulario parte de cero.
+            <ConflictForm
+              key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
+              conflict={conflict}
+              onNotice={setNotice}
+            />
+          ) : null,
+        )
       )}
     </section>
   );
@@ -70,7 +74,7 @@ export default function ConflictView() {
 
 type FieldErrors = Partial<Record<VaultField, string>>;
 
-function ConflictForm({ conflict, onNotice }: { conflict: ManualConflict; onNotice: (notice: Notice) => void }) {
+function ConflictForm({ conflict, onNotice }: { conflict: VaultConflict; onNotice: (notice: Notice) => void }) {
   const { resolveConflict } = useSync();
   const a = conflict.winner.doc;
   const b = conflict.loser.doc;

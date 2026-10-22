@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 import { syncValue, WithSync } from "../test-utils/sync";
-import type { ManualConflict } from "./conflicts";
+import type { VaultConflict } from "./conflicts";
 import ConflictView from "./ConflictView";
 import type { MergeBody } from "./merge";
 import type { SyncContextValue } from "./useSync";
@@ -25,8 +25,9 @@ function body(overrides: Partial<MergeBody>): MergeBody {
   };
 }
 
-function conflict(overrides: Partial<ManualConflict> = {}): ManualConflict {
+function conflict(overrides: Partial<VaultConflict> = {}): VaultConflict {
   return {
+    kind: "vault",
     id: VAULT_ID,
     reason: "clash",
     fields: ["name"],
