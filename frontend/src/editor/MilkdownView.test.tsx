@@ -80,9 +80,11 @@ describe("MilkdownView", () => {
   // RF-007
   it("un enlace javascript: no genera href peligroso", async () => {
     const { container } = await mount({ value: "[x](javascript:alert(1))", readOnly: true });
+    // El texto del enlace se muestra (el `<a>` existe) pero sin `href`: nada que ejecutar.
     const link = container.querySelector("a");
-    expect(link === null || !/^\s*javascript:/i.test(link.getAttribute("href") ?? "")).toBe(true);
-    expect(link?.hasAttribute("href") ?? false).toBe(false);
+    expect(link).not.toBeNull();
+    expect(link!.hasAttribute("href")).toBe(false);
+    expect(link).toHaveTextContent("x");
   });
 
   // RF-007

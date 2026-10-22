@@ -34,9 +34,11 @@
   background: var(--accent-soft);
 }
 
+/* La bóveda abierta: fondo suave y aro de acento (sólo tokens, con contraste en ambos temas). */
 .vault-rail-icon[aria-current="page"] {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .vault-rail-icon:focus-visible {
