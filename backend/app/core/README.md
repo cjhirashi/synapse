@@ -34,6 +34,17 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   ella sin `slug` ni `detail` propios (y se lanza sin `detail=`) y el traductor la usa
   para los 422 de pydantic (RF-005).
 
+## Notas y tiempo (SPEC-0008)
+
+- `note_rules.py` — reglas puras de las notas, sin E/S: claves del documento
+  (`NOTE_KEYS`/`NOTE_REQUIRED`), `check_path`, `check_content`, `check_frontmatter` (devuelven el
+  código de rechazo del push o `None`), `normalize_path` y `path_key` (NFKC + `casefold`, igual
+  que `name_key` de bóvedas). Topes: ruta 300 puntos de código, `content` 2 MiB y `frontmatter`
+  64 KiB. Las usa `services/sync_push.py` y las espeja `frontend/src/notes/noteRules.ts`; ambos
+  recorren `tests/fixtures/note_rules_cases.json`.
+- `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
+  comprobación; lo comparten bóvedas, notas, reservas y push.
+
 ## Subdirectorios
 
 - `ports/` — Protocols de Python que definen las interfaces que `services/` consume
