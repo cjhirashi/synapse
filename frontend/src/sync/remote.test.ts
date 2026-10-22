@@ -1,6 +1,6 @@
 // Base remota del canal /sync (SPEC-0005 RF-002, RF-016; PLAN-0005 §2.5).
 import { refreshSession } from "../api/auth";
-import { REMOTE_PATH, createRemoteDb, syncFetch } from "./remote";
+import { BULK_CHUNK_BYTES, REMOTE_PATH, createRemoteDb, syncFetch } from "./remote";
 
 vi.mock("../api/auth", () => ({ refreshSession: vi.fn() }));
 
@@ -69,6 +69,91 @@ describe("syncFetch", () => {
     expect(res.status).toBe(200);
     expect(ownRefresh).toHaveBeenCalledOnce();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("reparto de `_bulk_docs` en sub-peticiones (SPEC-0008 RF-016; PLAN-0008 P-6)", () => {
+  const URL_BULK = "https://app.test/sync/db/_bulk_docs";
+  const MIB = 1024 * 1024;
+  const bytes = (text: string) => new TextEncoder().encode(text).length;
+  /** Documento cuyo cuerpo serializado pesa ~`size` bytes (texto ASCII en `content`). */
+  const doc = (id: string, size: number) => ({ _id: id, _rev: "1-a", content: "x".repeat(size) });
+  const body = (docs: object[]) => JSON.stringify({ docs, new_edits: false });
+  const post = (docs: object[]) => ({ method: "POST", body: body(docs) });
+  const rejection = (id: string) => ({ id, rev: "1-a", error: "forbidden", reason: "vault-not-found" });
+  /** Ids de los documentos de cada sub-petición enviada a `base`. */
+  const sentIds = (base: ReturnType<typeof vi.fn>) =>
+    base.mock.calls.map(([, init]) => (JSON.parse(init.body).docs as { _id: string }[]).map((d) => d._id));
+
+  it("un lote de hasta 8 MiB pasa sin cambios, en una sola petición", async () => {
+    const base = vi.fn().mockResolvedValue(json([rejection("a")], 201));
+    const init = post([doc("a", 3 * MIB), doc("b", 3 * MIB)]);
+    const res = await syncFetch(vi.fn(), base)(URL_BULK, init);
+    expect(base).toHaveBeenCalledTimes(1);
+    expect(base).toHaveBeenCalledWith(URL_BULK, { ...init, credentials: "include" });
+    expect(await res.json()).toEqual([rejection("a")]);
+  });
+
+  it("un lote de más de 8 MiB se parte en sub-peticiones de ≤ 8 MiB, en orden", async () => {
+    const base = vi.fn().mockResolvedValue(json([], 201));
+    const docs = [doc("a", 4 * MIB), doc("b", 4 * MIB), doc("c", 1024), doc("d", 5 * MIB)];
+    await syncFetch(vi.fn(), base)(URL_BULK, post(docs));
+    expect(sentIds(base)).toEqual([["a"], ["b", "c"], ["d"]]);
+    for (const [url, init] of base.mock.calls) {
+      expect(url).toBe(URL_BULK);
+      expect(bytes(init.body)).toBeLessThanOrEqual(BULK_CHUNK_BYTES);
+      expect(JSON.parse(init.body).new_edits).toBe(false);
+      expect(init.method).toBe("POST");
+    }
+  });
+
+  it("concatena los rechazos de las sub-peticiones en el orden de envío", async () => {
+    const base = vi
+      .fn()
+      .mockResolvedValueOnce(json([rejection("a")], 201))
+      .mockResolvedValueOnce(json([], 201))
+      .mockResolvedValueOnce(json([rejection("d"), rejection("e")], 201));
+    const res = await syncFetch(vi.fn(), base)(
+      URL_BULK,
+      post([doc("a", 5 * MIB), doc("b", 5 * MIB), doc("d", 5 * MIB)]),
+    );
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual([rejection("a"), rejection("d"), rejection("e")]);
+  });
+
+  it("un documento mayor de 8 MiB va solo", async () => {
+    const base = vi.fn().mockResolvedValue(json([], 201));
+    await syncFetch(vi.fn(), base)(URL_BULK, post([doc("a", 1024), doc("big", 9 * MIB), doc("b", 1024)]));
+    expect(sentIds(base)).toEqual([["a"], ["big"], ["b"]]);
+  });
+
+  it("si una sub-petición falla devuelve ese fallo tal cual y no envía las siguientes", async () => {
+    const base = vi
+      .fn()
+      .mockResolvedValueOnce(json([], 201))
+      .mockResolvedValueOnce(json({ type: "about:blank", title: "Unavailable", status: 503 }, 503));
+    const res = await syncFetch(vi.fn(), base)(URL_BULK, post([doc("a", 5 * MIB), doc("b", 5 * MIB), doc("c", 5 * MIB)]));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ status: 503 });
+    expect(base).toHaveBeenCalledTimes(2);
+  });
+
+  it("sólo reparte `_bulk_docs`: otras rutas grandes pasan enteras", async () => {
+    const base = vi.fn().mockResolvedValue(json({ results: [] }));
+    const init = { method: "POST", body: JSON.stringify({ docs: [doc("a", 9 * MIB)] }) };
+    await syncFetch(vi.fn(), base)("https://app.test/sync/db/_bulk_get", init);
+    expect(base).toHaveBeenCalledTimes(1);
+  });
+
+  it("cada sub-petición sigue la política de sesión (401 → renueva y repite)", async () => {
+    refresh.mockResolvedValue(true);
+    const base = vi
+      .fn()
+      .mockResolvedValueOnce(unauthorized())
+      .mockResolvedValue(json([], 201));
+    await syncFetch(vi.fn(), base)(URL_BULK, post([doc("a", 5 * MIB), doc("b", 5 * MIB)]));
+    // 401 + reintento de la 1.ª, y la 2.ª.
+    expect(base).toHaveBeenCalledTimes(3);
   });
 });
 
