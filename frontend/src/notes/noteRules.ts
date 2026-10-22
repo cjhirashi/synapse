@@ -21,6 +21,19 @@ import { nameKey } from "../sync/vaultRules";
 /** Prefijo de los ids de nota en CouchDB/PouchDB (PLAN-0008 §3). */
 export const NOTE_ID_PREFIX = "note:";
 
+const UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+const NOTE_ID = new RegExp(`^${NOTE_ID_PREFIX}(${UUID}):(${UUID})$`);
+
+/**
+ * Partes de un id de nota canónico `note:{vault_id}:{note_uuid}` (UUID en minúsculas), o
+ * `null` si no lo es. Es el único lugar del cliente que entiende ese formato (espejo de
+ * `is_replicable_id` del servidor).
+ */
+export function parseNoteId(id: string): { vaultId: string; noteUuid: string } | null {
+  const match = NOTE_ID.exec(id);
+  return match ? { vaultId: match[1], noteUuid: match[2] } : null;
+}
+
 // Límites de `core/note_rules.py`.
 export const PATH_MAX = 300;
 export const CONTENT_MAX_BYTES = 2 * 1024 * 1024;

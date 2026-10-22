@@ -26,7 +26,7 @@ import { listenPush, type RuntimeReplication, type SyncEvent } from "../sync/rep
 import type { SyncStatusStore } from "../sync/status";
 import { vaultIsActive } from "../sync/vaultActive";
 import { ID_PREFIX } from "../sync/vaultStore";
-import { NOTE_ID_PREFIX } from "./noteRules";
+import { NOTE_ID_PREFIX, parseNoteId } from "./noteRules";
 
 /** Motivo del rechazo que se reintenta (el único que se resuelve solo al llegar la bóveda). */
 const VAULT_NOT_FOUND = "vault-not-found";
@@ -96,14 +96,12 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
 
   /** Reintenta todas las bóvedas con notas rechazadas por `vault-not-found` (arranque, reconexión). */
   function enqueueAll(): void {
-    const prefixLength = NOTE_ID_PREFIX.length;
-    const vaults = new Set(
-      rejections
-        .list()
-        .filter((item) => item.reason === VAULT_NOT_FOUND && item.id.startsWith(NOTE_ID_PREFIX))
-        // `note:{vault_id}:{note_id}`: el id de la bóveda es el primer UUID (36 caracteres).
-        .map((item) => item.id.slice(prefixLength, prefixLength + 36)),
-    );
+    const vaults = new Set<string>();
+    for (const item of rejections.list()) {
+      if (item.reason !== VAULT_NOT_FOUND) continue;
+      const parts = parseNoteId(item.id);
+      if (parts) vaults.add(parts.vaultId);
+    }
     vaults.forEach(enqueue);
   }
 

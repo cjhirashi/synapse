@@ -72,7 +72,7 @@ describe("RF-005: checkFrontmatter respeta el tope de 64 KiB serializado", () =>
 
 // N-4: un solo lugar entiende `note:{vault_id}:{note_uuid}`.
 describe("parseNoteId (RF-004)", () => {
-  const V = "11111111-1111-4111-8111-111111111111";
+  const V = "abcdefab-1111-4111-8111-111111111111";
   const N = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
   it("separa la bóveda y la nota de un id canónico", () => {
