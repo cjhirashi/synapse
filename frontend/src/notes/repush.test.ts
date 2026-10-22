@@ -256,6 +256,19 @@ describe("RD-2: disparadores de arranque y de reconexión", () => {
     expect(toSpy).toHaveBeenLastCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
   });
 
+  // N-8: un id que no es `note:{uuid}:{uuid}` canónico no da bóveda que reintentar.
+  it("al arrancar ignora los rechazos con un id de nota no canónico", async () => {
+    repush.close();
+    await putVault(V);
+    await rejectNote(`note:${V}`); // un solo uuid
+    await rejectNote(`note:${V.toUpperCase().replace(/-/g, "-")}:x`); // resto no canónico
+    await rejectNote("note:basura");
+    toSpy.mockClear();
+    repush = startRepush({ db, remote, status, rejections });
+    await settle();
+    expect(toSpy).not.toHaveBeenCalled();
+  });
+
   it("seguir en línea (sin transición) no dispara de nuevo", async () => {
     await putVault(V);
     await rejectNote(NOTE_1);
