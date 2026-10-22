@@ -43,3 +43,90 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* --- Sidebar con el árbol de notas --- */
+.note-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 280px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.note-sidebar-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.note-tree,
+.note-tree-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.note-tree-group {
+  padding-left: var(--space-4);
+}
+
+.note-tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Las filas son botones: sin el aspecto de botón del formulario, como una lista de archivos. */
+.note-tree-row,
+.note-tree-row:not([type="submit"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.note-tree-row:not([type="submit"]):hover {
+  background: var(--bg-tertiary);
+}
+
+.note-tree-row[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Las acciones de una fila aparecen al apuntar o enfocar (siguen en el orden de tabulación). */
+.note-tree-actions {
+  display: flex;
+  gap: var(--space-1);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-standard);
+}
+
+.note-tree-item:hover .note-tree-actions,
+.note-tree-item:focus-within .note-tree-actions {
+  opacity: 1;
+}
+
+.note-tree-actions button {
+  padding: 2px 6px;
+  font-size: 12px;
+}
+
+.note-tree-rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
