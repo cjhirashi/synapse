@@ -236,3 +236,46 @@ describe("RF-010: cuota", () => {
     vi.restoreAllMocks();
   });
 });
+
+describe("RF-009 (P-8): save sobre una revisión desfasada", () => {
+  it("escribe lo guardado como rama hija de baseRev y la nota queda en conflicto", async () => {
+    const a = await store.create(VAULT, "A");
+    const other = await store.save(a.id, "otra pestaña", a.rev); // la revisión «actual»
+    const branch = await store.save(a.id, "mi edición", a.rev); // sigue editando sobre a.rev (desfasada)
+    expect(branch.content).toBe("mi edición");
+    expect(branch.rev).not.toBe(other.rev);
+    expect(branch.rev.startsWith("2-")).toBe(true); // hija de la 1.ª revisión, hermana de `other`
+
+    const doc = await db.get<{ content: string; _conflicts?: string[] }>(a.id, { conflicts: true });
+    const revs = [doc._rev as string, ...(doc._conflicts ?? [])].sort();
+    expect(revs).toEqual([other.rev, branch.rev].sort());
+    // Lo escrito no se pierde: ambas ramas conservan su texto.
+    expect((await db.get<{ content: string }>(a.id, { rev: branch.rev })).content).toBe("mi edición");
+    expect((await db.get<{ content: string }>(a.id, { rev: other.rev })).content).toBe("otra pestaña");
+  });
+
+  it("la revisión es determinista: dos guardados iguales dan la misma _rev", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.save(a.id, "otra pestaña", a.rev);
+    // Reloj fijo para que el cuerpo (con updated_at) sea idéntico en las dos llamadas.
+    const fixed = createNoteStore(db, { now: () => "2026-10-22T11:00:00.000000Z" });
+    const first = await fixed.save(a.id, "mi edición", a.rev);
+    const second = await fixed.save(a.id, "mi edición", a.rev);
+    expect(second.rev).toBe(first.rev);
+    const doc = await db.get<{ _conflicts?: string[] }>(a.id, { conflicts: true });
+    expect(doc._conflicts).toHaveLength(1);
+  });
+
+  it("el cuerpo de la rama parte del de baseRev (no del de la ganadora) con el contenido nuevo", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.rename(a.id, "B.md", a.rev);
+    const branch = await store.save(a.id, "x", a.rev);
+    expect(branch.path).toBe("A.md");
+  });
+
+  it("una baseRev que ya no existe → NoteChangedError", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.save(a.id, "otra", a.rev);
+    await expect(store.save(a.id, "x", "1-" + "0".repeat(32))).rejects.toBeInstanceOf(NoteChangedError);
+  });
+});
