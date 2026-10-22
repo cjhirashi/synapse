@@ -2,11 +2,16 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, beforeAll, expect, test } from "vitest";
 import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
+
+// El editor se carga con `React.lazy`: la primera importación (Milkdown + CodeMirror, transformados
+// por Vite) puede tardar más que el tiempo de espera de `findBy*` si la máquina va cargada. Se
+// paga aquí, una vez, para que las pruebas midan la pantalla y no la carga del módulo.
+beforeAll(() => import("../editor/NoteEditor"), 30_000);
 
 afterEach(() => localStorage.clear());
 
