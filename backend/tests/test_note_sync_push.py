@@ -189,3 +189,115 @@ async def test_rf_005_note_shape_a_bad_note_does_not_stop_the_rest_of_the_batch(
     bad, good = _note(path=""), _note(path="Otra.md")
     assert await push.push([bad, good]) == [_rejected(bad, "validation-error:path")]
     assert _stored(couch, good) and not _stored(couch, bad)
+
+
+# --- Bóveda activa (RF-004, RF-014) ---
+
+def _vault_rev(vault_id: str, rev: str = "1-aaa", parents: tuple[str, ...] = (), **fields) -> dict:
+    return _vault(f"vault:{vault_id}", rev, parents, **fields)
+
+
+def _new_vault_id() -> str:
+    return str(uuid.uuid4())
+
+
+async def test_rf_004_note_of_a_missing_vault_is_rejected(push, couch):
+    doc = _note(_note_id(_new_vault_id()))
+    assert await push.push([doc]) == [_rejected(doc, "vault-not-found")]
+    assert not _stored(couch, doc)
+
+
+async def test_rf_004_note_of_a_deleted_vault_is_rejected(push, couch):
+    vault_id = _new_vault_id()
+    await push.push([_vault_rev(vault_id, name="Borrada", deleted_at=T1)])
+    doc = _note(_note_id(vault_id))
+    assert await push.push([doc]) == [_rejected(doc, "vault-not-found")]
+    assert not _stored(couch, doc)
+
+
+async def test_rf_014_note_of_a_vault_deleted_after_its_creation_is_rejected(push, vault):
+    await push.push([_vault_rev(vault, "2-bbb", ("1-aaa",), name="Bóveda", deleted_at=T1)])
+    doc = _note()
+    assert await push.push([doc]) == [_rejected(doc, "vault-not-found")]
+
+
+async def test_rf_014_notes_are_accepted_again_when_the_vault_is_restored(push, vault):
+    await push.push([_vault_rev(vault, "2-bbb", ("1-aaa",), name="Bóveda", deleted_at=T1)])
+    await push.push([_vault_rev(vault, "3-ccc", ("2-bbb", "1-aaa"), name="Bóveda")])
+    assert await push.push([_note()]) == []
+
+
+@pytest.mark.parametrize("vault_first", [True, False], ids=["vault-then-note", "note-then-vault"])
+async def test_rf_004_note_of_a_vault_created_in_the_same_batch_is_accepted(push, couch, vault_first):
+    # El feed de cambios puede entregar la nota antes que su bóveda (la bóveda se editó
+    # después): el orden del lote no cambia el resultado (PLAN-0008 §2.3, paso 1).
+    vault_id = _new_vault_id()
+    vault_doc, note = _vault_rev(vault_id, name="Nueva"), _note(_note_id(vault_id))
+    batch = [vault_doc, note] if vault_first else [note, vault_doc]
+    assert await push.push(batch) == []
+    assert _stored(couch, vault_doc) and _stored(couch, note)
+
+
+async def test_rf_004_note_of_a_vault_rejected_in_the_same_batch_is_rejected(push, couch):
+    vault_id = _new_vault_id()
+    bad_vault, note = _vault_rev(vault_id, name=""), _note(_note_id(vault_id))
+    assert await push.push([note, bad_vault]) == [
+        _rejected(note, "vault-not-found"), _rejected(bad_vault, "validation-error:name")]
+    assert not _stored(couch, note)
+
+
+async def test_rf_014_note_of_a_vault_deleted_in_the_same_batch_is_rejected(push, vault):
+    # La revisión de la bóveda del lote (borrada) sustituye a la del servidor en la proyección.
+    deleted = _vault_rev(vault, "2-bbb", ("1-aaa",), name="Bóveda", deleted_at=T1)
+    note = _note()
+    assert await push.push([note, deleted]) == [_rejected(note, "vault-not-found")]
+
+
+async def test_rf_004_note_of_a_vault_in_conflict_with_an_active_branch_is_accepted(push):
+    # P-9: basta una rama viva y activa; la resolución de la bóveda decide después.
+    vault_id = _new_vault_id()
+    assert await push.push([
+        _vault_rev(vault_id, "1-aaa", name="Uno"),
+        _vault_rev(vault_id, "2-bbb", ("1-aaa",), name="Uno", deleted_at=T1),
+        _vault_rev(vault_id, "2-ccc", ("1-aaa",), name="Uno"),
+    ]) == []
+    assert await push.push([_note(_note_id(vault_id))]) == []
+
+
+async def test_rf_004_note_of_a_vault_in_conflict_with_every_branch_deleted_is_rejected(push):
+    vault_id = _new_vault_id()
+    await push.push([
+        _vault_rev(vault_id, "1-aaa", name="Uno"),
+        _vault_rev(vault_id, "2-bbb", ("1-aaa",), name="Uno", deleted_at=T1),
+        _vault_rev(vault_id, "2-ccc", ("1-aaa",), name="Uno", deleted_at=T1),
+    ])
+    doc = _note(_note_id(vault_id))
+    assert await push.push([doc]) == [_rejected(doc, "vault-not-found")]
+
+
+async def test_rf_014_tombstone_of_a_note_of_a_deleted_vault_is_rejected(push, couch, vault):
+    # Una lápida que cierra una rama del conflicto de la nota también exige la bóveda activa.
+    note_id = _note_id()
+    await push.push([
+        _note(note_id, "1-aaa"),
+        _note(note_id, "2-bbb", ("1-aaa",), content="uno"),
+        _note(note_id, "2-ccc", ("1-aaa",), content="dos"),
+    ])
+    await push.push([_vault_rev(vault, "2-bbb", ("1-aaa",), name="Bóveda", deleted_at=T1)])
+    tombstone = {"_id": note_id, "_rev": "3-ddd", "_revisions": _revisions("3-ddd", ("2-ccc", "1-aaa")),
+                 "_deleted": True}
+    assert await push.push([tombstone]) == [_rejected(tombstone, "vault-not-found")]
+    assert len(couch.live_leaves(DB, note_id)) == 2
+
+
+async def test_rf_014_tombstone_of_a_note_of_an_active_vault_is_accepted(push, couch, vault):
+    note_id = _note_id()
+    await push.push([
+        _note(note_id, "1-aaa"),
+        _note(note_id, "2-bbb", ("1-aaa",), content="uno"),
+        _note(note_id, "2-ccc", ("1-aaa",), content="dos"),
+    ])
+    tombstone = {"_id": note_id, "_rev": "3-ddd", "_revisions": _revisions("3-ddd", ("2-ccc", "1-aaa")),
+                 "_deleted": True}
+    assert await push.push([tombstone]) == []
+    assert [leaf["_rev"] for leaf in couch.live_leaves(DB, note_id)] == ["2-bbb"]
