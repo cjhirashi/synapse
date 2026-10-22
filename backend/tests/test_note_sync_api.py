@@ -11,7 +11,7 @@ import pytest
 from app.services.vault_service import utc_now
 from tests.test_sync_api import (
     UntouchablePort, bulk_docs_bytes, change_ids, child_of, couch_get, couch_override,  # noqa: F401
-    json_of_size, owner_of, push, vault_doc,
+    json_of_size, owner_of, push, revs_diff_bytes, vault_doc,
 )
 from tests.test_vaults_api import assert_problem, stored_docs, user_db
 
@@ -166,6 +166,4 @@ def test_rf_016_bulk_docs_body_of_exactly_16_mib_passes_the_cap(ready_admin, cou
 def test_rf_016_other_routes_keep_the_4_mib_cap(ready_admin, couch_override):  # noqa: F811
     couch_override(UntouchablePort())
     body = json_of_size(4 * 1024 * 1024 + 1)
-    res = ready_admin.post("/sync/db/_revs_diff", content=body,
-                           headers={"content-type": "application/json"})
-    assert_problem(res, 413, "payload-too-large")
+    assert_problem(revs_diff_bytes(ready_admin, body), 413, "payload-too-large")

@@ -39,10 +39,16 @@ from app.services.vault_service import VaultService
 # --- Límites de tamaño (PLAN-0005 §2.1) ---
 
 MAX_BULK_DOCS = 200                 # documentos por lote (el cliente envía 50)
-MAX_BODY_BYTES = 4 * 1024 * 1024    # cuerpo de `_bulk_docs` y de cualquier otra ruta
+MAX_BODY_BYTES = 4 * 1024 * 1024    # cuerpo de cualquier ruta que no tenga tope propio
+# Cuerpo de `_bulk_docs` (SPEC-0008 P-6): una nota de 2 MiB con caracteres de control escapados
+# (6 bytes por carácter en JSON) pesa ~12 MiB, más ruta, frontmatter ≤ 64 KiB y `_revisions`;
+# con 4 MiB el replicador reintentaría ese lote para siempre. El cliente nunca envía más de
+# 8 MiB por petición (`remote.ts`), así que 16 MiB deja margen.
+MAX_BULK_DOCS_BYTES = 16 * 1024 * 1024
 MAX_LOCAL_BYTES = 64 * 1024         # documento `_local` (checkpoint del replicador)
 
 LOCAL_PATH = "/sync/db/_local/{local_id}"
+BULK_DOCS_PATH = "/sync/db/_bulk_docs"
 
 
 async def _read_capped(receive: Receive, limit: int) -> bytes:
@@ -86,12 +92,14 @@ class SyncRoute(APIRoute):
     FastAPI lee y parsea el cuerpo antes de resolver las dependencias, y convierte en 400
     cualquier excepción levantada durante esa lectura. Por eso el tope no puede ser una
     dependencia ni vivir dentro del flujo: el manejador de la ruta lee el cuerpo con el tope
-    y entrega a FastAPI un `receive` que lo reproduce. `_local` admite 64 KiB; el resto, 4 MiB.
+    y entrega a FastAPI un `receive` que lo reproduce. `_local` admite 64 KiB, `_bulk_docs` 16 MiB
+    y el resto 4 MiB.
     """
 
     def get_route_handler(self):
         handler = super().get_route_handler()
-        limit = MAX_LOCAL_BYTES if self.path_format == LOCAL_PATH else MAX_BODY_BYTES
+        limit = {LOCAL_PATH: MAX_LOCAL_BYTES, BULK_DOCS_PATH: MAX_BULK_DOCS_BYTES}.get(
+            self.path_format, MAX_BODY_BYTES)
 
         async def limited(request: Request):
             declared = request.headers.get("content-length", "")
@@ -174,10 +182,10 @@ class BulkDocsRequest(BaseModel):
     new_edits: Literal[False]
 
 
-# Códigos de rechazo del push (PLAN-0005 §2.3).
+# Códigos de rechazo del push (PLAN-0005 §2.3; `note-path-taken` y `vault-not-found`, PLAN-0008 §4).
 REJECTION_REASON = (
     r"^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken"
-    r"|delete-not-allowed|validation-error:.+|not-normalized:.+)$"
+    r"|note-path-taken|vault-not-found|delete-not-allowed|validation-error:.+|not-normalized:.+)$"
 )
 
 
