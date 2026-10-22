@@ -8,9 +8,11 @@ con el resto (RF-006). Las aceptadas se escriben juntas en una sola llamada.
 Orden de las comprobaciones por documento (la primera que falla da el código):
 1. id `vault:{uuid}` o `note:{uuid}:{uuid}` canónico → si no, `invalid-id` (RF-007);
    después, `_rev` y `_revisions` bien formados (los pasos 2 y 3 dependen de ellos);
+   superada la pasada de identidad, las bóvedas se procesan antes que las notas;
 2. ya almacenada → aceptada sin tocar nada (reenvío de un lote cortado);
 3. lápida → sólo si cierra una rama y queda otra hoja viva (`delete-not-allowed`);
-4. forma, 5. campos sin normalizar, 6. reglas del servidor;
+4. forma, 5. campos sin normalizar, 6. reglas del servidor (para una nota, 6c: su bóveda
+   existe y está activa, `vault-not-found`; también en sus lápidas);
 7. reserva del nombre o de la ruta (`vault-name-taken`, `note-path-taken`).
 Luego 8. escritura y 9. liberación de los nombres y rutas que ya no usa ninguna hoja.
 
@@ -141,7 +143,8 @@ class _Kind(NamedTuple):
     keys: tuple[str, ...]             # claves admitidas (paso 4)
     required: tuple[str, ...]         # claves obligatorias, en el orden en que se informan
     check_fields: Callable[[dict], None]                    # paso 5
-    check_server: Callable[..., Awaitable[None]]            # paso 6 (self, doc, hojas)
+    check_server: Callable[..., Awaitable[None]]            # paso 6a/6b (self, doc, hojas)
+    check_parent: Callable[..., Awaitable[None]] | None     # paso 6c, también en lápidas (self, id)
     use: Callable[[dict], tuple[str, str]]                  # clave de unicidad y etiqueta de una hoja
     reserve: Callable[..., Awaitable[None]] | None          # paso 7 (self, doc)
     release: Callable[..., Awaitable[None]] | None          # paso 9 (self, id, etiqueta)
@@ -196,6 +199,10 @@ class SyncPushService:
                 rejections[position] = _rejection(doc, rejected.reason)
                 continue
             candidates.append((position, doc))
+
+        # Bóvedas antes que notas (estable dentro de cada tipo): una nota cuya bóveda llega en
+        # el mismo lote se valida contra ella aunque el feed las entregue al revés (P-7).
+        candidates.sort(key=lambda candidate: not candidate[1]["_id"].startswith(VAULT_PREFIX))
 
         stored = await self._stored([doc for _, doc in candidates])
         accepted: list[dict] = []
@@ -260,16 +267,19 @@ class SyncPushService:
         """Valida una revisión nueva, reserva su nombre o ruta y la añade a la proyección."""
         kind = _kind_of(doc["_id"])
         leaves = await self._projected(doc["_id"])
-        if doc.get("_deleted") is True:
+        tombstone = doc.get("_deleted") is True
+        if tombstone:
             self._check_tombstone(doc, leaves)
         else:
             self._check_shape(doc, kind)
             kind.check_fields(doc)
             await kind.check_server(self, doc, leaves)
-            if doc["deleted_at"] is None and kind.reserve is not None:
-                await kind.reserve(self, doc)
-                key, label = kind.use(doc)
-                self._reserved.setdefault(doc["_id"], {})[key] = label
+        if kind.check_parent is not None:
+            await kind.check_parent(self, doc["_id"])
+        if not tombstone and doc["deleted_at"] is None and kind.reserve is not None:
+            await kind.reserve(self, doc)
+            key, label = kind.use(doc)
+            self._reserved.setdefault(doc["_id"], {})[key] = label
         self._project(doc, leaves)
 
     async def _projected(self, doc_id: str) -> dict[str, dict]:
@@ -326,6 +336,19 @@ class SyncPushService:
             raise Rejected("validation-error:vault_id")
         _check_timestamps(doc, leaves)
 
+    async def _check_vault_is_active(self, note_id: str) -> None:
+        """Paso 6c (RF-004, RF-014): la bóveda de la nota tiene alguna hoja viva y activa.
+
+        Se mira la proyección (servidor + aceptadas del lote), no sólo el servidor: una bóveda
+        creada, borrada o restaurada en el mismo lote cuenta ya. Como la base es la del token,
+        "del propio usuario" está garantizado: la bóveda de otro usuario no existe aquí. Con
+        la bóveda en conflicto basta una rama activa (P-9). Vale también para las lápidas de
+        nota: una bóveda borrada congela sus notas (RF-014).
+        """
+        vault_leaves = await self._projected(f"{VAULT_PREFIX}{note_id.split(':')[1]}")
+        if not any(not leaf.get("deleted_at") for leaf in vault_leaves.values()):
+            raise Rejected("vault-not-found")
+
     async def _reserve_vault_name(self, doc: dict) -> None:
         """Paso 7 de una bóveda (RF-008, P-4): la misma reserva que REST, con su arrendamiento de 30 s."""
         try:
@@ -363,11 +386,12 @@ class SyncPushService:
 _KINDS = {
     VAULT_PREFIX: _Kind(
         "vault", _VAULT_KEYS, _VAULT_KEYS, _check_vault_fields,
-        SyncPushService._check_vault_rules, _vault_use,
+        SyncPushService._check_vault_rules, None, _vault_use,
         SyncPushService._reserve_vault_name, SyncPushService._release_vault_name),
     NOTE_PREFIX: _Kind(
         "note", NOTE_KEYS, NOTE_REQUIRED, _check_note_fields,
-        SyncPushService._check_note_rules, _note_use, None, None),
+        SyncPushService._check_note_rules, SyncPushService._check_vault_is_active,
+        _note_use, None, None),
 }
 
 
