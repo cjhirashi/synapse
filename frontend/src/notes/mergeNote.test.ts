@@ -6,7 +6,6 @@ const base: NoteBody = {
   path: "a.md",
   content: "hola",
   frontmatter: { tags: ["x"] },
-  owner_id: "u1",
   created_at: "2026-01-01T00:00:00.000000Z",
   updated_at: "2026-01-02T00:00:00.000000Z",
   deleted_at: null,
