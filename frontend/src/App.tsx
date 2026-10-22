@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginPage from "./auth/LoginPage";
 import RequireAuth, { useMe } from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
+import VaultWorkspacePage from "./notes/VaultWorkspacePage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
@@ -61,6 +62,8 @@ export default function App({ syncEnv }: Props) {
         <Route path="/vaults/new" element={<VaultForm />} />
         <Route path="/vaults/trash" element={<TrashPage />} />
         <Route path="/vaults/:id/edit" element={<VaultForm />} />
+        {/* Bóveda abierta: sidebar de notas + editor (SPEC-0008). `new` y `trash` ganan por ser estáticas. */}
+        <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
         {/* Lo que la sincronización deja al usuario (SPEC-0005 RF-006, RF-013). */}
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />

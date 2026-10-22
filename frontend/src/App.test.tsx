@@ -5,7 +5,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import App from "./App";
 import * as api from "./api/auth";
 import * as localDb from "./sync/localDb";
-import { memoryEnv } from "./test-utils/sync";
+import { memoryDb, memoryEnv } from "./test-utils/sync";
+import { createVaultStore } from "./sync/vaultStore";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -109,4 +110,35 @@ test("RF-017: si la réplica no se borra al salir, el login avisa de la copia co
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
+});
+
+test("RF-001: /vaults/{id} monta la bóveda abierta (riel, árbol y editor vacío)", async () => {
+  const { env, localName } = signedIn();
+  // La réplica del usuario es la base en memoria con ese nombre: se siembra antes de abrir la app.
+  // Con su marca de dueño (`sub` de la sesión): si no, `openLocalDb` la tomaría por ajena y la vaciaría.
+  const seed = memoryDb(localName);
+  await seed.put({ _id: localDb.OWNER_DOC_ID, sub: "1" });
+  const vault = await createVaultStore(seed, "1").create({ name: "Trabajo", description: null, tags: [] });
+  renderAt(`/vaults/${vault.id}`, env);
+  expect(await screen.findByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
+  expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "Trabajo" })).toHaveAttribute("aria-current", "page");
+});
+
+test("RF-001: /vaults/{id} de una bóveda inexistente muestra el 404 de la bóveda", async () => {
+  const { env } = signedIn();
+  renderAt("/vaults/11111111-1111-4111-8111-111111111111", env);
+  expect(await screen.findByText("Esta bóveda no existe o está en la papelera.")).toBeInTheDocument();
+});
+
+test("RF-001: /vaults/new y /vaults/trash siguen en sus páginas, no en la bóveda «new»/«trash»", async () => {
+  const { env } = signedIn();
+  renderAt("/vaults/new", env);
+  expect(await screen.findByRole("heading", { name: "Nueva bóveda" })).toBeInTheDocument();
+  expect(screen.queryByText("Esta bóveda no existe o está en la papelera.")).toBeNull();
+});
+
+test("RF-001: el riel de bóvedas no aparece en /login", () => {
+  renderAt("/login");
+  expect(screen.queryByRole("navigation", { name: "Bóvedas abiertas" })).not.toBeInTheDocument();
 });
