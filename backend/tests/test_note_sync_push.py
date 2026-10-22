@@ -301,3 +301,154 @@ async def test_rf_014_tombstone_of_a_note_of_an_active_vault_is_accepted(push, c
                  "_deleted": True}
     assert await push.push([tombstone]) == []
     assert [leaf["_rev"] for leaf in couch.live_leaves(DB, note_id)] == ["2-bbb"]
+
+
+# --- Reservas de ruta (RF-010, RF-011, RF-013, RF-017) ---
+
+def _reservation(couch, path: str, vault_id: str = VAULT_ID) -> dict | None:
+    return couch.get(DB, f"note-path:{vault_id}:{path_key(path)}")
+
+
+async def test_rf_013_new_note_reserves_its_path_in_its_vault(push, couch, vault):
+    doc = _note(path="Carpeta/Nota.md")
+    assert await push.push([doc]) == []
+    reservation = _reservation(couch, "carpeta/nota.md")
+    assert (reservation["type"], reservation["note_id"]) == ("note-path", doc["_id"])
+
+
+@pytest.mark.parametrize(("first", "second"), [
+    ("Nota.md", "Nota.md"),
+    ("Nota.md", "NOTA.md"),
+    ("Straße.md", "STRASSE.md"),
+    ("Café.md", "Café.md"),
+])
+async def test_rf_013_reserved_path_taken_by_another_note_is_rejected_without_saving(push, couch, vault, first, second):
+    await push.push([_note(path=first)])
+    taken = _note(path=second)
+    assert await push.push([taken]) == [_rejected(taken, "note-path-taken")]
+    assert not _stored(couch, taken)
+
+
+async def test_rf_013_the_same_reserved_path_in_another_vault_is_free(push, couch, vault):
+    other_vault = _new_vault_id()
+    await push.push([_vault_rev(other_vault, name="Otra")])
+    await push.push([_note(path="Nota.md")])
+    assert await push.push([_note(_note_id(other_vault), path="Nota.md")]) == []
+
+
+async def test_rf_013_two_notes_reserving_one_path_in_the_same_batch_save_only_the_first(push, couch, vault):
+    first, second = _note(path="Misma.md"), _note(path="misma.md")
+    assert await push.push([first, second]) == [_rejected(second, "note-path-taken")]
+    assert _stored(couch, first) and not _stored(couch, second)
+
+
+async def test_rf_013_editing_a_note_keeps_its_own_reserved_path(push, couch, vault):
+    doc = _note(path="Nota.md")
+    await push.push([doc])
+    edited = _note(doc["_id"], "2-bbb", ("1-aaa",), path="Nota.md", content="otro")
+    assert await push.push([edited]) == []
+    assert _reservation(couch, "Nota.md")["note_id"] == doc["_id"]
+
+
+async def test_rf_011_rename_reserves_the_new_path_and_frees_the_old_one(push, couch, vault):
+    doc = _note(path="Vieja.md")
+    await push.push([doc])
+    assert await push.push([_note(doc["_id"], "2-bbb", ("1-aaa",), path="Carpeta/Nueva.md")]) == []
+    assert _reservation(couch, "Vieja.md") is None
+    assert _reservation(couch, "Carpeta/Nueva.md")["note_id"] == doc["_id"]
+    # La ruta liberada queda disponible para otra nota.
+    assert await push.push([_note(path="Vieja.md")]) == []
+
+
+async def test_rf_011_rename_to_a_taken_path_is_rejected_and_keeps_the_old_one(push, couch, vault):
+    mine, other = _note(path="Mia.md"), _note(path="Otra.md")
+    await push.push([mine, other])
+    rename = _note(mine["_id"], "2-bbb", ("1-aaa",), path="OTRA.md")
+    assert await push.push([rename]) == [_rejected(rename, "note-path-taken")]
+    assert _reservation(couch, "Mia.md")["note_id"] == mine["_id"]
+
+
+async def test_rf_011_renaming_only_the_case_keeps_the_reservation(push, couch, vault):
+    doc = _note(path="nota.md")
+    await push.push([doc])
+    assert await push.push([_note(doc["_id"], "2-bbb", ("1-aaa",), path="NOTA.md")]) == []
+    assert _reservation(couch, "nota.md")["note_id"] == doc["_id"]
+
+
+async def test_rf_010_soft_delete_frees_the_path(push, couch, vault):
+    doc = _note(path="Borrar.md")
+    await push.push([doc])
+    trashed = _note(doc["_id"], "2-bbb", ("1-aaa",), path="Borrar.md", deleted_at=T1)
+    assert await push.push([trashed]) == []
+    assert _reservation(couch, "Borrar.md") is None
+    assert await push.push([_note(path="Borrar.md")]) == []
+
+
+async def test_rf_010_a_note_created_in_the_trash_does_not_reserve(push, couch, vault):
+    assert await push.push([_note(path="Papelera.md", deleted_at=T1)]) == []
+    assert _reservation(couch, "Papelera.md") is None
+
+
+async def test_rf_017_restore_reserves_the_path_again(push, couch, vault):
+    doc = _note(path="Volver.md")
+    await push.push([doc, _note(doc["_id"], "2-bbb", ("1-aaa",), path="Volver.md", deleted_at=T1)])
+    assert _reservation(couch, "Volver.md") is None
+    assert await push.push([_note(doc["_id"], "3-ccc", ("2-bbb", "1-aaa"), path="Volver.md")]) == []
+    assert _reservation(couch, "Volver.md")["note_id"] == doc["_id"]
+
+
+async def test_rf_017_restore_with_the_path_taken_meanwhile_is_rejected(push, couch, vault):
+    doc = _note(path="Ocupada.md")
+    await push.push([doc])
+    await push.push([_note(doc["_id"], "2-bbb", ("1-aaa",), path="Ocupada.md", deleted_at=T1)])
+    await push.push([_note(path="Ocupada.md")])  # otra nota se queda la ruta
+    restore = _note(doc["_id"], "3-ccc", ("2-bbb", "1-aaa"), path="Ocupada.md")
+    assert await push.push([restore]) == [_rejected(restore, "note-path-taken")]
+    assert not _stored(couch, restore)
+
+
+async def test_rf_013_every_live_branch_keeps_its_reserved_path(push, couch, vault):
+    # Conflicto: una rama renombra la nota y la otra conserva la ruta vieja; mientras la
+    # otra siga viva, la ruta vieja no se libera (P-4: una rama perdedora puede ganar).
+    doc_id = _note_id()
+    assert await push.push([
+        _note(doc_id, "1-aaa", path="Vieja.md"),
+        _note(doc_id, "2-bbb", ("1-aaa",), path="Vieja.md", content="uno"),
+        _note(doc_id, "2-ccc", ("1-aaa",), path="Nueva.md", content="dos"),
+    ]) == []
+    assert _reservation(couch, "Vieja.md")["note_id"] == doc_id
+    assert _reservation(couch, "Nueva.md")["note_id"] == doc_id
+    taken = _note(path="Vieja.md")
+    assert await push.push([taken]) == [_rejected(taken, "note-path-taken")]
+
+
+async def test_rf_011_closing_a_branch_frees_a_path_no_live_leaf_uses(push, couch, vault):
+    doc_id = _note_id()
+    await push.push([
+        _note(doc_id, "1-aaa", path="Vieja.md"),
+        _note(doc_id, "2-bbb", ("1-aaa",), path="Vieja.md", content="uno"),
+        _note(doc_id, "2-ccc", ("1-aaa",), path="Nueva.md", content="dos"),
+    ])
+    tombstone = {"_id": doc_id, "_rev": "3-ddd", "_revisions": _revisions("3-ddd", ("2-bbb", "1-aaa")),
+                 "_deleted": True}
+    assert await push.push([tombstone]) == []
+    assert _reservation(couch, "Vieja.md") is None
+    assert _reservation(couch, "Nueva.md")["note_id"] == doc_id
+
+
+async def test_rf_013_mixed_batch_of_vaults_and_notes_rejects_only_the_bad_note(push, couch, vault):
+    await push.push([_note(path="Ocupada.md")])
+    vault_id = _new_vault_id()
+    new_vault, good = _vault_rev(vault_id, name="Mezcla"), _note(_note_id(vault_id), path="Ocupada.md")
+    taken = _note(path="ocupada.md")
+    assert await push.push([taken, good, new_vault]) == [_rejected(taken, "note-path-taken")]
+    assert _stored(couch, new_vault) and _stored(couch, good) and not _stored(couch, taken)
+
+
+async def test_rf_013_a_rewrite_of_an_already_stored_revision_does_not_touch_the_reservation(
+        push, couch, vault):
+    doc = _note(path="Nota.md")
+    await push.push([doc])
+    reservation = _reservation(couch, "Nota.md")
+    assert await push.push([doc]) == []
+    assert _reservation(couch, "Nota.md") == reservation
