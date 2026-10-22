@@ -34,8 +34,9 @@ from app.core.errors import StorageUnavailable, VaultNameTaken
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultDescription, VaultName, VaultTags
+from app.core.timestamps import is_timestamp
 from app.services.sync_filter import is_replicable_id
-from app.services.vault_service import VaultService, is_timestamp, name_key
+from app.services.vault_service import VaultService, name_key
 
 # Claves de una revisión de bóveda, en el orden en que se informa la que falta (§2.3 paso 4).
 _VAULT_KEYS = (
