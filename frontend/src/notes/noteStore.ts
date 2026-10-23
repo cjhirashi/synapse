@@ -107,6 +107,9 @@ function titleToPath(title: string): string {
   return path === "" || /\.md$/i.test(path) ? path : `${path}.md`;
 }
 
+/** Cuerpos leídos por lote al construir el índice de resumen. */
+const INDEX_BATCH = 200;
+
 export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions = {}): NoteStore {
   const now = options.now ?? (() => utcNow());
   const newId = options.newId ?? (() => crypto.randomUUID());
@@ -137,8 +140,21 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (indexSeq === null) {
       // La secuencia se toma ANTES de leer: lo que cambie mientras se construye se reaplica luego (idempotente).
       const seq = (await db.info()).update_seq;
-      const rows = await db.allDocs<NoteDoc>({ startkey: NOTE_ID_PREFIX, endkey: `${NOTE_ID_PREFIX}￰`, include_docs: true });
-      for (const row of rows.rows) if (row.doc?.type === "note") indexPut(row.doc);
+      // Por lotes (S-7): nunca hay más de INDEX_BATCH cuerpos en memoria a la vez; de cada uno sólo
+      // se conserva el resumen. `startkey` es el último id leído y `skip: 1` lo hace exclusivo.
+      let last: string | null = null;
+      for (;;) {
+        const page: PouchDB.Core.AllDocsResponse<NoteDoc> = await db.allDocs<NoteDoc>({
+          startkey: last ?? NOTE_ID_PREFIX,
+          endkey: `${NOTE_ID_PREFIX}￰`,
+          include_docs: true,
+          limit: INDEX_BATCH,
+          ...(last === null ? {} : { skip: 1 }),
+        });
+        for (const row of page.rows) if (row.doc?.type === "note") indexPut(row.doc);
+        if (page.rows.length < INDEX_BATCH) break;
+        last = page.rows[page.rows.length - 1].id;
+      }
       indexSeq = seq;
     }
     // Sólo lo cambiado desde la última vez; el cuerpo de cada documento se lee una vez y se descarta.
