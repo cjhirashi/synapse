@@ -484,3 +484,11 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | N-1 · `note.schema.json` admite `_rev` con generación de cualquier longitud; el servidor la acota a 16 dígitos (H-2) | Low | el contrato no se actualizó con H-2 | Patrón `^[1-9][0-9]{0,15}-[0-9a-f]+$` y `test_note_contract.py` compara el tope con `_REV`. |
+
+## 21. Enmienda 12 (2026-10-23) — Converge sobre 9dd03fc
+> Suites en verde (backend 1054, frontend 778, sync 25, p95 67,9 ms, gate abierto); backend,
+> editor y sync cliente limpios. Un Low de UI/trazabilidad.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-1 · `NoteSidebar.test.tsx` "RF-011: renombrar/mover…" intermitente (1/24 con 24 hilos: `Test timed out in 5000ms`) | Low | el test teclea 17 caracteres con `user.type` dentro del presupuesto de 5 s; bajo carga se excede (el código no tiene carrera: `aria-expanded` siempre `true`, paso crítico 0,4–1,15 s) | `user.click` + `user.paste` de la ruta (lo probado es el renombrado, no el tecleo); `findBy` con margen explícito; aserciones intactas. 24/24 bajo la misma carga. |
