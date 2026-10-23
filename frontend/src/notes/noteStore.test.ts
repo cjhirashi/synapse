@@ -324,4 +324,20 @@ describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
     await db.remove(ext._id as string, ext._rev as string); // tumba de PouchDB
     expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Movida.md"]);
   });
+
+  // S-7 (PLAN-0008 §18): la construcción inicial lee los cuerpos por lotes, no todos de una vez.
+  it("la construcción inicial del índice pide los cuerpos en lotes de 200 como máximo", async () => {
+    const stamp = "2026-10-22T09:00:00.000000Z";
+    await db.bulkDocs(
+      Array.from({ length: 450 }, (_, i) => ({
+        _id: `note:${VAULT}:${String(i).padStart(4, "0")}`, type: "note", vault_id: VAULT, path: `n${i}.md`,
+        frontmatter: {}, content: "x".repeat(100), created_at: stamp, updated_at: stamp, deleted_at: null,
+      })),
+    );
+    const allDocs = vi.spyOn(db, "allDocs");
+    expect(await store.list(VAULT)).toHaveLength(450);
+    const withBodies = bodies(allDocs).map(([options]) => (options as { limit?: number }).limit);
+    expect(withBodies.length).toBeGreaterThanOrEqual(3); // 450 / 200
+    expect(withBodies.every((limit) => limit !== undefined && limit <= 200)).toBe(true);
+  });
 });
