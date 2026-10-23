@@ -476,3 +476,11 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | S-8 · la paginación del índice (`startkey: last` + `skip: 1`) pierde una nota si `last` desaparece entre lotes | Low | `skip` supone que la clave anterior sigue existiendo | Cota inferior estricta `startkey: last + "\u0000"` sin `skip`; test con la última clave borrada entre lotes. |
 | N-2 · tareas que citan un RF no figuran en su fila de cobertura | Low (proceso) | tabla mantenida a mano | Tabla completada por script desde las cláusulas `(cubre …)` de cada tarea `[x]` (118 referencias; 0 filas incompletas). |
 | N-3 · `frontend/src/README.md` describe el foco de `ConfirmDialog` anterior a E-5 y omite E-3/E-4 | Low | — | Una frase por punto. |
+
+## 20. Enmienda 11 (2026-10-23) — Converge sobre 9204b88
+> Suites en verde (backend 1053, 99,28 %; frontend 778, 98,07 %; sync 25; p95 67,8 ms; gate abierto).
+> Editor, sync del cliente y UI/trazabilidad: secciones limpias. Un Low del contrato.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| N-1 · `note.schema.json` admite `_rev` con generación de cualquier longitud; el servidor la acota a 16 dígitos (H-2) | Low | el contrato no se actualizó con H-2 | Patrón `^[1-9][0-9]{0,15}-[0-9a-f]+$` y `test_note_contract.py` compara el tope con `_REV`. |
