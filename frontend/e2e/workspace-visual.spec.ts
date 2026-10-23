@@ -193,6 +193,13 @@ for (const theme of THEMES) {
         const panel = await measure(page, ".vault-workspace-main");
         expectMeasure(`R-15 ${key}`, "x del panel del editor", panel.x, 296, 1);
 
+        // A1-4: sin texto de estado no se reserva hueco: "Editar" queda a la distancia del relleno de la barra.
+        if (view === "read") {
+          const edit = await measure(page, '.note-editor-header button:has-text("Editar")');
+          const header = await measure(page, ".note-editor-header");
+          expectMeasure(`A1-4 ${key}`, "hueco a la derecha de «Editar»", header.x + header.w - (edit.x + edit.w), 16, 2);
+        }
+
         const top = await measure(page, ".note-editor-header");
         expectMeasure(`R-12 ${key}`, "alto de la barra superior", top.h, 43, 2);
         expect(top.bg, "barra superior en --bg-secondary").toBe(tokenColor(theme, "--bg-secondary"));

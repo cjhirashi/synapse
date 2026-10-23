@@ -90,7 +90,10 @@ test("RF-001: derivedColor es estable, está en la paleta y reparte las bóvedas
   const colors = ids.map(derivedColor);
   expect(colors.every((color) => (PALETTE as readonly string[]).includes(color))).toBe(true);
   expect(ids.map(derivedColor)).toEqual(colors);
-  expect(new Set(colors).size, "usa varios colores").toBeGreaterThanOrEqual(4);
+  expect(new Set(colors).size, "usa varios colores").toBeGreaterThanOrEqual(3);
+  // `danger` lee como alerta: sólo se elige a mano, nunca se deriva (enmienda 1, A1-5).
+  expect(colors).not.toContain("danger");
+  expect(PALETTE).toContain("danger");
 });
 
 test("RF-001: initials = primeras letras de las dos primeras palabras (o las dos de una sola)", () => {
