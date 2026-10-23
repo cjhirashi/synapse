@@ -234,20 +234,48 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     }
   }
 
-  /** Guarda el borrador; devuelve si quedó guardado. Un error se muestra y deja el borrador. */
+  /** Guardado en vuelo: serializa `save()` (E-1). */
+  const inFlight = useRef<Promise<boolean> | null>(null);
+
+  /**
+   * Guarda el borrador; devuelve si quedó guardado. Un error se muestra y deja el borrador.
+   * Los guardados se serializan (E-1): una llamada en vuelo absorbe a las demás (doble Ctrl+S,
+   * auto-repeat) y, al terminar, se vuelve a decidir con lo que haya ahora: si el borrador cambió
+   * mientras tanto, se guarda otra vez, ya sobre la revisión nueva (nunca con la misma `rev`, que
+   * crearía una rama de conflicto con contenido idéntico).
+   */
   async function save(): Promise<boolean> {
+    if (inFlight.current) {
+      const ok = await inFlight.current;
+      return ok ? save() : false;
+    }
+    const run = writeDraft();
+    inFlight.current = run;
+    try {
+      return await run;
+    } finally {
+      inFlight.current = null;
+    }
+  }
+
+  /** Una escritura del borrador sobre la revisión que tiene el editor AHORA (por refs, no por cierre). */
+  async function writeDraft(): Promise<boolean> {
     const current = noteRef.current;
     if (current === null) return false;
-    if (!dirtyRef.current) return true;
+    const content = draftRef.current;
+    if (content === current.content) return true; // nada que guardar
     // Aviso inmediato: el almacén también lo valida, pero así no hay ida y vuelta.
-    if (checkContent(draft) !== null) {
+    if (checkContent(content) !== null) {
       setError(noteErrorMessage(new NoteValidationError(["content"])));
       return false;
     }
     setSaving(true);
     setError(null);
     try {
-      setNote(await notes.save(current.id, draft, current.rev));
+      const saved = await notes.save(current.id, content, current.rev);
+      // La revisión nueva está disponible de inmediato para el guardado siguiente (antes del render).
+      noteRef.current = saved;
+      setNote(saved);
       setSaved(true);
       return true;
     } catch (err) {
