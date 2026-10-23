@@ -3,6 +3,7 @@
 // editores reales (RF-008, byte a byte) está al final.
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
+import type { EditorView as PMView } from "@milkdown/prose/view";
 import userEvent from "@testing-library/user-event";
 import { DataMemoryRouter } from "../test-utils/router";
 import { describe, expect, it, vi } from "vitest";
@@ -11,6 +12,8 @@ import type { NoteConflict } from "../sync/conflicts";
 import type { SyncContextValue } from "../sync/useSync";
 import { createNoteStore } from "../notes/noteStore";
 import { CONTENT_MAX_BYTES } from "../notes/noteRules";
+import { CodeView } from "./CodeView";
+import { MilkdownView } from "./MilkdownView";
 import NoteEditor, { type NoteEditorViews, type ViewProps } from "./NoteEditor";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
@@ -538,4 +541,57 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Visual" }));
     await waitFor(() => expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola mundo"));
   });
+
+  // E-6 (PLAN-0008 §25): el listener de Milkdown emite con un debounce de 200 ms y su `destroy`
+  // descarta lo pendiente. Una edición en Visual seguida (en menos de 200 ms) de un cambio de vista,
+  // de «Leer» o de Ctrl+S no puede perderse ni guardar el texto anterior.
+  describe("E-6: edición reciente en Visual (menos de 200 ms)", () => {
+    /** Abre "hola" en edición con Milkdown real y escribe «!!» directamente en ProseMirror (sin esperar el debounce). */
+    async function typeQuickly() {
+      let view: PMView | null = null;
+      const real: NoteEditorViews = {
+        Visual: (props) => <MilkdownView {...props} onView={(v) => (view = v)} />,
+        Code: CodeView,
+      };
+      const db = memoryDb();
+      const { value } = syncValue({}, db);
+      const note = await value.notes.create(VAULT, "Rapida");
+      await value.notes.save(note.id, "hola", note.rev);
+      render(
+        <DataMemoryRouter>
+          <WithSync value={value}>
+            <NoteEditor noteId={note.id} editOnOpen views={real} />
+          </WithSync>
+        </DataMemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Rapida" });
+      await waitFor(() => expect(view).not.toBeNull());
+      const pm = view as unknown as PMView;
+      act(() => {
+        pm.dispatch(pm.state.tr.insertText("!!", pm.state.doc.content.size - 1));
+      });
+      return { value, note };
+    }
+
+    it("RF-008: alternar a Código enseguida conserva el texto escrito", async () => {
+      await typeQuickly();
+      fireEvent.click(screen.getByRole("button", { name: "Código" }));
+      await waitFor(() => expect(codeText()).toContain("hola!!"));
+    });
+
+    it("RF-008: «Leer» enseguida guarda el texto escrito", async () => {
+      const { value, note } = await typeQuickly();
+      fireEvent.click(screen.getByRole("button", { name: "Leer" }));
+      await screen.findByRole("button", { name: "Editar" });
+      expect((await value.notes.get(note.id)).content).toContain("hola!!");
+    });
+
+    it("RF-008: Ctrl+S enseguida guarda el texto nuevo, no el anterior", async () => {
+      const { value, note } = await typeQuickly();
+      fireEvent.keyDown(screen.getByRole("region", { name: "Editor de nota" }), { key: "s", ctrlKey: true });
+      await screen.findByText("Guardado");
+      expect((await value.notes.get(note.id)).content).toContain("hola!!");
+    });
+  });
 });
+
