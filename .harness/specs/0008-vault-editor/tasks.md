@@ -523,6 +523,11 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && for i in $(seq 1 24); do npx vitest run src/notes/NoteSidebar.test.tsx --pool=forks || exit 1; done`
   - EXPECT: 24/24 `passed`.
 
+### V · Enmienda 13 (PLAN-0008 §22) — F-2
+- [ ] T-148 — F-2: `asyncUtilTimeout` global en `test-setup.ts`; quitar los `timeout` locales de T-147; 4 corridas simultáneas de la suite de frontend sin fallos (cubre RF-011, RF-019) [zona: test]
+  - CHECK: `cd frontend && for i in 1 2 3 4; do (npx vitest run src/notes src/layout src/vaults src/editor > /tmp/s8/f2-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
+  - EXPECT: las 4 con `exit=0`.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -536,7 +541,7 @@ actualizado: 2026-10-22
 | RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
 | RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075, T-096, T-111, T-139, T-140, T-142, T-000, T-073, T-094, T-095, T-108, T-113, T-126 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration, mergeNote.test (doble borrado), conflicts.test (cuota, barrido sin cuerpos) | Pass |
 | RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-132, T-137, T-144, T-000, T-073, T-108, T-113, T-126 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration, NoteEditor.test (ConfirmDialog de borrado) | Pass |
-| RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
+| RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147, T-148 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
 | RF-012 | T-028, T-029, T-034, T-035, T-059, T-060, T-094, T-000, T-073, T-108, T-113, T-126 | untitled.test, noteStore.test, NoteSidebar.test | Pass |
 | RF-013 | T-002…T-010, T-017, T-018, T-022, T-026, T-027, T-034, T-035, T-059, T-060, T-071, T-072, T-075, T-103, T-104, T-133, T-000, T-023, T-073, T-094, T-108, T-113, T-126 | test_note_rules, test_reservations, test_note_service, test_note_sync_push, test_contract, noteRules.test, noteStore.test, RejectionsPage.test, notes.integration, test_note_sync_api (ruta NFKC ×18) | Pass |
 | RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076, T-095, T-096, T-111, T-136, T-144, T-000, T-073, T-094, T-097, T-098, T-108, T-113, T-126 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration, VaultWorkspacePage.test (bóveda a la papelera con borrador) | Pass |
@@ -544,7 +549,7 @@ actualizado: 2026-10-22
 | RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077, T-140, T-142, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration, conflicts.test (StorageFullError) | Pass |
 | RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104, T-000, T-073, T-108, T-113, T-126 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |
 | RF-018 | T-067, T-068, T-094, T-121, T-122, T-000, T-073, T-108, T-113, T-126 | VaultListPage.test | Pass |
-| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-132, T-137, T-138, T-139, T-000, T-073, T-108, T-113, T-126 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test, NoteSidebar.test (Escape, contraste, displayName), noteStore.test (índice de resumen) | Pass |
+| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-132, T-137, T-138, T-139, T-000, T-073, T-108, T-113, T-126, T-148 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test, NoteSidebar.test (Escape, contraste, displayName), noteStore.test (índice de resumen) | Pass |
 | RNF-001 | T-074, T-078, T-094, T-124, T-126, T-139, T-143, T-000, T-145 | tree.perf.test, tree.perf.test (índice de resumen) | Pass |
 | doc: contracts/note.schema.json | T-080, T-146 | test_note_contract | Pass |
 | doc: 0005-sync/contracts/openapi.yaml | T-022, T-081 | test_contract | Pass |

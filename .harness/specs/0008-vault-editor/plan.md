@@ -492,3 +492,15 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | F-1 · `NoteSidebar.test.tsx` "RF-011: renombrar/mover…" intermitente (1/24 con 24 hilos: `Test timed out in 5000ms`) | Low | el test teclea 17 caracteres con `user.type` dentro del presupuesto de 5 s; bajo carga se excede (el código no tiene carrera: `aria-expanded` siempre `true`, paso crítico 0,4–1,15 s) | `user.click` + `user.paste` de la ruta (lo probado es el renombrado, no el tecleo); `findBy` con margen explícito; aserciones intactas. 24/24 bajo la misma carga. |
+
+## 22. Enmienda 13 (2026-10-23) — Converge sobre 8513421
+> Editor, sync del cliente y backend: limpios. Frontend 778/778 dos veces, sync 25/25, p95 61,5 ms,
+> gate abierto. La suite backend del coordinador quedó **invalidada** (7 failed, 30 errors: `no such
+> table: users`, `database is locked`) porque un revisor corrió pytest en el mismo worktree a la vez
+> (`backend/test.db` compartido y limpieza de `synapse_user_*` del CouchDB :15984) — error de
+> instrucción del coordinador, no del código; desde ahora ningún revisor ejecuta pytest en el
+> worktree de trabajo.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-2 · bajo carga extrema (4 suites simultáneas) fallan `findBy` con el plazo por defecto de 1 s (notes, editor y vaults de 0003) | Low (entorno de pruebas) | plazo global de Testing Library pensado para máquinas sin carga | `configure({ asyncUtilTimeout: 4000 })` global en `test-setup.ts` (un solo lugar, sin parches por test); se retira el `timeout: 4000` local de T-147. |
