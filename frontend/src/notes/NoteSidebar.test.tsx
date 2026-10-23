@@ -102,7 +102,8 @@ test("RF-003: un título inválido muestra el mensaje de ruta", async () => {
 test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con el mismo id", async () => {
   const { user, value } = await setup(["Raíz.md"]);
   const [{ id }] = await value.notes.list(VAULT);
-  await user.click(await screen.findByRole("button", { name: "Renombrar «Raíz»" }));
+  await user.click(await screen.findByRole("treeitem", { name: "Raíz" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar «Raíz»" }));
   const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
   expect(input).toHaveValue("Raíz.md");
   await user.clear(input);
@@ -117,7 +118,8 @@ test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con
 
 test("RF-013: renombrar a una ruta ocupada muestra el mensaje y conserva el nombre", async () => {
   const { user, value } = await setup(["Uno.md", "Dos.md"]);
-  await user.click(await screen.findByRole("button", { name: "Renombrar «Dos»" }));
+  await user.click(await screen.findByRole("treeitem", { name: "Dos" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar «Dos»" }));
   const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
   await user.clear(input);
   await user.type(input, "uno.MD");
@@ -129,7 +131,8 @@ test("RF-013: renombrar a una ruta ocupada muestra el mensaje y conserva el nomb
 test("RF-011: «Cancelar» cierra el renombrado sin escribir", async () => {
   const { user, value } = await setup(["Uno.md"]);
   const rename = vi.spyOn(value.notes, "rename");
-  await user.click(await screen.findByRole("button", { name: "Renombrar «Uno»" }));
+  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar «Uno»" }));
   await user.click(screen.getByRole("button", { name: "Cancelar" }));
   expect(screen.queryByRole("textbox", { name: "Ruta de la nota" })).toBeNull();
   expect(rename).not.toHaveBeenCalled();
@@ -138,7 +141,8 @@ test("RF-011: «Cancelar» cierra el renombrado sin escribir", async () => {
 test("RF-010: borrar quita la nota del árbol, avisa al padre y la deja en la papelera", async () => {
   const { user, value, onDeleted } = await setup(["Uno.md", "Dos.md"]);
   const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
-  await user.click(await screen.findByRole("button", { name: "Borrar «Uno»" }));
+  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
+  await user.click(screen.getByRole("button", { name: "Borrar «Uno»" }));
   await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(screen.getByRole("treeitem", { name: "Dos" })).toBeInTheDocument();
   expect(onDeleted).toHaveBeenCalledWith(uno.id);

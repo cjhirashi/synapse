@@ -25,10 +25,10 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
 
 describe("MilkdownView", () => {
   // RF-007 (VU-2): un lector de pantalla anuncia la lectura como documento de sólo lectura, no como cuadro de texto.
-  it("en lectura el contenido es role=document con aria-readonly=true", async () => {
+  it("en lectura el contenido es role=document (sin aria-readonly, inválido en document)", async () => {
     await mount({ value: "hola", readOnly: true });
     const doc = screen.getByRole("document", { name: "Visual" });
-    expect(doc).toHaveAttribute("aria-readonly", "true");
+    expect(doc).not.toHaveAttribute("aria-readonly");
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 

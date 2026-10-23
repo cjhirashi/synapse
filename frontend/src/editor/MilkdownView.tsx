@@ -121,10 +121,9 @@ export function MilkdownView({ value, onChange, readOnly, label, onView }: Milkd
       if (running.current?.editor !== editor) return;
       const view = editor.ctx.get(editorViewCtx);
       // `@milkdown/core` fuerza `role="textbox"` en el DOM de la vista al crearla (después de las
-      // `attributes` de ProseMirror, VU-2): se reasigna el rol real. En lectura es un documento
-      // de sólo lectura, no un cuadro de texto.
+      // `attributes` de ProseMirror, VU-2): se reasigna el rol real. En lectura es un documento,
+      // no un cuadro de texto (`aria-readonly` no es válido en `document`, C-3).
       view.dom.setAttribute("role", readOnly ? "document" : "textbox");
-      if (readOnly) view.dom.setAttribute("aria-readonly", "true");
       onViewRef.current?.(view);
     });
     running.current = { editor, ready, readOnly };

@@ -7,8 +7,10 @@
  * prefijos de `path` (`buildTree`) y empiezan plegadas; la que contiene la nota abierta se
  * despliega sola. Un renombrado edita la ruta completa: así también se mueve de carpeta.
  *
- * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y sus
- * acciones son botones propios fuera del `treeitem`, con el nombre de la nota en la etiqueta.
+ * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y el árbol
+ * sólo contiene `treeitem`s (C-4). "Renombrar"/"Borrar" viven en una barra (`toolbar`) fuera del
+ * árbol, siempre visible para la nota seleccionada (C-1, C-2); F2 y Supr las atajan desde el
+ * `treeitem` enfocado.
  * Teclado del patrón WAI-ARIA (VF-9) con *roving tabindex*: un solo `treeitem` tabulable;
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
@@ -75,6 +77,8 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   const [renaming, setRenaming] = useState<{ note: NoteSummary; path: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Nota a la que se refiere la barra de acciones: la última que tomó el foco, o la abierta. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setItems(await notes.list(vaultId));
@@ -89,6 +93,11 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       alive = false;
     };
   }, [notes, vaultId, notesVersion]);
+
+  // La nota que se abre (al crearla o desde fuera) pasa a ser la seleccionada.
+  useEffect(() => {
+    if (openId !== null) setSelectedId(openId);
+  }, [openId]);
 
   // La carpeta de la nota abierta se despliega (sin plegar las que el usuario abrió).
   useEffect(() => {
@@ -131,6 +140,16 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       case "End":
         target = rows[rows.length - 1].key;
         break;
+      case "F2":
+      case "Delete": {
+        const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
+        if (!note) return;
+        event.preventDefault();
+        setSelectedId(note.id);
+        if (event.key === "F2") startRename(note);
+        else void remove(note);
+        return;
+      }
       case "ArrowRight":
         if (row.kind !== "folder") return;
         if (!open) toggle(row.path);
@@ -183,6 +202,11 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     });
   }
 
+  function startRename(note: NoteSummary) {
+    setError(null);
+    setRenaming({ note, path: note.path });
+  }
+
   async function rename(event: FormEvent) {
     event.preventDefault();
     if (renaming === null) return;
@@ -200,7 +224,10 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       await notes.softDelete(note.id, note.rev);
       await reload();
     });
-    if (ok) onDeleted(note.id);
+    if (ok) {
+      setSelectedId((current) => (current === note.id ? null : current));
+      onDeleted(note.id);
+    }
   }
 
   function renderNodes(nodes: TreeNode<NoteSummary>[]) {
@@ -234,28 +261,6 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       }
 
       const note = node.note;
-      if (renaming?.note.id === note.id) {
-        return (
-          <li key={note.id} role="none">
-            <form className="note-tree-rename" onSubmit={rename}>
-              <label>
-                Ruta de la nota
-                <input
-                  value={renaming.path}
-                  onChange={(event) => setRenaming({ note, path: event.target.value })}
-                  autoFocus
-                />
-              </label>
-              <button type="submit" disabled={busy}>
-                Guardar ruta
-              </button>
-              <button type="button" onClick={() => setRenaming(null)}>
-                Cancelar
-              </button>
-            </form>
-          </li>
-        );
-      }
       return (
         <li key={note.id} role="none" className="note-tree-item">
           <button
@@ -264,7 +269,10 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             aria-selected={note.id === openId}
             data-key={noteKey(note.id)}
             tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
-            onFocus={() => setFocusKey(noteKey(note.id))}
+            onFocus={() => {
+              setFocusKey(noteKey(note.id));
+              setSelectedId(note.id);
+            }}
             className="note-tree-row"
             onClick={() => onOpen(note.id)}
           >
@@ -272,18 +280,13 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               {node.name}
             </span>
           </button>
-          <span className="note-tree-actions">
-            <button type="button" aria-label={`Renombrar «${node.name}»`} onClick={() => setRenaming({ note, path: note.path })}>
-              Renombrar
-            </button>
-            <button type="button" aria-label={`Borrar «${node.name}»`} onClick={() => void remove(note)} disabled={busy}>
-              Borrar
-            </button>
-          </span>
         </li>
       );
     });
   }
+
+  const selected = items?.find((item) => item.id === selectedId) ?? null;
+  const selectedName = selected ? (selected.path.split("/").pop() ?? selected.path).replace(/\.md$/i, "") : "";
 
   return (
     <aside className="note-sidebar" aria-label="Notas de la bóveda">
@@ -297,6 +300,33 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
         </button>
       </form>
       {error && <p role="alert">{error}</p>}
+      {selected && (
+        <div role="toolbar" aria-label="Acciones de la nota" className="note-actions">
+          <span className="note-actions-name" title={selected.path}>
+            {selectedName}
+          </span>
+          <button type="button" aria-label={`Renombrar «${selectedName}»`} onClick={() => startRename(selected)}>
+            Renombrar
+          </button>
+          <button type="button" aria-label={`Borrar «${selectedName}»`} onClick={() => void remove(selected)} disabled={busy}>
+            Borrar
+          </button>
+        </div>
+      )}
+      {renaming && (
+        <form className="note-tree-rename" onSubmit={rename}>
+          <label>
+            Ruta de la nota
+            <input value={renaming.path} onChange={(event) => setRenaming({ note: renaming.note, path: event.target.value })} autoFocus />
+          </label>
+          <button type="submit" disabled={busy}>
+            Guardar ruta
+          </button>
+          <button type="button" onClick={() => setRenaming(null)}>
+            Cancelar
+          </button>
+        </form>
+      )}
       {items === null ? (
         <p>Cargando…</p>
       ) : items.length === 0 ? (

@@ -121,26 +121,31 @@
   color: var(--accent);
 }
 
-/* Las acciones de una fila aparecen al apuntar o enfocar (siguen en el orden de tabulación). */
-/* En reposo no ocupan ancho (el nombre se ve completo) pero siguen enfocables. */
-.note-tree-actions {
+/* Barra de acciones de la nota seleccionada: fuera del árbol y siempre visible (también en táctil). */
+.note-actions {
   display: flex;
-  gap: var(--space-1);
-  max-width: 0;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.note-actions-name {
+  flex: 1 1 100%;
+  min-width: 0;
   overflow: hidden;
-  opacity: 0;
-  transition: opacity var(--dur-fast) var(--ease-standard);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
-.note-tree-item:hover .note-tree-actions,
-.note-tree-item:focus-within .note-tree-actions {
-  max-width: none;
-  opacity: 1;
-}
-
-.note-tree-actions button {
-  padding: 2px 6px;
-  font-size: 12px;
+.note-actions button {
+  padding: 4px var(--space-3);
+  font-size: 13px;
 }
 
 .note-tree-rename {
