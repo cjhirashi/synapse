@@ -214,3 +214,115 @@ for (const theme of THEMES) {
     });
   }
 }
+
+// V-6 · riel con scroll propio y documento sin scroll (RF-009)
+for (const theme of THEMES) {
+  test(`V-6 40 bóvedas: el riel hace scroll y el documento no, ${theme} (RF-009)`, async ({ browser, crowded }) => {
+    const { context, page } = await openWorkspace(browser, crowded, { theme, icons: false });
+
+    const rail = await measure(page, ".vault-rail");
+    expect(rail.scrollHeight, "el riel desborda su alto").toBeGreaterThan(rail.clientHeight);
+    const document_ = await page.evaluate(() => ({
+      scroll: document.scrollingElement!.scrollHeight,
+      viewport: window.innerHeight,
+    }));
+    expect(document_.scroll, "el documento no hace scroll").toBe(document_.viewport);
+
+    // La última bóveda se alcanza con el scroll del riel (no con el de la página).
+    await page.locator(".vault-rail").evaluate((el) => el.scrollTo({ top: el.scrollHeight }));
+    const last = page.locator(".vault-rail a").last();
+    const box = (await last.boundingBox())!;
+    expect(box.y + box.height, "la última bóveda queda dentro del viewport").toBeLessThanOrEqual(document_.viewport);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+
+    await shot(page, `rail-overflow-${theme}`, { clip: { x: 0, y: 0, width: 420, height: document_.viewport } });
+    await context.close();
+  });
+}
+
+// V-8 · tema oscuro por defecto sin preferencia guardada (RF-006a)
+test("V-8 tema oscuro por defecto, sin localStorage (RF-006a)", async ({ browser, seeded }) => {
+  // `colorScheme: light`: el modo "sistema" resolvería claro, así que sólo un defecto oscuro pasa.
+  const context = await newSession(browser, seeded, { theme: null, colorScheme: "light" });
+  // Historial de `data-theme` desde antes de que el documento exista: nunca debe aparecer otro valor.
+  await context.addInitScript(() => {
+    const seen: string[] = [];
+    (window as unknown as { __themes: string[] }).__themes = seen;
+    new MutationObserver(() => seen.push(document.documentElement.getAttribute("data-theme") ?? "")).observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+  });
+  const page = await context.newPage();
+  await openVault(page, seeded.vaults[0].id);
+
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  const seen = await page.evaluate(() => (window as unknown as { __themes: string[] }).__themes);
+  expect(seen.length, "el script previo al pintado fijó el tema").toBeGreaterThan(0);
+  expect(new Set(seen), "sin parpadeo a otro tema").toEqual(new Set(["dark"]));
+  await expect(page.getByRole("button", { name: "Tema oscuro" })).toHaveAttribute("aria-pressed", "true");
+  expect(await page.evaluate(() => localStorage.getItem("synapse-theme")), "el defecto no se guarda").toBeNull();
+
+  await shot(page, "theme-default");
+  await context.close();
+});
+
+// V-9 · sólo colores de tokens del tema activo (RF-006)
+for (const theme of THEMES) {
+  test(`V-9 colores computados dentro de tokens.css, ${theme} (RF-006)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme });
+    const tree = page.getByRole("tree", { name: "Notas" });
+    await tree.getByRole("treeitem", { name: "Guías" }).click();
+    await tree.getByRole("treeitem", { name: "Diseño" }).click();
+    await openNote(page, "Sistema de tokens");
+    await expect(page.locator(".note-editor-body")).toBeVisible();
+
+    const allowed = themeColors(theme);
+    const selectors = [
+      ".vault-rail",
+      ".vault-workspace-side",
+      ".vault-workspace-header",
+      ".note-sidebar-new",
+      ".note-tree-panel",
+      ".note-tree-folder",
+      '.note-tree-row[aria-selected="true"]',
+      ".note-editor-header",
+      ".note-editor-body",
+    ];
+    for (const selector of selectors) {
+      // Fondo, texto y bordes con grosor: ningún color puede venir de fuera de los tokens.
+      const found = await page.locator(selector).first().evaluate((el) => {
+        const c = getComputedStyle(el);
+        const colors = [c.backgroundColor, c.color];
+        for (const side of ["Top", "Right", "Bottom", "Left"] as const) {
+          if (parseFloat(c[`border${side}Width`]) > 0) colors.push(c[`border${side}Color`]);
+        }
+        return colors;
+      });
+      for (const color of found) expect(allowed.has(color), `${selector}: ${color} no es un token de ${theme}`).toBe(true);
+    }
+    await context.close();
+  });
+}
+
+// V-10 · humo a 390 px: nada se desborda (RF-005, RF-007 de 0008: apilado ≤ 800 px)
+for (const theme of THEMES) {
+  test(`V-10 móvil 390 px sin scroll horizontal, ${theme} (RF-005)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme, size: MOBILE });
+    await openNote(page, "Bienvenida");
+    await expect(page.locator(".note-editor-body")).toBeVisible();
+
+    const overflow = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollWidth,
+      body: document.body.scrollWidth,
+      viewport: window.innerWidth,
+    }));
+    expect(overflow.scroll, "el documento no hace scroll horizontal").toBeLessThanOrEqual(overflow.viewport);
+    expect(overflow.body).toBeLessThanOrEqual(overflow.viewport);
+    await expect(page.locator(".vault-rail")).toBeVisible();
+    await expect(page.locator(".note-tree-panel")).toBeVisible();
+
+    await shot(page, `mobile-390-${theme}`);
+    await context.close();
+  });
+}
