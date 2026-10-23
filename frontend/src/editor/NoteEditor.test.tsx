@@ -1,7 +1,7 @@
 // Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
 // Con editores falsos (textareas) para probar el estado del envoltorio; la prueba con los
 // editores reales (RF-008, byte a byte) está al final.
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { DataMemoryRouter } from "../test-utils/router";
@@ -145,6 +145,46 @@ describe("guardado explícito (P-5)", () => {
     await screen.findByText("Guardado");
     expect(screen.queryByText("Cambios sin guardar")).toBeNull();
     expect((await value.notes.get(first.id)).content).toBe("uno!");
+  });
+
+  // E-1 (PLAN-0008 §17): un guardado en vuelo absorbe el doble Ctrl+S / auto-repeat.
+  it("RF-008: un doble Ctrl+S guarda una sola vez (sin rama de conflicto con contenido idéntico)", async () => {
+    const { value, first } = await setup("uno");
+    const real = value.notes.save.bind(value.notes);
+    const save = vi.spyOn(value.notes, "save").mockImplementation(async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, 30)); // guardado lento: la segunda pulsación llega en vuelo
+      return real(...args);
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor visual" }), "!");
+    const region = screen.getByRole("region", { name: "Editor de nota" });
+    fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    await screen.findByText("Guardado");
+    expect(save).toHaveBeenCalledTimes(1);
+    expect((await value.notes.get(first.id)).content).toBe("uno!");
+  });
+
+  // E-1: si el borrador cambió durante el vuelo, se guarda después sobre la revisión nueva.
+  it("RF-008: si el borrador cambia durante el guardado, se guarda después sobre la rev nueva", async () => {
+    const { value, first } = await setup("uno");
+    const real = value.notes.save.bind(value.notes);
+    const save = vi.spyOn(value.notes, "save").mockImplementation(async (...args) => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return real(...args);
+    });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const box = screen.getByRole("textbox", { name: "Editor visual" });
+    await userEvent.type(box, "!");
+    const region = screen.getByRole("region", { name: "Editor de nota" });
+    fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    await userEvent.type(box, "?");
+    fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
+    await screen.findByText("Guardado");
+    expect(save.mock.calls[1][2]).not.toBe(first.rev); // sobre la revisión que dejó el primer guardado
+    expect((await value.notes.get(first.id)).content).toBe("uno!?");
+    expect(screen.queryByText("Cambios sin guardar")).toBeNull();
   });
 
   // RF-007
