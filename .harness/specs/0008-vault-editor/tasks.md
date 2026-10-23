@@ -457,7 +457,7 @@ actualizado: 2026-10-22
   - EXPECT: acciones visibles sin *hover*; nombres del árbol sin recortar por botones.
 
 ### O · Enmienda 6 (PLAN-0008 §15) — Converge corrida 1 bis (C-5, C-6)
-- [ ] T-131 — Test (rojo, commit propio) y corrección: tras borrar (Supr o botón) el foco va a la fila vecina (siguiente, si no anterior, si no "Nueva nota"); tras guardar o cancelar el renombrado vuelve al `treeitem` de la nota; F2/Supr no actúan mientras `busy` (C-5, C-6) (cubre RF-019, RF-010, RF-011) [zona: pantalla]
+- [x] T-131 — Test (rojo, commit propio) y corrección: tras borrar (Supr o botón) el foco va a la fila vecina (siguiente, si no anterior, si no "Nueva nota"); tras guardar o cancelar el renombrado vuelve al `treeitem` de la nota; F2/Supr no actúan mientras `busy` (C-5, C-6) (cubre RF-019, RF-010, RF-011) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/notes/VaultWorkspacePage.test.tsx && npx vitest run && npm run typecheck`
   - EXPECT: rojo (foco en `body`; doble `remove`) → `passed`.
 
