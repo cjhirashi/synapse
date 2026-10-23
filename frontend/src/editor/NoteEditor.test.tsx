@@ -681,4 +681,49 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
       expect((await value.notes.get(note.id)).content).toContain("hola!!");
     });
   });
+
+  // U-6 (PLAN-0008 §28): al pasar a edición por una acción del usuario, el foco va al editor activo.
+  describe("U-6: foco en el editor al pasar a edición", () => {
+    async function openRealRead() {
+      const db = memoryDb();
+      const { value } = syncValue({}, db);
+      const note = await value.notes.create(VAULT, "Foco");
+      await value.notes.save(note.id, "hola", note.rev);
+      render(
+        <DataMemoryRouter>
+          <WithSync value={value}>
+            <NoteEditor noteId={note.id} />
+          </WithSync>
+        </DataMemoryRouter>,
+      );
+      await screen.findByRole("heading", { name: "Foco" });
+    }
+
+    it("RF-007: una nota nueva (se abre en edición) recibe el foco en el editor visual", async () => {
+      await openReal("hola");
+      await waitFor(() => expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveFocus());
+    });
+
+    it("RF-007: «Editar» lleva el foco al editor visual", async () => {
+      await openRealRead();
+      await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+      await waitFor(() => expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveFocus());
+    });
+
+    it("RF-007: abrir en lectura no mueve el foco", async () => {
+      await openRealRead();
+      await waitFor(() => expect(document.querySelector(".ProseMirror")).not.toBeNull());
+      expect(document.body).toHaveFocus();
+    });
+
+    it("RF-008: alternar de vista no arrebata el foco (sólo el paso a edición lo mueve)", async () => {
+      await openReal("hola");
+      await waitFor(() => expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveFocus());
+      const toggle = screen.getByRole("button", { name: "Código" });
+      toggle.focus();
+      await userEvent.click(toggle);
+      await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
+      expect(toggle).toHaveFocus();
+    });
+  });
 });
