@@ -227,7 +227,7 @@ actualizado: 2026-10-23
 - [x] T-057 — `backend/app/core/README.md`: `VaultIcon` en `schemas.py` [doc]
   - CHECK: `grep -n "VaultIcon" backend/app/core/README.md`
   - EXPECT: ≥ 1 línea.
-- [ ] T-058 — `backend/app/services/README.md`: `sync_push` con claves admitidas vs. obligatorias de bóveda [doc]
+- [x] T-058 — `backend/app/services/README.md`: `sync_push` con claves admitidas vs. obligatorias de bóveda [doc]
   - CHECK: `grep -n "icon" backend/app/services/README.md`
   - EXPECT: ≥ 1 línea en la sección de `sync_push`.
 - [ ] T-059 — `backend/tests/README.md`: casos `icon` en `vault_rules_cases.json` [doc]
