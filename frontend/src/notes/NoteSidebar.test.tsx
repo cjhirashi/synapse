@@ -227,3 +227,37 @@ test("RF-019: en una nota, → no hace nada, ← sube a su carpeta y Enter la ab
   expect(folder).toHaveFocus();
   expect(folder).toHaveAttribute("aria-expanded", "true");
 });
+
+// C-1, C-2, C-4 (PLAN-0008 §14): las acciones salen del árbol; una barra siempre visible las ofrece
+// para la nota seleccionada y F2/Supr las atajan desde el treeitem enfocado.
+test("RF-019: el árbol sólo contiene treeitems (una parada de Tab); sin botones de acción dentro", async () => {
+  await setup(["Uno.md", "Dos.md"]);
+  const tree = await screen.findByRole("tree", { name: "Notas" });
+  expect(tree.querySelectorAll('button:not([role="treeitem"]), input, form')).toHaveLength(0);
+});
+
+test("RF-011, RF-010: «Renombrar»/«Borrar» de la nota seleccionada están en una barra fuera del árbol", async () => {
+  const { user } = await setup(["Uno.md", "Dos.md"]);
+  expect(screen.queryByRole("toolbar", { name: "Acciones de la nota" })).toBeNull();
+  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
+  const bar = screen.getByRole("toolbar", { name: "Acciones de la nota" });
+  expect(screen.getByRole("tree", { name: "Notas" })).not.toContainElement(bar);
+  expect(within(bar).getByRole("button", { name: "Renombrar «Uno»" })).toBeInTheDocument();
+  expect(within(bar).getByRole("button", { name: "Borrar «Uno»" })).toBeInTheDocument();
+});
+
+test("RF-011: F2 en un treeitem de nota abre el renombrado de esa nota", async () => {
+  const { user } = await setup(["Uno.md", "Dos.md"]);
+  (await screen.findByRole("treeitem", { name: "Dos" })).focus();
+  await user.keyboard("{F2}");
+  expect(screen.getByRole("textbox", { name: "Ruta de la nota" })).toHaveValue("Dos.md");
+});
+
+test("RF-010: Supr en un treeitem de nota la manda a la papelera y avisa al padre", async () => {
+  const { user, value, onDeleted } = await setup(["Uno.md", "Dos.md"]);
+  const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(uno.id));
+  expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull();
+});

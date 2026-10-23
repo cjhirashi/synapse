@@ -191,3 +191,13 @@ test("RF-010: 'Borrar y descartar cambios' manda la nota a la papelera y cierra 
   await waitFor(() => expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull());
   expect((await value.notes.list(note.vault_id, { deleted: true })).map((n) => n.id)).toEqual([note.id]);
 });
+
+// C-1 (PLAN-0008 §14): el atajo Supr respeta la confirmación de VF-2.
+test("RF-010: Supr en el treeitem de la nota abierta con cambios sin guardar pide confirmación", async () => {
+  const { value } = await openDirtyNote();
+  screen.getByRole("treeitem", { name: "Hola" }).focus();
+  await userEvent.keyboard("{Delete}");
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
+  expect(await value.notes.list((await value.vaults.list())[0].id, { deleted: true })).toEqual([]);
+});
