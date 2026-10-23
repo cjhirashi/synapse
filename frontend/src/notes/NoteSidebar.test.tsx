@@ -312,3 +312,33 @@ test("RF-010: dos Supr seguidos sobre la misma nota sólo la borran una vez (gua
   await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(softDelete).toHaveBeenCalledTimes(1);
 });
+
+// H1 (PLAN-0008 §16): el vecino se calcula sobre el árbol resultante, sin las carpetas que queden vacías.
+test("RF-019, RF-010: al borrar la única nota de una carpeta el foco va a la fila que sigue, no a la carpeta que desaparece", async () => {
+  const { user } = await setup(["Carpeta/Sola.md", "Otra.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  (await screen.findByRole("treeitem", { name: "Sola" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull());
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
+});
+
+test("RF-019, RF-010: si la nota borrada era la última fila y su carpeta se vacía, el foco va a la fila anterior que sobrevive", async () => {
+  const { user } = await setup(["Zeta/Sola.md", "Alfa/Otra.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Zeta" }));
+  (await screen.findByRole("treeitem", { name: "Sola" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Alfa" })).toHaveFocus());
+});
+
+test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el foco al usuario", async () => {
+  const { user } = await setup(["Carpeta/Sola.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  (await screen.findByRole("treeitem", { name: "Sola" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Carpeta/Nueva");
+  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await screen.findByRole("treeitem", { name: "Carpeta" });
+  expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus();
+});
