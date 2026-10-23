@@ -303,6 +303,17 @@ async function noteWinner() {
   return db.get<NoteDocBody>(NOTE_ID, { conflicts: true, revs: true });
 }
 
+describe("RF-009, RNF-001: el barrido de conflictos va sin cuerpos (S-1)", () => {
+  it("el barrido inicial no lee el contenido de las notas (sin `allDocs` con `include_docs`)", async () => {
+    await putVault();
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const allDocs = vi.spyOn(db, "allDocs");
+    const store = await open();
+    expect(store.list()).toHaveLength(1); // sigue detectando el conflicto
+    expect(allDocs.mock.calls.filter(([options]) => options?.include_docs)).toEqual([]);
+  });
+});
+
 describe("RF-009: conflictos de nota", () => {
   it("el barrido inicial detecta una nota en conflicto y la deja manual, con ambas versiones", async () => {
     await putVault();

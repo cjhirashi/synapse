@@ -2,6 +2,7 @@
 // RF-016, RF-017; PLAN-0008 §2.6).
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
+import { vi } from "vitest";
 import { StorageFullError } from "../sync/vaultStore";
 import {
   NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, createNoteStore, type NoteStore,
@@ -287,5 +288,40 @@ describe("RF-009 (P-8): save sobre una revisión desfasada", () => {
     const a = await store.create(VAULT, "A");
     await store.save(a.id, "otra", a.rev);
     await expect(store.save(a.id, "x", "1-" + "0".repeat(32))).rejects.toBeInstanceOf(NoteChangedError);
+  });
+});
+
+// S-1 (PLAN-0008 §17): índice de resumen incremental; las operaciones no leen el `content` de todas las notas.
+describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
+  const bodies = (spy: { mock: { calls: unknown[][] } }) =>
+    spy.mock.calls.filter(([options]) => (options as { include_docs?: boolean } | undefined)?.include_docs);
+
+  it("list/create/rename no vuelven a leer los cuerpos de todas las notas", async () => {
+    for (const title of ["A", "B", "C"]) await store.create(VAULT, title);
+    await store.list(VAULT); // construye el índice (una vez)
+    const allDocs = vi.spyOn(db, "allDocs");
+    const created = await store.create(VAULT, "D");
+    await store.create(VAULT, ""); // «Sin título» consulta las rutas ocupadas
+    await store.rename(created.id, "D2", created.rev);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["A.md", "B.md", "C.md", "D2.md", "Sin título.md"]);
+    expect(bodies(allDocs)).toEqual([]);
+  });
+
+  it("el índice recoge lo que escriben otros (pull, otra pestaña): alta, cambio de ruta y borrado", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.list(VAULT);
+    // Escrituras que no pasan por este almacén: el replicador las hace con `new_edits: false`.
+    const doc = await db.get<Record<string, unknown>>(a.id);
+    await db.put({ ...doc, path: "Movida.md" });
+    await db.put({
+      _id: `note:${VAULT}:ext`, type: "note", vault_id: VAULT, path: "Externa.md", frontmatter: {}, content: "x",
+      created_at: "2026-10-22T09:00:00.000000Z", updated_at: "2026-10-22T09:00:00.000000Z", deleted_at: null,
+    });
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Externa.md", "Movida.md"]);
+    // La unicidad local también usa el índice ya al día.
+    await expect(store.create(VAULT, "externa")).rejects.toBeInstanceOf(NotePathTakenError);
+    const ext = await db.get<Record<string, unknown>>(`note:${VAULT}:ext`);
+    await db.remove(ext._id as string, ext._rev as string); // tumba de PouchDB
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Movida.md"]);
   });
 });
