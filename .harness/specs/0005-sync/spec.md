@@ -15,6 +15,12 @@ estado: verified      # draft | in-review | approved | implemented | verified | 
 > (aviso de borrador), `RejectionsPage`/`ConflictView` (textos de nota). Tests de 0005 ajustados
 > sin debilitar aserciones. Backlog: `.sync-status-bar time` usa `--text-muted` (2,56:1 en claro).
 > Sin cambio de requisitos.
+
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 admite `icon` en las
+> revisiones `vault:*` del push (`sync_push.py`: clave admitida no obligatoria,
+> `validation-error:icon`) y en el cliente (`vaultRules.checkIcon` con la batería común,
+> `vaultStore`, `merge`/`conflicts` con `icon` fusionado sin resolución manual — P-6 de 0009 —,
+> `ConflictView`/`RejectionsPage`). Contrato de 0005 sin cambios. Sin cambio de requisitos.
 anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)

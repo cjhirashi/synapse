@@ -2,7 +2,7 @@
 id: TASKS-0009
 tipo: tasks
 feature: 0009-rediseno-visual-workspace
-estado: approved
+estado: implemented
 actualizado: 2026-10-23
 ---
 
@@ -242,10 +242,10 @@ actualizado: 2026-10-23
 - [x] T-062 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (diagrama de datos, sin flujo nuevo) y dejar constancia en `history.md` [doc]
   - CHECK: `git diff --stat -- .harness/specs/0008-vault-editor/diagrams/ ARCHIFY.md`
   - EXPECT: sin cambios; línea de verificación en `history.md`.
-- [ ] T-063 — Notas de re-anclaje de cierre en `0002`, `0003`, `0005`, `0007`, `0008` `spec.md` (sin cambio de requisitos) [doc] [P-10]
+- [x] T-063 — Notas de re-anclaje de cierre en `0002`, `0003`, `0005`, `0007`, `0008` `spec.md` (sin cambio de requisitos) [doc] [P-10]
   - CHECK: `bash .harness/gate/check.sh | grep -E "000[2-8]"`
   - EXPECT: ninguna línea con "DRIFT".
-- [ ] T-064 — `.harness/memory/state.md`: estado de 0009 [doc]
+- [x] T-064 — `.harness/memory/state.md`: estado de 0009 [doc]
   - CHECK: `grep -n "0009" .harness/memory/state.md`
   - EXPECT: fila de 0009 con estado y evidencia.
 - [x] T-065 — Verificación completa en navegador: `test:visual` (V-1…V-10 + RNF-001) en ambos temas y anchos; lectura de cada captura junto al mockup; tabla R-1…R-15 final y salida pegadas en `history.md` (Gate 4: capturas reales contra la referencia) (cubre RF-001…RF-012, RF-006a, RNF-001) [zona: sistema]
@@ -280,31 +280,31 @@ actualizado: 2026-10-23
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065, T-068, T-070 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pendiente |
-| RF-002 | T-007, T-018, T-019, T-032, T-065 | VaultRail.test (tooltip), e2e V-2 | Pendiente |
-| RF-003 | T-008, T-022, T-023, T-024, T-025, T-026, T-032, T-065, T-067 | VaultWorkspacePage.test, NoteSidebar.test, e2e V-3 | Pendiente |
-| RF-004 | T-008, T-024, T-025, T-026, T-032, T-065 | NoteSidebar.test (data-icon), e2e V-3 | Pendiente |
-| RF-005 | T-009, T-027, T-028, T-032, T-065, T-068 | NoteEditor.test, layoutCss.test, e2e V-4 | Pendiente |
-| RF-006 | T-005, T-006, T-010, T-014, T-017, T-020, T-032, T-065, T-067 | layoutCss.test (sin literales), vaultIcon.test (contraste), e2e V-9 | Pendiente |
-| RF-006a | T-010, T-012, T-013, T-032, T-065 | useTheme.test, e2e V-8 | Pendiente |
-| RF-007 | T-001, T-018, T-020, T-027, T-031, T-066, T-067 | suite de 0008 sin cambios no explícitos, VaultRail.test (nombre accesible), NoteEditor.test | Pendiente |
-| RF-008 | T-009, T-022, T-023, T-028, T-032, T-065 | VaultWorkspacePage.test (vacío), e2e V-5 | Pendiente |
-| RF-009 | T-010, T-020, T-021, T-032, T-065 | layoutCss.test (marco fijo), e2e V-6 | Pendiente |
-| RF-010 | T-008, T-024, T-026, T-032, T-065 | NoteSidebar.test (title), e2e V-3 (fila larga) | Pendiente |
-| RF-011 | T-011, T-029, T-030, T-048, T-049, T-051, T-065, T-070, T-072 | IconPicker.test, VaultListPage.test, VaultForm.test, e2e V-7 | Pendiente |
-| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066, T-070, T-071 | test_vault_schemas, test_sync_rules_mirror (RF-012: casos icon de la batería), test_vault_service, test_sync_push, test_vaults_api, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pendiente |
-| RNF-001 | T-000, T-052, T-053, T-065, T-066 | e2e workspace-perf (p95 ≤ 150 ms), tree.perf.test (< 300 ms) | Pendiente |
-| doc: contracts/vault-icon.schema.json | T-054 | test_vault_schemas (contract) | Pendiente |
-| doc: 0003 openapi.yaml | T-040, T-055 | test_contract | Pendiente |
-| doc: backend/README.md | T-056 | — | Pendiente |
-| doc: backend/app/core/README.md | T-057 | — | Pendiente |
-| doc: backend/app/services/README.md | T-058 | — | Pendiente |
-| doc: backend/tests/README.md | T-059 | — | Pendiente |
-| doc: frontend/README.md | T-060 | — | Pendiente |
-| doc: frontend/src/README.md | T-061 | — | Pendiente |
-| doc: 0008 diagrams / ARCHIFY.md (sin cambio) | T-062 | — | Pendiente |
-| doc: re-anclajes 0002/0003/0005/0007/0008 | T-003, T-004, T-063 | gate (sin DRIFT) | Pendiente |
-| doc: state.md | T-064 | — | Pendiente |
+| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065, T-068, T-070 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pass |
+| RF-002 | T-007, T-018, T-019, T-032, T-065 | VaultRail.test (tooltip), e2e V-2 | Pass |
+| RF-003 | T-008, T-022, T-023, T-024, T-025, T-026, T-032, T-065, T-067 | VaultWorkspacePage.test, NoteSidebar.test, e2e V-3 | Pass |
+| RF-004 | T-008, T-024, T-025, T-026, T-032, T-065 | NoteSidebar.test (data-icon), e2e V-3 | Pass |
+| RF-005 | T-009, T-027, T-028, T-032, T-065, T-068 | NoteEditor.test, layoutCss.test, e2e V-4 | Pass |
+| RF-006 | T-005, T-006, T-010, T-014, T-017, T-020, T-032, T-065, T-067 | layoutCss.test (sin literales), vaultIcon.test (contraste), e2e V-9 | Pass |
+| RF-006a | T-010, T-012, T-013, T-032, T-065 | useTheme.test, e2e V-8 | Pass |
+| RF-007 | T-001, T-018, T-020, T-027, T-031, T-066, T-067 | suite de 0008 sin cambios no explícitos, VaultRail.test (nombre accesible), NoteEditor.test | Pass |
+| RF-008 | T-009, T-022, T-023, T-028, T-032, T-065 | VaultWorkspacePage.test (vacío), e2e V-5 | Pass |
+| RF-009 | T-010, T-020, T-021, T-032, T-065 | layoutCss.test (marco fijo), e2e V-6 | Pass |
+| RF-010 | T-008, T-024, T-026, T-032, T-065 | NoteSidebar.test (title), e2e V-3 (fila larga) | Pass |
+| RF-011 | T-011, T-029, T-030, T-048, T-049, T-051, T-065, T-070, T-072 | IconPicker.test, VaultListPage.test, VaultForm.test, e2e V-7 | Pass |
+| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066, T-070, T-071 | test_vault_schemas, test_sync_rules_mirror (RF-012: casos icon de la batería), test_vault_service, test_sync_push, test_vaults_api, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pass |
+| RNF-001 | T-000, T-052, T-053, T-065, T-066 | e2e workspace-perf (p95 ≤ 150 ms), tree.perf.test (< 300 ms) | Pass |
+| doc: contracts/vault-icon.schema.json | T-054 | test_vault_schemas (contract) | Pass |
+| doc: 0003 openapi.yaml | T-040, T-055 | test_contract | Pass |
+| doc: backend/README.md | T-056 | — | Pass |
+| doc: backend/app/core/README.md | T-057 | — | Pass |
+| doc: backend/app/services/README.md | T-058 | — | Pass |
+| doc: backend/tests/README.md | T-059 | — | Pass |
+| doc: frontend/README.md | T-060 | — | Pass |
+| doc: frontend/src/README.md | T-061 | — | Pass |
+| doc: 0008 diagrams / ARCHIFY.md (sin cambio) | T-062 | — | Pass |
+| doc: re-anclajes 0002/0003/0005/0007/0008 | T-003, T-004, T-063 | gate (sin DRIFT) | Pass |
+| doc: state.md | T-064 | — | Pass |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre.

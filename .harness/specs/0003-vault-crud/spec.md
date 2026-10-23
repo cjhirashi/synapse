@@ -57,6 +57,12 @@ actualizado: 2026-10-13
 > de longitud (NFKC puede expandir ×18 un nombre de 100 caracteres) — mismo riesgo que H-1 de 0008;
 > corregirlo exige migrar las reservas existentes. Sin cambio de requisitos.
 
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 añadió el campo opcional
+> `Vault.icon` (`glifo[:color]`, ASCII ≤ 64, regla única `VaultIcon` en `core/schemas.py`;
+> `null`/ausente = iniciales) en `schemas.py`, `vault_service.py`, `VaultForm`/`VaultListPage`
+> (selector `IconPicker`, `VaultChip`) y el contrato re-exportado (`openapi.yaml`, cambio aditivo).
+> Bóvedas existentes sin `icon` siguen siendo válidas. Sin cambio de requisitos de esta spec.
+
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores
   de documentos) y ningún otro usuario puede verlas ni tocarlas.

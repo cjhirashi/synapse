@@ -108,6 +108,13 @@ actualizado: 2026-10-12
 > formulario tras el cambio de contraseña forzado (**RF-020**, defecto preexistente destapado por
 > la verificación en navegador; test anotado `RF-020`). Sin cambio de requisitos.
 
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 (rediseño visual) tocó
+> archivos de estos `covers` sin cambiar requisitos: `frontend/index.html` y `theme/useTheme.ts`
+> (tema oscuro por defecto sin preferencia guardada, RF-006a de 0009; la preferencia guardada se
+> respeta), `layout/AppLayout.css` (marco de altura fija P-5 y desborde a 390 px) y
+> `styles/global.css` (estilos base de `button` en `:where(...)`: la cabecera pasa de 80 a 70 px y
+> el toggle/menú de cuenta recuperan su CSS de componente). Sin cambio de requisitos.
+
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
   propia bóveda (P2, P3). Control plane en PostgreSQL; datos en una base CouchDB por usuario.

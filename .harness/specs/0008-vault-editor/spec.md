@@ -31,6 +31,12 @@ actualizado: 2026-10-22
 > nombres accesibles y rutas se conservan; sólo se sustituyen las aserciones de U-7 de
 > `layoutCss.test.ts` por las del marco fijo (PLAN-0009 P-5, RF-007 de SPEC-0009).
 
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 cambió el vestido visual del
+> workspace (`notes/*`, `editor/*`: riel con chips, panel del árbol con iconos, editor centrado de
+> 780 px, marco fijo) y corrigió de raíz un defecto de 0008 visible sólo en navegador real (el
+> primer clic en una nota no la abría: la barra de acciones se movió bajo el árbol). Ningún
+> `role`/`aria-*` debilitado (RF-007 de 0009). Sin cambio de requisitos de esta spec.
+
 > Fase 1 (Specify) cerrada por AIRA a partir de: (a) el diseño original de agosto 2026
 > en `diseño/1.1.4 - Diseño UI-UX/1.1.4.4` (vista), `diseño/1.1.2.../ADR-010` (stack del
 > editor) y `diseño/1.1.5.../1.1.5.2`/`1.1.5.5` (modelo de datos y sincronización); (b) la
