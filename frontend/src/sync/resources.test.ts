@@ -135,7 +135,8 @@ describe("unconfirmedState", () => {
 
   it("un rechazo que aún se está guardando cuenta como no confirmado (VD-1)", async () => {
     const res = await confirmed();
-    // La escritura del rechazo tarda más que releer la secuencia: sólo esperándola se ve.
+    // La escritura del rechazo tarda más que releer la secuencia: sólo esperándola se ve. El retardo es
+    // una dependencia lenta SIMULADA (no una espera del test, F-3): con la CPU cargada sólo se alarga.
     const put = db.put.bind(db);
     vi.spyOn(db, "put").mockImplementation((async (doc: never) => {
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -199,11 +200,19 @@ describe("openSyncResources: notas y reintento dirigido (SPEC-0008 RF-001, RF-01
     await res.rejections.handle({ type: "denied", id: NOTE, rev: "1-a", reason: "vault-not-found" });
     await res.close();
     // Una bóveda activa tras cerrar no dispara nada (el feed de `repush` está cancelado).
+    // Sonda del feed de la réplica: abierta después de `close()`, recibe el cambio una vez que cualquier
+    // oyente anterior (el de `repush`, si siguiera activo) ya lo atendió (F-3: señal en vez de plazo).
+    const delivered = new Promise<void>((resolve) => {
+      const probe = res.db.changes({ live: true, since: "now" }).on("change", () => {
+        probe.cancel();
+        resolve();
+      });
+    });
     await res.db.put({
       _id: `vault:${VAULT}`, type: "vault", name: "N", description: null, tags: [], owner_id: "u1",
       created_at: "2026-10-22T10:00:00.000000Z", updated_at: "2026-10-22T10:00:00.000000Z", deleted_at: null,
     });
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await delivered;
     expect(toSpy).not.toHaveBeenCalled();
   });
 });

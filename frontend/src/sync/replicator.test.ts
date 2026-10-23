@@ -34,7 +34,12 @@ async function exists(db: PouchDB.Database, id: string): Promise<boolean> {
   return db.get(id).then(() => true, () => false);
 }
 
-/** Espera fija corta para comprobar que algo NO ocurre. */
+/**
+ * Espera fija corta para comprobar que algo NO ocurre. Justificada (F-3): la replicación real
+ * entre dos réplicas en memoria no emite ninguna señal de «no hay nada que hacer». Con la CPU
+ * cargada el plazo sólo da más margen a un fallo real; cada caso negativo tiene su par positivo
+ * (`vi.waitFor` sobre la replicación al reanudar/soltar el cerrojo) que prueba que sí funciona.
+ */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 /**

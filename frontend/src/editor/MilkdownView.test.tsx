@@ -55,7 +55,9 @@ describe("MilkdownView", () => {
   it("montar sin editar no emite", async () => {
     const onChange = vi.fn();
     await mount({ value: "- uno\n- dos\n", onChange });
-    // Margen para que un listener tardío (debounce de Milkdown) tuviera ocasión de disparar.
+    // Espera por tiempo JUSTIFICADA (F-3): se afirma una ausencia y no hay señal que esperar. 300 ms
+    // superan el debounce de 200 ms del listener de Milkdown; bajo carga el margen sólo se hace más
+    // holgado, así que no puede dar un falso fallo y el caso positivo vecino prueba que el listener emite.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
     });
@@ -79,6 +81,7 @@ describe("MilkdownView", () => {
     const { container, rerender } = await mount({ value: "uno", onChange });
     rerender(<MilkdownView value="dos" readOnly={false} onChange={onChange} label="Visual" />);
     await waitFor(() => expect(container.querySelector(".ProseMirror")).toHaveTextContent("dos"));
+    // Espera por tiempo JUSTIFICADA (F-3): ausencia sin señal; 300 ms > debounce de 200 ms del listener.
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
     });

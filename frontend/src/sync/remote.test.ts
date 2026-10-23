@@ -216,7 +216,8 @@ describe("createRemoteDb", () => {
       process.prependListener("unhandledRejection", listener);
       try {
         run();
-        // Node avisa de los rechazos sin manejar al acabar cada macrotarea.
+        // Node avisa de los rechazos sin manejar al acabar cada macrotarea. Justificado (F-3): son
+        // turnos del bucle de eventos (`setTimeout(0)`), no un plazo de reloj: no dependen de la carga.
         for (let i = 0; i < 5; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
       } finally {
         process.off("unhandledRejection", listener);

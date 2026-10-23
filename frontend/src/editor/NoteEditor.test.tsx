@@ -151,8 +151,11 @@ describe("guardado explícito (P-5)", () => {
   it("RF-008: un doble Ctrl+S guarda una sola vez (sin rama de conflicto con contenido idéntico)", async () => {
     const { value, first } = await setup("uno");
     const real = value.notes.save.bind(value.notes);
+    // Compuerta: el guardado sigue «en vuelo» hasta que la prueba la abre (sin plazos fijos).
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
     const save = vi.spyOn(value.notes, "save").mockImplementation(async (...args) => {
-      await new Promise((resolve) => setTimeout(resolve, 30)); // guardado lento: la segunda pulsación llega en vuelo
+      await gate;
       return real(...args);
     });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
@@ -160,6 +163,7 @@ describe("guardado explícito (P-5)", () => {
     const region = screen.getByRole("region", { name: "Editor de nota" });
     fireEvent.keyDown(region, { key: "s", ctrlKey: true });
     fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    release();
     await screen.findByText("Guardado");
     expect(save).toHaveBeenCalledTimes(1);
     expect((await value.notes.get(first.id)).content).toBe("uno!");
@@ -169,8 +173,11 @@ describe("guardado explícito (P-5)", () => {
   it("RF-008: si el borrador cambia durante el guardado, se guarda después sobre la rev nueva", async () => {
     const { value, first } = await setup("uno");
     const real = value.notes.save.bind(value.notes);
+    // El primer guardado queda en vuelo (compuerta) mientras el usuario sigue escribiendo.
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
     const save = vi.spyOn(value.notes, "save").mockImplementation(async (...args) => {
-      await new Promise((resolve) => setTimeout(resolve, 30));
+      await gate;
       return real(...args);
     });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
@@ -180,6 +187,7 @@ describe("guardado explícito (P-5)", () => {
     fireEvent.keyDown(region, { key: "s", ctrlKey: true });
     await userEvent.type(box, "?");
     fireEvent.keyDown(region, { key: "s", ctrlKey: true });
+    release();
     await waitFor(() => expect(save).toHaveBeenCalledTimes(2));
     await screen.findByText("Guardado");
     expect(save.mock.calls[1][2]).not.toBe(first.rev); // sobre la revisión que dejó el primer guardado
