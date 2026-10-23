@@ -107,11 +107,13 @@ test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con
   const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
   expect(input).toHaveValue("Raíz.md");
   await user.clear(input);
-  await user.type(input, "Carpeta/Movida.md");
+  await user.click(input);
+  await user.paste("Carpeta/Movida.md"); // un solo evento en vez de 17 pulsaciones (menos trabajo bajo carga)
   await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
   // La carpeta de destino se despliega sola para que la nota movida reciba el foco (C-5).
-  expect(await screen.findByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-expanded", "true");
-  expect(await screen.findByRole("treeitem", { name: "Movida" })).toBeInTheDocument();
+  const slow = { timeout: 4000 }; // renombrar + releer + redibujar tarda ~1 s con la CPU saturada
+  expect(await screen.findByRole("treeitem", { name: "Carpeta" }, slow)).toHaveAttribute("aria-expanded", "true");
+  expect(await screen.findByRole("treeitem", { name: "Movida" }, slow)).toBeInTheDocument();
   expect(screen.queryByRole("treeitem", { name: "Raíz" })).toBeNull();
   expect((await value.notes.get(id)).path).toBe("Carpeta/Movida.md");
 });
