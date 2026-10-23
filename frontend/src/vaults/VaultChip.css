@@ -39,6 +39,8 @@
 
 .icon-picker-preview {
   display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .icon-picker-label {
@@ -73,6 +75,13 @@
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--text-primary);
+}
+
+/* Foco de teclado: anillo en el color de texto, distinto del acento de la selección (relleno + borde). El
+   resto de la app usa el anillo de acento (`global.css`); aquí tendría el mismo color que la selección. */
+.icon-picker-option:focus-visible {
+  outline: 2px solid var(--text-primary);
+  outline-offset: 2px;
 }
 
 .icon-picker-colors .icon-picker-option,

@@ -38,8 +38,7 @@ interface VaultDoc {
 /** Bóveda vista por la UI: `id` sin el prefijo y `rev` en lugar del `etag` de la API REST. */
 export interface Vault extends VaultFields {
   id: string;
-  /** Ícono de la bóveda (SPEC-0009), de sólo lectura hasta el cableado de RF-012; `null` si no tiene. */
-  icon?: string | null;
+  // `icon` (SPEC-0009) llega de `VaultFields`; `toVault` lo da siempre (`null` si el documento no lo trae).
   owner_id: string;
   created_at: string;
   updated_at: string;

@@ -105,7 +105,7 @@ test("RF-011: la vista previa lleva el rótulo visible «Vista previa»", () => 
 
 test("RF-011: el foco es un anillo (outline) y la selección un relleno, ambos con tokens", () => {
   const css = readFileSync(resolve(__dirname, "VaultChip.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
-  const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]"=:()-]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]"=:()-]/g, "\\$&")}(?:,[^{]*)?\\s*\\{([^}]*)\\}`))?.[1] ?? "";
   expect(rule('.icon-picker-option:focus-visible')).toMatch(/outline: 2px solid var\(--text-primary\)/);
   expect(rule('.icon-picker-option[aria-checked="true"]')).toMatch(/background: var\(--accent-soft\)/);
   // La selección no usa outline: así un grupo con foco y selección en opciones distintas se lee bien.

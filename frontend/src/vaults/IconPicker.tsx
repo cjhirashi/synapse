@@ -108,6 +108,7 @@ export default function IconPicker({ vaultId = "", name, value, onChange }: Icon
   return (
     <div className="icon-picker">
       <div className="icon-picker-preview">
+        <span className="icon-picker-label">Vista previa</span>
         <VaultChip id={vaultId} name={name} icon={value} />
       </div>
       <span id={`${ids}-icon`} className="icon-picker-label">
