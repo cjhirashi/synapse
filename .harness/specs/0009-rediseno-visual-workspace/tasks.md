@@ -202,7 +202,7 @@ actualizado: 2026-10-23
 - [ ] T-050 — Test (rojo → verde) `sync/vaultIcon.integration.test.ts` (`test:sync`, backend y CouchDB reales): `icon` escrito en una réplica llega a la otra y el push lo acepta; uno inválido forzado en la réplica aparece rechazado en `/rejections` con `validation-error:icon` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npm run test:sync`
   - EXPECT: 25 + 2 pruebas `passed`, 0 failed (antes de T-038 se comprueba el rojo con la rama de T-033).
-- [ ] T-051 — V-7 en navegador real con persistencia (cubre RF-011, RF-012) [zona: sistema]
+- [x] T-051 — V-7 en navegador real con persistencia (cubre RF-011, RF-012) [zona: sistema]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-7"`
   - EXPECT: `passed`; capturas `picker-dark.png`, `picker-light.png`; el chip del riel cambia sin navegación de documento.
 

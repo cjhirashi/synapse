@@ -2,13 +2,10 @@
 //
 // - Siembra por la API REST (usuario, bóvedas) y por la UI (árbol de notas: 2 niveles de carpetas,
 //   4 notas con contenido, un nombre de 120 caracteres), una vez por *worker*.
-// - `icon` aún no existe en el servidor (bloque E): mientras tanto se escribe en la réplica del
-//   navegador con el PouchDB de la propia página (datos simulados, PLAN-0009 §6.1). `simulateIcons`
-//   es el único punto que cambia cuando el servidor lo acepte.
+// - `icon` ya lo acepta el servidor (bloque E): las bóvedas se siembran con él por la API REST.
 // - `measure` devuelve caja y estilos computados; `tokens` lee `src/styles/tokens.css` para que las
 //   comparaciones de color no dependan de una copia de los valores.
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { build } from "esbuild";
 import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { OUT_DIR } from "./out-dir";
 
@@ -99,8 +96,8 @@ export async function createUser(): Promise<{ email: string; password: string; c
 }
 
 /** Crea una bóveda por la API REST y devuelve su id. */
-export async function createVault(cookie: string, name: string): Promise<string> {
-  const res = await api("/vaults", { method: "POST", body: { name }, cookie });
+export async function createVault(cookie: string, name: string, icon: string | null = null): Promise<string> {
+  const res = await api("/vaults", { method: "POST", body: { name, icon }, cookie });
   return ((await res.json()) as { id: string }).id;
 }
 
@@ -159,7 +156,7 @@ async function createNote(page: Page, title: string, content: string): Promise<v
 export async function seed(browser: Browser): Promise<Seeded> {
   const user = await createUser();
   const vaults: SeedVault[] = [];
-  for (const spec of VAULT_SEEDS) vaults.push({ id: await createVault(user.cookie, spec.name), ...spec });
+  for (const spec of VAULT_SEEDS) vaults.push({ id: await createVault(user.cookie, spec.name, spec.icon), ...spec });
 
   const context = await newSession(browser, user);
   const page = await context.newPage();
@@ -185,60 +182,22 @@ export async function seedCrowded(): Promise<Seeded> {
 }
 
 /**
- * Escribe `icon` en la réplica del navegador (datos simulados mientras el servidor no tenga el campo)
- * con el PouchDB de la propia página: se empaqueta `pouchdb-browser` (la misma versión que la app) y
- * se inyecta; abre la base `synapse` de IndexedDB y reescribe el documento de cada bóveda. Recarga
- * para que la app lea la réplica ya con los íconos.
- */
-let pouchBundle: string | null = null;
-async function pouchScript(): Promise<string> {
-  if (pouchBundle === null) {
-    const out = await build({
-      stdin: { contents: 'import PouchDB from "pouchdb-browser"; window.PouchDB = PouchDB;', resolveDir: process.cwd() },
-      bundle: true,
-      format: "iife",
-      platform: "browser",
-      write: false,
-      define: { global: "globalThis" },
-    });
-    pouchBundle = out.outputFiles[0].text;
-  }
-  return pouchBundle;
-}
-
-export async function simulateIcons(page: Page, vaults: SeedVault[]): Promise<void> {
-  await page.addScriptTag({ content: await pouchScript() });
-  await page.evaluate(async (items) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const PouchDB = (window as any).PouchDB;
-    const db = new PouchDB("synapse", { auto_compaction: false });
-    for (const { id, icon } of items) {
-      const doc = await db.get(`vault:${id}`);
-      await db.put({ ...doc, icon });
-    }
-    await db.close();
-  }, vaults.map(({ id, icon }) => ({ id, icon })));
-  await page.reload();
-}
-
-/**
- * Sesión del usuario sembrado con la bóveda `vaultIndex` abierta y los íconos simulados ya en la
- * réplica (la app los lee tras la recarga). El llamador cierra el `context`.
+ * Sesión del usuario sembrado con la bóveda `vaultIndex` abierta, sincronizada y sin rechazos del push
+ * (con `icon` real en el servidor no debe haber ninguno). El llamador cierra el `context`.
  */
 export async function openWorkspace(
   browser: Browser,
   seeded: Seeded,
-  options: OpenOptions & { vaultIndex?: number; icons?: boolean } = {},
+  options: OpenOptions & { vaultIndex?: number } = {},
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const { vaultIndex = 0, icons = true, ...session } = options;
+  const { vaultIndex = 0, ...session } = options;
   const context = await newSession(browser, seeded, session);
   const page = await context.newPage();
   await openVault(page, seeded.vaults[vaultIndex].id);
   await waitForVaults(page, seeded.vaults.length);
-  if (icons) {
-    await simulateIcons(page, seeded.vaults);
-    await waitForVaults(page, seeded.vaults.length);
-  }
+  await waitForSynced(page);
+  // Los íconos viajan por el servidor: ningún cambio rechazado puede asomar en la barra de sincronización.
+  await expect(page.getByText(/cambios? rechazados?/), "sin rechazos del push").toHaveCount(0);
   return { context, page };
 }
 

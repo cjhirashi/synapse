@@ -159,7 +159,7 @@ const size1440 = SIZES[0];
 // V-3 · control de tema: el thumb activo se ve en claro y oscuro (enmienda 1, A1-2)
 for (const theme of THEMES) {
   test(`V-3 control de tema con el thumb activo visible, ${theme} (RF-006)`, async ({ browser, seeded }) => {
-    const { context, page } = await openWorkspace(browser, seeded, { theme, icons: false });
+    const { context, page } = await openWorkspace(browser, seeded, { theme });
     const active = await measure(page, '.theme-toggle button[aria-pressed="true"]');
     // El botón activo no pinta fondo ni borde propios: si lo hiciera taparía el thumb de acento.
     expect(active.bg, "botón activo transparente").toBe("rgba(0, 0, 0, 0)");
@@ -253,7 +253,7 @@ for (const theme of THEMES) {
 // V-6 · riel con scroll propio y documento sin scroll (RF-009)
 for (const theme of THEMES) {
   test(`V-6 40 bóvedas: el riel hace scroll y el documento no, ${theme} (RF-009)`, async ({ browser, crowded }) => {
-    const { context, page } = await openWorkspace(browser, crowded, { theme, icons: false });
+    const { context, page } = await openWorkspace(browser, crowded, { theme });
 
     const rail = await measure(page, ".vault-rail");
     expect(rail.scrollHeight, "el riel desborda su alto").toBeGreaterThan(rail.clientHeight);
@@ -365,9 +365,12 @@ for (const theme of THEMES) {
 }
 
 // V-7 · selector de ícono en el formulario de bóveda (RF-011, RF-012)
+// Cada tema elige otro glifo y color: la bóveda sembrada es compartida y el segundo no puede pasar «por inercia».
+const PICKS = { dark: { glyph: "Estrella", id: "star", color: "Verde" }, light: { glyph: "Cohete", id: "rocket", color: "Ámbar" } } as const;
+
 for (const theme of THEMES) {
   test(`V-7 selector de ícono y color, ${theme} (RF-011, RF-012)`, async ({ browser, seeded }) => {
-    const { context, page } = await openWorkspace(browser, seeded, { theme, icons: false });
+    const { context, page } = await openWorkspace(browser, seeded, { theme });
     // Marca de documento: si alguna navegación recargara la página, desaparecería.
     await page.evaluate(() => ((window as unknown as { __document: boolean }).__document = true));
 
@@ -381,13 +384,14 @@ for (const theme of THEMES) {
     await expect(icons.getByRole("radio")).toHaveCount(25);
     await expect(colors.getByRole("radio")).toHaveCount(6);
 
-    await icons.getByRole("radio", { name: "Estrella" }).click();
-    await colors.getByRole("radio", { name: "Verde" }).click();
+    const pick = PICKS[theme];
+    await icons.getByRole("radio", { name: pick.glyph }).click();
+    await colors.getByRole("radio", { name: pick.color }).click();
     await shot(page, `picker-${theme}`);
     await page.getByRole("button", { name: "Guardar cambios" }).click();
 
     // El chip del riel cambia sin recargar el documento.
-    await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link", { name: target.name }).locator('svg[data-icon="star"]')).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link", { name: target.name }).locator(`svg[data-icon="${pick.id}"]`)).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __document?: boolean }).__document), "sin navegación de documento").toBe(true);
     await context.close();
   });

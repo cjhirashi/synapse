@@ -64,6 +64,10 @@ describe("RF-012: icon", () => {
     expect(checkIcon(null)).toEqual({ ok: true, value: null });
   });
 
+  it.each(["folder\n", "\nfolder", "ａ", "é", "folder\u200b"])("rechaza el texto con salto de línea final o Unicode: %j", (value) => {
+    expect(checkIcon(value).ok).toBe(false);
+  });
+
   it("valida la gramática, no un catálogo: javascript:x es válido y javascript:alert(1) no", () => {
     expect(checkIcon("javascript:x").ok).toBe(true);
     expect(checkIcon("javascript:alert(1)").ok).toBe(false);
