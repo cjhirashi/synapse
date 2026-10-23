@@ -230,7 +230,7 @@ actualizado: 2026-10-23
 - [x] T-058 — `backend/app/services/README.md`: `sync_push` con claves admitidas vs. obligatorias de bóveda [doc]
   - CHECK: `grep -n "icon" backend/app/services/README.md`
   - EXPECT: ≥ 1 línea en la sección de `sync_push`.
-- [ ] T-059 — `backend/tests/README.md`: casos `icon` en `vault_rules_cases.json` [doc]
+- [x] T-059 — `backend/tests/README.md`: casos `icon` en `vault_rules_cases.json` [doc]
   - CHECK: `grep -n "icon" backend/tests/README.md`
   - EXPECT: ≥ 1 línea.
 - [ ] T-060 — `frontend/README.md`: `npm run test:visual` (contenedor Playwright 1.56.0, backend en `:8010`, capturas en `/tmp/s9/e2e`) y RNF-001 en navegador [doc]

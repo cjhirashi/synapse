@@ -11,6 +11,13 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
   (por defecto `http://localhost:15984`, `admin`/`testpass`). Para un CouchDB desechable:
   `docker run -d --name synapse-test-couchdb -p 127.0.0.1:15984:5984 -e COUCHDB_USER=admin -e COUCHDB_PASSWORD=testpass couchdb:3`.
   Tras cada test se borran las bases `synapse_user_*` (sólo si el CouchDB es local).
+- **`icon` de bóveda (SPEC-0009):** los casos de `icon` (válidos e inválidos, también `null`, salto de
+  línea final y Unicode) viven en `fixtures/vault_rules_cases.json`; los recorren
+  `test_sync_rules_mirror.py` (reglas del servidor) y, desde el cliente, `vaultRules.test.ts`.
+  `test_vault_schemas.py` fija además los `examples` y el patrón de
+  `contracts/vault-icon.schema.json` frente a `VaultIcon`.
+- **No compartas el CouchDB de pruebas con otra suite:** esa limpieza borra las bases de usuario de
+  quien lo use a la vez (p. ej. `npm run test:visual`, que acepta otro con `COUCHDB_URL`).
 - **Excepción declarada:** el control plane usa SQLite (`test.db`) en lugar de PostgreSQL
   (plan.md §7 de SPEC-0002); pasar a PostgreSQL real queda para una feature aparte.
 
