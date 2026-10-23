@@ -29,7 +29,13 @@ export default defineConfig({
     globals: true,
     setupFiles: "./src/test-setup.ts",
     // La sincronización real necesita backend y CouchDB: va aparte (`npm run test:sync`).
-    exclude: [...configDefaults.exclude, "src/**/*.integration.test.ts"],
+    // RNF-001 de 0008 (`*.perf.test.tsx`, mide tiempos) tampoco corre en `npm test`: sólo con
+    // `NOTES_PERF=1` (`npm run test:perf`), para no volver inestable la suite normal.
+    exclude: [
+      ...configDefaults.exclude,
+      "src/**/*.integration.test.ts",
+      ...(process.env.NOTES_PERF === "1" ? [] : ["src/**/*.perf.test.tsx"]),
+    ],
     // `npm run test:cov`: mismo umbral que el backend (`backend/.coveragerc`, 80 %).
     coverage: {
       provider: "v8",

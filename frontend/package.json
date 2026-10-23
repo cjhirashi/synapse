@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:cov": "vitest run --coverage",
     "test:sync": "scripts/sync-integration.sh",
-    "test:sync:perf": "SYNC_PERF=1 scripts/sync-integration.sh"
+    "test:sync:perf": "SYNC_PERF=1 scripts/sync-integration.sh",
+    "test:perf": "NOTES_PERF=1 vitest run src/notes/tree.perf.test.tsx"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",

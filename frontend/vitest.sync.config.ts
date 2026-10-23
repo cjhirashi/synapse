@@ -16,7 +16,7 @@ const perf = process.env.SYNC_PERF === "1";
 export default defineConfig({
   test: {
     environment: "node",
-    include: perf ? ["src/sync/*.perf.integration.test.ts"] : ["src/sync/*.integration.test.ts"],
+    include: perf ? ["src/sync/*.perf.integration.test.ts"] : ["src/{sync,notes}/*.integration.test.ts"],
     exclude: perf ? [] : ["src/sync/*.perf.integration.test.ts"],
     setupFiles: "./src/test-utils/integration-setup.ts",
     // Cambia la contraseña inicial del admin una vez y pasa la nueva (`adminPassword`).
