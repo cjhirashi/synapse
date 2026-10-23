@@ -429,7 +429,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           <button type="button" onClick={() => answerDiscard(true)}>
             Borrar y descartar cambios
           </button>
-          <button type="button" onClick={() => answerDiscard(false)}>
+          <button type="button" data-autofocus onClick={() => answerDiscard(false)}>
             Seguir editando
           </button>
         </ConfirmDialog>

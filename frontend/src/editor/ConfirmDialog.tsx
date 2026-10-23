@@ -1,6 +1,7 @@
 /**
  * Diálogo de confirmación del editor (`alertdialog`) con la gestión de foco del patrón WAI-ARIA
- * (U-1, PLAN-0008 §17): foco inicial en su primer botón, Tab atrapado dentro, Escape = la
+ * (U-1, PLAN-0008 §17): foco inicial en su primer botón (o en el que lleve `data-autofocus`, E-5:
+ * en el diálogo de borrado, la respuesta segura y no la acción destructiva), Tab atrapado dentro, Escape = la
  * respuesta segura (`onCancel`, «Seguir editando») y, al cerrarse, el foco vuelve a donde estaba
  * al abrirse (el disparador: un botón, un enlace del riel, la fila del árbol…).
  */
@@ -12,7 +13,7 @@ interface ConfirmDialogProps {
   title: string;
   /** Escape: la respuesta que no hace nada irreversible. */
   onCancel: () => void;
-  /** Los botones, en orden de tabulación; el primero recibe el foco. */
+  /** Los botones, en orden de tabulación; recibe el foco el marcado con `data-autofocus` o, si no, el primero. */
   children: ReactNode;
 }
 
@@ -24,7 +25,7 @@ export function ConfirmDialog({ titleId, title, onCancel, children }: ConfirmDia
   useEffect(() => {
     // El elemento enfocado ANTES de abrir: a él se vuelve al cerrar.
     const previous = document.activeElement as HTMLElement | null;
-    root.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+    (root.current?.querySelector<HTMLElement>("[data-autofocus]") ?? root.current?.querySelector<HTMLElement>(FOCUSABLE))?.focus();
     return () => {
       if (previous && document.contains(previous)) previous.focus();
     };

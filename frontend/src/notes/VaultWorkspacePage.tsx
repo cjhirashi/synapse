@@ -82,18 +82,32 @@ function requestedNote(state: unknown, vaultId: string): string | null {
  */
 function SalvagedDraft({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
+
   async function copy() {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
+    setCopyFailed(false);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // Sin API de portapapeles (contexto no seguro) o permiso denegado (E-4): se avisa y se deja el
+      // texto seleccionado para que el usuario lo copie con el teclado.
+      setCopied(false);
+      setCopyFailed(true);
+      area.current?.focus();
+      area.current?.select();
+    }
   }
   return (
     <div className="note-editor-notice">
       <p>Tenías cambios sin guardar en una nota de esta bóveda. Cópialos antes de salir:</p>
-      <textarea aria-label="Borrador sin guardar" readOnly rows={8} value={text} />
+      <textarea ref={area} aria-label="Borrador sin guardar" readOnly rows={8} value={text} />
       <button type="button" onClick={() => void copy()}>
         Copiar texto
       </button>
       {copied && <span role="status">Copiado</span>}
+      {copyFailed && <span role="status">No se pudo copiar; selecciona el texto.</span>}
     </div>
   );
 }
@@ -113,6 +127,12 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  // Cerrar la nota a propósito (borrarla descartando cambios…) suelta el borrador conservado: sólo la
+  // pérdida involuntaria de la bóveda (papelera por sync) lo deja disponible en el 404 (E-3).
+  useEffect(() => {
+    if (openId === null) onDirtyDraft(null);
+  }, [openId, onDirtyDraft]);
+
   /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
   const editorRef = useRef<NoteEditorHandle>(null);
 
