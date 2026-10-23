@@ -1,11 +1,14 @@
 /**
  * Recursos de sincronización de un usuario (SPEC-0005 RF-009, RF-016, RF-017, RF-018;
  * PLAN-0005 §2.5), sin React: réplica local, almacenes de estado, rechazos y conflictos,
- * base remota, replicador y almacén de bóvedas, cableados entre sí.
+ * base remota, replicador y almacenes de bóvedas y de notas, cableados entre sí, más el
+ * reintento dirigido de notas rechazadas por bóveda inexistente (SPEC-0008 P-7).
  *
  * Lo abre `SyncProvider` para la app y lo abren igual las pruebas de integración contra el
  * backend real (un juego por dispositivo simulado), así que ambas prueban el mismo cableado.
  */
+import { createNoteStore, type NoteStore } from "../notes/noteStore";
+import { startRepush, type Repush } from "../notes/repush";
 import { openConflicts, type ConflictsStore } from "./conflicts";
 import { openLocalDb, type LocalDbOptions } from "./localDb";
 import { openRejections, type RejectionsStore } from "./rejections";
@@ -37,11 +40,18 @@ export interface SyncResources {
   db: PouchDB.Database;
   remote: PouchDB.Database;
   vaults: VaultStore;
+  /** Notas de las bóvedas, en la misma réplica (SPEC-0008). */
+  notes: NoteStore;
   status: SyncStatusStore;
   rejections: RejectionsStore;
   conflicts: ConflictsStore;
   replicator: Replicator;
-  /** Cada escritura en una bóveda de la réplica (para `dataVersion`). */
+  /** Reintento dirigido de `vault-not-found` (P-7); se cierra con los recursos. */
+  repush: Repush;
+  /**
+   * Cada escritura en la réplica; el proveedor separa por prefijo `vault:` (`dataVersion`) y
+   * `note:` (`notesVersion`), para que guardar una nota no relea las listas de bóvedas.
+   */
   feed: PouchDB.Core.Changes<{}>;
   close(): Promise<void>;
 }
@@ -57,11 +67,15 @@ export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise
   let replicator: Replicator | null = null;
   const onSessionExpired = () => replicator?.sessionExpired();
   const remote = (env.createRemote ?? ((expired) => createRemoteDb({ onSessionExpired: expired })))(onSessionExpired);
+  // `repush` se crea con la remota ya lista; sus eventos llegan por `onEvent` desde entonces.
+  let repush: Repush | null = null;
   const onEvent = (event: SyncEvent) => {
     void status.handle(event);
     void rejections.handle(event);
+    repush?.handle(event);
   };
   replicator = (env.createReplicator ?? createReplicator)({ local: db, remote, onEvent });
+  repush = startRepush({ db, remote, status, rejections });
   const feed = db.changes({ live: true, since: "now" });
 
   let closed: Promise<void> | null = null;
@@ -69,14 +83,17 @@ export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise
     db,
     remote,
     vaults: createVaultStore(db, sub),
+    notes: createNoteStore(db),
     status,
     rejections,
     conflicts,
     replicator,
+    repush,
     feed,
     close() {
       closed ??= (async () => {
         feed.cancel();
+        repush?.close();
         await resources.replicator.stop();
         status.close();
         rejections.close();

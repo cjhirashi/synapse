@@ -15,6 +15,7 @@ from app.core.errors import RevisionConflict, StorageUnavailable, VaultNameTaken
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultCreate
+from app.services.note_service import NoteService
 from app.services.sync_push import SyncPushService
 from app.services.vault_service import RESERVATION_LEASE, VaultService, name_key
 from tests.test_vault_service import TickingClock
@@ -238,7 +239,7 @@ def vaults(couch, clock):
 
 @pytest.fixture
 def push(vaults, couch):
-    return SyncPushService(vaults, couch, couch, DB, OWNER)
+    return SyncPushService(vaults, NoteService(couch, DB, clock), couch, couch, DB, OWNER)
 
 
 def _new_id() -> str:
@@ -355,7 +356,7 @@ async def test_rf_005_tombstones_closing_every_branch_leave_the_last_one_alive(p
 async def test_rf_005_each_batch_reads_the_current_leaves(push, couch, vaults):
     doc_id = _new_id()
     await push.push([_vault(doc_id)])
-    other = SyncPushService(vaults, couch, couch, DB, OWNER)  # otra réplica abre un conflicto
+    other = SyncPushService(vaults, NoteService(couch, DB), couch, couch, DB, OWNER)  # otra réplica abre un conflicto
     await other.push([_vault(doc_id, "2-bbb", ("1-aaa",)), _vault(doc_id, "2-ccc", ("1-aaa",), name="Dos")])
     assert await push.push([_tombstone(doc_id, "3-ddd", ("2-ccc", "1-aaa"))]) == []
 
@@ -553,7 +554,7 @@ async def test_rf_006_mixed_batch_rejects_one_and_saves_the_rest(push, couch, va
 
 
 async def test_rf_008_two_interleaved_batches_with_the_same_name_save_only_one(push, couch, vaults):
-    rival = SyncPushService(vaults, couch, couch, DB, OWNER)
+    rival = SyncPushService(vaults, NoteService(couch, DB), couch, couch, DB, OWNER)
     mine, theirs = _vault(name="Mismo"), _vault(name="mismo")
     outcome = {}
 

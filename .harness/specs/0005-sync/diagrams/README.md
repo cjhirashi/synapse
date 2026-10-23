@@ -5,6 +5,8 @@
 **Tipo:** Workflow · **Estado:** implementado (Fase 4, bloques A–K; T-081 lo redibujó con
 los nombres reales: canal `/sync/db`, `sync_push`, motivos de rechazo, `merge.ts`). Pendiente
 de verificación (Fase 5). Dibuja D-1…D-4 (`spec.md` §8, ADR-002, ADR-003).
+SPEC-0008 (T-090) lo regeneró: el canal replica también las notas (`note:*`), con sus motivos
+`note-path-taken` y `vault-not-found`; las reservas `vault-name:*` y `note-path:*` siguen sin salir.
 
 | Archivo | Qué es |
 |---|---|

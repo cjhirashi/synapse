@@ -129,5 +129,7 @@ def test_sync_contract_closes_the_push_schemas():
     assert rejection["properties"]["error"]["const"] == "forbidden"
     reason = rejection["properties"]["reason"]["pattern"]
     for code in ("invalid-id", "validation-error:", "not-normalized:", "owner-mismatch",
-                 "immutable-field:created_at", "vault-name-taken", "delete-not-allowed"):
+                 "immutable-field:created_at", "vault-name-taken", "delete-not-allowed",
+                 # SPEC-0008 (RF-004, RF-013): los dos códigos que añaden las notas.
+                 "note-path-taken", "vault-not-found"):
         assert code in reason, code

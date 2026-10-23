@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: verified         # verified por el usuario (2026-10-17): aprobó y mergeó PR #3 (merge b75e99c)
-anchor_commit: 0c45404   # re-anclaje por SPEC-0005 (T-116 de TASKS-0005, enmienda 3)
+anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -99,6 +99,14 @@ actualizado: 2026-10-12
 > añadió a `App.tsx` el aviso `LocalCopyNotice` en la ruta `/login` (la réplica no se pudo
 > borrar al cerrar sesión, RF-017 de 0005). `LoginPage` no cambia. Ancla movida a `0c45404`.
 > Sin cambio de requisitos.
+
+> **Re-anclaje 2026-10-23** (PLAN-0008 P-2 y §10–§32, T-092 de TASKS-0008): SPEC-0008 (editor de
+> notas) tocó archivos de estos `covers` sin cambiar ningún requisito de esta spec: `main.tsx`
+> pasa a *data router* (`createBrowserRouter` con ruta raíz comodín, para `useBlocker` del
+> editor; las rutas de `App.tsx` no cambian), `App.tsx` gana `/vaults/:id`, `layout/AppLayout.*`
+> monta el riel de bóvedas, y `RequireAuth.tsx`/`ChangePasswordPage.tsx` corrigen el regreso al
+> formulario tras el cambio de contraseña forzado (**RF-020**, defecto preexistente destapado por
+> la verificación en navegador; test anotado `RF-020`). Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

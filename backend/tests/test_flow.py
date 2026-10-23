@@ -39,6 +39,7 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
     assert login(client, "g@test.com", GUEST_NEW).status_code == 200
     assert client.get("/auth/me").json() == {
         "user_id": created.json()["id"],
+        "email": "g@test.com",
         "role": "guest",
         "must_change_password": False,
     }

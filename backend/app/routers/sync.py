@@ -9,10 +9,12 @@ Todas las rutas son `async def`: `ReplicationPort` es async (un `longpoll` de `_
 ocupa un hilo del pool), y lo síncrono (`VaultService` en el push) va en un hilo dentro del
 servicio.
 """
+import json
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, Path, Request, status
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
@@ -32,16 +34,23 @@ from app.core.schemas import TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
 from app.services import sync_filter
+from app.services.note_service import NoteService
 from app.services.sync_push import SyncPushService
 from app.services.vault_service import VaultService
 
 # --- Límites de tamaño (PLAN-0005 §2.1) ---
 
 MAX_BULK_DOCS = 200                 # documentos por lote (el cliente envía 50)
-MAX_BODY_BYTES = 4 * 1024 * 1024    # cuerpo de `_bulk_docs` y de cualquier otra ruta
+MAX_BODY_BYTES = 4 * 1024 * 1024    # cuerpo de cualquier ruta que no tenga tope propio
+# Cuerpo de `_bulk_docs` (SPEC-0008 P-6): una nota de 2 MiB con caracteres de control escapados
+# (6 bytes por carácter en JSON) pesa ~12 MiB, más ruta, frontmatter ≤ 64 KiB y `_revisions`;
+# con 4 MiB el replicador reintentaría ese lote para siempre. El cliente nunca envía más de
+# 8 MiB por petición (`remote.ts`), así que 16 MiB deja margen.
+MAX_BULK_DOCS_BYTES = 16 * 1024 * 1024
 MAX_LOCAL_BYTES = 64 * 1024         # documento `_local` (checkpoint del replicador)
 
 LOCAL_PATH = "/sync/db/_local/{local_id}"
+BULK_DOCS_PATH = "/sync/db/_bulk_docs"
 
 
 async def _read_capped(receive: Receive, limit: int) -> bytes:
@@ -79,25 +88,49 @@ def _replay(body: bytes, receive: Receive) -> Receive:
     return replay
 
 
+class _DeepJsonRequest(Request):
+    """`Request` cuyo `json()` trata cualquier fallo del decodificador como JSON inválido.
+
+    `json.loads` lanza `RecursionError` con cientos de niveles de anidamiento y `ValueError`
+    (no `JSONDecodeError`) con enteros de más de `int_max_str_digits` dígitos; FastAPI sólo
+    convierte en `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo
+    vuelve un 400 que el contrato no declara (VB-3, VB-5).
+    """
+
+    async def json(self):
+        try:
+            return await super().json()
+        except json.JSONDecodeError:
+            raise  # ya es el caso declarado
+        except (RecursionError, ValueError):
+            raise json.JSONDecodeError("JSON not decodable", "", 0) from None
+
+
 class SyncRoute(APIRoute):
     """Ruta del canal con tope de cuerpo aplicado **antes** de que FastAPI lo lea.
 
     FastAPI lee y parsea el cuerpo antes de resolver las dependencias, y convierte en 400
     cualquier excepción levantada durante esa lectura. Por eso el tope no puede ser una
-    dependencia ni vivir dentro del flujo: el manejador de la ruta lee el cuerpo con el tope
-    y entrega a FastAPI un `receive` que lo reproduce. `_local` admite 64 KiB; el resto, 4 MiB.
+    dependencia ni vivir dentro del flujo: el manejador de la ruta comprueba la sesión, lee el
+    cuerpo con el tope y entrega a FastAPI un `receive` que lo reproduce. `_local` admite
+    64 KiB, `_bulk_docs` 16 MiB y el resto 4 MiB.
     """
 
     def get_route_handler(self):
         handler = super().get_route_handler()
-        limit = MAX_LOCAL_BYTES if self.path_format == LOCAL_PATH else MAX_BODY_BYTES
+        limit = {LOCAL_PATH: MAX_LOCAL_BYTES, BULK_DOCS_PATH: MAX_BULK_DOCS_BYTES}.get(
+            self.path_format, MAX_BODY_BYTES)
 
         async def limited(request: Request):
+            # Sesión primero (RF-002): sin ella un cuerpo de hasta 16 MiB no se lee. El usuario
+            # queda en `request.state` (compartido por el `Request` que recibe FastAPI) y la
+            # dependencia del router lo reutiliza: una sola consulta SQL por petición.
+            request.state.sync_user = await run_in_threadpool(get_sync_user, request)
             declared = request.headers.get("content-length", "")
             if declared.isdigit() and int(declared) > limit:
                 raise PayloadTooLarge(f"declared body of {declared} bytes over {limit}")
             body = await _read_capped(request.receive, limit)
-            return await handler(Request(request.scope, _replay(body, request.receive)))
+            return await handler(_DeepJsonRequest(request.scope, _replay(body, request.receive)))
 
         return limited
 
@@ -113,6 +146,9 @@ def get_sync_user(request: Request) -> TokenPayload:
     Con `Depends(get_db)` normal, el cierre (generador + `yield`) se difiere hasta que acaba
     la respuesta completa, y un `longpoll` de `_changes` retendría una conexión del pool hasta
     60 s pese a que esta comprobación ya no la necesita."""
+    already_checked = getattr(request.state, "sync_user", None)  # `SyncRoute` ya la hizo
+    if already_checked is not None:
+        return already_checked
     db = SessionLocal()
     try:
         return require_password_changed(get_current_user(request, db), db)
@@ -136,7 +172,9 @@ def get_push_service(
     vault_port: VaultPort = Depends(get_vault_port),
     replication: ReplicationPort = Depends(get_replication_port),
 ) -> SyncPushService:
-    return SyncPushService(VaultService(vault_port, db), vault_port, replication, db, current_user.sub)
+    return SyncPushService(
+        VaultService(vault_port, db), NoteService(vault_port, db), vault_port, replication, db,
+        current_user.sub)
 
 
 Db = Annotated[str, Depends(get_sync_db)]
@@ -171,10 +209,10 @@ class BulkDocsRequest(BaseModel):
     new_edits: Literal[False]
 
 
-# Códigos de rechazo del push (PLAN-0005 §2.3).
+# Códigos de rechazo del push (PLAN-0005 §2.3; `note-path-taken` y `vault-not-found`, PLAN-0008 §4).
 REJECTION_REASON = (
     r"^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken"
-    r"|delete-not-allowed|validation-error:.+|not-normalized:.+)$"
+    r"|note-path-taken|vault-not-found|delete-not-allowed|validation-error:.+|not-normalized:.+)$"
 )
 
 
@@ -280,10 +318,21 @@ async def all_docs_with_keys(
 
 
 async def _all_docs(request: Request, body: dict | None, db: str, port: ReplicationPort) -> dict:
-    query, forward = sync_filter.all_docs_query(request.query_params, body)
+    queries, forward = sync_filter.all_docs_query(request.query_params, body)
     if forward is not None and not forward["keys"]:
         return sync_filter.sanitize_all_docs_response({"rows": []})  # sólo había ids internos
-    return sync_filter.sanitize_all_docs_response(await port.all_docs(db, query, forward))
+    # Un rango por tipo, en orden de bytes; `limit` corta sobre el conjunto: lo que falta tras
+    # un rango se pide al siguiente. Se cuentan las filas de CouchDB (antes de sanear), que es
+    # lo que `limit` limita.
+    limit = int(queries[0]["limit"]) if "limit" in queries[0] else None
+    rows: list[dict] = []
+    for query in queries:
+        if limit is not None:
+            if len(rows) >= limit:
+                break
+            query = {**query, "limit": str(limit - len(rows))}
+        rows += (await port.all_docs(db, query, forward))["rows"]
+    return sync_filter.sanitize_all_docs_response({"rows": rows})
 
 
 # --- Escritura (push) ---

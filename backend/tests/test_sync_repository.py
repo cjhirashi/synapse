@@ -83,9 +83,10 @@ async def test_rf_010_bulk_get_returns_revisions_with_history(repo, db):
 async def test_rf_004_all_docs_with_the_vault_range_skips_internal_docs(repo, db):
     _put(db, {"_id": VAULT_A, "type": "vault"})
     _put(db, {"_id": "vault-name:a", "vault_id": "x"})
-    query, body = sf.all_docs_query({}, None)
-    result = await repo.all_docs(db, query, body)
-    assert [row["id"] for row in result["rows"]] == [VAULT_A]
+    # SPEC-0008 RF-006: un rango por tipo (notas, luego bóvedas); se consultan todos.
+    queries, body = sf.all_docs_query({}, None)
+    rows = [row for query in queries for row in (await repo.all_docs(db, query, body))["rows"]]
+    assert [row["id"] for row in rows] == [VAULT_A]
 
 
 async def test_rf_004_all_docs_with_keys_uses_post(repo, db):

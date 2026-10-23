@@ -25,13 +25,14 @@
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout as logoutSession } from "../api/auth";
+import { NOTE_ID_PREFIX } from "../notes/noteRules";
 import type { ManualConflict } from "./conflicts";
 import { destroyLocalDb, markDiscarded } from "./localDb";
 import type { Rejection } from "./rejections";
 import type { LocalCopyState } from "./LocalCopyNotice";
 import { openSyncResources, pushOnce, type SyncEnv, type SyncResources, unconfirmedState } from "./resources";
 import type { SyncStatus } from "./status";
-import { SyncContext, type LogoutFailure, type LogoutPhase, type LogoutReason, type SyncContextValue } from "./useSync";
+import { SyncContext, type LogoutFailure, type LogoutPhase, type LogoutReason, type SyncContextValue, type UnsavedDrafts } from "./useSync";
 import { ID_PREFIX } from "./vaultStore";
 
 interface Props {
@@ -63,10 +64,24 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
   const [rejections, setRejections] = useState<Rejection[]>([]);
   const [conflicts, setConflicts] = useState<ManualConflict[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
+  const [notesVersion, setNotesVersion] = useState(0);
   const [logoutPhase, setLogoutPhase] = useState<LogoutPhase>("closed");
   const [logoutReason, setLogoutReason] = useState<LogoutReason>("pending");
   const [logoutFailure, setLogoutFailure] = useState<LogoutFailure>(null);
+  const [logoutDraft, setLogoutDraft] = useState(false);
   const leaving = useRef(false);
+  /** Borradores sucios registrados por los editores (SPEC-0008 N-1); identidad estable. */
+  const drafts = useMemo<UnsavedDrafts>(() => {
+    const open = new Set<symbol>();
+    return {
+      register() {
+        const token = Symbol("draft");
+        open.add(token);
+        return () => void open.delete(token);
+      },
+      any: () => open.size > 0,
+    };
+  }, []);
 
   // Abre los recursos del usuario y los cierra al desmontar o al cambiar de usuario.
   useEffect(() => {
@@ -84,6 +99,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         );
         resources.feed.on("change", (change) => {
           if (change.id.startsWith(ID_PREFIX)) setDataVersion((version) => version + 1);
+          else if (change.id.startsWith(NOTE_ID_PREFIX)) setNotesVersion((version) => version + 1);
         });
         setStatus(resources.status.current());
         setRejections(resources.rejections.list());
@@ -160,7 +176,9 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     if (!resources || !status) return null;
     return {
       vaults: resources.vaults,
+      notes: resources.notes,
       dataVersion,
+      notesVersion,
       replicating: !paused,
       status,
       rejections,
@@ -173,12 +191,18 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         // Decide con el estado actual de la réplica (VC-4, VD-1); sin estado legible, avisa
         // diciendo por qué (VD-3, VE-2).
         const unconfirmed = await unconfirmedState(resources);
-        if (unconfirmed === "none") return exit();
-        setLogoutReason(unconfirmed);
+        // Un borrador sin guardar también obliga a avisar: tras cerrar la sesión el editor ya
+        // no podría preguntar (SPEC-0008 N-1).
+        const hasDraft = drafts.any();
+        if (unconfirmed === "none" && !hasDraft) return exit();
+        setLogoutDraft(hasDraft);
+        setLogoutReason(unconfirmed === "none" ? "draft" : unconfirmed);
         setLogoutPhase("asking");
       },
+      unsavedDrafts: drafts,
       logout: {
         phase: logoutPhase,
+        draft: logoutDraft,
         reason: logoutReason,
         failure: logoutFailure,
         async syncAndExit() {
@@ -196,7 +220,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
         },
       },
     };
-  }, [resources, status, rejections, conflicts, dataVersion, paused, logoutPhase, logoutReason, logoutFailure, exit]);
+  }, [resources, status, rejections, conflicts, dataVersion, notesVersion, paused, logoutPhase, logoutReason, logoutFailure, logoutDraft, drafts, exit]);
 
   if (phase.kind === "error") return <p role="alert">No se pudo abrir la copia local de tus bóvedas.</p>;
   if (!value) return <p>Cargando…</p>;

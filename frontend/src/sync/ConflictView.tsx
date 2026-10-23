@@ -8,12 +8,14 @@
  * rechazos (RF-015). Ninguna versión se pierde hasta que el usuario guarda (RF-013).
  */
 import { FormEvent, useState } from "react";
+import NoteConflictCard from "../notes/NoteConflictCard";
 import { FIELD_MESSAGES, formatTags, parseTags, toDescription } from "../vaults/fields";
-import type { ManualConflict } from "./conflicts";
+import type { VaultConflict } from "./conflicts";
 import type { MergeBody } from "./merge";
 import { useSync } from "./useSync";
 import type { VaultField } from "./vaultRules";
-import { utcNow, VaultChangedError, VaultValidationError } from "./vaultStore";
+import { STORAGE_FULL } from "../vaults/errors";
+import { StorageFullError, utcNow, VaultChangedError, VaultValidationError } from "./vaultStore";
 
 const FIELD_NAMES: Record<VaultField, string> = {
   name: "el nombre",
@@ -27,7 +29,7 @@ function listFields(fields: VaultField[]): string {
   return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }
 
-function reasonText(conflict: ManualConflict): string {
+function reasonText(conflict: VaultConflict): string {
   switch (conflict.reason) {
     case "no-ancestor":
       return "No se puede saber qué cambió en cada versión: elige o combina los datos.";
@@ -42,7 +44,7 @@ function reasonText(conflict: ManualConflict): string {
 type Notice = { kind: "resolved"; name: string } | { kind: "changed" } | null;
 
 export default function ConflictView() {
-  const { conflicts } = useSync();
+  const { conflicts, resolveConflict } = useSync();
   const [notice, setNotice] = useState<Notice>(null);
 
   return (
@@ -55,14 +57,26 @@ export default function ConflictView() {
       {conflicts.length === 0 ? (
         <p>No hay conflictos por resolver.</p>
       ) : (
-        conflicts.map((conflict) => (
-          // Con otra ganadora o perdedora es otro conflicto: el formulario parte de cero.
-          <ConflictForm
-            key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
-            conflict={conflict}
-            onNotice={setNotice}
-          />
-        ))
+        conflicts.map((conflict) =>
+          // Los conflictos de nota (SPEC-0008 RF-009) los pinta `NoteConflictCard`; el
+          // formulario de abajo es sólo de bóvedas (nombre, descripción y etiquetas).
+          conflict.kind === "note" ? (
+            <NoteConflictCard
+              key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
+              conflict={conflict}
+              resolve={resolveConflict}
+              onResolved={(path) => setNotice({ kind: "resolved", name: path })}
+              onChanged={() => setNotice({ kind: "changed" })}
+            />
+          ) : (
+            // Con otra ganadora o perdedora es otro conflicto: el formulario parte de cero.
+            <ConflictForm
+              key={`${conflict.id}:${conflict.winner.rev}:${conflict.loser.rev}`}
+              conflict={conflict}
+              onNotice={setNotice}
+            />
+          ),
+        )
       )}
     </section>
   );
@@ -70,7 +84,7 @@ export default function ConflictView() {
 
 type FieldErrors = Partial<Record<VaultField, string>>;
 
-function ConflictForm({ conflict, onNotice }: { conflict: ManualConflict; onNotice: (notice: Notice) => void }) {
+function ConflictForm({ conflict, onNotice }: { conflict: VaultConflict; onNotice: (notice: Notice) => void }) {
   const { resolveConflict } = useSync();
   const a = conflict.winner.doc;
   const b = conflict.loser.doc;
@@ -112,6 +126,8 @@ function ConflictForm({ conflict, onNotice }: { conflict: ManualConflict; onNoti
       } else if (err instanceof VaultChangedError) {
         // La lista de conflictos ya refleja el estado nuevo (se resolvió en otra pestaña, llegó otra versión…).
         onNotice({ kind: "changed" });
+      } else if (err instanceof StorageFullError) {
+        setFormError(STORAGE_FULL);
       } else {
         setFormError("No se pudo guardar la resolución. Inténtalo de nuevo.");
       }

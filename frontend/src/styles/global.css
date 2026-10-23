@@ -205,11 +205,11 @@ button:not([type="submit"]):disabled {
   text-decoration: none;
 }
 
-ul > li h2 {
+.card-list > li h2 {
   font-size: 15px;
 }
 
-ul > li > a {
+.card-list > li > a {
   font-size: 13px;
 }
 
@@ -269,15 +269,18 @@ ul > li > a {
   animation: fadeSlideUp var(--dur-base) var(--ease-out);
 }
 
-/* --- Listas de bóvedas/papelera --- */
+/* --- Listas de tarjetas (bóvedas, papelera de bóvedas, rechazos, papelera de notas) ---
+   Ámbito propio (`.card-list`): estos estilos NO deben alcanzar otras listas de la app
+   (árbol de notas, listas del markdown renderizado) - VU-1. */
 
-ul {
+.card-list,
+.chip-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-ul > li {
+.card-list > li {
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -286,14 +289,14 @@ ul > li {
 }
 
 /* Etiquetas de una bóveda: lista inline de chips, no la lista vertical por defecto. */
-ul[aria-label="Etiquetas"] {
+.chip-list {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
   margin: var(--space-2) 0;
 }
 
-ul[aria-label="Etiquetas"] > li {
+.chip-list > li {
   background: var(--accent-soft);
   border: none;
   color: var(--accent);

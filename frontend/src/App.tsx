@@ -1,8 +1,9 @@
 import { ReactNode } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginPage from "./auth/LoginPage";
-import RequireAuth, { useMe } from "./auth/RequireAuth";
+import RequireAuth, { useMe, useRefreshMe } from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
+import VaultWorkspacePage from "./notes/VaultWorkspacePage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
@@ -32,6 +33,24 @@ function SyncScope({ env, children }: { env?: SyncEnv; children: ReactNode }) {
   );
 }
 
+/**
+ * Pantalla de cambio de contraseña. Al terminar, la sesión en caché se renueva antes de
+ * navegar: con `must_change_password` obsoleto, `RequireAuth` devolvería aquí (VU-5).
+ */
+function ChangePasswordRoute() {
+  const navigate = useNavigate();
+  const refreshMe = useRefreshMe();
+  return (
+    <ChangePasswordPage
+      onChanged={async () => {
+        // Si la renovación falla (sin red) se navega igual: `RequireAuth` revalida al cambiar de ruta.
+        await refreshMe().catch(() => undefined);
+        navigate("/");
+      }}
+    />
+  );
+}
+
 export default function App({ syncEnv }: Props) {
   const navigate = useNavigate();
   return (
@@ -55,12 +74,14 @@ export default function App({ syncEnv }: Props) {
           </RequireAuth>
         }
       >
-        <Route path="/settings/password" element={<ChangePasswordPage onChanged={() => navigate("/")} />} />
+        <Route path="/settings/password" element={<ChangePasswordRoute />} />
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}
         <Route path="/vaults" element={<VaultListPage />} />
         <Route path="/vaults/new" element={<VaultForm />} />
         <Route path="/vaults/trash" element={<TrashPage />} />
         <Route path="/vaults/:id/edit" element={<VaultForm />} />
+        {/* Bóveda abierta: sidebar de notas + editor (SPEC-0008). `new` y `trash` ganan por ser estáticas. */}
+        <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
         {/* Lo que la sincronización deja al usuario (SPEC-0005 RF-006, RF-013). */}
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />

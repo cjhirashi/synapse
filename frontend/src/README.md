@@ -6,6 +6,8 @@ Código fuente React.
 src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
+├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
+├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
 ├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
 ├── settings/   # ajustes de cuenta (cambiar contraseña)
 ├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
@@ -32,6 +34,7 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults` | `vaults/VaultListPage.tsx` — bóvedas activas, «Cargar más», borrar con confirmación |
 | `/vaults/new` | `vaults/VaultForm.tsx` — crear |
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
+| `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
 | `/rejections` | `sync/RejectionsPage.tsx` — cambios que el servidor rechazó, con el motivo y «Corregir» |
 | `/conflicts` | `sync/ConflictView.tsx` — conflictos que el usuario elige o combina |
@@ -90,4 +93,75 @@ y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy 
 mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
 (`backend/README.md`, «Despliegue»).
 
-El resto de la estructura (editor) se define en su propia spec.
+## Notas y editor (SPEC-0008)
+
+**Ruta y marco.** `main.tsx` usa `createBrowserRouter` (una ruta comodín que monta `App`,
+cuyas `<Routes>` no cambian) porque `useBlocker` sólo existe en data routers. `/vaults/:id`
+(`notes/VaultWorkspacePage.tsx`) muestra a la izquierda el árbol de la bóveda y a la derecha el
+editor; la nota abierta vive sólo en el estado de la página (ni URL ni almacenamiento: al
+entrar el editor está vacío). `new` y `trash` ganan a `:id` por ser rutas estáticas. El
+**riel** (`notes/VaultRail.tsx`, montado por `layout/AppLayout.tsx` a la izquierda de toda
+pantalla privada) lista las bóvedas activas con sus iniciales y se relee con `dataVersion`.
+
+Módulos de `notes/`:
+
+| Módulo | Qué hace |
+|---|---|
+| `noteStore.ts` | operaciones sobre la réplica: crear (id `note:{vault}:{uuid v4}`, `Sin título.md` si no hay título), leer, guardar, renombrar/mover (mismo `_id`), borrar a la papelera (`deleted_at`, nunca lápida) y restaurar. **`titleToPath`** es la única regla título→ruta (añade `.md` si falta) y la usan `create` y `rename`. Un **índice de resumen** en memoria (`{id, path, rev, deleted_at, updated_at}`, sin `content`) se construye una vez y se actualiza con `changes` desde la última secuencia: `list`, la unicidad de rutas y «Sin título n» no releen el cuerpo de las notas (S-1) |
+| `noteRules.ts` | espejo de `core/note_rules.py` (ruta, 2 MiB, frontmatter, `pathKey`) sobre la batería compartida `note_rules_cases.json` |
+| `noteTree.ts`, `untitled.ts` | árbol a partir de las rutas (carpetas derivadas, sin carpetas vacías) y siguiente nombre libre por `pathKey` |
+| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"` que sólo contiene `treeitem`s: una parada de Tab, teclado WAI-ARIA) y «Nueva nota». **«Renombrar»/«Borrar»** viven en la barra «Acciones de la nota» (`role="toolbar"`, siempre visible, fuera del árbol) para la nota seleccionada; **F2** y **Supr** las atajan desde el `treeitem` enfocado (Supr respeta la confirmación de borrador sucio; ambas comparten la guarda de operación en curso). **Foco:** tras borrar va a la fila vecina que sobrevive en el árbol resultante (o a «Nueva nota»); tras guardar o cancelar (también con Escape) el renombrado vuelve al `treeitem`. Papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
+| `mergeNote.ts`, `NoteConflictCard.tsx` | conflictos de nota: nunca se elige por fecha; sólo se cierra solo lo que difiere en `updated_at` y lo demás lo decide el usuario en `sync/ConflictView.tsx` |
+| `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
+| `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |
+
+**Estilos de lista:** `styles/global.css` no estiliza `ul`/`li` sueltos; la tarjeta de la lista de
+bóvedas, de la papelera, de los rechazos y de la papelera de notas es **`.card-list`** y las
+etiquetas son **`.chip-list`**. El árbol (`notes.css`) y el markdown renderizado (`editor.css`)
+tienen sus propios estilos; el texto de acento no se usa sobre `--accent-soft` (3,15:1): la fila
+seleccionada y la vista activa usan `--text-primary` más un indicador de acento. El nombre
+accesible de cada icono del riel empieza por sus iniciales visibles.
+
+**Editor** (`editor/`, cargado con `React.lazy`): `NoteEditor.tsx` es dueño del `draft`
+(markdown) y del modo; abre en **lectura** y «Editar»/«Leer» alterna. `MilkdownView.tsx`
+(Visual) y `CodeView.tsx` (Código) comparten el contrato `{value, onChange}` y el mismo
+`draft`: alternar de vista no escribe ni relee, y sólo una edición real reserializa el
+markdown. `safeUrl.ts` deja pasar enlaces `http`, `https`, `mailto` y relativos (imágenes sólo
+`http(s)`) y el HTML crudo se pinta como texto.
+
+**Guardado explícito:** «Guardar» y Ctrl/Cmd+S escriben una revisión; «Leer» con cambios guarda
+antes. Con un borrador sucio hay aviso al cerrar la pestaña (`beforeunload`), al abrir otra
+nota, al borrar la abierta y al navegar dentro de la app (riel, «Bóvedas»…, por `useBlocker`).
+El **cierre de sesión** también avisa: el editor se registra en `useSync().unsavedDrafts`
+mientras está sucio y `requestLogout()` lo consulta antes de cerrar nada (`LogoutDialog`,
+razón `draft`). La navegación a `/login` no se bloquea.
+
+**Estado «sucio» síncrono y lector único (E-6, E-7):** el listener de Milkdown emite el markdown con un
+debounce de 200 ms y su `destroy` descarta lo pendiente, así que `draft` va con retraso respecto de lo
+que el usuario ve. `MilkdownView` informa «sucio» (`onDirty`) en la misma transacción que cambia el
+documento y expone un vaciado síncrono que serializa y emite YA, sólo si el documento cambió respecto
+del último emitido (abrir sin editar nunca reserializa). `NoteEditor` lo usa a través de un único
+lector, `readDraft()` (vacía y devuelve el markdown vigente): guardar, alternar vista, los diálogos,
+`confirmDiscard`, el cambio de nota, la revisión nueva, el cierre de sesión, `beforeunload` y el
+bloqueo de navegación deciden con él y con `hasUnsaved()`, nunca leyendo `draft` directamente.
+
+Los guardados se **serializan** (E-1): un guardado en vuelo absorbe un doble Ctrl+S o el
+auto-repeat y, si el borrador cambió mientras tanto, se guarda después sobre la revisión nueva
+(nunca dos veces con la misma, que crearía una rama de conflicto idéntica). Los tres diálogos de
+confirmación del editor (`ConfirmDialog`) atrapan el foco, cierran con Escape como «Seguir
+editando» y lo devuelven al disparador. El foco inicial es configurable con `data-autofocus`
+(por omisión, el primer botón): el diálogo de descarte («Borrar y descartar cambios») enfoca
+«Seguir editando». Si la bóveda pasa a la papelera por sync con un borrador sucio, el 404 lo
+muestra en sólo lectura con «Copiar texto» (E-2; RF-014: no se edita ni se guarda); ese
+borrador se suelta si la nota se cerró a propósito (p. ej. «Borrar y descartar cambios», E-3), y
+sin API de portapapeles se avisa «No se pudo copiar; selecciona el texto.» y el textarea queda
+seleccionado (E-4).
+
+**Reparto de `_bulk_docs`:** una nota de 2 MiB hace que un lote de 50 supere cualquier tope.
+`sync/remote.ts` parte un `POST _bulk_docs` de más de 8 MiB (`BULK_CHUNK_BYTES`) en
+sub-peticiones secuenciales; el servidor admite hasta 16 MiB por petición.
+
+**Pruebas:** `*.test.ts(x)` junto a cada módulo; integración con backend real en
+`notes/notes.integration.test.ts` (`npm run test:sync`) y rendimiento de RNF-001 en
+`notes/tree.perf.test.tsx` (`npm run test:perf`).
+

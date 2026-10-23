@@ -5,7 +5,7 @@ import { PROBLEM } from "../api/problems";
 
 const MIN_LENGTH = 10;
 
-export default function ChangePasswordPage({ onChanged }: { onChanged: () => void }) {
+export default function ChangePasswordPage({ onChanged }: { onChanged: () => void | Promise<void> }) {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");

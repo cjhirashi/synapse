@@ -5038,7 +5038,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <path data-edge-from="push" data-edge-to="validate" data-edge-key="5" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="445.6,246;473.6,246" d="M 445.6 246 L 473.6 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
         <path data-edge-from="store" data-edge-to="conflict" data-edge-label="_conflicts" data-edge-key="6" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="672.4000000000001,272;672.4000000000001,338" d="M 672.4000000000001 272 L 672.4000000000001 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="store" data-edge-to="pull" data-edge-label="GET _changes" data-edge-key="7" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="672.4000000000001,220;672.4000000000001,120;760.4000000000001,120" d="M 672.4000000000001 220 L 672.4000000000001 120 L 760.4000000000001 120" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
-        <path data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. vault-name-taken" data-edge-key="8" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="519.6,280;519.6,338" d="M 519.6 280 L 519.6 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
+        <path data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. note-path-taken" data-edge-key="8" data-composition-routing="workflow-v2-auto" data-edge-role="error" data-composition-points="519.6,280;519.6,338" d="M 519.6 280 L 519.6 338" class="a-security" stroke-width="1.4" marker-end="url(#arrowhead-security)"/>
         <path data-edge-from="validate" data-edge-to="store" data-edge-label="válido" data-edge-key="9" data-composition-routing="workflow-v2-auto" data-edge-role="" data-composition-points="565.6,246;612.4000000000001,246" d="M 565.6 246 L 612.4000000000001 246" class="a-emphasis" stroke-width="1.8" marker-end="url(#arrowhead-emphasis)"/>
 
         <!-- Nodes -->
@@ -5108,20 +5108,20 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <text data-detail="fine" x="399.6" y="268.9" class="t-security" font-size="7" text-anchor="middle">RF-001/002</text>
         </g>
 
-        <g id="node-validate" data-node-id="validate" data-node-label="Push validado" tabindex="0" role="button" aria-label="Enfocar Push validado, reglas de SPEC-0003, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="backend" data-node-sublabel="reglas de SPEC-0003" data-node-tag="RF-005" data-node-context="Servidor · proxy /sync → CouchDB">
-          <title>Push validado · reglas de SPEC-0003 · Servidor · proxy /sync → CouchDB · RF-005</title>
+        <g id="node-validate" data-node-id="validate" data-node-label="Push validado" tabindex="0" role="button" aria-label="Enfocar Push validado, reglas de 0003 y 0008, Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="backend" data-node-sublabel="reglas de 0003 y 0008" data-node-tag="RF-005" data-node-context="Servidor · proxy /sync → CouchDB">
+          <title>Push validado · reglas de 0003 y 0008 · Servidor · proxy /sync → CouchDB · RF-005</title>
           <rect x="473.6" y="212" width="92" height="68" rx="6" class="c-mask"/>
           <rect x="473.6" y="212" width="92" height="68" rx="6" class="c-backend" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="backend" class="semantic-sigil s-backend" transform="translate(479.6 218) scale(0.6875)">
             <path d="M6 3 3 8l3 5M10 3l3 5-3 5"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="519.6" y="243.9" class="t-primary" font-size="10.7" font-weight="600" text-anchor="middle">Push validado</text>
-          <text data-detail="context" x="519.6" y="257.9" class="t-muted" font-size="7.3" text-anchor="middle">reglas de SPEC-0003</text>
-        <text data-detail="fine" x="519.6" y="270.5" class="t-backend" font-size="7" text-anchor="middle">RF-005</text>
+          <text data-detail="context" x="519.6" y="257.1" class="t-muted" font-size="6.6" text-anchor="middle">reglas de 0003 y 0008</text>
+        <text data-detail="fine" x="519.6" y="269.5" class="t-backend" font-size="7" text-anchor="middle">RF-005</text>
         </g>
 
-        <g id="node-store" data-node-id="store" data-node-label="synapse_user_{id}" tabindex="0" role="button" aria-label="Enfocar synapse_user_{id}, sólo vault:* (D-4), Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="sólo vault:* (D-4)" data-node-context="Servidor · proxy /sync → CouchDB">
-          <title>synapse_user_{id} · sólo vault:* (D-4) · Servidor · proxy /sync → CouchDB</title>
+        <g id="node-store" data-node-id="store" data-node-label="synapse_user_{id}" tabindex="0" role="button" aria-label="Enfocar synapse_user_{id}, vault:* y note:* (SPEC-0008), Servidor · proxy /sync → CouchDB" aria-pressed="false" data-node-kind="database" data-node-sublabel="vault:* y note:* (SPEC-0008)" data-node-context="Servidor · proxy /sync → CouchDB">
+          <title>synapse_user_{id} · vault:* y note:* (SPEC-0008) · Servidor · proxy /sync → CouchDB</title>
           <rect x="612.4000000000001" y="220" width="120" height="52" rx="6" class="c-mask"/>
           <rect x="612.4000000000001" y="220" width="120" height="52" rx="6" class="c-database" stroke-width="1.5"/>
           <g aria-hidden="true" data-semantic-sigil="database" class="semantic-sigil s-database" transform="translate(618.4000000000001 226) scale(0.6875)">
@@ -5129,7 +5129,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
             <path d="M3 4v8c0 1.1 2.2 2 5 2s5-.9 5-2V4M3 8c0 1.1 2.2 2 5 2s5-.9 5-2"/>
           </g>
           <text data-node-label="" data-detail-anchor="" x="672.4000000000001" y="252.1" class="t-primary" font-size="10.9" font-weight="600" text-anchor="middle">synapse_user_{id}</text>
-          <text data-detail="context" x="672.4000000000001" y="267" class="t-muted" font-size="8" text-anchor="middle">sólo vault:* (D-4)</text>
+          <text data-detail="context" x="672.4000000000001" y="265.3" class="t-muted" font-size="6.6" text-anchor="middle">vault:* y note:* (SPEC-0008)</text>
         </g>
 
         <g id="node-denied" data-node-id="denied" data-node-label="Rechazo" tabindex="0" role="button" aria-label="Enfocar Rechazo, forbidden + reason, Conflictos y rechazos" aria-pressed="false" data-node-kind="security" data-node-sublabel="forbidden + reason" data-node-tag="RF-006" data-node-context="Conflictos y rechazos">
@@ -5194,9 +5194,9 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <rect x="682.6000000000001" y="100" width="67.6" height="14" rx="3" class="c-mask"/>
           <text x="716.4000000000001" y="110" class="t-edge-emphasis" font-size="8" text-anchor="middle">GET _changes</text>
         </g>
-        <g data-detail="context" data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. vault-name-taken" data-edge-key="8">
-          <rect x="459.40000000000003" y="299" width="120.39999999999999" height="14" rx="3" class="c-mask"/>
-          <text x="519.6" y="309" class="t-edge-security" font-size="8" text-anchor="middle">p. ej. vault-name-taken</text>
+        <g data-detail="context" data-edge-from="validate" data-edge-to="denied" data-edge-label="p. ej. note-path-taken" data-edge-key="8">
+          <rect x="461.8" y="299" width="115.6" height="14" rx="3" class="c-mask"/>
+          <text x="519.6" y="309" class="t-edge-security" font-size="8" text-anchor="middle">p. ej. note-path-taken</text>
         </g>
         <g data-detail="context" data-edge-from="validate" data-edge-to="store" data-edge-label="válido" data-edge-key="9">
           <rect x="569.6" y="226" width="38.8" height="14" rx="3" class="c-mask"/>
@@ -5429,7 +5429,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <h3>Estado</h3>
         </div>
         <ul>
-          <li>Implementada (Fase 4, bloques A–K)</li>
+          <li>Implementada (Fase 4); canal ampliado a notas por SPEC-0008</li>
           <li>Integración real: 14 pruebas; p95 ≈ 0,4 s</li>
           <li>Pendiente: verificación (Fase 5)</li>
         </ul>

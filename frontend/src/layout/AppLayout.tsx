@@ -2,6 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import ThemeToggle from "../theme/ThemeToggle";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
+import VaultRail from "../notes/VaultRail";
 import AccountMenu from "./AccountMenu";
 import "./AppLayout.css";
 
@@ -9,7 +10,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "activ
 
 /**
  * Marco de las rutas privadas: secciones (SPEC-0003), navegación de cuenta (RF-023) y
- * estado de la sincronización (SPEC-0005 RF-009). "Cerrar sesión" pasa por la
+ * estado de la sincronización (SPEC-0005 RF-009) y riel de bóvedas (SPEC-0008 RF-001). "Cerrar sesión" pasa por la
  * sincronización: con cambios sin confirmar abre antes el aviso (RF-017) — ver
  * `AccountMenu`, que dispara `requestLogout()` de `useSync()`.
  */
@@ -37,9 +38,13 @@ export default function AppLayout() {
         </nav>
       </header>
       <SyncStatusBar />
-      <main className="app-main">
-        <Outlet />
-      </main>
+      {/* Riel de bóvedas (SPEC-0008 RF-001) a la izquierda de cada pantalla privada. */}
+      <div className="app-body">
+        <VaultRail />
+        <main className="app-main">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

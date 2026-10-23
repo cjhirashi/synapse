@@ -1,0 +1,175 @@
+/**
+ * Ruta `/vaults/:id`: la bóveda abierta, con su sidebar de notas y el editor (SPEC-0008
+ * RF-001, RF-002, RF-014, RF-015, RF-019; PLAN-0008 §2.6).
+ *
+ * - La bóveda se lee de la réplica y se relee con `dataVersion`: una que llega después por el
+ *   pull sustituye al 404, y una que se borra mientras está abierta pasa a 404 (RF-002, RF-014).
+ *   Un id que no es un UUID canónico no se consulta siquiera.
+ * - La nota abierta vive sólo en el estado del componente (RF-015): ni URL ni almacenamiento,
+ *   así que al entrar (o volver a montar) el editor está vacío.
+ * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
+ *   descarga (P-3).
+ */
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import type { NoteEditorHandle } from "../editor/NoteEditor";
+import { useSync } from "../sync/useSync";
+import type { Vault } from "../sync/vaultStore";
+import { NOTE_ID_PREFIX } from "./noteRules";
+import NoteSidebar from "./NoteSidebar";
+import NoteTrash from "./NoteTrash";
+import "./notes.css";
+
+const NoteEditor = lazy(() => import("../editor/NoteEditor"));
+
+/** UUID en su forma canónica (minúsculas), la única que forman los ids de bóveda. */
+const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+type Load = { state: "loading" } | { state: "missing" } | { state: "ready"; vault: Vault };
+
+export default function VaultWorkspacePage() {
+  const { id = "" } = useParams();
+  const { vaults, dataVersion } = useSync();
+  const [load, setLoad] = useState<Load>({ state: "loading" });
+  /** Borrador sin guardar de la nota abierta: sobrevive al 404 si la bóveda pasa a la papelera (E-2). */
+  const [salvaged, setSalvaged] = useState<string | null>(null);
+
+  // Otra bóveda no hereda el borrador de la anterior.
+  useEffect(() => setSalvaged(null), [id]);
+
+  useEffect(() => {
+    if (!CANONICAL_UUID.test(id)) {
+      setLoad({ state: "missing" });
+      return;
+    }
+    let alive = true;
+    vaults.get(id).then(
+      (vault) => alive && setLoad({ state: "ready", vault }),
+      // `get` falla si no existe o está en la papelera (RF-002); un error de lectura se trata igual.
+      () => alive && setLoad({ state: "missing" }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [vaults, id, dataVersion]);
+
+  if (load.state === "loading") return <p>Cargando…</p>;
+  if (load.state === "missing") {
+    return (
+      <section>
+        <p role="alert">Esta bóveda no existe o está en la papelera.</p>
+        {salvaged !== null && <SalvagedDraft text={salvaged} />}
+        <Link to="/vaults">Volver a las bóvedas</Link>
+      </section>
+    );
+  }
+  // `key`: otra bóveda es otro espacio de trabajo, sin nota abierta ni borradores heredados.
+  return <Workspace key={load.vault.id} vault={load.vault} onDirtyDraft={setSalvaged} />;
+}
+
+/**
+ * Nota que pide el estado de navegación (el "Corregir" de un rechazo, SPEC-0008 RF-004),
+ * sólo si es de esta bóveda: el id de nota lleva el de su bóveda.
+ */
+function requestedNote(state: unknown, vaultId: string): string | null {
+  const noteId = (state as { noteId?: unknown } | null)?.noteId;
+  return typeof noteId === "string" && noteId.startsWith(`${NOTE_ID_PREFIX}${vaultId}:`) ? noteId : null;
+}
+
+/**
+ * El borrador que quedaba sin guardar cuando la bóveda se fue a la papelera: sólo lectura (RF-014,
+ * no se edita ni se guarda) y con «Copiar texto» para que no se pierda en silencio (E-2).
+ */
+function SalvagedDraft({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
+
+  async function copy() {
+    setCopyFailed(false);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // Sin API de portapapeles (contexto no seguro) o permiso denegado (E-4): se avisa y se deja el
+      // texto seleccionado para que el usuario lo copie con el teclado.
+      setCopied(false);
+      setCopyFailed(true);
+      area.current?.focus();
+      area.current?.select();
+    }
+  }
+  return (
+    <div className="note-editor-notice">
+      <p>Tenías cambios sin guardar en una nota de esta bóveda. Cópialos antes de salir:</p>
+      <textarea ref={area} aria-label="Borrador sin guardar" readOnly rows={8} value={text} />
+      <button type="button" onClick={() => void copy()}>
+        Copiar texto
+      </button>
+      {copied && <span role="status">Copiado</span>}
+      {copyFailed && <span role="status">No se pudo copiar; selecciona el texto.</span>}
+    </div>
+  );
+}
+
+function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft: string | null) => void }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
+  const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
+
+  // El estado de navegación vive en el historial del navegador y sobreviviría a recargar:
+  // una vez usado se limpia, para que entrar de nuevo a la bóveda siga abriendo vacía (RF-015).
+  useEffect(() => {
+    if (location.state !== null) navigate(location.pathname, { replace: true, state: null });
+    // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
+  }, []);
+  /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
+  const [editOnOpen, setEditOnOpen] = useState(false);
+  const [showTrash, setShowTrash] = useState(false);
+  // Cerrar la nota a propósito (borrarla descartando cambios…) suelta el borrador conservado: sólo la
+  // pérdida involuntaria de la bóveda (papelera por sync) lo deja disponible en el 404 (E-3).
+  useEffect(() => {
+    if (openId === null) onDirtyDraft(null);
+  }, [openId, onDirtyDraft]);
+
+  /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
+  const editorRef = useRef<NoteEditorHandle>(null);
+
+  function open(id: string, options?: { edit: boolean }) {
+    setOpenId(id);
+    setEditOnOpen(options?.edit ?? false);
+    setShowTrash(false);
+  }
+
+  return (
+    <div className="vault-workspace">
+      <div className="vault-workspace-side">
+        <h1>{vault.name}</h1>
+        <NoteSidebar
+          vaultId={vault.id}
+          openId={openId}
+          onOpen={open}
+          onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
+          onShowTrash={() => setShowTrash(true)}
+          confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
+        />
+      </div>
+      <div className="vault-workspace-main">
+        {showTrash && (
+          <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
+        )}
+        {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
+        <div hidden={showTrash}>
+          {openId === null ? (
+            <p>Abre o crea una nota para empezar.</p>
+          ) : (
+            <Suspense fallback={<p>Cargando el editor…</p>}>
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} />
+            </Suspense>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

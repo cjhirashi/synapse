@@ -4,7 +4,12 @@ tipo: spec
 feature: 0007-fastapi-sirve-spa
 estado: implemented      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: fd298f9   # último commit reconciliado (lo mueve el cierre)
+
+> **Re-anclaje 2026-10-23** (T-092 de TASKS-0008): SPEC-0008 actualizó `backend/README.md` y
+> `frontend/README.md` (secciones de notas, sync y pruebas) y corrigió `test_spa.py` (elige el
+> asset JS explícitamente; la aserción dejó de depender del orden alfabético). Sin cambio de
+> requisitos.
+anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: strict      # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # globs de archivos que ESTA feature posee: código, tests y doc
   - backend/app/spa.py

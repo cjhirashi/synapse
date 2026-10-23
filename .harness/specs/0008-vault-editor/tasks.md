@@ -29,347 +29,598 @@ actualizado: 2026-10-22
 ## Tareas
 
 ### 0 · Línea base
-- [ ] T-000 — Suites completas en verde antes de tocar nada; anotar los números en `history.md` (cubre RF-001…RF-019, RNF-001: referencia de no regresión) [zona: sistema]
+- [x] T-000 — Suites completas en verde antes de tocar nada; anotar los números en `history.md` (cubre RF-001…RF-019, RNF-001: referencia de no regresión) [zona: sistema]
   - CHECK: `bash .harness/gate/check.sh && (cd backend && python3 -m pytest -q) && (cd frontend && npx vitest run && npm run typecheck)`
   - EXPECT: gate "Compuerta abierta"; backend `passed` con 0 failed (≈ 791 tests, ~13 min); frontend todos los archivos `passed`, 0 failed; typecheck sin errores.
 
 ### A · Contrato y núcleo del backend (PLAN-0008 §2.1, §4)
-- [ ] T-001 — Test (rojo) `test_note_contract.py`: `note.schema.json` tiene `additionalProperties: false`, `required` = `NOTE_REQUIRED`, `properties` = `NOTE_KEYS`, `path.maxLength` = `PATH_MAX`, `content.x-max-utf8-bytes` = `CONTENT_MAX_BYTES`, `frontmatter.x-max-json-utf8-bytes` = `FRONTMATTER_MAX_BYTES` (cubre RF-005) [zona: test]
+- [x] T-001 — Test (rojo) `test_note_contract.py`: `note.schema.json` tiene `additionalProperties: false`, `required` = `NOTE_REQUIRED`, `properties` = `NOTE_KEYS`, `path.maxLength` = `PATH_MAX`, `content.x-max-utf8-bytes` = `CONTENT_MAX_BYTES`, `frontmatter.x-max-json-utf8-bytes` = `FRONTMATTER_MAX_BYTES` (cubre RF-005) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_contract.py`
   - EXPECT: falla al importar: `ModuleNotFoundError: No module named 'app.core.note_rules'`.
-- [ ] T-002 — Test (rojo) en `test_contract.py`: el `reason` de `BulkDocsRejection` del contrato de 0005 contiene `note-path-taken` y `vault-not-found` (cubre RF-004, RF-013) [zona: test]
+- [x] T-002 — Test (rojo) en `test_contract.py`: el `reason` de `BulkDocsRejection` del contrato de 0005 contiene `note-path-taken` y `vault-not-found` (cubre RF-004, RF-013) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_contract.py -k push_schemas`
   - EXPECT: 1 failed (`AssertionError: note-path-taken`).
-- [ ] T-003 — Batería común `backend/tests/fixtures/note_rules_cases.json`: casos de `path` (1/300/301 puntos de código, `Cc`, `/a`, `a/`, `a//b`, segmento sólo espacios, `" a / b "`, U+0085, U+FEFF), `content` (2 MiB exactos con multibyte, +1 byte, sustituto suelto), `frontmatter` (64 KiB, +1, no objeto) y `path_key` (ß/SS, NFC/NFD, anchura completa) con veredicto, forma normalizada y clave (cubre RF-005, RF-013, RF-016) [zona: test]
+- [x] T-003 — Batería común `backend/tests/fixtures/note_rules_cases.json`: casos de `path` (1/300/301 puntos de código, `Cc`, `/a`, `a/`, `a//b`, segmento sólo espacios, `" a / b "`, U+0085, U+FEFF), `content` (2 MiB exactos con multibyte, +1 byte, sustituto suelto), `frontmatter` (64 KiB, +1, no objeto) y `path_key` (ß/SS, NFC/NFD, anchura completa) con veredicto, forma normalizada y clave (cubre RF-005, RF-013, RF-016) [zona: test]
   - CHECK: `python3 -I -c "import json;d=json.load(open('backend/tests/fixtures/note_rules_cases.json'));print(sorted(d))"`
   - EXPECT: imprime las secciones `content`, `frontmatter`, `path`, `path_key`; JSON válido.
-- [ ] T-004 — Test (rojo) `test_note_rules.py`: recorre la batería contra `check_path`, `normalize_path`, `path_key`, `check_content`, `check_frontmatter` (cubre RF-005, RF-013, RF-016) [zona: test]
+- [x] T-004 — Test (rojo) `test_note_rules.py`: recorre la batería contra `check_path`, `normalize_path`, `path_key`, `check_content`, `check_frontmatter` (cubre RF-005, RF-013, RF-016) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_rules.py`
   - EXPECT: error de colección `ModuleNotFoundError: No module named 'app.core.note_rules'`.
-- [ ] T-005 — `backend/app/core/note_rules.py`: constantes, `NOTE_KEYS`/`NOTE_REQUIRED`, `normalize_path` (strip `White_Space` por segmento), `check_path`, `path_key`, `check_content`, `check_frontmatter`, comentadas (cubre RF-005, RF-013, RF-016) [zona: núcleo]
+- [x] T-005 — `backend/app/core/note_rules.py`: constantes, `NOTE_KEYS`/`NOTE_REQUIRED`, `normalize_path` (strip `White_Space` por segmento), `check_path`, `path_key`, `check_content`, `check_frontmatter`, comentadas (cubre RF-005, RF-013, RF-016) [zona: núcleo]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_rules.py tests/test_note_contract.py`
   - EXPECT: todos `passed`, 0 failed.
 
 ### B · Reservas (PLAN-0008 §2.2)
-- [ ] T-006 — Test (rojo) `test_reservations.py` con doble en memoria de `VaultPort`: crear, reescritura propia, ocupada → `ReservationTaken`, huérfana reasignada, arrendamiento de 30 s, `release` no borra una reserva reasignada ni una en uso (cubre RF-011, RF-013) [zona: test]
+- [x] T-006 — Test (rojo) `test_reservations.py` con doble en memoria de `VaultPort`: crear, reescritura propia, ocupada → `ReservationTaken`, huérfana reasignada, arrendamiento de 30 s, `release` no borra una reserva reasignada ni una en uso (cubre RF-011, RF-013) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_reservations.py`
   - EXPECT: error de colección `ModuleNotFoundError: No module named 'app.services.reservations'`.
-- [ ] T-007 — `backend/app/services/reservations.py`: `ReservationTaken`, `reserve(reservation_id, owner, holds)`, `release(...)` extraídos de `VaultService` sin cambiar el algoritmo (cubre RF-011, RF-013) [zona: servicio]
+- [x] T-007 — `backend/app/services/reservations.py`: `ReservationTaken`, `reserve(reservation_id, owner, holds)`, `release(...)` extraídos de `VaultService` sin cambiar el algoritmo (cubre RF-011, RF-013) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_reservations.py`
   - EXPECT: todos `passed`.
-- [ ] T-008 — `vault_service.py` delega `reserve`/`release` en `reservations.py` y traduce a `VaultNameTaken`; ningún test de bóvedas se modifica (cubre RF-013: no regresión del mecanismo compartido) [zona: servicio]
+- [x] T-008 — `vault_service.py` delega `reserve`/`release` en `reservations.py` y traduce a `VaultNameTaken`; ningún test de bóvedas se modifica (cubre RF-013: no regresión del mecanismo compartido) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_service.py tests/test_vaults_concurrency.py tests/test_vaults_api.py tests/test_sync_push.py && git diff --stat -- backend/tests`
   - EXPECT: todos `passed`; `git diff` no lista ningún `test_vault*.py` ni `test_sync_push.py`.
-- [ ] T-009 — Test (rojo) `test_note_service.py` contra CouchDB real: reservar ruta, equivalencia NFKC+casefold → `NotePathTaken`, dos reservas simultáneas de la misma ruta (hilos) → una gana, rama perdedora viva conserva su reserva, `release_path` tras renombrar (cubre RF-011, RF-013, RF-017) [zona: test]
+- [x] T-009 — Test (rojo) `test_note_service.py` contra CouchDB real: reservar ruta, equivalencia NFKC+casefold → `NotePathTaken`, dos reservas simultáneas de la misma ruta (hilos) → una gana, rama perdedora viva conserva su reserva, `release_path` tras renombrar (cubre RF-011, RF-013, RF-017) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_service.py`
   - EXPECT: error de colección `ModuleNotFoundError: No module named 'app.services.note_service'`.
-- [ ] T-010 — `backend/app/services/note_service.py`: `NoteService`, `NotePathTaken`, `reserve_path`, `release_path`, predicado `holds` sobre todas las hojas vivas de la nota; documento `note-path:{vault_id}:{path_key}` (cubre RF-011, RF-013, RF-017) [zona: servicio]
+- [x] T-010 — `backend/app/services/note_service.py`: `NoteService`, `NotePathTaken`, `reserve_path`, `release_path`, predicado `holds` sobre todas las hojas vivas de la nota; documento `note-path:{vault_id}:{path_key}` (cubre RF-011, RF-013, RF-017) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_service.py`
   - EXPECT: todos `passed`.
 
 ### C · Filtros, push y rutas (PLAN-0008 §2.3–§2.5)
-- [ ] T-011 — Test (rojo) `test_note_sync_filter.py`: `is_replicable_id` acepta `note:{uuid}:{uuid}` canónico y rechaza `note:{uuid}`, mayúsculas, `note-path:*`, `foo`; selector `^(vault|note):`; `all_docs_query` devuelve dos rangos (`note:` antes que `vault:`) (cubre RF-006) [zona: test]
+- [x] T-011 — Test (rojo) `test_note_sync_filter.py`: `is_replicable_id` acepta `note:{uuid}:{uuid}` canónico y rechaza `note:{uuid}`, mayúsculas, `note-path:*`, `foo`; selector `^(vault|note):`; `all_docs_query` devuelve dos rangos (`note:` antes que `vault:`) (cubre RF-006) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_filter.py`
   - EXPECT: failed en los casos de nota y de rangos (`assert False`/`KeyError`); los de `vault:` pasan.
-- [ ] T-012 — `sync_filter.py`: `is_replicable_id` con notas, selector ampliado, `all_docs_query` con lista de rangos (cubre RF-006) [zona: servicio]
+- [x] T-012 — `sync_filter.py`: `is_replicable_id` con notas, selector ampliado, `all_docs_query` con lista de rangos (cubre RF-006) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_filter.py tests/test_sync_filter.py`
   - EXPECT: todos `passed` (si un test de 0005 fija el rango único, se ajusta en esta tarea y se anota para el re-anclaje).
-- [ ] T-013 — Test (rojo) `test_note_sync_push.py` (dobles), forma y campos: claves sobrantes/ausentes, `type`, `frontmatter` opcional, `validation-error:path|content|frontmatter`, `not-normalized:path`, `vault_id` ≠ id, timestamps, `created_at` inmutable (cubre RF-005, RF-016) [zona: test]
+- [x] T-013 — Test (rojo) `test_note_sync_push.py` (dobles), forma y campos: claves sobrantes/ausentes, `type`, `frontmatter` opcional, `validation-error:path|content|frontmatter`, `not-normalized:path`, `vault_id` ≠ id, timestamps, `created_at` inmutable (cubre RF-005, RF-016) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k "shape or field"`
   - EXPECT: failed: las notas salen como `invalid-id` en lugar del código esperado.
-- [ ] T-014 — `sync_push.py`: tabla `_KINDS` por prefijo; pasos 4–6a/6b para notas con `note_rules` (cubre RF-005, RF-016) [zona: servicio]
+- [x] T-014 — `sync_push.py`: tabla `_KINDS` por prefijo; pasos 4–6a/6b para notas con `note_rules` (cubre RF-005, RF-016) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k "shape or field" tests/test_sync_push.py`
   - EXPECT: todos `passed`.
-- [ ] T-015 — Test (rojo) en `test_note_sync_push.py`, bóveda activa: inexistente → `vault-not-found`; borrada → `vault-not-found`; creada en el mismo lote (también en orden "nota, bóveda") → aceptada; en conflicto con una rama activa → aceptada; lápida de nota de bóveda borrada → `vault-not-found` (cubre RF-004, RF-014) [zona: test]
+- [x] T-015 — Test (rojo) en `test_note_sync_push.py`, bóveda activa: inexistente → `vault-not-found`; borrada → `vault-not-found`; creada en el mismo lote (también en orden "nota, bóveda") → aceptada; en conflicto con una rama activa → aceptada; lápida de nota de bóveda borrada → `vault-not-found` (cubre RF-004, RF-014) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k vault`
   - EXPECT: failed: no existe el código `vault-not-found` (se aceptan o rechazan con otro código).
-- [ ] T-016 — `sync_push.py`: paso 6c sobre la proyección de `vault:{vault_id}` y orden bóvedas-antes-que-notas tras la pasada de identidad (cubre RF-004, RF-014) [zona: servicio]
+- [x] T-016 — `sync_push.py`: paso 6c sobre la proyección de `vault:{vault_id}` y orden bóvedas-antes-que-notas tras la pasada de identidad (cubre RF-004, RF-014) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k vault`
   - EXPECT: todos `passed`.
-- [ ] T-017 — Test (rojo) en `test_note_sync_push.py`, reservas: ruta tomada → `note-path-taken`; renombrar libera la anterior y reserva la nueva; soft delete libera; restaurar reserva o `note-path-taken`; lote mixto bóvedas + notas rechaza sólo la mala (cubre RF-010, RF-011, RF-013, RF-017) [zona: test]
+- [x] T-017 — Test (rojo) en `test_note_sync_push.py`, reservas: ruta tomada → `note-path-taken`; renombrar libera la anterior y reserva la nueva; soft delete libera; restaurar reserva o `note-path-taken`; lote mixto bóvedas + notas rechaza sólo la mala (cubre RF-010, RF-011, RF-013, RF-017) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k "reserv or rename or delete or restore or mixed"`
   - EXPECT: failed: sin reserva de rutas no hay `note-path-taken` ni liberaciones.
-- [ ] T-018 — `sync_push.py`: pasos 7 y 9 para notas con `NoteService`; `SyncPushService` recibe `notes` (cubre RF-010, RF-011, RF-013, RF-017) [zona: servicio]
+- [x] T-018 — `sync_push.py`: pasos 7 y 9 para notas con `NoteService`; `SyncPushService` recibe `notes` (cubre RF-010, RF-011, RF-013, RF-017) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py tests/test_sync_push.py`
   - EXPECT: todos `passed`.
-- [ ] T-019 — Test (rojo) `test_note_sync_api.py` (TestClient + CouchDB real): nota válida empujada y devuelta por `_changes`, `_all_docs` (con `limit` entre rangos), `_bulk_get`, `_revs_diff`; `note-path:*` nunca aparece; 2 MiB con emojis y con caracteres de control se guarda y se relee igual; +1 byte → `validation-error:content` y la revisión previa sigue; cuerpo de 16 MiB + 1 → 413; de 12 MiB → 201 (cubre RF-004, RF-006, RF-016) [zona: test]
+- [x] T-019 — Test (rojo) `test_note_sync_api.py` (TestClient + CouchDB real): nota válida empujada y devuelta por `_changes`, `_all_docs` (con `limit` entre rangos), `_bulk_get`, `_revs_diff`; `note-path:*` nunca aparece; 2 MiB con emojis y con caracteres de control se guarda y se relee igual; +1 byte → `validation-error:content` y la revisión previa sigue; cuerpo de 16 MiB + 1 → 413; de 12 MiB → 201 (cubre RF-004, RF-006, RF-016) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_api.py`
   - EXPECT: failed: 413 con cuerpos > 4 MiB, `_all_docs` sin notas, push sin `NoteService`.
-- [ ] T-020 — `routers/sync.py`: tope por ruta (`MAX_BULK_DOCS_BYTES` = 16 MiB para `_bulk_docs`), `REJECTION_REASON` con los dos códigos, `get_push_service` con `NoteService`, `_all_docs` con dos rangos y corte por `limit` (cubre RF-004, RF-006, RF-016) [zona: ruta]
+- [x] T-020 — `routers/sync.py`: tope por ruta (`MAX_BULK_DOCS_BYTES` = 16 MiB para `_bulk_docs`), `REJECTION_REASON` con los dos códigos, `get_push_service` con `NoteService`, `_all_docs` con dos rangos y corte por `limit` (cubre RF-004, RF-006, RF-016) [zona: ruta]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_api.py tests/test_sync_api.py`
   - EXPECT: todos `passed` (el test de 0005 que fija 413 a 4 MiB en `_bulk_docs` se ajusta aquí; anotado para el re-anclaje).
-- [ ] T-021 — Test (rojo→verde) `test_note_sync_isolation.py`: B no ve notas ni reservas de A por ninguna ruta; nota de B con el `vault_id` de una bóveda de A → `vault-not-found` y la base de A sin cambios; `note-path:*` empujado → `invalid-id` (cubre RF-004, RF-006) [zona: test]
+- [x] T-021 — Test (rojo→verde) `test_note_sync_isolation.py`: B no ve notas ni reservas de A por ninguna ruta; nota de B con el `vault_id` de una bóveda de A → `vault-not-found` y la base de A sin cambios; `note-path:*` empujado → `invalid-id` (cubre RF-004, RF-006) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_isolation.py`
   - EXPECT: todos `passed` (con T-020 ya hecho; si alguno falla, es un hallazgo de aislamiento y se corrige en el origen antes de seguir).
-- [ ] T-022 — Re-export del contrato de 0005 (`scripts/export_openapi.py`) (cubre RF-004, RF-013) [zona: script]
+- [x] T-022 — Re-export del contrato de 0005 (`scripts/export_openapi.py`) (cubre RF-004, RF-013) [zona: script]
   - CHECK: `cd backend && python3 scripts/export_openapi.py && python3 -m pytest -q tests/test_contract.py`
   - EXPECT: `0005-sync/contracts/openapi.yaml` cambia sólo en `reason` y en el texto del 413; `test_contract.py` todos `passed` (T-002 en verde).
-- [ ] T-023 — Suite completa del backend y cobertura de los módulos tocados (cubre RF-004, RF-005, RF-006, RF-013, RF-016) [zona: sistema]
+- [x] T-023 — Suite completa del backend y cobertura de los módulos tocados (cubre RF-004, RF-005, RF-006, RF-013, RF-016) [zona: sistema]
   - CHECK: `cd backend && python3 -m pytest -q --cov=app --cov-report=term-missing`
   - EXPECT: 0 failed; `note_rules.py`, `note_service.py`, `reservations.py`, `sync_push.py`, `sync_filter.py`, `routers/sync.py` ≥ 80 % (objetivo 90 % en los nuevos).
 
 ### D · Frontend base (PLAN-0008 §2.6, P-3)
-- [ ] T-024 — Dependencias exactas del editor (P-3): `@milkdown/{core,ctx,prose,preset-commonmark,preset-gfm,plugin-listener,plugin-history}@7.22.3`, `@codemirror/state@6.7.6`, `@codemirror/view@6.43.15`, `@codemirror/commands@6.11.1`, `@codemirror/language@6.13.1`, `@codemirror/lang-markdown@6.5.2` (cubre RF-008) [zona: configuración]
+- [x] T-024 — Dependencias exactas del editor (P-3): `@milkdown/{core,ctx,prose,preset-commonmark,preset-gfm,plugin-listener,plugin-history}@7.22.3`, `@codemirror/state@6.7.6`, `@codemirror/view@6.43.15`, `@codemirror/commands@6.11.1`, `@codemirror/language@6.13.1`, `@codemirror/lang-markdown@6.5.2` (cubre RF-008) [zona: configuración]
   - CHECK: `cd frontend && npm install --save-exact @milkdown/core@7.22.3 @milkdown/ctx@7.22.3 @milkdown/prose@7.22.3 @milkdown/preset-commonmark@7.22.3 @milkdown/preset-gfm@7.22.3 @milkdown/plugin-listener@7.22.3 @milkdown/plugin-history@7.22.3 @codemirror/state@6.7.6 @codemirror/view@6.43.15 @codemirror/commands@6.11.1 @codemirror/language@6.13.1 @codemirror/lang-markdown@6.5.2 && npm ls vue; npm ls @milkdown/core @codemirror/view && npx vitest run`
   - EXPECT: `npm ls vue` → `(empty)`; versiones exactas listadas; suite existente sin fallos.
-- [ ] T-025 — *Polyfills* de jsdom en `src/test-setup.ts` (`Range.getClientRects`, `Range.getBoundingClientRect`, `document.elementFromPoint`), comentados como hueco de jsdom (cubre RF-007, RF-008) [zona: test]
+- [x] T-025 — *Polyfills* de jsdom en `src/test-setup.ts` (`Range.getClientRects`, `Range.getBoundingClientRect`, `document.elementFromPoint`), comentados como hueco de jsdom (cubre RF-007, RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run`
   - EXPECT: suite existente sin fallos.
-- [ ] T-026 — Test (rojo) `notes/noteRules.test.ts`: lee `backend/tests/fixtures/note_rules_cases.json` y exige el mismo veredicto, normalización y clave (cubre RF-005, RF-013, RF-016) [zona: test]
+- [x] T-026 — Test (rojo) `notes/noteRules.test.ts`: lee `backend/tests/fixtures/note_rules_cases.json` y exige el mismo veredicto, normalización y clave (cubre RF-005, RF-013, RF-016) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteRules.test.ts`
   - EXPECT: falla al resolver `./noteRules` ("Failed to resolve import").
-- [ ] T-027 — `notes/noteRules.ts` (espejo de `core/note_rules.py`; `pathKey` reutiliza `nameKey`) (cubre RF-005, RF-013, RF-016) [zona: núcleo]
+- [x] T-027 — `notes/noteRules.ts` (espejo de `core/note_rules.py`; `pathKey` reutiliza `nameKey`) (cubre RF-005, RF-013, RF-016) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/noteRules.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-028 — Test (rojo) `notes/untitled.test.ts`: `Sin título.md`, `Sin título 2.md`, hueco libre, equivalencia por `pathKey` (cubre RF-012) [zona: test]
+- [x] T-028 — Test (rojo) `notes/untitled.test.ts`: `Sin título.md`, `Sin título 2.md`, hueco libre, equivalencia por `pathKey` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/untitled.test.ts`
   - EXPECT: falla al resolver `./untitled`.
-- [ ] T-029 — `notes/untitled.ts` (cubre RF-012) [zona: núcleo]
+- [x] T-029 — `notes/untitled.ts` (cubre RF-012) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/untitled.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-030 — Test (rojo) `notes/noteTree.test.ts`: anidado sin aplanar, carpetas antes que notas, orden `es` numérico, nombre sin `.md`, carpeta sin notas desaparece (cubre RF-001, RF-019) [zona: test]
+- [x] T-030 — Test (rojo) `notes/noteTree.test.ts`: anidado sin aplanar, carpetas antes que notas, orden `es` numérico, nombre sin `.md`, carpeta sin notas desaparece (cubre RF-001, RF-019) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteTree.test.ts`
   - EXPECT: falla al resolver `./noteTree`.
-- [ ] T-031 — `notes/noteTree.ts` (`buildTree`) (cubre RF-001, RF-019) [zona: núcleo]
+- [x] T-031 — `notes/noteTree.ts` (`buildTree`) (cubre RF-001, RF-019) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/noteTree.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-032 — Test (rojo) `notes/mergeNote.test.ts`: sólo difieren en `updated_at` → cerrar perdedora; cualquier otra diferencia (ruta, contenido, frontmatter, borrado) → manual; nunca decide por fecha (cubre RF-009) [zona: test]
+- [x] T-032 — Test (rojo) `notes/mergeNote.test.ts`: sólo difieren en `updated_at` → cerrar perdedora; cualquier otra diferencia (ruta, contenido, frontmatter, borrado) → manual; nunca decide por fecha (cubre RF-009) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/mergeNote.test.ts`
   - EXPECT: falla al resolver `./mergeNote`.
-- [ ] T-033 — `notes/mergeNote.ts` (cubre RF-009) [zona: núcleo]
+- [x] T-033 — `notes/mergeNote.ts` (cubre RF-009) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/mergeNote.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-034 — Test (rojo) `notes/noteStore.test.ts` (PouchDB en memoria), alta y lectura: `create` con título (añade `.md`), sin título (`Sin título n`), ids `note:{vault}:{uuid}`, `frontmatter: {}`, ruta duplicada → `NotePathTakenError`; `list` por bóveda sin `content` y sin notas de otra bóveda; `get` (cubre RF-003, RF-012, RF-013) [zona: test]
+- [x] T-034 — Test (rojo) `notes/noteStore.test.ts` (PouchDB en memoria), alta y lectura: `create` con título (añade `.md`), sin título (`Sin título n`), ids `note:{vault}:{uuid}`, `frontmatter: {}`, ruta duplicada → `NotePathTakenError`; `list` por bóveda sin `content` y sin notas de otra bóveda; `get` (cubre RF-003, RF-012, RF-013) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: falla al resolver `./noteStore`.
-- [ ] T-035 — `notes/noteStore.ts`: `create`, `list`, `get`, errores (cubre RF-003, RF-012, RF-013) [zona: servicio]
+- [x] T-035 — `notes/noteStore.ts`: `create`, `list`, `get`, errores (cubre RF-003, RF-012, RF-013) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-036 — Test (rojo) en `noteStore.test.ts`, cambios: `rename` (mismo `_id`, ruta ocupada → error), `softDelete` (revisión con `deleted_at`, nunca lápida), `restore` (ruta ocupada → `NotePathTakenError`), `save` > 2 MiB → `NoteValidationError` sin escribir, cuota llena → `StorageFullError` (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
+- [x] T-036 — Test (rojo) en `noteStore.test.ts`, cambios: `rename` (mismo `_id`, ruta ocupada → error), `softDelete` (revisión con `deleted_at`, nunca lápida), `restore` (ruta ocupada → `NotePathTakenError`), `save` > 2 MiB → `NoteValidationError` sin escribir, cuota llena → `StorageFullError` (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: failed: `rename`/`softDelete`/`restore`/`save` no existen.
-- [ ] T-037 — `noteStore.ts`: `rename`, `softDelete`, `restore`, `save` (camino normal) (cubre RF-010, RF-011, RF-016, RF-017) [zona: servicio]
+- [x] T-037 — `noteStore.ts`: `rename`, `softDelete`, `restore`, `save` (camino normal) (cubre RF-010, RF-011, RF-016, RF-017) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: todos `passed`.
 
 ### E · Sync del cliente (PLAN-0008 §2.6, P-6…P-8)
-- [ ] T-038 — Test (rojo) en `noteStore.test.ts`: `save` con `baseRev` desfasado escribe una rama hija de `baseRev` con revisión determinista (dos llamadas iguales → misma `_rev`) y el documento queda con `_conflicts` (cubre RF-009) [zona: test]
+- [x] T-038 — Test (rojo) en `noteStore.test.ts`: `save` con `baseRev` desfasado escribe una rama hija de `baseRev` con revisión determinista (dos llamadas iguales → misma `_rev`) y el documento queda con `_conflicts` (cubre RF-009) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts -t "desfasad"`
   - EXPECT: failed: `save` lanza el 409 de PouchDB.
-- [ ] T-039 — `sync/conflicts.ts` exporta `child()`; `noteStore.save` escribe la rama con `new_edits:false` ante el 409 (P-8) (cubre RF-009) [zona: servicio]
+- [x] T-039 — `sync/conflicts.ts` exporta `child()`; `noteStore.save` escribe la rama con `new_edits:false` ante el 409 (P-8) (cubre RF-009) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts src/sync/conflicts.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-040 — Test (rojo) en `sync/conflicts.test.ts`: el barrido inicial y el feed detectan notas en conflicto; `mergeNote` cierra las sólo-`updated_at`; las demás quedan manuales con `kind: "note"`; `resolve` de nota escribe la elección; notas de una bóveda en la papelera no se listan (cubre RF-009, RF-014) [zona: test]
+- [x] T-040 — Test (rojo) en `sync/conflicts.test.ts`: el barrido inicial y el feed detectan notas en conflicto; `mergeNote` cierra las sólo-`updated_at`; las demás quedan manuales con `kind: "note"`; `resolve` de nota escribe la elección; notas de una bóveda en la papelera no se listan (cubre RF-009, RF-014) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/conflicts.test.ts`
   - EXPECT: failed en los casos de nota (no se detectan).
-- [ ] T-041 — `sync/conflicts.ts`: rangos `note:*`, combinación por tipo, `ManualConflict.kind`, filtro por bóveda activa (cubre RF-009, RF-014) [zona: servicio]
+- [x] T-041 — `sync/conflicts.ts`: rangos `note:*`, combinación por tipo, `ManualConflict.kind`, filtro por bóveda activa (cubre RF-009, RF-014) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/sync/conflicts.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-042 — Test (rojo) en `sync/remote.test.ts`: un `POST _bulk_docs` > 8 MiB se parte en sub-peticiones ≤ 8 MiB (un documento mayor va solo), se concatenan los rechazos en orden y un fallo de una sub-petición se devuelve tal cual; ≤ 8 MiB pasa sin cambios (cubre RF-016) [zona: test]
+- [x] T-042 — Test (rojo) en `sync/remote.test.ts`: un `POST _bulk_docs` > 8 MiB se parte en sub-peticiones ≤ 8 MiB (un documento mayor va solo), se concatenan los rechazos en orden y un fallo de una sub-petición se devuelve tal cual; ≤ 8 MiB pasa sin cambios (cubre RF-016) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/remote.test.ts`
   - EXPECT: failed: se envía una sola petición.
-- [ ] T-043 — `sync/remote.ts`: reparto de `_bulk_docs` en el `fetch` propio (P-6) (cubre RF-016) [zona: frontera]
+- [x] T-043 — `sync/remote.ts`: reparto de `_bulk_docs` en el `fetch` propio (P-6) (cubre RF-016) [zona: frontera]
   - CHECK: `cd frontend && npx vitest run src/sync/remote.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-044 — Test (rojo) `notes/repush.test.ts`: con un rechazo `vault-not-found` de una nota de `V`, un cambio que deja `V` activa dispara un push único con `doc_ids` de esas notas y `checkpoint: false`; sin rechazos o con `V` borrada no hace nada; los eventos van a rechazos y estado (cubre RF-004, RF-014) [zona: test]
+- [x] T-044 — Test (rojo) `notes/repush.test.ts`: con un rechazo `vault-not-found` de una nota de `V`, un cambio que deja `V` activa dispara un push único con `doc_ids` de esas notas y `checkpoint: false`; sin rechazos o con `V` borrada no hace nada; los eventos van a rechazos y estado (cubre RF-004, RF-014) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/repush.test.ts`
   - EXPECT: falla al resolver `./repush`.
-- [ ] T-045 — `notes/repush.ts` (P-7) (cubre RF-004, RF-014) [zona: servicio]
+- [x] T-045 — `notes/repush.ts` (P-7) (cubre RF-004, RF-014) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/notes/repush.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-046 — Test (rojo) en `sync/resources.test.ts` y `SyncProvider.test.tsx`: `notes` en los recursos y en el contexto; `notesVersion` cambia con escrituras `note:*` y **no** cambia `dataVersion`; `repush` se arranca y se cierra con los recursos (cubre RF-001, RF-019) [zona: test]
+- [x] T-046 — Test (rojo) en `sync/resources.test.ts` y `SyncProvider.test.tsx`: `notes` en los recursos y en el contexto; `notesVersion` cambia con escrituras `note:*` y **no** cambia `dataVersion`; `repush` se arranca y se cierra con los recursos (cubre RF-001, RF-019) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/resources.test.ts src/sync/SyncProvider.test.tsx`
   - EXPECT: failed: `notes`/`notesVersion` indefinidos.
-- [ ] T-047 — `sync/resources.ts`, `sync/useSync.ts`, `sync/SyncProvider.tsx`: `NoteStore`, feed de notas, `notesVersion`, `repush` (cubre RF-001, RF-019) [zona: servicio]
+- [x] T-047 — `sync/resources.ts`, `sync/useSync.ts`, `sync/SyncProvider.tsx`: `NoteStore`, feed de notas, `notesVersion`, `repush` (cubre RF-001, RF-019) [zona: servicio]
   - CHECK: `cd frontend && npx vitest run src/sync && npm run typecheck`
   - EXPECT: todos `passed`; typecheck sin errores.
 
 ### F · Editor (PLAN-0008 §2.6)
-- [ ] T-048 — Test (rojo) `editor/safeUrl.test.ts`: admite `http`, `https`, `mailto`, relativos (enlaces) y `http`/`https` (imágenes); quita `javascript:`, `data:`, `vbscript:` con mayúsculas y espacios (cubre RF-007) [zona: test]
+- [x] T-048 — Test (rojo) `editor/safeUrl.test.ts`: admite `http`, `https`, `mailto`, relativos (enlaces) y `http`/`https` (imágenes); quita `javascript:`, `data:`, `vbscript:` con mayúsculas y espacios (cubre RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/safeUrl.test.ts`
   - EXPECT: falla al resolver `./safeUrl`.
-- [ ] T-049 — `editor/safeUrl.ts` (cubre RF-007) [zona: núcleo]
+- [x] T-049 — `editor/safeUrl.ts` (cubre RF-007) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/safeUrl.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-050 — Test (rojo) `editor/CodeView.test.tsx` (CodeMirror real): muestra `value`; una transacción emite `onChange` con el texto nuevo; un `value` externo nuevo reemplaza el documento sin emitir (cubre RF-008) [zona: test]
+- [x] T-050 — Test (rojo) `editor/CodeView.test.tsx` (CodeMirror real): muestra `value`; una transacción emite `onChange` con el texto nuevo; un `value` externo nuevo reemplaza el documento sin emitir (cubre RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/CodeView.test.tsx`
   - EXPECT: falla al resolver `./CodeView`.
-- [ ] T-051 — `editor/CodeView.tsx` (cubre RF-008) [zona: frontera]
+- [x] T-051 — `editor/CodeView.tsx` (cubre RF-008) [zona: frontera]
   - CHECK: `cd frontend && npx vitest run src/editor/CodeView.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-052 — Test (rojo) `editor/MilkdownView.test.tsx` (Milkdown real): `readOnly` sin `contenteditable="true"`; en edición una transacción emite markdown; montar sin editar no emite; `[x](javascript:alert(1))` sin `href` peligroso; `<script>` mostrado como texto, sin elemento `script` (cubre RF-007, RF-008) [zona: test]
+- [x] T-052 — Test (rojo) `editor/MilkdownView.test.tsx` (Milkdown real): `readOnly` sin `contenteditable="true"`; en edición una transacción emite markdown; montar sin editar no emite; `[x](javascript:alert(1))` sin `href` peligroso; `<script>` mostrado como texto, sin elemento `script` (cubre RF-007, RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx`
   - EXPECT: falla al resolver `./MilkdownView`.
-- [ ] T-053 — `editor/MilkdownView.tsx` (`Editor.make()`, commonmark + gfm + listener + history, esquemas de enlace/imagen con `safeUrl`) (cubre RF-007, RF-008) [zona: frontera]
+- [x] T-053 — `editor/MilkdownView.tsx` (`Editor.make()`, commonmark + gfm + listener + history, esquemas de enlace/imagen con `safeUrl`) (cubre RF-007, RF-008) [zona: frontera]
   - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-054 — Test (rojo) `editor/NoteEditor.test.tsx` (editores falsos inyectados): abre en lectura; "Editar"/"Leer"; alternar Visual/Código no llama a `noteStore` y conserva el borrador; "Guardar" y Ctrl/Cmd+S guardan; "Leer" con cambios guarda antes; > 2 MiB muestra el mensaje y no guarda; aviso de cambios sin guardar al cambiar de nota; aviso de conflicto con enlace a `/conflicts` (cubre RF-007, RF-008, RF-016) [zona: test]
+- [x] T-054 — Test (rojo) `editor/NoteEditor.test.tsx` (editores falsos inyectados): abre en lectura; "Editar"/"Leer"; alternar Visual/Código no llama a `noteStore` y conserva el borrador; "Guardar" y Ctrl/Cmd+S guardan; "Leer" con cambios guarda antes; > 2 MiB muestra el mensaje y no guarda; aviso de cambios sin guardar al cambiar de nota; aviso de conflicto con enlace a `/conflicts` (cubre RF-007, RF-008, RF-016) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx`
   - EXPECT: falla al resolver `./NoteEditor`.
-- [ ] T-055 — `editor/NoteEditor.tsx` + `editor/editor.css` (P-5) (cubre RF-007, RF-008, RF-016) [zona: pantalla]
+- [x] T-055 — `editor/NoteEditor.tsx` + `editor/editor.css` (P-5) (cubre RF-007, RF-008, RF-016) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: todos `passed`.
-- [ ] T-056 — Test (rojo→verde) en `NoteEditor.test.tsx` con los editores **reales**: Visual → Código → Visual sin editar deja el markdown idéntico byte a byte; una edición en Código aparece en Visual (cubre RF-008) [zona: test]
+- [x] T-056 — Test (rojo→verde) en `NoteEditor.test.tsx` con los editores **reales**: Visual → Código → Visual sin editar deja el markdown idéntico byte a byte; una edición en Código aparece en Visual (cubre RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx -t "reales"`
   - EXPECT: `passed` (si falla, la causa está en el envoltorio que reserializa sin cambios y se corrige allí).
 
 ### G · Pantallas (PLAN-0008 §2.6)
-- [ ] T-057 — Test (rojo) `notes/VaultRail.test.tsx`: un icono con iniciales por bóveda activa, no las de la papelera; click navega a `/vaults/{id}`; la activa marcada (cubre RF-001) [zona: test]
+- [x] T-057 — Test (rojo) `notes/VaultRail.test.tsx`: un icono con iniciales por bóveda activa, no las de la papelera; click navega a `/vaults/{id}`; la activa marcada (cubre RF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx`
   - EXPECT: falla al resolver `./VaultRail`.
-- [ ] T-058 — `notes/VaultRail.tsx` + `notes/notes.css` (cubre RF-001) [zona: pantalla]
+- [x] T-058 — `notes/VaultRail.tsx` + `notes/notes.css` (cubre RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-059 — Test (rojo) `notes/NoteSidebar.test.tsx`: árbol `role="tree"` con carpetas plegadas; click en una nota → `onOpen(id)`; "Nueva nota" con y sin título → abre en edición; renombrar/mover; borrar la quita; ruta ocupada → mensaje; relee con `notesVersion` (cubre RF-003, RF-010, RF-011, RF-012, RF-013, RF-019) [zona: test]
+- [x] T-059 — Test (rojo) `notes/NoteSidebar.test.tsx`: árbol `role="tree"` con carpetas plegadas; click en una nota → `onOpen(id)`; "Nueva nota" con y sin título → abre en edición; renombrar/mover; borrar la quita; ruta ocupada → mensaje; relee con `notesVersion` (cubre RF-003, RF-010, RF-011, RF-012, RF-013, RF-019) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: falla al resolver `./NoteSidebar`.
-- [ ] T-060 — `notes/NoteSidebar.tsx` + `notes/messages.ts` (cubre RF-003, RF-010, RF-011, RF-012, RF-013, RF-019) [zona: pantalla]
+- [x] T-060 — `notes/NoteSidebar.tsx` + `notes/messages.ts` (cubre RF-003, RF-010, RF-011, RF-012, RF-013, RF-019) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-061 — Test (rojo) `notes/NoteTrash.test.tsx`: lista sólo las notas borradas de esta bóveda; "Restaurar" la devuelve al árbol; ruta ocupada → mensaje y sigue en la papelera (cubre RF-010, RF-017) [zona: test]
+- [x] T-061 — Test (rojo) `notes/NoteTrash.test.tsx`: lista sólo las notas borradas de esta bóveda; "Restaurar" la devuelve al árbol; ruta ocupada → mensaje y sigue en la papelera (cubre RF-010, RF-017) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
   - EXPECT: falla al resolver `./NoteTrash`.
-- [ ] T-062 — `notes/NoteTrash.tsx` (cubre RF-010, RF-017) [zona: pantalla]
+- [x] T-062 — `notes/NoteTrash.tsx` (cubre RF-010, RF-017) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-063 — Test (rojo) `notes/VaultWorkspacePage.test.tsx`: bóveda activa → riel, árbol y editor vacío; id no canónico / inexistente / en la papelera → 404; bóveda que llega después por el pull sustituye al 404; volver a montar → ninguna nota abierta y nada en `localStorage`; click en una nota → modo lectura (cubre RF-001, RF-002, RF-014, RF-015, RF-019) [zona: test]
+- [x] T-063 — Test (rojo) `notes/VaultWorkspacePage.test.tsx`: bóveda activa → riel, árbol y editor vacío; id no canónico / inexistente / en la papelera → 404; bóveda que llega después por el pull sustituye al 404; volver a montar → ninguna nota abierta y nada en `localStorage`; click en una nota → modo lectura (cubre RF-001, RF-002, RF-014, RF-015, RF-019) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: falla al resolver `./VaultWorkspacePage`.
-- [ ] T-064 — `notes/VaultWorkspacePage.tsx` (editor con `React.lazy`) (cubre RF-001, RF-002, RF-014, RF-015, RF-019) [zona: pantalla]
+- [x] T-064 — `notes/VaultWorkspacePage.tsx` (editor con `React.lazy`) (cubre RF-001, RF-002, RF-014, RF-015, RF-019) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-065 — Test (rojo) `App.test.tsx` y `layout/AppLayout.test.tsx`: `/vaults/{id}` monta la bóveda abierta; `/vaults/new` y `/vaults/trash` siguen en sus páginas; el riel está en las rutas privadas y no en `/login` (cubre RF-001) [zona: test]
+- [x] T-065 — Test (rojo) `App.test.tsx` y `layout/AppLayout.test.tsx`: `/vaults/{id}` monta la bóveda abierta; `/vaults/new` y `/vaults/trash` siguen en sus páginas; el riel está en las rutas privadas y no en `/login` (cubre RF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/App.test.tsx src/layout/AppLayout.test.tsx`
   - EXPECT: failed en los casos nuevos (ruta y riel ausentes).
-- [ ] T-066 — `App.tsx` (ruta `/vaults/:id`) y `layout/AppLayout.tsx` (`VaultRail`) (cubre RF-001) [zona: pantalla]
+- [x] T-066 — `App.tsx` (ruta `/vaults/:id`) y `layout/AppLayout.tsx` (`VaultRail`) (cubre RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/App.test.tsx src/layout/AppLayout.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-067 — Test (rojo) `vaults/VaultListPage.test.tsx`: "Abrir" junto a "Editar" lleva a `/vaults/{id}` (cubre RF-018) [zona: test]
+- [x] T-067 — Test (rojo) `vaults/VaultListPage.test.tsx`: "Abrir" junto a "Editar" lleva a `/vaults/{id}` (cubre RF-018) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/vaults/VaultListPage.test.tsx`
   - EXPECT: 1 failed (no hay enlace "Abrir").
-- [ ] T-068 — `vaults/VaultListPage.tsx`: enlace "Abrir" (cubre RF-018) [zona: pantalla]
+- [x] T-068 — `vaults/VaultListPage.tsx`: enlace "Abrir" (cubre RF-018) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/vaults/VaultListPage.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-069 — Test (rojo) `notes/NoteConflictCard.test.tsx` y `sync/ConflictView.test.tsx`: ambas versiones en texto plano (ruta, contenido, estado), "Quedarme con esta" llama a `resolveConflict`; `ConflictView` pinta la tarjeta para `kind: "note"` y la de bóveda como antes (cubre RF-009) [zona: test]
+- [x] T-069 — Test (rojo) `notes/NoteConflictCard.test.tsx` y `sync/ConflictView.test.tsx`: ambas versiones en texto plano (ruta, contenido, estado), "Quedarme con esta" llama a `resolveConflict`; `ConflictView` pinta la tarjeta para `kind: "note"` y la de bóveda como antes (cubre RF-009) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteConflictCard.test.tsx src/sync/ConflictView.test.tsx`
   - EXPECT: falla al resolver `./NoteConflictCard`.
-- [ ] T-070 — `notes/NoteConflictCard.tsx` y `sync/ConflictView.tsx` (cubre RF-009) [zona: pantalla]
+- [x] T-070 — `notes/NoteConflictCard.tsx` y `sync/ConflictView.tsx` (cubre RF-009) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteConflictCard.test.tsx src/sync/ConflictView.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-071 — Test (rojo) `sync/RejectionsPage.test.tsx`: textos en español de `note-path-taken`, `vault-not-found` y campos de nota; "Corregir" de una nota lleva a `/vaults/{vault_id}` con la nota en el estado de navegación; notas de bóveda en la papelera ocultas (cubre RF-004, RF-013, RF-014) [zona: test]
+- [x] T-071 — Test (rojo) `sync/RejectionsPage.test.tsx`: textos en español de `note-path-taken`, `vault-not-found` y campos de nota; "Corregir" de una nota lleva a `/vaults/{vault_id}` con la nota en el estado de navegación; notas de bóveda en la papelera ocultas (cubre RF-004, RF-013, RF-014) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/RejectionsPage.test.tsx`
   - EXPECT: failed en los casos de nota (texto genérico, enlace de bóveda).
-- [ ] T-072 — `sync/RejectionsPage.tsx` con los textos de `notes/messages.ts`; `VaultWorkspacePage` abre la nota del estado de navegación (cubre RF-004, RF-013, RF-014) [zona: pantalla]
+- [x] T-072 — `sync/RejectionsPage.tsx` con los textos de `notes/messages.ts`; `VaultWorkspacePage` abre la nota del estado de navegación (cubre RF-004, RF-013, RF-014) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/sync/RejectionsPage.test.tsx src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: todos `passed`.
-- [ ] T-073 — Suite completa del frontend, typecheck, cobertura y tamaño del *chunk* del editor (cubre RF-001…RF-019) [zona: sistema]
+- [x] T-073 — Suite completa del frontend, typecheck, cobertura y tamaño del *chunk* del editor (cubre RF-001…RF-019) [zona: sistema]
   - CHECK: `cd frontend && npm run test:cov && npm run build`
   - EXPECT: 0 failed; umbral de 80 % cumplido; el build lista un *chunk* aparte con Milkdown/CodeMirror (anotar su tamaño gzip en `history.md`) y el *chunk* principal no los incluye.
 
 ### H · Integración real y RNF-001 (PLAN-0008 §5)
-- [ ] T-074 — `vitest.sync.config.ts` incluye `src/{sync,notes}/*.integration.test.ts`; `vite.config.ts` excluye `*.perf.test.tsx` salvo con `NOTES_PERF=1`; script `test:perf` en `package.json` (cubre RNF-001) [zona: configuración]
+- [x] T-074 — `vitest.sync.config.ts` incluye `src/{sync,notes}/*.integration.test.ts`; `vite.config.ts` excluye `*.perf.test.tsx` salvo con `NOTES_PERF=1`; script `test:perf` en `package.json` (cubre RNF-001) [zona: configuración]
   - CHECK: `cd frontend && npx vitest run && npm run test:sync`
   - EXPECT: suite normal sin cambios de número; integración existente 16/16 `passed`.
-- [ ] T-075 — Test `notes/notes.integration.test.ts` (dos dispositivos reales, backend y CouchDB reales): nota creada sin conexión llega; edición concurrente → conflicto manual en ambos y resolver converge; misma ruta en dos dispositivos → `note-path-taken` en uno (cubre RF-003, RF-009, RF-013) [zona: test]
+- [x] T-075 — Test `notes/notes.integration.test.ts` (dos dispositivos reales, backend y CouchDB reales): nota creada sin conexión llega; edición concurrente → conflicto manual en ambos y resolver converge; misma ruta en dos dispositivos → `note-path-taken` en uno (cubre RF-003, RF-009, RF-013) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed` (si falla, es un defecto de B–E y se corrige en su módulo, no en la prueba).
-- [ ] T-076 — Casos de `notes.integration.test.ts`: bóveda borrada en A y nota editada en B → `vault-not-found`; restaurar la bóveda → el reintento la sube; bóveda + nota + renombrado de la bóveda con el corte de lote entre ambas → la nota acaba aceptada; notas intactas tras borrar y restaurar la bóveda (cubre RF-004, RF-014) [zona: test]
+- [x] T-076 — Casos de `notes.integration.test.ts`: bóveda borrada en A y nota editada en B → `vault-not-found`; restaurar la bóveda → el reintento la sube; bóveda + nota + renombrado de la bóveda con el corte de lote entre ambas → la nota acaba aceptada; notas intactas tras borrar y restaurar la bóveda (cubre RF-004, RF-014) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-077 — Casos de `notes.integration.test.ts`: diez notas de 2 MiB suben (reparto de `_bulk_docs`) y bajan al otro dispositivo; una de 2 MiB + 1 se rechaza en el cliente y no se pierde la anterior; renombrar/borrar/restaurar se replican (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
+- [x] T-077 — Casos de `notes.integration.test.ts`: diez notas de 2 MiB suben (reparto de `_bulk_docs`) y bajan al otro dispositivo; una de 2 MiB + 1 se rechaza en el cliente y no se pierde la anterior; renombrar/borrar/restaurar se replican (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-078 — Test de rendimiento `notes/tree.perf.test.tsx`: 1 000 notas (+200 de otra bóveda), 30 montajes de `VaultWorkspacePage`, 3 de calentamiento, p95 hasta el árbol completo de primer nivel (cubre RNF-001) [zona: test]
+- [x] T-078 — Test de rendimiento `notes/tree.perf.test.tsx`: 1 000 notas (+200 de otra bóveda), 30 montajes de `VaultWorkspacePage`, 3 de calentamiento, p95 hasta el árbol completo de primer nivel (cubre RNF-001) [zona: test]
   - CHECK: `cd frontend && npm run test:perf`
   - EXPECT: `passed` con el p95 impreso < 300 ms (anotar el valor en `history.md`).
-- [ ] T-079 — Integración completa (canal de 0005 + notas) sin regresión (cubre RF-004, RF-006) [zona: sistema]
+- [x] T-079 — Integración completa (canal de 0005 + notas) sin regresión (cubre RF-004, RF-006) [zona: sistema]
   - CHECK: `cd frontend && npm run test:sync`
   - EXPECT: todos los archivos `*.integration.test.ts` de `sync/` y `notes/` `passed`, 0 failed.
 
 ### I · Documentación, diagrama, re-anclajes y verificación manual (PLAN-0008 §8)
-- [ ] T-080 — Revisar `contracts/note.schema.json` contra la implementación final; corregir sólo si `test_note_contract.py` o la batería lo exigen [doc]
+- [x] T-080 — Revisar `contracts/note.schema.json` contra la implementación final; corregir sólo si `test_note_contract.py` o la batería lo exigen [doc]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_contract.py`
   - EXPECT: `passed`; sin diferencias entre esquema y `core/note_rules.py`.
-- [ ] T-081 — `0005-sync/contracts/openapi.yaml` re-exportado y confirmado (sólo `reason` y 413) [doc]
+- [x] T-081 — `0005-sync/contracts/openapi.yaml` re-exportado y confirmado (sólo `reason` y 413) [doc]
   - CHECK: `git diff --stat -- .harness/specs/0005-sync/contracts/openapi.yaml && cd backend && python3 -m pytest -q tests/test_contract.py`
   - EXPECT: un archivo cambiado; `passed`.
-- [ ] T-082 — `backend/README.md`: "Sincronización" (tipos replicados, `note-path:*` sólo del servidor, motivos nuevos, topes 16 MiB / 2 MiB / 64 KiB) y sección "Notas (SPEC-0008)" [doc]
+- [x] T-082 — `backend/README.md`: "Sincronización" (tipos replicados, `note-path:*` sólo del servidor, motivos nuevos, topes 16 MiB / 2 MiB / 64 KiB) y sección "Notas (SPEC-0008)" [doc]
   - CHECK: `grep -c "note-path-taken\|vault-not-found\|SPEC-0008\|16 MiB" backend/README.md`
   - EXPECT: ≥ 4.
-- [ ] T-083 — `backend/app/core/README.md`: `note_rules.py` [doc]
+- [x] T-083 — `backend/app/core/README.md`: `note_rules.py` [doc]
   - CHECK: `grep -c "note_rules" backend/app/core/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-084 — `backend/app/services/README.md`: `reservations.py`, `note_service.py`, cambios de `sync_push`/`sync_filter` [doc]
+- [x] T-084 — `backend/app/services/README.md`: `reservations.py`, `note_service.py`, cambios de `sync_push`/`sync_filter` [doc]
   - CHECK: `grep -c "reservations\|note_service" backend/app/services/README.md`
   - EXPECT: ≥ 2.
-- [ ] T-085 — `backend/app/routers/README.md`: tope por ruta de `sync.py` [doc]
+- [x] T-085 — `backend/app/routers/README.md`: tope por ruta de `sync.py` [doc]
   - CHECK: `grep -c "16 MiB" backend/app/routers/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-086 — `backend/tests/README.md`: `test_note*.py`, `test_reservations.py`, `note_rules_cases.json` [doc]
+- [x] T-086 — `backend/tests/README.md`: `test_note*.py`, `test_reservations.py`, `note_rules_cases.json` [doc]
   - CHECK: `grep -c "test_note\|test_reservations\|note_rules_cases" backend/tests/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-087 — `frontend/README.md`: dependencias del editor, `npm run test:perf`, `test:sync` incluye notas [doc]
+- [x] T-087 — `frontend/README.md`: dependencias del editor, `npm run test:perf`, `test:sync` incluye notas [doc]
   - CHECK: `grep -c "test:perf\|Milkdown\|CodeMirror" frontend/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-088 — `frontend/src/README.md`: `notes/`, `editor/`, ruta `/vaults/:id`, riel, guardado explícito, reparto de `_bulk_docs`, reintento de `vault-not-found` [doc]
+- [x] T-088 — `frontend/src/README.md`: `notes/`, `editor/`, ruta `/vaults/:id`, riel, guardado explícito, reparto de `_bulk_docs`, reintento de `vault-not-found` [doc]
   - CHECK: `grep -c "notes/\|editor/\|/vaults/:id\|vault-not-found" frontend/src/README.md`
   - EXPECT: ≥ 4.
-- [ ] T-089 — Diagrama de la feature con Archify (dataflow "abrir bóveda → editar → réplica → push validado → reservas") en `.harness/specs/0008-vault-editor/diagrams/` + `README.md` [doc]
+- [x] T-089 — Diagrama de la feature con Archify (dataflow "abrir bóveda → editar → réplica → push validado → reservas") en `.harness/specs/0008-vault-editor/diagrams/` + `README.md` [doc]
   - CHECK: `ls .harness/specs/0008-vault-editor/diagrams/`
   - EXPECT: `README.md` y los artefactos HTML/PNG del diagrama.
-- [ ] T-090 — Regenerar `0005-sync/diagrams/` (el canal replica `vault:*` y `note:*`) [doc]
+- [x] T-090 — Regenerar `0005-sync/diagrams/` (el canal replica `vault:*` y `note:*`) [doc]
   - CHECK: `grep -c "note:" .harness/specs/0005-sync/diagrams/README.md`
   - EXPECT: ≥ 1.
-- [ ] T-091 — `ARCHIFY.md`: entrada del diagrama de 0008 [doc]
+- [x] T-091 — `ARCHIFY.md`: entrada del diagrama de 0008 [doc]
   - CHECK: `grep -c "0008" ARCHIFY.md`
   - EXPECT: ≥ 1.
-- [ ] T-092 — Notas de re-anclaje (sin cambio de requisitos) en `spec.md` de 0002, 0003, 0005 y 0007 y anclas movidas al commit de cierre (P-2) [doc]
+- [x] T-092 — Notas de re-anclaje (sin cambio de requisitos) en `spec.md` de 0002, 0003, 0005 y 0007 y anclas movidas al commit de cierre (P-2) [doc]
   - CHECK: `bash .harness/gate/check.sh`
   - EXPECT: sin `DRIFT` en 0002/0003/0005/0007; compuerta abierta.
-- [ ] T-093 — `.harness/memory/state.md`: estado de 0008 (tareas, números de suites, p95, tamaño del *chunk*) [doc]
+- [x] T-093 — `.harness/memory/state.md`: estado de 0008 (tareas, números de suites, p95, tamaño del *chunk*) [doc]
   - CHECK: `grep -c "0008-vault-editor" .harness/memory/state.md`
   - EXPECT: ≥ 1.
-- [ ] T-094 — Verificación manual en navegador con la app real (`docker compose up -d`, `http://localhost:8000`): crear bóveda → "Abrir" → crear nota (con título y sin título) → editar en Visual y en Código → Guardar → Leer → renombrar/mover a una carpeta → borrar → restaurar desde la papelera de la bóveda; comprobar además el riel y el 404 de un id inexistente; medir RNF-001 con 1 000 notas (panel Performance). Evidencia: capturas o salida pegada en `history.md` y en la verificación (cubre RF-001…RF-019, RNF-001) [zona: sistema]
+- [x] T-094 — Verificación manual en navegador con la app real (`docker compose up -d`, `http://localhost:8000`): crear bóveda → "Abrir" → crear nota (con título y sin título) → editar en Visual y en Código → Guardar → Leer → renombrar/mover a una carpeta → borrar → restaurar desde la papelera de la bóveda; comprobar además el riel y el 404 de un id inexistente; medir RNF-001 con 1 000 notas (panel Performance). Evidencia: capturas o salida pegada en `history.md` y en la verificación (cubre RF-001…RF-019, RNF-001) [zona: sistema]
   - CHECK: `docker compose up -d && curl -s -o /dev/null -w "%{http_code}\n" -H "Accept: text/html" http://localhost:8000/vaults/00000000-0000-4000-8000-000000000000`
   - EXPECT: `200` (la SPA sirve la ruta) y el recorrido completo hecho en el navegador sin errores en consola, con la evidencia anotada.
+
+### J · Enmienda 1 (PLAN-0008 §10) — hallazgos RD-1…RD-3 y VF-1…VF-9
+> Test rojo en commit propio antes de cada corrección (VF-7).
+- [x] T-095 — Test (rojo) `vaultIsActive`: bóveda con ganadora en papelera y perdedora activa → activa; ambas en papelera → no (cubre RF-014, RF-009) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/sync/vaultActive.test.ts`
+  - EXPECT: falla: módulo `./vaultActive` inexistente.
+- [x] T-096 — `sync/vaultActive.ts` y su uso en `conflicts.ts` y `notes/repush.ts` (RD-1) (cubre RF-009, RF-014, RF-004) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/sync src/notes`
+  - EXPECT: todos `passed`; un test de `conflicts.test.ts` y otro de `repush.test.ts` con la bóveda en conflicto (perdedora activa) pasan.
+- [x] T-097 — Test (rojo) `repush`: reintento al abrir con `vault-not-found` persistidos y bóveda activa; reintento al reconectar tras un fallo de red; espera `settled()` (RD-2, RD-3) (cubre RF-004, RF-014) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/repush.test.ts`
+  - EXPECT: fallan los tres casos nuevos.
+- [x] T-098 — `repush.ts`: disparadores de arranque y reconexión; fallo deja el reintento pendiente; `await settled()` (cubre RF-004, RF-014) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes/repush.test.ts src/sync`
+  - EXPECT: todos `passed`.
+- [x] T-099 — Test (rojo) navegación con borrador sucio: clic en el riel o en "Bóvedas" muestra el diálogo; "Seguir editando" no navega; "Descartar y salir" navega; "Guardar y salir" guarda y navega (VF-1) (cubre RF-008) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx src/editor/NoteEditor.test.tsx`
+  - EXPECT: fallan los casos nuevos (la navegación ocurre sin diálogo).
+- [x] T-100 — `main.tsx` a `createBrowserRouter` con ruta raíz comodín + `RouterProvider`; `useBlocker(dirty)` en `NoteEditor` con el diálogo existente; tests con `useBlocker` sobre `createMemoryRouter` (VF-1) (cubre RF-008) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run typecheck`
+  - EXPECT: todos `passed`; typecheck limpio.
+- [x] T-101 — Test (rojo) borrar la nota abierta sucia pide confirmación y "Seguir editando" no borra (VF-2); renombrar la nota abierta sucia y guardar no crea conflicto y conserva el borrador (VF-3) (cubre RF-010, RF-011) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx src/editor/NoteEditor.test.tsx`
+  - EXPECT: fallan los casos nuevos.
+- [x] T-102 — Confirmación de borrado de la nota abierta sucia; rebase de `baseRev`/ruta cuando sólo cambió la metadata (VF-2, VF-3) (cubre RF-010, RF-011) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes src/editor`
+  - EXPECT: todos `passed`; `conflicts.list()` vacío tras renombrar y guardar.
+- [x] T-103 — Test (rojo) nota abierta sucia enviada a la papelera por sync: "Restaurar y guardar" la restaura con el borrador; con la ruta ocupada, mensaje y borrador intacto; al reaparecer la nota desaparece el aviso "no existe" (VF-4, VF-5) (cubre RF-017, RF-013) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx`
+  - EXPECT: fallan los casos nuevos.
+- [x] T-104 — "Restaurar y guardar" en `NoteEditor`; `setMissing(false)` en la rama de éxito (VF-4, VF-5) (cubre RF-017, RF-013) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor src/notes`
+  - EXPECT: todos `passed`.
+- [x] T-105 — Test (rojo) teclado del árbol: ↑/↓, →/←, Inicio/Fin y un solo `tabindex=0` (VF-9) (cubre RF-019) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
+  - EXPECT: fallan los casos nuevos.
+- [x] T-106 — Teclado WAI-ARIA del árbol con *roving tabindex* en `NoteSidebar` (VF-9) (cubre RF-019) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
+  - EXPECT: `passed`.
+- [x] T-107 — VF-6 (aserción del `<a>` en `MilkdownView.test.tsx`) y VF-8 (token en `notes.css`) (cubre RF-007) [zona: test/estilo]
+  - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx && grep -c "#fff" src/notes/notes.css`
+  - EXPECT: `passed`; `0`.
+- [x] T-108 — Cierre de la enmienda: suite frontend completa, typecheck, build y gate (cubre RF-001…RF-019) [zona: sistema]
+  - CHECK: `cd frontend && npm run test:cov && npm run typecheck && npm run build && cd .. && bash .harness/gate/check.sh`
+  - EXPECT: 0 failed; cobertura ≥ 80 % por módulo; build ok; "Compuerta abierta".
+
+### K · Enmienda 2 (PLAN-0008 §11) — hallazgos N-1…N-4
+> Test rojo en commit propio antes de cada corrección.
+- [x] T-109 — Test (rojo) N-1/N-2: con borrador sucio, "Cerrar sesión" muestra el aviso de cambios sin guardar en el `LogoutDialog` **antes** de cerrar la sesión (cancelar no cierra nada; "salir igualmente" cierra y navega a `/login` sin diálogo del editor); una redirección a `/login` (401) no es bloqueada; una navegación a la misma ruta no es bloqueada (cubre RF-008) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/sync/LogoutDialog.test.tsx src/editor`
+  - EXPECT: fallan los casos nuevos.
+- [x] T-110 — `unsavedDrafts` en el proveedor de sync + registro desde `NoteEditor`; `LogoutDialog` lo consulta; `useBlocker` con función (cambio de `pathname` y destino ≠ `/login`) (cubre RF-008) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run`
+  - EXPECT: todos `passed`.
+- [x] T-111 — Test (rojo) N-3: `conflicts.test.ts` y `repush.test.ts` con la bóveda en conflicto (ganadora en papelera, perdedora activa); comprobar que fallan si se sustituye `vaultIsActive` por `db.get` (cubre RF-009, RF-014, RF-004) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/sync/conflicts.test.ts src/notes/repush.test.ts`
+  - EXPECT: `passed` con el código actual; la prueba de mutación (sustitución temporal, no commiteada) los hace fallar — pegar ambas salidas.
+- [x] T-112 — N-4: `repush.enqueueAll` obtiene el `vault_id` con el parser único de ids de nota (cubre RF-004) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes`
+  - EXPECT: todos `passed`.
+- [x] T-113 — Cierre de la enmienda 2: `npm run test:cov`, typecheck, build y gate (cubre RF-001…RF-019) [zona: sistema]
+  - CHECK: `cd frontend && npm run test:cov && npm run typecheck && npm run build && cd .. && bash .harness/gate/check.sh`
+  - EXPECT: 0 failed; ≥ 80 % por módulo (incluido `vaultActive.ts`); build ok; "Compuerta abierta".
+
+### L · Enmienda 3 (PLAN-0008 §12) — hallazgos VB-1…VB-3
+> Test rojo en commit propio antes de cada corrección.
+- [x] T-114 — Test (rojo) VB-1: casos `NaN`, `Infinity`, `-Infinity`, `1e999` (anidados también) en `note_rules_cases.json` + `test_note_rules.py` + `noteRules.test.ts`; test de API: push con esos `frontmatter` → rechazo `validation-error:frontmatter`, nunca 500 (cubre RF-005) [zona: test]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_rules.py tests/test_note_sync_api.py -k "frontmatter" ; cd ../frontend && npx vitest run src/notes/noteRules.test.ts`
+  - EXPECT: fallan los casos nuevos (aceptados por la regla; 500 en la API).
+- [x] T-115 — `check_frontmatter` y `noteRules.ts` rechazan no finitos (cubre RF-005) [zona: núcleo]
+  - CHECK: mismo de T-114
+  - EXPECT: `passed`.
+- [x] T-116 — Test (rojo) VB-2: `POST /sync/db/_bulk_docs` sin sesión con cuerpo grande → 401 sin leer el cuerpo (p. ej. cuerpo en *stream* que falla si se consume) (cubre RF-006) [zona: test]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py -k "unauth or sin_sesion"`
+  - EXPECT: falla (el cuerpo se lee antes del 401).
+- [x] T-117 — `routers/sync.py`: sesión antes de leer el cuerpo (cubre RF-006) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py`
+  - EXPECT: `passed`.
+- [x] T-118 — Test (rojo) y corrección VB-3: anidamiento extremo → misma respuesta declarada que un JSON inválido (cubre RF-005) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
+  - EXPECT: `passed`; sin respuesta no declarada (`ContractGuard`).
+- [x] T-119 — Cierre de la enmienda 3: suite backend completa (sola, sin otras suites contra el CouchDB de pruebas), vitest y gate (cubre RF-004…RF-006, RF-016) [zona: sistema]
+  - CHECK: `cd backend && timeout 1500 python3 -m pytest -q -p no:cacheprovider --cov=app ; cd ../frontend && npx vitest run ; cd .. && bash .harness/gate/check.sh`
+  - EXPECT: 0 failed; "Compuerta abierta".
+
+- [x] T-120 — Test (rojo, commit propio) y corrección VB-5: cuerpo con un entero de 5000 dígitos en `_bulk_docs`, `_revs_diff`, `_bulk_get`, `_all_docs` y `PUT _local/…` → 422 declarado; `_DeepJsonRequest` trata cualquier `ValueError` del decodificador como JSON inválido (cubre RF-005) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
+  - EXPECT: rojo: 400 no declarado; tras la corrección `passed`.
+
+### M · Enmienda 4 (PLAN-0008 §13) — verificación en navegador (VU-1…VU-5)
+> Test rojo en commit propio. Las tareas de percepción exigen capturas antes/después (Playwright, mismo guion que T-094: `/tmp/s8/e2e/walk.py`).
+- [x] T-121 — Capturas "antes" (lista de bóvedas, árbol, nota en lectura con listas, árbol con 1 000 notas) y test (rojo) de que las filas del árbol y las listas del markdown no heredan la clase/estilo de tarjeta de la lista de bóvedas (VU-1) (cubre RF-019, RF-007) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/vaults`
+  - EXPECT: falla el caso nuevo.
+- [x] T-122 — Estilos de lista acotados a la lista de bóvedas; estilos propios del árbol y del render; capturas "después" (lista de bóvedas idéntica) (VU-1) (cubre RF-019, RF-007, RF-018) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run build` + capturas antes/después comparadas
+  - EXPECT: `passed`; árbol con nombres completos en una línea; listas del markdown como listas; lista de bóvedas sin cambios visibles.
+- [x] T-123 — Test (rojo) y corrección VU-2: lectura con `role="document"` (sin `aria-readonly`, C-3) (cubre RF-007) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-124 — VU-3 y VU-4: `prosemirror.css` en el chunk del editor; sidebar con scroll propio; capturas con 1 000 notas (cubre RF-001, RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run build && npm run test:perf` + captura
+  - EXPECT: `passed`; p95 < 300 ms; sin aviso de `white-space` en consola; la página no crece con el árbol.
+- [x] T-125 — VU-5 (SPEC-0002): reproducir con test (rojo, commit propio, anotado con el RF de 0002) el regreso al formulario tras el cambio forzado; corrección de raíz (cubre RF de 0002) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/auth src/settings src/App.test.tsx`
+  - EXPECT: rojo → `passed`; recorrido real: tras cambiar la contraseña se entra a la app.
+- [x] T-127 — Test (rojo) y corrección VU-6: `rename` aplica la misma regla título→ruta que `create` (cubre RF-011, RF-003) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
+  - EXPECT: rojo → `passed`.
+- [x] T-126 — Re-ejecutar el recorrido T-094 completo en Chromium real con capturas nuevas; consola sin errores de la app (cubre RF-001…RF-019, RNF-001) [zona: sistema]
+  - CHECK: guion `/tmp/s8/e2e/walk.py` contra el backend del worktree
+  - EXPECT: todas las etapas OK; capturas de árbol/lectura/lista de bóvedas correctas.
+
+### N · Enmienda 5 (PLAN-0008 §14) — Converge corrida 1 (C-1…C-4)
+- [x] T-128 — Test (rojo, commit propio): el árbol tiene exactamente una parada de Tab (ningún `button` dentro de `role="tree"`); "Renombrar"/"Borrar" de la nota seleccionada existen fuera del árbol; F2 en un `treeitem` de nota abre el renombrado y Supr el borrado (con confirmación si está sucia) (cubre RF-019, RF-011, RF-010) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/notes/VaultWorkspacePage.test.tsx`
+  - EXPECT: fallan los casos nuevos.
+- [x] T-129 — Acciones fuera del árbol (barra de la nota seleccionada) + F2/Supr; estilos sin *hover*-only; quitar `aria-readonly` de lectura (C-3) y su aserción en T-123 (cubre RF-019, RF-011, RF-010, RF-007) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run typecheck && npm run build`
+  - EXPECT: todos `passed`; build ok.
+- [x] T-130 — Evidencia de percepción: capturas en Chromium real (árbol, nota seleccionada con su barra, renombrado, borrado, vista estrecha 390 px) y lectura de las capturas (cubre RF-019) [zona: sistema]
+  - CHECK: guion de `/tmp/s8/e2e/` contra el backend del worktree
+  - EXPECT: acciones visibles sin *hover*; nombres del árbol sin recortar por botones.
+
+### O · Enmienda 6 (PLAN-0008 §15) — Converge corrida 1 bis (C-5, C-6)
+- [x] T-131 — Test (rojo, commit propio) y corrección: tras borrar (Supr o botón) el foco va a la fila vecina (siguiente, si no anterior, si no "Nueva nota"); tras guardar o cancelar el renombrado vuelve al `treeitem` de la nota; F2/Supr no actúan mientras `busy` (C-5, C-6) (cubre RF-019, RF-010, RF-011) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/notes/VaultWorkspacePage.test.tsx && npx vitest run && npm run typecheck`
+  - EXPECT: rojo (foco en `body`; doble `remove`) → `passed`.
+
+### P · Enmienda 7 (PLAN-0008 §16) — H1
+- [x] T-132 — Test (rojo, commit propio) y corrección H1: borrar la única nota de una carpeta desplegada → foco en la fila vecina superviviente o "Nueva nota", nunca `body`; sin petición de foco pendiente (una nota nueva en esa carpeta no roba el foco) (cubre RF-019, RF-010) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx && npx vitest run && npm run typecheck`
+  - EXPECT: rojo (`document.activeElement === body`) → `passed`.
+
+### Q · Enmienda 8 (PLAN-0008 §17) — Converge con 4 revisores
+> Test rojo en commit propio antes de cada corrección.
+- [x] T-133 — H-1: test (rojo) de API con ruta `"ﷺ"*300` → 201 y unicidad; id de reserva `note-path:{vault}:{sha256}` (cubre RF-013, RF-011) [zona: servicio]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_service.py tests/test_note_sync_api.py tests/test_note_sync_push.py`
+  - EXPECT: rojo (503) → `passed`.
+- [x] T-134 — H-2: test (rojo) `_rev` con 5 000 dígitos → `validation-error:_rev`; tope en el patrón (cubre RF-006) [zona: servicio]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_push.py tests/test_sync_push.py tests/test_note_sync_api.py`
+  - EXPECT: rojo (ValueError) → `passed`.
+- [x] T-135 — E-1: test (rojo) doble Ctrl+S → una sola escritura, sin `_conflicts`; guardados serializados (cubre RF-008) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor`
+  - EXPECT: rojo → `passed`.
+- [x] T-136 — E-2: test (rojo) bóveda a la papelera por sync con borrador sucio → 404 con el borrador visible y "Copiar texto" (cubre RF-014, RF-002) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-137 — U-1/U-3: test (rojo) foco al abrir los diálogos, Escape, retorno del foco; Escape en el renombrado (cubre RF-008, RF-010, RF-019) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor src/notes/NoteSidebar.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-138 — U-2/U-4/S-5: contraste (texto primario + indicador de acento), nombre accesible del riel con iniciales, `displayName` no vacío; tests y capturas claro/oscuro (cubre RF-019, RF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes` + capturas
+  - EXPECT: `passed`; contraste ≥ 4,5:1 calculado y visible en capturas.
+- [x] T-139 — S-1: test (rojo) `list`/`create`/`rename` no leen `content` (espía sobre la réplica) y el índice se actualiza con cambios locales y del pull; índice de resumen incremental; barrido de conflictos sin cuerpos (cubre RF-001, RF-019, RF-009, RNF-001) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes src/sync && npm run test:perf`
+  - EXPECT: rojo → `passed`; p95 < 300 ms.
+- [x] T-140 — S-2/S-3/S-4: doble borrado converge; cuota en `resolve`; comentario corregido (cubre RF-009, RF-016) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes src/sync`
+  - EXPECT: rojo → `passed`.
+- [x] T-141 — U-5: docs actualizadas al código final (routers README, backend README §Límites y H-1/H-2, frontend/src README) [doc]
+  - CHECK: `grep -c "sesión\|422" backend/app/routers/README.md && grep -c "F2\|Acciones de la nota\|card-list\|titleToPath" frontend/src/README.md`
+  - EXPECT: ≥ 1 y ≥ 3.
+
+### R · Enmienda 9 (PLAN-0008 §18) — S-6, S-7, E-3…E-5
+> Test rojo en commit propio antes de cada corrección.
+- [x] T-142 — S-6: test (rojo) de componente con cuota llena al resolver (nota y bóveda) → mensaje de almacenamiento lleno (cubre RF-009, RF-016) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteConflictCard.test.tsx src/sync/ConflictView.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-143 — S-7: test (rojo) la construcción del índice no pide más de 200 cuerpos por lectura; paginación (cubre RNF-001, RF-001) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts && npm run test:perf`
+  - EXPECT: rojo → `passed`; p95 < 300 ms.
+- [x] T-144 — E-3/E-4/E-5: tests (rojo) borrador descartado no reaparece en el 404; copiar sin portapapeles avisa y selecciona; foco inicial en "Seguir editando" en los diálogos de descarte (cubre RF-014, RF-008, RF-010) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor src/notes/VaultWorkspacePage.test.tsx`
+  - EXPECT: rojo → `passed`.
+
+### S · Enmienda 10 (PLAN-0008 §19) — S-8, N-3
+- [x] T-145 — S-8: test (rojo, commit propio) la última clave de un lote se borra antes del siguiente y ninguna nota viva se pierde; `startkey` estricto sin `skip`. N-3: `frontend/src/README.md` (foco inicial configurable, E-3, E-4) (cubre RF-001, RNF-001) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts && npm run test:perf && grep -c "Seguir editando\|No se pudo copiar" src/README.md`
+  - EXPECT: rojo → `passed`; ≥ 2.
+
+### T · Enmienda 11 (PLAN-0008 §20) — N-1
+- [x] T-146 — N-1: test (rojo, commit propio) `test_note_contract.py` exige que el patrón de `_rev` del esquema acote la generación como `sync_push._REV`; esquema corregido (cubre RF-005, RF-006) [doc]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_contract.py tests/test_contract.py`
+  - EXPECT: rojo → `passed`.
+
+### U · Enmienda 12 (PLAN-0008 §21) — F-1
+- [x] T-147 — F-1: el test de renombrado pega la ruta en lugar de teclearla; 24 corridas bajo carga sin fallo (cubre RF-011) [zona: test]
+  - CHECK: `cd frontend && for i in $(seq 1 24); do npx vitest run src/notes/NoteSidebar.test.tsx --pool=forks || exit 1; done`
+  - EXPECT: 24/24 `passed`.
+
+### V · Enmienda 13 (PLAN-0008 §22) — F-2
+- [x] T-148 — F-2: `asyncUtilTimeout` global en `test-setup.ts`; quitar los `timeout` locales de T-147; 4 corridas simultáneas de la suite de frontend sin fallos (cubre RF-011, RF-019) [zona: test]
+  - CHECK: `cd frontend && for i in 1 2 3 4; do (npx vitest run src/notes src/layout src/vaults src/editor > /tmp/s8/f2-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
+  - EXPECT: las 4 con `exit=0`.
+
+### W · Enmienda 14 (PLAN-0008 §23) — F-3
+- [x] T-149 — F-3: `repush.test.ts` sin esperas fijas (positivos con `vi.waitFor`; negativos tras la señal del feed + `settled()`); auditoría de esperas por tiempo en los tests de 0008 (lista en history.md: sustituida o justificada) (cubre RF-004, RF-014) [zona: test]
+  - CHECK: `cd frontend && grep -rn "setTimeout" src/notes src/editor src/sync --include=*.test.ts* ; for i in 1 2 3 4; do (npx vitest run src/notes src/sync src/editor > /tmp/s8/f3-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
+  - EXPECT: cada `setTimeout` restante con comentario que lo justifica; las 4 corridas simultáneas con `exit=0`.
+
+### X · Enmienda 15 (PLAN-0008 §24) — F-4
+- [x] T-150 — F-4: política única de plazos (config de vitest + esperas por condición con un solo plazo) en toda la suite de frontend; criterio 12/12 con 3 rondas de 4 corridas simultáneas (cubre RF-011, RF-019, RF-004, RF-014) [zona: test]
+  - CHECK: `cd frontend && for r in 1 2 3; do for i in 1 2 3 4; do (npx vitest run > /tmp/s8/f4-$r-$i.log 2>&1; echo "ronda $r corrida $i exit=$?") & done; wait; done`
+  - EXPECT: 12 líneas con `exit=0`.
+
+### Y · Enmienda 16 (PLAN-0008 §25) — E-6
+- [x] T-151 — E-6: test (rojo, commit propio) con Milkdown real: teclear en Visual y alternar a Código / Leer / Ctrl+S en < 200 ms conserva el texto; vaciado síncrono del listener en `stop()` y antes de alternar, guardar y salir (cubre RF-008, RF-007) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor`
+  - EXPECT: rojo (texto perdido) → `passed`.
+
+### Z · Enmienda 17 (PLAN-0008 §26) — E-7
+- [x] T-152 — E-7: tests (rojo, commit propio) con editores reales y acción en < 200 ms tras teclear en Visual: cambiar de nota → diálogo; borrar la abierta → confirmación; logout → aviso de borrador; `beforeunload` → aviso; ninguno pierde texto. Corrección: "sucio" síncrono por transacción y lector único `readDraft()` (cubre RF-008, RF-010) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor src/notes src/sync/LogoutDialog.test.tsx`
+  - EXPECT: rojo → `passed`.
+
+### AA · Enmienda 18 (PLAN-0008 §27) — E-8, D-1
+- [x] T-153 — E-8: test (rojo, commit propio) "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto nuevo; `restoreAndSave` usa `readDraft()`. D-1: línea en blanco en `frontend/src/README.md` (cubre RF-017, RF-008) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor && git diff --check`
+  - EXPECT: rojo → `passed`; sin avisos de espacios.
+
+### AB · Enmienda 19 (PLAN-0008 §28) — U-6
+- [x] T-154 — U-6: test (rojo, commit propio) "Nueva nota" y "Editar" dejan el foco en el editor activo; abrir en lectura o recargar no lo mueve (cubre RF-003, RF-007) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor src/notes`
+  - EXPECT: rojo → `passed`.
+
+### AC · Enmienda 20 (PLAN-0008 §29) — T-2
+- [x] T-155 — T-2: test del foco de `CodeView` al pasar a edición con la vista Código activa; mutante sin `instance.focus()` lo hace fallar (cubre RF-007, RF-008) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor`
+  - EXPECT: `passed`; con el mutante, falla (salida pegada en history.md).
+
+### AD · Enmienda 21 (PLAN-0008 §30) — U-7
+- [x] T-156 — U-7: riel con altura del viewport y scroll propio; test de estilo/estructura y captura real con 40 bóvedas (cubre RF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx` + captura
+  - EXPECT: `passed`; en la captura el riel no se alarga con la página y la bóveda activa es visible.
+
+### AE · Enmienda 22 (PLAN-0008 §31) — B-1, U-8, D-2
+- [x] T-157 — U-8: test (rojo, commit propio) tras "Restaurar" el foco va al siguiente "Restaurar" / anterior / "Volver a las notas" y se anuncia la ruta restaurada (`role="status"`); corrección (cubre RF-017, RF-010) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-158 — D-2 y B-1: viñeta de `note_service.py` en `backend/app/services/README.md` con `sha256(path_key)`; limitación B-1 en `backend/README.md` §Notas [doc]
+  - CHECK: `grep -c "sha256" backend/app/services/README.md && grep -c "transacci" backend/README.md`
+  - EXPECT: ≥ 1 y ≥ 1.
+
+### AF · Enmienda 23 (PLAN-0008 §32) — U-9, F-5
+- [x] T-159 — U-9: test (rojo, commit propio) tras un "Restaurar" fallido por ruta ocupada el foco vuelve a ese botón; corrección (cubre RF-017, RF-013) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [x] T-160 — F-5: causa del test intermitente de `VaultWorkspacePage` con carga; plazo único y precarga correcta; criterio 12/12 (cubre RF-003, RF-001) [zona: test]
+  - CHECK: `cd frontend && for r in 1 2 3; do for i in 1 2 3 4; do (npx vitest run > /tmp/s8/f5-$r-$i.log 2>&1; echo "ronda $r corrida $i exit=$?") & done; wait; done`
+  - EXPECT: 12 líneas con `exit=0`.
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-030, T-031, T-046, T-047, T-057, T-058, T-063…T-066, T-094 | noteTree.test, resources.test, VaultRail.test, VaultWorkspacePage.test, App.test, AppLayout.test | Pendiente |
-| RF-002 | T-063, T-064, T-094 | VaultWorkspacePage.test | Pendiente |
-| RF-003 | T-034, T-035, T-059, T-060, T-075, T-094 | noteStore.test, NoteSidebar.test, notes.integration | Pendiente |
-| RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pendiente |
-| RF-005 | T-001, T-003…T-005, T-013, T-014, T-026, T-027 | test_note_contract, test_note_rules, test_note_sync_push, noteRules.test | Pendiente |
-| RF-006 | T-011, T-012, T-019…T-021, T-079 | test_note_sync_filter, test_note_sync_api, test_note_sync_isolation | Pendiente |
-| RF-007 | T-025, T-048, T-049, T-052…T-055, T-094 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pendiente |
-| RF-008 | T-024, T-025, T-050…T-056, T-094 | CodeView.test, MilkdownView.test, NoteEditor.test | Pendiente |
-| RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration | Pendiente |
-| RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, notes.integration | Pendiente |
-| RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration | Pendiente |
-| RF-012 | T-028, T-029, T-034, T-035, T-059, T-060, T-094 | untitled.test, noteStore.test, NoteSidebar.test | Pendiente |
-| RF-013 | T-002…T-010, T-017, T-018, T-022, T-026, T-027, T-034, T-035, T-059, T-060, T-071, T-072, T-075 | test_note_rules, test_reservations, test_note_service, test_note_sync_push, test_contract, noteRules.test, noteStore.test, RejectionsPage.test, notes.integration | Pendiente |
-| RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration | Pendiente |
-| RF-015 | T-063, T-064, T-094 | VaultWorkspacePage.test | Pendiente |
-| RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration | Pendiente |
-| RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pendiente |
-| RF-018 | T-067, T-068, T-094 | VaultListPage.test | Pendiente |
-| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094 | noteTree.test, NoteSidebar.test, VaultWorkspacePage.test | Pendiente |
-| RNF-001 | T-074, T-078, T-094 | tree.perf.test | Pendiente |
-| doc: contracts/note.schema.json | T-080 | test_note_contract | Pendiente |
-| doc: 0005-sync/contracts/openapi.yaml | T-022, T-081 | test_contract | Pendiente |
-| doc: backend/README.md | T-082 | — | Pendiente |
-| doc: backend/app/core/README.md | T-083 | — | Pendiente |
-| doc: backend/app/services/README.md | T-084 | — | Pendiente |
-| doc: backend/app/routers/README.md | T-085 | — | Pendiente |
-| doc: backend/tests/README.md | T-086 | — | Pendiente |
-| doc: frontend/README.md | T-087 | — | Pendiente |
-| doc: frontend/src/README.md | T-088 | — | Pendiente |
-| doc: 0008-vault-editor/diagrams | T-089 | — | Pendiente |
-| doc: 0005-sync/diagrams | T-090 | — | Pendiente |
-| doc: ARCHIFY.md | T-091 | — | Pendiente |
-| doc: re-anclaje 0002/0003/0005/0007 | T-092 | gate | Pendiente |
-| doc: state.md | T-093 | — | Pendiente |
+| RF-001 | T-030, T-031, T-046, T-047, T-057, T-058, T-063…T-066, T-094, T-124, T-138, T-139, T-143, T-000, T-073, T-108, T-113, T-126, T-145, T-156, T-160 | noteTree.test, resources.test, VaultRail.test, VaultWorkspacePage.test, App.test, AppLayout.test, VaultRail.test (nombre accesible) | Pass |
+| RF-002 | T-063, T-064, T-094, T-136, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test, VaultWorkspacePage.test (404 con borrador) | Pass |
+| RF-003 | T-034, T-035, T-059, T-060, T-075, T-094, T-127, T-000, T-073, T-108, T-113, T-126, T-154, T-160 | noteStore.test, NoteSidebar.test, notes.integration | Pass |
+| RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079, T-096, T-098, T-112, T-000, T-023, T-073, T-094, T-097, T-108, T-111, T-113, T-119, T-126, T-149, T-150 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pass |
+| RF-005 | T-001, T-003…T-005, T-013, T-014, T-026, T-027, T-114, T-115, T-118, T-120, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126, T-146 | test_note_contract, test_note_rules, test_note_sync_push, noteRules.test | Pass |
+| RF-006 | T-011, T-012, T-019…T-021, T-079, T-117, T-134, T-000, T-023, T-073, T-094, T-108, T-113, T-116, T-119, T-126, T-146 | test_note_sync_filter, test_note_sync_api, test_note_sync_isolation, test_note_sync_push (`_rev` acotado) | Pass |
+| RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129, T-000, T-073, T-108, T-113, T-126, T-151, T-154, T-155 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
+| RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-151, T-152, T-153, T-155 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
+| RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075, T-096, T-111, T-139, T-140, T-142, T-000, T-073, T-094, T-095, T-108, T-113, T-126 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration, mergeNote.test (doble borrado), conflicts.test (cuota, barrido sin cuerpos) | Pass |
+| RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-132, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-152, T-157 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration, NoteEditor.test (ConfirmDialog de borrado) | Pass |
+| RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147, T-148, T-150 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
+| RF-012 | T-028, T-029, T-034, T-035, T-059, T-060, T-094, T-000, T-073, T-108, T-113, T-126 | untitled.test, noteStore.test, NoteSidebar.test | Pass |
+| RF-013 | T-002…T-010, T-017, T-018, T-022, T-026, T-027, T-034, T-035, T-059, T-060, T-071, T-072, T-075, T-103, T-104, T-133, T-000, T-023, T-073, T-094, T-108, T-113, T-126, T-159 | test_note_rules, test_reservations, test_note_service, test_note_sync_push, test_contract, noteRules.test, noteStore.test, RejectionsPage.test, notes.integration, test_note_sync_api (ruta NFKC ×18) | Pass |
+| RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076, T-095, T-096, T-111, T-136, T-144, T-000, T-073, T-094, T-097, T-098, T-108, T-113, T-126, T-149, T-150 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration, VaultWorkspacePage.test (bóveda a la papelera con borrador) | Pass |
+| RF-015 | T-063, T-064, T-094, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test | Pass |
+| RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077, T-140, T-142, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration, conflicts.test (StorageFullError) | Pass |
+| RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104, T-000, T-073, T-108, T-113, T-126, T-153, T-157, T-159 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |
+| RF-018 | T-067, T-068, T-094, T-121, T-122, T-000, T-073, T-108, T-113, T-126 | VaultListPage.test | Pass |
+| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-132, T-137, T-138, T-139, T-000, T-073, T-108, T-113, T-126, T-148, T-150 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test, NoteSidebar.test (Escape, contraste, displayName), noteStore.test (índice de resumen) | Pass |
+| RNF-001 | T-074, T-078, T-094, T-124, T-126, T-139, T-143, T-000, T-145 | tree.perf.test, tree.perf.test (índice de resumen) | Pass |
+| doc: contracts/note.schema.json | T-080, T-146 | test_note_contract | Pass |
+| doc: 0005-sync/contracts/openapi.yaml | T-022, T-081 | test_contract | Pass |
+| doc: backend/README.md | T-082, T-141, T-158 (D-3) | — | Pass |
+| doc: backend/app/core/README.md | T-083 | — | Pass |
+| doc: backend/app/services/README.md | T-084, T-158 | — | Pass |
+| doc: backend/app/routers/README.md | T-085, T-141 | — | Pass |
+| doc: backend/tests/README.md | T-086 | — | Pass |
+| doc: frontend/README.md | T-087 | — | Pass |
+| doc: frontend/src/README.md | T-088, T-141, T-145, T-153 | — | Pass |
+| doc: 0008-vault-editor/diagrams | T-089 | — | Pass |
+| doc: 0005-sync/diagrams | T-090 | — | Pass |
+| doc: ARCHIFY.md | T-091 | — | Pass |
+| doc: re-anclaje 0002/0003/0005/0007 | T-092 | gate | Pass |
+| doc: state.md | T-093 | — | Pass |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre cuando la spec pase a `implemented`.

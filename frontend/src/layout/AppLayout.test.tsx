@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import { MeContext } from "../auth/RequireAuth";
 import type { SyncContextValue } from "../sync/useSync";
-import { syncValue, WithSync } from "../test-utils/sync";
+import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import AppLayout from "./AppLayout";
 
 const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false };
@@ -79,4 +79,12 @@ test("RF-018 / RF-028: los enlaces «Bóvedas» y «Papelera» llevan a sus secc
   expect(screen.getByText("sección papelera")).toBeInTheDocument();
   await user.click(within(nav).getByRole("link", { name: "Bóvedas" }));
   expect(screen.getByText("sección bóvedas")).toBeInTheDocument();
+});
+
+test("RF-001: las rutas privadas muestran el riel de bóvedas con una entrada por bóveda activa", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  renderAt(value);
+  const rail = screen.getByRole("navigation", { name: "Bóvedas abiertas" });
+  expect(await within(rail).findByRole("link", { name: / Notas$/ })).toHaveAttribute("href", expect.stringMatching(/^\/vaults\/[0-9a-f-]{36}$/));
 });

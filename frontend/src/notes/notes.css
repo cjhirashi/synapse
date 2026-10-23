@@ -1,0 +1,243 @@
+/* Pantallas de notas (SPEC-0008): riel de bóvedas, sidebar con el árbol y espacio de trabajo. */
+
+/* --- Riel de bóvedas --- */
+.vault-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 56px;
+  flex-shrink: 0;
+  padding: var(--space-3) 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
+  /* Riel fijo en la vista con scroll propio (U-7): con decenas de bóvedas no se alarga con la página ni se
+     pierde al bajar. La cabecera no es fija, así que el riel se pega arriba y su altura se acota al viewport. */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.vault-rail-icon {
+  /* No se encogen cuando el riel (flex en columna, con `max-height`) se llena: el riel hace scroll (U-7). */
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.vault-rail-icon:hover {
+  text-decoration: none;
+  color: var(--text-primary);
+  background: var(--accent-soft);
+}
+
+/* La bóveda abierta: fondo suave y aro de acento (sólo tokens, con contraste en ambos temas). */
+.vault-rail-icon[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.vault-rail-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Sidebar con el árbol de notas --- */
+.note-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 280px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.note-sidebar-new {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.note-tree,
+.note-tree-group {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). */
+.note-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.note-tree-group {
+  padding-left: var(--space-4);
+}
+
+.note-tree-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Las filas son botones: sin el aspecto de botón del formulario, como una lista de archivos. */
+.note-tree-row,
+.note-tree-row:not([type="submit"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+  padding: 6px var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 14px;
+  text-align: left;
+}
+
+/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`). */
+.note-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-tree-row:not([type="submit"]):hover {
+  background: var(--bg-tertiary);
+}
+
+/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1) + barra de acento, como el riel. */
+.note-tree-row[aria-selected="true"] {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* Barra de acciones de la nota seleccionada: fuera del árbol y siempre visible (también en táctil). */
+.note-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+}
+
+.note-actions-name {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.note-actions button {
+  padding: 4px var(--space-3);
+  font-size: 13px;
+}
+
+.note-tree-rename {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+/* --- Espacio de trabajo de la bóveda --- */
+.vault-workspace {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-6);
+}
+
+/* Columna fija al viewport: su altura se acota y el árbol (flex) absorbe el resto con scroll. */
+.vault-workspace-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - 2 * var(--space-4));
+}
+
+.vault-workspace-side h1 {
+  margin: 0;
+  font-size: 20px;
+  overflow-wrap: anywhere;
+}
+
+.vault-workspace-main {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .vault-workspace {
+    flex-direction: column;
+  }
+  .vault-workspace-side,
+  .note-sidebar {
+    width: 100%;
+  }
+  /* Apilado: sin columna fija; el árbol conserva su scroll acotado. */
+  .vault-workspace-side {
+    position: static;
+    max-height: none;
+  }
+  .note-tree {
+    max-height: 50vh;
+  }
+}
+
+/* --- Conflicto de una nota: dos versiones lado a lado --- */
+.note-conflict-versions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+}
+
+.note-conflict-version {
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+}
+
+.note-conflict-version pre {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2);
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}

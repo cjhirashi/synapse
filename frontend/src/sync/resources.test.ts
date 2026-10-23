@@ -7,8 +7,10 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { openRejections } from "./rejections";
-import { pushOnce, unconfirmedState, type SyncResources } from "./resources";
+import { memoryEnv } from "../test-utils/sync";
+import { openSyncResources, pushOnce, unconfirmedState, type SyncResources } from "./resources";
 import { openSyncStatus } from "./status";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -134,7 +136,8 @@ describe("unconfirmedState", () => {
 
   it("un rechazo que aún se está guardando cuenta como no confirmado (VD-1)", async () => {
     const res = await confirmed();
-    // La escritura del rechazo tarda más que releer la secuencia: sólo esperándola se ve.
+    // La escritura del rechazo tarda más que releer la secuencia: sólo esperándola se ve. El retardo es
+    // una dependencia lenta SIMULADA (no una espera del test, F-3): con la CPU cargada sólo se alarga.
     const put = db.put.bind(db);
     vi.spyOn(db, "put").mockImplementation((async (doc: never) => {
       await new Promise((resolve) => setTimeout(resolve, 20));
@@ -150,5 +153,67 @@ describe("unconfirmedState", () => {
     vi.spyOn(db, "info").mockRejectedValue(new Error("IndexedDB no disponible"));
     expect(await unconfirmedState(res)).toBe("unreadable");
     expect(error).toHaveBeenCalledOnce();
+  });
+});
+
+describe("openSyncResources: notas y reintento dirigido (SPEC-0008 RF-001, RF-019, P-7)", () => {
+  const VAULT = "33333333-3333-4333-8333-333333333333";
+  const NOTE = `note:${VAULT}:44444444-4444-4444-8444-444444444444`;
+  const opened: SyncResources[] = [];
+
+  afterEach(async () => {
+    await Promise.all(opened.splice(0).map((r) => r.close()));
+  });
+
+  async function open() {
+    const { env, fake } = memoryEnv();
+    const res = await openSyncResources("u1", env);
+    opened.push(res);
+    return { res, fake };
+  }
+
+  it("expone `notes`, un almacén sobre la misma réplica que las bóvedas", async () => {
+    const { res } = await open();
+    const note = await res.notes.create(VAULT, "Ideas");
+    expect((await res.db.get(note.id)) as { type: string }).toMatchObject({ type: "note" });
+    expect((await res.notes.list(VAULT)).map((n) => n.path)).toEqual(["Ideas.md"]);
+  });
+
+  it("`repush` va cableado: un vault-not-found y la bóveda escrita por el push reintentan la nota", async () => {
+    const { res, fake } = await open();
+    const vault = await res.vaults.create({ name: "Notas", description: null, tags: [] });
+    const toSpy = vi.spyOn(res.db.replicate, "to").mockImplementation((() =>
+      Object.assign(Promise.resolve({ ok: true, doc_write_failures: 0 }), { on: () => undefined })) as never);
+    const noteId = `note:${vault.id}:44444444-4444-4444-8444-444444444444`;
+    // Los eventos del replicador llegan por `onEvent`, que también alimenta a `repush`.
+    const { onEvent } = fake.create.mock.calls[0][0];
+    onEvent({ type: "denied", id: noteId, rev: "1-a", reason: "vault-not-found" });
+    await res.rejections.settled();
+    onEvent({ type: "written", docs: [{ id: `vault:${vault.id}`, rev: vault.rev }] });
+    await waitForCondition(() =>
+      expect(toSpy).toHaveBeenCalledWith(res.remote, { doc_ids: [noteId], checkpoint: false }),
+    );
+  });
+
+  it("`close()` cierra `repush`: después de cerrar ya no reintenta", async () => {
+    const { res } = await open();
+    const toSpy = vi.spyOn(res.db.replicate, "to");
+    await res.rejections.handle({ type: "denied", id: NOTE, rev: "1-a", reason: "vault-not-found" });
+    await res.close();
+    // Una bóveda activa tras cerrar no dispara nada (el feed de `repush` está cancelado).
+    // Sonda del feed de la réplica: abierta después de `close()`, recibe el cambio una vez que cualquier
+    // oyente anterior (el de `repush`, si siguiera activo) ya lo atendió (F-3: señal en vez de plazo).
+    const delivered = new Promise<void>((resolve) => {
+      const probe = res.db.changes({ live: true, since: "now" }).on("change", () => {
+        probe.cancel();
+        resolve();
+      });
+    });
+    await res.db.put({
+      _id: `vault:${VAULT}`, type: "vault", name: "N", description: null, tags: [], owner_id: "u1",
+      created_at: "2026-10-22T10:00:00.000000Z", updated_at: "2026-10-22T10:00:00.000000Z", deleted_at: null,
+    });
+    await delivered;
+    expect(toSpy).not.toHaveBeenCalled();
   });
 });

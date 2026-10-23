@@ -13,9 +13,9 @@ FastAPI — monolito modular por capas con puertos (ADR-001).
 ```
 backend/
 ├── app/
-│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores
+│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores, reglas de nota, marcas de tiempo
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
-│   ├── services/     # Lógica de negocio (auth_service.py, vault_service.py)
+│   ├── services/     # Lógica de negocio (auth_service.py, vault_service.py, note_service.py, reservations.py, sync_*.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB: vault_repository.py)
 │   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, vaults.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
@@ -182,9 +182,11 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   cambio de contraseña hecho (403), también la comodín.
 - **Lista blanca (RF-003):** sólo existen las rutas de la tabla; cualquier otra ruta o
   método bajo `/sync` responde 404 `sync-endpoint-not-found` sin llegar a CouchDB.
-- **Sólo bóvedas (RF-004, RF-007):** viajan los documentos `vault:{uuid}` canónico; las
-  reservas `vault-name:*` y `_design/vaults` nunca salen y ninguna respuesta cuenta
-  documentos. Los parámetros fuera de la lista blanca se descartan; uno conocido con valor
+- **Bóvedas y notas (RF-004, RF-007; SPEC-0008 RF-006):** viajan los documentos
+  `vault:{uuid}` y `note:{vault_uuid}:{uuid}` (ambos UUID canónicos). Las reservas
+  `vault-name:*` y **`note-path:*` son sólo del servidor**: ni `_changes`, ni `_all_docs`
+  (un rango por prefijo, `note:` y `vault:`), ni `_bulk_get` las devuelven, y `_design/vaults`
+  tampoco. Ninguna respuesta cuenta documentos. Los parámetros fuera de la lista blanca se descartan; uno conocido con valor
   inválido es 422 `validation-error`. Las esperas de `_changes` se acotan a 60 s
   (`MAX_WAIT_MS`).
 - **Push validado (RF-005…RF-008, RF-011):** `_bulk_docs` exige `new_edits: false` y
@@ -193,8 +195,22 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   cliente y sigue con el resto. Una revisión ya almacenada se acepta sin tocar nada (reenvío
   de un lote cortado). El nombre se reserva con el mismo mecanismo que la API REST, así que
   REST y sync nunca dejan dos bóvedas activas con el mismo nombre.
-- **Límites:** 200 documentos por `_bulk_docs` y 4 MiB por cuerpo (413
-  `payload-too-large`); 64 KiB por checkpoint `_local`.
+- **Límites:** 200 documentos por `_bulk_docs`; cuerpo de **16 MiB** en `_bulk_docs` (una
+  nota de 2 MiB con caracteres de control escapados pesa ~12 MiB en JSON; el cliente nunca
+  manda más de 8 MiB por petición, ver `frontend/src/README.md`), **64 KiB** por checkpoint
+  `_local` y **4 MiB** en el resto de rutas (413 `payload-too-large`). Dentro de una nota:
+  `content` ≤ **2 MiB** (bytes UTF-8) y `frontmatter` ≤ 64 KiB (JSON compacto).
+- **Orden de las comprobaciones de un cuerpo:** primero la sesión (401/403 sin leer el cuerpo),
+  después el tamaño (413) y por último el JSON: inválido, anidado en exceso o con enteros
+  gigantes es 422 `validation-error`.
+- **Reserva de ruta de nota (H-1, PLAN-0008 §17):** el id es `note-path:{vault_id}:{sha256(path_key)}`
+  (hex): determinista y de longitud fija, porque `NFKC` expande una ruta hasta ×18 y una clave
+  larga como id superaba el límite de CouchDB (400 → 503 de todo el lote en cada reintento). El
+  documento guarda la `path_key` para diagnóstico. No hay datos previos de `note-path:*`, así
+  que no hay migración. (`vault-name:{name_key}` tiene el mismo riesgo y queda en el backlog
+  de 0003: cambiarlo exige migrar las reservas existentes.)
+- **Generación de `_rev` (H-2):** acotada a 16 dígitos en el patrón de `_rev`; una generación
+  mayor se rechaza como `_rev` mal formado, nunca un 500 por desbordar la conversión a entero.
 - **Checkpoints `_local` (RF-003):** el id sigue el formato de PouchDB
   (`[A-Za-z0-9._=-]{1,128}`, nunca `.` ni `..`); otro id es 404 `sync-endpoint-not-found`
   sin llegar a CouchDB. El cuerpo sólo admite como campos reservados `_id` (igual a
@@ -207,13 +223,15 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 
 | `reason` | Cuándo |
 |---|---|
-| `invalid-id` | id que no es `vault:{uuid}` canónico |
+| `invalid-id` | id que no es `vault:{uuid}` ni `note:{uuid}:{uuid}` canónico |
 | `delete-not-allowed` | lápida que no cierra una rama dejando otra hoja viva (el borrado es `deleted_at`) |
-| `validation-error:<campo>` | `_rev`/`_revisions` mal formados (antes que la lápida), o un campo que falta, sobra o tiene un tipo o valor inválido |
-| `not-normalized:<campo>` | valor válido pero sin normalizar como lo haría la API |
+| `validation-error:<campo>` | `_rev`/`_revisions` mal formados (antes que la lápida), o un campo que falta, sobra o tiene un tipo o valor inválido (también `path`, `content`, `frontmatter` y `vault_id` de una nota) |
+| `not-normalized:<campo>` | valor válido pero sin normalizar como lo haría la API (en una nota, `path`) |
 | `owner-mismatch` | `owner_id` distinto del usuario del token |
 | `immutable-field:created_at` | `created_at` distinto del de las demás hojas |
+| `vault-not-found` | (nota, también su lápida) su bóveda no existe, es de otro usuario o está en la papelera; la bóveda del mismo lote cuenta, y por eso las bóvedas se procesan antes que las notas |
 | `vault-name-taken` | otra bóveda activa del usuario tiene un nombre equivalente |
+| `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 
 | Endpoint | Respuesta |
 |---|---|
@@ -229,6 +247,38 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 
 Todas pueden responder además 401 y 403. Requisitos del proxy inverso: ver "Despliegue".
 Contrato completo: `.harness/specs/0005-sync/contracts/openapi.yaml`.
+
+## Notas (SPEC-0008)
+
+Una nota es un documento `type: "note"` con id `note:{vault_id}:{uuid}` en la base del
+usuario. **No tiene API REST**: la SPA la escribe en su réplica local y llega por el push
+validado de `/sync` (los agentes de IA tendrán la suya en otra feature). El backend sólo
+decide qué se acepta:
+
+- **Forma cerrada** (`.harness/specs/0008-vault-editor/contracts/note.schema.json`):
+  `_id`, `_rev`, `_revisions`, `type`, `vault_id`, `path`, `content`, `created_at`,
+  `updated_at`, `deleted_at` y `frontmatter` (única opcional); otra clave o un tipo erróneo
+  es `validation-error:<campo>`. `test_note_contract.py` compara el esquema con el código.
+- **Reglas puras** en `core/note_rules.py` (las espeja `frontend/src/notes/noteRules.ts` y
+  ambos lados recorren `tests/fixtures/note_rules_cases.json`): `path` de 1 a 300 puntos de
+  código, sin caracteres de control ni segmentos vacíos y ya normalizado (el servidor nunca
+  normaliza: rechaza `not-normalized:path`); `content` ≤ 2 MiB; `frontmatter` ≤ 64 KiB.
+- **Bóveda activa:** `vault_id` debe ser igual al primer UUID del id y apuntar a una bóveda
+  propia activa (`vault-not-found`); aplica también al borrado lógico de la nota.
+- **Ruta única por bóveda:** reserva `note-path:{vault_id}:{sha256(path_key)}` (`path_key` = NFKC +
+  `casefold`) con el algoritmo de `vault-name:*` extraído a `services/reservations.py`;
+  decide `services/note_service.py`. Una hoja en la papelera (`deleted_at`) libera su ruta
+  y restaurarla la vuelve a reservar. Conflicto → rechazo `note-path-taken`.
+- **Limitación aceptada (B-1):** si la bóveda se borra por REST entre la comprobación de bóveda
+  activa del push y la escritura `_bulk_docs`, la nota se guarda igual: CouchDB no tiene
+  transacciones entre documentos. El efecto coincide con RF-014: mientras la bóveda esté
+  borrada la nota queda congelada (todo push posterior recibe `vault-not-found`) y la app no
+  la muestra, aunque sigue replicándose al cliente; reaparece al restaurar la bóveda. No hay
+  fuga entre usuarios.
+- **Borrado:** `deleted_at` (papelera de la bóveda), nunca lápida de CouchDB; una lápida sólo
+  cierra una rama de conflicto (`delete-not-allowed` en otro caso).
+- **Marcas de tiempo:** `core/timestamps.py` es el único formato RFC 3339 UTC de ancho fijo
+  (bóvedas, notas y reservas).
 
 ## Errores (SPEC-0004)
 
@@ -287,7 +337,7 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `storage-unavailable` | 503 | CouchDB inaccesible |
 | `sync-endpoint-not-found` | 404 | ruta o método bajo `/sync` fuera del subconjunto del canal |
 | `checkpoint-not-found` | 404 | `GET /sync/db/_local/{id}` sin checkpoint guardado |
-| `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite |
+| `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite (16 MiB en `_bulk_docs`) |
 
 **Añadir un error de dominio:**
 1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y
@@ -331,7 +381,8 @@ lo variable va en `errors`.
 
 `python scripts/export_openapi.py` escribe un contrato por feature (`FEATURES` en el script):
 `0002-auth` (rutas `/auth`, `/admin`, `/health`), `0003-vault-crud` (rutas `/vaults`),
-`0005-sync` (rutas `/sync`, sin la comodín) y
+`0005-sync` (rutas `/sync`, sin la comodín; también describe los rechazos de nota de
+SPEC-0008, cuyo esquema vive en `0008-vault-editor/contracts/note.schema.json`) y
 `0004-api-problem-details` (sólo los
 esquemas `Problem`/`ProblemError`, el canon). Cada contrato lleva una copia de `Problem` para
 ser autocontenido; `tests/test_contract.py` falla si un contrato difiere de la app, si una

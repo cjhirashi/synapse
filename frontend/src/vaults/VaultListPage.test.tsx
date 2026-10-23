@@ -18,6 +18,7 @@ function tree(value: SyncContextValue) {
           <Route path="/vaults" element={<VaultListPage />} />
           <Route path="/vaults/new" element={<div>formulario nuevo</div>} />
           <Route path="/vaults/:id/edit" element={<div>formulario edición</div>} />
+          <Route path="/vaults/:id" element={<div>bóveda abierta</div>} />
         </Routes>
       </MemoryRouter>
     </WithSync>
@@ -50,6 +51,15 @@ test("RF-018: muestra nombre, descripción y tags de cada bóveda", async () => 
   expect(within(first).getByText("común")).toBeInTheDocument();
   expect(screen.getByRole("listitem", { name: "Otra" })).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
+});
+
+test("RF-018, RF-019: la lista de bóvedas lleva su clase `card-list` (el estilo de tarjeta ya no es global)", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: ["work"] });
+  renderPage(value);
+  const item = await screen.findByRole("listitem", { name: "Notas" });
+  expect(item.parentElement).toHaveClass("card-list");
+  expect(within(item).getByRole("list", { name: "Etiquetas" })).toHaveClass("chip-list");
 });
 
 test("RF-018: ordena de la más nueva a la más antigua", async () => {
@@ -118,6 +128,18 @@ test("RF-018: «Editar» lleva al formulario de esa bóveda", async () => {
   const { user } = renderPage(value);
   await user.click(within(await screen.findByRole("listitem", { name: "Notas" })).getByRole("link", { name: "Editar" }));
   expect(screen.getByText("formulario edición")).toBeInTheDocument();
+});
+
+// SPEC-0008 RF-018: «Abrir» junto a «Editar» lleva a la bóveda abierta (notas), no a sus metadatos.
+test("RF-018: «Abrir» lleva a /vaults/{id}, junto a «Editar»", async () => {
+  const { value, db } = syncValue();
+  const vault = await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  const { user } = renderPage(value);
+  const item = await screen.findByRole("listitem", { name: "Notas" });
+  expect(within(item).getByRole("link", { name: "Abrir" })).toHaveAttribute("href", `/vaults/${vault.id}`);
+  expect(within(item).getByRole("link", { name: "Editar" })).toBeInTheDocument();
+  await user.click(within(item).getByRole("link", { name: "Abrir" }));
+  expect(screen.getByText("bóveda abierta")).toBeInTheDocument();
 });
 
 test("RF-020: borrar pide confirmación y cancelar no la mueve a la papelera", async () => {

@@ -9,14 +9,31 @@ npm install
 npm run dev        # Vite; /auth, /admin y /vaults (fetch) van por proxy al backend
                    # (localhost:8000, o BACKEND_URL si está definida)
 npm test           # vitest + Testing Library (sin las pruebas de integración)
-npm run test:sync  # sincronización real (SPEC-0005): levanta uvicorn con SQLite temporal
-                   # contra la CouchDB de test (COUCHDB_URL, por defecto localhost:15984)
-                   # y corre src/sync/*.integration.test.ts con réplicas en memoria
+npm run test:sync  # sincronización real (SPEC-0005 y SPEC-0008): levanta uvicorn con SQLite
+                   # temporal contra la CouchDB de test (COUCHDB_URL, por defecto
+                   # localhost:15984) y corre src/{sync,notes}/*.integration.test.ts con
+                   # réplicas en memoria (las notas incluidas)
 npm run test:sync:perf  # igual, sólo la prueba de rendimiento (p95 ≤ 5 s, RNF-001)
+npm run test:perf  # RNF-001 de SPEC-0008: abrir una bóveda de 1 000 notas (p95 < 300 ms);
+                   # las pruebas *.perf.test.tsx quedan fuera de `npm test` salvo con NOTES_PERF=1
 npm run test:cov   # con cobertura v8 (umbral 80 %; informe HTML en coverage/)
 npm run typecheck  # src/ (tsconfig.json) y vite.config.ts (tsconfig.node.json)
 npm run build      # typecheck + build
 ```
+
+## Editor de notas (SPEC-0008)
+
+El editor usa dependencias fijadas a versión exacta, sin `@milkdown/react` (un envoltorio
+propio en `src/editor/MilkdownView.tsx`):
+
+| Paquete | Versión | Uso |
+|---|---|---|
+| `@milkdown/core`, `ctx`, `prose`, `plugin-history`, `plugin-listener`, `preset-commonmark`, `preset-gfm` | 7.22.3 | vista Visual (WYSIWYG, markdown con tablas y tareas) |
+| `@codemirror/state` 6.7.6, `view` 6.43.15, `commands` 6.11.1, `language` 6.13.1, `lang-markdown` 6.5.2 | — | vista Código (markdown crudo) |
+| `react-router-dom` | 6.26.2 | `createBrowserRouter` en `main.tsx`: `useBlocker` sólo existe en data routers |
+
+El editor se carga con `React.lazy` al abrir una bóveda: Milkdown y CodeMirror van en un
+*chunk* aparte y `/vaults` no los descarga. Detalle de módulos en `src/README.md`.
 
 ## Despliegue
 

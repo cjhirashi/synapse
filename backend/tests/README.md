@@ -13,3 +13,11 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
   Tras cada test se borran las bases `synapse_user_*` (sólo si el CouchDB es local).
 - **Excepción declarada:** el control plane usa SQLite (`test.db`) en lugar de PostgreSQL
   (plan.md §7 de SPEC-0002); pasar a PostgreSQL real queda para una feature aparte.
+
+- **Notas (SPEC-0008):** `test_note_rules.py` (reglas puras sobre la batería compartida
+  `fixtures/note_rules_cases.json`, que el cliente también recorre), `test_note_contract.py`
+  (`note.schema.json` frente a `core/note_rules.py`), `test_reservations.py` y
+  `test_note_service.py` (reservas de ruta), `test_note_sync_push.py` (push de notas: cada
+  código de rechazo, bóveda antes que nota, liberar al renombrar o borrar),
+  `test_note_sync_filter.py`, `test_note_sync_api.py` (ninguna ruta devuelve `note-path:*`) y
+  `test_note_sync_isolation.py` (aislamiento entre usuarios).

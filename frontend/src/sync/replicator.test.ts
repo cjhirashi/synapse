@@ -2,6 +2,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { BATCH_SIZE, backOff, createReplicator, type Replicator, type SyncEvent } from "./replicator";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -34,7 +35,12 @@ async function exists(db: PouchDB.Database, id: string): Promise<boolean> {
   return db.get(id).then(() => true, () => false);
 }
 
-/** Espera fija corta para comprobar que algo NO ocurre. */
+/**
+ * Espera fija corta para comprobar que algo NO ocurre. Justificada (F-3): la replicación real
+ * entre dos réplicas en memoria no emite ninguna señal de «no hay nada que hacer». Con la CPU
+ * cargada el plazo sólo da más margen a un fallo real; cada caso negativo tiene su par positivo
+ * (`vi.waitFor` sobre la replicación al reanudar/soltar el cerrojo) que prueba que sí funciona.
+ */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
 
 /**
@@ -99,8 +105,8 @@ describe("RF-010: replica en ambos sentidos y avisa de cada paso", () => {
     instance.start();
     const { rev } = await local.put({ _id: "vault:1", name: "Notas" });
 
-    await vi.waitFor(async () => expect(await exists(remote, "vault:1")).toBe(true));
-    await vi.waitFor(() => expect(events).toContainEqual({ type: "paused", direction: "push", offline: false }));
+    await waitForCondition(async () => expect(await exists(remote, "vault:1")).toBe(true));
+    await waitForCondition(() => expect(events).toContainEqual({ type: "paused", direction: "push", offline: false }));
     expect(events).toContainEqual({ type: "active", direction: "push" });
     expect(events).toContainEqual({ type: "written", docs: [{ id: "vault:1", rev }] });
     const seq = (await local.info()).update_seq;
@@ -110,7 +116,7 @@ describe("RF-010: replica en ambos sentidos y avisa de cada paso", () => {
   it("pull: el cambio del servidor llega a la réplica", async () => {
     replicator().instance.start();
     await remote.put({ _id: "vault:2", name: "Del servidor" });
-    await vi.waitFor(async () => expect(await exists(local, "vault:2")).toBe(true));
+    await waitForCondition(async () => expect(await exists(local, "vault:2")).toBe(true));
   });
 
   it("RF-019: un fallo de red o un 503 detiene el sentido afectado como 'sin conexión' y reintenta", async () => {
@@ -120,9 +126,9 @@ describe("RF-010: replica en ambos sentidos y avisa de cada paso", () => {
     instance.start();
     await local.put({ _id: "vault:4", name: "Sin red" });
 
-    await vi.waitFor(() => expect(events).toContainEqual({ type: "paused", direction: "push", offline: true }));
+    await waitForCondition(() => expect(events).toContainEqual({ type: "paused", direction: "push", offline: true }));
     // Tras la espera de 1 s, el reintento (ya sin fallo) lo sube.
-    await vi.waitFor(async () => expect(await exists(remote, "vault:4")).toBe(true), { timeout: 3000 });
+    await waitForCondition(async () => expect(await exists(remote, "vault:4")).toBe(true), { timeout: 3000 });
     expect(revsDiff.mock.calls.length).toBeGreaterThan(1);
   });
 
@@ -133,7 +139,7 @@ describe("RF-010: replica en ambos sentidos y avisa de cada paso", () => {
     instance.start();
     const { rev } = await local.put({ _id: "vault:3", name: "Repetida" });
 
-    await vi.waitFor(() => expect(events).toContainEqual({ type: "denied", id: "vault:3", rev, reason: "vault-name-taken" }));
+    await waitForCondition(() => expect(events).toContainEqual({ type: "denied", id: "vault:3", rev, reason: "vault-name-taken" }));
   });
 });
 
@@ -142,7 +148,7 @@ describe("RF-016: sesión caducada", () => {
     const { instance, events } = replicator();
     instance.start();
     await local.put({ _id: "vault:1", name: "Antes" });
-    await vi.waitFor(async () => expect(await exists(remote, "vault:1")).toBe(true));
+    await waitForCondition(async () => expect(await exists(remote, "vault:1")).toBe(true));
 
     instance.sessionExpired();
     expect(events.at(-1)).toEqual({ type: "session-expired" });
@@ -152,7 +158,7 @@ describe("RF-016: sesión caducada", () => {
     expect((await local.allDocs()).rows.map((row) => row.id)).toEqual(["vault:1", "vault:2"]);
 
     instance.resume();
-    await vi.waitFor(async () => expect(await exists(remote, "vault:2")).toBe(true));
+    await waitForCondition(async () => expect(await exists(remote, "vault:2")).toBe(true));
   });
 });
 
@@ -168,9 +174,9 @@ describe("R-10: un solo replicador por navegador", () => {
     expect(sync).toHaveBeenCalledTimes(1);
 
     await first.instance.stop();
-    await vi.waitFor(() => expect(sync).toHaveBeenCalledTimes(2));
+    await waitForCondition(() => expect(sync).toHaveBeenCalledTimes(2));
     await local.put({ _id: "vault:1", name: "Notas" });
-    await vi.waitFor(async () => expect(await exists(remote, "vault:1")).toBe(true));
+    await waitForCondition(async () => expect(await exists(remote, "vault:1")).toBe(true));
   });
 
   it("las demás pestañas reciben los eventos por BroadcastChannel; la que replica no los recibe dos veces", async () => {
@@ -181,7 +187,7 @@ describe("R-10: un solo replicador por navegador", () => {
     follower.instance.start();
     await local.put({ _id: "vault:1", name: "Notas" });
 
-    await vi.waitFor(() => expect(follower.events).toContainEqual({ type: "paused", direction: "push", offline: false }));
+    await waitForCondition(() => expect(follower.events).toContainEqual({ type: "paused", direction: "push", offline: false }));
     expect(follower.events).toContainEqual({ type: "active", direction: "push" });
     const pushActive = leader.events.filter((e) => e.type === "active" && e.direction === "push");
     expect(pushActive).toHaveLength(follower.events.filter((e) => e.type === "active" && e.direction === "push").length);
@@ -191,12 +197,12 @@ describe("R-10: un solo replicador por navegador", () => {
     const locks = fakeLocks();
     const leader = replicator(locks);
     leader.instance.start();
-    await vi.waitFor(() => expect(leader.events).toContainEqual({ type: "paused", direction: "pull", offline: false }));
-    await vi.waitFor(() => expect(leader.events).toContainEqual({ type: "paused", direction: "push", offline: false }));
+    await waitForCondition(() => expect(leader.events).toContainEqual({ type: "paused", direction: "pull", offline: false }));
+    await waitForCondition(() => expect(leader.events).toContainEqual({ type: "paused", direction: "push", offline: false }));
 
     const late = replicator(locks);
     late.instance.start();
-    await vi.waitFor(() => {
+    await waitForCondition(() => {
       expect(late.events).toContainEqual({ type: "paused", direction: "push", offline: false });
       expect(late.events).toContainEqual({ type: "paused", direction: "pull", offline: false });
     });
@@ -207,12 +213,12 @@ describe("R-10: un solo replicador por navegador", () => {
     const locks = fakeLocks();
     const leader = replicator(locks);
     leader.instance.start();
-    await vi.waitFor(() => expect(leader.events.length).toBeGreaterThan(0));
+    await waitForCondition(() => expect(leader.events.length).toBeGreaterThan(0));
     leader.instance.sessionExpired();
 
     const late = replicator(locks);
     late.instance.start();
-    await vi.waitFor(() => expect(late.events).toContainEqual({ type: "session-expired" }));
+    await waitForCondition(() => expect(late.events).toContainEqual({ type: "session-expired" }));
   });
 
   it("detener una pestaña que esperaba el cerrojo cancela su petición sin replicar", async () => {

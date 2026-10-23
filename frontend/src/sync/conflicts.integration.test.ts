@@ -2,7 +2,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createUser, Device, eventually } from "../test-utils/device";
 import { pushOnce } from "./resources";
+import type { VaultConflict } from "./conflicts";
 import type { Vault, VaultStore } from "./vaultStore";
+
+/** Conflictos de bóveda de un dispositivo (`list()` también trae los de nota). */
+const vaultConflicts = (device: Device): VaultConflict[] =>
+  device.sync.conflicts.list().filter((item): item is VaultConflict => item.kind === "vault");
 
 describe("conflictos (integración)", () => {
   let laptop: Device;
@@ -55,7 +60,7 @@ describe("conflictos (integración)", () => {
     for (const device of [laptop, phone]) {
       await eventually(async () => {
         expect(await device.sync.vaults.get(base.id)).toMatchObject({ name: "Notas", description: "del portátil", tags: ["a", "b"] });
-        expect(device.sync.conflicts.list()).toEqual([]);
+        expect(vaultConflicts(device)).toEqual([]);
       });
     }
     // El servidor acaba con una sola hoja: la combinación (RF-012).
@@ -81,7 +86,7 @@ describe("conflictos (integración)", () => {
     // RF-013: nada se pierde ni se elige solo; las dos réplicas muestran la misma pareja.
     for (const device of [laptop, phone]) {
       await eventually(() => {
-        const [conflict, ...rest] = device.sync.conflicts.list();
+        const [conflict, ...rest] = vaultConflicts(device);
         expect(rest).toEqual([]);
         expect(conflict).toMatchObject({ id: `vault:${base.id}`, reason: "clash", fields: ["name"] });
         expect([conflict.winner.doc.name, conflict.loser.doc.name].sort()).toEqual(["Notas del móvil", "Notas del portátil"]);
@@ -110,7 +115,7 @@ describe("conflictos (integración)", () => {
       (vaults) => vaults.update(base.id, { name: "Otro" }, base.rev),
     ]);
     const conflict = await eventually(() => {
-      const [first] = phone.sync.conflicts.list();
+      const [first] = vaultConflicts(phone);
       expect(first).toBeDefined();
       return first;
     });
@@ -136,7 +141,7 @@ describe("conflictos (integración)", () => {
     const pairs = await Promise.all(
       [laptop, phone].map((device) =>
         eventually(() => {
-          const [conflict] = device.sync.conflicts.list();
+          const [conflict] = vaultConflicts(device);
           expect(conflict).toBeDefined();
           return conflict;
         }),
@@ -166,7 +171,7 @@ describe("conflictos (integración)", () => {
       expect(a).toMatchObject({ name: "Notas de ambos" });
       expect(b.rev).toBe(a.rev);
       for (const device of [laptop, phone]) {
-        expect(device.sync.conflicts.list()).toEqual([]);
+        expect(vaultConflicts(device)).toEqual([]);
         expect(device.sync.rejections.list()).toEqual([]);
       }
     });

@@ -4,7 +4,7 @@ tipo: spec
 feature: 0003-vault-crud
 estado: verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 84b8be3   # re-anclaje por SPEC-0005 (enmienda 6: sólo `VaultListPage.test.tsx`, T-130)
+anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py
@@ -47,6 +47,15 @@ actualizado: 2026-10-13
 > y `vault_service._holder` consideran todas las ramas de un documento (RF-008 de 0005), con
 > sus pruebas en `test_vault_repository.py` y `test_vault_service.py`. La API REST de
 > bóvedas no cambia. Ancla movida a `461517f`. Sin cambio de requisitos.
+
+> **Re-anclaje 2026-10-23** (PLAN-0008 P-2 y §13, T-092 de TASKS-0008): SPEC-0008 tocó archivos de
+> estos `covers` sin cambiar ningún requisito de esta spec: `vault_service.py` delega la reserva
+> `vault-name:*` en `services/reservations.py` (mismo algoritmo, suite de bóvedas sin cambios como
+> prueba de no regresión) y `core/timestamps.py` reúne `utc_now`; `VaultListPage.tsx` gana
+> "Abrir" (RF-018 de 0008); los estilos de lista pasan a `.card-list`/`.chip-list` (VU-1) sin cambio
+> visual (capturas antes/después). Backlog para Carlos: el id `vault-name:{name_key}` no tiene tope
+> de longitud (NFKC puede expandir ×18 un nombre de 100 caracteres) — mismo riesgo que H-1 de 0008;
+> corregirlo exige migrar las reservas existentes. Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - **Problema:** cada usuario necesita crear y organizar sus propias bóvedas (contenedores

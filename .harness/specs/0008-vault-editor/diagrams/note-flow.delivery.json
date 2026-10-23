@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d551b510-1fc9-400e-8b92-f70100b83892",
+  "status": "current",
+  "command": "deliver",
+  "type": "dataflow",
+  "input": "/repo/.harness/specs/0008-vault-editor/diagrams/note-flow.candidate.json",
+  "output": "/repo/.harness/specs/0008-vault-editor/diagrams/note-flow.html",
+  "specification": {
+    "sha256": "e12b630d7eb4b5d29ac2816651d0c37e09254174c968dbeedf1a1bce7413d5a9",
+    "bytes": 32356
+  },
+  "artifact": {
+    "sha256": "31c2d981013dd7d54c1641a54ac50016695f82e5fbf21896d713cd7f3eda6610",
+    "bytes": 763584
+  }
+}

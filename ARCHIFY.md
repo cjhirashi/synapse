@@ -89,6 +89,28 @@
 
 ---
 
+### 2b. **Flujo de una nota** (SPEC-0008 `0008-vault-editor`)
+
+**Tipo:** Dataflow  
+**Qué mostrar:** abrir bóveda (`/vaults/:id`) → editar y «Guardar» en la réplica PouchDB →
+push por `/sync/db` (reparto de `_bulk_docs`) → push validado (`sync_push`) → `synapse_user_{id}`
+con la reserva `note-path:*` (sólo del servidor) o rechazo `forbidden` + `reason` → pull a otros dispositivos.
+
+**Guardar en:**
+```
+.harness/specs/0008-vault-editor/diagrams/
+├── note-flow.html
+├── note-flow.candidate.json
+├── note-flow-light.png
+└── note-flow-dark.png
+```
+
+> **Estado (T-089, 2026-10-22):** generado. Índice y cómo regenerarlo en
+> `.harness/specs/0008-vault-editor/diagrams/README.md`. T-090 regeneró también el de 0005
+> (el canal replica `vault:*` y `note:*`).
+
+---
+
 ### 3. **Flujo de Autenticación** (Sprint 2 — Implementar junto a login)
 
 **Tipo:** Sequence (interacciones)  

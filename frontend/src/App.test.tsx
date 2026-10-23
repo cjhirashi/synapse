@@ -5,7 +5,8 @@ import { afterEach, expect, test, vi } from "vitest";
 import App from "./App";
 import * as api from "./api/auth";
 import * as localDb from "./sync/localDb";
-import { memoryEnv } from "./test-utils/sync";
+import { memoryDb, memoryEnv } from "./test-utils/sync";
+import { createVaultStore } from "./sync/vaultStore";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -78,6 +79,26 @@ test("RF-002: mientras deba cambiar la contraseña no replica (el canal responde
   expect(fake.replicator.start).not.toHaveBeenCalled();
 });
 
+// SPEC-0002 RF-020 (VU-5): al cambiar la contraseña `must_change_password` pasa a false; la app debe
+// entrar a las bóvedas en vez de volver al formulario (el estado de sesión en caché estaba obsoleto).
+test("SPEC-0002 RF-020: tras el cambio forzado de contraseña se entra a la app, no al formulario vacío", async () => {
+  const { env } = signedIn(true);
+  const me = { user_id: "1", email: "test@synapse.local", role: "guest" as const };
+  // El servidor refleja el cambio: antes del POST exige cambiarla; después ya no.
+  let changed = false;
+  vi.spyOn(api, "getMe").mockImplementation(async () => ({ ...me, must_change_password: !changed }));
+  vi.spyOn(api, "changePassword").mockImplementation(async () => {
+    changed = true;
+  });
+  const user = renderAt("/vaults", env);
+  await user.type(await screen.findByLabelText("Contraseña actual"), "semilla-12345");
+  await user.type(screen.getByLabelText("Nueva contraseña"), "otra-clave-larga");
+  await user.type(screen.getByLabelText("Confirmar nueva contraseña"), "otra-clave-larga");
+  await user.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+  expect(await screen.findByRole("heading", { name: "Bóvedas" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Cambiar contraseña" })).not.toBeInTheDocument();
+});
+
 test("RF-019: una bóveda creada en el formulario se lista y se edita desde la réplica", async () => {
   const { env } = signedIn();
   const user = renderAt("/vaults/new", env);
@@ -109,4 +130,35 @@ test("RF-017: si la réplica no se borra al salir, el login avisa de la copia co
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
+});
+
+test("RF-001: /vaults/{id} monta la bóveda abierta (riel, árbol y editor vacío)", async () => {
+  const { env, localName } = signedIn();
+  // La réplica del usuario es la base en memoria con ese nombre: se siembra antes de abrir la app.
+  // Con su marca de dueño (`sub` de la sesión): si no, `openLocalDb` la tomaría por ajena y la vaciaría.
+  const seed = memoryDb(localName);
+  await seed.put({ _id: localDb.OWNER_DOC_ID, sub: "1" });
+  const vault = await createVaultStore(seed, "1").create({ name: "Trabajo", description: null, tags: [] });
+  renderAt(`/vaults/${vault.id}`, env);
+  expect(await screen.findByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
+  expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: / Trabajo$/ })).toHaveAttribute("aria-current", "page");
+});
+
+test("RF-001: /vaults/{id} de una bóveda inexistente muestra el 404 de la bóveda", async () => {
+  const { env } = signedIn();
+  renderAt("/vaults/11111111-1111-4111-8111-111111111111", env);
+  expect(await screen.findByText("Esta bóveda no existe o está en la papelera.")).toBeInTheDocument();
+});
+
+test("RF-001: /vaults/new y /vaults/trash siguen en sus páginas, no en la bóveda «new»/«trash»", async () => {
+  const { env } = signedIn();
+  renderAt("/vaults/new", env);
+  expect(await screen.findByRole("heading", { name: "Nueva bóveda" })).toBeInTheDocument();
+  expect(screen.queryByText("Esta bóveda no existe o está en la papelera.")).toBeNull();
+});
+
+test("RF-001: el riel de bóvedas no aparece en /login", () => {
+  renderAt("/login");
+  expect(screen.queryByRole("navigation", { name: "Bóvedas abiertas" })).not.toBeInTheDocument();
 });

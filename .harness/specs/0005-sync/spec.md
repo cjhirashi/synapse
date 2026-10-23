@@ -4,7 +4,18 @@ tipo: spec
 feature: 0005-sync
 estado: verified      # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 84b8be3   # enmienda 6 (backlog 8, T-128…T-132)
+
+> **Re-anclaje 2026-10-23** (PLAN-0008 §2.3–§2.6 y enmiendas, T-092 de TASKS-0008): SPEC-0008
+> extendió el canal a `note:{vault}:{uuid}` sin cambiar ningún requisito de esta spec:
+> `sync_filter`/`sync_push` por tipo (bóvedas antes que notas), `routers/sync.py` (sesión antes de
+> leer el cuerpo, tope de 16 MiB en `_bulk_docs`, 422 para JSON inválido/anidado/enteros enormes,
+> motivos `note-path-taken`/`vault-not-found`; contrato re-exportado), y en el cliente
+> `conflicts.ts` (unión `kind`, `vaultActive`), `remote.ts` (reparto de `_bulk_docs` a 8 MiB),
+> `resources`/`useSync`/`SyncProvider` (`notesVersion`, `unsavedDrafts`), `LogoutDialog`
+> (aviso de borrador), `RejectionsPage`/`ConflictView` (textos de nota). Tests de 0005 ajustados
+> sin debilitar aserciones. Backlog: `.sync-status-bar time` usa `--text-muted` (2,56:1 en claro).
+> Sin cambio de requisitos.
+anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py

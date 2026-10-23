@@ -75,10 +75,24 @@
   color: var(--accent);
 }
 
+/* Riel de bóvedas + contenido. */
+.app-body {
+  display: flex;
+  align-items: stretch;
+}
+
 .app-main {
+  flex: 1;
+  min-width: 0;
   max-width: 880px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
+}
+
+/* El espacio de trabajo de una bóveda (SPEC-0008) usa todo el ancho: sidebar + editor. */
+.app-main:has(.vault-workspace) {
+  max-width: none;
+  margin: 0;
 }
 
 /* Barra de sincronización (SyncStatusBar): franja discreta bajo el header, no una tarjeta. */

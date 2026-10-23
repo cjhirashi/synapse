@@ -2,7 +2,7 @@
 id: PLAN-0008
 tipo: plan
 feature: 0008-vault-editor
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), delegación explícita 2026-10-22; acepta P-1 (sin router REST de notas)", fecha: 2026-10-22 }
 actualizado: 2026-10-22
@@ -359,3 +359,225 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 `layout/AppLayout.tsx` (+ test), `backend/tests/test_contract.py`; de 0007
 `backend/README.md`, `frontend/README.md`; sin dueño `test-setup.ts`, `vite.config.ts`,
 `vitest.sync.config.ts`, `package.json`, `package-lock.json` y los README por capa.
+
+## 10. Enmienda 1 (2026-10-22) — hallazgos de las verificaciones de D–E (APPROVED) y F–G (REJECTED)
+> Cambios técnicos dentro de lo aprobado (ningún RF ni decisión de §6 cambia). Se registran
+> aquí para revisión por *git diff* (method §5, Directiva de Pausa); coordinador: Claude
+> Code bajo la delegación de AIRA del 2026-10-22.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VF-1 · salir de `/vaults/:id` por navegación interna descarta el borrador | High | §2.6 pedía "aviso al salir", pero con `BrowserRouter` no hay forma de bloquear la navegación interna (`useBlocker` sólo existe en *data routers*) | `main.tsx` pasa a `createBrowserRouter([{ path: "*", element: <App/> }])` + `RouterProvider` (las `<Routes>` de `App.tsx` siguen igual, como rutas descendientes). `NoteEditor` usa `useBlocker(dirty)` y el mismo diálogo que al cambiar de nota ("Guardar y salir", "Descartar y salir", "Seguir editando"). Los tests de componentes con `useBlocker` montan con `createMemoryRouter`. `main.tsx`/`App.tsx` son de 0002: re-anclaje al cierre (P-2). |
+| VF-2 · borrar la nota abierta con borrador sucio lo descarta | Medium/High | `NoteSidebar` borra y desmonta el editor sin consultar su estado | El borrado de la nota abierta pasa por el editor: si está sucia, el mismo diálogo de confirmación antes de `softDelete`. |
+| VF-3 · renombrar la nota abierta con borrador sucio crea un conflicto autoinfligido | Medium/High | Con borrador sucio el editor no se rebasa sobre la revisión nueva y guarda sobre `baseRev` viejo (P-8 es para ediciones concurrentes, no para acciones locales) | Si la revisión nueva conserva el `content` de la base (sólo cambió `path`/metadatos), el editor actualiza `baseRev` y la ruta sin tocar el borrador. Si cambió el contenido, sigue P-8. |
+| VF-4 · nota abierta enviada a la papelera por sync con borrador sucio | Medium | El editor sólo ofrece guardar (falla con `NoteNotFoundError`) o descartar | Aviso en el editor con "Restaurar y guardar" (`restore` sujeto a RF-013 y después `save`); si la ruta está ocupada, mensaje y el borrador se conserva. |
+| VF-5 · `missing` no se limpia al reaparecer la nota | Low | la rama de éxito no hace `setMissing(false)` | Corregirlo. |
+| VF-6 · aserción débil en `MilkdownView.test.tsx` | Low | `link === null \|\| …` | Exigir el `<a>` presente. |
+| VF-8 · `#fff` fijo en `notes.css` | Low | color sin token | Token de `tokens.css`. |
+| VF-9 · `role="tree"` sin teclado de árbol | Low | los roles anuncian un patrón que no existe | Teclado WAI-ARIA del árbol: ↑/↓, →/← (abrir/cerrar carpeta o ir al padre), Inicio/Fin, *roving tabindex*. |
+| RD-1 · la bóveda "activa" se mira sólo en la ganadora | Medium | `conflicts.ts`/`repush.ts` no aplican P-9 | Función compartida `vaultIsActive(db, vaultId)`: activa si alguna rama viva (ganadora o `_conflicts`) tiene `deleted_at = null`. |
+| RD-2 · `repush` se queda sin disparador tras un fallo de red o al arrancar | Medium | sólo se dispara por cambios de la bóveda; el `catch` traga el fallo | También se dispara al abrir `resources` (rechazos `vault-not-found` persistidos con bóveda ya activa) y al reconectar (`status` online); un fallo deja el reintento pendiente para el siguiente disparador. |
+| RD-3 · `retry` lee rechazos sin esperar `settled()` | Low | carrera con el registro del rechazo del mismo lote | `await rejections.settled()` antes de `list()`. |
+| VF-7 · pares test/código en un solo commit | Low (proceso) | — | Desde la enmienda, el test rojo se commitea aparte. |
+
+## 11. Enmienda 2 (2026-10-22) — re-verificación del frontend (hallazgos nuevos de la enmienda 1)
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| N-1 · `useBlocker(dirty)` intercepta el cierre de sesión y la redirección por 401 | High | El bloqueo es booleano y la salida de sesión se decide en `SyncProvider` sin saber que hay un borrador sucio: cuando el editor pregunta, la sesión y la réplica ya están cerradas | (a) Registro de borradores sucios en el proveedor de sync (`unsavedDrafts`: el editor se registra mientras está sucio). `LogoutDialog` lo consulta **antes** de cerrar la sesión y avisa "hay cambios sin guardar en una nota" (mismo diálogo de 0005: salir igualmente / cancelar). (b) El bloqueo pasa a función: no bloquea la navegación a `/login` (la sesión ya terminó; el aviso se dio en (a) o la sesión caducó en el servidor). |
+| N-2 · el bloqueo atrapa navegaciones que no cambian de pantalla | Medium | bloqueo booleano | La función bloquea sólo si cambia `pathname` (y no es `/login`). |
+| N-3 · RD-1 sólo probado en `vaultActive` | Medium | faltan pruebas en los consumidores | Test en `conflicts.test.ts` y en `repush.test.ts` con la bóveda en conflicto (ganadora en papelera, perdedora activa) que falla si vuelven al `db.get` simple. |
+| N-4 · `repush.enqueueAll` corta el id de bóveda por longitud fija | Low | supone UUID de 36 caracteres sin decirlo | Extraer el `vault_id` con el parser de ids de nota de `noteRules`/`noteStore` (un solo lugar que entiende `note:{vault}:{uuid}`). |
+| N-5/N-6 · VF-5, VF-6, VF-8 sin commit rojo previo | Low (proceso) | — | Registrado; no se reescribe historia. |
+
+## 12. Enmienda 3 (2026-10-22) — verificación del backend (REJECTED)
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VB-1 · `frontmatter` con `NaN`/`Infinity`/`1e999` → 500 en el push y lote atascado | High | `check_frontmatter` mide con `json.dumps` (que admite no finitos) y el fallo aparece al reenviar a CouchDB | `check_frontmatter` rechaza números no finitos (`allow_nan=False`) con `validation-error:frontmatter`; casos en `note_rules_cases.json`; el espejo TS (`noteRules.ts`) aplica la misma regla. Test de API: el push responde con el rechazo, nunca 500. |
+| VB-2 · `_bulk_docs` lee hasta 16 MiB sin sesión | Medium | `SyncRoute.limited` lee el cuerpo antes de la dependencia de sesión | La sesión se valida antes de leer el cuerpo en todas las rutas de `/sync` (401 sin leer el cuerpo); test que lo demuestra. |
+| VB-3 · JSON con anidamiento extremo → 400 no declarado | Low | `RecursionError` al decodificar el cuerpo no se trata como JSON inválido | Tratarlo igual que cualquier cuerpo JSON inválido, con la respuesta declarada en el contrato para ese caso; test. |
+| VB-4 · 413 de 0005 movidos a `_revs_diff` | Low | — | Aceptado (sin aserción debilitada). |
+| VB-5 · enteros de > 4300 dígitos → `ValueError` → 400 no declarado (re-verificación) | Medium | Misma raíz que VB-3: `_DeepJsonRequest.json` sólo trata `RecursionError` | Tratar todo `ValueError` del decodificador (incluido `int_max_str_digits`) como JSON inválido → 422 declarado; test con 5000 dígitos en todas las rutas con cuerpo. |
+
+## 13. Enmienda 4 (2026-10-23) — verificación en navegador real (T-094)
+> Recorrido completo 19/19 en Chromium real; RNF-001 en navegador p95 131,8 ms. Defectos de
+> percepción y uno de 0002 destapado por el recorrido. Evidencia exigida (method §5): capturas
+> antes/después en los estados afectados, no sólo DOM.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VU-1 · filas del árbol y listas del markdown pintadas como tarjetas; nombres aplastados letra a letra | High (percepción) | `styles/global.css` estiliza `ul`/`ul > li` sin ámbito (pensado para la lista de bóvedas) y alcanza cualquier lista de la app | Acotar esos estilos a la lista de bóvedas (clase propia en `VaultListPage`, y su papelera si la usa) sin cambiar su aspecto; el árbol y el render de markdown con estilos propios (fila compacta, nombre sin cortar, `min-width: 0` + elipsis). Capturas antes/después de: lista de bóvedas (idéntica), árbol, nota en lectura con listas. |
+| VU-2 · en lectura el contenido se anuncia como `textbox` | Low | `@milkdown/core` reescribe `role` | Con `editable: false`, fijar `role="document"` y `aria-readonly` tras crear la vista; test. |
+| VU-3 · falta `prosemirror.css` | Low | no se importa la hoja base de ProseMirror | Importarla en el *chunk* del editor; el aviso de `white-space` desaparece. |
+| VU-4 · el árbol no tiene scroll propio (1 000 notas → página de ~12 000 px) | Low | la sidebar crece con su contenido | Sidebar con altura acotada al viewport y scroll propio; captura con 1 000 notas. |
+| VU-6 · renombrar no añade `.md` (crear sí) | Low | dos reglas de título→ruta | Una sola función título→ruta para `create` y `rename`; test rojo. |
+| VU-5 · tras el cambio de contraseña forzado se vuelve al formulario vacío (la contraseña sí cambió) | Medium — **SPEC-0002** | `RequireAuth` decide con `must_change_password` en caché tras el cambio (por confirmar) | Fuera del alcance funcional de 0008 pero rompe el primer ingreso de todo usuario: corrección de raíz con test rojo anotado con el RF de 0002 que corresponda, commit propio citándolo; re-anclaje de 0002 al cierre. |
+
+## 14. Enmienda 5 (2026-10-23) — Converge, corrida 1 (accesibilidad del árbol)
+> Suites en verde (backend 1050, frontend 740, sync 25, perf p95 116,6 ms) y trazabilidad `Pass`
+> RF por RF; cuatro hallazgos nuevos con una raíz común: las acciones de nota viven dentro del
+> `role="tree"`.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| C-1 · cada nota añade 2 paradas de Tab (≈ 2 000 con 1 000 notas), anula el *roving tabindex* | Medium | botones de acción por fila dentro del árbol | Las acciones salen del árbol: barra de acciones de la nota seleccionada (en la cabecera del editor/sidebar: "Renombrar", "Borrar"), una sola parada de Tab cada una; atajos desde el `treeitem` enfocado: F2 renombrar, Supr borrar (con la confirmación de VF-2 si está sucia). |
+| C-2 · acciones ocultas hasta *hover*, sin vía táctil | Low | `max-width:0; opacity:0` + `:hover` | Resuelto por C-1 (la barra es siempre visible con una nota seleccionada). |
+| C-3 · `aria-readonly` no es válido en `role="document"` | Low | VU-2 lo pidió así | Quitar `aria-readonly`; `role="document"` basta en lectura. |
+| C-4 · `<button>` dentro de `role="tree"` (hijos no permitidos) | Low | igual que C-1 | Resuelto por C-1. |
+| (ajeno) `localStorage is not defined` en `sync/localDb.ts:56` durante `test:sync` | — | entorno Node de la integración (0005) | Backlog de 0005, sin efecto en resultados; no se toca aquí. |
+
+## 15. Enmienda 6 (2026-10-23) — Converge corrida 1 bis
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| C-5 · tras borrar o renombrar el foco cae a `body` (WCAG 2.4.3) | Medium-Low | el elemento enfocado se desmonta sin destino de foco | Foco a la fila vecina tras borrar (o "Nueva nota" si no queda ninguna); al `treeitem` de la nota tras guardar/cancelar el renombrado. |
+| C-6 · F2/Supr ignoran `busy` (doble `remove` con la misma `rev`) | Low | los atajos no comparten la guarda del botón | Misma guarda `busy` en los atajos. |
+| C-7 · T-128…T-130 fuera de la tabla de cobertura | Low | — | Corregido por el coordinador en `tasks.md`. |
+
+## 16. Enmienda 7 (2026-10-23) — Converge corrida 1 ter
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| H1 · borrar la única nota de una carpeta deja el foco en `body` y una petición de foco colgada (la carpeta reaparecida roba el foco) | Medium | el vecino se calcula sobre las filas **antes** del borrado; las carpetas sin notas desaparecen del árbol derivado | Calcular el vecino sobre el árbol resultante (sin la nota y sin las carpetas que quedan vacías); si la clave pedida no existe tras releer, foco a "Nueva nota" y la petición se descarta. Tests: nota única en carpeta; última fila del árbol. |
+
+## 17. Enmienda 8 (2026-10-23) — Converge corrida 1 con 4 revisores especializados
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| H-1 · id de reserva `note-path:{vault}:{path_key}` sin tope: NFKC expande hasta ×18 (`"ﷺ"*300` → 5 400 caracteres) → CouchDB 400 → `StorageUnavailable` → 503 de todo el lote en cada reintento | High | el id usa la clave completa | `note-path:{vault_id}:{sha256(path_key)}` (hex), determinista y acotado; el documento guarda la `path_key` para diagnóstico. Test de API con `"ﷺ"*300` → 201 y unicidad intacta. (Sin datos previos de `note-path:*`: no hay migración.) |
+| H-2 · `_rev` con > 4 300 dígitos de generación → `ValueError` → 500 | Medium | `int(match[1])` sin tope | Acotar la generación en el patrón de `_rev` (`[1-9][0-9]{0,15}`) → `validation-error:_rev` (mismo motivo que cualquier `_rev` mal formado); test. |
+| E-1 · doble Ctrl/Cmd+S (o auto-repeat) crea una rama de conflicto con contenido idéntico | Medium | `save()` sin guarda de reentrada (sólo el botón se deshabilita) | Serializar guardados: un guardado en vuelo absorbe la llamada; si el borrador cambió durante el vuelo, se guarda después sobre la `rev` nueva. |
+| E-2 · bóveda enviada a la papelera por sync con borrador sucio → el borrador se descarta en silencio | Low | el 404 desmonta el editor | El 404 de la bóveda muestra el borrador sin guardar (sólo lectura) con "Copiar texto" mientras exista; RF-014 se mantiene (no se edita ni se guarda). |
+| U-1 · los `alertdialog` del editor no mueven el foco, sin Escape ni retorno | Medium | diálogos sin gestión de foco | Foco al primer botón al abrir, Escape = "Seguir editando", foco atrapado y retorno al disparador. |
+| U-2 · texto de acento sobre `--accent-soft` a 3,15:1 (fila seleccionada; botón Visual/Código activo) | Medium-Low | color de texto de acento | `--text-primary` + indicador de acento (borde/barra), como el riel. |
+| U-3 · Escape no cancela el renombrado | Low | — | Escape → `cancelRename()`. |
+| U-4 · nombre accesible del riel sin el texto visible (WCAG 2.5.3) | Low | `aria-label` = nombre completo | Iniciales `aria-hidden` + nombre visualmente oculto, o `aria-label` que empiece por las iniciales. |
+| U-5 · docs desfasadas (routers README, backend README §Límites, frontend/src README de `NoteSidebar`, `.card-list`, `titleToPath`) y T-123 pide `aria-readonly` | Low | — | Actualizar docs y el texto de T-123 (C-3). |
+| S-1 · `list`/`create`/`rename`/`restore` y el barrido de conflictos leen el `content` de todas las notas (hasta 2 MiB c/u) en cada guardado y cada lote del pull | Medium | `allDocs({include_docs:true})` sobre la bóveda | Índice de resumen en memoria por réplica (`{id, path, rev, deleted_at, updated_at, conflicted}`): se construye una vez al abrir y se actualiza incrementalmente con el feed de cambios (sólo los ids cambiados se leen); `list`/unicidad/"Sin título n" leen el índice; el barrido de conflictos usa `conflicts:true` sobre ids marcados. RNF-001 sigue medido. |
+| S-2 · doble borrado (o doble restauración) en dos dispositivos → conflicto con dos versiones idénticas | Low-Medium | `mergeNote` compara `deleted_at` exacto | Ramas con el mismo contenido y el mismo estado (ambas activas o ambas en papelera) se consideran iguales y convergen sin decidir por fecha. |
+| S-3 · cuota llena al resolver un conflicto → error genérico | Low | `resolve` no traduce `isQuotaError` | `StorageFullError` y su mensaje. |
+| S-4 · comentario falso ("dos guardados idénticos dan la misma revisión") | Low | el hash incluye `updated_at` | Corregir el comentario (la convergencia la garantiza `mergeNote`). |
+| S-5 · título ".md" → fila sin nombre | Low | `displayName` vacío | Si queda vacío, mostrar el segmento completo. |
+| (backlog 0003) `vault-name:{name_key}` tiene el mismo riesgo que H-1 (100 caracteres ×18) | — | id sin tope en SPEC-0003 | **No se toca en 0008**: cambiar el formato exige migrar reservas existentes. Backlog para decisión de Carlos. |
+
+## 18. Enmienda 9 (2026-10-23) — Converge tras la enmienda 8
+> Backend y seguridad: sección limpia. Hallazgos nuevos, todos Low/Low-Medium, en el frontend.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| T-1 · T-133…T-141 fuera de la tabla de cobertura | Low-Medium (proceso) | — | Corregido por el coordinador en `tasks.md`. |
+| S-6 · con la cuota llena, la tarjeta de conflicto muestra "Inténtalo de nuevo" | Low-Medium | `NoteConflictCard`/`ConflictView` sólo traducen `NoteValidationError` | Toda la familia de errores conocidos (`StorageFullError` incluido) pasa por `noteErrorMessage`/el traductor de bóvedas; test de componente. |
+| S-7 · la construcción inicial del índice trae todos los cuerpos de una vez | Low | primer `allDocs({include_docs:true})` sin paginar | Paginar (lotes de 200 con `startkey` exclusivo) y descartar cada cuerpo al indexarlo. |
+| E-3 · el 404 de la bóveda muestra un borrador que el usuario descartó a propósito | Low | `salvaged` no se limpia en el cierre voluntario de la nota | Limpiarlo cuando la nota se cierra/borra/descarta voluntariamente; sólo sobrevive a la pérdida involuntaria de la bóveda. |
+| E-4 · "Copiar texto" sin API de portapapeles: rechazo no manejado, sin aviso | Low | sin `try/catch` ni alternativa | Aviso "No se pudo copiar; selecciona el texto" y selección automática del texto; test sin `navigator.clipboard`. |
+| E-5 · el diálogo de descarte enfoca primero la acción destructiva | Low | `ConfirmDialog` enfoca el primer botón | `ConfirmDialog` acepta el botón de foco inicial; en los diálogos de descarte, "Seguir editando". |
+
+## 19. Enmienda 10 (2026-10-23) — Converge tras la enmienda 9
+> Backend y editor: secciones limpias. Restan tres Low.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| S-8 · la paginación del índice (`startkey: last` + `skip: 1`) pierde una nota si `last` desaparece entre lotes | Low | `skip` supone que la clave anterior sigue existiendo | Cota inferior estricta `startkey: last + "\u0000"` sin `skip`; test con la última clave borrada entre lotes. |
+| N-2 · tareas que citan un RF no figuran en su fila de cobertura | Low (proceso) | tabla mantenida a mano | Tabla completada por script desde las cláusulas `(cubre …)` de cada tarea `[x]` (118 referencias; 0 filas incompletas). |
+| N-3 · `frontend/src/README.md` describe el foco de `ConfirmDialog` anterior a E-5 y omite E-3/E-4 | Low | — | Una frase por punto. |
+
+## 20. Enmienda 11 (2026-10-23) — Converge sobre 9204b88
+> Suites en verde (backend 1053, 99,28 %; frontend 778, 98,07 %; sync 25; p95 67,8 ms; gate abierto).
+> Editor, sync del cliente y UI/trazabilidad: secciones limpias. Un Low del contrato.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| N-1 · `note.schema.json` admite `_rev` con generación de cualquier longitud; el servidor la acota a 16 dígitos (H-2) | Low | el contrato no se actualizó con H-2 | Patrón `^[1-9][0-9]{0,15}-[0-9a-f]+$` y `test_note_contract.py` compara el tope con `_REV`. |
+
+## 21. Enmienda 12 (2026-10-23) — Converge sobre 9dd03fc
+> Suites en verde (backend 1054, frontend 778, sync 25, p95 67,9 ms, gate abierto); backend,
+> editor y sync cliente limpios. Un Low de UI/trazabilidad.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-1 · `NoteSidebar.test.tsx` "RF-011: renombrar/mover…" intermitente (1/24 con 24 hilos: `Test timed out in 5000ms`) | Low | el test teclea 17 caracteres con `user.type` dentro del presupuesto de 5 s; bajo carga se excede (el código no tiene carrera: `aria-expanded` siempre `true`, paso crítico 0,4–1,15 s) | `user.click` + `user.paste` de la ruta (lo probado es el renombrado, no el tecleo); `findBy` con margen explícito; aserciones intactas. 24/24 bajo la misma carga. |
+
+## 22. Enmienda 13 (2026-10-23) — Converge sobre 8513421
+> Editor, sync del cliente y backend: limpios. Frontend 778/778 dos veces, sync 25/25, p95 61,5 ms,
+> gate abierto. La suite backend del coordinador quedó **invalidada** (7 failed, 30 errors: `no such
+> table: users`, `database is locked`) porque un revisor corrió pytest en el mismo worktree a la vez
+> (`backend/test.db` compartido y limpieza de `synapse_user_*` del CouchDB :15984) — error de
+> instrucción del coordinador, no del código; desde ahora ningún revisor ejecuta pytest en el
+> worktree de trabajo.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-2 · bajo carga extrema (4 suites simultáneas) fallan `findBy` con el plazo por defecto de 1 s (notes, editor y vaults de 0003) | Low (entorno de pruebas) | plazo global de Testing Library pensado para máquinas sin carga | `configure({ asyncUtilTimeout: 4000 })` global en `test-setup.ts` (un solo lugar, sin parches por test); se retira el `timeout: 4000` local de T-147. |
+
+## 23. Enmienda 14 (2026-10-23) — Converge sobre 548de20
+> Backend y editor limpios. Sync cliente y UI coinciden en un hallazgo de pruebas.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-3 · `repush.test.ts` `settle()` espera `setTimeout(20)` fijo: bajo carga, 1–2 casos positivos fallan y los negativos pasan **vacíamente** | Low | espera por tiempo en vez de por condición | Positivos: `vi.waitFor` sobre la condición. Negativos: señal determinista (el `change` del feed de la propia réplica tras escribir, después `settled()`), de modo que la ausencia se afirme después de que el disparador haya tenido su oportunidad. **Además**, auditoría de toda espera por tiempo fijo en los tests de 0008 (`src/notes`, `src/editor`, `src/sync` tocados por 0008): cada una se sustituye por una condición o se justifica en un comentario. |
+
+## 24. Enmienda 15 (2026-10-23) — Converge sobre 325ab6c: política única de plazos en las pruebas
+> Backend, editor y sync cliente limpios (sync: 6/6 mutantes de `repush` detectados). UI: 3 de 8
+> corridas con 4 suites simultáneas fallan 1 test (`NoteSidebar` foco tras renombrar; `VaultListPage`
+> "Cargar más", de 0003).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-4 · intermitencias bajo carga que reaparecen test a test (F-1, F-2, F-3, F-4) | Low (pruebas) | no hay una política única de plazos: `asyncUtilTimeout` (RTL) sí está configurado, pero `vi.waitFor` usa su propio plazo de 1 s y el presupuesto por test es el de vitest (5 s) | **Política única**, en un solo lugar: (1) `testTimeout`/`hookTimeout` del proyecto jsdom en la configuración de vitest con margen para carga; (2) las esperas por condición de los tests del frontend usan el `waitFor` de RTL (lee `asyncUtilTimeout`) o un helper compartido que aplica el mismo plazo a `vi.waitFor`; (3) **criterio de estabilidad escrito**: 3 rondas de 4 corridas simultáneas de la suite completa de frontend, 12/12 en verde. Afecta tests de 0003/0005 sólo en sus esperas (re-anclaje al cierre). |
+
+## 25. Enmienda 16 (2026-10-23) — Converge corrida 2 (tras la corrida 1 limpia)
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| E-6 · editar en Visual y cambiar de vista/modo (o desmontar) en < 200 ms pierde las últimas pulsaciones sin aviso; Ctrl+S en esa ventana guarda el texto anterior | Medium-Low (pérdida de texto, RF-008) | `@milkdown/plugin-listener` emite `markdownUpdated` con debounce de 200 ms y su `destroy` cancela lo pendiente | `MilkdownView` expone un vaciado síncrono (serializa `view.state.doc` con el serializador del editor y emite si difiere del último valor); se llama en `stop()` antes de `destroy()` y `NoteEditor` lo invoca antes de alternar vista o modo, de guardar (Ctrl+S, botón, "Leer") y de salir. Test rojo con Milkdown real: teclear y alternar/guardar en < 200 ms conserva el texto. |
+
+## 26. Enmienda 17 (2026-10-23) — E-7: el estado "sucio" no puede depender del debounce
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| E-7 · tras E-6, los caminos que deciden por `dirtyRef` antes de desmontar (cambiar de nota, borrar la abierta, `unsavedDrafts` en el logout, `beforeunload`) siguen viendo "limpio" en los 200 ms del debounce y pierden texto sin diálogo | Medium-Low (pérdida de texto, RF-008) | **raíz común de E-6 y E-7**: "sucio" y "texto" se derivan del markdown que Milkdown emite con debounce; cada camino tenía que acordarse de vaciar | (1) "Sucio" es **síncrono**: `MilkdownView` informa en la misma transacción de ProseMirror (`tr.docChanged`, sin debounce) y CodeMirror igual (`update.docChanged`). (2) El texto se obtiene por **un único lector** (`readDraft()`: vacía y devuelve el markdown actual) que usan guardar, alternar, diálogos, `confirmDiscard`, cambio de nota, `unsavedDrafts` y `beforeunload`; nadie lee `draft` directamente para decidir. (3) `beforeunload` registrado mientras haya editor en modo edición y decide con el estado síncrono. Tests rojos con editores reales y acción en < 200 ms para cada camino. |
+
+## 27. Enmienda 18 (2026-10-23) — Converge sobre 0233c57
+> Backend, sync cliente: limpios; E-7 de raíz (sin `dirtyRef`, `pending` nunca queda colgado, deshacer vuelve a limpio).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| E-8 · "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto anterior (queda "Cambios sin guardar", sin pérdida) | Low | `restoreAndSave` lee `draftRef.current` en vez del lector único | `readDraft()`; test rojo. |
+| D-1 · `frontend/src/README.md`: falta una línea en blanco y dos párrafos se funden al renderizar | Low | — | Añadirla. |
+
+## 28. Enmienda 19 (2026-10-23) — Converge corrida 2 sobre 0e49e89
+> Backend (lápidas, `_revisions` falsificadas, lotes de 14 MiB), editor (IME, alternar con guardado
+> en vuelo) y sync cliente (3 dispositivos, índice de 5 000 notas en 1,26 s): limpios.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-6 · "Nueva nota" abre el editor en edición pero el foco se queda en el botón | Low (a11y) | el editor no gestiona el foco al abrir en edición | Si la nota se abre en edición por una acción del usuario ("Nueva nota", "Editar"), el foco va al editor activo al montarse; nunca al abrir en lectura, al recargar ni al restaurar. Test. |
+
+## 29. Enmienda 20 (2026-10-23) — Converge sobre c3e0301
+> Backend, editor y sync cliente limpios; U-6 de raíz. Un hueco de cobertura.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| T-2 · el foco de `CodeView` (`autoFocus`, Leer → Editar con la vista Código activa) no tiene test propio | Low (cobertura) | T-154 sólo probó la vista Visual | Test: en vista Código, pasar a lectura, "Editar" y afirmar `.cm-content` enfocado (y que un mutante sin `instance.focus()` lo hace fallar). |
+
+## 30. Enmienda 21 (2026-10-23) — Converge corrida 2 sobre 7c70abe
+> Backend (lápida de bóveda + nota viva en el mismo lote), editor (2 MiB + tecleo, conflicto
+> editado), sync cliente (sesión caducada a mitad de `repush`, 413 real) y UI (mutante de T-155,
+> contraste oscuro, textos): limpios.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-7 · con decenas de bóvedas el riel crece con la página y se pierde al bajar | Low (UX; coherente con VU-4) | `.vault-rail` sin altura acotada ni scroll propio | Riel fijo en la vista (`position: sticky`, altura del viewport, scroll propio) con foco visible al tabular; captura con 40 bóvedas. |
+
+## 31. Enmienda 22 (2026-10-23) — Converge corrida 2 sobre a6810ee
+> Editor y sync cliente limpios (wikilinks escapados al editar en Visual = riesgo ya registrado de
+> ADR-010; se eleva como pregunta de producto en el cierre, no como hallazgo).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| B-1 · si la bóveda se borra por REST entre la comprobación de "bóveda activa" del push y su `_bulk_docs`, la nota se guarda en una bóveda ya en la papelera | Low | CouchDB no ofrece transacciones entre documentos; la comprobación y la escritura no son atómicas (mismo límite que el arrendamiento de reservas de 0003) | **Limitación aceptada y documentada** (Art. 10: diferido explícito, sin código): el efecto coincide con RF-014 — mientras la bóveda esté borrada la nota queda congelada (todo push posterior recibe `vault-not-found`) y la app no la muestra, aunque sigue replicándose al cliente; reaparece al restaurar la bóveda; no hay fuga entre usuarios. Se registra en `backend/README.md` §Notas. |
+| U-8 · "Restaurar" en la papelera de notas deja el foco en `body` y no anuncia la restauración | Low (a11y) | la fila enfocada se desmonta sin destino de foco (familia de C-5) | Foco al siguiente "Restaurar" (o al anterior, o a "Volver a las notas") y `role="status"` con la ruta restaurada; test. |
+| D-2 · `backend/app/services/README.md` describe el id de reserva sin el sha256 de H-1 | Low (docs) | — | Ajustar la viñeta de `note_service.py`. |
+| (corrida sobre e5df5f6) D-3 · la redacción de B-1 decía "oculta" aunque la nota sigue replicándose al cliente | Low (docs) | — | Redacción corregida en `backend/README.md` §Notas y aquí (coordinador). |
+
+## 32. Enmienda 23 (2026-10-23) — Converge sobre e5df5f6
+> Editor limpio; U-8 y D-2 de raíz; D-3 (redacción de B-1) corregido por el coordinador.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-9 · "Restaurar" que falla por ruta ocupada deja el foco en `body` | Low (a11y) | el `catch` de `NoteTrash.restore` no asigna destino de foco (familia de C-5/H1) | Devolver el foco al "Restaurar" de la misma fila (la nota sigue en la papelera); test. |
+| F-5 · `VaultWorkspacePage.test.tsx` "RF-003: crear una nota la abre en edición" intermitente (1/8 con 4 suites simultáneas) | Low (pruebas) | plazo local fuera de la política de T-150 mientras carga el *chunk* perezoso del editor | Investigar la causa con carga; quitar el plazo local en favor de `ASYNC_TIMEOUT_MS` y asegurar que la precarga del editor (`beforeAll`) cubre el mismo módulo que monta la página. Criterio 12/12 de §24. |

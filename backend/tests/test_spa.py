@@ -10,6 +10,9 @@ from app.spa import DIST_DIR, install_spa, prefers_html
 
 # Un asset real del build (su nombre lleva huella de Vite); se descubre, no se fija.
 ASSET_NAMES = sorted(p.name for p in (DIST_DIR / "assets").iterdir() if p.is_file())
+# El bundle JS de entrada: el directorio también trae CSS y fuentes, y el orden alfabético
+# no garantiza que el primero sea JS.
+JS_ASSET = next(name for name in ASSET_NAMES if name.endswith(".js"))
 INDEX_MARKER = '<div id="root">'
 
 
@@ -27,10 +30,9 @@ def test_prefers_html_detecta_navegacion():
 # --- RF-001: assets del build servidos directo ---
 
 def test_asset_existente_se_sirve(client):
-    name = ASSET_NAMES[0]
-    r = client.get(f"/assets/{name}")
+    r = client.get(f"/assets/{JS_ASSET}")
     assert r.status_code == 200
-    assert "javascript" in r.headers["content-type"] or name.endswith(".js")
+    assert "javascript" in r.headers["content-type"]
 
 
 # --- RF-002: ruta de la SPA desconocida → index.html ---

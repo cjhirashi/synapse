@@ -394,17 +394,24 @@ def bulk_docs_bytes(client, body: bytes):
     return client.post("/sync/db/_bulk_docs", content=body, headers={"content-type": "application/json"})
 
 
+def revs_diff_bytes(client, body: bytes):
+    return client.post("/sync/db/_revs_diff", content=body, headers={"content-type": "application/json"})
+
+
+# Desde SPEC-0008 (P-6) `_bulk_docs` admite 16 MiB (`test_note_sync_api.py`); estos tres tests de
+# 0005 comprueban el tope común de 4 MiB con otra ruta de cuerpo JSON, `_revs_diff`.
+
 def test_rf_005_body_over_4_mib_is_413(ready_admin, couch_override):
     couch_override(UntouchablePort())
     body = json_of_size(BODY_LIMIT + 1, docs=[], new_edits=False)
-    assert_problem(bulk_docs_bytes(ready_admin, body), 413, "payload-too-large")
+    assert_problem(revs_diff_bytes(ready_admin, body), 413, "payload-too-large")
 
 
 def test_rf_005_body_of_exactly_4_mib_passes_the_cap(ready_admin, couch_override):
     """Dentro del tope el cuerpo llega a la validación: el campo `pad` sobra (422, no 413)."""
     couch_override(UntouchablePort())
     body = json_of_size(BODY_LIMIT, docs=[], new_edits=False)
-    assert_problem(bulk_docs_bytes(ready_admin, body), 422, "validation-error")
+    assert_problem(revs_diff_bytes(ready_admin, body), 422, "validation-error")
 
 
 def test_rf_005_chunked_body_over_the_limit_is_413(ready_admin, couch_override):
@@ -412,7 +419,7 @@ def test_rf_005_chunked_body_over_the_limit_is_413(ready_admin, couch_override):
     couch_override(UntouchablePort())
     chunk = b" " * (1024 * 1024)
     chunks = iter([b'{"new_edits": false, "docs": []', *[chunk] * 5, b"}"])
-    res = ready_admin.post("/sync/db/_bulk_docs", content=chunks, headers={"content-type": "application/json"})
+    res = ready_admin.post("/sync/db/_revs_diff", content=chunks, headers={"content-type": "application/json"})
     assert "content-length" not in res.request.headers
     assert_problem(res, 413, "payload-too-large")
 

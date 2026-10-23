@@ -56,18 +56,20 @@ export default function VaultListPage() {
       {status === "ready" && items.length === 0 && <p>Aún no tienes bóvedas.</p>}
 
       {status === "ready" && items.length > 0 && (
-        <ul>
+        <ul className="card-list">
           {items.map((vault) => (
             <li key={vault.id} aria-labelledby={`vault-${vault.id}`}>
               <h2 id={`vault-${vault.id}`}>{vault.name}</h2>
               {vault.description && <p>{vault.description}</p>}
               {vault.tags.length > 0 && (
-                <ul aria-label="Etiquetas">
+                <ul className="chip-list" aria-label="Etiquetas">
                   {vault.tags.map((tag) => (
                     <li key={tag}>{tag}</li>
                   ))}
                 </ul>
               )}
+              {/* "Abrir" entra a las notas de la bóveda (SPEC-0008); "Editar" va a sus metadatos. */}
+              <Link to={`/vaults/${encodeURIComponent(vault.id)}`}>Abrir</Link>{" "}
               <Link to={`/vaults/${encodeURIComponent(vault.id)}/edit`}>Editar</Link>{" "}
               <button type="button" onClick={() => setConfirming(vault)}>
                 Borrar
