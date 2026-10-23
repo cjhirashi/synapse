@@ -224,7 +224,7 @@ actualizado: 2026-10-23
 - [x] T-056 — `backend/README.md` §Bóvedas (`icon`: gramática, `null`, `PATCH` con `null`, sin catálogo en el servidor) y §Sincronización (clave opcional `icon`, `validation-error:icon`) [doc]
   - CHECK: `grep -n "icon" backend/README.md`
   - EXPECT: ≥ 2 apariciones, en §Bóvedas y en §Sincronización.
-- [ ] T-057 — `backend/app/core/README.md`: `VaultIcon` en `schemas.py` [doc]
+- [x] T-057 — `backend/app/core/README.md`: `VaultIcon` en `schemas.py` [doc]
   - CHECK: `grep -n "VaultIcon" backend/app/core/README.md`
   - EXPECT: ≥ 1 línea.
 - [ ] T-058 — `backend/app/services/README.md`: `sync_push` con claves admitidas vs. obligatorias de bóveda [doc]
