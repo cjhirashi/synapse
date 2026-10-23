@@ -115,7 +115,7 @@ actualizado: 2026-10-23
 - [x] T-023 — `notes/VaultWorkspacePage.tsx`: cabecera de la barra y estado vacío centrado (cubre RF-003, RF-008) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-024 — Test (rojo) en `notes/NoteSidebar.test.tsx`: formulario en `.note-sidebar-new` fuera de `.note-tree-panel`; el `role="tree"` dentro del panel; cada carpeta con `svg[data-icon="folder"|"folder-open"]` según esté plegada; cada nota con `svg[data-icon="file-text"]`; papelera como pie; la fila larga conserva el nombre completo en `title` (cubre RF-003, RF-004, RF-010) [zona: test]
+- [x] T-024 — Test (rojo) en `notes/NoteSidebar.test.tsx`: formulario en `.note-sidebar-new` fuera de `.note-tree-panel`; el `role="tree"` dentro del panel; cada carpeta con `svg[data-icon="folder"|"folder-open"]` según esté plegada; cada nota con `svg[data-icon="file-text"]`; papelera como pie; la fila larga conserva el nombre completo en `title` (cubre RF-003, RF-004, RF-010) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: fallan las pruebas nuevas; las existentes `passed`.
 - [ ] T-025 — `notes/NoteSidebar.tsx`: panel del árbol, íconos de carpeta/nota, formulario como bloque, pie de papelera (mismos roles y nombres) (cubre RF-003, RF-004) [zona: frontend]
