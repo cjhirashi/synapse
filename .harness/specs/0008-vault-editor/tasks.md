@@ -441,7 +441,7 @@ actualizado: 2026-10-22
 - [x] T-127 — Test (rojo) y corrección VU-6: `rename` aplica la misma regla título→ruta que `create` (cubre RF-011, RF-003) [zona: cliente]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: rojo → `passed`.
-- [ ] T-126 — Re-ejecutar el recorrido T-094 completo en Chromium real con capturas nuevas; consola sin errores de la app (cubre RF-001…RF-019, RNF-001) [zona: sistema]
+- [x] T-126 — Re-ejecutar el recorrido T-094 completo en Chromium real con capturas nuevas; consola sin errores de la app (cubre RF-001…RF-019, RNF-001) [zona: sistema]
   - CHECK: guion `/tmp/s8/e2e/walk.py` contra el backend del worktree
   - EXPECT: todas las etapas OK; capturas de árbol/lectura/lista de bóvedas correctas.
 
