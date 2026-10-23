@@ -1,7 +1,7 @@
 // Salir de la bóveda con un borrador sucio por navegación interna (SPEC-0008 RF-008;
 // PLAN-0008 §10 VF-1). `useBlocker` sólo existe en data routers, así que se monta con
 // `createMemoryRouter`, igual que `main.tsx` en producción.
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, RouterProvider, createMemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
@@ -74,6 +74,20 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByRole("button", { name: "Guardar y salir" })).toBeInTheDocument();
     expect(screen.getByTestId("where")).toHaveTextContent(`/vaults/${vault.id}`);
+  });
+
+  // U-1 (PLAN-0008 §17)
+  it("RF-008: foco inicial en el primer botón, Escape = «Seguir editando» y el foco vuelve al disparador", async () => {
+    const { user } = await setup();
+    await screen.findByRole("link", { name: "Otra" });
+    await makeDirty(user);
+    const trigger = target();
+    await user.click(trigger);
+    const dialog = await screen.findByRole("alertdialog");
+    await waitFor(() => expect(within(dialog).getByRole("button", { name: "Guardar y salir" })).toHaveFocus());
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(trigger).toHaveFocus());
   });
 
   // RF-008

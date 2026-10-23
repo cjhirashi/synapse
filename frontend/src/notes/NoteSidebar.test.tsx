@@ -342,3 +342,16 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   await screen.findByRole("treeitem", { name: "Carpeta" });
   expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus();
 });
+
+// U-3 (PLAN-0008 §17)
+test("RF-011, RF-019: Escape cancela el renombrado sin escribir y devuelve el foco al treeitem", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const rename = vi.spyOn(value.notes, "rename");
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  expect(screen.getByRole("textbox", { name: "Ruta de la nota" })).toHaveFocus();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("textbox", { name: "Ruta de la nota" })).toBeNull();
+  expect(rename).not.toHaveBeenCalled();
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
+});

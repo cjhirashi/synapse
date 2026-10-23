@@ -275,6 +275,28 @@ describe("cambiar de nota con cambios sin guardar", () => {
     expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveValue("uno!");
   });
 
+  // U-1 (PLAN-0008 §17): el diálogo gestiona el foco.
+  it("RF-008: el diálogo mueve el foco a su primer botón, atrapa el Tab y Escape = «Seguir editando»", async () => {
+    const { onCancelOpen, first } = await dirtyThenRequestSecond();
+    const dialog = await screen.findByRole("alertdialog");
+    const buttons = within(dialog).getAllByRole("button");
+    await waitFor(() => expect(buttons[0]).toHaveFocus());
+    await userEvent.tab({ shift: true }); // desde el primero, hacia atrás: da la vuelta al último
+    expect(buttons[buttons.length - 1]).toHaveFocus();
+    await userEvent.tab(); // desde el último, hacia delante: vuelve al primero
+    expect(buttons[0]).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(onCancelOpen).toHaveBeenCalledWith(first.id);
+  });
+
+  it("RF-008: al cerrar el diálogo el foco vuelve a donde estaba", async () => {
+    await dirtyThenRequestSecond();
+    await screen.findByRole("alertdialog");
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveFocus());
+  });
+
   // RF-008
   it("'Descartar y abrir' abre la otra sin guardar", async () => {
     const { value, first } = await dirtyThenRequestSecond();
