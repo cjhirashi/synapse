@@ -1,6 +1,7 @@
 // Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
 // Con editores falsos (textareas) para probar el estado del envoltorio; la prueba con los
 // editores reales (RF-008, byte a byte) está al final.
+import { createRef } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import type { EditorView as PMView } from "@milkdown/prose/view";
@@ -14,7 +15,7 @@ import { createNoteStore } from "../notes/noteStore";
 import { CONTENT_MAX_BYTES } from "../notes/noteRules";
 import { CodeView } from "./CodeView";
 import { MilkdownView } from "./MilkdownView";
-import NoteEditor, { type NoteEditorViews, type ViewProps } from "./NoteEditor";
+import NoteEditor, { type NoteEditorHandle, type NoteEditorViews, type ViewProps } from "./NoteEditor";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
 
@@ -593,4 +594,81 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
       expect((await value.notes.get(note.id)).content).toContain("hola!!");
     });
   });
+
+  // E-7 (PLAN-0008 §26): «sucio» y «texto» no pueden depender del markdown con debounce. Cada camino que
+  // decide con el borrador (cambio de nota, borrado, cierre de sesión, `beforeunload`, revisión nueva)
+  // se prueba con los editores reales y la acción dentro de los 200 ms siguientes a teclear en Visual.
+  describe("E-7: decisiones que no pueden esperar al debounce de 200 ms", () => {
+    /** `beforeTyping` corre tras abrir y ANTES de teclear (así lo que sigue cae dentro de la ventana de 200 ms). */
+    async function openQuick(extra: Partial<SyncContextValue> = {}, beforeTyping?: (ctx: { value: SyncContextValue; note: { id: string } }) => Promise<void>) {
+      let view: PMView | null = null;
+      const real: NoteEditorViews = {
+        Visual: (props) => <MilkdownView {...props} onView={(v) => (view = v)} />,
+        Code: CodeView,
+      };
+      const db = memoryDb();
+      const { value } = syncValue(extra, db);
+      const note = await value.notes.create(VAULT, "Rapida");
+      await value.notes.save(note.id, "hola", note.rev);
+      const other = await value.notes.create(VAULT, "Otra");
+      const handle = createRef<NoteEditorHandle>();
+      const ui = (noteId: string, v: SyncContextValue = value) => (
+        <DataMemoryRouter>
+          <WithSync value={v}>
+            <NoteEditor ref={handle} noteId={noteId} editOnOpen views={real} />
+          </WithSync>
+        </DataMemoryRouter>
+      );
+      const utils = render(ui(note.id));
+      await screen.findByRole("heading", { name: "Rapida" });
+      await waitFor(() => expect(view).not.toBeNull());
+      await beforeTyping?.({ value, note });
+      const pm = view as unknown as PMView;
+      act(() => {
+        pm.dispatch(pm.state.tr.insertText("!!", pm.state.doc.content.size - 1)); // sin esperar el debounce
+      });
+      return { ...utils, value, note, other, handle, ui };
+    }
+
+    it("RF-008: pedir otra nota enseguida pregunta y no pisa el texto escrito", async () => {
+      const { rerender, other, ui } = await openQuick();
+      rerender(ui(other.id));
+      expect(await screen.findByRole("alertdialog", { name: "Esta nota tiene cambios sin guardar." })).toBeInTheDocument();
+      expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola!!");
+    });
+
+    it("RF-010: borrar la nota abierta enseguida pide confirmación (no resuelve true sin preguntar)", async () => {
+      const { handle } = await openQuick();
+      let answer: boolean | null = null;
+      void handle.current!.confirmDiscard().then((ok) => (answer = ok));
+      expect(await screen.findByRole("alertdialog")).toBeInTheDocument();
+      expect(answer).toBeNull();
+    });
+
+    it("RF-008: el borrador cuenta como sin guardar para el cierre de sesión desde el primer momento", async () => {
+      const register = vi.fn(() => () => undefined);
+      await openQuick({ unsavedDrafts: { register, any: () => false } });
+      expect(register).toHaveBeenCalled();
+    });
+
+    it("RF-008: beforeunload avisa enseguida", async () => {
+      await openQuick();
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it("RF-008: una revisión nueva de la nota no pisa el texto recién escrito", async () => {
+      const { value, note, rerender, ui } = await openQuick({}, async ({ value: v, note: n }) => {
+        const current = await v.notes.get(n.id);
+        await v.notes.save(n.id, "remoto", current.rev); // otra pestaña / el pull, antes de teclear
+      });
+      rerender(ui(note.id, { ...value, notesVersion: 1 })); // el pull avisa dentro de los 200 ms
+      // Espera por tiempo JUSTIFICADA (F-3): se afirma una ausencia (que el editor NO adopte «remoto») y la
+      // relectura no emite señal; 50 ms sobran para `notes.get` en memoria y quedan dentro de la ventana.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola!!");
+    });
+  });
 });
+
