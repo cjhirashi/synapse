@@ -251,7 +251,7 @@ actualizado: 2026-10-23
 - [x] T-065 — Verificación completa en navegador: `test:visual` (V-1…V-10 + RNF-001) en ambos temas y anchos; lectura de cada captura junto al mockup; tabla R-1…R-15 final y salida pegadas en `history.md` (Gate 4: capturas reales contra la referencia) (cubre RF-001…RF-012, RF-006a, RNF-001) [zona: sistema]
   - CHECK: `cd frontend && npm run test:visual && cat /tmp/s9/e2e/measurements.json`
   - EXPECT: todas `passed`, 0 failed; cada R-n dentro de tolerancia.
-- [ ] T-066 — Suites completas finales (backend **solo**, luego frontend) y gate (cubre RF-007, RF-012, RNF-001) [zona: sistema]
+- [x] T-066 — Suites completas finales (backend **solo**, luego frontend) y gate (cubre RF-007, RF-012, RNF-001) [zona: sistema]
   - CHECK: `(cd backend && python3 -m pytest -q) && (cd frontend && npx vitest run && npm run typecheck && npm run build && npm run test:sync && npm run test:perf) && bash .harness/gate/check.sh`
   - EXPECT: 0 failed en todas; build exit 0; gate "Compuerta abierta" sin errores.
 
