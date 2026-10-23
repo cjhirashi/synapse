@@ -397,3 +397,16 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | VB-3 · JSON con anidamiento extremo → 400 no declarado | Low | `RecursionError` al decodificar el cuerpo no se trata como JSON inválido | Tratarlo igual que cualquier cuerpo JSON inválido, con la respuesta declarada en el contrato para ese caso; test. |
 | VB-4 · 413 de 0005 movidos a `_revs_diff` | Low | — | Aceptado (sin aserción debilitada). |
 | VB-5 · enteros de > 4300 dígitos → `ValueError` → 400 no declarado (re-verificación) | Medium | Misma raíz que VB-3: `_DeepJsonRequest.json` sólo trata `RecursionError` | Tratar todo `ValueError` del decodificador (incluido `int_max_str_digits`) como JSON inválido → 422 declarado; test con 5000 dígitos en todas las rutas con cuerpo. |
+
+## 13. Enmienda 4 (2026-10-23) — verificación en navegador real (T-094)
+> Recorrido completo 19/19 en Chromium real; RNF-001 en navegador p95 131,8 ms. Defectos de
+> percepción y uno de 0002 destapado por el recorrido. Evidencia exigida (method §5): capturas
+> antes/después en los estados afectados, no sólo DOM.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| VU-1 · filas del árbol y listas del markdown pintadas como tarjetas; nombres aplastados letra a letra | High (percepción) | `styles/global.css` estiliza `ul`/`ul > li` sin ámbito (pensado para la lista de bóvedas) y alcanza cualquier lista de la app | Acotar esos estilos a la lista de bóvedas (clase propia en `VaultListPage`, y su papelera si la usa) sin cambiar su aspecto; el árbol y el render de markdown con estilos propios (fila compacta, nombre sin cortar, `min-width: 0` + elipsis). Capturas antes/después de: lista de bóvedas (idéntica), árbol, nota en lectura con listas. |
+| VU-2 · en lectura el contenido se anuncia como `textbox` | Low | `@milkdown/core` reescribe `role` | Con `editable: false`, fijar `role="document"` y `aria-readonly` tras crear la vista; test. |
+| VU-3 · falta `prosemirror.css` | Low | no se importa la hoja base de ProseMirror | Importarla en el *chunk* del editor; el aviso de `white-space` desaparece. |
+| VU-4 · el árbol no tiene scroll propio (1 000 notas → página de ~12 000 px) | Low | la sidebar crece con su contenido | Sidebar con altura acotada al viewport y scroll propio; captura con 1 000 notas. |
+| VU-5 · tras el cambio de contraseña forzado se vuelve al formulario vacío (la contraseña sí cambió) | Medium — **SPEC-0002** | `RequireAuth` decide con `must_change_password` en caché tras el cambio (por confirmar) | Fuera del alcance funcional de 0008 pero rompe el primer ingreso de todo usuario: corrección de raíz con test rojo anotado con el RF de 0002 que corresponda, commit propio citándolo; re-anclaje de 0002 al cierre. |

@@ -421,6 +421,27 @@ actualizado: 2026-10-22
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
   - EXPECT: rojo: 400 no declarado; tras la corrección `passed`.
 
+### M · Enmienda 4 (PLAN-0008 §13) — verificación en navegador (VU-1…VU-5)
+> Test rojo en commit propio. Las tareas de percepción exigen capturas antes/después (Playwright, mismo guion que T-094: `/tmp/s8/e2e/walk.py`).
+- [ ] T-121 — Capturas "antes" (lista de bóvedas, árbol, nota en lectura con listas, árbol con 1 000 notas) y test (rojo) de que las filas del árbol y las listas del markdown no heredan la clase/estilo de tarjeta de la lista de bóvedas (VU-1) (cubre RF-019, RF-007) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/vaults`
+  - EXPECT: falla el caso nuevo.
+- [ ] T-122 — Estilos de lista acotados a la lista de bóvedas; estilos propios del árbol y del render; capturas "después" (lista de bóvedas idéntica) (VU-1) (cubre RF-019, RF-007, RF-018) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run build` + capturas antes/después comparadas
+  - EXPECT: `passed`; árbol con nombres completos en una línea; listas del markdown como listas; lista de bóvedas sin cambios visibles.
+- [ ] T-123 — Test (rojo) y corrección VU-2: lectura con `role="document"` y `aria-readonly="true"` (cubre RF-007) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx`
+  - EXPECT: rojo → `passed`.
+- [ ] T-124 — VU-3 y VU-4: `prosemirror.css` en el chunk del editor; sidebar con scroll propio; capturas con 1 000 notas (cubre RF-001, RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run build && npm run test:perf` + captura
+  - EXPECT: `passed`; p95 < 300 ms; sin aviso de `white-space` en consola; la página no crece con el árbol.
+- [ ] T-125 — VU-5 (SPEC-0002): reproducir con test (rojo, commit propio, anotado con el RF de 0002) el regreso al formulario tras el cambio forzado; corrección de raíz (cubre RF de 0002) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/auth src/settings src/App.test.tsx`
+  - EXPECT: rojo → `passed`; recorrido real: tras cambiar la contraseña se entra a la app.
+- [ ] T-126 — Re-ejecutar el recorrido T-094 completo en Chromium real con capturas nuevas; consola sin errores de la app (cubre RF-001…RF-019, RNF-001) [zona: sistema]
+  - CHECK: guion `/tmp/s8/e2e/walk.py` contra el backend del worktree
+  - EXPECT: todas las etapas OK; capturas de árbol/lectura/lista de bóvedas correctas.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
