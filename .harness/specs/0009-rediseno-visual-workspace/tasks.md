@@ -181,7 +181,7 @@ actualizado: 2026-10-23
 - [x] T-043 — `sync/vaultRules.ts`: `VaultField` + `"icon"`, `VaultFields.icon`, `checkIcon`, `ICON_MAX`; `vaults/fields.ts` y `sync/RejectionsPage.tsx` con el mensaje de `validation-error:icon` (cubre RF-012) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/sync/vaultRules.test.ts src/sync/RejectionsPage.test.tsx src/vaults && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-044 — Test (rojo) `sync/vaultStore.test.ts`: `create` con/sin `icon` (por omisión `null`); `update` valida y fusiona `icon`; documento sin clave → `icon: null` (cubre RF-012) [zona: test]
+- [x] T-044 — Test (rojo) `sync/vaultStore.test.ts`: `create` con/sin `icon` (por omisión `null`); `update` valida y fusiona `icon`; documento sin clave → `icon: null` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/vaultStore.test.ts`
   - EXPECT: fallan las pruebas nuevas.
 - [ ] T-045 — `sync/vaultStore.ts`: `icon` en `VaultDoc`/`Vault`/`toVault`, `FIELD_ORDER`/`FIELD_RULES` (cubre RF-012) [zona: frontend]
