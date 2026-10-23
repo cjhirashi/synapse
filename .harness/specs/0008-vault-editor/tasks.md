@@ -538,6 +538,11 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && for r in 1 2 3; do for i in 1 2 3 4; do (npx vitest run > /tmp/s8/f4-$r-$i.log 2>&1; echo "ronda $r corrida $i exit=$?") & done; wait; done`
   - EXPECT: 12 líneas con `exit=0`.
 
+### Y · Enmienda 16 (PLAN-0008 §25) — E-6
+- [x] T-151 — E-6: test (rojo, commit propio) con Milkdown real: teclear en Visual y alternar a Código / Leer / Ctrl+S en < 200 ms conserva el texto; vaciado síncrono del listener en `stop()` y antes de alternar, guardar y salir (cubre RF-008, RF-007) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor`
+  - EXPECT: rojo (texto perdido) → `passed`.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -547,8 +552,8 @@ actualizado: 2026-10-22
 | RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079, T-096, T-098, T-112, T-000, T-023, T-073, T-094, T-097, T-108, T-111, T-113, T-119, T-126, T-149, T-150 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pass |
 | RF-005 | T-001, T-003…T-005, T-013, T-014, T-026, T-027, T-114, T-115, T-118, T-120, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126, T-146 | test_note_contract, test_note_rules, test_note_sync_push, noteRules.test | Pass |
 | RF-006 | T-011, T-012, T-019…T-021, T-079, T-117, T-134, T-000, T-023, T-073, T-094, T-108, T-113, T-116, T-119, T-126, T-146 | test_note_sync_filter, test_note_sync_api, test_note_sync_isolation, test_note_sync_push (`_rev` acotado) | Pass |
-| RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129, T-000, T-073, T-108, T-113, T-126 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
-| RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
+| RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129, T-000, T-073, T-108, T-113, T-126, T-151 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
+| RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-151 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
 | RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075, T-096, T-111, T-139, T-140, T-142, T-000, T-073, T-094, T-095, T-108, T-113, T-126 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration, mergeNote.test (doble borrado), conflicts.test (cuota, barrido sin cuerpos) | Pass |
 | RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-132, T-137, T-144, T-000, T-073, T-108, T-113, T-126 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration, NoteEditor.test (ConfirmDialog de borrado) | Pass |
 | RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147, T-148, T-150 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
