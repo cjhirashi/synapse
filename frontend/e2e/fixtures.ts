@@ -1,0 +1,332 @@
+// Datos y utilidades de la verificación visual (SPEC-0009 RF-006; PLAN-0009 §5.2, §5.3).
+//
+// - Siembra por la API REST (usuario, bóvedas) y por la UI (árbol de notas: 2 niveles de carpetas,
+//   4 notas con contenido, un nombre de 120 caracteres), una vez por *worker*.
+// - `icon` aún no existe en el servidor (bloque E): mientras tanto se escribe en la réplica del
+//   navegador con el PouchDB de la propia página (datos simulados, PLAN-0009 §6.1). `simulateIcons`
+//   es el único punto que cambia cuando el servidor lo acepte.
+// - `measure` devuelve caja y estilos computados; `tokens` lee `src/styles/tokens.css` para que las
+//   comparaciones de color no dependan de una copia de los valores.
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { build } from "esbuild";
+import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { OUT_DIR } from "./out-dir";
+
+export const THEMES = ["dark", "light"] as const;
+export type Theme = (typeof THEMES)[number];
+
+/** Mismos tamaños que las capturas del mockup (PLAN-0009 §5.3) y el de humo móvil. */
+export const SIZES = [
+  { width: 1440, height: 900 },
+  { width: 1024, height: 768 },
+] as const;
+export const MOBILE = { width: 390, height: 844 } as const;
+export type Size = { width: number; height: number };
+
+/** Ícono simulado de cada bóveda sembrada (gramática de `contracts/vault-icon.schema.json`). */
+export interface SeedVault {
+  id: string;
+  name: string;
+  icon: string | null;
+}
+
+export interface Seeded {
+  email: string;
+  password: string;
+  vaults: SeedVault[];
+  /** Nombre de 120 caracteres de la nota larga (RF-010). */
+  longNoteName: string;
+}
+
+export const VAULT_SEEDS: Array<{ name: string; icon: string | null }> = [
+  { name: "Investigación de mercado", icon: "folder-heart:accent" },
+  { name: "Diario personal", icon: "initials:success" },
+  { name: "Archivo", icon: null },
+];
+
+export const LONG_NOTE_NAME = `Nota con un nombre excesivamente largo ${"para comprobar la elipsis ".repeat(8)}`.slice(0, 120).trimEnd();
+
+/** Notas del árbol sembrado: ruta (con `/` = carpetas) y contenido markdown. */
+const PARAGRAPH =
+  "Este párrafo es lo bastante largo para ocupar varias líneas dentro de la columna de lectura y así " +
+  "poder medir su tipografía y su interlineado en un navegador real, igual que en el mockup del editor.";
+export const NOTE_SEEDS: Array<{ title: string; content: string }> = [
+  { title: "Guías/Diseño/Sistema de tokens", content: `# Sistema de tokens\n\n${PARAGRAPH}\n\n${PARAGRAPH}` },
+  { title: "Guías/Diseño/Tipografía", content: `# Tipografía\n\n${PARAGRAPH}` },
+  { title: "Guías/Notas rápidas", content: `# Notas rápidas\n\n${PARAGRAPH}` },
+  { title: "Bienvenida", content: `# Bienvenida\n\n${PARAGRAPH}` },
+  { title: LONG_NOTE_NAME, content: `# ${LONG_NOTE_NAME}\n\n${PARAGRAPH}` },
+];
+
+// --- API REST -------------------------------------------------------------------------------
+
+const base_url = () => process.env.BASE_URL ?? "http://127.0.0.1:8010";
+
+async function api(path: string, init: { method?: string; body?: unknown; cookie?: string } = {}): Promise<Response> {
+  const res = await fetch(base_url() + path, {
+    method: init.method ?? "GET",
+    headers: { "Content-Type": "application/json", ...(init.cookie ? { Cookie: init.cookie } : {}) },
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
+  });
+  if (!res.ok) throw new Error(`${init.method ?? "GET"} ${path} → ${res.status}: ${await res.text()}`);
+  return res;
+}
+
+/** Cookies de una respuesta de login como cabecera `Cookie` (todas las que fija). */
+function cookieHeader(res: Response): string {
+  return res.headers
+    .getSetCookie()
+    .map((line) => line.split(";")[0])
+    .join("; ");
+}
+
+let userCounter = 0;
+
+/** Usuario nuevo (lo crea el admin y hace el cambio de contraseña forzado, RF-002 de 0002). */
+export async function createUser(): Promise<{ email: string; password: string; cookie: string }> {
+  const admin = cookieHeader(
+    await api("/auth/login", { method: "POST", body: { email: process.env.ADMIN_EMAIL, password: process.env.E2E_ADMIN_PASSWORD } }),
+  );
+  userCounter += 1;
+  const email = `visual-${Date.now()}-${userCounter}@example.com`;
+  const temporary = "temporal-1234";
+  await api("/admin/users", { method: "POST", body: { email, password: temporary }, cookie: admin });
+  const first = cookieHeader(await api("/auth/login", { method: "POST", body: { email, password: temporary } }));
+  const password = "definitiva-1234";
+  await api("/auth/change-password", { method: "POST", body: { current_password: temporary, new_password: password }, cookie: first });
+  const cookie = cookieHeader(await api("/auth/login", { method: "POST", body: { email, password } }));
+  return { email, password, cookie };
+}
+
+/** Crea una bóveda por la API REST y devuelve su id. */
+export async function createVault(cookie: string, name: string): Promise<string> {
+  const res = await api("/vaults", { method: "POST", body: { name }, cookie });
+  return ((await res.json()) as { id: string }).id;
+}
+
+// --- Sesión y contexto de navegador ---------------------------------------------------------
+
+export interface OpenOptions {
+  theme?: Theme | null;
+  size?: Size;
+}
+
+/**
+ * Contexto nuevo con la sesión del usuario ya iniciada (cookies por la API) y, si se pide, el tema
+ * guardado. `theme: null` deja `localStorage` vacío (V-8).
+ */
+export async function newSession(browser: Browser, user: { email: string; password: string }, options: OpenOptions = {}): Promise<BrowserContext> {
+  const { theme = "dark", size = SIZES[0] } = options;
+  const context = await browser.newContext({ baseURL: base_url(), viewport: size });
+  if (theme !== null) await context.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
+  const login = await context.request.post("/auth/login", { data: { email: user.email, password: user.password } });
+  if (!login.ok()) throw new Error(`login → ${login.status()}`);
+  return context;
+}
+
+/** Espera a que el riel muestre las `count` bóvedas (la réplica ya trajo los datos del servidor). */
+export async function waitForVaults(page: Page, count: number): Promise<void> {
+  await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link")).toHaveCount(count);
+}
+
+/** Espera a que la sincronización no tenga cambios pendientes. */
+export async function waitForSynced(page: Page): Promise<void> {
+  await expect(page.getByRole("region", { name: "Sincronización" }).getByRole("status")).toHaveText(/^Sincronizado/);
+}
+
+/** Abre `/vaults/{id}` y espera al árbol de notas (o al aviso de bóveda vacía). */
+export async function openVault(page: Page, vaultId: string): Promise<void> {
+  await page.goto(`/vaults/${vaultId}`);
+  await expect(page.getByRole("complementary", { name: "Notas de la bóveda" })).toBeVisible();
+}
+
+// --- Siembra (una vez por worker) -----------------------------------------------------------
+
+/** Crea una nota por la UI y escribe su contenido en la vista de código. */
+async function createNote(page: Page, title: string, content: string): Promise<void> {
+  await page.getByLabel("Título de la nota nueva (opcional)").fill(title);
+  await page.getByRole("button", { name: "Nueva nota" }).click();
+  await page.getByRole("button", { name: "Código" }).click();
+  await page.locator(".cm-content").click();
+  await page.keyboard.insertText(content);
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByRole("button", { name: "Guardar" })).toBeDisabled();
+}
+
+/** Usuario con 3 bóvedas (REST) y el árbol de notas en la primera (UI), sincronizado al servidor. */
+export async function seed(browser: Browser): Promise<Seeded> {
+  const user = await createUser();
+  const vaults: SeedVault[] = [];
+  for (const spec of VAULT_SEEDS) vaults.push({ id: await createVault(user.cookie, spec.name), ...spec });
+
+  const context = await newSession(browser, user);
+  const page = await context.newPage();
+  await openVault(page, vaults[0].id);
+  for (const note of NOTE_SEEDS) await createNote(page, note.title, note.content);
+  await waitForSynced(page);
+  await context.close();
+  return { email: user.email, password: user.password, vaults, longNoteName: LONG_NOTE_NAME };
+}
+
+/**
+ * Escribe `icon` en la réplica del navegador (datos simulados mientras el servidor no tenga el campo)
+ * con el PouchDB de la propia página: se empaqueta `pouchdb-browser` (la misma versión que la app) y
+ * se inyecta; abre la base `synapse` de IndexedDB y reescribe el documento de cada bóveda. Recarga
+ * para que la app lea la réplica ya con los íconos.
+ */
+let pouchBundle: string | null = null;
+async function pouchScript(): Promise<string> {
+  if (pouchBundle === null) {
+    const out = await build({
+      stdin: { contents: 'import PouchDB from "pouchdb-browser"; window.PouchDB = PouchDB;', resolveDir: process.cwd() },
+      bundle: true,
+      format: "iife",
+      platform: "browser",
+      write: false,
+      define: { global: "globalThis" },
+    });
+    pouchBundle = out.outputFiles[0].text;
+  }
+  return pouchBundle;
+}
+
+export async function simulateIcons(page: Page, vaults: SeedVault[]): Promise<void> {
+  await page.addScriptTag({ content: await pouchScript() });
+  await page.evaluate(async (items) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const PouchDB = (window as any).PouchDB;
+    const db = new PouchDB("synapse", { auto_compaction: false });
+    for (const { id, icon } of items) {
+      const doc = await db.get(`vault:${id}`);
+      await db.put({ ...doc, icon });
+    }
+    await db.close();
+  }, vaults.map(({ id, icon }) => ({ id, icon })));
+  await page.reload();
+}
+
+// --- Medición -------------------------------------------------------------------------------
+
+export interface Measure {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  bg: string;
+  color: string;
+  borderColor: string;
+  borderTopColor: string;
+  borderBottomColor: string;
+  borderRightColor: string;
+  radius: string;
+  fontSize: string;
+  lineHeight: string;
+  paddingLeft: string;
+  scrollWidth: number;
+  clientWidth: number;
+  scrollHeight: number;
+  clientHeight: number;
+}
+
+/** Caja y estilos computados del primer elemento que casa con `selector`. */
+export async function measure(page: Page, selector: string): Promise<Measure> {
+  return page.locator(selector).first().evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const c = getComputedStyle(el);
+    return {
+      x: r.x,
+      y: r.y,
+      w: r.width,
+      h: r.height,
+      bg: c.backgroundColor,
+      color: c.color,
+      borderColor: c.borderColor,
+      borderTopColor: c.borderTopColor,
+      borderBottomColor: c.borderBottomColor,
+      borderRightColor: c.borderRightColor,
+      radius: c.borderRadius,
+      fontSize: c.fontSize,
+      lineHeight: c.lineHeight,
+      paddingLeft: c.paddingLeft,
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    };
+  });
+}
+
+// --- Tokens (leídos de tokens.css) ----------------------------------------------------------
+
+/** Color de CSS como lo devuelve `getComputedStyle`: `rgb(r, g, b)` o `rgba(r, g, b, a)`. */
+function normalizeColor(value: string): string {
+  const hex = value.trim().match(/^#([0-9a-f]{6})$/i);
+  if (hex) {
+    const n = parseInt(hex[1], 16);
+    return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`;
+  }
+  const rgba = value.trim().match(/^rgba\(\s*(\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\s*\)$/);
+  if (rgba) return `rgba(${rgba[1]}, ${rgba[2]}, ${rgba[3]}, ${Number(rgba[4])})`;
+  return value.trim();
+}
+
+/** Declaraciones `--nombre: valor;` de un bloque de `tokens.css`, por su selector. */
+function block(css: string, selector: string): Record<string, string> {
+  const start = css.indexOf(selector);
+  if (start < 0) throw new Error(`tokens.css: sin el bloque ${selector}`);
+  const body = css.slice(css.indexOf("{", start) + 1, css.indexOf("}", start));
+  return Object.fromEntries([...body.matchAll(/(--[\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
+}
+
+export function tokens(theme: Theme): Record<string, string> {
+  const css = readFileSync("src/styles/tokens.css", "utf8");
+  return { ...block(css, ":root {"), ...block(css, `:root[data-theme="${theme}"]`) };
+}
+
+/** Valor de un token de color ya normalizado (`bg("dark", "--bg-secondary")`). */
+export function tokenColor(theme: Theme, name: string): string {
+  return normalizeColor(tokens(theme)[name]);
+}
+
+/** Todos los colores de tokens del tema, normalizados (más transparente y `currentcolor`). */
+export function themeColors(theme: Theme): Set<string> {
+  const colors = Object.values(tokens(theme))
+    .filter((value) => /^(#|rgba?\()/.test(value))
+    .map(normalizeColor);
+  return new Set([...colors, "rgba(0, 0, 0, 0)"]);
+}
+
+// --- Salidas --------------------------------------------------------------------------------
+
+export function shot(page: Page, name: string, options: { selector?: string } = {}): Promise<Buffer> {
+  mkdirSync(OUT_DIR, { recursive: true });
+  const path = `${OUT_DIR}/${name}.png`;
+  return options.selector ? page.locator(options.selector).first().screenshot({ path }) : page.screenshot({ path });
+}
+
+const MEASUREMENTS = `${OUT_DIR}/measurements.json`;
+
+/**
+ * Comprueba una medida R-n de PLAN-0009 §5.4 (`got` frente a `target` ± `tolerance`) y la deja en
+ * `measurements.json` (fuera del repo) para la tabla de la revisión visual.
+ */
+export function expectMeasure(key: string, label: string, got: number, target: number, tolerance: number): void {
+  mkdirSync(OUT_DIR, { recursive: true });
+  const all: Record<string, unknown> = existsSync(MEASUREMENTS) ? JSON.parse(readFileSync(MEASUREMENTS, "utf8")) : {};
+  all[key] = { label, got, target, tolerance, ok: Math.abs(got - target) <= tolerance };
+  writeFileSync(MEASUREMENTS, JSON.stringify(all, null, 1));
+  expect(Math.abs(got - target), `${key} ${label}: medido ${got}, objetivo ${target} ± ${tolerance}`).toBeLessThanOrEqual(tolerance);
+}
+
+// --- Fixture de Playwright ------------------------------------------------------------------
+
+export const test = base.extend<object, { seeded: Seeded }>({
+  seeded: [
+    async ({ browser }, use) => {
+      await use(await seed(browser));
+    },
+    { scope: "worker" },
+  ],
+});
+
+export { expect };

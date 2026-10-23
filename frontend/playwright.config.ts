@@ -5,8 +5,7 @@
 // backend, CouchDB y contenedor.
 import { defineConfig, devices } from "@playwright/test";
 
-/** Capturas y mediciones (fuera del repo); las de referencia del mockup están en /tmp/s9/ref. */
-export const OUT_DIR = process.env.VISUAL_OUT_DIR ?? "/tmp/s9/e2e";
+import { OUT_DIR } from "./e2e/out-dir";
 
 export default defineConfig({
   testDir: "./e2e",
