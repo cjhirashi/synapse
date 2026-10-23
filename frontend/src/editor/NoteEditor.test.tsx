@@ -93,6 +93,44 @@ describe("modo lectura y edición (RF-007)", () => {
   });
 });
 
+// SPEC-0009 RF-005: barra superior y columna centrada del contenido; los roles y nombres no cambian (RF-007).
+describe("estructura visual del editor (SPEC-0009 RF-005)", () => {
+  it("RF-005: la cabecera .note-editor-header lleva el h2 y los controles; el contenido va en la columna", async () => {
+    const { container } = await setup();
+    const header = container.querySelector<HTMLElement>(".note-editor-header")!;
+    const column = container.querySelector<HTMLElement>(".note-editor-body > .note-editor-column")!;
+    expect(header).not.toBeNull();
+    expect(column).not.toBeNull();
+    expect(within(header).getByRole("heading", { level: 2, name: "Primera" })).toBeInTheDocument();
+    expect(within(header).getByRole("button", { name: "Editar" })).toBeInTheDocument();
+    expect(within(column).getByRole("textbox", { name: "Contenido de la nota" })).toBeInTheDocument();
+    // La cabecera es la barra superior: no está dentro del área que hace scroll.
+    expect(container.querySelector(".note-editor-body")).not.toContainElement(header);
+  });
+
+  it("RF-005: avisos y errores también van dentro de la columna", async () => {
+    const { container } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "pegar enorme visual" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    const column = container.querySelector<HTMLElement>(".note-editor-column")!;
+    expect(within(column).getByRole("alert")).toHaveTextContent("2 MiB");
+  });
+
+  // RF-007: nombres, roles y aria-pressed de los controles no cambian con el nuevo vestido.
+  it("RF-007: Visual/Código con aria-pressed, Guardar y Leer/Editar conservan roles y nombres", async () => {
+    await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const group = screen.getByRole("group", { name: "Vista del editor" });
+    expect(within(group).getByRole("button", { name: "Visual" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(group).getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(within(group).getByRole("button", { name: "Código" }));
+    expect(within(group).getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Leer" })).toBeInTheDocument();
+  });
+});
+
 describe("alternar Visual/Código (RF-008)", () => {
   // RF-008
   it("conserva el borrador y no llama al almacén", async () => {

@@ -124,7 +124,7 @@ actualizado: 2026-10-23
 - [x] T-026 — `notes/notes.css` de la barra lateral: 240 px, cabecera 51 px, formulario `--bg-tertiary`, panel `--bg-secondary`, filas 27/25 px a 12 px, sangría 24 px por nivel (+20 px la nota), seleccionada `--accent-soft` + barra 3 px + `--text-primary`, elipsis (cubre RF-003, RF-004, RF-010) [zona: frontend] [P-3]
   - CHECK: `cd frontend && npx vitest run src/notes && npm run test:visual -- --grep "V-3"`
   - EXPECT: vitest `passed` (incluido `accentContrast.test.ts` sin cambios); V-3 `passed` con capturas `sidebar-*.png`.
-- [ ] T-027 — Test (rojo) en `editor/NoteEditor.test.tsx`: la cabecera es `.note-editor-header` con el `h2`, el contenido va dentro de `.note-editor-column`; roles, nombres y `aria-pressed` de Visual/Código, Guardar y Leer/Editar sin cambios (cubre RF-005, RF-007) [zona: test]
+- [x] T-027 — Test (rojo) en `editor/NoteEditor.test.tsx`: la cabecera es `.note-editor-header` con el `h2`, el contenido va dentro de `.note-editor-column`; roles, nombres y `aria-pressed` de Visual/Código, Guardar y Leer/Editar sin cambios (cubre RF-005, RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx`
   - EXPECT: falla la prueba de `.note-editor-column`; las existentes `passed`.
 - [ ] T-028 — `editor/NoteEditor.tsx` (+ `MilkdownView.tsx`/`CodeView.tsx` si hace falta) con la columna; `editor/editor.css`: barra 43 px `--bg-secondary`, cuerpo sin tarjeta, columna `max-width: 780px` + `margin-inline: auto` + `padding: var(--space-8) var(--space-16)`, párrafos 14 px / 1.8; panel del editor a alto completo en `notes/notes.css` (cubre RF-005) [zona: frontend]
