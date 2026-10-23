@@ -3,6 +3,12 @@ import { useEffect, useState } from "react";
 export type ThemeMode = "light" | "system" | "dark";
 
 const STORAGE_KEY = "synapse-theme";
+/**
+ * Modo con el que arranca quien aún no eligió uno (SPEC-0009 RF-006a). Es sólo el valor que se
+ * lee: no se guarda en `localStorage`, así "sin preferencia" sigue siendo distinguible. El script
+ * previo al pintado de `index.html` repite este valor; `useTheme.test.tsx` vigila que coincidan.
+ */
+export const DEFAULT_THEME_MODE: ThemeMode = "dark";
 const THEME_ORDER: ThemeMode[] = ["light", "system", "dark"];
 
 function resolve(mode: ThemeMode): "light" | "dark" {
@@ -12,7 +18,7 @@ function resolve(mode: ThemeMode): "light" | "dark" {
 
 function readStored(): ThemeMode {
   const stored = localStorage.getItem(STORAGE_KEY);
-  return stored === "light" || stored === "dark" || stored === "system" ? stored : "system";
+  return stored === "light" || stored === "dark" || stored === "system" ? stored : DEFAULT_THEME_MODE;
 }
 
 /**

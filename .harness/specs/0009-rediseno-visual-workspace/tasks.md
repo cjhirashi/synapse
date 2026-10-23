@@ -82,7 +82,7 @@ actualizado: 2026-10-23
 - [x] T-012 — Test (rojo) `theme/useTheme.test.tsx`: sin `localStorage` → `data-theme="dark"` y "Tema oscuro" `aria-pressed=true` sin escribir `localStorage`; con `light`/`system`/`dark` guardado → se respeta; el script de `index.html` usa el mismo defecto que `DEFAULT_THEME_MODE` (cubre RF-006a) [zona: test] [P-7]
   - CHECK: `cd frontend && npx vitest run src/theme/useTheme.test.tsx`
   - EXPECT: falla: `DEFAULT_THEME_MODE` no se exporta y el modo inicial es `system`.
-- [ ] T-013 — `DEFAULT_THEME_MODE = "dark"` en `theme/useTheme.ts` y mismo defecto en el script de `frontend/index.html` (cubre RF-006a) [zona: frontend] [P-7]
+- [x] T-013 — `DEFAULT_THEME_MODE = "dark"` en `theme/useTheme.ts` y mismo defecto en el script de `frontend/index.html` (cubre RF-006a) [zona: frontend] [P-7]
   - CHECK: `cd frontend && npx vitest run src/theme && npm run typecheck`
   - EXPECT: todos `passed`; typecheck sin errores.
 - [ ] T-014 — Test (rojo) `vaults/vaultIcon.test.ts`: `ICON_SET` con los 24 glifos del plan (todos componentes), `PALETTE` = 5 claves existentes en `tokens.css`, `parseIcon`/`formatIcon` (ida y vuelta, `initials`, glifo y color desconocidos, `null`), `derivedColor` estable y en `PALETTE`, `initials` (casos del test actual del riel), contraste ≥ 4,5:1 del glifo `--text-primary` sobre `color-mix` 18 % de cada clave en ambos temas (cubre RF-001, RF-006) [zona: test] [P-1, P-2]
