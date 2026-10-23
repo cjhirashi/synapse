@@ -546,3 +546,10 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | U-6 · "Nueva nota" abre el editor en edición pero el foco se queda en el botón | Low (a11y) | el editor no gestiona el foco al abrir en edición | Si la nota se abre en edición por una acción del usuario ("Nueva nota", "Editar"), el foco va al editor activo al montarse; nunca al abrir en lectura, al recargar ni al restaurar. Test. |
+
+## 29. Enmienda 20 (2026-10-23) — Converge sobre c3e0301
+> Backend, editor y sync cliente limpios; U-6 de raíz. Un hueco de cobertura.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| T-2 · el foco de `CodeView` (`autoFocus`, Leer → Editar con la vista Código activa) no tiene test propio | Low (cobertura) | T-154 sólo probó la vista Visual | Test: en vista Código, pasar a lectura, "Editar" y afirmar `.cm-content` enfocado (y que un mutante sin `instance.focus()` lo hace fallar). |
