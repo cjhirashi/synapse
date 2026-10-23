@@ -100,6 +100,14 @@ actualizado: 2026-10-12
 > borrar al cerrar sesión, RF-017 de 0005). `LoginPage` no cambia. Ancla movida a `0c45404`.
 > Sin cambio de requisitos.
 
+> **Re-anclaje 2026-10-23** (PLAN-0008 P-2 y §10–§32, T-092 de TASKS-0008): SPEC-0008 (editor de
+> notas) tocó archivos de estos `covers` sin cambiar ningún requisito de esta spec: `main.tsx`
+> pasa a *data router* (`createBrowserRouter` con ruta raíz comodín, para `useBlocker` del
+> editor; las rutas de `App.tsx` no cambian), `App.tsx` gana `/vaults/:id`, `layout/AppLayout.*`
+> monta el riel de bóvedas, y `RequireAuth.tsx`/`ChangePasswordPage.tsx` corrigen el regreso al
+> formulario tras el cambio de contraseña forzado (**RF-020**, defecto preexistente destapado por
+> la verificación en navegador; test anotado `RF-020`). Sin cambio de requisitos.
+
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
   propia bóveda (P2, P3). Control plane en PostgreSQL; datos en una base CouchDB por usuario.

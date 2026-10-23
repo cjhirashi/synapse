@@ -2,7 +2,7 @@
 id: PLAN-0008
 tipo: plan
 feature: 0008-vault-editor
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), delegación explícita 2026-10-22; acepta P-1 (sin router REST de notas)", fecha: 2026-10-22 }
 actualizado: 2026-10-22

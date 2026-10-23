@@ -323,10 +323,10 @@ actualizado: 2026-10-22
 - [x] T-091 — `ARCHIFY.md`: entrada del diagrama de 0008 [doc]
   - CHECK: `grep -c "0008" ARCHIFY.md`
   - EXPECT: ≥ 1.
-- [ ] T-092 — Notas de re-anclaje (sin cambio de requisitos) en `spec.md` de 0002, 0003, 0005 y 0007 y anclas movidas al commit de cierre (P-2) [doc]
+- [x] T-092 — Notas de re-anclaje (sin cambio de requisitos) en `spec.md` de 0002, 0003, 0005 y 0007 y anclas movidas al commit de cierre (P-2) [doc]
   - CHECK: `bash .harness/gate/check.sh`
   - EXPECT: sin `DRIFT` en 0002/0003/0005/0007; compuerta abierta.
-- [ ] T-093 — `.harness/memory/state.md`: estado de 0008 (tareas, números de suites, p95, tamaño del *chunk*) [doc]
+- [x] T-093 — `.harness/memory/state.md`: estado de 0008 (tareas, números de suites, p95, tamaño del *chunk*) [doc]
   - CHECK: `grep -c "0008-vault-editor" .harness/memory/state.md`
   - EXPECT: ≥ 1.
 - [x] T-094 — Verificación manual en navegador con la app real (`docker compose up -d`, `http://localhost:8000`): crear bóveda → "Abrir" → crear nota (con título y sin título) → editar en Visual y en Código → Guardar → Leer → renombrar/mover a una carpeta → borrar → restaurar desde la papelera de la bóveda; comprobar además el riel y el 404 de un id inexistente; medir RNF-001 con 1 000 notas (panel Performance). Evidencia: capturas o salida pegada en `history.md` y en la verificación (cubre RF-001…RF-019, RNF-001) [zona: sistema]
@@ -619,8 +619,8 @@ actualizado: 2026-10-22
 | doc: 0008-vault-editor/diagrams | T-089 | — | Pass |
 | doc: 0005-sync/diagrams | T-090 | — | Pass |
 | doc: ARCHIFY.md | T-091 | — | Pass |
-| doc: re-anclaje 0002/0003/0005/0007 | T-092 | gate | Pendiente |
-| doc: state.md | T-093 | — | Pendiente |
+| doc: re-anclaje 0002/0003/0005/0007 | T-092 | gate | Pass |
+| doc: state.md | T-093 | — | Pass |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre cuando la spec pase a `implemented`.
