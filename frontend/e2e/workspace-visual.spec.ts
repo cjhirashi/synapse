@@ -390,6 +390,9 @@ for (const theme of THEMES) {
     const pick = PICKS[theme];
     await icons.getByRole("radio", { name: pick.glyph }).click();
     await colors.getByRole("radio", { name: pick.color }).click();
+    // Foco de teclado en el glifo elegido (Mayús+Tab desde el color): el anillo debe verse distinto del relleno.
+    await page.keyboard.press("Shift+Tab");
+    await expect(icons.getByRole("radio", { name: pick.glyph })).toBeFocused();
     await shot(page, `picker-${theme}`);
     await page.getByRole("button", { name: "Guardar cambios" }).click();
 
