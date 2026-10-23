@@ -49,6 +49,7 @@ covers:                  # fijado en PLAN-0009 §9 (archivos con dueño anterior
   # sistema — fidelidad visual y RNF-001 en navegador real
   - frontend/playwright.config.ts
   - frontend/e2e/**
+  - frontend/scripts/visual.sh
   # backend — Vault.icon (bloque B)
   - backend/app/core/schemas.py
   - backend/app/services/vault_service.py
