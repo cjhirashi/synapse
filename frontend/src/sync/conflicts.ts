@@ -325,10 +325,21 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
    */
   async function processNotesOf(vaultId: string): Promise<void> {
     const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
-    const rows = await db.allDocs({ startkey: prefix, endkey: `${prefix}\uffff`, include_docs: true, conflicts: true });
-    const ids = new Set(rows.rows.filter((row) => (row.doc as Partial<Revision> | undefined)?._conflicts).map((row) => row.id));
+    const ids = new Set(await conflictedIds(prefix));
     for (const id of manual.keys()) if (id.startsWith(prefix)) ids.add(id);
     for (const id of ids) await process(id);
+  }
+
+  /**
+   * Ids con ramas en conflicto bajo `prefix`, SIN leer ningún cuerpo (S-1): `style: "all_docs"`
+   * lista todas las hojas de cada documento y un documento en conflicto tiene más de una. Leer
+   * `include_docs` de todas las notas costaba hasta 2 MiB por nota en cada lote del pull.
+   */
+  async function conflictedIds(prefix: string): Promise<string[]> {
+    const feed = await db.changes({ since: 0, style: "all_docs" });
+    return feed.results
+      .filter((change) => !change.deleted && change.id.startsWith(prefix) && change.changes.length > 1)
+      .map((change) => change.id);
   }
 
   /** Encola trabajo; un fallo se notifica y no detiene la cola. */
@@ -340,9 +351,8 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
 
   // Barrido inicial: las bóvedas y notas que ya tenían conflictos al abrir la réplica.
   for (const prefix of [ID_PREFIX, NOTE_ID_PREFIX]) {
-    const existing = await db.allDocs({ startkey: prefix, endkey: `${prefix}\uffff`, include_docs: true, conflicts: true });
-    const conflicted = existing.rows.filter((row) => (row.doc as Partial<Revision> | undefined)?._conflicts);
-    await Promise.all(conflicted.map((row) => enqueue(() => process(row.id)).catch(() => undefined)));
+    const conflicted = await conflictedIds(prefix);
+    await Promise.all(conflicted.map((id) => enqueue(() => process(id)).catch(() => undefined)));
   }
 
   // Después, cada cambio de una bóveda o nota (de la UI, del pull o de otra pestaña) puede crear o cerrar un

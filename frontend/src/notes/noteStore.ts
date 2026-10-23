@@ -111,18 +111,67 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
   const now = options.now ?? (() => utcNow());
   const newId = options.newId ?? (() => crypto.randomUUID());
 
-  /** Ganadoras de las notas de una bóveda (las perdedoras en conflicto las resuelve `conflicts.ts`). */
-  async function winners(vaultId: string): Promise<NoteDoc[]> {
-    const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
-    const result = await db.allDocs<NoteDoc>({ startkey: prefix, endkey: `${prefix}￰`, include_docs: true });
-    return result.rows.map((row) => row.doc as NoteDoc).filter((doc) => doc.type === "note");
+  /**
+   * Índice de resumen (S-1): `{id, path, rev, deleted_at, updated_at}` de cada nota por bóveda,
+   * SIN `content` (hasta 2 MiB por nota). Se construye una vez (la primera lectura) y después se
+   * pone al día de forma incremental con el feed de cambios de la réplica: sólo se leen los
+   * documentos que cambiaron desde la última puesta al día (las escrituras propias, el pull y
+   * otras pestañas pasan todas por ahí). `list`, la unicidad de rutas y «Sin título n» consultan
+   * el índice en vez de releer el cuerpo de todas las notas en cada guardado y cada lote del pull.
+   */
+  const index = new Map<string, Map<string, NoteSummary>>(); // vault_id → id → resumen
+  let indexSeq: string | number | null = null; // última secuencia aplicada (null: sin construir)
+  let indexing: Promise<void> | null = null; // puesta al día en curso (se serializan)
+
+  function indexPut(doc: NoteDoc): void {
+    let notes = index.get(doc.vault_id);
+    if (!notes) index.set(doc.vault_id, (notes = new Map()));
+    notes.set(doc._id, toSummary(doc));
+  }
+
+  function indexRemove(id: string): void {
+    for (const notes of index.values()) notes.delete(id);
+  }
+
+  async function refreshIndex(): Promise<void> {
+    if (indexSeq === null) {
+      // La secuencia se toma ANTES de leer: lo que cambie mientras se construye se reaplica luego (idempotente).
+      const seq = (await db.info()).update_seq;
+      const rows = await db.allDocs<NoteDoc>({ startkey: NOTE_ID_PREFIX, endkey: `${NOTE_ID_PREFIX}￰`, include_docs: true });
+      for (const row of rows.rows) if (row.doc?.type === "note") indexPut(row.doc);
+      indexSeq = seq;
+    }
+    // Sólo lo cambiado desde la última vez; el cuerpo de cada documento se lee una vez y se descarta.
+    const changes = await db.changes<NoteDoc>({ since: indexSeq, include_docs: true });
+    for (const change of changes.results) {
+      if (!change.id.startsWith(NOTE_ID_PREFIX)) continue;
+      if (change.deleted || !change.doc || change.doc.type !== "note") indexRemove(change.id);
+      else {
+        indexRemove(change.id); // la nota pudo cambiar de bóveda lógica (no ocurre) o de estado: se reemplaza entera
+        indexPut(change.doc);
+      }
+    }
+    indexSeq = changes.last_seq;
+  }
+
+  /** Índice al día. Las llamadas concurrentes se encadenan para no aplicar la misma secuencia dos veces. */
+  async function syncIndex(): Promise<void> {
+    const run = (indexing ?? Promise.resolve()).then(refreshIndex);
+    indexing = run.catch(() => undefined);
+    return run;
+  }
+
+  /** Resúmenes de las notas de una bóveda (activas y de la papelera). */
+  async function summaries(vaultId: string): Promise<NoteSummary[]> {
+    await syncIndex();
+    return [...(index.get(vaultId)?.values() ?? [])];
   }
 
   /** Aviso local de ruta ocupada: otra nota activa (no `selfId`) de la bóveda con la misma clave. */
   async function assertPathFree(vaultId: string, path: string, selfId: string | null): Promise<void> {
     const key = pathKey(path);
-    const taken = (await winners(vaultId)).some(
-      (doc) => doc.deleted_at === null && doc._id !== selfId && pathKey(doc.path) === key,
+    const taken = (await summaries(vaultId)).some(
+      (note) => note.deleted_at === null && note.id !== selfId && pathKey(note.path) === key,
     );
     if (taken) throw new NotePathTakenError();
   }
@@ -196,10 +245,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
 
   return {
     async list(vaultId, { deleted = false } = {}) {
-      return (await winners(vaultId))
-        .filter((doc) => (doc.deleted_at !== null) === deleted)
-        .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0))
-        .map(toSummary);
+      return (await summaries(vaultId))
+        .filter((note) => (note.deleted_at !== null) === deleted)
+        .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     },
 
     async get(id) {
@@ -211,8 +259,8 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       let path: string;
       if (requested === "") {
         // RF-012: sin título, el menor «Sin título n» libre entre las activas de la bóveda.
-        const active = (await winners(vaultId)).filter((doc) => doc.deleted_at === null);
-        path = nextUntitledPath(new Set(active.map((doc) => pathKey(doc.path))));
+        const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+        path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))));
       } else {
         path = titleToPath(requested);
       }
