@@ -249,8 +249,10 @@ test("V-8 tema oscuro por defecto, sin localStorage (RF-006a)", async ({ browser
   await context.addInitScript(() => {
     const seen: string[] = [];
     (window as unknown as { __themes: string[] }).__themes = seen;
-    new MutationObserver(() => seen.push(document.documentElement.getAttribute("data-theme") ?? "")).observe(document.documentElement, {
+    // Se observa `document` (no `documentElement`, que aún puede no existir al correr este script).
+    new MutationObserver(() => seen.push(document.documentElement.getAttribute("data-theme") ?? "")).observe(document, {
       attributes: true,
+      subtree: true,
       attributeFilter: ["data-theme"],
     });
   });

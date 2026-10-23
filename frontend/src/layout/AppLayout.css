@@ -77,6 +77,21 @@
   gap: var(--space-3);
 }
 
+/* En pantallas estrechas el correo del menú de cuenta se recorta (ya tiene elipsis) en lugar de
+   ensanchar la cabecera: sin esto el documento hace scroll horizontal a 390 px (V-10). */
+.app-nav-account {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-nav-account > .account-menu {
+  min-width: 0;
+}
+
+.app-nav-account .account-menu-trigger {
+  max-width: 100%;
+}
+
 .app-nav-account a {
   font-size: 13px;
   color: var(--text-secondary);
