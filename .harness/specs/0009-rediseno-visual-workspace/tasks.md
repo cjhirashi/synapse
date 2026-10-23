@@ -37,13 +37,13 @@ actualizado: 2026-10-23
 ## Tareas
 
 ### 0 · Línea base
-- [ ] T-000 — Instalar dependencias y compilar en el worktree limpio (cubre RNF-001: referencia de no regresión) [zona: sistema]
+- [x] T-000 — Instalar dependencias y compilar en el worktree limpio (cubre RNF-001: referencia de no regresión) [zona: sistema]
   - CHECK: `cd frontend && npm ci && npm run build`
   - EXPECT: `npm ci` sin errores; `build` exit 0 (typecheck + `vite build` "built in").
-- [ ] T-001 — Suite del frontend en verde y números anotados en `history.md` (cubre RF-007: línea base de la suite de 0008) [zona: sistema]
+- [x] T-001 — Suite del frontend en verde y números anotados en `history.md` (cubre RF-007: línea base de la suite de 0008) [zona: sistema]
   - CHECK: `cd frontend && npx vitest run && npm run test:perf && npm run test:sync`
   - EXPECT: `Tests 799 passed (799)` (o el número vigente) con 0 failed; `test:perf` p95 < 300 ms; `test:sync` 25/25.
-- [ ] T-002 — Suite del backend en verde, **sola** contra CouchDB `:15984` (cubre RF-012: línea base) [zona: sistema]
+- [x] T-002 — Suite del backend en verde, **sola** contra CouchDB `:15984` (cubre RF-012: línea base) [zona: sistema]
   - CHECK: `bash .harness/gate/check.sh && (cd backend && python3 -m pytest -q)`
   - EXPECT: gate "Compuerta abierta"; `1054 passed` (o el número vigente), 0 failed, ~16 min.
 
