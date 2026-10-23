@@ -716,6 +716,15 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
       expect(document.body).toHaveFocus();
     });
 
+    it("RF-007: con la vista Código activa, «Leer» y luego «Editar» devuelve el foco a CodeMirror", async () => {
+      await openReal("hola");
+      await userEvent.click(screen.getByRole("button", { name: "Código" }));
+      await waitFor(() => expect(document.querySelector(".cm-content")).not.toBeNull());
+      await userEvent.click(screen.getByRole("button", { name: "Leer" }));
+      await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+      await waitFor(() => expect(document.querySelector(".cm-content")).toHaveFocus());
+    });
+
     it("RF-008: alternar de vista no arrebata el foco (sólo el paso a edición lo mueve)", async () => {
       await openReal("hola");
       await waitFor(() => expect(screen.getByRole("textbox", { name: "Editor visual" })).toHaveFocus());
