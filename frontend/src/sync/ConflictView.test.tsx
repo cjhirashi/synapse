@@ -8,7 +8,7 @@ import type { NoteConflict, VaultConflict } from "./conflicts";
 import ConflictView from "./ConflictView";
 import type { MergeBody } from "./merge";
 import type { SyncContextValue } from "./useSync";
-import { VaultChangedError, VaultValidationError } from "./vaultStore";
+import { StorageFullError, VaultChangedError, VaultValidationError } from "./vaultStore";
 
 const VAULT_ID = "vault:11111111-1111-4111-8111-111111111111";
 
@@ -144,4 +144,14 @@ test("RF-009 (SPEC-0008): un conflicto de nota se pinta con su tarjeta; el de b�
   await userEvent.click(within(within(card).getByRole("region", { name: "Versión B" })).getByRole("button", { name: "Quedarme con esta" }));
   expect(resolveConflict).toHaveBeenCalledWith(note.id, "2-l", { path: "Ideas.md", content: "dos", frontmatter: {}, deleted_at: null });
   expect(await screen.findByRole("status")).toHaveTextContent("Se guardó la resolución de «Ideas.md».");
+});
+
+// S-6: lo mismo en la resolución de una bóveda.
+test("con la cuota llena el formulario de la bóveda muestra el mensaje de almacenamiento lleno", async () => {
+  const resolveConflict = vi.fn(async () => {
+    throw new StorageFullError();
+  });
+  renderView({ conflicts: [conflict()], resolveConflict });
+  await userEvent.click(screen.getByRole("button", { name: "Guardar resolución" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No queda espacio");
 });

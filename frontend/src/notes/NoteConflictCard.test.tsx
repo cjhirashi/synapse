@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 import type { NoteConflict } from "../sync/conflicts";
-import { VaultChangedError } from "../sync/vaultStore";
+import { StorageFullError, VaultChangedError } from "../sync/vaultStore";
 import { NoteValidationError } from "./errors";
 import { CONTENT_INVALID } from "./messages";
 import NoteConflictCard from "./NoteConflictCard";
@@ -98,4 +98,15 @@ test("RF-009: un fallo inesperado se muestra y se puede reintentar", async () =>
   await user.click(keep);
   expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo guardar la resolución");
   expect(keep).toBeEnabled();
+});
+
+// S-6 (PLAN-0008 §18): con la cuota llena se dice, no «Inténtalo de nuevo».
+test("RF-009, RF-016: con la cuota llena la tarjeta muestra el mensaje de almacenamiento lleno", async () => {
+  const resolve = vi.fn(async () => {
+    throw new StorageFullError();
+  });
+  const { user } = renderCard(conflict(), resolve);
+  await user.click(within(screen.getByRole("region", { name: "Versión B" })).getByRole("button", { name: "Quedarme con esta" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("No queda espacio");
+  expect(screen.getByRole("alert")).not.toHaveTextContent("No se pudo guardar la resolución");
 });
