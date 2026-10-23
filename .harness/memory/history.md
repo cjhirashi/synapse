@@ -1208,3 +1208,5 @@
 - [2026-10-23] SPEC-0009 T-034 (RF-012): VaultIcon + icon en VaultCreate/Update/Out — CHECK: pytest test_vault_schemas → 69 passed
 - [2026-10-23] SPEC-0009 T-035 (RF-012): tests de VaultService con icon — CHECK: pytest test_vault_service → 86 failed (rojo: icon Field required)
 - [2026-10-23] SPEC-0009 T-036 (RF-012): create escribe icon, _to_out con doc.get — CHECK: pytest test_vault_service+test_vault_repository → 148 passed
+- [2026-10-23] SPEC-0009 T-037 (RF-012): tests de push con icon — CHECK: pytest -k icon → 5 failed (aceptación con icon válido, validation-error:icon por clave no admitida)
+- [2026-10-23] SPEC-0009 T-038 (RF-012): sync_push admite icon opcional con TypeAdapter(VaultIcon|None); fixture: javascript:x es válido por gramática (glifo:color), se añade javascript:alert(1) inválido — CHECK: pytest sync_push+rules_mirror+note_sync_push → 280 passed (tras ajustar la fixture)

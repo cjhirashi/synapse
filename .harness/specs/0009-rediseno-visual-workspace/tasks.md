@@ -158,10 +158,10 @@ actualizado: 2026-10-23
 - [x] T-036 — `services/vault_service.py`: `create` escribe `icon`; `_to_out` con `doc.get("icon")` (cubre RF-012) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_service.py tests/test_vault_repository.py`
   - EXPECT: `passed`, 0 failed.
-- [ ] T-037 — Test (rojo) `test_sync_push.py` (CouchDB real): revisión de bóveda con `icon` válido aceptada; sin clave aceptada; `icon` inválido → `validation-error:icon`; nota con clave `icon` → rechazo `validation-error:icon` de clave no admitida (cubre RF-012) [zona: test]
+- [x] T-037 — Test (rojo) `test_sync_push.py` (CouchDB real): revisión de bóveda con `icon` válido aceptada; sin clave aceptada; `icon` inválido → `validation-error:icon`; nota con clave `icon` → rechazo `validation-error:icon` de clave no admitida (cubre RF-012) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_sync_push.py -k icon`
   - EXPECT: falla la aceptación con `icon` válido (`validation-error:icon` por clave no admitida).
-- [ ] T-038 — `services/sync_push.py`: `_VAULT_KEYS` + `icon`, `_VAULT_REQUIRED` sin `icon`, `_FIELD_RULES["icon"]`, comprobación sólo si la clave está (cubre RF-012) [zona: servicio]
+- [x] T-038 — `services/sync_push.py`: `_VAULT_KEYS` + `icon`, `_VAULT_REQUIRED` sin `icon`, `_FIELD_RULES["icon"]`, comprobación sólo si la clave está (cubre RF-012) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_sync_push.py tests/test_sync_rules_mirror.py tests/test_note_sync_push.py`
   - EXPECT: `passed`, 0 failed (batería de 0005/0008 sin tocar).
 - [ ] T-039 — Test (rojo) `test_vaults_api.py` (CouchDB real): `POST`/`PATCH`/`GET`/listado con `icon`; `PATCH {"icon": null}` borra; `icon` inválido → 422 RFC 9457 con `pointer` `/icon` y mensaje del catálogo, sin eco del valor (cubre RF-012) [zona: test]

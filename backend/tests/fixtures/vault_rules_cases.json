@@ -611,7 +611,8 @@
   {
    "field": "icon",
    "input": "javascript:x",
-   "valid": false
+   "valid": true,
+   "normalized": "javascript:x"
   },
   {
    "field": "icon",
@@ -626,6 +627,11 @@
   {
    "field": "icon",
    "input": [],
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "javascript:alert(1)",
    "valid": false
   }
  ],

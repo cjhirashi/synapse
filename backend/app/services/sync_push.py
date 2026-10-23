@@ -43,7 +43,7 @@ from app.core.note_rules import (
 )
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
-from app.core.schemas import VaultDescription, VaultName, VaultTags
+from app.core.schemas import VaultDescription, VaultIcon, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
@@ -52,8 +52,10 @@ from app.services.vault_service import VaultService, name_key
 # Claves de una revisión de bóveda, en el orden en que se informa la que falta (§2.3 paso 4).
 _VAULT_KEYS = (
     "_id", "_rev", "_revisions", "type", "name", "description", "tags",
-    "owner_id", "created_at", "updated_at", "deleted_at",
+    "owner_id", "created_at", "updated_at", "deleted_at", "icon",
 )
+# `icon` (SPEC-0009 RF-012) es admitida pero no obligatoria: las bóvedas anteriores no la tienen.
+_VAULT_REQUIRED = tuple(key for key in _VAULT_KEYS if key != "icon")
 # Una lápida no lleva nada más (P-5): el borrado de una bóveda es el soft delete de 0003.
 _TOMBSTONE_KEYS = {"_id", "_rev", "_revisions", "_deleted"}
 
@@ -71,6 +73,7 @@ _FIELD_RULES = {
     "name": TypeAdapter(VaultName),
     "description": TypeAdapter(VaultDescription | None),
     "tags": TypeAdapter(VaultTags),
+    "icon": TypeAdapter(VaultIcon | None),
 }
 
 
@@ -117,6 +120,8 @@ def _check_vault_fields(doc: dict) -> None:
     """Paso 5 de una bóveda: reglas de REST sin normalizar (el contenido de una revisión no puede
     cambiar sin cambiar su `_rev`, P-3); el cliente normaliza antes de escribir."""
     for field, rule in _FIELD_RULES.items():
+        if field not in doc:  # sólo `icon` puede faltar: el paso 4 exigió las demás
+            continue
         try:
             normalized = rule.validate_python(doc[field], strict=True)
         except ValidationError:
@@ -395,7 +400,7 @@ class SyncPushService:
 # Una fila por tipo de documento; los métodos se enlazan sin instanciar (reciben `self`).
 _KINDS = {
     VAULT_PREFIX: _Kind(
-        "vault", _VAULT_KEYS, _VAULT_KEYS, _check_vault_fields,
+        "vault", _VAULT_KEYS, _VAULT_REQUIRED, _check_vault_fields,
         SyncPushService._check_vault_rules, None, _vault_use,
         SyncPushService._reserve_vault_name, SyncPushService._release_vault_name),
     NOTE_PREFIX: _Kind(
