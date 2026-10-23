@@ -455,3 +455,15 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | S-4 · comentario falso ("dos guardados idénticos dan la misma revisión") | Low | el hash incluye `updated_at` | Corregir el comentario (la convergencia la garantiza `mergeNote`). |
 | S-5 · título ".md" → fila sin nombre | Low | `displayName` vacío | Si queda vacío, mostrar el segmento completo. |
 | (backlog 0003) `vault-name:{name_key}` tiene el mismo riesgo que H-1 (100 caracteres ×18) | — | id sin tope en SPEC-0003 | **No se toca en 0008**: cambiar el formato exige migrar reservas existentes. Backlog para decisión de Carlos. |
+
+## 18. Enmienda 9 (2026-10-23) — Converge tras la enmienda 8
+> Backend y seguridad: sección limpia. Hallazgos nuevos, todos Low/Low-Medium, en el frontend.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| T-1 · T-133…T-141 fuera de la tabla de cobertura | Low-Medium (proceso) | — | Corregido por el coordinador en `tasks.md`. |
+| S-6 · con la cuota llena, la tarjeta de conflicto muestra "Inténtalo de nuevo" | Low-Medium | `NoteConflictCard`/`ConflictView` sólo traducen `NoteValidationError` | Toda la familia de errores conocidos (`StorageFullError` incluido) pasa por `noteErrorMessage`/el traductor de bóvedas; test de componente. |
+| S-7 · la construcción inicial del índice trae todos los cuerpos de una vez | Low | primer `allDocs({include_docs:true})` sin paginar | Paginar (lotes de 200 con `startkey` exclusivo) y descartar cada cuerpo al indexarlo. |
+| E-3 · el 404 de la bóveda muestra un borrador que el usuario descartó a propósito | Low | `salvaged` no se limpia en el cierre voluntario de la nota | Limpiarlo cuando la nota se cierra/borra/descarta voluntariamente; sólo sobrevive a la pérdida involuntaria de la bóveda. |
+| E-4 · "Copiar texto" sin API de portapapeles: rechazo no manejado, sin aviso | Low | sin `try/catch` ni alternativa | Aviso "No se pudo copiar; selecciona el texto" y selección automática del texto; test sin `navigator.clipboard`. |
+| E-5 · el diálogo de descarte enfoca primero la acción destructiva | Low | `ConfirmDialog` enfoca el primer botón | `ConfirmDialog` acepta el botón de foco inicial; en los diálogos de descarte, "Seguir editando". |
