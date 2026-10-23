@@ -43,6 +43,8 @@ export interface ViewProps {
   registerFlush?: (flush: (() => void) | null) => void;
   /** Estado «sucio» síncrono de una vista con escritura diferida (E-7); las de emisión inmediata no lo necesitan. */
   onDirty?: (dirty: boolean) => void;
+  /** Foco en el editor al montarse (U-6): sólo cuando el usuario acaba de pasar a edición. */
+  autoFocus?: boolean;
 }
 
 export interface NoteEditorViews {
@@ -109,6 +111,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * esperar el debounce de 200 ms. «Sucio» = eso o un borrador distinto de la nota cargada.
    */
   const [pending, setPending] = useState(false);
+  /**
+   * El usuario acaba de pasar a edición («Nueva nota» o «Editar»): el editor que se monte ahora toma el
+   * foco (U-6). Se consume tras ese montaje: abrir en lectura, recargar, restaurar o alternar de vista no lo mueven.
+   */
+  const [focusEditor, setFocusEditor] = useState(false);
+  useEffect(() => {
+    if (focusEditor) setFocusEditor(false);
+  }, [focusEditor]);
   const dirty = note !== null && (pending || draft !== note.content);
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);
@@ -185,6 +195,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         setNote(loaded);
         setDraft(loaded.content);
         setMode(editOnOpenRef.current ? "edit" : "read");
+        setFocusEditor(editOnOpenRef.current);
         setView("visual");
       },
       (err) => {
@@ -423,7 +434,13 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </button>
           )}
           {mode === "read" ? (
-            <button type="button" onClick={() => setMode("edit")}>
+            <button
+              type="button"
+              onClick={() => {
+                setFocusEditor(true);
+                setMode("edit");
+              }}
+            >
               Editar
             </button>
           ) : (
@@ -494,9 +511,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         {mode === "read" ? (
           <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
         ) : view === "visual" ? (
-          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} />
+          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} />
         ) : (
-          <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} />
+          <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
         )}
       </div>
     </section>

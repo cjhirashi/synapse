@@ -67,6 +67,8 @@ interface MilkdownViewProps {
    * al emitido. Sólo informa de los cambios de estado.
    */
   onDirty?: (dirty: boolean) => void;
+  /** Foco en el editor en cuanto termina de crearse el que sigue a esta petición (U-6). */
+  autoFocus?: boolean;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -82,7 +84,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** El markdown que tiene el editor ahora: el último recibido del padre o emitido por él. */
@@ -93,6 +95,10 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   onViewRef.current = onView;
   const onDirtyRef = useRef(onDirty);
   onDirtyRef.current = onDirty;
+  /** Pendiente de enfocar al estar listo el primer editor (se consume una vez: recrearlo por un `value` nuevo no roba el foco). */
+  const focusOnReady = useRef(autoFocus);
+  // Lectura → edición reutiliza esta misma instancia (no se vuelve a montar): la petición llega por la prop.
+  if (autoFocus) focusOnReady.current = true;
 
   /** Informa de `dirty` sólo si cambió respecto de lo último informado. */
   function report(target: Running, dirty: boolean) {
@@ -193,6 +199,10 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       const view = editor.ctx.get(editorViewCtx);
       running.current.view = view;
       running.current.baseDoc = view.state.doc;
+      if (focusOnReady.current && !readOnly) {
+        focusOnReady.current = false;
+        view.focus();
+      }
       // `@milkdown/core` fuerza `role="textbox"` en el DOM de la vista al crearla (después de las
       // `attributes` de ProseMirror, VU-2): se reasigna el rol real. En lectura es un documento,
       // no un cuadro de texto (`aria-readonly` no es válido en `document`, C-3).

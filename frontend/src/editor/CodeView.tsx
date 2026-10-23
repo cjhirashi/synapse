@@ -21,9 +21,11 @@ interface CodeViewProps {
   onChange: (value: string) => void;
   /** Nombre accesible del área de texto. */
   label: string;
+  /** Foco en el editor al montar la vista (U-6). */
+  autoFocus?: boolean;
 }
 
-export function CodeView({ value, onChange, label }: CodeViewProps) {
+export function CodeView({ value, onChange, label, autoFocus = false }: CodeViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   // La última `onChange`, para que el editor (creado una sola vez) no quede con una vieja.
@@ -51,6 +53,7 @@ export function CodeView({ value, onChange, label }: CodeViewProps) {
       }),
     });
     view.current = instance;
+    if (autoFocus) instance.focus();
     return () => {
       instance.destroy();
       view.current = null;
