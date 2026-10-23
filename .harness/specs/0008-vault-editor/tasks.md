@@ -559,7 +559,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`.
 
 ### AC · Enmienda 20 (PLAN-0008 §29) — T-2
-- [ ] T-155 — T-2: test del foco de `CodeView` al pasar a edición con la vista Código activa; mutante sin `instance.focus()` lo hace fallar (cubre RF-007, RF-008) [zona: test]
+- [x] T-155 — T-2: test del foco de `CodeView` al pasar a edición con la vista Código activa; mutante sin `instance.focus()` lo hace fallar (cubre RF-007, RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`; con el mutante, falla (salida pegada en history.md).
 
