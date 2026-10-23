@@ -215,7 +215,7 @@ actualizado: 2026-10-23
   - EXPECT: `RNF-001 (0008): p95 … ms` < 300 ms.
 
 ### H · Documentación (PLAN-0009 §8) y verificación completa
-- [ ] T-054 — `contracts/vault-icon.schema.json`: confirmar que coincide con `VaultIcon` (patrón y `maxLength`) con un test en `test_vault_schemas.py` [doc]
+- [x] T-054 — `contracts/vault-icon.schema.json`: confirmar que coincide con `VaultIcon` (patrón y `maxLength`) con un test en `test_vault_schemas.py` [doc]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_schemas.py -k contract`
   - EXPECT: `passed`.
 - [ ] T-055 — `0003-vault-crud/contracts/openapi.yaml`: re-export final tras cualquier cambio posterior a T-040 [doc]

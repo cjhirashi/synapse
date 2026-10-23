@@ -6,9 +6,9 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
-from app.core.schemas import VaultCreate, VaultOut, VaultUpdate
+from app.core.schemas import VaultCreate, VaultIcon, VaultOut, VaultUpdate
 
 
 def _error_types(exc: ValidationError) -> set[str]:
@@ -161,3 +161,13 @@ def test_rf_012_vault_out_publishes_icon_as_required_and_nullable():
     assert VaultOut(**base, icon=None).icon is None
     with pytest.raises(ValidationError):
         VaultOut(**base)
+
+
+def test_rf_012_contract_schema_matches_vault_icon():
+    """El JSON Schema de `contracts/` y el tipo `VaultIcon` dicen lo mismo (patrón, mínimo y máximo)."""
+    contract = json.loads(_ICON_CONTRACT.read_text())["oneOf"][1]
+    published = TypeAdapter(VaultIcon).json_schema()
+    for key in ("pattern", "minLength", "maxLength"):
+        assert contract[key] == published[key], key
+    # Y el contrato admite `null` (clave anulable) igual que la entrada REST.
+    assert {"type": "null"} in [{"type": branch["type"]} for branch in json.loads(_ICON_CONTRACT.read_text())["oneOf"]]
