@@ -554,7 +554,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`; sin avisos de espacios.
 
 ### AB · Enmienda 19 (PLAN-0008 §28) — U-6
-- [ ] T-154 — U-6: test (rojo, commit propio) "Nueva nota" y "Editar" dejan el foco en el editor activo; abrir en lectura o recargar no lo mueve (cubre RF-003, RF-007) [zona: editor]
+- [x] T-154 — U-6: test (rojo, commit propio) "Nueva nota" y "Editar" dejan el foco en el editor activo; abrir en lectura o recargar no lo mueve (cubre RF-003, RF-007) [zona: editor]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes`
   - EXPECT: rojo → `passed`.
 
