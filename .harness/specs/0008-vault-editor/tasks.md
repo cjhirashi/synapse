@@ -329,7 +329,7 @@ actualizado: 2026-10-22
 - [ ] T-093 — `.harness/memory/state.md`: estado de 0008 (tareas, números de suites, p95, tamaño del *chunk*) [doc]
   - CHECK: `grep -c "0008-vault-editor" .harness/memory/state.md`
   - EXPECT: ≥ 1.
-- [ ] T-094 — Verificación manual en navegador con la app real (`docker compose up -d`, `http://localhost:8000`): crear bóveda → "Abrir" → crear nota (con título y sin título) → editar en Visual y en Código → Guardar → Leer → renombrar/mover a una carpeta → borrar → restaurar desde la papelera de la bóveda; comprobar además el riel y el 404 de un id inexistente; medir RNF-001 con 1 000 notas (panel Performance). Evidencia: capturas o salida pegada en `history.md` y en la verificación (cubre RF-001…RF-019, RNF-001) [zona: sistema]
+- [x] T-094 — Verificación manual en navegador con la app real (`docker compose up -d`, `http://localhost:8000`): crear bóveda → "Abrir" → crear nota (con título y sin título) → editar en Visual y en Código → Guardar → Leer → renombrar/mover a una carpeta → borrar → restaurar desde la papelera de la bóveda; comprobar además el riel y el 404 de un id inexistente; medir RNF-001 con 1 000 notas (panel Performance). Evidencia: capturas o salida pegada en `history.md` y en la verificación (cubre RF-001…RF-019, RNF-001) [zona: sistema]
   - CHECK: `docker compose up -d && curl -s -o /dev/null -w "%{http_code}\n" -H "Accept: text/html" http://localhost:8000/vaults/00000000-0000-4000-8000-000000000000`
   - EXPECT: `200` (la SPA sirve la ruta) y el recorrido completo hecho en el navegador sin errores en consola, con la evidencia anotada.
 
@@ -423,21 +423,24 @@ actualizado: 2026-10-22
 
 ### M · Enmienda 4 (PLAN-0008 §13) — verificación en navegador (VU-1…VU-5)
 > Test rojo en commit propio. Las tareas de percepción exigen capturas antes/después (Playwright, mismo guion que T-094: `/tmp/s8/e2e/walk.py`).
-- [ ] T-121 — Capturas "antes" (lista de bóvedas, árbol, nota en lectura con listas, árbol con 1 000 notas) y test (rojo) de que las filas del árbol y las listas del markdown no heredan la clase/estilo de tarjeta de la lista de bóvedas (VU-1) (cubre RF-019, RF-007) [zona: test]
+- [x] T-121 — Capturas "antes" (lista de bóvedas, árbol, nota en lectura con listas, árbol con 1 000 notas) y test (rojo) de que las filas del árbol y las listas del markdown no heredan la clase/estilo de tarjeta de la lista de bóvedas (VU-1) (cubre RF-019, RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/vaults`
   - EXPECT: falla el caso nuevo.
-- [ ] T-122 — Estilos de lista acotados a la lista de bóvedas; estilos propios del árbol y del render; capturas "después" (lista de bóvedas idéntica) (VU-1) (cubre RF-019, RF-007, RF-018) [zona: pantalla]
+- [x] T-122 — Estilos de lista acotados a la lista de bóvedas; estilos propios del árbol y del render; capturas "después" (lista de bóvedas idéntica) (VU-1) (cubre RF-019, RF-007, RF-018) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run && npm run build` + capturas antes/después comparadas
   - EXPECT: `passed`; árbol con nombres completos en una línea; listas del markdown como listas; lista de bóvedas sin cambios visibles.
-- [ ] T-123 — Test (rojo) y corrección VU-2: lectura con `role="document"` y `aria-readonly="true"` (cubre RF-007) [zona: editor]
+- [x] T-123 — Test (rojo) y corrección VU-2: lectura con `role="document"` y `aria-readonly="true"` (cubre RF-007) [zona: editor]
   - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-124 — VU-3 y VU-4: `prosemirror.css` en el chunk del editor; sidebar con scroll propio; capturas con 1 000 notas (cubre RF-001, RNF-001) [zona: pantalla]
+- [x] T-124 — VU-3 y VU-4: `prosemirror.css` en el chunk del editor; sidebar con scroll propio; capturas con 1 000 notas (cubre RF-001, RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run && npm run build && npm run test:perf` + captura
   - EXPECT: `passed`; p95 < 300 ms; sin aviso de `white-space` en consola; la página no crece con el árbol.
-- [ ] T-125 — VU-5 (SPEC-0002): reproducir con test (rojo, commit propio, anotado con el RF de 0002) el regreso al formulario tras el cambio forzado; corrección de raíz (cubre RF de 0002) [zona: pantalla]
+- [x] T-125 — VU-5 (SPEC-0002): reproducir con test (rojo, commit propio, anotado con el RF de 0002) el regreso al formulario tras el cambio forzado; corrección de raíz (cubre RF de 0002) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/auth src/settings src/App.test.tsx`
   - EXPECT: rojo → `passed`; recorrido real: tras cambiar la contraseña se entra a la app.
+- [x] T-127 — Test (rojo) y corrección VU-6: `rename` aplica la misma regla título→ruta que `create` (cubre RF-011, RF-003) [zona: cliente]
+  - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
+  - EXPECT: rojo → `passed`.
 - [ ] T-126 — Re-ejecutar el recorrido T-094 completo en Chromium real con capturas nuevas; consola sin errores de la app (cubre RF-001…RF-019, RNF-001) [zona: sistema]
   - CHECK: guion `/tmp/s8/e2e/walk.py` contra el backend del worktree
   - EXPECT: todas las etapas OK; capturas de árbol/lectura/lista de bóvedas correctas.
