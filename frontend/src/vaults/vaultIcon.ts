@@ -136,11 +136,14 @@ export function formatIcon(glyph: string | null, color: PaletteKey | null): stri
   return color === null ? glyph : `${glyph ?? INITIALS}:${color}`;
 }
 
+/** Colores que se derivan solos: `danger` se excluye porque lee como alerta y sólo se elige a mano. */
+const DERIVABLE: readonly PaletteKey[] = ["accent", "info", "success", "warning"];
+
 /** Color por omisión de una bóveda: estable (depende sólo de su id, no de su nombre). */
 export function derivedColor(vaultId: string): PaletteKey {
   let sum = 0;
   for (const char of vaultId) sum += char.codePointAt(0)!;
-  return PALETTE[sum % PALETTE.length];
+  return DERIVABLE[sum % DERIVABLE.length];
 }
 
 /** Iniciales del nombre: la primera letra de las dos primeras palabras, o las dos primeras de una sola. */

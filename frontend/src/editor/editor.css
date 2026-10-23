@@ -66,6 +66,14 @@
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
+/* Sin texto sale del flujo (no ocupa sitio ni el hueco del `gap`) pero sigue en el árbol de accesibilidad:
+   es una región `status` y `display: none` no anunciaría el aviso al aparecer. Así «Editar» queda a la
+   distancia del relleno de la barra y no ~96 px más adentro. Con texto reserva 9ch para que la barra no
+   baile al guardar. */
+.note-editor-state:empty {
+  position: absolute;
+}
+
 .note-editor-state {
   min-width: 9ch;
   font-size: 12px;

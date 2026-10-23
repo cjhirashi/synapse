@@ -259,7 +259,7 @@ actualizado: 2026-10-23
 - [x] T-067 — A1-1/A1-2: tests (rojo, commit propio) tamaño/alto de Renombrar/Borrar igual al de los controles de la barra lateral (V-3) y thumb activo visible en claro/oscuro; estilos base de `button` en `:where(...)`; capturas de no regresión (login, lista de bóvedas, papelera, diálogos) (cubre RF-003, RF-006, RF-007) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run && npm run test:visual -- --grep-invert "V-7"` + capturas antes/después leídas
   - EXPECT: rojo → `passed`; sin cambios no deseados en las pantallas de no regresión.
-- [ ] T-068 — A1-4/A1-5: "Editar" sin hueco a la derecha en lectura (medida en V-4) y color derivado sin `danger` (cubre RF-005, RF-001) [zona: pantalla]
+- [x] T-068 — A1-4/A1-5: "Editar" sin hueco a la derecha en lectura (medida en V-4) y color derivado sin `danger` (cubre RF-005, RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes src/editor && npm run test:visual -- --grep-invert "V-7"`
   - EXPECT: rojo → `passed`.
 - [ ] T-069 — A1-3: R-1…R-15 completos en `measurements.json` y tabla en `history.md`; cierre de T-032 (cubre RF-001…RF-006a, RF-008…RF-010) [zona: sistema]
