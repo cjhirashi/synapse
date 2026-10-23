@@ -201,8 +201,17 @@ devuelve).
 ### Fase 5 · Converge *(tomado de `/speckit-converge`, spec-kit, GitHub, 141k★)*
 
 Gate 4 en verde una sola vez no cierra la feature: repite Implement→gate hasta que dos
-corridas consecutivas no agreguen hallazgos nuevos del verificador. Si una corrida
-encuentra algo, se corrige y se cuenta de nuevo desde cero.
+corridas consecutivas no agreguen hallazgos **Critical o High** del verificador —
+coherente con §Fase 4: esa es la única severidad que bloquea Converge. Un hallazgo
+**Medium/Low** se corrige si es rápido o se registra como `ABANDON:` en el cierre; no
+resetea el contador de corridas limpias.
+
+**Tope de respaldo:** si Converge lleva más de **3 amendments por severidad
+Critical/High** o más de **2 horas** desde que Gate 4 quedó verde por primera vez, se
+detiene — no se sigue iterando ni se amplía el alcance de la verificación por cuenta
+propia (ningún barrido adversarial nuevo que el plan original no pedía). Se reporta al
+humano el estado y los hallazgos Medium/Low abiertos para que decida: cerrar con
+`ABANDON:`, o autorizar una ronda más con alcance explícito.
 
 ### Cierre (Session-End)
 
@@ -343,9 +352,10 @@ Directiva de Pausa (si se usó) con re-aprobación del delta · **aprobación hu
 PR** · `memory/state.md` y `history.md` actualizados.
 
 ### Gate 5 — Converge
-Dos corridas consecutivas del verificador sin hallazgos nuevos. Si la primera corrida
-tras Gate 4 ya encuentra algo, ese hallazgo cierra el gate hasta corregirlo — no hay
-"ya casi".
+Dos corridas consecutivas del verificador sin hallazgos **Critical/High** nuevos (ver
+§3 Fase 5 para el tratamiento de Medium/Low y el tope de respaldo). Si la primera
+corrida tras Gate 4 ya encuentra un Critical/High, ese hallazgo cierra el gate hasta
+corregirlo — no hay "ya casi". Un Medium/Low no cierra el gate por sí solo.
 
 ---
 
