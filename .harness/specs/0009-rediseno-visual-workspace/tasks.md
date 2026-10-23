@@ -248,7 +248,7 @@ actualizado: 2026-10-23
 - [ ] T-064 — `.harness/memory/state.md`: estado de 0009 [doc]
   - CHECK: `grep -n "0009" .harness/memory/state.md`
   - EXPECT: fila de 0009 con estado y evidencia.
-- [ ] T-065 — Verificación completa en navegador: `test:visual` (V-1…V-10 + RNF-001) en ambos temas y anchos; lectura de cada captura junto al mockup; tabla R-1…R-15 final y salida pegadas en `history.md` (Gate 4: capturas reales contra la referencia) (cubre RF-001…RF-012, RF-006a, RNF-001) [zona: sistema]
+- [x] T-065 — Verificación completa en navegador: `test:visual` (V-1…V-10 + RNF-001) en ambos temas y anchos; lectura de cada captura junto al mockup; tabla R-1…R-15 final y salida pegadas en `history.md` (Gate 4: capturas reales contra la referencia) (cubre RF-001…RF-012, RF-006a, RNF-001) [zona: sistema]
   - CHECK: `cd frontend && npm run test:visual && cat /tmp/s9/e2e/measurements.json`
   - EXPECT: todas `passed`, 0 failed; cada R-n dentro de tolerancia.
 - [ ] T-066 — Suites completas finales (backend **solo**, luego frontend) y gate (cubre RF-007, RF-012, RNF-001) [zona: sistema]
