@@ -146,6 +146,7 @@ class VaultService:
             "name": data.name,
             "description": data.description,
             "tags": data.tags,
+            "icon": data.icon,
             "owner_id": owner_id,
             "created_at": now,
             "updated_at": now,
@@ -284,6 +285,8 @@ def _to_out(doc: dict) -> VaultOut:
         name=doc["name"],
         description=doc["description"],
         tags=doc["tags"],
+        # `.get`: las bóvedas anteriores a SPEC-0009 no tienen la clave (ausente = null).
+        icon=doc.get("icon"),
         owner_id=doc["owner_id"],
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],

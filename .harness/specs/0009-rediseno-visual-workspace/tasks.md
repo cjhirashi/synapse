@@ -152,10 +152,10 @@ actualizado: 2026-10-23
 - [x] T-034 — `VaultIcon` en `core/schemas.py` y campos `icon` en `VaultCreate`/`VaultUpdate`/`VaultOut` (cubre RF-012) [zona: núcleo]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_schemas.py`
   - EXPECT: `passed`, 0 failed (`test_sync_rules_mirror.py` sigue rojo hasta T-038).
-- [ ] T-035 — Test (rojo) `test_vault_service.py`: `create` con y sin `icon`; `update` con `icon` ausente (conserva), valor (cambia), `null` (borra); documento sin clave `icon` → `VaultOut.icon is None` (cubre RF-012) [zona: test]
+- [x] T-035 — Test (rojo) `test_vault_service.py`: `create` con y sin `icon`; `update` con `icon` ausente (conserva), valor (cambia), `null` (borra); documento sin clave `icon` → `VaultOut.icon is None` (cubre RF-012) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_service.py`
   - EXPECT: fallan las pruebas nuevas (`KeyError: 'icon'` / `icon` no persistido).
-- [ ] T-036 — `services/vault_service.py`: `create` escribe `icon`; `_to_out` con `doc.get("icon")` (cubre RF-012) [zona: servicio]
+- [x] T-036 — `services/vault_service.py`: `create` escribe `icon`; `_to_out` con `doc.get("icon")` (cubre RF-012) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_service.py tests/test_vault_repository.py`
   - EXPECT: `passed`, 0 failed.
 - [ ] T-037 — Test (rojo) `test_sync_push.py` (CouchDB real): revisión de bóveda con `icon` válido aceptada; sin clave aceptada; `icon` inválido → `validation-error:icon`; nota con clave `icon` → rechazo `validation-error:icon` de clave no admitida (cubre RF-012) [zona: test]
