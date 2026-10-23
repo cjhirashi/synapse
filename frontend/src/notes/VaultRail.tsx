@@ -7,14 +7,12 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
+import { initials } from "../vaults/vaultIcon";
 import "./notes.css";
 
-/** Iniciales del nombre: la primera letra de las dos primeras palabras, o las dos primeras de una sola. */
-export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const letters = words.length > 1 ? words.slice(0, 2).map((word) => [...word][0]) : [...(words[0] ?? "?")].slice(0, 2);
-  return letters.join("").toLocaleUpperCase("es");
-}
+// Las iniciales viven con el resto de la presentación del ícono; se re-exportan aquí porque este era
+// su sitio original (SPEC-0008) y su test las importa de este módulo.
+export { initials };
 
 export default function VaultRail() {
   const { vaults, dataVersion } = useSync();

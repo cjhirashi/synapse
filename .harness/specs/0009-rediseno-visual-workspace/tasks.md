@@ -88,7 +88,7 @@ actualizado: 2026-10-23
 - [x] T-014 — Test (rojo) `vaults/vaultIcon.test.ts`: `ICON_SET` con los 24 glifos del plan (todos componentes), `PALETTE` = 5 claves existentes en `tokens.css`, `parseIcon`/`formatIcon` (ida y vuelta, `initials`, glifo y color desconocidos, `null`), `derivedColor` estable y en `PALETTE`, `initials` (casos del test actual del riel), contraste ≥ 4,5:1 del glifo `--text-primary` sobre `color-mix` 18 % de cada clave en ambos temas (cubre RF-001, RF-006) [zona: test] [P-1, P-2]
   - CHECK: `cd frontend && npx vitest run src/vaults/vaultIcon.test.ts`
   - EXPECT: falla al importar `./vaultIcon` (no existe).
-- [ ] T-015 — `vaults/vaultIcon.ts` (catálogo, paleta, `parseIcon`, `formatIcon`, `derivedColor`, `initials` movida desde `VaultRail.tsx` y re-exportada) (cubre RF-001) [zona: frontend] [P-1]
+- [x] T-015 — `vaults/vaultIcon.ts` (catálogo, paleta, `parseIcon`, `formatIcon`, `derivedColor`, `initials` movida desde `VaultRail.tsx` y re-exportada) (cubre RF-001) [zona: frontend] [P-1]
   - CHECK: `cd frontend && npx vitest run src/vaults/vaultIcon.test.ts src/notes/VaultRail.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
 - [ ] T-016 — Test (rojo) `vaults/VaultChip.test.tsx`: ícono del set con `data-icon`, iniciales si `null`/`initials`/glifo desconocido, variable de color elegida o derivada en `style` (sólo `var(--clave)` de `PALETTE`; un color desconocido nunca llega al `style`) (cubre RF-001) [zona: test]

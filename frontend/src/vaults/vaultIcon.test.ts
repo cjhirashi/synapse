@@ -82,7 +82,11 @@ test("RF-001: formatIcon es el inverso de parseIcon para todas las combinaciones
 });
 
 test("RF-001: derivedColor es estable, está en la paleta y reparte las bóvedas", () => {
-  const ids = Array.from({ length: 60 }, (_, n) => `${String(n).padStart(8, "0")}-aaaa-4bbb-8ccc-${String(n * 7919).padStart(12, "0")}`);
+  // UUID v4 sintéticos y deterministas (generador congruencial): hex «aleatorio» como los reales.
+  let seed = 12345;
+  const hex = (length: number) =>
+    Array.from({ length }, () => ((seed = (seed * 1103515245 + 12345) % 2147483648), (seed >> 16) % 16).toString(16)).join("");
+  const ids = Array.from({ length: 60 }, () => `${hex(8)}-${hex(4)}-4${hex(3)}-8${hex(3)}-${hex(12)}`);
   const colors = ids.map(derivedColor);
   expect(colors.every((color) => (PALETTE as readonly string[]).includes(color))).toBe(true);
   expect(ids.map(derivedColor)).toEqual(colors);
