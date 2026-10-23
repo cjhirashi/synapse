@@ -80,3 +80,11 @@ test("RF-001: se relee cuando cambian las bóvedas (dataVersion)", async () => {
   rerender(view(1));
   expect(await screen.findByRole("link", { name: "Llegó" })).toBeInTheDocument();
 });
+
+// U-4 (PLAN-0008 §17, WCAG 2.5.3): el nombre accesible empieza por las iniciales visibles.
+test("RF-001: el nombre accesible del icono incluye las iniciales visibles", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Trabajo Personal", description: null, tags: [] });
+  renderRail(value);
+  expect(await screen.findByRole("link", { name: "TP Trabajo Personal" })).toHaveTextContent("TP");
+});

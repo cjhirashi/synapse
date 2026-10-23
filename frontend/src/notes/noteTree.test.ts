@@ -35,6 +35,13 @@ describe("RF-019: buildTree", () => {
     if (second.kind === "note") expect(second.note.id).toBe("note:v:Uno.MD");
   });
 
+  // S-5 (PLAN-0008 §17): un nombre que queda vacío sin `.md` muestra el segmento completo.
+  it("un título «.md» no deja la fila sin nombre", () => {
+    const [folder, root] = buildTree([note("a/.md"), note(".md")]);
+    expect(root).toMatchObject({ kind: "note", name: ".md" });
+    expect(folder).toMatchObject({ kind: "folder", children: [{ kind: "note", name: ".md" }] });
+  });
+
   it("una carpeta sin notas no existe y sin notas el árbol está vacío", () => {
     expect(buildTree([])).toEqual([]);
   });
