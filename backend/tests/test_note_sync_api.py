@@ -252,3 +252,16 @@ def test_rf_005_a_5000_digit_integer_is_answered_like_any_invalid_json(ready_adm
     huge = ready_admin.request(method, path, content=b'{"a": ' + b"1" * 5000 + b"}", headers=headers)
     assert_problem(truncated, 422, "validation-error")
     assert_problem(huge, 422, "validation-error")
+
+
+# --- Ruta que NFKC expande (H-1, enmienda 8) ---
+
+def test_rf_013_a_path_that_expands_under_nfkc_is_stored_and_stays_unique(vault, ready_admin):
+    # "ﷺ" * 300 pasa `check_path` (300 puntos de código) pero su clave NFKC mide 5 400
+    # caracteres: el id de la reserva no puede llevarla entera (CouchDB 400 → 503 en bucle).
+    path = "ﷺ" * 300
+    first, second = note_doc(vault["id"], path=path), note_doc(vault["id"], path=path)
+    res = push(ready_admin, [first])
+    assert res.status_code == 201 and res.json() == []
+    assert couch_get(vault["db"], first["_id"]).status_code == 200
+    assert push(ready_admin, [second]).json() == [rejection(second, "note-path-taken")]

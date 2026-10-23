@@ -452,3 +452,12 @@ async def test_rf_013_a_rewrite_of_an_already_stored_revision_does_not_touch_the
     reservation = _reservation(couch, "Nota.md")
     assert await push.push([doc]) == []
     assert _reservation(couch, "Nota.md") == reservation
+
+
+# --- `_rev` con generación gigante (H-2, enmienda 8) ---
+
+async def test_rf_006_a_rev_with_a_5000_digit_generation_is_rejected_not_a_500(push, vault):
+    rev = "1" * 5000 + "-aaa"
+    doc = _note(rev="1-aaa")
+    doc["_rev"] = rev
+    assert await push.push([doc]) == [_rejected(doc, "validation-error:_rev")]

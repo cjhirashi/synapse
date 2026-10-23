@@ -4,6 +4,7 @@ Cada test usa una base propia `synapse_user_test_{uuid}` que crea y borra él mi
 es el de 0003 (`TickingClock`): `advance` deja vencer el arrendamiento de una reserva, así
 sólo decide quién usa la ruta (las hojas vivas de la nota que la reservó).
 """
+import hashlib
 import threading
 import uuid
 
@@ -182,3 +183,17 @@ def test_rf_011_release_path_never_deletes_the_reservation_of_another_note(
     service.reserve_path(taker, "Mismo.md")  # huérfana reasignada
     service.release_path(left, "Mismo.md")
     assert repo.get(db, _reservation_id("Mismo.md"))["note_id"] == taker
+
+
+def test_rf_013_the_reservation_id_is_bounded_whatever_the_path_expands_to(service, repo, db):
+    # NFKC expande "ﷺ" a 18 caracteres: la clave de una ruta de 300 mediría 5 400 y CouchDB
+    # rechazaría el id (400). El id lleva el SHA-256 de la clave, que se guarda en el documento.
+    path = "ﷺ" * 300
+    note = _note_id()
+    service.reserve_path(note, path)
+    reservation_id = f"note-path:{VAULT}:{hashlib.sha256(path_key(path).encode()).hexdigest()}"
+    stored = repo.get(db, reservation_id)
+    assert len(reservation_id) < 128
+    assert (stored["note_id"], stored["path_key"]) == (note, path_key(path))
+    with pytest.raises(NotePathTaken):
+        service.reserve_path(_note_id(), path)
