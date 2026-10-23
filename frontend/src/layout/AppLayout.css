@@ -1,6 +1,17 @@
+/* Marco de altura fija (SPEC-0009 RF-009, PLAN-0009 P-5): la ventana no hace scroll; cabecera y barra
+   de sincronización ocupan lo suyo y el cuerpo el resto, con un scroll propio por columna (riel y
+   contenido). Es el modelo del mockup (`body { height: 100vh; overflow: hidden }`) y sustituye al riel
+   `sticky` con `max-height` de U-7. */
 .app-shell {
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
   background: var(--bg-primary);
+}
+
+.app-header,
+.sync-status-bar {
+  flex-shrink: 0;
 }
 
 .app-header {
@@ -75,24 +86,39 @@
   color: var(--accent);
 }
 
-/* Riel de bóvedas + contenido. */
+/* Riel de bóvedas + contenido. `min-height: 0` deja que el cuerpo se encoja al alto que sobra y que
+   sus columnas hagan scroll en lugar de estirar el marco. */
 .app-body {
   display: flex;
+  flex: 1;
+  min-height: 0;
   align-items: stretch;
 }
 
+/* El scroll del contenido es de esta columna (no de la ventana): su barra queda en el borde derecho y
+   el contenido se centra con un ancho máximo dentro de ella. */
 .app-main {
   flex: 1;
   min-width: 0;
-  max-width: 880px;
-  margin: 0 auto;
+  overflow-y: auto;
   padding: var(--space-8) var(--space-6);
 }
 
-/* El espacio de trabajo de una bóveda (SPEC-0008) usa todo el ancho: sidebar + editor. */
+.app-main > * {
+  max-width: 880px;
+  margin-inline: auto;
+}
+
+/* El espacio de trabajo de una bóveda (SPEC-0008) usa todo el alto y el ancho: sidebar + editor, cada
+   uno con su scroll. */
 .app-main:has(.vault-workspace) {
+  padding: 0;
+  overflow: hidden;
+}
+
+.app-main:has(.vault-workspace) > * {
   max-width: none;
-  margin: 0;
+  margin-inline: 0;
 }
 
 /* Barra de sincronización (SyncStatusBar): franja discreta bajo el header, no una tarjeta. */
@@ -125,6 +151,14 @@
 
 .sync-status-bar time {
   color: var(--text-muted);
+}
+
+/* Apilado (≤ 800 px): la barra lateral y el editor van uno bajo otro, así que el contenido vuelve a
+   hacer scroll como una página. */
+@media (max-width: 800px) {
+  .app-main:has(.vault-workspace) {
+    overflow-y: auto;
+  }
 }
 
 @media (max-width: 640px) {

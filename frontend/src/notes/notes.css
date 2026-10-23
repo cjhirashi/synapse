@@ -1,6 +1,6 @@
 /* Pantallas de notas (SPEC-0008): riel de bóvedas, sidebar con el árbol y espacio de trabajo. */
 
-/* --- Riel de bóvedas --- */
+/* --- Riel de bóvedas (SPEC-0009 RF-001, RF-009; medidas R-1…R-5 de PLAN-0009 §5.4) --- */
 .vault-rail {
   display: flex;
   flex-direction: column;
@@ -11,49 +11,30 @@
   padding: var(--space-3) 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
-  /* Riel fijo en la vista con scroll propio (U-7): con decenas de bóvedas no se alarga con la página ni se
-     pierde al bajar. La cabecera no es fija, así que el riel se pega arriba y su altura se acota al viewport. */
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  max-height: 100vh;
+  /* Scroll propio dentro del marco de altura fija (AppLayout.css): con decenas de bóvedas el riel se
+     desplaza solo, sin barra visible (como el del mockup) y sin mover la página. */
   overflow-y: auto;
+  scrollbar-width: none;
 }
 
+/* El enlace es sólo la caja de 34 px del chip: ancla de la barra de la bóveda activa. */
 .vault-rail-icon {
-  position: relative; /* ancla de la barra de la bóveda activa (::before) */
-  /* No se encogen cuando el riel (flex en columna, con `max-height`) se llena: el riel hace scroll (U-7). */
+  position: relative;
+  /* No se encoge cuando el riel se llena: el riel hace scroll. */
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+  display: block;
+  width: 34px;
+  height: 34px;
 }
 
 .vault-rail-icon:hover {
   text-decoration: none;
-  color: var(--text-primary);
-  background: var(--accent-soft);
-}
-
-/* La bóveda abierta: fondo suave y aro de acento (sólo tokens, con contraste en ambos temas). */
-.vault-rail-icon[aria-current="page"] {
-  background: var(--accent-soft);
-  color: var(--text-primary);
-  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .vault-rail-icon:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: var(--radius-md);
 }
 
 /* Chip: círculo en reposo; al pasar el cursor, enfocar o estar activo se vuelve cuadrado redondeado
@@ -212,20 +193,18 @@
 }
 
 /* --- Espacio de trabajo de la bóveda --- */
+/* Ocupa todo el alto del marco fijo (AppLayout.css); cada columna hace su propio scroll. */
 .vault-workspace {
   display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
+  align-items: stretch;
+  height: 100%;
 }
 
-/* Columna fija al viewport: su altura se acota y el árbol (flex) absorbe el resto con scroll. */
 .vault-workspace-side {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  position: sticky;
-  top: var(--space-4);
-  max-height: calc(100vh - 2 * var(--space-4));
+  min-height: 0;
 }
 
 .vault-workspace-side h1 {
@@ -237,21 +216,19 @@
 .vault-workspace-main {
   flex: 1;
   min-width: 0;
+  overflow-y: auto;
 }
 
 @media (max-width: 800px) {
   .vault-workspace {
     flex-direction: column;
+    height: auto;
   }
   .vault-workspace-side,
   .note-sidebar {
     width: 100%;
   }
-  /* Apilado: sin columna fija; el árbol conserva su scroll acotado. */
-  .vault-workspace-side {
-    position: static;
-    max-height: none;
-  }
+  /* Apilado: el árbol conserva su scroll acotado. */
   .note-tree {
     max-height: 50vh;
   }
