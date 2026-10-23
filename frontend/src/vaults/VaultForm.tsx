@@ -26,6 +26,8 @@ function changes(input: VaultFields, original: Vault): Partial<VaultFields> {
   if (input.name !== original.name) diff.name = input.name;
   if (input.description !== toDescription(original.description ?? "")) diff.description = input.description;
   if (input.tags.join("\n") !== original.tags.join("\n")) diff.tags = input.tags;
+  // Un documento anterior no trae la clave: cuenta como `null` (sin ícono).
+  if ((input.icon ?? null) !== (original.icon ?? null)) diff.icon = input.icon ?? null;
   return diff;
 }
 
@@ -48,8 +50,7 @@ export default function VaultForm() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
-  // Ícono elegido en el selector (SPEC-0009 RF-011). De momento sólo vive en el formulario: no se
-  // envía ni se guarda hasta que el almacén y el servidor aceptan el campo (RF-012).
+  // Ícono elegido en el selector (SPEC-0009 RF-011); se guarda con el resto (RF-012), sólo si cambió.
   const [icon, setIcon] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -106,7 +107,14 @@ export default function VaultForm() {
     e.preventDefault();
     setFieldErrors({});
     setFormError(null);
-    const input: VaultFields = { name, description: toDescription(description), tags: parseTags(tags) };
+    // `icon` sólo viaja cuando hay uno elegido (crear) o cambió (editar, en `changes`): sin tocar el
+    // selector la bóveda nueva no lleva la clave.
+    const input: VaultFields = {
+      name,
+      description: toDescription(description),
+      tags: parseTags(tags),
+      ...(icon !== null || original !== null ? { icon } : {}),
+    };
     setBusy(true);
     try {
       if (original === null) {
@@ -164,6 +172,7 @@ export default function VaultForm() {
       </label>
       {errorText("tags")}
       <IconPicker vaultId={id} name={name} value={icon} onChange={setIcon} />
+      {errorText("icon")}
       {formError && <p role="alert">{formError}</p>}
       <button type="submit" disabled={busy}>
         {editing ? "Guardar cambios" : "Crear bóveda"}
