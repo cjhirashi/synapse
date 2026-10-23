@@ -1,5 +1,7 @@
 // Selector de ícono y color de una bóveda (SPEC-0009 RF-011; PLAN-0009 §2.3 e): dos radiogroups
 // controlados que emiten el texto «glifo[:color]» de `formatIcon`; no persisten nada por sí solos.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
@@ -93,4 +95,19 @@ test("RF-011, RF-001: la vista previa es el chip de la bóveda con el valor actu
   const { icons } = setup("star:success", "Notas");
   const preview = icons.parentElement!.querySelector(".vault-chip")!;
   expect(preview.querySelector('svg[data-icon="star"]')).not.toBeNull();
+});
+
+// Enmienda 2 (F2-4): la vista previa tiene su rótulo visible y el foco se distingue de la selección.
+test("RF-011: la vista previa lleva el rótulo visible «Vista previa»", () => {
+  const { icons } = setup("star:success");
+  expect(within(icons.parentElement!).getByText("Vista previa")).toBeVisible();
+});
+
+test("RF-011: el foco es un anillo (outline) y la selección un relleno, ambos con tokens", () => {
+  const css = readFileSync(resolve(__dirname, "VaultChip.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]"=:()-]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+  expect(rule('.icon-picker-option:focus-visible')).toMatch(/outline: 2px solid var\(--text-primary\)/);
+  expect(rule('.icon-picker-option[aria-checked="true"]')).toMatch(/background: var\(--accent-soft\)/);
+  // La selección no usa outline: así un grupo con foco y selección en opciones distintas se lee bien.
+  expect(rule('.icon-picker-option[aria-checked="true"]')).not.toMatch(/outline/);
 });

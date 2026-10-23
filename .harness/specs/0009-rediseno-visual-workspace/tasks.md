@@ -273,7 +273,7 @@ actualizado: 2026-10-23
 - [x] T-071 — F2-2: V-7 tras guardar desde el selector comprueba sincronizado, 0 rechazos, `GET /vaults/{id}` con el `icon` y `--chip-color` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-7"`
   - EXPECT: `passed`; con el push de `icon` roto (mutante) falla.
-- [ ] T-072 — F2-3/F2-4: limpieza de `vaultStore.ts`; rótulo "Vista previa" y foco distinguible de la selección, capturas claro/oscuro leídas (cubre RF-011) [zona: pantalla]
+- [x] T-072 — F2-3/F2-4: limpieza de `vaultStore.ts`; rótulo "Vista previa" y foco distinguible de la selección, capturas claro/oscuro leídas (cubre RF-011) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/vaults src/sync && npm run typecheck` + capturas
   - EXPECT: `passed`; en la captura, foco y selección se distinguen.
 
