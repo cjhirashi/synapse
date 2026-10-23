@@ -79,21 +79,66 @@
   animation: fadeIn var(--dur-fast) var(--ease-out);
 }
 
-/* --- Sidebar con el árbol de notas --- */
+/* --- Barra lateral con el árbol de notas (SPEC-0009 RF-003, RF-004, RF-010; R-6…R-11 de PLAN-0009 §5.4) --- */
+/* Columna de 240 px pegada al riel, a todo el alto del marco: cabecera, formulario, panel del árbol
+   (con scroll propio), acciones de la nota y pie con la papelera. */
 .note-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  width: 280px;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
 
+/* Formulario «Nueva nota»: bloque propio de fondo distinto al del panel del árbol (RF-003). */
 .note-sidebar-new {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.note-sidebar-new label {
+  margin: 0;
+}
+
+.note-sidebar-new input {
+  padding: var(--space-1) var(--space-2);
+  font-size: 12px;
+}
+
+.note-sidebar-new button[type="submit"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+
+.note-sidebar > p {
+  margin: 0 var(--space-2) var(--space-2);
+}
+
+/* Panel del árbol: fondo propio, separado del formulario por un borde, y el árbol hace el scroll. */
+.note-tree-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.note-tree-panel > p {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .note-tree,
@@ -108,36 +153,54 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-
-.note-tree-group {
-  padding-left: var(--space-4);
+  overflow-x: hidden;
 }
 
 .note-tree-item {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
 }
 
-/* Las filas son botones: sin el aspecto de botón del formulario, como una lista de archivos. */
+/* Las filas son botones: sin el aspecto de botón del formulario, a sangre como una lista de archivos.
+   La sangría es de 24 px por nivel (`--depth` lo fija NoteSidebar); la nota entra 20 px más (el
+   chevron de 12 px + el hueco) para alinear su ícono con el de la carpeta hermana. */
 .note-tree-row,
 .note-tree-row:not([type="submit"]) {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex: 1;
+  width: 100%;
   min-width: 0;
-  padding: 6px var(--space-2);
+  height: 27px;
+  padding: 0 var(--space-4) 0 calc(var(--space-4) + var(--depth, 0) * var(--space-6));
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
-  color: var(--text-primary);
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 12px;
   text-align: left;
 }
 
-/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`). */
+.note-tree-note,
+.note-tree-note:not([type="submit"]) {
+  height: 25px;
+  padding-left: calc(var(--space-4) + var(--depth, 0) * var(--space-6) + 12px + var(--space-2));
+}
+
+.note-tree-row svg {
+  flex-shrink: 0;
+}
+
+.note-tree-icon-folder {
+  color: var(--warning);
+}
+
+.note-tree-icon-note {
+  color: var(--text-muted);
+}
+
+/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`, RF-010). */
 .note-tree-name {
   min-width: 0;
   overflow: hidden;
@@ -147,25 +210,33 @@
 
 .note-tree-row:not([type="submit"]):hover {
   background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1) + barra de acento, como el riel. */
+/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1, P-3) + barra de acento, como el riel. */
 .note-tree-row[aria-selected="true"] {
   background: var(--accent-soft);
   color: var(--text-primary);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-/* Barra de acciones de la nota seleccionada: fuera del árbol y siempre visible (también en táctil). */
+/* El cursor sobre la fila seleccionada no le quita el fondo de selección (el hover es más específico). */
+.note-tree-row[aria-selected="true"]:not([type="submit"]):hover {
+  background: var(--accent-soft);
+}
+
+/* Acciones de la nota seleccionada y renombrado: bajo el panel del árbol (así no desplazan sus filas) y
+   siempre visibles (también en táctil). */
 .note-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  margin: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
 }
 
 .note-actions-name {
@@ -174,22 +245,48 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .note-actions button {
-  padding: 4px var(--space-3);
-  font-size: 13px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
 }
 
 .note-tree-rename {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+
+/* Pie: papelera de la bóveda como una fila más, pegada abajo. */
+.note-sidebar-footer {
+  border-top: 1px solid var(--border);
+}
+
+.note-sidebar-trash,
+.note-sidebar-trash:not([type="submit"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: left;
+}
+
+.note-sidebar-trash:not([type="submit"]):hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
 /* --- Espacio de trabajo de la bóveda --- */
@@ -200,17 +297,42 @@
   height: 100%;
 }
 
+/* Barra lateral: 240 px, fondo `--bg-secondary` y borde derecho, pegada al riel (R-6, R-10, R-15). */
 .vault-workspace-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  flex-shrink: 0;
+  width: 240px;
   min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
-.vault-workspace-side h1 {
+/* Cabecera de la barra (R-7, 51 px): carpeta abierta en acento + nombre de la bóveda con elipsis. */
+.vault-workspace-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  height: 51px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.vault-workspace-header svg {
+  flex-shrink: 0;
+}
+
+.vault-workspace-header h1 {
+  min-width: 0;
   margin: 0;
-  font-size: 20px;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .vault-workspace-main {
@@ -224,9 +346,10 @@
     flex-direction: column;
     height: auto;
   }
-  .vault-workspace-side,
-  .note-sidebar {
+  .vault-workspace-side {
     width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
   /* Apilado: el árbol conserva su scroll acotado. */
   .note-tree {

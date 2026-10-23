@@ -149,7 +149,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. */}
         <header className="vault-workspace-header">
           <FolderOpen size={14} aria-hidden="true" data-icon="folder-open" />
-          <h1>{vault.name}</h1>
+          <h1 title={vault.name}>{vault.name}</h1>
         </header>
         <NoteSidebar
           vaultId={vault.id}

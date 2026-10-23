@@ -121,7 +121,7 @@ actualizado: 2026-10-23
 - [x] T-025 — `notes/NoteSidebar.tsx`: panel del árbol, íconos de carpeta/nota, formulario como bloque, pie de papelera (mismos roles y nombres) (cubre RF-003, RF-004) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/notes && npm run typecheck`
   - EXPECT: todos `passed` (incluida toda la batería de 0008 de `notes/`).
-- [ ] T-026 — `notes/notes.css` de la barra lateral: 240 px, cabecera 51 px, formulario `--bg-tertiary`, panel `--bg-secondary`, filas 27/25 px a 12 px, sangría 24 px por nivel (+20 px la nota), seleccionada `--accent-soft` + barra 3 px + `--text-primary`, elipsis (cubre RF-003, RF-004, RF-010) [zona: frontend] [P-3]
+- [x] T-026 — `notes/notes.css` de la barra lateral: 240 px, cabecera 51 px, formulario `--bg-tertiary`, panel `--bg-secondary`, filas 27/25 px a 12 px, sangría 24 px por nivel (+20 px la nota), seleccionada `--accent-soft` + barra 3 px + `--text-primary`, elipsis (cubre RF-003, RF-004, RF-010) [zona: frontend] [P-3]
   - CHECK: `cd frontend && npx vitest run src/notes && npm run test:visual -- --grep "V-3"`
   - EXPECT: vitest `passed` (incluido `accentContrast.test.ts` sin cambios); V-3 `passed` con capturas `sidebar-*.png`.
 - [ ] T-027 — Test (rojo) en `editor/NoteEditor.test.tsx`: la cabecera es `.note-editor-header` con el `h2`, el contenido va dentro de `.note-editor-column`; roles, nombres y `aria-pressed` de Visual/Código, Guardar y Leer/Editar sin cambios (cubre RF-005, RF-007) [zona: test]

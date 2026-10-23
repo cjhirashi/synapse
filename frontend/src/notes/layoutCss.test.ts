@@ -51,6 +51,20 @@ test("RF-009: los chips del riel no se encogen al llenarse el riel", () => {
   expect(chip).toMatch(/height: 34px/);
 });
 
+test("RF-003: el formulario «Nueva nota» y el panel del árbol tienen fondos de tokens distintos", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, ".note-sidebar-new")).toMatch(/background: var\(--bg-tertiary\)/);
+  expect(rule(notes, ".note-tree-panel")).toMatch(/background: var\(--bg-secondary\)/);
+  expect(rule(notes, ".vault-workspace-side")).toMatch(/width: 240px/);
+});
+
+test("RF-010: el nombre de una fila se recorta con elipsis en una sola línea", () => {
+  const name = rule(read("notes.css"), ".note-tree-name");
+  expect(name).toMatch(/text-overflow: ellipsis/);
+  expect(name).toMatch(/white-space: nowrap/);
+  expect(name).toMatch(/min-width: 0/);
+});
+
 // Los colores salen sólo de tokens (`var(--…)` o `color-mix` de tokens), nunca de literales.
 test.each([
   ["notes/notes.css", "notes.css"],
