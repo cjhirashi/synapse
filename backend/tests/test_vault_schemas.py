@@ -2,10 +2,13 @@
 
 Son tests unitarios del núcleo: no necesitan CouchDB ni la app.
 """
+import json
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
-from app.core.schemas import VaultCreate, VaultUpdate
+from app.core.schemas import VaultCreate, VaultOut, VaultUpdate
 
 
 def _error_types(exc: ValidationError) -> set[str]:
@@ -117,3 +120,44 @@ def test_rf_009_update_applies_the_same_rules_as_create():
     assert update.name == "Notas" and update.tags == ["a"]
     with pytest.raises(ValidationError):
         VaultUpdate(name="a" * 101)
+
+
+# --- RF-012 (SPEC-0009): `icon`, `glifo[:color]` ASCII de hasta 64 caracteres ---
+# La batería de casos vive en `fixtures/vault_rules_cases.json` (la recorre test_sync_rules_mirror);
+# aquí se fija el comportamiento de los esquemas REST y los ejemplos del contrato de 0009.
+
+_ICON_CONTRACT = (
+    Path(__file__).parents[2]
+    / ".harness/specs/0009-rediseno-visual-workspace/contracts/vault-icon.schema.json"
+)
+_ICON_EXAMPLES = json.loads(_ICON_CONTRACT.read_text())["oneOf"][1]["examples"]
+
+
+@pytest.mark.parametrize("icon", [*_ICON_EXAMPLES, "initials", None])
+def test_rf_012_create_and_update_accept_a_valid_icon(icon):
+    assert VaultCreate(name="n", icon=icon).icon == icon
+    assert VaultUpdate(icon=icon).icon == icon
+
+
+@pytest.mark.parametrize("icon", ["", "a" * 65, "Folder", "a::b", "a_b", "<svg>", 1, []])
+@pytest.mark.parametrize("schema", [VaultCreate, VaultUpdate])
+def test_rf_012_an_invalid_icon_is_rejected(schema, icon):
+    with pytest.raises(ValidationError) as exc:
+        schema(name="n", icon=icon)
+    assert {e["loc"] for e in exc.value.errors()} == {("icon",)}
+
+
+def test_rf_012_icon_is_optional_and_unset_is_distinguishable_from_null():
+    assert VaultCreate(name="n").icon is None
+    assert "icon" not in VaultUpdate(name="n").model_dump(exclude_unset=True)
+    # `null` explícito borra la elección (como `description`).
+    assert VaultUpdate(icon=None).model_dump(exclude_unset=True) == {"icon": None}
+
+
+def test_rf_012_vault_out_publishes_icon_as_required_and_nullable():
+    base = dict(id="i", name="n", description=None, tags=[], owner_id="o",
+                created_at="t", updated_at="t", deleted_at=None)
+    assert VaultOut(**base, icon="folder:info").icon == "folder:info"
+    assert VaultOut(**base, icon=None).icon is None
+    with pytest.raises(ValidationError):
+        VaultOut(**base)
