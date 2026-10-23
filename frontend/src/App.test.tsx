@@ -79,6 +79,26 @@ test("RF-002: mientras deba cambiar la contraseña no replica (el canal responde
   expect(fake.replicator.start).not.toHaveBeenCalled();
 });
 
+// SPEC-0002 RF-020 (VU-5): al cambiar la contraseña `must_change_password` pasa a false; la app debe
+// entrar a las bóvedas en vez de volver al formulario (el estado de sesión en caché estaba obsoleto).
+test("SPEC-0002 RF-020: tras el cambio forzado de contraseña se entra a la app, no al formulario vacío", async () => {
+  const { env } = signedIn(true);
+  const me = { user_id: "1", email: "test@synapse.local", role: "guest" as const };
+  // El servidor refleja el cambio: antes del POST exige cambiarla; después ya no.
+  let changed = false;
+  vi.spyOn(api, "getMe").mockImplementation(async () => ({ ...me, must_change_password: !changed }));
+  vi.spyOn(api, "changePassword").mockImplementation(async () => {
+    changed = true;
+  });
+  const user = renderAt("/vaults", env);
+  await user.type(await screen.findByLabelText("Contraseña actual"), "semilla-12345");
+  await user.type(screen.getByLabelText("Nueva contraseña"), "otra-clave-larga");
+  await user.type(screen.getByLabelText("Confirmar nueva contraseña"), "otra-clave-larga");
+  await user.click(screen.getByRole("button", { name: "Cambiar contraseña" }));
+  expect(await screen.findByRole("heading", { name: "Bóvedas" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Cambiar contraseña" })).not.toBeInTheDocument();
+});
+
 test("RF-019: una bóveda creada en el formulario se lista y se edita desde la réplica", async () => {
   const { env } = signedIn();
   const user = renderAt("/vaults/new", env);
