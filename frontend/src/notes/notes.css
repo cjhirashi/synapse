@@ -11,6 +11,13 @@
   padding: var(--space-3) 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
+  /* Riel fijo en la vista con scroll propio (U-7): con decenas de bóvedas no se alarga con la página ni se
+     pierde al bajar. La cabecera no es fija, así que el riel se pega arriba y su altura se acota al viewport. */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: 100vh;
+  overflow-y: auto;
 }
 
 .vault-rail-icon {
