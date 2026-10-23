@@ -89,18 +89,21 @@ def _replay(body: bytes, receive: Receive) -> Receive:
 
 
 class _DeepJsonRequest(Request):
-    """`Request` cuyo `json()` trata el anidamiento extremo como cualquier JSON inválido.
+    """`Request` cuyo `json()` trata cualquier fallo del decodificador como JSON inválido.
 
-    `json.loads` lanza `RecursionError` con cientos de niveles; FastAPI sólo convierte en
-    `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo vuelve un 400
-    que el contrato no declara (VB-3).
+    `json.loads` lanza `RecursionError` con cientos de niveles de anidamiento y `ValueError`
+    (no `JSONDecodeError`) con enteros de más de `int_max_str_digits` dígitos; FastAPI sólo
+    convierte en `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo
+    vuelve un 400 que el contrato no declara (VB-3, VB-5).
     """
 
     async def json(self):
         try:
             return await super().json()
-        except RecursionError:
-            raise json.JSONDecodeError("JSON nested too deeply", "", 0) from None
+        except json.JSONDecodeError:
+            raise  # ya es el caso declarado
+        except (RecursionError, ValueError):
+            raise json.JSONDecodeError("JSON not decodable", "", 0) from None
 
 
 class SyncRoute(APIRoute):
