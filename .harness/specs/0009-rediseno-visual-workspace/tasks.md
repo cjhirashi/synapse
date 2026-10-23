@@ -109,7 +109,7 @@ actualizado: 2026-10-23
 - [x] T-021 — Marco de altura fija en `layout/AppLayout.css` y riel con scroll propio en `notes/notes.css` (56 px, `--bg-secondary`, `padding: var(--space-3) 0`, `gap: var(--space-2)`) (cubre RF-009) [zona: frontend] [P-5]
   - CHECK: `cd frontend && npx vitest run src/notes/layoutCss.test.ts src/layout && npm run test:visual -- --grep "V-6"`
   - EXPECT: vitest `passed`; V-6 `passed` (riel `scrollHeight > clientHeight`, documento sin scroll) con capturas `rail-overflow-*.png`.
-- [ ] T-022 — Test (rojo) en `notes/VaultWorkspacePage.test.tsx`: cabecera `.vault-workspace-header` con el `h1` del nombre e ícono; estado vacío `.vault-workspace-empty` con ícono y el mismo texto (cubre RF-003, RF-008) [zona: test]
+- [x] T-022 — Test (rojo) en `notes/VaultWorkspacePage.test.tsx`: cabecera `.vault-workspace-header` con el `h1` del nombre e ícono; estado vacío `.vault-workspace-empty` con ícono y el mismo texto (cubre RF-003, RF-008) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: fallan las 2 pruebas nuevas; las existentes `passed`.
 - [ ] T-023 — `notes/VaultWorkspacePage.tsx`: cabecera de la barra y estado vacío centrado (cubre RF-003, RF-008) [zona: frontend]
