@@ -17,3 +17,81 @@
   line-height: 1;
   transition: border-radius var(--dur-base) var(--ease-standard);
 }
+
+/* Fila de la lista de bóvedas: chip junto al título. */
+.vault-list-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.vault-list-title h2 {
+  margin: 0;
+}
+
+/* Selector de ícono y color (SPEC-0009 RF-011): vista previa + dos grupos de radios. */
+.icon-picker {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.icon-picker-preview {
+  display: flex;
+}
+
+.icon-picker-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.icon-picker-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+/* Opciones de 32 px (glifos) o muestras de 24 px (colores); sin el relleno del botón secundario global. */
+.icon-picker-option,
+.icon-picker-option:not([type="submit"]) {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.icon-picker-option[aria-checked="true"],
+.icon-picker-option[aria-checked="true"]:not([type="submit"]) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.icon-picker-colors .icon-picker-option,
+.icon-picker-colors .icon-picker-option:not([type="submit"]) {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--swatch, transparent);
+}
+
+/* «Automático»: círculo vacío de borde discontinuo (no hay color elegido). */
+.icon-picker-colors .icon-picker-option:not([style]) {
+  border-style: dashed;
+  background: transparent;
+}
+
+.icon-picker-colors .icon-picker-option[aria-checked="true"],
+.icon-picker-colors .icon-picker-option[aria-checked="true"]:not([type="submit"]) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}

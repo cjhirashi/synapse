@@ -228,7 +228,7 @@ test("RF-011, RF-001: cada fila muestra el chip de su bóveda, con ícono o con 
   const withIcon = await screen.findByRole("listitem", { name: "Con ícono" });
   expect(withIcon.querySelector('.vault-chip svg[data-icon="star"]')).not.toBeNull();
   const without = screen.getByRole("listitem", { name: "Sin ícono" });
-  expect(without.querySelector(".vault-chip")).toHaveTextContent("SI");
+  expect(without.querySelector(".vault-chip")).toHaveTextContent("SÍ");
   // El chip es decorativo: el nombre accesible de la fila sigue siendo el del título.
   expect(withIcon.querySelector(".vault-chip")).toHaveAttribute("aria-hidden", "true");
 });

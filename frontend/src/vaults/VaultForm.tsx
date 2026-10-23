@@ -10,6 +10,7 @@ import {
   type Vault,
 } from "../sync/vaultStore";
 import { isStorageFull, STORAGE_FULL } from "./errors";
+import IconPicker from "./IconPicker";
 import { FIELD_MESSAGES, formatTags, NAME_TAKEN, parseTags, toDescription } from "./fields";
 
 type FieldErrors = Partial<Record<VaultField, string>>;
@@ -47,6 +48,9 @@ export default function VaultForm() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  // Ícono elegido en el selector (SPEC-0009 RF-011). De momento sólo vive en el formulario: no se
+  // envía ni se guarda hasta que el almacén y el servidor aceptan el campo (RF-012).
+  const [icon, setIcon] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,6 +64,7 @@ export default function VaultForm() {
         setName(vault.name);
         setDescription(vault.description ?? "");
         setTags(formatTags(vault.tags));
+        setIcon(vault.icon ?? null);
         setLoad("ready");
       } catch (err) {
         if (!(err instanceof VaultNotFoundError)) console.error(err);
@@ -157,6 +162,7 @@ export default function VaultForm() {
         <input value={tags} onChange={(e) => edit("tags", e.target.value)} placeholder="trabajo, ideas" {...errorProps("tags")} />
       </label>
       {errorText("tags")}
+      <IconPicker vaultId={id} name={name} value={icon} onChange={setIcon} />
       {formError && <p role="alert">{formError}</p>}
       <button type="submit" disabled={busy}>
         {editing ? "Guardar cambios" : "Crear bóveda"}

@@ -133,7 +133,7 @@ actualizado: 2026-10-23
 - [x] T-029 — Test (rojo) `vaults/IconPicker.test.tsx`: `radiogroup` "Ícono" (Iniciales + 24) y "Color" (Automático + 5) con nombres en español, flechas mueven la selección, `onChange` emite `formatIcon(glifo, color)`; `VaultListPage.test.tsx`: cada fila muestra el chip (cubre RF-011) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/vaults/IconPicker.test.tsx src/vaults/VaultListPage.test.tsx`
   - EXPECT: falla al importar `./IconPicker`; la prueba nueva de `VaultListPage` falla.
-- [ ] T-030 — `vaults/IconPicker.tsx` (controlado, **sin persistir** todavía) montado en `vaults/VaultForm.tsx` con estado local; chip en `vaults/VaultListPage.tsx` (cubre RF-011) [zona: frontend]
+- [x] T-030 — `vaults/IconPicker.tsx` (controlado, **sin persistir** todavía) montado en `vaults/VaultForm.tsx` con estado local; chip en `vaults/VaultListPage.tsx` (cubre RF-011) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/vaults && npm run typecheck`
   - EXPECT: todos `passed`.
 - [ ] T-031 — Suite completa del frontend tras la maquetación: sólo cambiaron los tests explícitos de RF-007 (cubre RF-007) [zona: sistema]
