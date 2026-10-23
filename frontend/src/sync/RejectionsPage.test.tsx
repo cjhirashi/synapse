@@ -27,6 +27,7 @@ test.each([
   ["vault-name-taken", "Ya tienes una bóveda con ese nombre."],
   ["validation-error:name", "El nombre debe tener entre 1 y 100 caracteres, sin caracteres de control."],
   ["validation-error:tags", "Hasta 20 etiquetas de 1 a 32 caracteres cada una."],
+  ["validation-error:icon", "El ícono elegido no es válido."],
   ["validation-error:_rev", "La bóveda tiene datos con un formato no válido."],
   ["not-normalized:description", "La bóveda tiene datos con un formato no válido."],
   ["owner-mismatch", "La bóveda pertenece a otro usuario."],

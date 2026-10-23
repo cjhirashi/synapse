@@ -78,7 +78,8 @@ export default function VaultForm() {
     if (id !== undefined) void fetchVault(id);
   }, [id, fetchVault]);
 
-  function edit(field: VaultField, value: string) {
+  /** Campos de texto del formulario; el ícono lo cambia su selector (`setIcon`). */
+  function edit(field: Exclude<VaultField, "icon">, value: string) {
     ({ name: setName, description: setDescription, tags: setTags })[field](value);
     setFieldErrors(({ [field]: _cleared, ...rest }) => rest);
   }

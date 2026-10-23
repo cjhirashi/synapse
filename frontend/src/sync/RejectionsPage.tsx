@@ -39,7 +39,7 @@ export function reasonText(code: string): string {
   const fixed = REASONS.get(code);
   if (fixed !== undefined) return fixed;
   const [kind, field] = code.split(":", 2);
-  if (kind === "validation-error" && (field === "name" || field === "description" || field === "tags")) {
+  if (kind === "validation-error" && (field === "name" || field === "description" || field === "tags" || field === "icon")) {
     return FIELD_MESSAGES[field];
   }
   if (kind === "validation-error" || kind === "not-normalized") return MALFORMED;
