@@ -74,3 +74,24 @@ test("RF-010: se relee con notesVersion y «Volver» llama a onClose", async () 
   await user.click(screen.getByRole("button", { name: "Volver a las notas" }));
   expect(onClose).toHaveBeenCalledOnce();
 });
+
+// U-8 (PLAN-0008 §31): al restaurar, el foco no cae a `body` y se anuncia la ruta restaurada.
+test("RF-017: restaurar mueve el foco al siguiente «Restaurar» y anuncia la ruta", async () => {
+  const { user } = await setup(["A.md", "B.md", "C.md"], ["A.md", "B.md", "C.md"]);
+  await user.click(await screen.findByRole("button", { name: "Restaurar «B.md»" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Restaurar «C.md»" })).toHaveFocus());
+  expect(screen.getByRole("status")).toHaveTextContent("Restaurada «B.md»");
+});
+
+test("RF-017: si no hay siguiente el foco va al «Restaurar» anterior", async () => {
+  const { user } = await setup(["A.md", "B.md"], ["A.md", "B.md"]);
+  await user.click(await screen.findByRole("button", { name: "Restaurar «B.md»" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Restaurar «A.md»" })).toHaveFocus());
+});
+
+test("RF-017: si no queda ninguna, el foco va a «Volver a las notas»", async () => {
+  const { user } = await setup(["Sola.md"], ["Sola.md"]);
+  await user.click(await screen.findByRole("button", { name: "Restaurar «Sola.md»" }));
+  await waitFor(() => expect(screen.getByRole("button", { name: "Volver a las notas" })).toHaveFocus());
+  expect(screen.getByRole("status")).toHaveTextContent("Restaurada «Sola.md»");
+});
