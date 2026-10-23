@@ -519,7 +519,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`.
 
 ### U · Enmienda 12 (PLAN-0008 §21) — F-1
-- [ ] T-147 — F-1: el test de renombrado pega la ruta en lugar de teclearla; 24 corridas bajo carga sin fallo (cubre RF-011) [zona: test]
+- [x] T-147 — F-1: el test de renombrado pega la ruta en lugar de teclearla; 24 corridas bajo carga sin fallo (cubre RF-011) [zona: test]
   - CHECK: `cd frontend && for i in $(seq 1 24); do npx vitest run src/notes/NoteSidebar.test.tsx --pool=forks || exit 1; done`
   - EXPECT: 24/24 `passed`.
 
