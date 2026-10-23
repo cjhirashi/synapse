@@ -270,7 +270,7 @@ actualizado: 2026-10-23
 - [x] T-070 — F2-1: guardián ampliado + prueba de comportamiento con `icon` hostil en riel, lista y selector; mutantes (`to={icon}`, indirección, `style` en `VaultListPage`) fallan (cubre RF-011, RF-012, RF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/vaults src/notes`
   - EXPECT: `passed`; cada mutante (no commiteado) hace fallar al menos un test — salida pegada.
-- [ ] T-071 — F2-2: V-7 tras guardar desde el selector comprueba sincronizado, 0 rechazos, `GET /vaults/{id}` con el `icon` y `--chip-color` (cubre RF-012) [zona: test]
+- [x] T-071 — F2-2: V-7 tras guardar desde el selector comprueba sincronizado, 0 rechazos, `GET /vaults/{id}` con el `icon` y `--chip-color` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-7"`
   - EXPECT: `passed`; con el push de `icon` roto (mutante) falla.
 - [ ] T-072 — F2-3/F2-4: limpieza de `vaultStore.ts`; rótulo "Vista previa" y foco distinguible de la selección, capturas claro/oscuro leídas (cubre RF-011) [zona: pantalla]

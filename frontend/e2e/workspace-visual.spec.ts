@@ -2,7 +2,7 @@
 // Cada prueba lleva en el título la comprobación V-n y el RF que cubre (Art. 9). Las medidas R-n
 // salen de la tabla congelada de §5.4; las capturas van a /tmp/s9/e2e para la comparación humana
 // con /tmp/s9/ref/mockup-{tema}-{ancho}.png.
-import { expect, expectExact, expectMeasure, measure, MOBILE, newSession, openNote, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
+import { expect, expectExact, expectMeasure, measure, MOBILE, newSession, openNote, waitForSynced, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
 
 // V-1 · riel (RF-001, RF-006; R-1…R-5)
 for (const theme of THEMES) {
@@ -366,7 +366,10 @@ for (const theme of THEMES) {
 
 // V-7 · selector de ícono en el formulario de bóveda (RF-011, RF-012)
 // Cada tema elige otro glifo y color: la bóveda sembrada es compartida y el segundo no puede pasar «por inercia».
-const PICKS = { dark: { glyph: "Estrella", id: "star", color: "Verde" }, light: { glyph: "Cohete", id: "rocket", color: "Ámbar" } } as const;
+const PICKS = {
+  dark: { glyph: "Estrella", id: "star", color: "Verde", key: "success" },
+  light: { glyph: "Cohete", id: "rocket", color: "Ámbar", key: "warning" },
+} as const;
 
 for (const theme of THEMES) {
   test(`V-7 selector de ícono y color, ${theme} (RF-011, RF-012)`, async ({ browser, seeded }) => {
@@ -393,6 +396,25 @@ for (const theme of THEMES) {
     // El chip del riel cambia sin recargar el documento.
     await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link", { name: target.name }).locator(`svg[data-icon="${pick.id}"]`)).toBeVisible();
     expect(await page.evaluate(() => (window as unknown as { __document?: boolean }).__document), "sin navegación de documento").toBe(true);
+
+    // El cambio hecho desde el selector tiene que haber viajado de verdad (la siembra por REST no obliga al
+    // cliente a empujar nada): sincronizado, sin rechazos, el servidor lo devuelve y el chip pinta su color.
+    await waitForSynced(page);
+    await expect(page.getByText(/cambios? rechazados?/), "el push de icon no se rechazó").toHaveCount(0);
+    const expected = `${pick.id}:${pick.key}`;
+    await expect
+      .poll(
+        // `fetch` desde la página (con las cookies de su sesión): es lo que haría la API REST con este usuario.
+        () => page.evaluate(async (id) => ((await (await fetch(`/vaults/${id}`, { credentials: "include" })).json()) as { icon?: string | null }).icon, target.id),
+        {
+          message: "GET /vaults/{id} devuelve el icon guardado",
+        },
+      )
+      .toBe(expected);
+    const chip = page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link", { name: target.name }).locator(".vault-chip");
+    expect(await chip.evaluate((el) => el.style.getPropertyValue("--chip-color")), "variable de color del chip").toBe(`var(--${pick.key})`);
+    // El color calculado: el aro del chip es el token de la paleta del tema activo.
+    expect(await chip.evaluate((el) => getComputedStyle(el).boxShadow)).toContain(tokenColor(theme, `--${pick.key}`));
     await context.close();
   });
 }
