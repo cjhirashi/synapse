@@ -446,13 +446,13 @@ actualizado: 2026-10-22
   - EXPECT: todas las etapas OK; capturas de árbol/lectura/lista de bóvedas correctas.
 
 ### N · Enmienda 5 (PLAN-0008 §14) — Converge corrida 1 (C-1…C-4)
-- [ ] T-128 — Test (rojo, commit propio): el árbol tiene exactamente una parada de Tab (ningún `button` dentro de `role="tree"`); "Renombrar"/"Borrar" de la nota seleccionada existen fuera del árbol; F2 en un `treeitem` de nota abre el renombrado y Supr el borrado (con confirmación si está sucia) (cubre RF-019, RF-011, RF-010) [zona: test]
+- [x] T-128 — Test (rojo, commit propio): el árbol tiene exactamente una parada de Tab (ningún `button` dentro de `role="tree"`); "Renombrar"/"Borrar" de la nota seleccionada existen fuera del árbol; F2 en un `treeitem` de nota abre el renombrado y Supr el borrado (con confirmación si está sucia) (cubre RF-019, RF-011, RF-010) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: fallan los casos nuevos.
-- [ ] T-129 — Acciones fuera del árbol (barra de la nota seleccionada) + F2/Supr; estilos sin *hover*-only; quitar `aria-readonly` de lectura (C-3) y su aserción en T-123 (cubre RF-019, RF-011, RF-010, RF-007) [zona: pantalla]
+- [x] T-129 — Acciones fuera del árbol (barra de la nota seleccionada) + F2/Supr; estilos sin *hover*-only; quitar `aria-readonly` de lectura (C-3) y su aserción en T-123 (cubre RF-019, RF-011, RF-010, RF-007) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run && npm run typecheck && npm run build`
   - EXPECT: todos `passed`; build ok.
-- [ ] T-130 — Evidencia de percepción: capturas en Chromium real (árbol, nota seleccionada con su barra, renombrado, borrado, vista estrecha 390 px) y lectura de las capturas (cubre RF-019) [zona: sistema]
+- [x] T-130 — Evidencia de percepción: capturas en Chromium real (árbol, nota seleccionada con su barra, renombrado, borrado, vista estrecha 390 px) y lectura de las capturas (cubre RF-019) [zona: sistema]
   - CHECK: guion de `/tmp/s8/e2e/` contra el backend del worktree
   - EXPECT: acciones visibles sin *hover*; nombres del árbol sin recortar por botones.
 
