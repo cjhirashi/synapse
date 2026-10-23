@@ -2,7 +2,7 @@
 id: TASKS-0009
 tipo: tasks
 feature: 0009-rediseno-visual-workspace
-estado: draft
+estado: approved
 actualizado: 2026-10-23
 ---
 

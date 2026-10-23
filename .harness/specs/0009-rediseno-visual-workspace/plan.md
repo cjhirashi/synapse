@@ -2,9 +2,9 @@
 id: PLAN-0009
 tipo: plan
 feature: 0009-rediseno-visual-workspace
-estado: draft
+estado: approved
 aprobaciones:
-  fase_2: pendiente
+  fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-23, nota: "P-1…P-4, P-6, P-7, P-9, P-10, P-12 aceptados; P-5 marco de altura fija global; P-8 150 ms en navegador real; P-11 set curado lucide-react + color, sin subida de imagen" }
 actualizado: 2026-10-23
 ---
 

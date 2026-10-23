@@ -72,7 +72,7 @@ covers:                  # fijado en PLAN-0009 §9 (archivos con dueño anterior
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-23 }
-  fase_2: pendiente
+  fase_2: { por: "AIRA en nombre de Carlos (autoridad delegada)", fecha: 2026-10-23 }
 actualizado: 2026-10-23
 ---
 
