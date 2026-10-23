@@ -57,6 +57,8 @@ interface Row {
 
 const folderKey = (path: string) => `f:${path}`;
 const noteKey = (id: string) => `n:${id}`;
+/** Destino de foco: el botón «Nueva nota» (cuando no queda ninguna fila). */
+const NEW_NOTE = "new-note";
 
 /** Filas visibles: las carpetas plegadas no muestran sus hijos. */
 function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<string>, parent: string | null = null): Row[] {
@@ -77,6 +79,15 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   const [renaming, setRenaming] = useState<{ note: NoteSummary; path: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * Guarda síncrona de operaciones en curso: `busy` (estado) llega tras el render, así que el
+   * auto-repeat de F2/Supr podría colarse antes (C-6). `remove` también la cubre mientras espera
+   * la confirmación del editor.
+   */
+  const inFlight = useRef(false);
+  /** Destino del foco tras desmontarse el elemento enfocado (C-5): una fila (`n:id`/`f:ruta`) o «Nueva nota». */
+  const [focusRequest, setFocusRequest] = useState<string | null>(null);
+  const newNoteRef = useRef<HTMLButtonElement>(null);
   /** Nota a la que se refiere la barra de acciones: la última que tomó el foco, o la abierta. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -113,6 +124,16 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   const tabbable = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
   const treeRef = useRef<HTMLUListElement>(null);
 
+  // Atiende la petición de foco cuando el destino ya está en pantalla (tras releer el árbol).
+  useEffect(() => {
+    if (focusRequest === null) return;
+    if (focusRequest === NEW_NOTE) newNoteRef.current?.focus();
+    else if (rows.some((row) => row.key === focusRequest)) focusRow(focusRequest);
+    else return; // aún no está: se reintenta al cambiar las filas
+    setFocusRequest(null);
+    // `focusRow` sólo usa refs y setState: no hace falta como dependencia.
+  }, [focusRequest, rows]);
+
   /** Mueve el foco real a la fila `key` y la hace la tabulable. */
   function focusRow(key: string) {
     setFocusKey(key);
@@ -142,6 +163,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
         break;
       case "F2":
       case "Delete": {
+        if (inFlight.current) return; // misma guarda que los botones (`busy`)
         const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
         if (!note) return;
         event.preventDefault();
@@ -177,6 +199,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
 
   /** Ejecuta una operación del almacén mostrando su error; `true` si salió bien. */
   async function run(operation: () => Promise<void>): Promise<boolean> {
+    inFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -188,6 +211,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       void reload();
       return false;
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -210,23 +234,44 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   async function rename(event: FormEvent) {
     event.preventDefault();
     if (renaming === null) return;
+    let renamed: string | null = null;
     const ok = await run(async () => {
-      await notes.rename(renaming.note.id, renaming.path, renaming.note.rev);
+      renamed = (await notes.rename(renaming.note.id, renaming.path, renaming.note.rev)).path;
       await reload();
     });
-    if (ok) setRenaming(null);
+    if (!ok) return;
+    setRenaming(null);
+    // La nota pudo moverse a una carpeta plegada: se despliega para que su fila exista y reciba el foco.
+    if (renamed !== null) setExpanded((prev) => new Set([...prev, ...ancestors(renamed as string)]));
+    setFocusRequest(noteKey(renaming.note.id));
+  }
+
+  function cancelRename() {
+    if (renaming) setFocusRequest(noteKey(renaming.note.id));
+    setRenaming(null);
   }
 
   async function remove(note: NoteSummary) {
-    // Sólo la nota abierta tiene un borrador que perder.
-    if (note.id === openId && confirmDelete && !(await confirmDelete())) return;
-    const ok = await run(async () => {
-      await notes.softDelete(note.id, note.rev);
-      await reload();
-    });
-    if (ok) {
-      setSelectedId((current) => (current === note.id ? null : current));
-      onDeleted(note.id);
+    if (inFlight.current) return; // ya hay un borrado/renombrado en marcha (auto-repeat de Supr)
+    inFlight.current = true;
+    try {
+      // Sólo la nota abierta tiene un borrador que perder.
+      if (note.id === openId && confirmDelete && !(await confirmDelete())) return;
+      // Foco a la fila vecina (siguiente; si no, anterior; si no, «Nueva nota»), calculada antes de que desaparezca.
+      const index = rows.findIndex((row) => row.key === noteKey(note.id));
+      const neighbour = rows[index + 1]?.key ?? rows[index - 1]?.key ?? NEW_NOTE;
+      inFlight.current = false; // `run` retoma la guarda mientras escribe
+      const ok = await run(async () => {
+        await notes.softDelete(note.id, note.rev);
+        await reload();
+      });
+      if (ok) {
+        setSelectedId((current) => (current === note.id ? null : current));
+        setFocusRequest(neighbour);
+        onDeleted(note.id);
+      }
+    } finally {
+      inFlight.current = false;
     }
   }
 
@@ -295,7 +340,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           Título de la nota nueva (opcional)
           <input value={title} onChange={(event) => setTitle(event.target.value)} />
         </label>
-        <button type="submit" disabled={busy}>
+        <button ref={newNoteRef} type="submit" disabled={busy}>
           Nueva nota
         </button>
       </form>
@@ -322,7 +367,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           <button type="submit" disabled={busy}>
             Guardar ruta
           </button>
-          <button type="button" onClick={() => setRenaming(null)}>
+          <button type="button" onClick={cancelRename}>
             Cancelar
           </button>
         </form>

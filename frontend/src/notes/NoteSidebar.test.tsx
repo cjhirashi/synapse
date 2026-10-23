@@ -109,8 +109,8 @@ test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con
   await user.clear(input);
   await user.type(input, "Carpeta/Movida.md");
   await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
-  const folder = await screen.findByRole("treeitem", { name: "Carpeta" });
-  await user.click(folder);
+  // La carpeta de destino se despliega sola para que la nota movida reciba el foco (C-5).
+  expect(await screen.findByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-expanded", "true");
   expect(await screen.findByRole("treeitem", { name: "Movida" })).toBeInTheDocument();
   expect(screen.queryByRole("treeitem", { name: "Raíz" })).toBeNull();
   expect((await value.notes.get(id)).path).toBe("Carpeta/Movida.md");
