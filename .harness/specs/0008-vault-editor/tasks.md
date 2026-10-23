@@ -509,7 +509,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`.
 
 ### S · Enmienda 10 (PLAN-0008 §19) — S-8, N-3
-- [ ] T-145 — S-8: test (rojo, commit propio) la última clave de un lote se borra antes del siguiente y ninguna nota viva se pierde; `startkey` estricto sin `skip`. N-3: `frontend/src/README.md` (foco inicial configurable, E-3, E-4) (cubre RF-001, RNF-001) [zona: cliente]
+- [x] T-145 — S-8: test (rojo, commit propio) la última clave de un lote se borra antes del siguiente y ninguna nota viva se pierde; `startkey` estricto sin `skip`. N-3: `frontend/src/README.md` (foco inicial configurable, E-3, E-4) (cubre RF-001, RNF-001) [zona: cliente]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts && npm run test:perf && grep -c "Seguir editando\|No se pudo copiar" src/README.md`
   - EXPECT: rojo → `passed`; ≥ 2.
 
