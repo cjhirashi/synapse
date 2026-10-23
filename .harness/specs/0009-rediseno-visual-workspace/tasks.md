@@ -79,7 +79,7 @@ actualizado: 2026-10-23
   - EXPECT: falla: no existe el `radiogroup` "Ícono".
 
 ### C · Maquetación del frontend (datos simulados de ícono)
-- [ ] T-012 — Test (rojo) `theme/useTheme.test.tsx`: sin `localStorage` → `data-theme="dark"` y "Tema oscuro" `aria-pressed=true` sin escribir `localStorage`; con `light`/`system`/`dark` guardado → se respeta; el script de `index.html` usa el mismo defecto que `DEFAULT_THEME_MODE` (cubre RF-006a) [zona: test] [P-7]
+- [x] T-012 — Test (rojo) `theme/useTheme.test.tsx`: sin `localStorage` → `data-theme="dark"` y "Tema oscuro" `aria-pressed=true` sin escribir `localStorage`; con `light`/`system`/`dark` guardado → se respeta; el script de `index.html` usa el mismo defecto que `DEFAULT_THEME_MODE` (cubre RF-006a) [zona: test] [P-7]
   - CHECK: `cd frontend && npx vitest run src/theme/useTheme.test.tsx`
   - EXPECT: falla: `DEFAULT_THEME_MODE` no se exporta y el modo inicial es `system`.
 - [ ] T-013 — `DEFAULT_THEME_MODE = "dark"` en `theme/useTheme.ts` y mismo defecto en el script de `frontend/index.html` (cubre RF-006a) [zona: frontend] [P-7]
