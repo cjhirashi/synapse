@@ -4,7 +4,7 @@ tipo: spec
 feature: 0008-vault-editor
 estado: implemented      # 2026-10-23: Fase 4 completa, Gate 4 en verde; Converge 1/2 (cortado por AIRA). NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: f8c3a4e
+anchor_commit: 0e6c5e5   # cierre de la implementación (2026-10-23)
 anchor_mode: strict
 covers:                  # fijado en PLAN-0008 §9 (pendiente del GATE 2); compartidos sin reclamar: ver PLAN-0008 §9
   - backend/app/core/note_rules.py

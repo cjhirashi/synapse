@@ -15,7 +15,7 @@ estado: verified      # draft | in-review | approved | implemented | verified | 
 > (aviso de borrador), `RejectionsPage`/`ConflictView` (textos de nota). Tests de 0005 ajustados
 > sin debilitar aserciones. Backlog: `.sync-status-bar time` usa `--text-muted` (2,56:1 en claro).
 > Sin cambio de requisitos.
-anchor_commit: 84b8be3   # enmienda 6 (backlog 8, T-128…T-132)
+anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py
