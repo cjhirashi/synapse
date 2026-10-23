@@ -41,6 +41,8 @@ export interface ViewProps {
    * antes de alternar vista o modo y antes de guardar, para no perder lo escrito en el último instante (E-6).
    */
   registerFlush?: (flush: (() => void) | null) => void;
+  /** Estado «sucio» síncrono de una vista con escritura diferida (E-7); las de emisión inmediata no lo necesitan. */
+  onDirty?: (dirty: boolean) => void;
 }
 
 export interface NoteEditorViews {
@@ -102,14 +104,19 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const dirty = note !== null && draft !== note.content;
+  /**
+   * Edición en curso que la vista Visual aún no emitió (E-7): informada en la misma transacción, sin
+   * esperar el debounce de 200 ms. «Sucio» = eso o un borrador distinto de la nota cargada.
+   */
+  const [pending, setPending] = useState(false);
+  const dirty = note !== null && (pending || draft !== note.content);
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);
   noteRef.current = note;
-  const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const onDirtyDraftRef = useRef(onDirtyDraft);
+  onDirtyDraftRef.current = onDirtyDraft;
   const editOnOpenRef = useRef(editOnOpen);
   editOnOpenRef.current = editOnOpen;
   /** Vaciado síncrono de la vista Visual (la registra `MilkdownView`): lo escrito en los últimos 200 ms (E-6). */
@@ -117,6 +124,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const registerFlush = useCallback((flush: (() => void) | null) => {
     flushVisual.current = flush;
   }, []);
+  const onViewDirty = useCallback((value: boolean) => setPending(value), []);
+
+  /**
+   * ÚNICO lector del texto actual (E-7): vacía lo pendiente del debounce de la vista Visual y devuelve
+   * el markdown vigente. Guardar, alternar, los diálogos, `confirmDiscard`, el cambio de nota, la
+   * revisión nueva, el cierre de sesión, `beforeunload` y el bloqueo de navegación deciden con esto,
+   * nunca leyendo `draft` (que va con retraso) directamente. Sólo usa refs: sirve desde cualquier cierre.
+   */
+  function readDraft(): string {
+    flushVisual.current?.();
+    return draftRef.current;
+  }
+
+  /** ¿Hay cambios sin guardar AHORA? (síncrono; ver `readDraft`). */
+  function hasUnsaved(): boolean {
+    const current = noteRef.current;
+    return current !== null && readDraft() !== current.content;
+  }
   /**
    * Bloquea la navegación interna mientras haya cambios sin guardar (VF-1), pero sólo si
    * cambia de pantalla (`pathname`; no una URL con otro search/hash) y el destino no es
@@ -124,10 +149,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * sesión caducó en el servidor) y bloquear sólo dejaría la app a medias (N-2).
    */
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
-    // Antes de decidir, lo escrito en el último instante pasa al borrador (E-6).
-    flushVisual.current?.();
-    const pending = noteRef.current !== null && draftRef.current !== noteRef.current.content;
-    return pending && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login";
+    return hasUnsaved() && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login";
   });
 
   // El padre conoce siempre el borrador sin guardar (no se emite `null` al desmontar: ahí es justo
@@ -144,7 +166,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     ref,
     () => ({
       confirmDiscard: () =>
-        dirtyRef.current ? new Promise<boolean>((answer) => setDiscardAsk({ answer })) : Promise.resolve(true),
+        hasUnsaved() ? new Promise<boolean>((answer) => setDiscardAsk({ answer })) : Promise.resolve(true),
     }),
     [],
   );
@@ -156,6 +178,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setMissing(false);
     setError(null);
     setSaved(false);
+    setPending(false);
     notes.get(openId).then(
       (loaded) => {
         if (!alive) return;
@@ -188,7 +211,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       (latest) => {
         const base = noteRef.current;
         if (!alive || base === null || latest.rev === base.rev) return;
-        if (!dirtyRef.current) {
+        if (!hasUnsaved()) {
           setNote(latest);
           setDraft(latest.content);
           setMissing(false);
@@ -211,30 +234,41 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   useEffect(() => {
     if (noteId === openId) {
       setPendingId(null);
-    } else if (dirtyRef.current) {
+    } else if (hasUnsaved()) {
       setPendingId(noteId);
     } else {
       setOpenId(noteId);
     }
   }, [noteId, openId]);
 
-  // Aviso del navegador al cerrar o recargar con cambios sin guardar.
+  // Aviso del navegador al cerrar o recargar con cambios sin guardar. Queda registrado mientras haya una
+  // nota en edición y decide con el estado síncrono: no espera a que `dirty` se vea en un render (E-7).
+  const editing = note !== null && mode === "edit";
   useEffect(() => {
-    if (!dirty) return;
+    if (!editing) return;
     const warn = (event: BeforeUnloadEvent) => {
+      if (!hasUnsaved()) return;
       event.preventDefault();
       // Algunos navegadores sólo muestran el aviso si hay `returnValue`.
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
+    // `hasUnsaved` sólo usa refs.
+  }, [editing]);
+
+  // Fuera de la vista Visual en edición no puede haber una edición diferida pendiente.
+  useEffect(() => {
+    if (mode !== "edit" || view !== "visual") setPending(false);
+  }, [mode, view]);
 
   const onDraft = useCallback((value: string) => {
     // La ref se adelanta al render: un vaciado seguido de un guardado en el mismo turno lee el texto nuevo.
     draftRef.current = value;
     setDraft(value);
     setSaved(false);
+    // El padre guarda el texto vigente por si la bóveda desaparece y este editor se desmonta (E-2).
+    if (noteRef.current !== null && value !== noteRef.current.content) onDirtyDraftRef.current?.(value);
   }, []);
 
   /**
@@ -458,9 +492,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       <div className="note-editor-body">
         {mode === "read" ? (
-          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} />
+          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
         ) : view === "visual" ? (
-          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} />
+          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} />
         ) : (
           <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} />
         )}

@@ -15,12 +15,13 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import { commonmark, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
 import { gfm } from "@milkdown/preset-gfm";
 import type { Node as PMNode } from "@milkdown/prose/model";
+import { Plugin } from "@milkdown/prose/state";
 import type { EditorView } from "@milkdown/prose/view";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
@@ -60,6 +61,12 @@ interface MilkdownViewProps {
    * lo escrito que el listener de Milkdown aún tiene pendiente en su debounce de 200 ms (E-6).
    */
   registerFlush?: (flush: (() => void) | null) => void;
+  /**
+   * Estado «sucio» SÍNCRONO (E-7): `true` en la misma transacción que cambia el documento (sin el
+   * debounce de 200 ms del listener) y `false` cuando lo escrito ya se emitió o el documento volvió
+   * al emitido. Sólo informa de los cambios de estado.
+   */
+  onDirty?: (dirty: boolean) => void;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -71,9 +78,11 @@ interface Running {
   view: EditorView | null;
   /** Documento que ya se emitió (o con el que se creó): lo distinto de él es una edición pendiente. */
   baseDoc: PMNode | null;
+  /** Último estado «sucio» informado por `onDirty`. */
+  reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** El markdown que tiene el editor ahora: el último recibido del padre o emitido por él. */
@@ -82,6 +91,21 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   onChangeRef.current = onChange;
   const onViewRef = useRef(onView);
   onViewRef.current = onView;
+  const onDirtyRef = useRef(onDirty);
+  onDirtyRef.current = onDirty;
+
+  /** Informa de `dirty` sólo si cambió respecto de lo último informado. */
+  function report(target: Running, dirty: boolean) {
+    if (target.reported === dirty) return;
+    target.reported = dirty;
+    onDirtyRef.current?.(dirty);
+  }
+
+  /** Lo emitido cubre ya el documento `doc`: deja de haber nada pendiente. */
+  function settle(target: Running, doc: PMNode) {
+    target.baseDoc = doc;
+    report(target, false);
+  }
 
   /**
    * Emite ya lo que el usuario escribió y el listener aún no entregó (E-6). `@milkdown/plugin-listener`
@@ -93,7 +117,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
     if (!target || !target.view || !target.baseDoc || target.readOnly) return;
     const doc = target.view.state.doc;
     if (doc.eq(target.baseDoc)) return;
-    target.baseDoc = doc;
+    settle(target, doc);
     const markdown = target.editor.ctx.get(serializerCtx)(doc);
     if (markdown === current.current) return;
     current.current = markdown;
@@ -134,7 +158,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         }));
         ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
           // La emisión del listener cubre el documento actual: nada pendiente para `flush`.
-          if (running.current?.editor === editor && running.current.view) running.current.baseDoc = running.current.view.state.doc;
+          if (running.current?.editor === editor && running.current.view) settle(running.current, running.current.view.state.doc);
           if (markdown === current.current) return;
           current.current = markdown;
           onChangeRef.current(markdown);
@@ -145,7 +169,23 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(safeImage)
       .use(gfm)
       .use(history)
-      .use(listener);
+      .use(listener)
+      .config((ctx) => {
+        // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
+        ctx.update(prosePluginsCtx, (plugins) =>
+          plugins.concat(
+            new Plugin({
+              view: () => ({
+                update: (view) => {
+                  const r = running.current;
+                  if (!r || r.editor !== editor || !r.baseDoc || r.readOnly) return;
+                  report(r, !view.state.doc.eq(r.baseDoc));
+                },
+              }),
+            }),
+          ),
+        );
+      });
 
     const ready = editor.create().then(() => {
       // Si mientras se creaba lo reemplazaron, `stop()` ya lo destruirá: no se anuncia.
@@ -159,7 +199,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       view.dom.setAttribute("role", readOnly ? "document" : "textbox");
       onViewRef.current?.(view);
     });
-    running.current = { editor, ready, readOnly, view: null, baseDoc: null };
+    running.current = { editor, ready, readOnly, view: null, baseDoc: null, reported: false };
   }, [value, readOnly, label]);
 
   // El padre puede pedir el vaciado síncrono antes de alternar vista o modo y antes de guardar (E-6).

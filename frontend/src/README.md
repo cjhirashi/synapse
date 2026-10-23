@@ -135,6 +135,15 @@ nota, al borrar la abierta y al navegar dentro de la app (riel, «Bóvedas»…,
 El **cierre de sesión** también avisa: el editor se registra en `useSync().unsavedDrafts`
 mientras está sucio y `requestLogout()` lo consulta antes de cerrar nada (`LogoutDialog`,
 razón `draft`). La navegación a `/login` no se bloquea.
+**Estado «sucio» síncrono y lector único (E-6, E-7):** el listener de Milkdown emite el markdown con un
+debounce de 200 ms y su `destroy` descarta lo pendiente, así que `draft` va con retraso respecto de lo
+que el usuario ve. `MilkdownView` informa «sucio» (`onDirty`) en la misma transacción que cambia el
+documento y expone un vaciado síncrono que serializa y emite YA, sólo si el documento cambió respecto
+del último emitido (abrir sin editar nunca reserializa). `NoteEditor` lo usa a través de un único
+lector, `readDraft()` (vacía y devuelve el markdown vigente): guardar, alternar vista, los diálogos,
+`confirmDiscard`, el cambio de nota, la revisión nueva, el cierre de sesión, `beforeunload` y el
+bloqueo de navegación deciden con él y con `hasUnsaved()`, nunca leyendo `draft` directamente.
+
 Los guardados se **serializan** (E-1): un guardado en vuelo absorbe un doble Ctrl+S o el
 auto-repeat y, si el borrador cambió mientras tanto, se guarda después sobre la revisión nueva
 (nunca dos veces con la misma, que crearía una rama de conflicto idéntica). Los tres diálogos de
