@@ -577,10 +577,10 @@ actualizado: 2026-10-22
   - EXPECT: ≥ 1 y ≥ 1.
 
 ### AF · Enmienda 23 (PLAN-0008 §32) — U-9, F-5
-- [ ] T-159 — U-9: test (rojo, commit propio) tras un "Restaurar" fallido por ruta ocupada el foco vuelve a ese botón; corrección (cubre RF-017, RF-013) [zona: pantalla]
+- [x] T-159 — U-9: test (rojo, commit propio) tras un "Restaurar" fallido por ruta ocupada el foco vuelve a ese botón; corrección (cubre RF-017, RF-013) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-160 — F-5: causa del test intermitente de `VaultWorkspacePage` con carga; plazo único y precarga correcta; criterio 12/12 (cubre RF-003, RF-001) [zona: test]
+- [x] T-160 — F-5: causa del test intermitente de `VaultWorkspacePage` con carga; plazo único y precarga correcta; criterio 12/12 (cubre RF-003, RF-001) [zona: test]
   - CHECK: `cd frontend && for r in 1 2 3; do for i in 1 2 3 4; do (npx vitest run > /tmp/s8/f5-$r-$i.log 2>&1; echo "ronda $r corrida $i exit=$?") & done; wait; done`
   - EXPECT: 12 líneas con `exit=0`.
 
