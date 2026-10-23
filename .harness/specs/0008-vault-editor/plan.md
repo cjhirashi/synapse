@@ -553,3 +553,12 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | T-2 · el foco de `CodeView` (`autoFocus`, Leer → Editar con la vista Código activa) no tiene test propio | Low (cobertura) | T-154 sólo probó la vista Visual | Test: en vista Código, pasar a lectura, "Editar" y afirmar `.cm-content` enfocado (y que un mutante sin `instance.focus()` lo hace fallar). |
+
+## 30. Enmienda 21 (2026-10-23) — Converge corrida 2 sobre 7c70abe
+> Backend (lápida de bóveda + nota viva en el mismo lote), editor (2 MiB + tecleo, conflicto
+> editado), sync cliente (sesión caducada a mitad de `repush`, 413 real) y UI (mutante de T-155,
+> contraste oscuro, textos): limpios.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-7 · con decenas de bóvedas el riel crece con la página y se pierde al bajar | Low (UX; coherente con VU-4) | `.vault-rail` sin altura acotada ni scroll propio | Riel fijo en la vista (`position: sticky`, altura del viewport, scroll propio) con foco visible al tabular; captura con 40 bóvedas. |

@@ -563,10 +563,15 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`; con el mutante, falla (salida pegada en history.md).
 
+### AD · Enmienda 21 (PLAN-0008 §30) — U-7
+- [ ] T-156 — U-7: riel con altura del viewport y scroll propio; test de estilo/estructura y captura real con 40 bóvedas (cubre RF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx` + captura
+  - EXPECT: `passed`; en la captura el riel no se alarga con la página y la bóveda activa es visible.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-030, T-031, T-046, T-047, T-057, T-058, T-063…T-066, T-094, T-124, T-138, T-139, T-143, T-000, T-073, T-108, T-113, T-126, T-145 | noteTree.test, resources.test, VaultRail.test, VaultWorkspacePage.test, App.test, AppLayout.test, VaultRail.test (nombre accesible) | Pass |
+| RF-001 | T-030, T-031, T-046, T-047, T-057, T-058, T-063…T-066, T-094, T-124, T-138, T-139, T-143, T-000, T-073, T-108, T-113, T-126, T-145, T-156 | noteTree.test, resources.test, VaultRail.test, VaultWorkspacePage.test, App.test, AppLayout.test, VaultRail.test (nombre accesible) | Pass |
 | RF-002 | T-063, T-064, T-094, T-136, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test, VaultWorkspacePage.test (404 con borrador) | Pass |
 | RF-003 | T-034, T-035, T-059, T-060, T-075, T-094, T-127, T-000, T-073, T-108, T-113, T-126, T-154 | noteStore.test, NoteSidebar.test, notes.integration | Pass |
 | RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079, T-096, T-098, T-112, T-000, T-023, T-073, T-094, T-097, T-108, T-111, T-113, T-119, T-126, T-149, T-150 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pass |
