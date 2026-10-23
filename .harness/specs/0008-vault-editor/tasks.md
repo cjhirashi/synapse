@@ -462,7 +462,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo (foco en `body`; doble `remove`) → `passed`.
 
 ### P · Enmienda 7 (PLAN-0008 §16) — H1
-- [ ] T-132 — Test (rojo, commit propio) y corrección H1: borrar la única nota de una carpeta desplegada → foco en la fila vecina superviviente o "Nueva nota", nunca `body`; sin petición de foco pendiente (una nota nueva en esa carpeta no roba el foco) (cubre RF-019, RF-010) [zona: pantalla]
+- [x] T-132 — Test (rojo, commit propio) y corrección H1: borrar la única nota de una carpeta desplegada → foco en la fila vecina superviviente o "Nueva nota", nunca `body`; sin petición de foco pendiente (una nota nueva en esa carpeta no roba el foco) (cubre RF-019, RF-010) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx && npx vitest run && npm run typecheck`
   - EXPECT: rojo (`document.activeElement === body`) → `passed`.
 
