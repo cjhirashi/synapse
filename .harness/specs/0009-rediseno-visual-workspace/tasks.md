@@ -91,7 +91,7 @@ actualizado: 2026-10-23
 - [x] T-015 — `vaults/vaultIcon.ts` (catálogo, paleta, `parseIcon`, `formatIcon`, `derivedColor`, `initials` movida desde `VaultRail.tsx` y re-exportada) (cubre RF-001) [zona: frontend] [P-1]
   - CHECK: `cd frontend && npx vitest run src/vaults/vaultIcon.test.ts src/notes/VaultRail.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-016 — Test (rojo) `vaults/VaultChip.test.tsx`: ícono del set con `data-icon`, iniciales si `null`/`initials`/glifo desconocido, variable de color elegida o derivada en `style` (sólo `var(--clave)` de `PALETTE`; un color desconocido nunca llega al `style`) (cubre RF-001) [zona: test]
+- [x] T-016 — Test (rojo) `vaults/VaultChip.test.tsx`: ícono del set con `data-icon`, iniciales si `null`/`initials`/glifo desconocido, variable de color elegida o derivada en `style` (sólo `var(--clave)` de `PALETTE`; un color desconocido nunca llega al `style`) (cubre RF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/vaults/VaultChip.test.tsx`
   - EXPECT: falla al importar `./VaultChip`.
 - [ ] T-017 — `vaults/VaultChip.tsx` + `vaults/VaultChip.css` (34 px, círculo → `--radius-md` en *hover*/activo, tinte `color-mix` 18 %, aro 2 px, glifo `--text-primary` 18 px / iniciales 12 px 700) (cubre RF-001, RF-006) [zona: frontend] [P-2, P-12]
