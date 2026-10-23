@@ -4,6 +4,8 @@ La base de cada petición sale sólo del token: B no ve notas ni reservas de A p
 una nota de B no puede colgarse de una bóveda de A, y las reservas `note-path:*` no se pueden
 empujar. La base de A queda exactamente igual.
 """
+import hashlib
+
 import httpx
 
 from app.core.config import settings
@@ -59,7 +61,8 @@ def test_rf_004_another_users_notes_and_reservations_are_invisible_and_untouchab
     assert push(guest, [b_vault, b_note]).json() == []
     assert _snapshot(a_db) == before
     assert set(stored_docs(b_db)) == {
-        b_vault["_id"], b_note["_id"], f"note-path:{b_note['vault_id']}:uno.md",
+        b_vault["_id"], b_note["_id"],
+        f"note-path:{b_note['vault_id']}:{hashlib.sha256(b'uno.md').hexdigest()}",
         "vault-name:bóveda de b",
     }
     # Y A sigue sin ver nada de B.

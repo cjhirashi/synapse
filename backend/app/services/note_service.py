@@ -3,9 +3,11 @@
 Las notas no tienen API REST (P-1): se escriben en la réplica del cliente y llegan por el
 push de `/sync`. Este servicio sólo decide la unicidad de `path` por bóveda, con el mismo
 mecanismo que los nombres de bóveda (`reservations.py`): el documento
-`note-path:{vault_id}:{path_key}` (`{_id, type: "note-path", note_id, reserved_at}`) apunta a
+`note-path:{vault_id}:{sha256(path_key)}` (`{_id, type: "note-path", note_id, path_key,
+reserved_at}`) apunta a
 la nota que usa la ruta. Es un documento sólo del servidor: nunca viaja por el canal.
 """
+import hashlib
 from collections.abc import Callable
 
 from app.core.note_rules import path_key
@@ -20,9 +22,14 @@ class NotePathTaken(Exception):
 
 
 def _reservation_id(note_id: str, path: str) -> str:
-    """`note-path:{vault_id}:{path_key}`; el `vault_id` es el primer UUID del id de la nota."""
+    """`note-path:{vault_id}:{sha256(path_key)}`; el `vault_id` es el primer UUID del id de la nota.
+
+    La clave NFKC puede ser hasta 18 veces más larga que la ruta (`"ﷺ" * 300` → 5 400
+    caracteres) y CouchDB rechaza ids de ese tamaño; el hash es determinista y de largo fijo.
+    La clave se guarda en el documento para diagnóstico.
+    """
     vault_id = note_id.split(":")[1]
-    return f"note-path:{vault_id}:{path_key(path)}"
+    return f"note-path:{vault_id}:{hashlib.sha256(path_key(path).encode()).hexdigest()}"
 
 
 class NoteService:
@@ -59,7 +66,8 @@ class NoteService:
         try:
             self._reservations.reserve(
                 _reservation_id(note_id, path), note_id,
-                lambda reservation: self._holder(reservation, path))
+                lambda reservation: self._holder(reservation, path),
+                extra={"path_key": path_key(path)})
         except ReservationTaken as taken:
             raise NotePathTaken(str(taken)) from None
 

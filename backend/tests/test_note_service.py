@@ -56,7 +56,7 @@ def _note(note_id: str, path: str, deleted_at: str | None = None) -> dict:
 
 
 def _reservation_id(path: str, vault_id: str = VAULT) -> str:
-    return f"note-path:{vault_id}:{path_key(path)}"
+    return f"note-path:{vault_id}:{hashlib.sha256(path_key(path).encode()).hexdigest()}"
 
 
 def _bulk_branch(db: str, doc: dict, rev_hash: str) -> None:
@@ -73,7 +73,8 @@ def test_rf_013_reserve_path_writes_the_reservation_of_the_vault_and_normalized_
     service.reserve_path(note, "Carpeta/Nota.md")
     stored = repo.get(db, _reservation_id("carpeta/nota.md"))
     assert (stored["type"], stored["note_id"]) == ("note-path", note)
-    assert stored["_id"] == f"note-path:{VAULT}:carpeta/nota.md"
+    assert stored["_id"] == _reservation_id("Carpeta/Nota.md")
+    assert stored["path_key"] == "carpeta/nota.md"
 
 
 def test_rf_013_a_path_inside_the_lease_is_taken(service):

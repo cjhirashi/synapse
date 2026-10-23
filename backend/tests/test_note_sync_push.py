@@ -4,6 +4,7 @@ RF-017; PLAN-0008 §2.3).
 Zona de coordinación: sin CouchDB ni HTTP. Reutiliza el doble `InMemoryCouch` de 0005 (árbol de
 revisiones; `VaultPort` y `ReplicationPort` sobre los mismos datos) y sus ayudas de bóveda.
 """
+import hashlib
 import uuid
 
 import pytest
@@ -306,7 +307,8 @@ async def test_rf_014_tombstone_of_a_note_of_an_active_vault_is_accepted(push, c
 # --- Reservas de ruta (RF-010, RF-011, RF-013, RF-017) ---
 
 def _reservation(couch, path: str, vault_id: str = VAULT_ID) -> dict | None:
-    return couch.get(DB, f"note-path:{vault_id}:{path_key(path)}")
+    digest = hashlib.sha256(path_key(path).encode()).hexdigest()
+    return couch.get(DB, f"note-path:{vault_id}:{digest}")
 
 
 async def test_rf_013_new_note_reserves_its_path_in_its_vault(push, couch, vault):

@@ -5,6 +5,7 @@ Reutiliza los helpers de `test_sync_api.py` (peticiones del replicador, document
 `UntouchablePort`). Aquí se comprueba lo que queda en CouchDB y lo que ve el cliente.
 """
 import asyncio
+import hashlib
 import json
 import uuid
 
@@ -64,7 +65,8 @@ def test_rf_006_a_pushed_note_is_stored_and_listed_by_changes(vault, ready_admin
 def test_rf_006_the_note_reservation_exists_but_never_travels(vault, ready_admin):
     note = note_doc(vault["id"], path="Carpeta/Nota.md")
     push(ready_admin, [note])
-    reservation = f"note-path:{vault['id']}:carpeta/nota.md"
+    digest = hashlib.sha256("carpeta/nota.md".encode()).hexdigest()
+    reservation = f"note-path:{vault['id']}:{digest}"
     assert reservation in stored_docs(vault["db"])  # el servidor la tiene...
     # ...y ninguna ruta del canal la nombra ni la deja pedir.
     changes = ready_admin.get("/sync/db/_changes", params={"include_docs": "true"})

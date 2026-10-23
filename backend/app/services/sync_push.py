@@ -61,7 +61,9 @@ _TOMBSTONE_KEYS = {"_id", "_rev", "_revisions", "_deleted"}
 # CouchDB, PouchDB y el cliente determinista (`conflicts.ts`). Otro hash CouchDB lo guardaría
 # y fallaría más tarde con un error del almacén, no del cliente (enmienda 1, VC-5).
 _REV_HASH = re.compile(r"[0-9a-f]+")
-_REV = re.compile(r"([1-9][0-9]*)-([0-9a-f]+)")
+# La generación se acota (16 dígitos): `int()` de un texto de más de 4 300 dígitos lanza
+# `ValueError` y daría un 500.
+_REV = re.compile(r"([1-9][0-9]{0,15})-([0-9a-f]+)")
 
 # Reglas de REST (`core/schemas.py`) en modo estricto: sin conversión de tipos (un número no
 # pasa por texto). Lo que sí normalizan (espacios, minúsculas, repetidos) se compara aparte.
@@ -361,7 +363,7 @@ class SyncPushService:
         await to_thread.run_sync(self._vaults.release, name, doc_id.removeprefix(VAULT_PREFIX))
 
     async def _reserve_note_path(self, doc: dict) -> None:
-        """Paso 7 de una nota (RF-013, RF-017): la reserva `note-path:{vault_id}:{clave}`."""
+        """Paso 7 de una nota (RF-013, RF-017): la reserva `note-path:{vault_id}:{sha256(clave)}`."""
         try:
             await to_thread.run_sync(self._notes.reserve_path, doc["_id"], doc["path"])
         except NotePathTaken:

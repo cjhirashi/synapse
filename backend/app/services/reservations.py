@@ -44,7 +44,8 @@ class Reservations:
         age = parse_timestamp(self._clock()) - parse_timestamp(reservation["reserved_at"])
         return age < RESERVATION_LEASE
 
-    def reserve(self, reservation_id: str, owner: str, holds: Callable[[dict], bool]) -> None:
+    def reserve(self, reservation_id: str, owner: str, holds: Callable[[dict], bool],
+                extra: dict | None = None) -> None:
         """Escribe la reserva `reservation_id` para `owner` o lanza `ReservationTaken`.
 
         La reserva siempre se escribe, también cuando ya es de este dueño (p. ej. al
@@ -52,12 +53,13 @@ class Reservations:
         que la leyó antes (PLAN-0003 §15, VA-1). Concurrencia optimista: si la escritura
         choca, se vuelve a leer y a decidir con el estado nuevo. Cada vuelta exige que otra
         petición haya escrito la reserva entre medias, así que el bucle no gira solo.
+        `extra` son campos adicionales del documento (p. ej. la clave de la que sale el id).
         """
         rev = None  # primer intento sin leer: crear la reserva (el caso común)
         while True:
             reservation = {
                 "_id": reservation_id, "type": self._kind, self._owner_field: owner,
-                "reserved_at": self._clock(),
+                "reserved_at": self._clock(), **(extra or {}),
             }
             if rev is not None:
                 reservation["_rev"] = rev
