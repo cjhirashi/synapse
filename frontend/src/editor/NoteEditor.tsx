@@ -52,6 +52,11 @@ interface NoteEditorProps {
   onCancelOpen?: (openId: string) => void;
   /** Vistas inyectables (las pruebas del envoltorio usan editores falsos). */
   views?: NoteEditorViews;
+  /**
+   * Avisa del borrador sin guardar (`null` cuando no hay cambios). El padre lo conserva por si la
+   * bóveda desaparece (papelera por sync) y este editor se desmonta (E-2).
+   */
+  onDirtyDraft?: (draft: string | null) => void;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -69,7 +74,7 @@ function title(path: string): string {
 }
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -101,6 +106,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     ({ currentLocation, nextLocation }) =>
       dirty && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login",
   );
+
+  // El padre conoce siempre el borrador sin guardar (no se emite `null` al desmontar: ahí es justo
+  // cuando hace falta conservarlo).
+  useEffect(() => {
+    onDirtyDraft?.(dirty ? draft : null);
+  }, [dirty, draft, onDirtyDraft]);
 
   // Mientras hay borrador sucio, el cierre de sesión lo sabe y avisa antes de cerrar nada (N-1).
   useEffect(() => (dirty ? unsavedDrafts.register() : undefined), [dirty, unsavedDrafts]);

@@ -31,6 +31,11 @@ export default function VaultWorkspacePage() {
   const { id = "" } = useParams();
   const { vaults, dataVersion } = useSync();
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  /** Borrador sin guardar de la nota abierta: sobrevive al 404 si la bóveda pasa a la papelera (E-2). */
+  const [salvaged, setSalvaged] = useState<string | null>(null);
+
+  // Otra bóveda no hereda el borrador de la anterior.
+  useEffect(() => setSalvaged(null), [id]);
 
   useEffect(() => {
     if (!CANONICAL_UUID.test(id)) {
@@ -53,12 +58,13 @@ export default function VaultWorkspacePage() {
     return (
       <section>
         <p role="alert">Esta bóveda no existe o está en la papelera.</p>
+        {salvaged !== null && <SalvagedDraft text={salvaged} />}
         <Link to="/vaults">Volver a las bóvedas</Link>
       </section>
     );
   }
   // `key`: otra bóveda es otro espacio de trabajo, sin nota abierta ni borradores heredados.
-  return <Workspace key={load.vault.id} vault={load.vault} />;
+  return <Workspace key={load.vault.id} vault={load.vault} onDirtyDraft={setSalvaged} />;
 }
 
 /**
@@ -70,7 +76,29 @@ function requestedNote(state: unknown, vaultId: string): string | null {
   return typeof noteId === "string" && noteId.startsWith(`${NOTE_ID_PREFIX}${vaultId}:`) ? noteId : null;
 }
 
-function Workspace({ vault }: { vault: Vault }) {
+/**
+ * El borrador que quedaba sin guardar cuando la bóveda se fue a la papelera: sólo lectura (RF-014,
+ * no se edita ni se guarda) y con «Copiar texto» para que no se pierda en silencio (E-2).
+ */
+function SalvagedDraft({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+  }
+  return (
+    <div className="note-editor-notice">
+      <p>Tenías cambios sin guardar en una nota de esta bóveda. Cópialos antes de salir:</p>
+      <textarea aria-label="Borrador sin guardar" readOnly rows={8} value={text} />
+      <button type="button" onClick={() => void copy()}>
+        Copiar texto
+      </button>
+      {copied && <span role="status">Copiado</span>}
+    </div>
+  );
+}
+
+function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft: string | null) => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
@@ -117,7 +145,7 @@ function Workspace({ vault }: { vault: Vault }) {
             <p>Abre o crea una nota para empezar.</p>
           ) : (
             <Suspense fallback={<p>Cargando el editor…</p>}>
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} />
             </Suspense>
           )}
         </div>
