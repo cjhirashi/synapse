@@ -91,9 +91,22 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   /** Nota a la que se refiere la barra de acciones: la última que tomó el foco, o la abierta. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const reload = useCallback(async () => {
-    setItems(await notes.list(vaultId));
-  }, [notes, vaultId]);
+  /**
+   * Relee los resúmenes. `after` decide, SOBRE la lista recién leída, a dónde va el foco (y qué
+   * carpetas desplegar): se aplica en el mismo bloque síncrono que `setItems`, así el destino se
+   * evalúa contra el árbol resultante y nunca contra uno obsoleto (C-5, H1).
+   */
+  const reload = useCallback(
+    async (after?: (list: NoteSummary[]) => { focus: string; expand?: string[] }) => {
+      const list = await notes.list(vaultId);
+      setItems(list);
+      if (!after) return;
+      const { focus, expand } = after(list);
+      if (expand?.length) setExpanded((prev) => new Set([...prev, ...expand]));
+      setFocusRequest(focus);
+    },
+    [notes, vaultId],
+  );
 
   useEffect(() => {
     let alive = true;
@@ -124,15 +137,16 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   const tabbable = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
   const treeRef = useRef<HTMLUListElement>(null);
 
-  // Atiende la petición de foco cuando el destino ya está en pantalla (tras releer el árbol).
+  // Atiende la petición de foco (llega junto con el árbol que ya la contiene). Si la fila pedida
+  // no existe, el foco va a «Nueva nota» y la petición se descarta: nunca queda pendiente.
   useEffect(() => {
-    if (focusRequest === null) return;
-    if (focusRequest === NEW_NOTE) newNoteRef.current?.focus();
-    else if (rows.some((row) => row.key === focusRequest)) focusRow(focusRequest);
-    else return; // aún no está: se reintenta al cambiar las filas
+    // Con una operación en curso «Nueva nota» está deshabilitado y no admite foco: se espera a que termine.
+    if (focusRequest === null || busy) return;
+    if (focusRequest !== NEW_NOTE && rows.some((row) => row.key === focusRequest)) focusRow(focusRequest);
+    else newNoteRef.current?.focus();
     setFocusRequest(null);
     // `focusRow` sólo usa refs y setState: no hace falta como dependencia.
-  }, [focusRequest, rows]);
+  }, [focusRequest, rows, busy]);
 
   /** Mueve el foco real a la fila `key` y la hace la tabulable. */
   function focusRow(key: string) {
@@ -234,20 +248,20 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   async function rename(event: FormEvent) {
     event.preventDefault();
     if (renaming === null) return;
-    let renamed: string | null = null;
+    const id = renaming.note.id;
     const ok = await run(async () => {
-      renamed = (await notes.rename(renaming.note.id, renaming.path, renaming.note.rev)).path;
-      await reload();
+      await notes.rename(id, renaming.path, renaming.note.rev);
+      // La nota pudo moverse a una carpeta plegada: se despliega para que su fila exista y reciba el foco.
+      await reload((list) => {
+        const moved = list.find((item) => item.id === id);
+        return { focus: moved ? noteKey(id) : NEW_NOTE, expand: moved ? ancestors(moved.path) : [] };
+      });
     });
-    if (!ok) return;
-    setRenaming(null);
-    // La nota pudo moverse a una carpeta plegada: se despliega para que su fila exista y reciba el foco.
-    if (renamed !== null) setExpanded((prev) => new Set([...prev, ...ancestors(renamed as string)]));
-    setFocusRequest(noteKey(renaming.note.id));
+    if (ok) setRenaming(null);
   }
 
   function cancelRename() {
-    if (renaming) setFocusRequest(noteKey(renaming.note.id));
+    if (renaming) setFocusRequest(noteKey(renaming.note.id)); // la nota sigue en su sitio: la fila existe
     setRenaming(null);
   }
 
@@ -257,17 +271,21 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     try {
       // Sólo la nota abierta tiene un borrador que perder.
       if (note.id === openId && confirmDelete && !(await confirmDelete())) return;
-      // Foco a la fila vecina (siguiente; si no, anterior; si no, «Nueva nota»), calculada antes de que desaparezca.
       const index = rows.findIndex((row) => row.key === noteKey(note.id));
-      const neighbour = rows[index + 1]?.key ?? rows[index - 1]?.key ?? NEW_NOTE;
       inFlight.current = false; // `run` retoma la guarda mientras escribe
       const ok = await run(async () => {
         await notes.softDelete(note.id, note.rev);
-        await reload();
+        // Foco a la fila vecina (siguiente; si no, anterior; si no, «Nueva nota») calculada sobre el
+        // árbol RESULTANTE: sin la nota y sin las carpetas que se vacían con ella (H1).
+        await reload((list) => {
+          const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
+          const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
+          const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
+          return { focus: next?.key ?? previous?.key ?? NEW_NOTE };
+        });
       });
       if (ok) {
         setSelectedId((current) => (current === note.id ? null : current));
-        setFocusRequest(neighbour);
         onDeleted(note.id);
       }
     } finally {
