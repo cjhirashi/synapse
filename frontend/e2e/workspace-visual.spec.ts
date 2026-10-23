@@ -326,3 +326,32 @@ for (const theme of THEMES) {
     await context.close();
   });
 }
+
+// V-7 · selector de ícono en el formulario de bóveda (RF-011, RF-012)
+for (const theme of THEMES) {
+  test(`V-7 selector de ícono y color, ${theme} (RF-011, RF-012)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme, icons: false });
+    // Marca de documento: si alguna navegación recargara la página, desaparecería.
+    await page.evaluate(() => ((window as unknown as { __document: boolean }).__document = true));
+
+    // Desde el propio SPA: Bóvedas → Editar (la "configuración" de la bóveda).
+    await page.getByRole("navigation", { name: "Principal" }).getByRole("link", { name: "Bóvedas" }).click();
+    const target = seeded.vaults[1];
+    await page.getByRole("listitem", { name: target.name }).getByRole("link", { name: "Editar" }).click();
+
+    const icons = page.getByRole("radiogroup", { name: "Ícono" });
+    const colors = page.getByRole("radiogroup", { name: "Color" });
+    await expect(icons.getByRole("radio")).toHaveCount(25);
+    await expect(colors.getByRole("radio")).toHaveCount(6);
+
+    await icons.getByRole("radio", { name: "Estrella" }).click();
+    await colors.getByRole("radio", { name: "Verde" }).click();
+    await shot(page, `picker-${theme}`);
+    await page.getByRole("button", { name: "Guardar cambios" }).click();
+
+    // El chip del riel cambia sin recargar el documento.
+    await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link", { name: target.name }).locator('svg[data-icon="star"]')).toBeVisible();
+    expect(await page.evaluate(() => (window as unknown as { __document?: boolean }).__document), "sin navegación de documento").toBe(true);
+    await context.close();
+  });
+}

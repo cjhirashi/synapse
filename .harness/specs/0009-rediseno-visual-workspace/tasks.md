@@ -74,7 +74,7 @@ actualizado: 2026-10-23
 - [x] T-010 — Test (rojo) V-6, V-8, V-9, V-10: 40 bóvedas con scroll propio del riel y el documento sin scroll; `data-theme="dark"` sin `localStorage`; colores computados ∈ tema activo de `tokens.css`; 390 px sin scroll horizontal (cubre RF-009, RF-006a, RF-006) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-6|V-8|V-9|V-10"`
   - EXPECT: falla V-8 (`data-theme` = resultado de "sistema", `light` en el contenedor) y V-6 (el documento hace scroll con la cabecera); V-9/V-10 pueden pasar ya (se anota cuáles).
-- [ ] T-011 — Test (rojo) V-7: selector de ícono en el formulario de bóveda (25 opciones de ícono, 6 de color) y, tras guardar, el chip del riel cambia sin navegación de documento (cubre RF-011, RF-012) [zona: test]
+- [x] T-011 — Test (rojo) V-7: selector de ícono en el formulario de bóveda (25 opciones de ícono, 6 de color) y, tras guardar, el chip del riel cambia sin navegación de documento (cubre RF-011, RF-012) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-7"`
   - EXPECT: falla: no existe el `radiogroup` "Ícono".
 
