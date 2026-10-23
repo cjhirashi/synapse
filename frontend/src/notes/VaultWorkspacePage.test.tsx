@@ -4,7 +4,7 @@ import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { DataMemoryRouter } from "../test-utils/router";
-import { afterEach, beforeAll, expect, test } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
@@ -163,14 +163,14 @@ test("RF-015: un id de nota de otra bóveda en el estado de navegación se ignor
 async function openDirtyNote() {
   const { value, vault } = await setup();
   const note = await value.notes.create(vault.id, "Hola");
-  render(tree(value, `/vaults/${vault.id}`));
+  const { rerender } = render(tree(value, `/vaults/${vault.id}`));
   await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
   await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
   await userEvent.click(screen.getByRole("button", { name: "Código" }));
   const view = EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!;
   act(() => view.dispatch({ changes: { from: 0, insert: "borrador" } }));
   await screen.findByText("Cambios sin guardar");
-  return { value, note };
+  return { value, note, vault, rerender };
 }
 
 // VF-2: el borrado de la nota abierta con borrador sucio pide confirmación antes de descartarlo.
@@ -200,4 +200,20 @@ test("RF-010: Supr en el treeitem de la nota abierta con cambios sin guardar pid
   const dialog = await screen.findByRole("alertdialog");
   await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
   expect(await value.notes.list((await value.vaults.list())[0].id, { deleted: true })).toEqual([]);
+});
+
+// E-2 (PLAN-0008 §17): la bóveda llega a la papelera por sync con borrador sucio → el 404 conserva el borrador.
+test("RF-014, RF-002: bóveda a la papelera con borrador sucio → 404 que muestra el borrador (sólo lectura) y «Copiar texto»", async () => {
+  const { value, vault, rerender } = await openDirtyNote();
+  const current = await value.vaults.get(vault.id);
+  await value.vaults.softDelete(vault.id, current.rev);
+  rerender(tree({ ...value, dataVersion: 1 }, `/vaults/${vault.id}`));
+  expect(await screen.findByRole("alert")).toHaveTextContent("no existe");
+  const draft = screen.getByRole("textbox", { name: "Borrador sin guardar" });
+  expect(draft).toHaveValue("borrador");
+  expect(draft).toHaveAttribute("readonly");
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  await userEvent.click(screen.getByRole("button", { name: "Copiar texto" }));
+  expect(writeText).toHaveBeenCalledWith("borrador");
 });
