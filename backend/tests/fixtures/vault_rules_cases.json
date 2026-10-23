@@ -633,6 +633,21 @@
    "field": "icon",
    "input": "javascript:alert(1)",
    "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "folder\n",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "ａ",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "é",
+   "valid": false
   }
  ],
  "name_keys": [
