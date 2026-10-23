@@ -1,5 +1,5 @@
 // Sidebar con el árbol de notas de la bóveda (SPEC-0008 RF-003, RF-010…RF-013, RF-019).
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
@@ -264,4 +264,51 @@ test("RF-010: Supr en un treeitem de nota la manda a la papelera y avisa al padr
   await user.keyboard("{Delete}");
   await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(uno.id));
   expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull();
+});
+
+// C-5, C-6 (PLAN-0008 §15): el foco nunca cae a `body` y los atajos comparten la guarda `busy`.
+test("RF-019, RF-010: tras borrar con Supr el foco va a la fila siguiente", async () => {
+  const { user } = await setup(["A.md", "B.md", "C.md"]);
+  (await screen.findByRole("treeitem", { name: "B" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "C" })).toHaveFocus());
+});
+
+test("RF-019, RF-010: si no hay siguiente, el foco va a la fila anterior", async () => {
+  const { user } = await setup(["A.md", "B.md"]);
+  (await screen.findByRole("treeitem", { name: "B" })).focus();
+  await user.keyboard("{Delete}");
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "A" })).toHaveFocus());
+});
+
+test("RF-019, RF-010: si no queda ninguna fila, el foco va a «Nueva nota» (botón Borrar)", async () => {
+  const { user } = await setup(["Sola.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Sola" }));
+  await user.click(screen.getByRole("button", { name: "Borrar «Sola»" }));
+  await vi.waitFor(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+});
+
+test("RF-019, RF-011: tras guardar o cancelar el renombrado el foco vuelve al treeitem de la nota", async () => {
+  const { user } = await setup(["Uno.md"]);
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  await user.click(screen.getByRole("button", { name: "Cancelar" }));
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
+  await user.keyboard("{F2}");
+  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  await user.clear(input);
+  await user.type(input, "Dos.md");
+  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
+  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Dos" })).toHaveFocus());
+});
+
+test("RF-010: dos Supr seguidos sobre la misma nota sólo la borran una vez (guarda busy)", async () => {
+  const { value } = await setup(["Uno.md", "Dos.md"]);
+  const softDelete = vi.spyOn(value.notes, "softDelete");
+  const row = await screen.findByRole("treeitem", { name: "Uno" });
+  row.focus();
+  fireEvent.keyDown(row, { key: "Delete" });
+  fireEvent.keyDown(row, { key: "Delete" });
+  await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
+  expect(softDelete).toHaveBeenCalledTimes(1);
 });
