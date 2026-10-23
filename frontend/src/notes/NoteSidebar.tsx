@@ -7,6 +7,11 @@
  * prefijos de `path` (`buildTree`) y empiezan plegadas; la que contiene la nota abierta se
  * despliega sola. Un renombrado edita la ruta completa: así también se mueve de carpeta.
  *
+ * Estructura visual (SPEC-0009 RF-003, RF-004): el formulario «Nueva nota» es un bloque propio sobre
+ * el panel del árbol (`.note-tree-panel`); la barra de acciones y el renombrado van **después** del
+ * panel y la papelera es el pie. Así enfocar una nota no desplaza ninguna fila: antes la barra de
+ * acciones aparecía sobre el árbol, la fila se movía bajo el cursor y el clic no llegaba a abrirla.
+ *
  * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y el árbol
  * sólo contiene `treeitem`s (C-4). "Renombrar"/"Borrar" viven en una barra (`toolbar`) fuera del
  * árbol, siempre visible para la nota seleccionada (C-1, C-2); F2 y Supr las atajan desde el
@@ -15,8 +20,8 @@
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen, Plus, Trash2 } from "lucide-react";
 import { useSync } from "../sync/useSync";
 import { noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
@@ -293,7 +298,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     }
   }
 
-  function renderNodes(nodes: TreeNode<NoteSummary>[]) {
+  /** `depth`: nivel de carpetas; la sangría de cada fila sale de él (`--depth`, ver notes.css). */
+  function renderNodes(nodes: TreeNode<NoteSummary>[], depth = 0) {
+    const indent = { "--depth": depth } as CSSProperties;
     return nodes.map((node) => {
       if (node.kind === "folder") {
         const open = expanded.has(node.path);
@@ -307,16 +314,22 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
               onFocus={() => setFocusKey(folderKey(node.path))}
               className="note-tree-row note-tree-folder"
+              style={indent}
               onClick={() => toggle(node.path)}
             >
-              {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+              {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+              {open ? (
+                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
+              ) : (
+                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" />
+              )}
               <span className="note-tree-name" title={node.name}>
                 {node.name}
               </span>
             </button>
             {open && (
               <ul role="group" className="note-tree-group">
-                {renderNodes(node.children)}
+                {renderNodes(node.children, depth + 1)}
               </ul>
             )}
           </li>
@@ -336,9 +349,11 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               setFocusKey(noteKey(note.id));
               setSelectedId(note.id);
             }}
-            className="note-tree-row"
+            className="note-tree-row note-tree-note"
+            style={indent}
             onClick={() => onOpen(note.id)}
           >
+            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
             <span className="note-tree-name" title={node.name}>
               {node.name}
             </span>
@@ -359,10 +374,22 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           <input value={title} onChange={(event) => setTitle(event.target.value)} />
         </label>
         <button ref={newNoteRef} type="submit" disabled={busy}>
+          <Plus size={14} aria-hidden="true" />
           Nueva nota
         </button>
       </form>
       {error && <p role="alert">{error}</p>}
+      <div className="note-tree-panel">
+        {items === null ? (
+          <p>Cargando…</p>
+        ) : items.length === 0 ? (
+          <p>Esta bóveda aún no tiene notas.</p>
+        ) : (
+          <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
+            {renderNodes(tree)}
+          </ul>
+        )}
+      </div>
       {selected && (
         <div role="toolbar" aria-label="Acciones de la nota" className="note-actions">
           <span className="note-actions-name" title={selected.path}>
@@ -400,18 +427,12 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           </button>
         </form>
       )}
-      {items === null ? (
-        <p>Cargando…</p>
-      ) : items.length === 0 ? (
-        <p>Esta bóveda aún no tiene notas.</p>
-      ) : (
-        <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
-          {renderNodes(tree)}
-        </ul>
-      )}
-      <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>
-        Papelera de la bóveda
-      </button>
+      <div className="note-sidebar-footer">
+        <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>
+          <Trash2 size={14} aria-hidden="true" />
+          Papelera de la bóveda
+        </button>
+      </div>
     </aside>
   );
 }

@@ -118,7 +118,7 @@ actualizado: 2026-10-23
 - [x] T-024 — Test (rojo) en `notes/NoteSidebar.test.tsx`: formulario en `.note-sidebar-new` fuera de `.note-tree-panel`; el `role="tree"` dentro del panel; cada carpeta con `svg[data-icon="folder"|"folder-open"]` según esté plegada; cada nota con `svg[data-icon="file-text"]`; papelera como pie; la fila larga conserva el nombre completo en `title` (cubre RF-003, RF-004, RF-010) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: fallan las pruebas nuevas; las existentes `passed`.
-- [ ] T-025 — `notes/NoteSidebar.tsx`: panel del árbol, íconos de carpeta/nota, formulario como bloque, pie de papelera (mismos roles y nombres) (cubre RF-003, RF-004) [zona: frontend]
+- [x] T-025 — `notes/NoteSidebar.tsx`: panel del árbol, íconos de carpeta/nota, formulario como bloque, pie de papelera (mismos roles y nombres) (cubre RF-003, RF-004) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/notes && npm run typecheck`
   - EXPECT: todos `passed` (incluida toda la batería de 0008 de `notes/`).
 - [ ] T-026 — `notes/notes.css` de la barra lateral: 240 px, cabecera 51 px, formulario `--bg-tertiary`, panel `--bg-secondary`, filas 27/25 px a 12 px, sangría 24 px por nivel (+20 px la nota), seleccionada `--accent-soft` + barra 3 px + `--text-primary`, elipsis (cubre RF-003, RF-004, RF-010) [zona: frontend] [P-3]
