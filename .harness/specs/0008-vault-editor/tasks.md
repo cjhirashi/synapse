@@ -398,24 +398,28 @@ actualizado: 2026-10-22
 
 ### L · Enmienda 3 (PLAN-0008 §12) — hallazgos VB-1…VB-3
 > Test rojo en commit propio antes de cada corrección.
-- [ ] T-114 — Test (rojo) VB-1: casos `NaN`, `Infinity`, `-Infinity`, `1e999` (anidados también) en `note_rules_cases.json` + `test_note_rules.py` + `noteRules.test.ts`; test de API: push con esos `frontmatter` → rechazo `validation-error:frontmatter`, nunca 500 (cubre RF-005) [zona: test]
+- [x] T-114 — Test (rojo) VB-1: casos `NaN`, `Infinity`, `-Infinity`, `1e999` (anidados también) en `note_rules_cases.json` + `test_note_rules.py` + `noteRules.test.ts`; test de API: push con esos `frontmatter` → rechazo `validation-error:frontmatter`, nunca 500 (cubre RF-005) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_rules.py tests/test_note_sync_api.py -k "frontmatter" ; cd ../frontend && npx vitest run src/notes/noteRules.test.ts`
   - EXPECT: fallan los casos nuevos (aceptados por la regla; 500 en la API).
-- [ ] T-115 — `check_frontmatter` y `noteRules.ts` rechazan no finitos (cubre RF-005) [zona: núcleo]
+- [x] T-115 — `check_frontmatter` y `noteRules.ts` rechazan no finitos (cubre RF-005) [zona: núcleo]
   - CHECK: mismo de T-114
   - EXPECT: `passed`.
-- [ ] T-116 — Test (rojo) VB-2: `POST /sync/db/_bulk_docs` sin sesión con cuerpo grande → 401 sin leer el cuerpo (p. ej. cuerpo en *stream* que falla si se consume) (cubre RF-006) [zona: test]
+- [x] T-116 — Test (rojo) VB-2: `POST /sync/db/_bulk_docs` sin sesión con cuerpo grande → 401 sin leer el cuerpo (p. ej. cuerpo en *stream* que falla si se consume) (cubre RF-006) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py -k "unauth or sin_sesion"`
   - EXPECT: falla (el cuerpo se lee antes del 401).
-- [ ] T-117 — `routers/sync.py`: sesión antes de leer el cuerpo (cubre RF-006) [zona: ruta]
+- [x] T-117 — `routers/sync.py`: sesión antes de leer el cuerpo (cubre RF-006) [zona: ruta]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py`
   - EXPECT: `passed`.
-- [ ] T-118 — Test (rojo) y corrección VB-3: anidamiento extremo → misma respuesta declarada que un JSON inválido (cubre RF-005) [zona: ruta]
+- [x] T-118 — Test (rojo) y corrección VB-3: anidamiento extremo → misma respuesta declarada que un JSON inválido (cubre RF-005) [zona: ruta]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
   - EXPECT: `passed`; sin respuesta no declarada (`ContractGuard`).
-- [ ] T-119 — Cierre de la enmienda 3: suite backend completa (sola, sin otras suites contra el CouchDB de pruebas), vitest y gate (cubre RF-004…RF-006, RF-016) [zona: sistema]
+- [x] T-119 — Cierre de la enmienda 3: suite backend completa (sola, sin otras suites contra el CouchDB de pruebas), vitest y gate (cubre RF-004…RF-006, RF-016) [zona: sistema]
   - CHECK: `cd backend && timeout 1500 python3 -m pytest -q -p no:cacheprovider --cov=app ; cd ../frontend && npx vitest run ; cd .. && bash .harness/gate/check.sh`
   - EXPECT: 0 failed; "Compuerta abierta".
+
+- [x] T-120 — Test (rojo, commit propio) y corrección VB-5: cuerpo con un entero de 5000 dígitos en `_bulk_docs`, `_revs_diff`, `_bulk_get`, `_all_docs` y `PUT _local/…` → 422 declarado; `_DeepJsonRequest` trata cualquier `ValueError` del decodificador como JSON inválido (cubre RF-005) [zona: ruta]
+  - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_api.py tests/test_sync_api.py tests/test_contract.py`
+  - EXPECT: rojo: 400 no declarado; tras la corrección `passed`.
 
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
