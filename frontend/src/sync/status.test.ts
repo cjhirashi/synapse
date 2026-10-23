@@ -2,6 +2,7 @@
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { SYNC_STATE_DOC_ID, openSyncStatus, type SyncStatusStore } from "./status";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -92,7 +93,7 @@ describe("RF-010: cambios pendientes hasta que el servidor los confirme", () => 
     const store = await open();
     await caughtUp(store);
     await db.put({ _id: "vault:1", name: "Notas" });
-    await vi.waitFor(() => expect(store.current()).toMatchObject({ state: "pending", pending: true }));
+    await waitForCondition(() => expect(store.current()).toMatchObject({ state: "pending", pending: true }));
 
     const seq = (await db.info()).update_seq;
     await store.handle({ type: "checkpoint", seq });
@@ -103,7 +104,7 @@ describe("RF-010: cambios pendientes hasta que el servidor los confirme", () => 
     const store = await open();
     await db.put({ _id: "vault:1", name: "Notas" });
     await store.handle({ type: "paused", direction: "push", offline: true });
-    await vi.waitFor(() => expect(store.current()).toMatchObject({ state: "offline", pending: true }));
+    await waitForCondition(() => expect(store.current()).toMatchObject({ state: "offline", pending: true }));
   });
 
   it("los pendientes y la hora sobreviven a recargar (`_local/synapse-sync-state`)", async () => {

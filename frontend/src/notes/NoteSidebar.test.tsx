@@ -7,6 +7,7 @@ import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { SyncContextValue } from "../sync/useSync";
 import { PATH_INVALID, PATH_TAKEN } from "./messages";
 import NoteSidebar from "./NoteSidebar";
+import { waitForCondition } from "../test-utils/waits";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
@@ -144,7 +145,7 @@ test("RF-010: borrar quita la nota del árbol, avisa al padre y la deja en la pa
   const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
   await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
   await user.click(screen.getByRole("button", { name: "Borrar «Uno»" }));
-  await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
+  await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(screen.getByRole("treeitem", { name: "Dos" })).toBeInTheDocument();
   expect(onDeleted).toHaveBeenCalledWith(uno.id);
   expect((await value.notes.list(VAULT, { deleted: true })).map((n) => n.id)).toEqual([uno.id]);
@@ -263,7 +264,7 @@ test("RF-010: Supr en un treeitem de nota la manda a la papelera y avisa al padr
   const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
   (await screen.findByRole("treeitem", { name: "Uno" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(onDeleted).toHaveBeenCalledWith(uno.id));
+  await waitForCondition(() => expect(onDeleted).toHaveBeenCalledWith(uno.id));
   expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull();
 });
 
@@ -272,21 +273,21 @@ test("RF-019, RF-010: tras borrar con Supr el foco va a la fila siguiente", asyn
   const { user } = await setup(["A.md", "B.md", "C.md"]);
   (await screen.findByRole("treeitem", { name: "B" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "C" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "C" })).toHaveFocus());
 });
 
 test("RF-019, RF-010: si no hay siguiente, el foco va a la fila anterior", async () => {
   const { user } = await setup(["A.md", "B.md"]);
   (await screen.findByRole("treeitem", { name: "B" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "A" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "A" })).toHaveFocus());
 });
 
 test("RF-019, RF-010: si no queda ninguna fila, el foco va a «Nueva nota» (botón Borrar)", async () => {
   const { user } = await setup(["Sola.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Sola" }));
   await user.click(screen.getByRole("button", { name: "Borrar «Sola»" }));
-  await vi.waitFor(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
 });
 
 test("RF-019, RF-011: tras guardar o cancelar el renombrado el foco vuelve al treeitem de la nota", async () => {
@@ -294,13 +295,13 @@ test("RF-019, RF-011: tras guardar o cancelar el renombrado el foco vuelve al tr
   (await screen.findByRole("treeitem", { name: "Uno" })).focus();
   await user.keyboard("{F2}");
   await user.click(screen.getByRole("button", { name: "Cancelar" }));
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
   await user.keyboard("{F2}");
   const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
   await user.clear(input);
   await user.type(input, "Dos.md");
   await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Dos" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Dos" })).toHaveFocus());
 });
 
 test("RF-010: dos Supr seguidos sobre la misma nota sólo la borran una vez (guarda busy)", async () => {
@@ -310,7 +311,7 @@ test("RF-010: dos Supr seguidos sobre la misma nota sólo la borran una vez (gua
   row.focus();
   fireEvent.keyDown(row, { key: "Delete" });
   fireEvent.keyDown(row, { key: "Delete" });
-  await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
+  await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(softDelete).toHaveBeenCalledTimes(1);
 });
 
@@ -320,8 +321,8 @@ test("RF-019, RF-010: al borrar la única nota de una carpeta el foco va a la fi
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull());
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
 });
 
 test("RF-019, RF-010: si la nota borrada era la última fila y su carpeta se vacía, el foco va a la fila anterior que sobrevive", async () => {
@@ -329,7 +330,7 @@ test("RF-019, RF-010: si la nota borrada era la última fila y su carpeta se vac
   await user.click(await screen.findByRole("treeitem", { name: "Zeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Alfa" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Alfa" })).toHaveFocus());
 });
 
 test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el foco al usuario", async () => {
@@ -337,7 +338,7 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
-  await vi.waitFor(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Carpeta/Nueva");
   await user.click(screen.getByRole("button", { name: "Nueva nota" }));
   await screen.findByRole("treeitem", { name: "Carpeta" });
@@ -354,5 +355,5 @@ test("RF-011, RF-019: Escape cancela el renombrado sin escribir y devuelve el fo
   await user.keyboard("{Escape}");
   expect(screen.queryByRole("textbox", { name: "Ruta de la nota" })).toBeNull();
   expect(rename).not.toHaveBeenCalled();
-  await vi.waitFor(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
 });

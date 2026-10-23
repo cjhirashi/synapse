@@ -1,11 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import { configure } from "@testing-library/react";
+import { ASYNC_TIMEOUT_MS } from "./test-utils/waits";
 
-// Plazo de `findBy*`/`waitFor` de toda la suite: 4 s en vez del 1 s por omisión. Las pantallas de
+// Plazo de `findBy*`/`waitFor` de toda la suite (`ASYNC_TIMEOUT_MS`, 4 s en vez del 1 s por omisión;
+// las esperas con `vi.waitFor` lo usan por `waitForCondition`, F-4). Las pantallas de
 // notas encadenan PouchDB en memoria, relecturas y redibujados; con varias suites a la vez (CI,
 // Converge) la CPU saturada hace que un paso legítimo pase de 1 s sin que haya ningún defecto.
 // Un plazo mayor sólo espera más cuando algo falla de verdad: no relaja ninguna aserción (F-2).
-configure({ asyncUtilTimeout: 4000 });
+configure({ asyncUtilTimeout: ASYNC_TIMEOUT_MS });
 
 // jsdom no implementa matchMedia (gap conocido, no un bug de la app) - lo necesita
 // useTheme (1.1.4.1 - Sistema de Diseño) para resolver el modo "sistema". Sin esto cada

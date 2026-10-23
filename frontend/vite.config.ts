@@ -28,6 +28,11 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: "./src/test-setup.ts",
+    // Presupuesto por prueba y por gancho con margen para la carga (F-4): el de 5 s por omisión se
+    // agota con varias suites a la vez aunque cada paso esté dentro de su plazo de espera (4 s,
+    // `test-utils/waits.ts`). Una prueba que de verdad se cuelga sigue fallando, sólo que más tarde.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
     // La sincronización real necesita backend y CouchDB: va aparte (`npm run test:sync`).
     // RNF-001 de 0008 (`*.perf.test.tsx`, mide tiempos) tampoco corre en `npm test`: sólo con
     // `NOTES_PERF=1` (`npm run test:perf`), para no volver inestable la suite normal.

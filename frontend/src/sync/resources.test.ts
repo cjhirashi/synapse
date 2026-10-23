@@ -10,6 +10,7 @@ import { openRejections } from "./rejections";
 import { memoryEnv } from "../test-utils/sync";
 import { openSyncResources, pushOnce, unconfirmedState, type SyncResources } from "./resources";
 import { openSyncStatus } from "./status";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -189,7 +190,7 @@ describe("openSyncResources: notas y reintento dirigido (SPEC-0008 RF-001, RF-01
     onEvent({ type: "denied", id: noteId, rev: "1-a", reason: "vault-not-found" });
     await res.rejections.settled();
     onEvent({ type: "written", docs: [{ id: `vault:${vault.id}`, rev: vault.rev }] });
-    await vi.waitFor(() =>
+    await waitForCondition(() =>
       expect(toSpy).toHaveBeenCalledWith(res.remote, { doc_ids: [noteId], checkpoint: false }),
     );
   });

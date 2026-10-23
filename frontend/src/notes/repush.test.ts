@@ -5,6 +5,7 @@ import memory from "pouchdb-adapter-memory";
 import { openRejections, type RejectionsStore } from "../sync/rejections";
 import type { SyncStatus, SyncStatusStore } from "../sync/status";
 import { startRepush, type Repush } from "./repush";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -88,7 +89,7 @@ afterEach(() => {
  */
 async function settle(): Promise<void> {
   const target = Number((await db.info()).update_seq);
-  await vi.waitFor(() => expect(probeSeq).toBeGreaterThanOrEqual(target));
+  await waitForCondition(() => expect(probeSeq).toBeGreaterThanOrEqual(target));
   await repush.settled();
 }
 
@@ -110,7 +111,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await rejectNote(OTHER_VAULT_NOTE); // de otra bóveda: no entra
     await putVault(V);
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
     expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1, NOTE_2], checkpoint: false });
   });
 
@@ -134,7 +135,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     expect(toSpy).not.toHaveBeenCalled();
     await putVault(V, null);
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
   });
 
   // N-3 / RD-1 (P-9): con la bóveda en conflicto basta una rama viva activa.
@@ -147,7 +148,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await db.bulkDocs([rev(["aaaa"], null)] as never, { new_edits: false });
     await db.bulkDocs([rev(["ffff", "aaaa"], T), rev(["1111", "aaaa"], null)] as never, { new_edits: false });
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false }));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false }));
   });
 
   it("una bóveda escrita por el push (evento written) también dispara el reintento", async () => {
@@ -157,7 +158,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     expect(toSpy).not.toHaveBeenCalled(); // un rechazo nuevo no dispara: evitaría un bucle
     repush.handle({ type: "written", docs: [{ id: `vault:${V}`, rev: "1-a" }] });
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false }));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false }));
   });
 
   it("un evento written de otra cosa no dispara nada", async () => {
@@ -184,7 +185,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     }) as never);
     await putVault(V);
     await settle();
-    await vi.waitFor(() => expect(status.handle).toHaveBeenCalledWith({ type: "denied", id: NOTE_2, rev: "1-b", reason: "vault-not-found" }));
+    await waitForCondition(() => expect(status.handle).toHaveBeenCalledWith({ type: "denied", id: NOTE_2, rev: "1-b", reason: "vault-not-found" }));
     expect(status.handle).toHaveBeenCalledWith({ type: "written", docs: [{ id: NOTE_1, rev: "1-a" }] });
     expect(status.handle).toHaveBeenCalledWith({ type: "denied", id: NOTE_2, rev: "1-b", reason: "vault-not-found" });
     // La escrita quita su rechazo; la denegada pasa a la lista.
@@ -200,7 +201,7 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     await settle();
     await putVault(V, null);
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(2));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(2));
   });
 
   it("varios cambios seguidos de la misma bóveda dan un solo push (se juntan los pendientes)", async () => {
@@ -213,16 +214,16 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
       return Object.assign(gate.then(() => replication), { on: replication.on });
     }) as never);
     await putVault(V);
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
     await putVault(V, T);
     await putVault(V, null);
     await putVault(V, T);
     await putVault(V, null);
     // El feed ya entregó todos los cambios (se juntaron mientras el primer push seguía en curso).
-    await vi.waitFor(async () => expect(probeSeq).toBeGreaterThanOrEqual(Number((await db.info()).update_seq)));
+    await waitForCondition(async () => expect(probeSeq).toBeGreaterThanOrEqual(Number((await db.info()).update_seq)));
     release();
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(2)); // el primero y uno solo para todo lo acumulado
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(2)); // el primero y uno solo para todo lo acumulado
   });
 
   // El guard `closed` de `retry` importa con un reintento ya encolado: `feed.cancel()` sólo impide los nuevos.
@@ -235,10 +236,10 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
       return Object.assign(gate.then(() => replication), { on: replication.on });
     }) as never);
     await putVault(V);
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
     await putVault(V, T);
     await putVault(V, null); // encola un segundo reintento detrás del primero
-    await vi.waitFor(async () => expect(probeSeq).toBeGreaterThanOrEqual(Number((await db.info()).update_seq)));
+    await waitForCondition(async () => expect(probeSeq).toBeGreaterThanOrEqual(Number((await db.info()).update_seq)));
     repush.close();
     release();
     await repush.settled();
@@ -266,7 +267,7 @@ describe("RD-2: disparadores de arranque y de reconexión", () => {
     repush = startRepush({ db, remote, status, rejections });
     await startProbe();
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
     expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
   });
 
@@ -298,7 +299,7 @@ describe("RD-2: disparadores de arranque y de reconexión", () => {
     expect(toSpy).toHaveBeenCalledTimes(1); // sólo la vuelta a "online" dispara
     emitState("online");
     await settle();
-    await vi.waitFor(() => expect(toSpy).toHaveBeenCalledTimes(2));
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(2));
     expect(toSpy).toHaveBeenLastCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
   });
 

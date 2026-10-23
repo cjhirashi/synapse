@@ -13,6 +13,7 @@ import * as resourcesModule from "./resources";
 import type { SyncEnv } from "./resources";
 import SyncProvider from "./SyncProvider";
 import { useSync } from "./useSync";
+import { waitForCondition } from "../test-utils/waits";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -363,7 +364,7 @@ test("RF-017: si cerrar la réplica falla al salir, llega al login con el aviso 
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByText("pantalla login")).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent(COPY_KEPT);
-  await vi.waitFor(() => expect(error).toHaveBeenCalledTimes(2));
+  await waitForCondition(() => expect(error).toHaveBeenCalledTimes(2));
   expect((await memoryDb(localName).get(OWNER_DOC_ID))._id).toBe(OWNER_DOC_ID);
   // La marca se escribió antes de `close()`: el borrado ni se intentó y aun así el próximo
   // inicio de sesión la borra, y el aviso lo promete (VG-1).
@@ -414,7 +415,7 @@ test("RF-017: pedir otra salida mientras se borra la réplica no la vuelve a lee
   const { env } = memoryEnv();
   const user = renderApp(env);
   await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
-  await vi.waitFor(() => expect(destroy).toHaveBeenCalledOnce());
+  await waitForCondition(() => expect(destroy).toHaveBeenCalledOnce());
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   await user.click(screen.getByRole("button", { name: "sincronizar directo" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

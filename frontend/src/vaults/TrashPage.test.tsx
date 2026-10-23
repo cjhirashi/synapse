@@ -7,6 +7,7 @@ import type { SyncContextValue } from "../sync/useSync";
 import { StorageFullError } from "../sync/vaultStore";
 import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import TrashPage from "./TrashPage";
+import { waitForCondition } from "../test-utils/waits";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -117,7 +118,7 @@ test.each([
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "«Notas» cambió desde que se cargó la papelera; se muestra la versión actual.",
   );
-  await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(2));
+  await waitForCondition(() => expect(list).toHaveBeenCalledTimes(2));
 });
 
 test("R-11: sin espacio en el dispositivo lo avisa", async () => {

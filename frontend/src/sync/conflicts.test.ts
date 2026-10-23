@@ -4,6 +4,7 @@ import memory from "pouchdb-adapter-memory";
 import { canonical, openConflicts, type ConflictsStore } from "./conflicts";
 import { NoteValidationError } from "../notes/errors";
 import { StorageFullError, VaultValidationError } from "./vaultStore";
+import { waitForCondition } from "../test-utils/waits";
 
 PouchDB.plugin(memory);
 
@@ -101,7 +102,7 @@ describe("combinación automática", () => {
   it("detecta en `changes` un conflicto que llega después de arrancar (tags: altas y bajas)", async () => {
     const store = await open();
     await conflict({ tags: ["a", "b", "w"] }, { tags: ["b", "l"] });
-    await vi.waitFor(async () => expect((await winner())._conflicts).toBeUndefined());
+    await waitForCondition(async () => expect((await winner())._conflicts).toBeUndefined());
     expect((await winner()).tags).toEqual(["b", "w", "l"]);
     expect(store.list()).toEqual([]);
   });
@@ -137,7 +138,7 @@ describe("combinación automática", () => {
   it("dos pestañas que combinan a la vez convergen en una sola hoja viva", async () => {
     await conflict({ name: "Uno W" }, { description: "desc L" });
     await Promise.all([open(), open()]);
-    await vi.waitFor(async () => {
+    await waitForCondition(async () => {
       expect((await winner())._conflicts).toBeUndefined();
       expect((await leaves()).filter((leaf) => !leaf.deleted)).toHaveLength(1);
     });
@@ -180,7 +181,7 @@ describe("conflictos manuales", () => {
     const store = await open();
     expect(store.list()).toHaveLength(1);
     await db.remove(ID, `2-${L}`);
-    await vi.waitFor(() => expect(store.list()).toEqual([]));
+    await waitForCondition(() => expect(store.list()).toEqual([]));
   });
 
   it("avisa a los suscriptores", async () => {
@@ -188,7 +189,7 @@ describe("conflictos manuales", () => {
     const seen: number[] = [];
     store.subscribe((items) => seen.push(items.length));
     await conflict({ name: "Nombre W" }, { name: "Nombre L" });
-    await vi.waitFor(() => expect(seen).toEqual([1]));
+    await waitForCondition(() => expect(seen).toEqual([1]));
   });
 
   it("`resolve` escribe la elección como hija de W y cierra la rama de L", async () => {
@@ -199,7 +200,7 @@ describe("conflictos manuales", () => {
     expect(doc._conflicts).toBeUndefined();
     expect(doc).toMatchObject({ name: "Elegido", tags: ["a"], updated_at: NOW, created_at: T0, owner_id: "u1" });
     expect(doc._revisions?.ids[1]).toBe(W);
-    await vi.waitFor(() => expect(store.list()).toEqual([]));
+    await waitForCondition(() => expect(store.list()).toEqual([]));
   });
 
   it("`resolve` con una elección inválida no escribe nada", async () => {
@@ -223,7 +224,7 @@ describe("revisiones deterministas (VC-2, enmienda 1)", () => {
     counter += 1;
     db = new PouchDB(`conflicts-test-${counter}`, { adapter: "memory" });
     await run();
-    await vi.waitFor(async () => expect((await winner())._conflicts).toBeUndefined());
+    await waitForCondition(async () => expect((await winner())._conflicts).toBeUndefined());
     return leaves();
   }
 
@@ -335,7 +336,7 @@ describe("RF-009: conflictos de nota", () => {
     await putVault();
     const store = await open();
     await noteConflict({ path: "w.md" }, { path: "l.md" });
-    await vi.waitFor(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
+    await waitForCondition(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
   });
 
   it.each<[string, Partial<NoteDocBody>]>([
@@ -379,7 +380,7 @@ describe("RF-009: conflictos de nota", () => {
     expect(doc._conflicts).toBeUndefined();
     expect(doc).toMatchObject({ content: "texto L", path: "a.md", updated_at: NOW, created_at: T0, vault_id: VAULT_ID });
     expect(doc._revisions?.ids[1]).toBe(W);
-    await vi.waitFor(() => expect(store.list()).toEqual([]));
+    await waitForCondition(() => expect(store.list()).toEqual([]));
   });
 
   it("`resolve` de nota con una elección inválida no escribe nada", async () => {
@@ -409,9 +410,9 @@ describe("RF-014: notas de una bóveda que no está activa", () => {
     const store = await open();
     expect(store.list()).toEqual([]);
     await putVault(null);
-    await vi.waitFor(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
+    await waitForCondition(() => expect(store.list()).toEqual([expect.objectContaining({ kind: "note", id: NOTE_ID })]));
     await putVault(T2);
-    await vi.waitFor(() => expect(store.list()).toEqual([]));
+    await waitForCondition(() => expect(store.list()).toEqual([]));
   });
 
   // N-3 / RD-1 (P-9): una bóveda con ramas vivas distintas cuenta como activa si alguna lo es.
