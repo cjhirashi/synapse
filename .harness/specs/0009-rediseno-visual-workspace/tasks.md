@@ -56,7 +56,7 @@ actualizado: 2026-10-23
   - EXPECT: el archivo aparece en el diff; la línea de 0007 en ✅.
 
 ### B · Infraestructura de verificación visual (rojo contra la UI actual)
-- [ ] T-005 — `@playwright/test` 1.56.0 (devDependency exacta), `frontend/playwright.config.ts` (Chromium, `deviceScaleFactor: 1`, `reducedMotion: "reduce"`, `baseURL` de `BASE_URL`, salida `/tmp/s9/e2e`), `frontend/scripts/visual.sh` (compila la SPA, arranca el backend del worktree en `:8010`, corre `npx playwright test` en `mcr.microsoft.com/playwright:v1.56.0-jammy --network host --ipc=host`, para el backend) y script `test:visual` (cubre RF-006) [zona: sistema] [P-9]
+- [x] T-005 — `@playwright/test` 1.56.0 (devDependency exacta), `frontend/playwright.config.ts` (Chromium, `deviceScaleFactor: 1`, `reducedMotion: "reduce"`, `baseURL` de `BASE_URL`, salida `/tmp/s9/e2e`), `frontend/scripts/visual.sh` (compila la SPA, arranca el backend del worktree en `:8010`, corre `npx playwright test` en `mcr.microsoft.com/playwright:v1.56.0-jammy --network host --ipc=host`, para el backend) y script `test:visual` (cubre RF-006) [zona: sistema] [P-9]
   - CHECK: `cd frontend && npm ls @playwright/test && npm run test:visual -- --list`
   - EXPECT: `@playwright/test@1.56.0`; la lista de pruebas sale vacía ("Total: 0 tests") sin error de configuración.
 - [ ] T-006 — `frontend/e2e/fixtures.ts`: siembra por API REST (usuario, 3 bóvedas; `icon` vía réplica en el navegador con `pouchdb` de la página mientras el servidor no tenga el campo — datos simulados) y por UI (2 niveles de carpetas, 4 notas, nombre de 120 caracteres, 40 bóvedas para V-6); helper `measure(selector)` (caja, colores y radios computados) y `tokens(theme)` que lee `src/styles/tokens.css` (cubre RF-006) [zona: sistema]
