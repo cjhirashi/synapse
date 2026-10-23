@@ -190,7 +190,7 @@ actualizado: 2026-10-23
 - [x] T-046 — Test (rojo) `sync/merge.test.ts` (+ `conflicts.test.ts`): `icon` cambiado en un lado se fusiona; iguales no cuentan; choque → gana W sin `manual`; `sameExceptUpdatedAt` compara `icon`; documento sin clave = `null` (cubre RF-012) [zona: test] [P-6]
   - CHECK: `cd frontend && npx vitest run src/sync/merge.test.ts src/sync/conflicts.test.ts`
   - EXPECT: fallan las pruebas nuevas (`icon` se pierde en la fusión).
-- [ ] T-047 — `sync/merge.ts`, `sync/conflicts.ts`, `sync/ConflictView.tsx` (la resolución manual conserva el `icon` de la ganadora) (cubre RF-012) [zona: frontend] [P-6]
+- [x] T-047 — `sync/merge.ts`, `sync/conflicts.ts`, `sync/ConflictView.tsx` (la resolución manual conserva el `icon` de la ganadora) (cubre RF-012) [zona: frontend] [P-6]
   - CHECK: `cd frontend && npx vitest run src/sync && npm run typecheck`
   - EXPECT: todos `passed`.
 - [ ] T-048 — Test (rojo) `vaults/VaultForm.test.tsx` y `notes/VaultRail.test.tsx`: guardar desde el selector persiste `icon` (sólo si cambió) en la réplica y el riel muestra el chip nuevo sin recargar (`dataVersion`) (cubre RF-011, RF-012) [zona: test]
