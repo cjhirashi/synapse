@@ -21,6 +21,8 @@
 }
 
 .vault-rail-icon {
+  /* No se encogen cuando el riel (flex en columna, con `max-height`) se llena: el riel hace scroll (U-7). */
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   width: 38px;

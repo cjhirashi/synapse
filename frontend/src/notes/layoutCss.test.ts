@@ -22,3 +22,10 @@ test("RF-001: el riel de bóvedas es sticky, acotado al viewport y con scroll pr
   expect(rule).toMatch(/max-height: 100vh/);
   expect(rule).toMatch(/overflow-y: auto/);
 });
+
+// U-7: al acotar la altura del riel, los iconos no se aplastan (flex-shrink) y el riel hace scroll.
+test("RF-001: los iconos del riel no se encogen al llenarse el riel", () => {
+  const rule = read("notes.css").match(/\.vault-rail-icon \{([^}]*)\}/)![1];
+  expect(rule).toMatch(/flex-shrink: 0/);
+  expect(rule).toMatch(/height: 38px/);
+});
