@@ -564,7 +564,7 @@ actualizado: 2026-10-22
   - EXPECT: `passed`; con el mutante, falla (salida pegada en history.md).
 
 ### AD · Enmienda 21 (PLAN-0008 §30) — U-7
-- [ ] T-156 — U-7: riel con altura del viewport y scroll propio; test de estilo/estructura y captura real con 40 bóvedas (cubre RF-001) [zona: pantalla]
+- [x] T-156 — U-7: riel con altura del viewport y scroll propio; test de estilo/estructura y captura real con 40 bóvedas (cubre RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx` + captura
   - EXPECT: `passed`; en la captura el riel no se alarga con la página y la bóveda activa es visible.
 
