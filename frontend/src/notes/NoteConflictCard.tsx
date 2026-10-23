@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import type { ConflictsStore, NoteConflict } from "../sync/conflicts";
-import { VaultChangedError } from "../sync/vaultStore";
+import { StorageFullError, VaultChangedError } from "../sync/vaultStore";
 import { noteErrorMessage } from "./messages";
 import { NoteValidationError } from "./errors";
 import type { NoteBody } from "./mergeNote";
@@ -46,8 +46,8 @@ export default function NoteConflictCard({ conflict, resolve, onResolved, onChan
         // La lista de conflictos ya refleja el estado nuevo.
         onChanged();
       } else {
-        // Datos que no cumplen las reglas, o un fallo del almacén que sólo se puede reintentar.
-        setError(err instanceof NoteValidationError ? noteErrorMessage(err) : SAVE_FAILED);
+        // Datos que no cumplen las reglas o el disco lleno tienen su texto (S-6); el resto sólo se reintenta.
+        setError(err instanceof NoteValidationError || err instanceof StorageFullError ? noteErrorMessage(err) : SAVE_FAILED);
       }
     } finally {
       setBusy(false);

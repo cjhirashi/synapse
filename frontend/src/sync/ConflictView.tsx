@@ -14,7 +14,8 @@ import type { VaultConflict } from "./conflicts";
 import type { MergeBody } from "./merge";
 import { useSync } from "./useSync";
 import type { VaultField } from "./vaultRules";
-import { utcNow, VaultChangedError, VaultValidationError } from "./vaultStore";
+import { STORAGE_FULL } from "../vaults/errors";
+import { StorageFullError, utcNow, VaultChangedError, VaultValidationError } from "./vaultStore";
 
 const FIELD_NAMES: Record<VaultField, string> = {
   name: "el nombre",
@@ -125,6 +126,8 @@ function ConflictForm({ conflict, onNotice }: { conflict: VaultConflict; onNotic
       } else if (err instanceof VaultChangedError) {
         // La lista de conflictos ya refleja el estado nuevo (se resolvió en otra pestaña, llegó otra versión…).
         onNotice({ kind: "changed" });
+      } else if (err instanceof StorageFullError) {
+        setFormError(STORAGE_FULL);
       } else {
         setFormError("No se pudo guardar la resolución. Inténtalo de nuevo.");
       }
