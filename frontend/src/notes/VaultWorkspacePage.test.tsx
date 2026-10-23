@@ -106,7 +106,7 @@ test("RF-003: crear una nota la abre en edición", async () => {
   const { value, vault } = await setup();
   render(tree(value, `/vaults/${vault.id}`));
   await userEvent.click(await screen.findByRole("button", { name: "Nueva nota" }));
-  expect(await screen.findByRole("button", { name: "Leer" }, { timeout: 4000 })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 2, name: "Sin título" })).toBeInTheDocument();
 });
 

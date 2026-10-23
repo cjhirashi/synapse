@@ -6,8 +6,13 @@
 // esperas por CONDICIÓN usan este plazo; las esperas de AUSENCIA no se tocan (no se relajan).
 import { vi } from "vitest";
 
-/** Plazo (ms) de toda espera por condición: `findBy*`, `waitFor` de RTL y `waitForCondition`. */
-export const ASYNC_TIMEOUT_MS = 4000;
+/**
+ * Plazo (ms) de toda espera por condición: `findBy*`, `waitFor` de RTL y `waitForCondition`.
+ * Medido (F-5): abrir una nota nueva monta Milkdown dentro del mismo turno y, con 8 suites a la vez
+ * y la CPU saturada, el paso tardó hasta ~5 s: 4 s no daba margen. 10 s siguen por debajo del
+ * presupuesto por prueba (`testTimeout`, 20 s) y sólo se agotan cuando algo falla de verdad.
+ */
+export const ASYNC_TIMEOUT_MS = 10_000;
 
 type WaitOptions = number | { timeout?: number; interval?: number };
 

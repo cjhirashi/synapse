@@ -2,7 +2,7 @@ import "@testing-library/jest-dom/vitest";
 import { configure } from "@testing-library/react";
 import { ASYNC_TIMEOUT_MS } from "./test-utils/waits";
 
-// Plazo de `findBy*`/`waitFor` de toda la suite (`ASYNC_TIMEOUT_MS`, 4 s en vez del 1 s por omisión;
+// Plazo de `findBy*`/`waitFor` de toda la suite (`ASYNC_TIMEOUT_MS`, 10 s en vez del 1 s por omisión;
 // las esperas con `vi.waitFor` lo usan por `waitForCondition`, F-4). Las pantallas de
 // notas encadenan PouchDB en memoria, relecturas y redibujados; con varias suites a la vez (CI,
 // Converge) la CPU saturada hace que un paso legítimo pase de 1 s sin que haya ningún defecto.
