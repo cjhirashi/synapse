@@ -127,8 +127,7 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-button[type="submit"],
-.btn-primary {
+:where(button[type="submit"], .btn-primary) {
   display: inline-block;
   padding: 10px 20px;
   background: var(--accent);
@@ -142,25 +141,24 @@ button[type="submit"],
     transform var(--dur-fast) var(--ease-standard);
 }
 
-button[type="submit"]:hover,
-.btn-primary:hover {
+:where(button[type="submit"]:hover, .btn-primary:hover) {
   background: var(--accent-hover);
 }
 
-button[type="submit"]:active,
-.btn-primary:active {
+:where(button[type="submit"]:active, .btn-primary:active) {
   transform: scale(0.98);
 }
 
-button[type="submit"]:disabled,
-.btn-primary:disabled {
+:where(button[type="submit"]:disabled, .btn-primary:disabled) {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
+/* Los estilos base de botón van en `:where()` (especificidad 0): cualquier regla de componente
+   (`.note-actions button`, `.theme-toggle button`…) gana sin importar el orden de las hojas. */
 /* Botones secundarios (Cancelar, Reintentar, Restaurar...): mismo tamaño, sin relleno. */
-button:not([type="submit"]) {
+:where(button:not([type="submit"])) {
   padding: 9px 16px;
   background: var(--bg-tertiary);
   border: 1px solid var(--border);
@@ -172,11 +170,11 @@ button:not([type="submit"]) {
     border-color var(--dur-fast) var(--ease-standard);
 }
 
-button:not([type="submit"]):hover {
+:where(button:not([type="submit"]):hover) {
   border-color: var(--accent);
 }
 
-button:not([type="submit"]):disabled {
+:where(button:not([type="submit"]):disabled) {
   opacity: 0.6;
   cursor: not-allowed;
 }

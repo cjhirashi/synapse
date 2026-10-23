@@ -256,7 +256,7 @@ actualizado: 2026-10-23
   - EXPECT: 0 failed en todas; build exit 0; gate "Compuerta abierta" sin errores.
 
 ### I · Enmienda 1 (PLAN-0009 §10) — A1-1…A1-5
-- [ ] T-067 — A1-1/A1-2: tests (rojo, commit propio) tamaño/alto de Renombrar/Borrar igual al de los controles de la barra lateral (V-3) y thumb activo visible en claro/oscuro; estilos base de `button` en `:where(...)`; capturas de no regresión (login, lista de bóvedas, papelera, diálogos) (cubre RF-003, RF-006, RF-007) [zona: pantalla]
+- [x] T-067 — A1-1/A1-2: tests (rojo, commit propio) tamaño/alto de Renombrar/Borrar igual al de los controles de la barra lateral (V-3) y thumb activo visible en claro/oscuro; estilos base de `button` en `:where(...)`; capturas de no regresión (login, lista de bóvedas, papelera, diálogos) (cubre RF-003, RF-006, RF-007) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run && npm run test:visual -- --grep-invert "V-7"` + capturas antes/después leídas
   - EXPECT: rojo → `passed`; sin cambios no deseados en las pantallas de no regresión.
 - [ ] T-068 — A1-4/A1-5: "Editar" sin hueco a la derecha en lectura (medida en V-4) y color derivado sin `danger` (cubre RF-005, RF-001) [zona: pantalla]
