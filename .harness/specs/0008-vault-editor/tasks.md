@@ -528,13 +528,18 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && for i in 1 2 3 4; do (npx vitest run src/notes src/layout src/vaults src/editor > /tmp/s8/f2-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
   - EXPECT: las 4 con `exit=0`.
 
+### W · Enmienda 14 (PLAN-0008 §23) — F-3
+- [ ] T-149 — F-3: `repush.test.ts` sin esperas fijas (positivos con `vi.waitFor`; negativos tras la señal del feed + `settled()`); auditoría de esperas por tiempo en los tests de 0008 (lista en history.md: sustituida o justificada) (cubre RF-004, RF-014) [zona: test]
+  - CHECK: `cd frontend && grep -rn "setTimeout" src/notes src/editor src/sync --include=*.test.ts* ; for i in 1 2 3 4; do (npx vitest run src/notes src/sync src/editor > /tmp/s8/f3-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
+  - EXPECT: cada `setTimeout` restante con comentario que lo justifica; las 4 corridas simultáneas con `exit=0`.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
 | RF-001 | T-030, T-031, T-046, T-047, T-057, T-058, T-063…T-066, T-094, T-124, T-138, T-139, T-143, T-000, T-073, T-108, T-113, T-126, T-145 | noteTree.test, resources.test, VaultRail.test, VaultWorkspacePage.test, App.test, AppLayout.test, VaultRail.test (nombre accesible) | Pass |
 | RF-002 | T-063, T-064, T-094, T-136, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test, VaultWorkspacePage.test (404 con borrador) | Pass |
 | RF-003 | T-034, T-035, T-059, T-060, T-075, T-094, T-127, T-000, T-073, T-108, T-113, T-126 | noteStore.test, NoteSidebar.test, notes.integration | Pass |
-| RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079, T-096, T-098, T-112, T-000, T-023, T-073, T-094, T-097, T-108, T-111, T-113, T-119, T-126 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pass |
+| RF-004 | T-002, T-015, T-016, T-019…T-022, T-044, T-045, T-071, T-072, T-076, T-079, T-096, T-098, T-112, T-000, T-023, T-073, T-094, T-097, T-108, T-111, T-113, T-119, T-126, T-149 | test_note_sync_push, test_note_sync_api, test_note_sync_isolation, test_contract, repush.test, RejectionsPage.test, notes.integration | Pass |
 | RF-005 | T-001, T-003…T-005, T-013, T-014, T-026, T-027, T-114, T-115, T-118, T-120, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126, T-146 | test_note_contract, test_note_rules, test_note_sync_push, noteRules.test | Pass |
 | RF-006 | T-011, T-012, T-019…T-021, T-079, T-117, T-134, T-000, T-023, T-073, T-094, T-108, T-113, T-116, T-119, T-126, T-146 | test_note_sync_filter, test_note_sync_api, test_note_sync_isolation, test_note_sync_push (`_rev` acotado) | Pass |
 | RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129, T-000, T-073, T-108, T-113, T-126 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
@@ -544,7 +549,7 @@ actualizado: 2026-10-22
 | RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147, T-148 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
 | RF-012 | T-028, T-029, T-034, T-035, T-059, T-060, T-094, T-000, T-073, T-108, T-113, T-126 | untitled.test, noteStore.test, NoteSidebar.test | Pass |
 | RF-013 | T-002…T-010, T-017, T-018, T-022, T-026, T-027, T-034, T-035, T-059, T-060, T-071, T-072, T-075, T-103, T-104, T-133, T-000, T-023, T-073, T-094, T-108, T-113, T-126 | test_note_rules, test_reservations, test_note_service, test_note_sync_push, test_contract, noteRules.test, noteStore.test, RejectionsPage.test, notes.integration, test_note_sync_api (ruta NFKC ×18) | Pass |
-| RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076, T-095, T-096, T-111, T-136, T-144, T-000, T-073, T-094, T-097, T-098, T-108, T-113, T-126 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration, VaultWorkspacePage.test (bóveda a la papelera con borrador) | Pass |
+| RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076, T-095, T-096, T-111, T-136, T-144, T-000, T-073, T-094, T-097, T-098, T-108, T-113, T-126, T-149 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration, VaultWorkspacePage.test (bóveda a la papelera con borrador) | Pass |
 | RF-015 | T-063, T-064, T-094, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test | Pass |
 | RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077, T-140, T-142, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration, conflicts.test (StorageFullError) | Pass |
 | RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104, T-000, T-073, T-108, T-113, T-126 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |

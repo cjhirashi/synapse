@@ -504,3 +504,10 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | F-2 · bajo carga extrema (4 suites simultáneas) fallan `findBy` con el plazo por defecto de 1 s (notes, editor y vaults de 0003) | Low (entorno de pruebas) | plazo global de Testing Library pensado para máquinas sin carga | `configure({ asyncUtilTimeout: 4000 })` global en `test-setup.ts` (un solo lugar, sin parches por test); se retira el `timeout: 4000` local de T-147. |
+
+## 23. Enmienda 14 (2026-10-23) — Converge sobre 548de20
+> Backend y editor limpios. Sync cliente y UI coinciden en un hallazgo de pruebas.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-3 · `repush.test.ts` `settle()` espera `setTimeout(20)` fijo: bajo carga, 1–2 casos positivos fallan y los negativos pasan **vacíamente** | Low | espera por tiempo en vez de por condición | Positivos: `vi.waitFor` sobre la condición. Negativos: señal determinista (el `change` del feed de la propia réplica tras escribir, después `settled()`), de modo que la ausencia se afirme después de que el disparador haya tenido su oportunidad. **Además**, auditoría de toda espera por tiempo fijo en los tests de 0008 (`src/notes`, `src/editor`, `src/sync` tocados por 0008): cada una se sustituye por una condición o se justifica en un comentario. |
