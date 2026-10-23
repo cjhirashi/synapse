@@ -117,7 +117,7 @@ export default function RejectionsPage() {
       ) : (
         <>
           <p>El servidor no aceptó estos cambios. Siguen guardados en este dispositivo: corrígelos para que se sincronicen.</p>
-          <ul>
+          <ul className="card-list">
             {visible.map((rejection) => {
               const vaultId = noteVaultId(rejection.id);
               if (vaultId !== null) return noteItem(rejection, vaultId);

@@ -57,7 +57,7 @@ export default function TrashPage() {
       {status === "ready" && items.length === 0 && <p>La papelera está vacía.</p>}
 
       {status === "ready" && items.length > 0 && (
-        <ul>
+        <ul className="card-list">
           {items.map((vault) => (
             <li key={vault.id} aria-labelledby={`trashed-${vault.id}`}>
               <h2 id={`trashed-${vault.id}`}>{vault.name}</h2>

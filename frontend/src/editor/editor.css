@@ -95,6 +95,29 @@
   margin: var(--space-4) 0 var(--space-2);
 }
 
+/* Listas del markdown renderizado: listas de verdad (viñetas/números, sangría y ritmo compactos). */
+.milkdown-view .ProseMirror ul,
+.milkdown-view .ProseMirror ol {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-6);
+}
+
+.milkdown-view .ProseMirror ul {
+  list-style: disc;
+}
+
+.milkdown-view .ProseMirror ol {
+  list-style: decimal;
+}
+
+.milkdown-view .ProseMirror li {
+  margin: var(--space-1) 0;
+}
+
+.milkdown-view .ProseMirror li > p {
+  margin: 0;
+}
+
 .milkdown-view .ProseMirror pre,
 .milkdown-view .ProseMirror code {
   font-family: var(--font-mono);

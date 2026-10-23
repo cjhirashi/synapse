@@ -220,7 +220,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               onClick={() => toggle(node.path)}
             >
               {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
-              {node.name}
+              <span className="note-tree-name" title={node.name}>
+                {node.name}
+              </span>
             </button>
             {open && (
               <ul role="group" className="note-tree-group">
@@ -266,7 +268,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             className="note-tree-row"
             onClick={() => onOpen(note.id)}
           >
-            {node.name}
+            <span className="note-tree-name" title={node.name}>
+              {node.name}
+            </span>
           </button>
           <span className="note-tree-actions">
             <button type="button" aria-label={`Renombrar «${node.name}»`} onClick={() => setRenaming({ note, path: note.path })}>

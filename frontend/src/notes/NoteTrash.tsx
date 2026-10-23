@@ -66,7 +66,7 @@ export default function NoteTrash({ vaultId, onRestored, onClose }: NoteTrashPro
       ) : items.length === 0 ? (
         <p>La papelera de esta bóveda está vacía.</p>
       ) : (
-        <ul aria-label="Notas borradas">
+        <ul className="card-list" aria-label="Notas borradas">
           {items.map((note) => (
             <li key={note.id}>
               <span>{note.path}</span>{" "}

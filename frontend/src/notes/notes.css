@@ -94,7 +94,14 @@
   color: var(--text-primary);
   font-size: 14px;
   text-align: left;
-  overflow-wrap: anywhere;
+}
+
+/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`). */
+.note-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-tree-row:not([type="submit"]):hover {
@@ -107,15 +114,19 @@
 }
 
 /* Las acciones de una fila aparecen al apuntar o enfocar (siguen en el orden de tabulación). */
+/* En reposo no ocupan ancho (el nombre se ve completo) pero siguen enfocables. */
 .note-tree-actions {
   display: flex;
   gap: var(--space-1);
+  max-width: 0;
+  overflow: hidden;
   opacity: 0;
   transition: opacity var(--dur-fast) var(--ease-standard);
 }
 
 .note-tree-item:hover .note-tree-actions,
 .note-tree-item:focus-within .note-tree-actions {
+  max-width: none;
   opacity: 1;
 }
 
