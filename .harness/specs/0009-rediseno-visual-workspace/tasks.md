@@ -239,7 +239,7 @@ actualizado: 2026-10-23
 - [x] T-061 — `frontend/src/README.md`: `vaults/vaultIcon.ts`, `VaultChip`, `IconPicker`, tooltip del riel, marco de altura fija con scroll por columna, tema oscuro por defecto, `e2e/` [doc]
   - CHECK: `grep -nE "VaultChip|IconPicker|tema oscuro|e2e/" frontend/src/README.md`
   - EXPECT: las 4 apariciones.
-- [ ] T-062 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (diagrama de datos, sin flujo nuevo) y dejar constancia en `history.md` [doc]
+- [x] T-062 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (diagrama de datos, sin flujo nuevo) y dejar constancia en `history.md` [doc]
   - CHECK: `git diff --stat -- .harness/specs/0008-vault-editor/diagrams/ ARCHIFY.md`
   - EXPECT: sin cambios; línea de verificación en `history.md`.
 - [ ] T-063 — Notas de re-anclaje de cierre en `0002`, `0003`, `0005`, `0007`, `0008` `spec.md` (sin cambio de requisitos) [doc] [P-10]
