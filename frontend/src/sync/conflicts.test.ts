@@ -463,3 +463,42 @@ describe("canonical (VD-4, enmienda 2)", () => {
     expect(canonical({ 'a"b': 'c"d' })).toBe(JSON.stringify({ 'a"b': 'c"d' }));
   });
 });
+
+// SPEC-0009 RF-012: `icon` viaja en la combinación automática y la resolución manual lo conserva de W.
+describe("icon (RF-012)", () => {
+  const withIcon = (icon: string | null, body: Partial<Body> = {}) => ({ icon, ...body }) as Partial<Body>;
+
+  it("la combinación automática lleva el icon que cambió sólo L junto al nombre que cambió W", async () => {
+    await insert({ hashes: [A], body: withIcon("folder") });
+    await insert(
+      { hashes: [W, A], body: withIcon("folder", { updated_at: T1, name: "Nombre W" }) },
+      { hashes: [L, A], body: withIcon("rocket", { updated_at: T2 }) },
+    );
+    await open();
+    await waitForCondition(async () => expect((await winner())._conflicts).toBeUndefined());
+    expect(await winner()).toMatchObject({ name: "Nombre W", icon: "rocket" });
+  });
+
+  it("un choque de icon se resuelve solo y gana el de W", async () => {
+    await insert({ hashes: [A], body: withIcon("folder") });
+    await insert(
+      { hashes: [W, A], body: withIcon("star:info", { updated_at: T1 }) },
+      { hashes: [L, A], body: withIcon("rocket", { updated_at: T2 }) },
+    );
+    const store = await open();
+    await waitForCondition(async () => expect((await winner())._conflicts).toBeUndefined());
+    expect(await winner()).toMatchObject({ icon: "star:info" });
+    expect(store.list()).toEqual([]);
+  });
+
+  it("`resolve` manual conserva el icon de la ganadora", async () => {
+    await insert({ hashes: [A], body: withIcon("folder") });
+    await insert(
+      { hashes: [W, A], body: withIcon("heart", { updated_at: T1, name: "Nombre W" }) },
+      { hashes: [L, A], body: withIcon("rocket", { updated_at: T2, name: "Nombre L" }) },
+    );
+    const store = await open();
+    await store.resolve(ID, `2-${L}`, { name: "Elegido", description: null, tags: ["a"], deleted_at: null });
+    expect(await winner()).toMatchObject({ name: "Elegido", icon: "heart" });
+  });
+});

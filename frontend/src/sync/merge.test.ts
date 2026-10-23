@@ -141,3 +141,49 @@ describe("paso 7: escritura y convergencia", () => {
     expect(JSON.stringify([w, l, A])).toBe(snapshot);
   });
 });
+
+// SPEC-0009 RF-012 (P-6): `icon` se fusiona como un campo más, pero un choque NO manda a resolución manual: gana W.
+describe("icon (RF-012)", () => {
+  const withIcon = (icon: string | null | undefined, changes: Partial<MergeBody> = {}) => side({ icon, ...changes });
+
+  const A_ICON = side({ icon: "folder" });
+
+  it("sólo cambió W: gana su icon", () => {
+    expect(merged(withIcon("star", { name: "W" }), withIcon("folder"), A_ICON).doc.icon).toBe("star");
+  });
+
+  it("sólo cambió L: gana su icon", () => {
+    expect(merged(withIcon("folder", { name: "W" }), withIcon("rocket"), A_ICON).doc.icon).toBe("rocket");
+  });
+
+  it("iguales en ambos lados: ese icon, sin contarlo como cambio doble", () => {
+    expect(merged(withIcon("star", { name: "W" }), withIcon("star"), A_ICON).doc.icon).toBe("star");
+  });
+
+  it("choque: ambos lados lo cambiaron distinto → gana W sin resolución manual", () => {
+    const a = side({ icon: "folder" });
+    expect(merged(withIcon("star:info"), withIcon("rocket"), a).doc.icon).toBe("star:info");
+  });
+
+  it("L puede borrarlo (null) si W no lo tocó", () => {
+    const a = side({ icon: "folder" });
+    expect(merged(withIcon("folder", { name: "W" }), withIcon(null), a).doc.icon).toBeNull();
+  });
+
+  it("un documento sin la clave cuenta como null: sin cambios no aparece la clave", () => {
+    expect(merged(side({ name: "W" }), side({})).doc).not.toHaveProperty("icon");
+    expect(merged(side({ icon: null, name: "W" }), side({})).doc.icon ?? null).toBeNull();
+  });
+
+  it("W y L que sólo difieren en icon no son «la misma bóveda»: se combinan en vez de cerrar la rama", () => {
+    const a = side({ icon: "folder" });
+    const result = merged(withIcon("folder"), withIcon("rocket", { updated_at: "2026-10-05T00:00:00.000000Z" }), a);
+    expect(result.tombstoneOnly).toBe(false);
+    expect(result.doc.icon).toBe("rocket");
+  });
+
+  it("un icon fusionado inválido (p. ej. forzado en la réplica) pasa a resolución manual por `invalid`", () => {
+    const a = side({ icon: "folder" });
+    expect(mergeVault(withIcon("Folder", { name: "W" }), withIcon("folder"), a, NOW)).toEqual({ kind: "manual", reason: "invalid", fields: ["icon"] });
+  });
+});
