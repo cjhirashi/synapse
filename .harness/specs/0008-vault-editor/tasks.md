@@ -498,13 +498,13 @@ actualizado: 2026-10-22
 
 ### R · Enmienda 9 (PLAN-0008 §18) — S-6, S-7, E-3…E-5
 > Test rojo en commit propio antes de cada corrección.
-- [ ] T-142 — S-6: test (rojo) de componente con cuota llena al resolver (nota y bóveda) → mensaje de almacenamiento lleno (cubre RF-009, RF-016) [zona: pantalla]
+- [x] T-142 — S-6: test (rojo) de componente con cuota llena al resolver (nota y bóveda) → mensaje de almacenamiento lleno (cubre RF-009, RF-016) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteConflictCard.test.tsx src/sync/ConflictView.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-143 — S-7: test (rojo) la construcción del índice no pide más de 200 cuerpos por lectura; paginación (cubre RNF-001, RF-001) [zona: cliente]
+- [x] T-143 — S-7: test (rojo) la construcción del índice no pide más de 200 cuerpos por lectura; paginación (cubre RNF-001, RF-001) [zona: cliente]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts && npm run test:perf`
   - EXPECT: rojo → `passed`; p95 < 300 ms.
-- [ ] T-144 — E-3/E-4/E-5: tests (rojo) borrador descartado no reaparece en el 404; copiar sin portapapeles avisa y selecciona; foco inicial en "Seguir editando" en los diálogos de descarte (cubre RF-014, RF-008, RF-010) [zona: pantalla]
+- [x] T-144 — E-3/E-4/E-5: tests (rojo) borrador descartado no reaparece en el 404; copiar sin portapapeles avisa y selecciona; foco inicial en "Seguir editando" en los diálogos de descarte (cubre RF-014, RF-008, RF-010) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: rojo → `passed`.
 
