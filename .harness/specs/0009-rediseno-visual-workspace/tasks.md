@@ -68,7 +68,7 @@ actualizado: 2026-10-23
 - [x] T-008 — Test (rojo) V-3: barra lateral (R-6…R-11; fondo del formulario ≠ fondo del panel del árbol; `svg[data-icon]` de carpeta/nota por fila; fila de 120 caracteres con elipsis y `scrollWidth = clientWidth`) con capturas (cubre RF-003, RF-004, RF-010) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-3"`
   - EXPECT: falla: ancho de la barra 280 (≠ 240); no hay `.note-tree-panel` ni `svg[data-icon]`.
-- [ ] T-009 — Test (rojo) V-4/V-5: barra superior del editor (R-12), columna centrada de 780 px (R-13, R-14, \|izq − der\| ≤ 2), x del panel 296 (R-15) en lectura/Visual/Código; estado vacío centrado ±4 px, con capturas (cubre RF-005, RF-008) [zona: test]
+- [x] T-009 — Test (rojo) V-4/V-5: barra superior del editor (R-12), columna centrada de 780 px (R-13, R-14, \|izq − der\| ≤ 2), x del panel 296 (R-15) en lectura/Visual/Código; estado vacío centrado ±4 px, con capturas (cubre RF-005, RF-008) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-4|V-5"`
   - EXPECT: falla: el cuerpo ocupa todo el ancho del panel (≠ 780) y el estado vacío está arriba a la izquierda.
 - [ ] T-010 — Test (rojo) V-6, V-8, V-9, V-10: 40 bóvedas con scroll propio del riel y el documento sin scroll; `data-theme="dark"` sin `localStorage`; colores computados ∈ tema activo de `tokens.css`; 390 px sin scroll horizontal (cubre RF-009, RF-006a, RF-006) [zona: test]

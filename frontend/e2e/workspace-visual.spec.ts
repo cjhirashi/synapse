@@ -2,7 +2,7 @@
 // Cada prueba lleva en el título la comprobación V-n y el RF que cubre (Art. 9). Las medidas R-n
 // salen de la tabla congelada de §5.4; las capturas van a /tmp/s9/e2e para la comparación humana
 // con /tmp/s9/ref/mockup-{tema}-{ancho}.png.
-import { expect, expectMeasure, measure, MOBILE, newSession, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
+import { expect, expectMeasure, measure, MOBILE, newSession, openNote, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
 
 // V-1 · riel (RF-001, RF-006; R-1…R-5)
 for (const theme of THEMES) {
@@ -139,6 +139,77 @@ for (const theme of THEMES) {
       expect(longName.x + longName.w).toBeLessThanOrEqual(panel.x + panel.w);
 
       await shot(page, `sidebar-${key}`, { clip: { x: 0, y: 0, width: 300, height: size.height } });
+      await context.close();
+    });
+  }
+}
+
+// V-4 · editor: barra superior y columna centrada (RF-005, RF-006; R-12…R-15)
+type EditorView = "read" | "visual" | "code";
+
+for (const theme of THEMES) {
+  for (const size of SIZES) {
+    for (const view of ["read", "visual", "code"] as const satisfies readonly EditorView[]) {
+      test(`V-4 editor en ${view}, ${theme} ${size.width} (RF-005)`, async ({ browser, seeded }) => {
+        const { context, page } = await openWorkspace(browser, seeded, { theme, size });
+        const key = `${theme}-${size.width}-${view}`;
+
+        await openNote(page, "Bienvenida");
+        await expect(page.getByRole("heading", { level: 2, name: "Bienvenida" })).toBeVisible();
+        if (view !== "read") await page.getByRole("button", { name: "Editar" }).click();
+        if (view === "code") await page.getByRole("button", { name: "Código" }).click();
+        const body = view === "code" ? ".code-view .cm-editor" : ".milkdown-view .ProseMirror";
+        await expect(page.locator(body).first()).toBeVisible();
+        await expect(page.locator(view === "code" ? ".cm-line" : ".milkdown-view .ProseMirror p").first()).toBeVisible();
+
+        const panel = await measure(page, ".vault-workspace-main");
+        expectMeasure(`R-15 ${key}`, "x del panel del editor", panel.x, 296, 1);
+
+        const top = await measure(page, ".note-editor-header");
+        expectMeasure(`R-12 ${key}`, "alto de la barra superior", top.h, 43, 2);
+        expect(top.bg, "barra superior en --bg-secondary").toBe(tokenColor(theme, "--bg-secondary"));
+        expect(top.borderBottomColor, "borde inferior en --border").toBe(tokenColor(theme, "--border"));
+
+        // Columna: min(780, ancho del área de scroll) y centrada dentro de ella.
+        const area = await measure(page, ".note-editor-body");
+        const column = await measure(page, ".note-editor-column");
+        expectMeasure(`R-13 ${key}`, "ancho de la columna", column.w, Math.min(780, area.clientWidth), 2);
+        const left = column.x - area.x;
+        const right = area.x + area.clientWidth - (column.x + column.w);
+        expectMeasure(`R-13c ${key}`, "descentrado de la columna", Math.abs(left - right), 0, 2);
+
+        if (view !== "code") {
+          const paragraph = await measure(page, ".milkdown-view .ProseMirror p");
+          expect(paragraph.fontSize, "R-14 cuerpo a 14 px").toBe("14px");
+          expect(paragraph.lineHeight, "R-14 interlineado 1,8").toBe("25.2px");
+        }
+
+        await shot(page, `editor-${view}-${theme}-${size.width}`);
+        await context.close();
+      });
+    }
+  }
+}
+
+// V-5 · estado vacío centrado (RF-008)
+for (const theme of THEMES) {
+  for (const size of SIZES) {
+    test(`V-5 estado vacío, ${theme} ${size.width} (RF-008)`, async ({ browser, seeded }) => {
+      const { context, page } = await openWorkspace(browser, seeded, { theme, size });
+      const key = `${theme}-${size.width}`;
+
+      await expect(page.getByText("Abre o crea una nota para empezar.")).toBeVisible();
+      await expect(page.locator(".vault-workspace-empty svg[data-icon]")).toBeVisible();
+      const panel = await measure(page, ".vault-workspace-main");
+      const icon = await measure(page, ".vault-workspace-empty svg");
+      const text = await measure(page, ".vault-workspace-empty p");
+      // Centro del bloque (ícono + texto) frente al del panel, en ambos ejes.
+      const blockMiddle = (icon.y + text.y + text.h) / 2;
+      const blockCenter = text.x + text.w / 2;
+      expectMeasure(`V5x ${key}`, "descentrado horizontal del vacío", Math.abs(blockCenter - (panel.x + panel.w / 2)), 0, 4);
+      expectMeasure(`V5y ${key}`, "descentrado vertical del vacío", Math.abs(blockMiddle - (panel.y + panel.h / 2)), 0, 4);
+
+      await shot(page, `empty-${key}`);
       await context.close();
     });
   }

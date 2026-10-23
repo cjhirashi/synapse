@@ -109,6 +109,8 @@ export async function createVault(cookie: string, name: string): Promise<string>
 export interface OpenOptions {
   theme?: Theme | null;
   size?: Size;
+  /** Preferencia del sistema del navegador (lo que resolvería el modo "sistema"). */
+  colorScheme?: "light" | "dark";
 }
 
 /**
@@ -116,8 +118,8 @@ export interface OpenOptions {
  * guardado. `theme: null` deja `localStorage` vacío (V-8).
  */
 export async function newSession(browser: Browser, user: { email: string; password: string }, options: OpenOptions = {}): Promise<BrowserContext> {
-  const { theme = "dark", size = SIZES[0] } = options;
-  const context = await browser.newContext({ baseURL: base_url(), viewport: size });
+  const { theme = "dark", size = SIZES[0], colorScheme } = options;
+  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme });
   if (theme !== null) await context.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
   const login = await context.request.post("/auth/login", { data: { email: user.email, password: user.password } });
   if (!login.ok()) throw new Error(`login → ${login.status()}`);
@@ -165,6 +167,20 @@ export async function seed(browser: Browser): Promise<Seeded> {
   for (const note of NOTE_SEEDS) await createNote(page, note.title, note.content);
   await waitForSynced(page);
   await context.close();
+  return { email: user.email, password: user.password, vaults, longNoteName: LONG_NOTE_NAME };
+}
+
+/** Cantidad de bóvedas del usuario "lleno" que desborda el riel (V-6). */
+export const CROWDED_VAULTS = 40;
+
+/** Usuario con 40 bóvedas (REST) para comprobar el scroll propio del riel. */
+export async function seedCrowded(): Promise<Seeded> {
+  const user = await createUser();
+  const vaults: SeedVault[] = [];
+  for (let n = 1; n <= CROWDED_VAULTS; n++) {
+    const name = `Bóveda ${String(n).padStart(2, "0")}`;
+    vaults.push({ id: await createVault(user.cookie, name), name, icon: null });
+  }
   return { email: user.email, password: user.password, vaults, longNoteName: LONG_NOTE_NAME };
 }
 
@@ -224,6 +240,17 @@ export async function openWorkspace(
     await waitForVaults(page, seeded.vaults.length);
   }
   return { context, page };
+}
+
+/**
+ * Abre una nota del árbol con el teclado (foco + Enter). El clic de ratón se prueba aparte en V-3:
+ * aquí sólo importa qué muestra el editor, no cómo se llegó a él.
+ */
+export async function openNote(page: Page, name: string): Promise<void> {
+  const row = page.getByRole("tree", { name: "Notas" }).getByRole("treeitem", { name });
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(row).toHaveAttribute("aria-selected", "true");
 }
 
 // --- Medición -------------------------------------------------------------------------------
@@ -345,7 +372,13 @@ export function expectMeasure(key: string, label: string, got: number, target: n
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded }>({
+  crowded: [
+    async ({}, use) => {
+      await use(await seedCrowded());
+    },
+    { scope: "worker" },
+  ],
   seeded: [
     async ({ browser }, use) => {
       await use(await seed(browser));
