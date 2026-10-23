@@ -127,7 +127,7 @@ actualizado: 2026-10-23
 - [x] T-027 — Test (rojo) en `editor/NoteEditor.test.tsx`: la cabecera es `.note-editor-header` con el `h2`, el contenido va dentro de `.note-editor-column`; roles, nombres y `aria-pressed` de Visual/Código, Guardar y Leer/Editar sin cambios (cubre RF-005, RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx`
   - EXPECT: falla la prueba de `.note-editor-column`; las existentes `passed`.
-- [ ] T-028 — `editor/NoteEditor.tsx` (+ `MilkdownView.tsx`/`CodeView.tsx` si hace falta) con la columna; `editor/editor.css`: barra 43 px `--bg-secondary`, cuerpo sin tarjeta, columna `max-width: 780px` + `margin-inline: auto` + `padding: var(--space-8) var(--space-16)`, párrafos 14 px / 1.8; panel del editor a alto completo en `notes/notes.css` (cubre RF-005) [zona: frontend]
+- [x] T-028 — `editor/NoteEditor.tsx` (+ `MilkdownView.tsx`/`CodeView.tsx` si hace falta) con la columna; `editor/editor.css`: barra 43 px `--bg-secondary`, cuerpo sin tarjeta, columna `max-width: 780px` + `margin-inline: auto` + `padding: var(--space-8) var(--space-16)`, párrafos 14 px / 1.8; panel del editor a alto completo en `notes/notes.css` (cubre RF-005) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes && npm run test:visual -- --grep "V-4|V-5"`
   - EXPECT: vitest `passed`; V-4 y V-5 `passed` (columna 780 ± 2, centrada ≤ 2 px; vacío ±4 px) con capturas `editor-*.png`, `empty-*.png`.
 - [ ] T-029 — Test (rojo) `vaults/IconPicker.test.tsx`: `radiogroup` "Ícono" (Iniciales + 24) y "Color" (Automático + 5) con nombres en español, flechas mueven la selección, `onChange` emite `formatIcon(glifo, color)`; `VaultListPage.test.tsx`: cada fila muestra el chip (cubre RF-011) [zona: test]

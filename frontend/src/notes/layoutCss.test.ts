@@ -65,6 +65,17 @@ test("RF-010: el nombre de una fila se recorta con elipsis en una sola línea", 
   expect(name).toMatch(/min-width: 0/);
 });
 
+test("RF-005: el contenido del editor va en una columna centrada de 780 px sin tarjeta", () => {
+  const editor = read("../editor/editor.css");
+  const column = rule(editor, ".note-editor-column");
+  expect(column).toMatch(/max-width: 780px/);
+  expect(column).toMatch(/margin-inline: auto/);
+  expect(column).toMatch(/padding: var\(--space-8\) var\(--space-16\)/);
+  expect(rule(editor, ".note-editor-header")).toMatch(/background: var\(--bg-secondary\)/);
+  // Sin marco de tarjeta: el cuerpo es sólo el área de scroll.
+  expect(rule(editor, ".note-editor-body")).not.toMatch(/border|background/);
+});
+
 // Los colores salen sólo de tokens (`var(--…)` o `color-mix` de tokens), nunca de literales.
 test.each([
   ["notes/notes.css", "notes.css"],

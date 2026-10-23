@@ -454,67 +454,71 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         </div>
       </header>
 
-      {inConflict && (
-        <p className="note-editor-notice" role="status">
-          Esta nota tiene versiones en conflicto. <Link to="/conflicts">Resolver en Conflictos</Link>
-        </p>
-      )}
-      {missing && (
-        <div className="note-editor-notice" role="status">
-          <p>Esta nota se envió a la papelera desde otro dispositivo; tu borrador sigue aquí.</p>
-          <button type="button" onClick={() => void restoreAndSave()} disabled={saving}>
-            Restaurar y guardar
-          </button>
-        </div>
-      )}
-      {error && <p role="alert">{error}</p>}
-      {pendingId !== null && (
-        <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
-          <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
-            Guardar y abrir
-          </button>
-          <button type="button" onClick={discardAndOpen}>
-            Descartar y abrir
-          </button>
-          <button type="button" onClick={keepEditing}>
-            Seguir editando
-          </button>
-        </ConfirmDialog>
-      )}
-
-      {blocker.state === "blocked" && (
-        <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." onCancel={() => blocker.reset()}>
-          <button type="button" onClick={() => void saveAndLeave()} disabled={saving}>
-            Guardar y salir
-          </button>
-          <button type="button" onClick={() => blocker.proceed()}>
-            Descartar y salir
-          </button>
-          <button type="button" onClick={() => blocker.reset()}>
-            Seguir editando
-          </button>
-        </ConfirmDialog>
-      )}
-
-      {discardAsk !== null && (
-        <ConfirmDialog titleId="note-discard-title" title="Esta nota tiene cambios sin guardar." onCancel={() => answerDiscard(false)}>
-          <button type="button" onClick={() => answerDiscard(true)}>
-            Borrar y descartar cambios
-          </button>
-          <button type="button" data-autofocus onClick={() => answerDiscard(false)}>
-            Seguir editando
-          </button>
-        </ConfirmDialog>
-      )}
-
+      {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
+          las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
       <div className="note-editor-body">
-        {mode === "read" ? (
-          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
-        ) : view === "visual" ? (
-          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} />
-        ) : (
-          <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
-        )}
+        <div className="note-editor-column">
+          {inConflict && (
+            <p className="note-editor-notice" role="status">
+              Esta nota tiene versiones en conflicto. <Link to="/conflicts">Resolver en Conflictos</Link>
+            </p>
+          )}
+          {missing && (
+            <div className="note-editor-notice" role="status">
+              <p>Esta nota se envió a la papelera desde otro dispositivo; tu borrador sigue aquí.</p>
+              <button type="button" onClick={() => void restoreAndSave()} disabled={saving}>
+                Restaurar y guardar
+              </button>
+            </div>
+          )}
+          {error && <p role="alert">{error}</p>}
+          {pendingId !== null && (
+            <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
+              <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
+                Guardar y abrir
+              </button>
+              <button type="button" onClick={discardAndOpen}>
+                Descartar y abrir
+              </button>
+              <button type="button" onClick={keepEditing}>
+                Seguir editando
+              </button>
+            </ConfirmDialog>
+          )}
+
+          {blocker.state === "blocked" && (
+            <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." onCancel={() => blocker.reset()}>
+              <button type="button" onClick={() => void saveAndLeave()} disabled={saving}>
+                Guardar y salir
+              </button>
+              <button type="button" onClick={() => blocker.proceed()}>
+                Descartar y salir
+              </button>
+              <button type="button" onClick={() => blocker.reset()}>
+                Seguir editando
+              </button>
+            </ConfirmDialog>
+          )}
+
+          {discardAsk !== null && (
+            <ConfirmDialog titleId="note-discard-title" title="Esta nota tiene cambios sin guardar." onCancel={() => answerDiscard(false)}>
+              <button type="button" onClick={() => answerDiscard(true)}>
+                Borrar y descartar cambios
+              </button>
+              <button type="button" data-autofocus onClick={() => answerDiscard(false)}>
+                Seguir editando
+              </button>
+            </ConfirmDialog>
+          )}
+
+          {mode === "read" ? (
+            <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
+          ) : view === "visual" ? (
+            <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} />
+          ) : (
+            <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
+          )}
+        </div>
       </div>
     </section>
   );
