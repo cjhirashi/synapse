@@ -417,3 +417,15 @@ arriba; ver el front-matter de `spec.md`. Archivos compartidos con dueño anteri
 | A1-4 · cabecera del editor: hueco de ~96 px a la derecha de "Editar" en lectura | Low | `.note-editor-state` reserva `min-width: 9ch` aunque esté vacío | Reservar sólo con texto (o alinear "Editar" al borde); medida en V-4. |
 | A1-5 · el color derivado de una bóveda sin ícono puede ser `danger` (lee como alerta) | Low | `PALETTE[sum % 5]` incluye `danger` | Derivar sólo de `accent/info/success/warning`; `danger` sigue elegible a mano. |
 | A1-6 · sin `title` en el enlace del riel | Low | — | `ABANDON` razonado: el nombre accesible está en `aria-label`, el tooltip propio cubre puntero y foco, y el nombre de la bóveda activa se ve en la cabecera de la barra lateral. |
+
+## 11. Enmienda 2 (2026-10-23) — revisión del bloque F (APPROVED, 0 Critical/High)
+> Fuzz diferencial `checkIcon` ≡ `VaultIcon` sobre 4 011 cadenas: 0 divergencias; selector accesible
+> por teclado; RF-012 sin recarga; P-6 confirmado.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F2-1 · el guardián `iconSafety.test.ts` deja pasar `to={vault.icon}`, una indirección y `style` fuera de `VaultChip` | Medium | guardián estático por regex sobre un subconjunto de atributos y archivos | Ampliar el guardián (`to=`, `style=` en todos los consumidores) **y** añadir prueba de comportamiento con `icon` hostil (`javascript:x`, `url(x)`) en riel, lista y selector: ningún `href`/`style` del DOM lo contiene; mutantes pegados. |
+| F2-2 · "sin cambios rechazados" y V-7 casi vacías (sembrado por REST: el cliente no empuja nada) | Medium | la aserción no ejercita el push de `icon` | En V-7, tras guardar desde el selector: `waitForSynced`, 0 rechazos y `GET /vaults/{id}` con el `icon` esperado; `--chip-color` del chip calculado. |
+| F2-3 · comentario obsoleto y `icon?` declarado dos veces en `vaultStore.ts` | Low | — | Limpiar. |
+| F2-4 · vista previa sin rótulo; foco y selección con el mismo acento en el selector | Low | — | Rótulo "Vista previa" y foco distinguible de la selección (anillo de foco vs. relleno de selección), con tokens. |
+| F2-5 · un glifo/color fuera del catálogo se degrada a iniciales al editar, sin aviso | Low | coherente con P-1 (el servidor no valida catálogo; lo desconocido cae a iniciales) | `ABANDON` razonado: es el comportamiento especificado en spec §3; el selector sólo ofrece valores del catálogo. |

@@ -266,10 +266,21 @@ actualizado: 2026-10-23
   - CHECK: `python3 -c "import json;m=json.load(open('/tmp/s9/e2e/measurements.json'));print(sorted(k for k in m if k.startswith('R-')))"`
   - EXPECT: R-1…R-15 presentes y dentro de tolerancia.
 
+### J · Enmienda 2 (PLAN-0009 §11) — F2-1…F2-4
+- [ ] T-070 — F2-1: guardián ampliado + prueba de comportamiento con `icon` hostil en riel, lista y selector; mutantes (`to={icon}`, indirección, `style` en `VaultListPage`) fallan (cubre RF-011, RF-012, RF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/vaults src/notes`
+  - EXPECT: `passed`; cada mutante (no commiteado) hace fallar al menos un test — salida pegada.
+- [ ] T-071 — F2-2: V-7 tras guardar desde el selector comprueba sincronizado, 0 rechazos, `GET /vaults/{id}` con el `icon` y `--chip-color` (cubre RF-012) [zona: test]
+  - CHECK: `cd frontend && npm run test:visual -- --grep "V-7"`
+  - EXPECT: `passed`; con el push de `icon` roto (mutante) falla.
+- [ ] T-072 — F2-3/F2-4: limpieza de `vaultStore.ts`; rótulo "Vista previa" y foco distinguible de la selección, capturas claro/oscuro leídas (cubre RF-011) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/vaults src/sync && npm run typecheck` + capturas
+  - EXPECT: `passed`; en la captura, foco y selección se distinguen.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065, T-068 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pendiente |
+| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065, T-068, T-070 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pendiente |
 | RF-002 | T-007, T-018, T-019, T-032, T-065 | VaultRail.test (tooltip), e2e V-2 | Pendiente |
 | RF-003 | T-008, T-022, T-023, T-024, T-025, T-026, T-032, T-065, T-067 | VaultWorkspacePage.test, NoteSidebar.test, e2e V-3 | Pendiente |
 | RF-004 | T-008, T-024, T-025, T-026, T-032, T-065 | NoteSidebar.test (data-icon), e2e V-3 | Pendiente |
@@ -280,8 +291,8 @@ actualizado: 2026-10-23
 | RF-008 | T-009, T-022, T-023, T-028, T-032, T-065 | VaultWorkspacePage.test (vacío), e2e V-5 | Pendiente |
 | RF-009 | T-010, T-020, T-021, T-032, T-065 | layoutCss.test (marco fijo), e2e V-6 | Pendiente |
 | RF-010 | T-008, T-024, T-026, T-032, T-065 | NoteSidebar.test (title), e2e V-3 (fila larga) | Pendiente |
-| RF-011 | T-011, T-029, T-030, T-048, T-049, T-051, T-065 | IconPicker.test, VaultListPage.test, VaultForm.test, e2e V-7 | Pendiente |
-| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066 | test_vault_schemas, test_sync_rules_mirror, test_vault_service, test_sync_push, test_vaults_api, test_contract, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pendiente |
+| RF-011 | T-011, T-029, T-030, T-048, T-049, T-051, T-065, T-070, T-072 | IconPicker.test, VaultListPage.test, VaultForm.test, e2e V-7 | Pendiente |
+| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066, T-070, T-071 | test_vault_schemas, test_sync_rules_mirror, test_vault_service, test_sync_push, test_vaults_api, test_contract, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pendiente |
 | RNF-001 | T-000, T-052, T-053, T-065, T-066 | e2e workspace-perf (p95 ≤ 150 ms), tree.perf.test (< 300 ms) | Pendiente |
 | doc: contracts/vault-icon.schema.json | T-054 | test_vault_schemas (contract) | Pendiente |
 | doc: 0003 openapi.yaml | T-040, T-055 | test_contract | Pendiente |
