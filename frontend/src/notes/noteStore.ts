@@ -205,8 +205,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
    * Guardado sobre una revisión desfasada (P-8): lo escrito no se pierde ni pisa lo que llegó
    * entre tanto. Se escribe como rama hija de `baseRev` (con `new_edits: false` y una revisión
    * determinista, igual que las resoluciones de `conflicts.ts`) y la nota queda en conflicto
-   * para que el usuario elija en la vista de conflictos. Dos guardados idénticos dan la misma
-   * revisión, así que reintentar no ramifica de más.
+   * para que el usuario elija en la vista de conflictos. La revisión depende del contenido y de
+   * `updated_at`, así que dos guardados no dan la misma revisión: que dos ramas con el mismo
+   * contenido no se queden en conflicto lo garantiza `mergeNote` (converge ignorando `updated_at`).
    */
   async function saveAsBranch(id: string, baseRev: string, content: string): Promise<Note> {
     let base: NoteDoc & { _revisions: { start: number; ids: string[] }; _deleted?: boolean };

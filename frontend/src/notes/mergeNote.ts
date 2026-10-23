@@ -5,8 +5,10 @@
  * se funden sin riesgo de perder una, y elegir la "más reciente" descartaría la otra en
  * silencio (ADR-001). Lo único que se cierra solo es la convergencia: dos resoluciones
  * iguales del mismo conflicto sólo difieren en `updated_at` (VC-2 de 0005), así que basta con
- * cerrar la perdedora. Cualquier otra diferencia (ruta, contenido, frontmatter, borrado) es
- * manual y la decide el usuario con las dos versiones delante.
+ * cerrar la perdedora. El estado de borrado cuenta como estado (activa / en la papelera), no
+ * como instante: dos dispositivos que borran (o restauran) la misma nota con el mismo contenido
+ * convergen aunque sus `deleted_at` difieran (S-2). Cualquier otra diferencia (ruta, contenido,
+ * frontmatter, activa frente a borrada) es manual y la decide el usuario con las dos versiones delante.
  */
 import { canonical } from "../sync/canonical";
 
@@ -29,7 +31,8 @@ export type NoteMergeResult =
 export function mergeNote(w: NoteBody, l: NoteBody): NoteMergeResult {
   // `updated_at` queda fuera de la comparación; el frontmatter se compara en forma canónica
   // para que el orden de sus claves no cuente como diferencia.
-  const { updated_at: _w, ...wRest } = w;
-  const { updated_at: _l, ...lRest } = l;
-  return canonical(wRest) === canonical(lRest) ? { kind: "merged", doc: w, tombstoneOnly: true } : { kind: "manual" };
+  const { updated_at: _w, deleted_at: wDeleted, ...wRest } = w;
+  const { updated_at: _l, deleted_at: lDeleted, ...lRest } = l;
+  const sameState = (wDeleted !== null) === (lDeleted !== null);
+  return sameState && canonical(wRest) === canonical(lRest) ? { kind: "merged", doc: w, tombstoneOnly: true } : { kind: "manual" };
 }

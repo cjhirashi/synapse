@@ -39,7 +39,7 @@ import { canonical } from "./canonical";
 import { mergeVault, type MergeBody, type MergeResult } from "./merge";
 import { vaultIsActive } from "./vaultActive";
 import { validateVault, type VaultField, type VaultFields } from "./vaultRules";
-import { ID_PREFIX, VaultChangedError, VaultValidationError, utcNow } from "./vaultStore";
+import { ID_PREFIX, StorageFullError, VaultChangedError, VaultValidationError, isQuotaError, utcNow } from "./vaultStore";
 
 // `canonical` vive en su propio módulo (lo comparte `notes/mergeNote.ts` sin ciclo de imports).
 export { canonical };
@@ -242,7 +242,13 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
     if (content) docs.push({ _id: w._id, ...(await child(w, content)), ...content });
     const tombstone = { _deleted: true };
     docs.push({ _id: l._id, ...(await child(l, tombstone)), ...tombstone });
-    await db.bulkDocs(docs as PouchDB.Core.PutDocument<{}>[], { new_edits: false });
+    try {
+      await db.bulkDocs(docs as PouchDB.Core.PutDocument<{}>[], { new_edits: false });
+    } catch (err) {
+      // Misma traducción que el resto de las escrituras de la réplica (S-3).
+      if (isQuotaError(err)) throw new StorageFullError();
+      throw err;
+    }
   }
 
   /** Ganadora actual con sus perdedoras vivas, o `null` si el documento no existe. */
