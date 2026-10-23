@@ -146,10 +146,10 @@ actualizado: 2026-10-23
   - EXPECT: todas `passed` (V-7 queda fuera: depende del backend); ≥ 30 capturas (5 escenarios × 2 temas × 2 anchos + tooltip, desbordamiento, tema y 390 en ambos temas); cada R-n dentro de tolerancia en `measurements.json`.
 
 ### E · Backend `Vault.icon`
-- [ ] T-033 — Test (rojo): casos `icon` en `backend/tests/fixtures/vault_rules_cases.json` (válidos `folder`, `folder-heart`, `book-open:success`, `initials:warning`, 64 caracteres, `null`; inválidos vacío, 65, `Folder`, ` folder`, `a::b`, `a:`, `:a`, `-a`, `a-`, `a_b`, `<svg>`, `javascript:x`, `carpeta-ñ`, `1`, `[]`) y en `test_vault_schemas.py` (`VaultCreate`/`VaultUpdate`/`VaultOut` con `icon`; los `examples` de `contracts/vault-icon.schema.json` válidos) (cubre RF-012) [zona: test] [P-1]
+- [x] T-033 — Test (rojo): casos `icon` en `backend/tests/fixtures/vault_rules_cases.json` (válidos `folder`, `folder-heart`, `book-open:success`, `initials:warning`, 64 caracteres, `null`; inválidos vacío, 65, `Folder`, ` folder`, `a::b`, `a:`, `:a`, `-a`, `a-`, `a_b`, `<svg>`, `javascript:x`, `carpeta-ñ`, `1`, `[]`) y en `test_vault_schemas.py` (`VaultCreate`/`VaultUpdate`/`VaultOut` con `icon`; los `examples` de `contracts/vault-icon.schema.json` válidos) (cubre RF-012) [zona: test] [P-1]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_schemas.py tests/test_sync_rules_mirror.py`
   - EXPECT: fallan los casos `icon`: `KeyError: 'icon'` en `_FIELD_RULES` y `extra_forbidden` en `VaultCreate`.
-- [ ] T-034 — `VaultIcon` en `core/schemas.py` y campos `icon` en `VaultCreate`/`VaultUpdate`/`VaultOut` (cubre RF-012) [zona: núcleo]
+- [x] T-034 — `VaultIcon` en `core/schemas.py` y campos `icon` en `VaultCreate`/`VaultUpdate`/`VaultOut` (cubre RF-012) [zona: núcleo]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_schemas.py`
   - EXPECT: `passed`, 0 failed (`test_sync_rules_mirror.py` sigue rojo hasta T-038).
 - [ ] T-035 — Test (rojo) `test_vault_service.py`: `create` con y sin `icon`; `update` con `icon` ausente (conserva), valor (cambia), `null` (borra); documento sin clave `icon` → `VaultOut.icon is None` (cubre RF-012) [zona: test]

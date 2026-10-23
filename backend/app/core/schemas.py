@@ -71,6 +71,16 @@ VaultName = Annotated[
     AfterValidator(_no_control_characters),
 ]
 VaultDescription = Annotated[str, StringConstraints(max_length=2000)]
+# SPEC-0009 RF-012: `glifo` o `glifo:color`, kebab-case ASCII en minúscula (canon del contrato
+# `0009/contracts/vault-icon.schema.json`). Sólo la gramática: el servidor no conoce el catálogo
+# de íconos ni la paleta; el cliente resuelve lo desconocido a las iniciales. Una sola regla
+# para REST y para el push (que la reutiliza); `pattern` y `max_length` son restricciones
+# nativas, así el traductor de 422 (SPEC-0004) no publica nunca el valor enviado.
+_ICON_WORD = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+VaultIcon = Annotated[
+    str,
+    StringConstraints(min_length=1, max_length=64, pattern=rf"^{_ICON_WORD}(?::{_ICON_WORD})?$"),
+]
 VaultTag = Annotated[
     str, StringConstraints(strip_whitespace=True, to_lower=True, min_length=1, max_length=32)
 ]
@@ -93,6 +103,7 @@ class VaultCreate(BaseModel):
     name: VaultName
     description: VaultDescription | None = None
     tags: VaultTags = Field(default_factory=list)
+    icon: VaultIcon | None = None
 
 
 class VaultUpdate(BaseModel):
@@ -100,7 +111,7 @@ class VaultUpdate(BaseModel):
 
     `name` y `tags` no admiten `null`: su tipo no es anulable y el valor por defecto `None`
     no se valida (pydantic no valida defaults), así que "ausente" se distingue de un
-    `null` explícito, que da 422. `description: null` sí vale: borra la descripción.
+    `null` explícito, que da 422. `description: null` e `icon: null` sí valen: borran el campo.
     Se lee con `model_dump(exclude_unset=True)`.
     """
 
@@ -109,6 +120,7 @@ class VaultUpdate(BaseModel):
     name: VaultName = None  # type: ignore[assignment]
     description: VaultDescription | None = None
     tags: VaultTags = None  # type: ignore[assignment]
+    icon: VaultIcon | None = None
 
 
 class VaultOut(BaseModel):
@@ -116,6 +128,7 @@ class VaultOut(BaseModel):
     name: str
     description: str | None
     tags: list[str]
+    icon: str | None
     owner_id: str
     created_at: str
     updated_at: str
