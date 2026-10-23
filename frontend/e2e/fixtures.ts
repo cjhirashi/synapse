@@ -152,6 +152,45 @@ async function createNote(page: Page, title: string, content: string): Promise<v
   await expect(page.getByRole("button", { name: "Guardar" })).toBeDisabled();
 }
 
+/** ~4 KiB de contenido por nota: el árbol no debe cargarlo (`list` lo omite). */
+const FILLER = "lorem ipsum dolor sit amet ".repeat(150);
+
+/**
+ * `count` notas de una bóveda con la misma distribución que `tree.perf.test.tsx` (100 en la raíz, el resto en
+ * carpetas de hasta 3 niveles), escritas directamente en la base CouchDB del usuario (admin de pruebas): la
+ * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
+ * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
+ */
+export async function seedNotesBulk(userCookie: string, vaultId: string, count: number): Promise<number> {
+  const me = (await (await api("/auth/me", { cookie: userCookie })).json()) as { user_id: string };
+  const stamp = "2026-10-12T09:00:00.000Z";
+  const paths = Array.from({ length: count }, (_, i) => {
+    const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
+    return `${folder}nota-${i}.md`;
+  });
+  const docs = paths.map((path) => ({
+    _id: `note:${vaultId}:${crypto.randomUUID()}`,
+    type: "note",
+    vault_id: vaultId,
+    path,
+    frontmatter: {},
+    content: FILLER,
+    created_at: stamp,
+    updated_at: stamp,
+    deleted_at: null,
+  }));
+  const couch = process.env.COUCHDB_URL ?? "http://localhost:15984";
+  const auth = `Basic ${Buffer.from(`${process.env.COUCHDB_USER ?? "admin"}:${process.env.COUCHDB_PASSWORD ?? "testpass"}`).toString("base64")}`;
+  const res = await fetch(`${couch}/synapse_user_${me.user_id}/_bulk_docs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: auth },
+    body: JSON.stringify({ docs }),
+  });
+  if (!res.ok) throw new Error(`_bulk_docs → ${res.status}: ${await res.text()}`);
+  const top = new Set(paths.map((path) => (path.includes("/") ? path.split("/")[0] : path)));
+  return top.size;
+}
+
 /** Usuario con 3 bóvedas (REST) y el árbol de notas en la primera (UI), sincronizado al servidor. */
 export async function seed(browser: Browser): Promise<Seeded> {
   const user = await createUser();
