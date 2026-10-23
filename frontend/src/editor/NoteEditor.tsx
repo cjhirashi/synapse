@@ -285,7 +285,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       const trashed = (await notes.list(current.vault_id, { deleted: true })).find((item) => item.id === current.id);
       if (!trashed) throw new NoteNotFoundError();
       const restored = await notes.restore(current.id, trashed.rev);
-      setNote(await notes.save(current.id, draftRef.current, restored.rev));
+      setNote(await notes.save(current.id, readDraft(), restored.rev)); // lector único (E-8)
       setMissing(false);
       setSaved(true);
     } catch (err) {

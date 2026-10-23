@@ -135,6 +135,7 @@ nota, al borrar la abierta y al navegar dentro de la app (riel, «Bóvedas»…,
 El **cierre de sesión** también avisa: el editor se registra en `useSync().unsavedDrafts`
 mientras está sucio y `requestLogout()` lo consulta antes de cerrar nada (`LogoutDialog`,
 razón `draft`). La navegación a `/login` no se bloquea.
+
 **Estado «sucio» síncrono y lector único (E-6, E-7):** el listener de Milkdown emite el markdown con un
 debounce de 200 ms y su `destroy` descarta lo pendiente, así que `draft` va con retraso respecto de lo
 que el usuario ve. `MilkdownView` informa «sucio» (`onDirty`) en la misma transacción que cambia el
