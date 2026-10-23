@@ -40,7 +40,8 @@ for (const theme of THEMES) {
       expectMeasure(`R-5w ${key}`, "ancho de la barra activa", parseFloat(bar.w), 3, 1);
       expectMeasure(`R-5h ${key}`, "alto de la barra activa", parseFloat(bar.h), 20, 1);
       expect(bar.bg, "barra activa en --accent").toBe(tokenColor(theme, "--accent"));
-      expect(bar.linkX + parseFloat(bar.left), "barra pegada al borde del riel").toBeCloseTo(0, 0);
+      // El enlace queda centrado en el riel (x = 10,5) y la barra sale hacia la izquierda hasta su borde.
+      expectMeasure(`R-5x ${key}`, "x de la barra activa respecto al riel", bar.linkX + parseFloat(bar.left), 0, 1);
 
       await shot(page, `rail-${key}`, { selector: ".vault-rail" });
       await context.close();

@@ -100,7 +100,7 @@ actualizado: 2026-10-23
 - [x] T-018 — Test (rojo) en `notes/VaultRail.test.tsx`: el riel usa `VaultChip` con el `icon` del documento sembrado en la réplica; tooltip con el nombre completo al `hover` y al foco, que desaparece al salir; sin atributo `title`; nombre accesible con iniciales igual que hoy y, con ícono, igual al nombre (cambio explícito de RF-007) (cubre RF-001, RF-002, RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx`
   - EXPECT: fallan las pruebas nuevas (no hay tooltip; el chip es texto plano); las existentes siguen `passed`.
-- [ ] T-019 — `notes/VaultRail.tsx`: `VaultChip` + `RailTooltip` (portal en `document.body`, `position: fixed`, `aria-hidden`), sin `title`; barra de activa `::before` en `notes/notes.css` (cubre RF-001, RF-002) [zona: frontend]
+- [x] T-019 — `notes/VaultRail.tsx`: `VaultChip` + `RailTooltip` (portal en `document.body`, `position: fixed`, `aria-hidden`), sin `title`; barra de activa `::before` en `notes/notes.css` (cubre RF-001, RF-002) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
 - [ ] T-020 — Test (rojo) en `notes/layoutCss.test.ts`: sustituye **explícitamente** las aserciones de U-7 (riel `sticky` + `max-height: 100vh`; icono `height: 38px`) por las del marco fijo (`.app-shell` `height: 100dvh`; `.app-body` `min-height: 0`; `.vault-rail` y `.app-main` `overflow-y: auto`; `.vault-rail` sin `position: sticky`); añade "sin literales de color" en `notes.css`, `editor.css` y `vaults/VaultChip.css` (cubre RF-009, RF-006, RF-007) [zona: test] [P-5]

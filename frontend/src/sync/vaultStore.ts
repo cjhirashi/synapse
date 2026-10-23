@@ -27,6 +27,8 @@ interface VaultDoc {
   name: string;
   description: string | null;
   tags: string[];
+  /** Ícono «glifo[:color]» (SPEC-0009); los documentos anteriores no traen la clave. */
+  icon?: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -36,6 +38,8 @@ interface VaultDoc {
 /** Bóveda vista por la UI: `id` sin el prefijo y `rev` en lugar del `etag` de la API REST. */
 export interface Vault extends VaultFields {
   id: string;
+  /** Ícono de la bóveda (SPEC-0009), de sólo lectura hasta el cableado de RF-012; `null` si no tiene. */
+  icon?: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -115,6 +119,7 @@ function toVault(doc: VaultDoc): Vault {
     name: doc.name,
     description: doc.description,
     tags: doc.tags,
+    icon: doc.icon ?? null,
     owner_id: doc.owner_id,
     created_at: doc.created_at,
     updated_at: doc.updated_at,

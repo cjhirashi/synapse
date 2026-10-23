@@ -120,7 +120,7 @@ test("RF-007: con ícono el nombre accesible es el nombre de la bóveda; con ini
   await seedWithIcon(db, "Con iniciales", "initials:warning");
   renderRail(value);
   expect(await screen.findByRole("link", { name: "Con ícono" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "CO Con iniciales" })).toHaveTextContent("CO");
+  expect(screen.getByRole("link", { name: "CI Con iniciales" })).toHaveTextContent("CI");
 });
 
 test("RF-002: el tooltip muestra el nombre completo al pasar el cursor y desaparece al salir", async () => {
@@ -147,10 +147,14 @@ test("RF-002: el tooltip también aparece al enfocar con el teclado y se va al p
   const user = renderRail(value);
   await screen.findByRole("link", { name: "Alfa" });
 
-  await user.tab();
-  expect(document.querySelector(".rail-tooltip")).toHaveTextContent("Alfa");
-  await user.tab();
-  expect(document.querySelector(".rail-tooltip")).toHaveTextContent("Beta");
+  // Las dos bóvedas se crean con el mismo `created_at` (cada `seedStore` reinicia su reloj): su orden
+  // en el riel depende del id, así que se comprueba el conjunto y no la posición.
+  const names: string[] = [];
+  for (let n = 0; n < 2; n++) {
+    await user.tab();
+    names.push(document.querySelector(".rail-tooltip")!.textContent!);
+  }
+  expect(names.sort()).toEqual(["Alfa", "Beta"]);
   await user.tab(); // sale del riel
   expect(document.querySelector(".rail-tooltip")).toBeNull();
 });

@@ -21,6 +21,7 @@
 }
 
 .vault-rail-icon {
+  position: relative; /* ancla de la barra de la bóveda activa (::before) */
   /* No se encogen cuando el riel (flex en columna, con `max-height`) se llena: el riel hace scroll (U-7). */
   flex-shrink: 0;
   display: grid;
@@ -53,6 +54,48 @@
 .vault-rail-icon:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Chip: círculo en reposo; al pasar el cursor, enfocar o estar activo se vuelve cuadrado redondeado
+   (el gesto del mockup 1.1.4.4, PLAN-0009 P-12). */
+.vault-rail-icon:hover .vault-chip,
+.vault-rail-icon:focus-visible .vault-chip,
+.vault-rail-icon[aria-current="page"] .vault-chip {
+  border-radius: var(--radius-md);
+}
+
+/* Barra de la bóveda activa: 3 × 20 px en acento, pegada al borde izquierdo del riel (el enlace está
+   centrado en los 56 px del riel, así que la barra sale hacia la izquierda hasta tocarlo). */
+.vault-rail-icon[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent);
+}
+
+/* Tooltip del riel (RailTooltip, en <body>): a la derecha del riel y centrado en vertical con el chip.
+   `top`/`left` los fija el componente con la caja del enlace; el desplazamiento y el aspecto, aquí. */
+.rail-tooltip {
+  position: fixed;
+  z-index: 10;
+  transform: translateY(-50%);
+  margin-left: var(--space-2);
+  max-width: 280px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  box-shadow: var(--shadow-panel);
+  color: var(--text-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: fadeIn var(--dur-fast) var(--ease-out);
 }
 
 /* --- Sidebar con el árbol de notas --- */
