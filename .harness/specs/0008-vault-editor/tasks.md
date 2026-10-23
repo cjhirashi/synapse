@@ -514,7 +514,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`; ≥ 2.
 
 ### T · Enmienda 11 (PLAN-0008 §20) — N-1
-- [ ] T-146 — N-1: test (rojo, commit propio) `test_note_contract.py` exige que el patrón de `_rev` del esquema acote la generación como `sync_push._REV`; esquema corregido (cubre RF-005, RF-006) [doc]
+- [x] T-146 — N-1: test (rojo, commit propio) `test_note_contract.py` exige que el patrón de `_rev` del esquema acote la generación como `sync_push._REV`; esquema corregido (cubre RF-005, RF-006) [doc]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_contract.py tests/test_contract.py`
   - EXPECT: rojo → `passed`.
 
