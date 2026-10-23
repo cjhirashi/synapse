@@ -467,3 +467,12 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | E-3 · el 404 de la bóveda muestra un borrador que el usuario descartó a propósito | Low | `salvaged` no se limpia en el cierre voluntario de la nota | Limpiarlo cuando la nota se cierra/borra/descarta voluntariamente; sólo sobrevive a la pérdida involuntaria de la bóveda. |
 | E-4 · "Copiar texto" sin API de portapapeles: rechazo no manejado, sin aviso | Low | sin `try/catch` ni alternativa | Aviso "No se pudo copiar; selecciona el texto" y selección automática del texto; test sin `navigator.clipboard`. |
 | E-5 · el diálogo de descarte enfoca primero la acción destructiva | Low | `ConfirmDialog` enfoca el primer botón | `ConfirmDialog` acepta el botón de foco inicial; en los diálogos de descarte, "Seguir editando". |
+
+## 19. Enmienda 10 (2026-10-23) — Converge tras la enmienda 9
+> Backend y editor: secciones limpias. Restan tres Low.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| S-8 · la paginación del índice (`startkey: last` + `skip: 1`) pierde una nota si `last` desaparece entre lotes | Low | `skip` supone que la clave anterior sigue existiendo | Cota inferior estricta `startkey: last + "\u0000"` sin `skip`; test con la última clave borrada entre lotes. |
+| N-2 · tareas que citan un RF no figuran en su fila de cobertura | Low (proceso) | tabla mantenida a mano | Tabla completada por script desde las cláusulas `(cubre …)` de cada tarea `[x]` (118 referencias; 0 filas incompletas). |
+| N-3 · `frontend/src/README.md` describe el foco de `ConfirmDialog` anterior a E-5 y omite E-3/E-4 | Low | — | Una frase por punto. |
