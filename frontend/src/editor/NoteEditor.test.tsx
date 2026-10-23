@@ -671,4 +671,3 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     });
   });
 });
-
