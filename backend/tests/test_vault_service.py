@@ -500,6 +500,34 @@ def test_rf_009_update_null_description_clears_it(service):
     assert updated.description is None
 
 
+# --- RF-012 (SPEC-0009): `icon` ---
+
+def test_rf_012_create_stores_the_icon_and_defaults_to_null(service, port):
+    with_icon, _ = _create(service, icon="book-open:success")
+    without, _ = _create(service, name="Otra")
+    assert with_icon.icon == "book-open:success"
+    assert port.docs[DB][f"vault:{with_icon.id}"]["icon"] == "book-open:success"
+    assert without.icon is None and port.docs[DB][f"vault:{without.id}"]["icon"] is None
+
+
+def test_rf_012_update_keeps_sets_and_clears_the_icon(service):
+    created, etag = _create(service, icon="folder")
+    kept, etag = service.update(created.id, VaultUpdate(name="Nuevo"), etag)
+    assert kept.icon == "folder"                       # ausente: se conserva
+    changed, etag = service.update(created.id, VaultUpdate(icon="star:info"), etag)
+    assert changed.icon == "star:info"                 # valor: cambia
+    cleared, _ = service.update(created.id, VaultUpdate(icon=None), etag)
+    assert cleared.icon is None                        # null explícito: borra
+    assert service.get(created.id).vault.icon is None
+
+
+def test_rf_012_a_document_without_the_icon_key_reads_as_null(service, port):
+    created, _ = _create(service)
+    del port.docs[DB][f"vault:{created.id}"]["icon"]   # bóveda anterior a SPEC-0009
+    assert service.get(created.id).vault.icon is None
+    assert [item.icon for item in service.list(False, 10, None).items] == [None]
+
+
 def test_rf_027_rename_reserves_the_new_name_and_frees_the_old(service, port):
     created, etag = _create(service, name="Viejo")
     service.update(created.id, VaultUpdate(name="Nuevo"), etag)
