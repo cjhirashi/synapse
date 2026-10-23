@@ -1144,3 +1144,4 @@
 - [2026-10-23] **GATE 2 de SPEC-0009 aprobado** por AIRA (autoridad delegada por Carlos): P-1…P-4, P-6, P-7, P-9, P-10, P-12 tal cual; P-5 marco de altura fija global en rutas privadas; P-8 RNF-001 a 150 ms en navegador real; P-11 set curado `lucide-react` + color, sin subida de imagen. `plan.md` y `tasks.md` → `approved`. Arranca Fase 4 (orden invertido v1.9).
 - [2026-10-23] SPEC-0009 T-000…T-002 (línea base, worktree `.claude/worktrees/0009-rediseno-visual` en `5db5e45`): `npm ci` ok · build ok · vitest **799/799** · test:perf p95 **59,4 ms** · test:sync **25/25** · gate 30 ok · 2 warn · 0 error · backend **1054 passed** (960 s, sola contra :15984).
 - [2026-10-23] SPEC-0009 T-003 (P-10): nota de re-anclaje en 0008/spec.md (strict) — CHECK: git diff --name-only + gate | grep 0008 → ✅ sin DRIFT
+- [2026-10-23] SPEC-0009 T-004 (P-10): nota de re-anclaje en 0007/spec.md (strict) — CHECK: git diff --name-only + gate | grep 0007 → ✅ sin DRIFT

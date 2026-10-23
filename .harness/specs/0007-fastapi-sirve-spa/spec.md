@@ -36,6 +36,10 @@ actualizado: 2026-10-17
 
 # SPEC-0007 · FastAPI sirve la SPA
 
+> **Re-anclaje 2026-10-23** (T-004 de TASKS-0009): SPEC-0009 actualiza `frontend/README.md` y
+> `backend/README.md` (pruebas visuales en navegador real y campo `icon` de bóveda). Sin
+> cambio de requisitos.
+
 > Elicitación/revisión intermedia **saltada por decisión explícita del usuario** (Carlos,
 > vía AIRA): el alcance mínimo está cerrado abajo. Se mantiene el resto del método (spec →
 > plan → tasks → TDD → gate). Cierra como `implemented`, **no** `verified` (sin ronda
