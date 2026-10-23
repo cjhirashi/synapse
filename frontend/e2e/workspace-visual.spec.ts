@@ -2,7 +2,7 @@
 // Cada prueba lleva en el título la comprobación V-n y el RF que cubre (Art. 9). Las medidas R-n
 // salen de la tabla congelada de §5.4; las capturas van a /tmp/s9/e2e para la comparación humana
 // con /tmp/s9/ref/mockup-{tema}-{ancho}.png.
-import { expect, expectMeasure, measure, MOBILE, newSession, openNote, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
+import { expect, expectExact, expectMeasure, measure, MOBILE, newSession, openNote, openVault, openWorkspace, shot, SIZES, test, themeColors, THEMES, tokenColor, tokens } from "./fixtures";
 
 // V-1 · riel (RF-001, RF-006; R-1…R-5)
 for (const theme of THEMES) {
@@ -13,7 +13,7 @@ for (const theme of THEMES) {
 
       const rail = await measure(page, ".vault-rail");
       expectMeasure(`R-1 ${key}`, "ancho del riel", rail.w, 56, 0);
-      expect(rail.bg, "R-10 fondo del riel = --bg-secondary").toBe(tokenColor(theme, "--bg-secondary"));
+      expectExact(`R-10 ${key}`, "fondo del riel = --bg-secondary", rail.bg, tokenColor(theme, "--bg-secondary"));
 
       // El enlace de cada bóveda mide lo mismo que su chip (lo envuelve sin margen): la geometría se
       // mide en el enlace y la forma (radio) en el chip.
@@ -90,7 +90,7 @@ for (const theme of THEMES) {
       const side = await measure(page, ".vault-workspace-side");
       expectMeasure(`R-6 ${key}`, "ancho de la barra lateral", side.w, 240, 1);
       expectMeasure(`R-15s ${key}`, "x de la barra lateral (junto al riel)", side.x, 56, 1);
-      expect(side.bg, "R-10 fondo de la barra = --bg-secondary").toBe(tokenColor(theme, "--bg-secondary"));
+      expectExact(`R-10s ${key}`, "fondo de la barra lateral = --bg-secondary", side.bg, tokenColor(theme, "--bg-secondary"));
 
       const header = await measure(page, ".vault-workspace-header");
       expectMeasure(`R-7 ${key}`, "alto de la cabecera de la barra", header.h, 51, 2);
@@ -123,8 +123,8 @@ for (const theme of THEMES) {
 
       // R-11: fila seleccionada con --accent-soft, barra de 3 px en --accent y texto primario.
       const selected = await measure(page, '.note-tree-row[aria-selected="true"]');
-      expect(selected.bg, "fila seleccionada en --accent-soft").toBe(tokenColor(theme, "--accent-soft"));
-      expect(selected.color, "texto de la fila seleccionada").toBe(tokenColor(theme, "--text-primary"));
+      expectExact(`R-11 ${key}`, "fila seleccionada en --accent-soft", selected.bg, tokenColor(theme, "--accent-soft"));
+      expectExact(`R-11t ${key}`, "texto de la fila seleccionada = --text-primary", selected.color, tokenColor(theme, "--text-primary"));
       const barShadow = await page.locator('.note-tree-row[aria-selected="true"]').evaluate((el) => getComputedStyle(el).boxShadow);
       expect(barShadow).toContain(tokenColor(theme, "--accent"));
       expect(barShadow).toContain("3px");
@@ -202,7 +202,7 @@ for (const theme of THEMES) {
 
         const top = await measure(page, ".note-editor-header");
         expectMeasure(`R-12 ${key}`, "alto de la barra superior", top.h, 43, 2);
-        expect(top.bg, "barra superior en --bg-secondary").toBe(tokenColor(theme, "--bg-secondary"));
+        expectExact(`R-10e ${key}`, "fondo de la barra superior = --bg-secondary", top.bg, tokenColor(theme, "--bg-secondary"));
         expect(top.borderBottomColor, "borde inferior en --border").toBe(tokenColor(theme, "--border"));
 
         // Columna: min(780, ancho del área de scroll) y centrada dentro de ella.
@@ -215,8 +215,8 @@ for (const theme of THEMES) {
 
         if (view !== "code") {
           const paragraph = await measure(page, ".milkdown-view .ProseMirror p");
-          expect(paragraph.fontSize, "R-14 cuerpo a 14 px").toBe("14px");
-          expect(paragraph.lineHeight, "R-14 interlineado 1,8").toBe("25.2px");
+          expectExact(`R-14 ${key}`, "tipografía del cuerpo (14 px)", paragraph.fontSize, "14px");
+          expectExact(`R-14l ${key}`, "interlineado 1,8 (25,2 px)", paragraph.lineHeight, "25.2px");
         }
 
         await shot(page, `editor-${view}-${theme}-${size.width}`);

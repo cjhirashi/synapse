@@ -362,12 +362,22 @@ const MEASUREMENTS = `${OUT_DIR}/measurements.json`;
  * Comprueba una medida R-n de PLAN-0009 §5.4 (`got` frente a `target` ± `tolerance`) y la deja en
  * `measurements.json` (fuera del repo) para la tabla de la revisión visual.
  */
-export function expectMeasure(key: string, label: string, got: number, target: number, tolerance: number): void {
+function record(key: string, entry: { label: string; got: number | string; target: number | string; tolerance: number; ok: boolean }): void {
   mkdirSync(OUT_DIR, { recursive: true });
   const all: Record<string, unknown> = existsSync(MEASUREMENTS) ? JSON.parse(readFileSync(MEASUREMENTS, "utf8")) : {};
-  all[key] = { label, got, target, tolerance, ok: Math.abs(got - target) <= tolerance };
+  all[key] = entry;
   writeFileSync(MEASUREMENTS, JSON.stringify(all, null, 1));
+}
+
+export function expectMeasure(key: string, label: string, got: number, target: number, tolerance: number): void {
+  record(key, { label, got, target, tolerance, ok: Math.abs(got - target) <= tolerance });
   expect(Math.abs(got - target), `${key} ${label}: medido ${got}, objetivo ${target} ± ${tolerance}`).toBeLessThanOrEqual(tolerance);
+}
+
+/** Igual que `expectMeasure` para medidas exactas que no son números (colores de tokens, tipografía). */
+export function expectExact(key: string, label: string, got: string, target: string): void {
+  record(key, { label, got, target, tolerance: 0, ok: got === target });
+  expect(got, `${key} ${label}`).toBe(target);
 }
 
 // --- Fixture de Playwright ------------------------------------------------------------------

@@ -141,7 +141,7 @@ actualizado: 2026-10-23
   - EXPECT: 0 failed; en el diff de tests de 0008 sólo `VaultRail.test.tsx` (pruebas añadidas + nombre con ícono) y `layoutCss.test.ts` (U-7 sustituido); `test:perf` p95 < 300 ms.
 
 ### D · Revisión visual temprana (antes de cualquier tarea de backend)
-- [ ] T-032 — **Revisión visual temprana** con datos simulados: `test:visual` de V-1…V-6, V-8…V-10 en oscuro y claro a 1440, 1024 y 390; lectura de cada captura junto a `/tmp/s9/ref/mockup-{tema}-{ancho}.png`; tabla R-1…R-15 (medida obtenida vs. objetivo §5.4) pegada en `history.md`; todo desvío se corrige aquí con una tarea nueva antes de seguir (cubre RF-001…RF-006, RF-006a, RF-008…RF-010) [zona: sistema]
+- [x] T-032 — **Revisión visual temprana** con datos simulados: `test:visual` de V-1…V-6, V-8…V-10 en oscuro y claro a 1440, 1024 y 390; lectura de cada captura junto a `/tmp/s9/ref/mockup-{tema}-{ancho}.png`; tabla R-1…R-15 (medida obtenida vs. objetivo §5.4) pegada en `history.md`; todo desvío se corrige aquí con una tarea nueva antes de seguir (cubre RF-001…RF-006, RF-006a, RF-008…RF-010) [zona: sistema]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-(1|2|3|4|5|6|8|9|10)\\b" && ls /tmp/s9/e2e/*.png | wc -l && cat /tmp/s9/e2e/measurements.json`
   - EXPECT: todas `passed` (V-7 queda fuera: depende del backend); ≥ 30 capturas (5 escenarios × 2 temas × 2 anchos + tooltip, desbordamiento, tema y 390 en ambos temas); cada R-n dentro de tolerancia en `measurements.json`.
 
@@ -262,7 +262,7 @@ actualizado: 2026-10-23
 - [x] T-068 — A1-4/A1-5: "Editar" sin hueco a la derecha en lectura (medida en V-4) y color derivado sin `danger` (cubre RF-005, RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes src/editor && npm run test:visual -- --grep-invert "V-7"`
   - EXPECT: rojo → `passed`.
-- [ ] T-069 — A1-3: R-1…R-15 completos en `measurements.json` y tabla en `history.md`; cierre de T-032 (cubre RF-001…RF-006a, RF-008…RF-010) [zona: sistema]
+- [x] T-069 — A1-3: R-1…R-15 completos en `measurements.json` y tabla en `history.md`; cierre de T-032 (cubre RF-001…RF-006a, RF-008…RF-010) [zona: sistema]
   - CHECK: `python3 -c "import json;m=json.load(open('/tmp/s9/e2e/measurements.json'));print(sorted(k for k in m if k.startswith('R-')))"`
   - EXPECT: R-1…R-15 presentes y dentro de tolerancia.
 

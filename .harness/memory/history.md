@@ -1176,3 +1176,30 @@
 - [2026-10-23] SPEC-0009 bloques A–C hechos (T-003…T-031; vitest 859, test:visual 35/35 sin V-7, gate abierto). **Revisor A–C + T-032: REJECTED suave** (0 Critical/High): estructura y medidas conformes al mockup (mutantes visuales detectados); RNF-001 en Chromium real p95 68,9 ms. Hallazgos A1-1/A1-2 Medium (regla global de `button` gana a los estilos de componente), A1-3 Medium (cerrar T-032 con tabla R), A1-4/A1-5 Low, A1-6 Low → ABANDON razonado. **Enmienda 1** (PLAN-0009 §10, T-067…T-069).
 - [2026-10-23] SPEC-0009 T-067 (RF-003, RF-006, RF-007; A1-1/A1-2): estilos base de button en global.css pasan a :where() (especificidad 0; incluye :hover/:active/:disabled) para que ganen los de componente. Rojo previo (commit propio): V-3 'Renombrar: 14px≠12px' y thumb 'botón activo con fondo rgb(34,34,46)'. CHECK: vitest run 859 passed; test:visual --grep 'V-3|Regresión' 8 passed. Capturas antes/después en /tmp/s9/e2e/reg-{antes,despues}-{login,lista,dialogo,cuenta,papelera}-{dark,light}.png, leídas lista-dark, dialogo-light y cuenta-light: cambios intencionados = el control de tema ahora muestra el thumb de acento bajo el icono activo (sol visible en claro) y la cabecera global baja de 80 a 70 px (los botones del toggle y el disparador de cuenta ya no heredan el padding de 9×16 del botón global); popover de cuenta, diálogo de borrado y papelera sin otros cambios (los colores de chips varían porque cada corrida siembra otro usuario)
 - [2026-10-23] SPEC-0009 T-068 (RF-005, RF-001; A1-4/A1-5): .note-editor-state vacío sale del flujo (position:absolute; sigue siendo región status), con texto reserva 9ch; derivedColor sólo entre accent/info/success/warning (danger sigue en PALETTE para elegirlo a mano). Rojo previo en commit propio: 'A1-4 hueco a la derecha de «Editar»: medido 96, objetivo 16 ± 2' (×4) y derivedColor devolvía danger. CHECK: vitest run 859 passed; test:visual --grep 'V-4 editor en read' 4 passed (hueco 16 px)
+- [2026-10-23] SPEC-0009 T-032 (cierre, por T-069/A1-3) — revisión visual temprana: CHECK `cd frontend && npm run test:visual -- --grep-invert "V-7"` → 39 passed (V-1…V-6, V-8…V-10 + thumb del tema, oscuro/claro, 1440/1024/390), 33+ capturas en /tmp/s9/e2e/, measurements.json con R-1…R-15 (todas dentro de tolerancia). Tabla R-n (mockup | objetivo | medido | pruebas ok; la medida de R-13 a 1024 es min(780, panel)=728 por diseño; el mockup a 1024 desplaza su barra lateral fuera de pantalla, la app no):
+    R-1 (ancho del riel) | mockup 56 px | objetivo 56 ± 0 | medido 56 | 4/4 ok
+    R-2 (ancho del chip) | mockup 34×34 px | objetivo 34 ± 0 | medido 34 | 4/4 ok
+    R-2h (alto del chip) | mockup 34×34 px | objetivo 34 ± 0 | medido 34 | 4/4 ok
+    R-3 (x del chip (centrado)) | mockup 10,5 (centrado) | objetivo 11 ± 1 | medido 10.5 | 4/4 ok
+    R-4 (separación entre chips) | mockup 6 px | objetivo 8 ± 2 | medido 8 | 4/4 ok
+    R-5h (alto de la barra activa) | mockup 3×20 px --accent | objetivo 20 ± 1 | medido 20 | 4/4 ok
+    R-5w (ancho de la barra activa) | mockup 3×20 px --accent | objetivo 3 ± 1 | medido 3 | 4/4 ok
+    R-5x (x de la barra activa respecto al riel) | mockup 3×20 px --accent | objetivo 0 ± 1 | medido 0.5 | 4/4 ok
+    R-6 (ancho de la barra lateral) | mockup 240 px | objetivo 240 ± 1 | medido 240 | 4/4 ok
+    R-7 (alto de la cabecera de la barra) | mockup 51 px | objetivo 51 ± 2 | medido 51 | 4/4 ok
+    R-8f (alto de la fila de carpeta) | mockup 27/25 px | objetivo 27 ± 1 | medido 27 | 4/4 ok
+    R-8n (alto de la fila de nota) | mockup 27/25 px | objetivo 25 ± 1 | medido 25 | 4/4 ok
+    R-9 (sangría por nivel) | mockup 24 px | objetivo 24 ± 1 | medido 24 | 4/4 ok
+    R-10 (fondo del riel = --bg-secondary) | mockup --bg-secondary | objetivo rgb(26, 26, 36) ± 0 | medido rgb(248, 250, 252), rgb(26, 26, 36) | 4/4 ok
+    R-10e (fondo de la barra superior = --bg-secondary) | mockup --bg-secondary | objetivo rgb(26, 26, 36) ± 0 | medido rgb(248, 250, 252), rgb(26, 26, 36) | 12/12 ok
+    R-10s (fondo de la barra lateral = --bg-secondary) | mockup --bg-secondary | objetivo rgb(26, 26, 36) ± 0 | medido rgb(248, 250, 252), rgb(26, 26, 36) | 4/4 ok
+    R-11 (fila seleccionada en --accent-soft) | mockup --accent-soft | objetivo rgba(8, 145, 178, 0.18) ± 0 | medido rgba(8, 145, 178, 0.1), rgba(8, 145, 178, 0.18) | 4/4 ok
+    R-11t (texto de la fila seleccionada = --text-primary) | mockup --accent-soft | objetivo rgb(232, 232, 239) ± 0 | medido rgb(15, 23, 42), rgb(232, 232, 239) | 4/4 ok
+    R-12 (alto de la barra superior) | mockup 43 px | objetivo 43 ± 2 | medido 43 | 12/12 ok
+    R-13 (ancho de la columna) | mockup 780 px centrada | objetivo 780 ± 2 | medido 728, 780 | 12/12 ok
+    R-13c (descentrado de la columna) | mockup 780 px centrada | objetivo 0 ± 2 | medido 0 | 12/12 ok
+    R-14 (tipografía del cuerpo (14 px)) | mockup 14 px / 1,8 | objetivo 14px ± 0 | medido 14px | 8/8 ok
+    R-14l (interlineado 1,8 (25,2 px)) | mockup 14 px / 1,8 | objetivo 25.2px ± 0 | medido 25.2px | 8/8 ok
+    R-15 (x del panel del editor) | mockup 296 px | objetivo 296 ± 1 | medido 296 | 12/12 ok
+    R-15s (x de la barra lateral (junto al riel)) | mockup 296 px | objetivo 56 ± 1 | medido 56 | 4/4 ok
+- [2026-10-23] SPEC-0009 T-069 (RF-001…RF-006a, RF-008…RF-010; A1-3): R-10 (riel, barra lateral, barra superior), R-11 y R-14 se registran ahora en measurements.json (expectExact) y R-1…R-15 están completas; tabla pegada arriba; T-032 cerrada — CHECK: python3 sorted(k de measurements.json con 'R-') → R-1…R-15 presentes (+ sub-medidas), 0 fuera de tolerancia. Robustez: R-11 espera con toHaveCSS (falló una vez en frío)
