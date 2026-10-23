@@ -424,3 +424,10 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | C-3 · `aria-readonly` no es válido en `role="document"` | Low | VU-2 lo pidió así | Quitar `aria-readonly`; `role="document"` basta en lectura. |
 | C-4 · `<button>` dentro de `role="tree"` (hijos no permitidos) | Low | igual que C-1 | Resuelto por C-1. |
 | (ajeno) `localStorage is not defined` en `sync/localDb.ts:56` durante `test:sync` | — | entorno Node de la integración (0005) | Backlog de 0005, sin efecto en resultados; no se toca aquí. |
+
+## 15. Enmienda 6 (2026-10-23) — Converge corrida 1 bis
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| C-5 · tras borrar o renombrar el foco cae a `body` (WCAG 2.4.3) | Medium-Low | el elemento enfocado se desmonta sin destino de foco | Foco a la fila vecina tras borrar (o "Nueva nota" si no queda ninguna); al `treeitem` de la nota tras guardar/cancelar el renombrado. |
+| C-6 · F2/Supr ignoran `busy` (doble `remove` con la misma `rev`) | Low | los atajos no comparten la guarda del botón | Misma guarda `busy` en los atajos. |
+| C-7 · T-128…T-130 fuera de la tabla de cobertura | Low | — | Corregido por el coordinador en `tasks.md`. |
