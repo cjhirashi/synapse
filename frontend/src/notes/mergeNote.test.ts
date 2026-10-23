@@ -28,6 +28,18 @@ describe("RF-009: mergeNote", () => {
     expect(mergeNote(base, { ...base, ...change })).toEqual({ kind: "manual" });
   });
 
+  // S-2 (PLAN-0008 §17): mismo estado = mismo contenido y ambas activas o ambas en la papelera.
+  it("dos borrados en dispositivos distintos (fechas distintas) convergen sin decidir por fecha", () => {
+    const w = { ...base, deleted_at: "2026-01-03T00:00:00.000000Z" };
+    const l = { ...base, deleted_at: "2026-01-05T00:00:00.000000Z", updated_at: "2026-01-05T00:00:00.000000Z" };
+    expect(mergeNote(w, l)).toEqual({ kind: "merged", doc: w, tombstoneOnly: true });
+    expect(mergeNote(l, w)).toEqual({ kind: "merged", doc: l, tombstoneOnly: true });
+  });
+
+  it("borrada en una rama y activa en la otra sigue siendo manual aunque coincida todo lo demás", () => {
+    expect(mergeNote(base, { ...base, deleted_at: "2026-01-03T00:00:00.000000Z" })).toEqual({ kind: "manual" });
+  });
+
   it("aunque la perdedora sea más reciente, un cambio de contenido sigue siendo manual", () => {
     const loser = { ...base, content: "otro", updated_at: "2027-01-01T00:00:00.000000Z" };
     expect(mergeNote(base, loser)).toEqual({ kind: "manual" });

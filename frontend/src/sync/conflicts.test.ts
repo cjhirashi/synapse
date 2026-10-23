@@ -3,7 +3,7 @@ import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import { canonical, openConflicts, type ConflictsStore } from "./conflicts";
 import { NoteValidationError } from "../notes/errors";
-import { VaultValidationError } from "./vaultStore";
+import { StorageFullError, VaultValidationError } from "./vaultStore";
 
 PouchDB.plugin(memory);
 
@@ -356,6 +356,18 @@ describe("RF-009: conflictos de nota", () => {
     expect(doc._rev).toBe(`2-${W}`);
     expect(doc._conflicts).toBeUndefined();
     expect(store.list()).toEqual([]);
+  });
+
+  // S-3 (PLAN-0008 §17): cuota llena al resolver → el mismo error que el resto de las escrituras.
+  it("`resolve` con la cuota llena rechaza con StorageFullError y no escribe", async () => {
+    await putVault();
+    await noteConflict({ content: "texto W" }, { content: "texto L" });
+    const store = await open();
+    vi.spyOn(db, "bulkDocs").mockRejectedValueOnce({ name: "indexed_db_went_bad", reason: "QuotaExceededError" });
+    await expect(
+      store.resolve(NOTE_ID, `2-${L}`, { path: "a.md", content: "texto L", frontmatter: {}, deleted_at: null }),
+    ).rejects.toBeInstanceOf(StorageFullError);
+    expect((await noteWinner())._conflicts).toEqual([`2-${L}`]);
   });
 
   it("`resolve` de nota escribe la elección como hija de W y cierra la rama de L", async () => {
