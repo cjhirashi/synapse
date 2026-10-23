@@ -205,6 +205,27 @@ export async function simulateIcons(page: Page, vaults: SeedVault[]): Promise<vo
   await page.reload();
 }
 
+/**
+ * Sesión del usuario sembrado con la bóveda `vaultIndex` abierta y los íconos simulados ya en la
+ * réplica (la app los lee tras la recarga). El llamador cierra el `context`.
+ */
+export async function openWorkspace(
+  browser: Browser,
+  seeded: Seeded,
+  options: OpenOptions & { vaultIndex?: number; icons?: boolean } = {},
+): Promise<{ context: BrowserContext; page: Page }> {
+  const { vaultIndex = 0, icons = true, ...session } = options;
+  const context = await newSession(browser, seeded, session);
+  const page = await context.newPage();
+  await openVault(page, seeded.vaults[vaultIndex].id);
+  await waitForVaults(page, seeded.vaults.length);
+  if (icons) {
+    await simulateIcons(page, seeded.vaults);
+    await waitForVaults(page, seeded.vaults.length);
+  }
+  return { context, page };
+}
+
 // --- Medición -------------------------------------------------------------------------------
 
 export interface Measure {
@@ -298,10 +319,14 @@ export function themeColors(theme: Theme): Set<string> {
 
 // --- Salidas --------------------------------------------------------------------------------
 
-export function shot(page: Page, name: string, options: { selector?: string } = {}): Promise<Buffer> {
+export function shot(
+  page: Page,
+  name: string,
+  options: { selector?: string; clip?: { x: number; y: number; width: number; height: number } } = {},
+): Promise<Buffer> {
   mkdirSync(OUT_DIR, { recursive: true });
   const path = `${OUT_DIR}/${name}.png`;
-  return options.selector ? page.locator(options.selector).first().screenshot({ path }) : page.screenshot({ path });
+  return options.selector ? page.locator(options.selector).first().screenshot({ path }) : page.screenshot({ path, clip: options.clip });
 }
 
 const MEASUREMENTS = `${OUT_DIR}/measurements.json`;

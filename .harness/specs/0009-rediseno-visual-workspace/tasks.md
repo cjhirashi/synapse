@@ -62,7 +62,7 @@ actualizado: 2026-10-23
 - [x] T-006 — `frontend/e2e/fixtures.ts`: siembra por API REST (usuario, 3 bóvedas; `icon` vía réplica en el navegador con `pouchdb` de la página mientras el servidor no tenga el campo — datos simulados) y por UI (2 niveles de carpetas, 4 notas, nombre de 120 caracteres, 40 bóvedas para V-6); helper `measure(selector)` (caja, colores y radios computados) y `tokens(theme)` que lee `src/styles/tokens.css` (cubre RF-006) [zona: sistema]
   - CHECK: `cd frontend && npm run test:visual -- --list`
   - EXPECT: compila sin errores de TypeScript; aún "Total: 0 tests".
-- [ ] T-007 — Test (rojo) V-1/V-2: riel (R-1…R-5, círculo 50 % inactivo, `--radius-md` activo, barra 3 × 20 `--accent`, fondo `--bg-secondary`) y tooltip (nombre completo, x ≥ 56, dentro del *viewport*) en oscuro/claro a 1440 y 1024, con capturas (cubre RF-001, RF-002) [zona: test]
+- [x] T-007 — Test (rojo) V-1/V-2: riel (R-1…R-5, círculo 50 % inactivo, `--radius-md` activo, barra 3 × 20 `--accent`, fondo `--bg-secondary`) y tooltip (nombre completo, x ≥ 56, dentro del *viewport*) en oscuro/claro a 1440 y 1024, con capturas (cubre RF-001, RF-002) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-1|V-2"`
   - EXPECT: falla: chip 38 × 38 (≠ 34) con radio 10 px; no hay elemento de tooltip. Capturas `rail-*.png` generadas.
 - [ ] T-008 — Test (rojo) V-3: barra lateral (R-6…R-11; fondo del formulario ≠ fondo del panel del árbol; `svg[data-icon]` de carpeta/nota por fila; fila de 120 caracteres con elipsis y `scrollWidth = clientWidth`) con capturas (cubre RF-003, RF-004, RF-010) [zona: test]
