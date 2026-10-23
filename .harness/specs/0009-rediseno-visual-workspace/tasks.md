@@ -85,7 +85,7 @@ actualizado: 2026-10-23
 - [x] T-013 — `DEFAULT_THEME_MODE = "dark"` en `theme/useTheme.ts` y mismo defecto en el script de `frontend/index.html` (cubre RF-006a) [zona: frontend] [P-7]
   - CHECK: `cd frontend && npx vitest run src/theme && npm run typecheck`
   - EXPECT: todos `passed`; typecheck sin errores.
-- [ ] T-014 — Test (rojo) `vaults/vaultIcon.test.ts`: `ICON_SET` con los 24 glifos del plan (todos componentes), `PALETTE` = 5 claves existentes en `tokens.css`, `parseIcon`/`formatIcon` (ida y vuelta, `initials`, glifo y color desconocidos, `null`), `derivedColor` estable y en `PALETTE`, `initials` (casos del test actual del riel), contraste ≥ 4,5:1 del glifo `--text-primary` sobre `color-mix` 18 % de cada clave en ambos temas (cubre RF-001, RF-006) [zona: test] [P-1, P-2]
+- [x] T-014 — Test (rojo) `vaults/vaultIcon.test.ts`: `ICON_SET` con los 24 glifos del plan (todos componentes), `PALETTE` = 5 claves existentes en `tokens.css`, `parseIcon`/`formatIcon` (ida y vuelta, `initials`, glifo y color desconocidos, `null`), `derivedColor` estable y en `PALETTE`, `initials` (casos del test actual del riel), contraste ≥ 4,5:1 del glifo `--text-primary` sobre `color-mix` 18 % de cada clave en ambos temas (cubre RF-001, RF-006) [zona: test] [P-1, P-2]
   - CHECK: `cd frontend && npx vitest run src/vaults/vaultIcon.test.ts`
   - EXPECT: falla al importar `./vaultIcon` (no existe).
 - [ ] T-015 — `vaults/vaultIcon.ts` (catálogo, paleta, `parseIcon`, `formatIcon`, `derivedColor`, `initials` movida desde `VaultRail.tsx` y re-exportada) (cubre RF-001) [zona: frontend] [P-1]
