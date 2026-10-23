@@ -562,3 +562,13 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | U-7 · con decenas de bóvedas el riel crece con la página y se pierde al bajar | Low (UX; coherente con VU-4) | `.vault-rail` sin altura acotada ni scroll propio | Riel fijo en la vista (`position: sticky`, altura del viewport, scroll propio) con foco visible al tabular; captura con 40 bóvedas. |
+
+## 31. Enmienda 22 (2026-10-23) — Converge corrida 2 sobre a6810ee
+> Editor y sync cliente limpios (wikilinks escapados al editar en Visual = riesgo ya registrado de
+> ADR-010; se eleva como pregunta de producto en el cierre, no como hallazgo).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| B-1 · si la bóveda se borra por REST entre la comprobación de "bóveda activa" del push y su `_bulk_docs`, la nota se guarda en una bóveda ya en la papelera | Low | CouchDB no ofrece transacciones entre documentos; la comprobación y la escritura no son atómicas (mismo límite que el arrendamiento de reservas de 0003) | **Limitación aceptada y documentada** (Art. 10: diferido explícito, sin código): el efecto coincide con RF-014 — la nota queda oculta y congelada mientras la bóveda esté borrada y reaparece al restaurarla; no hay fuga entre usuarios. Se registra en `backend/README.md` §Notas. |
+| U-8 · "Restaurar" en la papelera de notas deja el foco en `body` y no anuncia la restauración | Low (a11y) | la fila enfocada se desmonta sin destino de foco (familia de C-5) | Foco al siguiente "Restaurar" (o al anterior, o a "Volver a las notas") y `role="status"` con la ruta restaurada; test. |
+| D-2 · `backend/app/services/README.md` describe el id de reserva sin el sha256 de H-1 | Low (docs) | — | Ajustar la viñeta de `note_service.py`. |
