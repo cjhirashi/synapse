@@ -669,5 +669,16 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola!!");
     });
+
+    // E-8 (PLAN-0008 §27): «Restaurar y guardar» también lee el texto por `readDraft()`.
+    it("RF-014: «Restaurar y guardar» enseguida guarda el texto recién escrito", async () => {
+      const { value, note, rerender, ui } = await openQuick();
+      const current = await value.notes.get(note.id);
+      await value.notes.softDelete(note.id, current.rev); // la mandó a la papelera otro dispositivo
+      rerender(ui(note.id, { ...value, notesVersion: 1 }));
+      fireEvent.click(await screen.findByRole("button", { name: "Restaurar y guardar" }));
+      await screen.findByText("Guardado");
+      expect((await value.notes.get(note.id)).content).toContain("hola!!");
+    });
   });
 });
