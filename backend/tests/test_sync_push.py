@@ -439,6 +439,30 @@ async def test_rf_005_fields_follow_the_rest_rules_without_normalizing(push, cou
     assert not _stored(couch, doc)
 
 
+# --- RF-012 (SPEC-0009): `icon` es una clave admitida y no obligatoria de la bóveda ---
+
+@pytest.mark.parametrize("icon", ["folder", "book-open:success", "initials:warning", "a" * 64, None])
+async def test_rf_012_vault_with_a_valid_icon_is_accepted(push, couch, icon):
+    doc = _vault(icon=icon)
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
+
+
+async def test_rf_012_vault_without_the_icon_key_is_accepted(push, couch):
+    # Documentos anteriores a SPEC-0009: la clave ausente equivale a `null`.
+    doc = _vault()
+    assert "icon" not in doc
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
+
+
+@pytest.mark.parametrize("icon", ["", "a" * 65, "Folder", " folder", "a::b", "a_b", "<svg>", 1, []])
+async def test_rf_012_vault_with_an_invalid_icon_is_rejected(push, couch, icon):
+    doc = _vault(icon=icon)
+    assert await push.push([doc]) == [_rejected(doc, "validation-error:icon")]
+    assert not _stored(couch, doc)
+
+
 async def test_rf_001_owner_must_be_the_session_user(push, couch):
     doc = _vault(owner_id=OTHER_OWNER)
     assert await push.push([doc]) == [_rejected(doc, "owner-mismatch")]
