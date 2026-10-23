@@ -255,17 +255,28 @@ actualizado: 2026-10-23
   - CHECK: `(cd backend && python3 -m pytest -q) && (cd frontend && npx vitest run && npm run typecheck && npm run build && npm run test:sync && npm run test:perf) && bash .harness/gate/check.sh`
   - EXPECT: 0 failed en todas; build exit 0; gate "Compuerta abierta" sin errores.
 
+### I · Enmienda 1 (PLAN-0009 §10) — A1-1…A1-5
+- [ ] T-067 — A1-1/A1-2: tests (rojo, commit propio) tamaño/alto de Renombrar/Borrar igual al de los controles de la barra lateral (V-3) y thumb activo visible en claro/oscuro; estilos base de `button` en `:where(...)`; capturas de no regresión (login, lista de bóvedas, papelera, diálogos) (cubre RF-003, RF-006, RF-007) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run && npm run test:visual -- --grep-invert "V-7"` + capturas antes/después leídas
+  - EXPECT: rojo → `passed`; sin cambios no deseados en las pantallas de no regresión.
+- [ ] T-068 — A1-4/A1-5: "Editar" sin hueco a la derecha en lectura (medida en V-4) y color derivado sin `danger` (cubre RF-005, RF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes src/editor && npm run test:visual -- --grep-invert "V-7"`
+  - EXPECT: rojo → `passed`.
+- [ ] T-069 — A1-3: R-1…R-15 completos en `measurements.json` y tabla en `history.md`; cierre de T-032 (cubre RF-001…RF-006a, RF-008…RF-010) [zona: sistema]
+  - CHECK: `python3 -c "import json;m=json.load(open('/tmp/s9/e2e/measurements.json'));print(sorted(k for k in m if k.startswith('R-')))"`
+  - EXPECT: R-1…R-15 presentes y dentro de tolerancia.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pendiente |
+| RF-001 | T-007, T-014, T-015, T-016, T-017, T-018, T-019, T-032, T-065, T-068 | vaultIcon.test, VaultChip.test, VaultRail.test, e2e V-1 | Pendiente |
 | RF-002 | T-007, T-018, T-019, T-032, T-065 | VaultRail.test (tooltip), e2e V-2 | Pendiente |
-| RF-003 | T-008, T-022, T-023, T-024, T-025, T-026, T-032, T-065 | VaultWorkspacePage.test, NoteSidebar.test, e2e V-3 | Pendiente |
+| RF-003 | T-008, T-022, T-023, T-024, T-025, T-026, T-032, T-065, T-067 | VaultWorkspacePage.test, NoteSidebar.test, e2e V-3 | Pendiente |
 | RF-004 | T-008, T-024, T-025, T-026, T-032, T-065 | NoteSidebar.test (data-icon), e2e V-3 | Pendiente |
-| RF-005 | T-009, T-027, T-028, T-032, T-065 | NoteEditor.test, layoutCss.test, e2e V-4 | Pendiente |
-| RF-006 | T-005, T-006, T-010, T-014, T-017, T-020, T-032, T-065 | layoutCss.test (sin literales), vaultIcon.test (contraste), e2e V-9 | Pendiente |
+| RF-005 | T-009, T-027, T-028, T-032, T-065, T-068 | NoteEditor.test, layoutCss.test, e2e V-4 | Pendiente |
+| RF-006 | T-005, T-006, T-010, T-014, T-017, T-020, T-032, T-065, T-067 | layoutCss.test (sin literales), vaultIcon.test (contraste), e2e V-9 | Pendiente |
 | RF-006a | T-010, T-012, T-013, T-032, T-065 | useTheme.test, e2e V-8 | Pendiente |
-| RF-007 | T-001, T-018, T-020, T-027, T-031, T-066 | suite de 0008 sin cambios no explícitos, VaultRail.test (nombre accesible), NoteEditor.test | Pendiente |
+| RF-007 | T-001, T-018, T-020, T-027, T-031, T-066, T-067 | suite de 0008 sin cambios no explícitos, VaultRail.test (nombre accesible), NoteEditor.test | Pendiente |
 | RF-008 | T-009, T-022, T-023, T-028, T-032, T-065 | VaultWorkspacePage.test (vacío), e2e V-5 | Pendiente |
 | RF-009 | T-010, T-020, T-021, T-032, T-065 | layoutCss.test (marco fijo), e2e V-6 | Pendiente |
 | RF-010 | T-008, T-024, T-026, T-032, T-065 | NoteSidebar.test (title), e2e V-3 (fila larga) | Pendiente |

@@ -404,3 +404,16 @@ Persistencia: `backend/app/core/schemas.py` (`VaultIcon`), `backend/app/services
 
 `covers` de `spec.md` (fijado en este plan): código, tests, contratos y docs de las listas de
 arriba; ver el front-matter de `spec.md`. Archivos compartidos con dueño anterior: P-10.
+
+## 10. Enmienda 1 (2026-10-23) — revisión de A–C y T-032
+> Revisor: estructura y medidas conformes al mockup (mutantes visuales V-1/V-3/V-4 detectados);
+> RNF-001 adelantado en Chromium real p95 68,9 ms. 0 Critical/High (Converge no se resetea).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| A1-1 · Renombrar/Borrar a 14 px / 37 px frente a 12 px / 31 px del resto de la barra lateral (densidad distinta al mockup) | Medium | `global.css` `button:not([type="submit"])` (especificidad 0,1,1) empata con `.note-actions button` y gana por orden: los estilos de componente quedan muertos | **Raíz común con A1-2**: los estilos base de `button` en `global.css` pasan a `:where(...)` (especificidad 0) para que cualquier regla de componente gane; aserción de tamaño/alto en V-3; capturas de no regresión de login, lista de bóvedas, papelera y diálogos. |
+| A1-2 · `ThemeToggle`: el thumb activo queda tapado (sol invisible en claro) | Medium (preexistente de 0002, visible en el workspace) | la misma regla global gana a `.theme-toggle button` | Resuelto por A1-1; aserción visual del thumb activo en claro y oscuro. |
+| A1-3 · T-032 sin cerrar: falta la tabla R-1…R-15 en `history.md` (R-10/R-11/R-14 no se registran en `measurements.json`) | Medium (proceso) | — | Registrar R-1…R-15 en `measurements.json` y pegar la tabla; cerrar T-032 con su CHECK. |
+| A1-4 · cabecera del editor: hueco de ~96 px a la derecha de "Editar" en lectura | Low | `.note-editor-state` reserva `min-width: 9ch` aunque esté vacío | Reservar sólo con texto (o alinear "Editar" al borde); medida en V-4. |
+| A1-5 · el color derivado de una bóveda sin ícono puede ser `danger` (lee como alerta) | Low | `PALETTE[sum % 5]` incluye `danger` | Derivar sólo de `accent/info/success/warning`; `danger` sigue elegible a mano. |
+| A1-6 · sin `title` en el enlace del riel | Low | — | `ABANDON` razonado: el nombre accesible está en `aria-label`, el tooltip propio cubre puntero y foco, y el nombre de la bóveda activa se ve en la cabecera de la barra lateral. |
