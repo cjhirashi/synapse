@@ -569,10 +569,10 @@ actualizado: 2026-10-22
   - EXPECT: `passed`; en la captura el riel no se alarga con la página y la bóveda activa es visible.
 
 ### AE · Enmienda 22 (PLAN-0008 §31) — B-1, U-8, D-2
-- [ ] T-157 — U-8: test (rojo, commit propio) tras "Restaurar" el foco va al siguiente "Restaurar" / anterior / "Volver a las notas" y se anuncia la ruta restaurada (`role="status"`); corrección (cubre RF-017, RF-010) [zona: pantalla]
+- [x] T-157 — U-8: test (rojo, commit propio) tras "Restaurar" el foco va al siguiente "Restaurar" / anterior / "Volver a las notas" y se anuncia la ruta restaurada (`role="status"`); corrección (cubre RF-017, RF-010) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteTrash.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-158 — D-2 y B-1: viñeta de `note_service.py` en `backend/app/services/README.md` con `sha256(path_key)`; limitación B-1 en `backend/README.md` §Notas [doc]
+- [x] T-158 — D-2 y B-1: viñeta de `note_service.py` en `backend/app/services/README.md` con `sha256(path_key)`; limitación B-1 en `backend/README.md` §Notas [doc]
   - CHECK: `grep -c "sha256" backend/app/services/README.md && grep -c "transacci" backend/README.md`
   - EXPECT: ≥ 1 y ≥ 1.
 
