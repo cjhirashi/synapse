@@ -9,7 +9,7 @@ const TAG = process.env.REGRESS_TAG ?? "actual";
 for (const theme of THEMES) {
   test(`Regresión visual ${TAG}: pantallas de cuenta y listas, ${theme} (RF-007)`, async ({ browser, seeded }) => {
     // Login: sin sesión.
-    const anonymous = await browser.newContext({ baseURL: process.env.BASE_URL, viewport: { width: 1440, height: 900 } });
+    const anonymous = await browser.newContext({ baseURL: process.env.BASE_URL, viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
     await anonymous.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
     const login = await anonymous.newPage();
     await login.goto("/login");

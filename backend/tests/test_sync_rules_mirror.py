@@ -1,4 +1,4 @@
-"""Reglas espejo (SPEC-0005 RF-005, RF-015; PLAN-0005 §5).
+"""Reglas espejo (SPEC-0005 RF-005, RF-015; SPEC-0009 RF-012; PLAN-0005 §5).
 
 `tests/fixtures/vault_rules_cases.json` es la batería común: el cliente (`vaultRules.ts`)
 normaliza y valida antes de escribir en la réplica, y el push la vuelve a aplicar sin
@@ -33,6 +33,16 @@ def test_rf_005_each_field_case_matches_the_server_rules(case):
     else:
         assert case["valid"] is True
         assert normalized == case["normalized"]
+
+
+def test_rf_012_icon_cases_are_in_the_common_battery():
+    """RF-012: la batería común trae los casos de `icon` (válidos, inválidos y `null`); los recorre el test de arriba
+    contra la regla del servidor y `vaultRules.test.ts` contra la del cliente."""
+    icon_cases = [case for case in CASES["fields"] if case["field"] == "icon"]
+    assert any(case["valid"] and case["input"] is None for case in icon_cases)
+    assert any(case["valid"] and case["input"] == "book-open:success" for case in icon_cases)
+    assert sum(1 for case in icon_cases if not case["valid"]) >= 10
+    assert {"javascript:x", "javascript:alert(1)"} <= {case["input"] for case in icon_cases if isinstance(case["input"], str)}
 
 
 @pytest.mark.parametrize("case", CASES["name_keys"], ids=lambda c: c["name"][:20])

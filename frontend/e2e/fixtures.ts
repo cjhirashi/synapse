@@ -116,7 +116,9 @@ export interface OpenOptions {
  */
 export async function newSession(browser: Browser, user: { email: string; password: string }, options: OpenOptions = {}): Promise<BrowserContext> {
   const { theme = "dark", size = SIZES[0], colorScheme } = options;
-  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme });
+  // `reducedMotion` aquí y no sólo en la config: `browser.newContext` no hereda `use.contextOptions`, y sin él las
+  // transiciones de fondo (120 ms en los botones) hacen que una medida justo tras un cambio lea el color a medias.
+  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme, reducedMotion: "reduce" });
   if (theme !== null) await context.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
   const login = await context.request.post("/auth/login", { data: { email: user.email, password: user.password } });
   if (!login.ok()) throw new Error(`login → ${login.status()}`);

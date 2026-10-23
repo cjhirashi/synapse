@@ -292,7 +292,7 @@ actualizado: 2026-10-23
 | RF-009 | T-010, T-020, T-021, T-032, T-065 | layoutCss.test (marco fijo), e2e V-6 | Pendiente |
 | RF-010 | T-008, T-024, T-026, T-032, T-065 | NoteSidebar.test (title), e2e V-3 (fila larga) | Pendiente |
 | RF-011 | T-011, T-029, T-030, T-048, T-049, T-051, T-065, T-070, T-072 | IconPicker.test, VaultListPage.test, VaultForm.test, e2e V-7 | Pendiente |
-| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066, T-070, T-071 | test_vault_schemas, test_sync_rules_mirror, test_vault_service, test_sync_push, test_vaults_api, test_contract, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pendiente |
+| RF-012 | T-002, T-011, T-033…T-051, T-065, T-066, T-070, T-071 | test_vault_schemas, test_sync_rules_mirror (RF-012: casos icon de la batería), test_vault_service, test_sync_push, test_vaults_api, vaultRules.test, vaultStore.test, merge.test, VaultForm.test, VaultRail.test, vaultIcon.integration.test, e2e V-7 | Pendiente |
 | RNF-001 | T-000, T-052, T-053, T-065, T-066 | e2e workspace-perf (p95 ≤ 150 ms), tree.perf.test (< 300 ms) | Pendiente |
 | doc: contracts/vault-icon.schema.json | T-054 | test_vault_schemas (contract) | Pendiente |
 | doc: 0003 openapi.yaml | T-040, T-055 | test_contract | Pendiente |

@@ -122,6 +122,8 @@ for (const theme of THEMES) {
       await expect(tree.getByRole("treeitem", { name: "Sistema de tokens" })).toHaveAttribute("aria-selected", "true");
 
       // R-11: fila seleccionada con --accent-soft, barra de 3 px en --accent y texto primario.
+      // Se espera al valor final (`toHaveCSS` reintenta) antes de medir: nunca se lee un fondo a medias.
+      await expect(page.locator('.note-tree-row[aria-selected="true"]')).toHaveCSS("background-color", tokenColor(theme, "--accent-soft"));
       const selected = await measure(page, '.note-tree-row[aria-selected="true"]');
       expectExact(`R-11 ${key}`, "fila seleccionada en --accent-soft", selected.bg, tokenColor(theme, "--accent-soft"));
       expectExact(`R-11t ${key}`, "texto de la fila seleccionada = --text-primary", selected.color, tokenColor(theme, "--text-primary"));
