@@ -53,6 +53,15 @@ test("RF-018: muestra nombre, descripción y tags de cada bóveda", async () => 
   expect(screen.queryByRole("button", { name: "Cargar más" })).not.toBeInTheDocument();
 });
 
+test("RF-018, RF-019: la lista de bóvedas lleva su clase `card-list` (el estilo de tarjeta ya no es global)", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: ["work"] });
+  renderPage(value);
+  const item = await screen.findByRole("listitem", { name: "Notas" });
+  expect(item.parentElement).toHaveClass("card-list");
+  expect(within(item).getByRole("list", { name: "Etiquetas" })).toHaveClass("chip-list");
+});
+
 test("RF-018: ordena de la más nueva a la más antigua", async () => {
   const { value, db } = syncValue();
   await seedMany(seedStore(db), 3);
