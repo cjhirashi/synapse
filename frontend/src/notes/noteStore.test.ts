@@ -340,4 +340,31 @@ describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
     expect(withBodies.length).toBeGreaterThanOrEqual(3); // 450 / 200
     expect(withBodies.every((limit) => limit !== undefined && limit <= 200)).toBe(true);
   });
+
+  // S-8 (PLAN-0008 §19): la cota del siguiente lote es estricta; si la última clave del lote
+  // desaparece antes de pedirlo, no se pierde ninguna nota viva.
+  it("si la última clave de un lote se borra antes del siguiente, no se pierde ninguna nota viva", async () => {
+    const stamp = "2026-10-22T09:00:00.000000Z";
+    await db.bulkDocs(
+      Array.from({ length: 450 }, (_, i) => ({
+        _id: `note:${VAULT}:${String(i).padStart(4, "0")}`, type: "note", vault_id: VAULT, path: `n${i}.md`,
+        frontmatter: {}, content: "x", created_at: stamp, updated_at: stamp, deleted_at: null,
+      })),
+    );
+    const real = db.allDocs.bind(db) as (o: unknown) => Promise<{ rows: { id: string; doc?: { _rev: string } }[] }>;
+    let first = true;
+    vi.spyOn(db, "allDocs").mockImplementation((async (options: { include_docs?: boolean }) => {
+      const page = await real(options);
+      if (options?.include_docs && first) {
+        first = false;
+        const lastRow = page.rows[page.rows.length - 1];
+        await db.remove(lastRow.id, lastRow.doc!._rev); // desaparece entre lotes
+      }
+      return page;
+    }) as never);
+    const paths = (await store.list(VAULT)).map((n) => n.path);
+    // 449 vivas: n199 se borró; la 200 (n200) no debe perderse.
+    expect(paths).toHaveLength(449);
+    expect(paths).toContain("n200.md");
+  });
 });
