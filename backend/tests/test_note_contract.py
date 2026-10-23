@@ -4,9 +4,11 @@
 sin que este test falle.
 """
 import json
+import re
 from pathlib import Path
 
 from app.core import note_rules
+from app.services import sync_push
 
 SCHEMA = json.loads(
     (Path(__file__).resolve().parents[2]
@@ -30,3 +32,12 @@ def test_rf_005_the_schema_limits_equal_the_rule_constants():
     assert properties["path"]["maxLength"] == note_rules.PATH_MAX
     assert properties["content"]["x-max-utf8-bytes"] == note_rules.CONTENT_MAX_BYTES
     assert properties["frontmatter"]["x-max-json-utf8-bytes"] == note_rules.FRONTMATTER_MAX_BYTES
+
+
+def test_rf_006_the_rev_pattern_bounds_the_generation_like_the_push():
+    # El push acota la generación de `_rev` (H-2): el contrato no puede prometer más. El
+    # patrón del servidor lleva grupos de captura; el del esquema es el mismo sin ellos.
+    server = sync_push._REV.pattern.replace("(", "").replace(")", "")
+    schema = SCHEMA["properties"]["_rev"]["pattern"]
+    assert schema == f"^{server}$"
+    assert re.search(schema, "1" * 16 + "-abc") and not re.search(schema, "1" * 17 + "-abc")
