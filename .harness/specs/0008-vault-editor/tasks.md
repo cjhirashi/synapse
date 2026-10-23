@@ -524,7 +524,7 @@ actualizado: 2026-10-22
   - EXPECT: 24/24 `passed`.
 
 ### V · Enmienda 13 (PLAN-0008 §22) — F-2
-- [ ] T-148 — F-2: `asyncUtilTimeout` global en `test-setup.ts`; quitar los `timeout` locales de T-147; 4 corridas simultáneas de la suite de frontend sin fallos (cubre RF-011, RF-019) [zona: test]
+- [x] T-148 — F-2: `asyncUtilTimeout` global en `test-setup.ts`; quitar los `timeout` locales de T-147; 4 corridas simultáneas de la suite de frontend sin fallos (cubre RF-011, RF-019) [zona: test]
   - CHECK: `cd frontend && for i in 1 2 3 4; do (npx vitest run src/notes src/layout src/vaults src/editor > /tmp/s8/f2-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
   - EXPECT: las 4 con `exit=0`.
 
