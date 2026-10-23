@@ -127,6 +127,16 @@ describe("RF-001, RF-019: list y get", () => {
 });
 
 describe("RF-011, RF-013: rename", () => {
+  // VU-6: renombrar aplica la misma regla título→ruta que crear (`.md` si falta, sin distinguir mayúsculas).
+  it("al renombrar se añade `.md` si falta, igual que al crear", async () => {
+    const a = await store.create(VAULT, "A");
+    const created = await store.create(VAULT, "Otra/Movida");
+    const renamed = await store.rename(a.id, "Otra/Movida2", a.rev);
+    expect(created.path).toBe("Otra/Movida.md");
+    expect(renamed.path).toBe("Otra/Movida2.md");
+    await expect(store.rename(renamed.id, "Otra/Final.MD", renamed.rev)).resolves.toMatchObject({ path: "Otra/Final.MD" });
+  });
+
   it("cambia la ruta en la misma nota (mismo _id) y renueva updated_at", async () => {
     const a = await store.create(VAULT, "A");
     const renamed = await store.rename(a.id, "carpeta / B.md", a.rev);
