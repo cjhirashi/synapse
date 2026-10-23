@@ -538,3 +538,11 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 |---|---|---|---|
 | E-8 · "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto anterior (queda "Cambios sin guardar", sin pérdida) | Low | `restoreAndSave` lee `draftRef.current` en vez del lector único | `readDraft()`; test rojo. |
 | D-1 · `frontend/src/README.md`: falta una línea en blanco y dos párrafos se funden al renderizar | Low | — | Añadirla. |
+
+## 28. Enmienda 19 (2026-10-23) — Converge corrida 2 sobre 0e49e89
+> Backend (lápidas, `_revisions` falsificadas, lotes de 14 MiB), editor (IME, alternar con guardado
+> en vuelo) y sync cliente (3 dispositivos, índice de 5 000 notas en 1,26 s): limpios.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-6 · "Nueva nota" abre el editor en edición pero el foco se queda en el botón | Low (a11y) | el editor no gestiona el foco al abrir en edición | Si la nota se abre en edición por una acción del usuario ("Nueva nota", "Editar"), el foco va al editor activo al montarse; nunca al abrir en lectura, al recargar ni al restaurar. Test. |
