@@ -107,13 +107,20 @@ Módulos de `notes/`:
 
 | Módulo | Qué hace |
 |---|---|
-| `noteStore.ts` | operaciones sobre la réplica: crear (id `note:{vault}:{uuid v4}`, `Sin título.md` si no hay título), leer, guardar, renombrar/mover (mismo `_id`), borrar a la papelera (`deleted_at`, nunca lápida) y restaurar |
+| `noteStore.ts` | operaciones sobre la réplica: crear (id `note:{vault}:{uuid v4}`, `Sin título.md` si no hay título), leer, guardar, renombrar/mover (mismo `_id`), borrar a la papelera (`deleted_at`, nunca lápida) y restaurar. **`titleToPath`** es la única regla título→ruta (añade `.md` si falta) y la usan `create` y `rename`. Un **índice de resumen** en memoria (`{id, path, rev, deleted_at, updated_at}`, sin `content`) se construye una vez y se actualiza con `changes` desde la última secuencia: `list`, la unicidad de rutas y «Sin título n» no releen el cuerpo de las notas (S-1) |
 | `noteRules.ts` | espejo de `core/note_rules.py` (ruta, 2 MiB, frontmatter, `pathKey`) sobre la batería compartida `note_rules_cases.json` |
 | `noteTree.ts`, `untitled.ts` | árbol a partir de las rutas (carpetas derivadas, sin carpetas vacías) y siguiente nombre libre por `pathKey` |
-| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"`, teclado WAI-ARIA), «Nueva nota», renombrar, borrar; papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
+| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"` que sólo contiene `treeitem`s: una parada de Tab, teclado WAI-ARIA) y «Nueva nota». **«Renombrar»/«Borrar»** viven en la barra «Acciones de la nota» (`role="toolbar"`, siempre visible, fuera del árbol) para la nota seleccionada; **F2** y **Supr** las atajan desde el `treeitem` enfocado (Supr respeta la confirmación de borrador sucio; ambas comparten la guarda de operación en curso). **Foco:** tras borrar va a la fila vecina que sobrevive en el árbol resultante (o a «Nueva nota»); tras guardar o cancelar (también con Escape) el renombrado vuelve al `treeitem`. Papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
 | `mergeNote.ts`, `NoteConflictCard.tsx` | conflictos de nota: nunca se elige por fecha; sólo se cierra solo lo que difiere en `updated_at` y lo demás lo decide el usuario en `sync/ConflictView.tsx` |
 | `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
 | `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |
+
+**Estilos de lista:** `styles/global.css` no estiliza `ul`/`li` sueltos; la tarjeta de la lista de
+bóvedas, de la papelera, de los rechazos y de la papelera de notas es **`.card-list`** y las
+etiquetas son **`.chip-list`**. El árbol (`notes.css`) y el markdown renderizado (`editor.css`)
+tienen sus propios estilos; el texto de acento no se usa sobre `--accent-soft` (3,15:1): la fila
+seleccionada y la vista activa usan `--text-primary` más un indicador de acento. El nombre
+accesible de cada icono del riel empieza por sus iniciales visibles.
 
 **Editor** (`editor/`, cargado con `React.lazy`): `NoteEditor.tsx` es dueño del `draft`
 (markdown) y del modo; abre en **lectura** y «Editar»/«Leer» alterna. `MilkdownView.tsx`
@@ -128,6 +135,13 @@ nota, al borrar la abierta y al navegar dentro de la app (riel, «Bóvedas»…,
 El **cierre de sesión** también avisa: el editor se registra en `useSync().unsavedDrafts`
 mientras está sucio y `requestLogout()` lo consulta antes de cerrar nada (`LogoutDialog`,
 razón `draft`). La navegación a `/login` no se bloquea.
+Los guardados se **serializan** (E-1): un guardado en vuelo absorbe un doble Ctrl+S o el
+auto-repeat y, si el borrador cambió mientras tanto, se guarda después sobre la revisión nueva
+(nunca dos veces con la misma, que crearía una rama de conflicto idéntica). Los tres diálogos de
+confirmación del editor (`ConfirmDialog`) mueven el foco a su primer botón, lo atrapan, cierran
+con Escape como «Seguir editando» y devuelven el foco al disparador. Si la bóveda pasa a la
+papelera por sync con un borrador sucio, el 404 lo muestra en sólo lectura con «Copiar texto»
+(E-2; RF-014: no se edita ni se guarda).
 
 **Reparto de `_bulk_docs`:** una nota de 2 MiB hace que un lote de 50 supere cualquier tope.
 `sync/remote.ts` parte un `POST _bulk_docs` de más de 8 MiB (`BULK_CHUNK_BYTES`) en

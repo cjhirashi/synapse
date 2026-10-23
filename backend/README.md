@@ -200,6 +200,17 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   manda más de 8 MiB por petición, ver `frontend/src/README.md`), **64 KiB** por checkpoint
   `_local` y **4 MiB** en el resto de rutas (413 `payload-too-large`). Dentro de una nota:
   `content` ≤ **2 MiB** (bytes UTF-8) y `frontmatter` ≤ 64 KiB (JSON compacto).
+- **Orden de las comprobaciones de un cuerpo:** primero la sesión (401/403 sin leer el cuerpo),
+  después el tamaño (413) y por último el JSON: inválido, anidado en exceso o con enteros
+  gigantes es 422 `validation-error`.
+- **Reserva de ruta de nota (H-1, PLAN-0008 §17):** el id es `note-path:{vault_id}:{sha256(path_key)}`
+  (hex): determinista y de longitud fija, porque `NFKC` expande una ruta hasta ×18 y una clave
+  larga como id superaba el límite de CouchDB (400 → 503 de todo el lote en cada reintento). El
+  documento guarda la `path_key` para diagnóstico. No hay datos previos de `note-path:*`, así
+  que no hay migración. (`vault-name:{name_key}` tiene el mismo riesgo y queda en el backlog
+  de 0003: cambiarlo exige migrar las reservas existentes.)
+- **Generación de `_rev` (H-2):** acotada a 16 dígitos en el patrón de `_rev`; una generación
+  mayor se rechaza como `_rev` mal formado, nunca un 500 por desbordar la conversión a entero.
 - **Checkpoints `_local` (RF-003):** el id sigue el formato de PouchDB
   (`[A-Za-z0-9._=-]{1,128}`, nunca `.` ni `..`); otro id es 404 `sync-endpoint-not-found`
   sin llegar a CouchDB. El cuerpo sólo admite como campos reservados `_id` (igual a
