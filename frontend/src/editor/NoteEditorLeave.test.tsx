@@ -61,14 +61,14 @@ async function makeDirty(user: ReturnType<typeof userEvent.setup>) {
 
 const links = [
   ["el enlace 'Bóvedas'", () => screen.getByRole("link", { name: "Bóvedas" }), "/vaults"],
-  ["el riel", () => screen.getByRole("link", { name: "Otra" }), "/vaults/"],
+  ["el riel", () => screen.getByRole("link", { name: / Otra$/ }), "/vaults/"],
 ] as const;
 
 describe.each(links)("navegar por %s con el borrador sucio", (_name, target, expected) => {
   // RF-008
   it("muestra el diálogo y no navega hasta decidir", async () => {
     const { user, vault } = await setup();
-    await screen.findByRole("link", { name: "Otra" }); // el riel ya cargó
+    await screen.findByRole("link", { name: / Otra$/ }); // el riel ya cargó
     await makeDirty(user);
     await user.click(target());
     const dialog = await screen.findByRole("alertdialog");
@@ -79,7 +79,7 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
   // U-1 (PLAN-0008 §17)
   it("RF-008: foco inicial en el primer botón, Escape = «Seguir editando» y el foco vuelve al disparador", async () => {
     const { user } = await setup();
-    await screen.findByRole("link", { name: "Otra" });
+    await screen.findByRole("link", { name: / Otra$/ });
     await makeDirty(user);
     const trigger = target();
     await user.click(trigger);
@@ -93,7 +93,7 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
   // RF-008
   it("'Seguir editando' se queda con el borrador", async () => {
     const { user, vault } = await setup();
-    await screen.findByRole("link", { name: "Otra" });
+    await screen.findByRole("link", { name: / Otra$/ });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seguir editando" }));
@@ -105,7 +105,7 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
   // RF-008
   it("'Descartar y salir' navega sin guardar", async () => {
     const { user, value, note, other } = await setup();
-    await screen.findByRole("link", { name: "Otra" });
+    await screen.findByRole("link", { name: / Otra$/ });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Descartar y salir" }));
@@ -116,7 +116,7 @@ describe.each(links)("navegar por %s con el borrador sucio", (_name, target, exp
   // RF-008
   it("'Guardar y salir' guarda y navega", async () => {
     const { user, value, note } = await setup();
-    await screen.findByRole("link", { name: "Otra" });
+    await screen.findByRole("link", { name: / Otra$/ });
     await makeDirty(user);
     await user.click(target());
     await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Guardar y salir" }));

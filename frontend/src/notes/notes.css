@@ -116,9 +116,11 @@
   background: var(--bg-tertiary);
 }
 
+/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1) + barra de acento, como el riel. */
 .note-tree-row[aria-selected="true"] {
   background: var(--accent-soft);
-  color: var(--accent);
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 /* Barra de acciones de la nota seleccionada: fuera del árbol y siempre visible (también en táctil). */

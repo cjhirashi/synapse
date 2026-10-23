@@ -27,9 +27,12 @@ export type TreeNode<T> = FolderNode<T> | NoteNode<T>;
 
 const collator = new Intl.Collator("es", { numeric: true, sensitivity: "base" });
 
-/** Nombre sin la extensión `.md` (sin distinguir mayúsculas, como al crear: PLAN-0008 §2.6). */
-function displayName(segment: string): string {
-  return segment.replace(/\.md$/i, "");
+/**
+ * Nombre sin la extensión `.md` (sin distinguir mayúsculas, como al crear: PLAN-0008 §2.6).
+ * Si sin la extensión no queda nada (un título «.md»), se muestra el segmento completo (S-5).
+ */
+export function displayName(segment: string): string {
+  return segment.replace(/\.md$/i, "") || segment;
 }
 
 function byName(a: TreeNode<unknown>, b: TreeNode<unknown>): number {

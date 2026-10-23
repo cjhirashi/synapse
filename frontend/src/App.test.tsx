@@ -142,7 +142,7 @@ test("RF-001: /vaults/{id} monta la bóveda abierta (riel, árbol y editor vací
   renderAt(`/vaults/${vault.id}`, env);
   expect(await screen.findByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
   expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
-  expect(await screen.findByRole("link", { name: "Trabajo" })).toHaveAttribute("aria-current", "page");
+  expect(await screen.findByRole("link", { name: / Trabajo$/ })).toHaveAttribute("aria-current", "page");
 });
 
 test("RF-001: /vaults/{id} de una bóveda inexistente muestra el 404 de la bóveda", async () => {

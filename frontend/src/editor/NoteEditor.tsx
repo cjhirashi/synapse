@@ -21,6 +21,7 @@ import { Link, useBlocker } from "react-router-dom";
 import { checkContent } from "../notes/noteRules";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { noteErrorMessage } from "../notes/messages";
+import { displayName } from "../notes/noteTree";
 import type { Note } from "../notes/noteStore";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
@@ -69,9 +70,9 @@ export interface NoteEditorHandle {
 type Mode = "read" | "edit";
 type View = "visual" | "code";
 
-/** Nombre mostrado: la ruta sin la extensión `.md`, como en el árbol. */
+/** Nombre mostrado: la ruta sin la extensión `.md`, como en el árbol (S-5: nunca vacío). */
 function title(path: string): string {
-  return path.replace(/\.md$/i, "");
+  return displayName(path);
 }
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(

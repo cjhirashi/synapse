@@ -86,5 +86,5 @@ test("RF-001: las rutas privadas muestran el riel de bóvedas con una entrada po
   await seedStore(db).create({ name: "Notas", description: null, tags: [] });
   renderAt(value);
   const rail = screen.getByRole("navigation", { name: "Bóvedas abiertas" });
-  expect(await within(rail).findByRole("link", { name: "Notas" })).toHaveAttribute("href", expect.stringMatching(/^\/vaults\/[0-9a-f-]{36}$/));
+  expect(await within(rail).findByRole("link", { name: / Notas$/ })).toHaveAttribute("href", expect.stringMatching(/^\/vaults\/[0-9a-f-]{36}$/));
 });

@@ -20,7 +20,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useSync } from "../sync/useSync";
 import { noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
-import { buildTree, type TreeNode } from "./noteTree";
+import { buildTree, displayName, type TreeNode } from "./noteTree";
 
 interface NoteSidebarProps {
   vaultId: string;
@@ -349,7 +349,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   }
 
   const selected = items?.find((item) => item.id === selectedId) ?? null;
-  const selectedName = selected ? (selected.path.split("/").pop() ?? selected.path).replace(/\.md$/i, "") : "";
+  const selectedName = selected ? displayName(selected.path.split("/").pop() ?? selected.path) : "";
 
   return (
     <aside className="note-sidebar" aria-label="Notas de la bóveda">

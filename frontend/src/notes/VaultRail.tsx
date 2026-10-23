@@ -36,7 +36,8 @@ export default function VaultRail() {
         <NavLink
           key={vault.id}
           to={`/vaults/${encodeURIComponent(vault.id)}`}
-          aria-label={vault.name}
+          // El nombre accesible empieza por el texto visible (WCAG 2.5.3, U-4).
+          aria-label={`${initials(vault.name)} ${vault.name}`}
           title={vault.name}
           className="vault-rail-icon"
         >
