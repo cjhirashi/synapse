@@ -233,7 +233,7 @@ actualizado: 2026-10-23
 - [x] T-059 — `backend/tests/README.md`: casos `icon` en `vault_rules_cases.json` [doc]
   - CHECK: `grep -n "icon" backend/tests/README.md`
   - EXPECT: ≥ 1 línea.
-- [ ] T-060 — `frontend/README.md`: `npm run test:visual` (contenedor Playwright 1.56.0, backend en `:8010`, capturas en `/tmp/s9/e2e`) y RNF-001 en navegador [doc]
+- [x] T-060 — `frontend/README.md`: `npm run test:visual` (contenedor Playwright 1.56.0, backend en `:8010`, capturas en `/tmp/s9/e2e`) y RNF-001 en navegador [doc]
   - CHECK: `grep -n "test:visual" frontend/README.md`
   - EXPECT: ≥ 1 línea.
 - [ ] T-061 — `frontend/src/README.md`: `vaults/vaultIcon.ts`, `VaultChip`, `IconPicker`, tooltip del riel, marco de altura fija con scroll por columna, tema oscuro por defecto, `e2e/` [doc]

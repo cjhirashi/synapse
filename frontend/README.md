@@ -16,10 +16,31 @@ npm run test:sync  # sincronización real (SPEC-0005 y SPEC-0008): levanta uvico
 npm run test:sync:perf  # igual, sólo la prueba de rendimiento (p95 ≤ 5 s, RNF-001)
 npm run test:perf  # RNF-001 de SPEC-0008: abrir una bóveda de 1 000 notas (p95 < 300 ms);
                    # las pruebas *.perf.test.tsx quedan fuera de `npm test` salvo con NOTES_PERF=1
+npm run test:visual  # SPEC-0009: fidelidad visual y RNF-001 en Chromium real. Compila la SPA, levanta el
+                   # backend del worktree en :8010 (VISUAL_PORT) sobre SQLite temporal y el CouchDB de
+                   # test (COUCHDB_URL, por defecto localhost:15984; usa otro si otra suite lo comparte,
+                   # porque su limpieza borra las bases de usuario) y corre `playwright test` dentro del
+                   # contenedor mcr.microsoft.com/playwright:v1.56.0-jammy (misma versión que
+                   # @playwright/test; hace falta Docker). Capturas y measurements.json en /tmp/s9/e2e
+                   # (VISUAL_OUT_DIR), a comparar con las del mockup en /tmp/s9/ref. Los argumentos van a
+                   # playwright: `-- --grep "V-3"`, `-- --grep-invert "V-7"`, `-- --list`.
+                   # VISUAL_SKIP_BUILD=1 reutiliza dist/; REGRESS_TAG=antes|despues etiqueta las capturas
+                   # de no regresión; RNF001_P95_MS cambia el umbral de RNF-001 (150 ms)
 npm run test:cov   # con cobertura v8 (umbral 80 %; informe HTML en coverage/)
-npm run typecheck  # src/ (tsconfig.json) y vite.config.ts (tsconfig.node.json)
+npm run typecheck  # src/ (tsconfig.json), vite.config.ts (tsconfig.node.json) y e2e/ (tsconfig.e2e.json)
 npm run build      # typecheck + build
 ```
+
+## Verificación en navegador real (SPEC-0009)
+
+`e2e/` (no entra en `npm test`: Vitest lo excluye) tiene dos especificaciones de Playwright:
+`workspace-visual.spec.ts` (V-1…V-10: riel, tooltip, barra lateral, editor, vacío, scroll, tema por
+defecto, colores de tokens, móvil de 390 px y selector de ícono; cada medida R-n de PLAN-0009 §5.4 se
+afirma y se guarda en `measurements.json`) y `workspace-perf.spec.ts` (RNF-001: abrir una bóveda de
+1 000 notas en Chromium, 30 navegaciones tras el calentamiento, p95 ≤ 150 ms). Los datos se siembran
+por la API REST (usuario, bóvedas con `icon`) y por la UI/CouchDB (notas). `regression.spec.ts` saca
+capturas de login, lista, papelera, diálogo y menú de cuenta para comparar antes/después de un cambio
+de estilos globales. `test:perf` sigue midiendo RNF-001 de SPEC-0008 en jsdom (p95 < 300 ms).
 
 ## Editor de notas (SPEC-0008)
 
