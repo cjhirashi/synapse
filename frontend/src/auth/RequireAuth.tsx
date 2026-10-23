@@ -1,4 +1,4 @@
-import { createContext, ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { ApiError, getMe, Me } from "../api/auth";
 
@@ -17,9 +17,25 @@ export function useMe(): Me {
   return me;
 }
 
+// Vuelve a pedir `/auth/me` y actualiza la sesión en caché. Quien cambia algo que `RequireAuth`
+// decide con `me` (p. ej. `must_change_password` tras cambiar la contraseña) debe llamarla
+// ANTES de navegar: si no, la redirección forzada se evalúa con el `me` obsoleto (VU-5).
+const RefreshMeContext = createContext<(() => Promise<void>) | null>(null);
+
+/** Renueva la sesión verificada; sólo dentro de `RequireAuth`. */
+export function useRefreshMe(): () => Promise<void> {
+  const refresh = useContext(RefreshMeContext);
+  if (!refresh) throw new Error("useRefreshMe() fuera de <RequireAuth>");
+  return refresh;
+}
+
 export default function RequireAuth({ children }: { children: ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading" });
   const location = useLocation();
+
+  const refreshMe = useCallback(async () => {
+    setState({ status: "ok", me: await getMe() });
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -43,5 +59,9 @@ export default function RequireAuth({ children }: { children: ReactNode }) {
   if (state.me.must_change_password && location.pathname !== CHANGE_PASSWORD_PATH) {
     return <Navigate to={CHANGE_PASSWORD_PATH} replace />;
   }
-  return <MeContext.Provider value={state.me}>{children}</MeContext.Provider>;
+  return (
+    <RefreshMeContext.Provider value={refreshMe}>
+      <MeContext.Provider value={state.me}>{children}</MeContext.Provider>
+    </RefreshMeContext.Provider>
+  );
 }
