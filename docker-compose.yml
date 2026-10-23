@@ -19,7 +19,7 @@ services:
       - couchdb
     networks:
       - synapse_internal
-      - infraestructura_default
+      - net-synapse
 
   couchdb:
     image: couchdb:3
@@ -49,5 +49,5 @@ services:
 networks:
   synapse_internal:
     name: synapse_internal
-  infraestructura_default:
+  net-synapse:
     external: true
