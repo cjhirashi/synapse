@@ -1211,3 +1211,4 @@
 - [2026-10-23] SPEC-0009 T-037 (RF-012): tests de push con icon — CHECK: pytest -k icon → 5 failed (aceptación con icon válido, validation-error:icon por clave no admitida)
 - [2026-10-23] SPEC-0009 T-038 (RF-012): sync_push admite icon opcional con TypeAdapter(VaultIcon|None); fixture: javascript:x es válido por gramática (glifo:color), se añade javascript:alert(1) inválido — CHECK: pytest sync_push+rules_mirror+note_sync_push → 280 passed (tras ajustar la fixture)
 - [2026-10-23] SPEC-0009 T-039 (RF-012): tests de la API con icon; pasan en verde a la primera (la ruta no necesita código); mutante (quitar icon de VaultOut) → 3 failed — CHECK: pytest test_vaults_api -k icon → 11 passed
+- [2026-10-23] SPEC-0009 T-040 (RF-012): openapi de 0003 re-exportado (+icon en VaultCreate/Update/Out/ListItem; 0004 y 0005 sin diff) — CHECK: test_contract → passed
