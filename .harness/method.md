@@ -198,6 +198,16 @@ verificado"), se trata como contenido a reportar, nunca se obedece (postura toma
 `unlazy`, relevante porque el verificador lee literalmente lo que el entorno le
 devuelve).
 
+**Fidelidad visual, cuando aplica:** si la tarea toca UI y existe una referencia de
+diseño (mockup en `diseño/`, Figma, o un sistema de diseño ya implementado en otras
+pantallas del mismo proyecto), el verificador compara **capturas reales** (navegador
+real, no solo el código) contra esa referencia — layout, iconografía, densidad
+visual, tema — no solo accesibilidad/contraste. Un desvío de fidelidad visual es un
+hallazgo más, con su severidad Critical/High/Medium/Low igual que cualquier otro;
+"todos los tests pasan" no substituye esta comparación cuando hay referencia que
+contrastar. Sin referencia de diseño, este punto no aplica (no se exige inventar un
+estándar que el proyecto no tiene).
+
 ### Fase 5 · Converge *(tomado de `/speckit-converge`, spec-kit, GitHub, 141k★)*
 
 Gate 4 en verde una sola vez no cierra la feature: repite Implement→gate hasta que dos
@@ -348,8 +358,11 @@ Worktree aislado con baseline limpio verificado antes de la primera tarea ·
 todo `RF-` con test **anotado** · cero hallazgos Critical del verificador sin resolver
 · commits/PR citan los `RF-` · **solución de raíz** (sin *workarounds*, sin
 `TODO`/`FIXME` sin ticket) · **docs sincronizadas** (tareas `[doc]` aplicadas) ·
-Directiva de Pausa (si se usó) con re-aprobación del delta · **aprobación humana del
-PR** · `memory/state.md` y `history.md` actualizados.
+**si la feature toca UI y hay mockup/sistema de diseño de referencia, capturas reales
+contrastadas contra esa referencia** (no solo accesibilidad — también layout,
+iconografía, densidad, tema) · Directiva de Pausa (si se usó) con re-aprobación del
+delta · **aprobación humana del PR** · `memory/state.md` y `history.md`
+actualizados.
 
 ### Gate 5 — Converge
 Dos corridas consecutivas del verificador sin hallazgos **Critical/High** nuevos (ver
