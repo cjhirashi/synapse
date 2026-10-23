@@ -129,6 +129,15 @@ for (const theme of THEMES) {
       expect(barShadow).toContain(tokenColor(theme, "--accent"));
       expect(barShadow).toContain("3px");
 
+      // Enmienda 1 (A1-1): Renombrar/Borrar usan el tamaño compacto de la barra lateral (12 px) y no son
+      // más altos que «Nueva nota»; antes el estilo global de `button` ganaba y salían a 14 px / 37 px.
+      const newNote = await measure(page, ".note-sidebar-new button");
+      for (const name of ["Renombrar", "Borrar"]) {
+        const action = await measure(page, `.note-actions button:has-text("${name}")`);
+        expect(action.fontSize, `${name}: texto de 12 px`).toBe("12px");
+        expect(action.h, `${name}: no más alto que «Nueva nota» (${newNote.h})`).toBeLessThanOrEqual(newNote.h);
+      }
+
       // RF-010: la fila de 120 caracteres se recorta con elipsis dentro del panel y conserva el nombre en `title`.
       const long = page.locator(`.note-tree-name[title="${seeded.longNoteName}"]`);
       await expect(long).toHaveCount(1);
@@ -143,6 +152,24 @@ for (const theme of THEMES) {
       await context.close();
     });
   }
+}
+
+const size1440 = SIZES[0];
+
+// V-3 · control de tema: el thumb activo se ve en claro y oscuro (enmienda 1, A1-2)
+for (const theme of THEMES) {
+  test(`V-3 control de tema con el thumb activo visible, ${theme} (RF-006)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme, icons: false });
+    const active = await measure(page, '.theme-toggle button[aria-pressed="true"]');
+    // El botón activo no pinta fondo ni borde propios: si lo hiciera taparía el thumb de acento.
+    expect(active.bg, "botón activo transparente").toBe("rgba(0, 0, 0, 0)");
+    const border = await page.locator('.theme-toggle button[aria-pressed="true"]').evaluate((el) => getComputedStyle(el).borderTopWidth);
+    expect(border).toBe("0px");
+    const thumb = await measure(page, ".theme-toggle-thumb");
+    expect(Math.abs(thumb.x - active.x), "el thumb está bajo el botón activo").toBeLessThanOrEqual(2);
+    await shot(page, `theme-toggle-${theme}`, { clip: { x: size1440.width - 480, y: 0, width: 480, height: 90 } });
+    await context.close();
+  });
 }
 
 // V-4 · editor: barra superior y columna centrada (RF-005, RF-006; R-12…R-15)

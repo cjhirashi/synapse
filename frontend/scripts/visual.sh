@@ -86,7 +86,7 @@ status=0
 docker run --rm --network host --ipc=host \
   --user "$(id -u):$(id -g)" -e HOME=/tmp \
   -e BASE_URL="http://127.0.0.1:$PORT" \
-  -e ADMIN_EMAIL -e ADMIN_PASSWORD \
+  -e ADMIN_EMAIL -e ADMIN_PASSWORD -e REGRESS_TAG \
   -e VISUAL_OUT_DIR="$OUT_DIR" \
   -v "$FRONTEND_DIR:/work" -v "$OUT_DIR:$OUT_DIR" -w /work \
   "$IMAGE" npx playwright test "$@" || status=$?
