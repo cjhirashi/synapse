@@ -18,7 +18,7 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
 - `reservations.py` (`Reservations`, SPEC-0008): el algoritmo de reserva de unicidad con
   arrendamiento de 30 s (`RESERVATION_LEASE`), extraído de `VaultService` sin cambiarlo; lo
   parametrizan el tipo de documento, el campo del dueño y el predicado `holds`.
-- `note_service.py` (`NoteService`, SPEC-0008): reservas `note-path:{vault_id}:{clave}` de las
+- `note_service.py` (`NoteService`, SPEC-0008): reservas `note-path:{vault_id}:{sha256(path_key)}` de las
   rutas de nota (documento sólo del servidor). Una reserva bloquea mientras alguna hoja
   viva y activa de la nota la use; una hoja en la papelera la libera. `NotePathTaken` es
   interna: el push la traduce a `note-path-taken`.

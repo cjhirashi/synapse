@@ -265,10 +265,14 @@ decide qué se acepta:
   normaliza: rechaza `not-normalized:path`); `content` ≤ 2 MiB; `frontmatter` ≤ 64 KiB.
 - **Bóveda activa:** `vault_id` debe ser igual al primer UUID del id y apuntar a una bóveda
   propia activa (`vault-not-found`); aplica también al borrado lógico de la nota.
-- **Ruta única por bóveda:** reserva `note-path:{vault_id}:{clave}` (clave = NFKC +
+- **Ruta única por bóveda:** reserva `note-path:{vault_id}:{sha256(path_key)}` (`path_key` = NFKC +
   `casefold`) con el algoritmo de `vault-name:*` extraído a `services/reservations.py`;
   decide `services/note_service.py`. Una hoja en la papelera (`deleted_at`) libera su ruta
   y restaurarla la vuelve a reservar. Conflicto → rechazo `note-path-taken`.
+- **Limitación aceptada (B-1):** si la bóveda se borra por REST entre la comprobación de bóveda
+  activa del push y la escritura `_bulk_docs`, la nota se guarda igual: CouchDB no tiene
+  transacciones entre documentos. El efecto coincide con RF-014 —la nota queda oculta y
+  congelada mientras la bóveda esté borrada y reaparece al restaurarla—; no hay fuga de datos.
 - **Borrado:** `deleted_at` (papelera de la bóveda), nunca lápida de CouchDB; una lápida sólo
   cierra una rama de conflicto (`delete-not-allowed` en otro caso).
 - **Marcas de tiempo:** `core/timestamps.py` es el único formato RFC 3339 UTC de ancho fijo
