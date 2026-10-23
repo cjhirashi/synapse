@@ -170,7 +170,7 @@ actualizado: 2026-10-23
 - [x] T-040 — Re-exportar `0003-vault-crud/contracts/openapi.yaml` con `backend/scripts/export_openapi.py` (cubre RF-012) [zona: contrato]
   - CHECK: `cd backend && python3 scripts/export_openapi.py && python3 -m pytest -q tests/test_contract.py && git diff --stat -- ../.harness/specs/0005-sync/contracts/`
   - EXPECT: `test_contract.py` `passed`; el diff sólo toca el contrato de 0003 (ninguna línea en 0005); Spectral del gate sin errores.
-- [ ] T-041 — Suite completa del backend, **sola** contra CouchDB (cubre RF-012) [zona: sistema]
+- [x] T-041 — Suite completa del backend, **sola** contra CouchDB (cubre RF-012) [zona: sistema]
   - CHECK: `cd backend && python3 -m pytest -q`
   - EXPECT: 0 failed; nº de tests = línea base de T-002 + los nuevos; cobertura ≥ 80 % en los módulos tocados.
 
