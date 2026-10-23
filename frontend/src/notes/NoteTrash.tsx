@@ -67,6 +67,8 @@ export default function NoteTrash({ vaultId, onRestored, onClose }: NoteTrashPro
       onRestored(note.id);
     } catch (err) {
       setError(noteErrorMessage(err));
+      // La fila sigue en la papelera: el foco vuelve a su «Restaurar» (el botón se deshabilitó mientras duró la operación) (U-9).
+      setFocusTarget(note.id);
       // Revisión desfasada o nota ya restaurada en otra pestaña: se muestra el estado real.
       void reload();
     } finally {
