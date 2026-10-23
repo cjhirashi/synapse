@@ -1,7 +1,7 @@
 // Reglas espejo (SPEC-0005 RF-005, RF-015; PLAN-0005 §5): la misma batería que
 // `backend/tests/test_sync_rules_mirror.py` fija contra `core/schemas.py`.
 import cases from "../../../backend/tests/fixtures/vault_rules_cases.json";
-import { FIELD_RULES, type VaultField, nameKey, validateVault } from "./vaultRules";
+import { checkIcon, FIELD_RULES, ICON_MAX, type VaultField, nameKey, validateVault } from "./vaultRules";
 
 interface FieldCase {
   field: VaultField;
@@ -45,5 +45,40 @@ describe("validateVault", () => {
       ok: false,
       fields: ["name", "description", "tags"],
     });
+  });
+});
+
+// SPEC-0009 RF-012: `icon` es opcional y anulable; sus 22 casos de la batería común pasan por `FIELD_RULES.icon`
+// (arriba, con el resto) y estas pruebas fijan la forma de la API y su lugar en `validateVault`.
+describe("RF-012: icon", () => {
+  it("checkIcon es la regla registrada y admite hasta 64 caracteres", () => {
+    expect(ICON_MAX).toBe(64);
+    expect(FIELD_RULES.icon).toBe(checkIcon);
+    expect(checkIcon("a".repeat(64)).ok).toBe(true);
+    expect(checkIcon("a".repeat(65)).ok).toBe(false);
+  });
+
+  it("no normaliza: un espacio o una mayúscula es inválido, no «sin normalizar»", () => {
+    expect(checkIcon(" folder").ok).toBe(false);
+    expect(checkIcon("Folder").ok).toBe(false);
+    expect(checkIcon(null)).toEqual({ ok: true, value: null });
+  });
+
+  it("valida la gramática, no un catálogo: javascript:x es válido y javascript:alert(1) no", () => {
+    expect(checkIcon("javascript:x").ok).toBe(true);
+    expect(checkIcon("javascript:alert(1)").ok).toBe(false);
+    expect(checkIcon(1).ok).toBe(false);
+  });
+
+  it("validateVault acepta icon válido o null y lo devuelve; sin la clave no lo añade", () => {
+    const base = { name: "Notas", description: null, tags: [] };
+    expect(validateVault({ ...base, icon: "star:success" })).toEqual({ ok: true, value: { ...base, icon: "star:success" } });
+    expect(validateVault({ ...base, icon: null })).toEqual({ ok: true, value: { ...base, icon: null } });
+    expect(validateVault(base)).toEqual({ ok: true, value: base });
+  });
+
+  it("validateVault rechaza icon inválido y lo enumera al final de los campos", () => {
+    expect(validateVault({ name: "", description: null, tags: [], icon: "Folder" })).toEqual({ ok: false, fields: ["name", "icon"] });
+    expect(validateVault({ name: "Notas", description: null, tags: [], icon: "a_b" })).toEqual({ ok: false, fields: ["icon"] });
   });
 });

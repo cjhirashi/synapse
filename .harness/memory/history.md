@@ -1213,3 +1213,4 @@
 - [2026-10-23] SPEC-0009 T-039 (RF-012): tests de la API con icon; pasan en verde a la primera (la ruta no necesita código); mutante (quitar icon de VaultOut) → 3 failed — CHECK: pytest test_vaults_api -k icon → 11 passed
 - [2026-10-23] SPEC-0009 T-040 (RF-012): openapi de 0003 re-exportado (+icon en VaultCreate/Update/Out/ListItem; 0004 y 0005 sin diff) — CHECK: test_contract → passed
 - [2026-10-23] SPEC-0009 T-041 (RF-012): suite backend completa sola — CHECK: pytest --cov=app → 1129 passed, 0 failed, cobertura 99% (schemas/sync_push/vault_service 100%)
+- [2026-10-23] SPEC-0009 T-042 [rojo] (RF-012): vaultRules.test.ts — los 22 casos icon de la batería común pasan por FIELD_RULES.icon + 5 pruebas (checkIcon/ICON_MAX, sin normalizar, gramática y no catálogo [javascript:x válido, javascript:alert(1) inválido, 1 inválido], validateVault con/sin icon) — CHECK: vitest run vaultRules.test.ts → 27 failed | 81 passed
