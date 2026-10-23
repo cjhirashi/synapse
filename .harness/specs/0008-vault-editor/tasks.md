@@ -549,7 +549,7 @@ actualizado: 2026-10-22
   - EXPECT: rojo → `passed`.
 
 ### AA · Enmienda 18 (PLAN-0008 §27) — E-8, D-1
-- [ ] T-153 — E-8: test (rojo, commit propio) "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto nuevo; `restoreAndSave` usa `readDraft()`. D-1: línea en blanco en `frontend/src/README.md` (cubre RF-017, RF-008) [zona: editor]
+- [x] T-153 — E-8: test (rojo, commit propio) "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto nuevo; `restoreAndSave` usa `readDraft()`. D-1: línea en blanco en `frontend/src/README.md` (cubre RF-017, RF-008) [zona: editor]
   - CHECK: `cd frontend && npx vitest run src/editor && git diff --check`
   - EXPECT: rojo → `passed`; sin avisos de espacios.
 
