@@ -1,0 +1,19 @@
+/* Chip de bóveda (SPEC-0009 RF-001; PLAN-0009 §2.3 b): círculo de 34 px con el color de la bóveda
+   (`--chip-color`, una variable de la paleta que fija VaultChip) como tinte del 18 % y aro de 2 px.
+   El glifo va en `--text-primary` (contraste ≥ 4,5:1 sobre el tinte en ambos temas: vaultIcon.test.ts).
+   La forma cambia a `--radius-md` en el contenedor que lo pide (riel: hover y activa). */
+.vault-chip {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 18%, var(--bg-tertiary));
+  box-shadow: inset 0 0 0 2px var(--chip-color, var(--accent));
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  transition: border-radius var(--dur-base) var(--ease-standard);
+}
