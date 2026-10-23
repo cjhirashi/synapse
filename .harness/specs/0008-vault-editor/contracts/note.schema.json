@@ -17,8 +17,8 @@
     },
     "_rev": {
       "type": "string",
-      "description": "`{generación}-{hash hex}` coherente con `_revisions` (PLAN-0005 §2.3, VC-5).",
-      "pattern": "^[1-9][0-9]*-[0-9a-f]+$"
+      "description": "`{generación}-{hash hex}` (generación de 1 a 16 dígitos, como `_REV` del push) coherente con `_revisions` (PLAN-0005 §2.3, VC-5).",
+      "pattern": "^[1-9][0-9]{0,15}-[0-9a-f]+$"
     },
     "_revisions": {
       "type": "object",
