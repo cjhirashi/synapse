@@ -7,7 +7,7 @@ import type { Vault, VaultStore } from "./vaultStore";
 
 /** Conflictos de bóveda de un dispositivo (`list()` también trae los de nota). */
 const vaultConflicts = (device: Device): VaultConflict[] =>
-  vaultConflicts(device).filter((item): item is VaultConflict => item.kind === "vault");
+  device.sync.conflicts.list().filter((item): item is VaultConflict => item.kind === "vault");
 
 describe("conflictos (integración)", () => {
   let laptop: Device;
