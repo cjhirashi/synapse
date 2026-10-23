@@ -149,6 +149,16 @@ Cada bóveda es un documento `type: "vault"` en la base CouchDB del usuario
   era suya, para que una liberación tardía no la borre), con un arrendamiento de 30 s
   (`RESERVATION_LEASE`) para que una escritura que falla a medias no bloquee el nombre
   para siempre. Conflicto → 409 `vault-name-taken`.
+- **Ícono (`icon`, SPEC-0009):** texto opcional `glifo[:color]` (p. ej. `folder-heart`,
+  `book-open:success`, `initials:warning`): minúsculas, dígitos y guiones internos, un solo `:`,
+  de 1 a 64 caracteres (`VaultIcon` en `core/schemas.py`; JSON Schema en
+  `.harness/specs/0009-rediseno-visual-workspace/contracts/vault-icon.schema.json`). El servidor
+  **sólo valida la gramática**: no conoce el catálogo de glifos ni la paleta (los resuelve el
+  cliente; un valor que no conoce se ve como iniciales/color derivado). No normaliza: un espacio
+  o una mayúscula es 422, con `pointer` `#/icon` y sin repetir el valor. En `POST` ausente o
+  `null` = sin ícono; en `PATCH` **ausente conserva** el valor y **`null` explícito lo borra**
+  (como `description`). `GET`/listados lo devuelven siempre (`null` si no hay: las bóvedas
+  anteriores no tienen la clave).
 - **Papelera:** `DELETE` marca `deleted_at` (borrado lógico); `GET /vaults?deleted=true` lista
   las borradas y `restore` las devuelve. La purga a 30 días (RF-016) es otra feature.
 - **Paginación:** orden `created_at` descendente (empate por id); `next_cursor` opaco, válido
@@ -159,7 +169,7 @@ Cada bóveda es un documento `type: "vault"` en la base CouchDB del usuario
 | Endpoint | Respuesta |
 |---|---|
 | `GET /vaults?limit=1..200&cursor=&deleted=false` | 200 `{items:[Bóveda + etag], next_cursor}` · 422 |
-| `POST /vaults` `{name,description?,tags?}` | 201 + `ETag` · 409 · 422 |
+| `POST /vaults` `{name,description?,tags?,icon?}` | 201 + `ETag` · 409 · 422 |
 | `GET /vaults/{id}` | 200 + `ETag` · 404 |
 | `PATCH /vaults/{id}` + `If-Match` (sólo los campos enviados) | 200 + `ETag` · 404 · 409 · 412 · 428 · 422 |
 | `DELETE /vaults/{id}` + `If-Match` | 204 · 404 · 412 · 428 |
@@ -195,6 +205,11 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   cliente y sigue con el resto. Una revisión ya almacenada se acepta sin tocar nada (reenvío
   de un lote cortado). El nombre se reserva con el mismo mecanismo que la API REST, así que
   REST y sync nunca dejan dos bóvedas activas con el mismo nombre.
+- **Clave opcional `icon` en `vault:*` (SPEC-0009 RF-012):** la lista blanca de claves de una bóveda
+  admite `icon`, pero no es obligatoria (los documentos anteriores no la tienen). Si está, vale
+  `null` o una cadena que ya cumpla la gramática de `VaultIcon` (el push no normaliza); si no,
+  `validation-error:icon`. Una nota con clave `icon` también es `validation-error:icon` (clave
+  no admitida). Sin catálogo ni paleta en el servidor.
 - **Límites:** 200 documentos por `_bulk_docs`; cuerpo de **16 MiB** en `_bulk_docs` (una
   nota de 2 MiB con caracteres de control escapados pesa ~12 MiB en JSON; el cliente nunca
   manda más de 8 MiB por petición, ver `frontend/src/README.md`), **64 KiB** por checkpoint

@@ -221,7 +221,7 @@ actualizado: 2026-10-23
 - [x] T-055 — `0003-vault-crud/contracts/openapi.yaml`: re-export final tras cualquier cambio posterior a T-040 [doc]
   - CHECK: `cd backend && python3 scripts/export_openapi.py && git diff --exit-code -- ../.harness/specs/0003-vault-crud/contracts/ && python3 -m pytest -q tests/test_contract.py`
   - EXPECT: sin diff; `passed`.
-- [ ] T-056 — `backend/README.md` §Bóvedas (`icon`: gramática, `null`, `PATCH` con `null`, sin catálogo en el servidor) y §Sincronización (clave opcional `icon`, `validation-error:icon`) [doc]
+- [x] T-056 — `backend/README.md` §Bóvedas (`icon`: gramática, `null`, `PATCH` con `null`, sin catálogo en el servidor) y §Sincronización (clave opcional `icon`, `validation-error:icon`) [doc]
   - CHECK: `grep -n "icon" backend/README.md`
   - EXPECT: ≥ 2 apariciones, en §Bóvedas y en §Sincronización.
 - [ ] T-057 — `backend/app/core/README.md`: `VaultIcon` en `schemas.py` [doc]
