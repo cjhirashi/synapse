@@ -21,7 +21,7 @@ estado: verified      # draft | in-review | approved | implemented | verified | 
 > `validation-error:icon`) y en el cliente (`vaultRules.checkIcon` con la batería común,
 > `vaultStore`, `merge`/`conflicts` con `icon` fusionado sin resolución manual — P-6 de 0009 —,
 > `ConflictView`/`RejectionsPage`). Contrato de 0005 sin cambios. Sin cambio de requisitos.
-anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
+anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)
   - backend/app/routers/sync.py

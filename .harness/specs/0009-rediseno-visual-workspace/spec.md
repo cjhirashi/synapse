@@ -4,7 +4,7 @@ tipo: spec
 feature: 0009-rediseno-visual-workspace
 estado: implemented      # 2026-10-23: Fase 4 completa, Converge 2/2 limpio. NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: b8f2838   # HEAD de feature/sprint-1-auth al redactar esta spec
+anchor_commit: 42225d0   # cierre de la implementación (2026-10-23)
 anchor_mode: strict
 covers:                  # fijado en PLAN-0009 §9 (archivos con dueño anterior: PLAN-0009 P-10)
   # frontend — maquetación (bloque A)

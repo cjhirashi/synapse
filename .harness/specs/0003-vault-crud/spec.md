@@ -4,7 +4,7 @@ tipo: spec
 feature: 0003-vault-crud
 estado: verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
+anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
 anchor_mode: advisory
 covers:
   - backend/app/routers/vaults.py
