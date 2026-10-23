@@ -233,3 +233,22 @@ def test_rf_005_extremely_nested_json_is_answered_like_any_invalid_json(ready_ad
     assert_problem(truncated, 422, "validation-error")
     assert_problem(nested, 422, "validation-error")
     assert nested.json()["errors"] == truncated.json()["errors"]
+
+
+# --- Enteros gigantes (VB-5) ---
+
+BIG_INT_ROUTES = [
+    ("POST", "/sync/db/_bulk_docs"), ("POST", "/sync/db/_revs_diff"), ("POST", "/sync/db/_bulk_get"),
+    ("POST", "/sync/db/_all_docs"), ("PUT", "/sync/db/_local/abc"),
+]
+
+
+@pytest.mark.parametrize(("method", "path"), BIG_INT_ROUTES)
+def test_rf_005_a_5000_digit_integer_is_answered_like_any_invalid_json(ready_admin, method, path):
+    # `json.loads` lanza `ValueError` (límite `int_max_str_digits`) y no `JSONDecodeError`:
+    # debe dar el mismo 422 declarado que un JSON truncado, no un 400 fuera del contrato.
+    headers = {"content-type": "application/json"}
+    truncated = ready_admin.request(method, path, content=b"{", headers=headers)
+    huge = ready_admin.request(method, path, content=b'{"a": ' + b"1" * 5000 + b"}", headers=headers)
+    assert_problem(truncated, 422, "validation-error")
+    assert_problem(huge, 422, "validation-error")
