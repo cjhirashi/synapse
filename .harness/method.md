@@ -151,7 +151,12 @@ arquitectura elegido en la Génesis** (Art. 1–2), de forma concreta:
 - Componentes por zona del patrón; **fronteras de salida** con su implementación concreta.
 - Contratos: qué archivos en `contracts/` y qué gates de CI aplican.
 - Estrategia de pruebas **por zona del patrón**.
-- Secuenciación: **tests antes que código**.
+- Secuenciación: **tests antes que código**. Si la feature incluye UI, **el bloque de
+  frontend/maquetación va primero** (contra el mockup o sistema de diseño de
+  referencia, con datos simulados si hace falta) y la implementación funcional del
+  backend después, nunca al revés — así el desvío visual se ve y se corrige temprano,
+  no al cierre de la feature cuando ya hay semanas de lógica invertida encima
+  *(decisión de Carlos, 2026-10-23, tras SPEC-0008 de Synapse)*.
 - Una sección `### Implementación de RF-NNN` por cada `RF-`.
 - **§ Impacto en documentación** *(obligatorio, Art. 11)*: qué documentos del mapa
   vuelve obsoletos esta feature y cómo se actualizan → una fila = una tarea `[doc]`.
@@ -165,6 +170,9 @@ arquitectura elegido en la Génesis** (Art. 1–2), de forma concreta:
 
 `tasks.md` (ver `specs/_template/tasks.md`): tareas atómicas (≤ 30 min), ordenadas por
 dependencia, **test antes que código**, cada una `(cubre RF-NNN)` + su zona (o `[doc]`).
+Si la feature incluye UI, el bloque `[zona: frontend]`/maquetación precede al bloque
+`[zona: backend]` funcional en el orden de `tasks.md` — la secuencia de §2 Plan baja
+tal cual a la lista de tareas.
 Cada tarea lleva, además, un par **`CHECK:`/`EXPECT:`** — el comando exacto que decide
 si está hecha y el resultado esperado, no solo "qué test cubre esto" (tomado de
 `unlazy`, `Leonxlnx`, 3.9k★ — solo el formato, no su checker ejecutable ni su hook, que
