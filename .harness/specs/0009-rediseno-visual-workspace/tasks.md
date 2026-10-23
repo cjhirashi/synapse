@@ -103,7 +103,7 @@ actualizado: 2026-10-23
 - [x] T-019 — `notes/VaultRail.tsx`: `VaultChip` + `RailTooltip` (portal en `document.body`, `position: fixed`, `aria-hidden`), sin `title`; barra de activa `::before` en `notes/notes.css` (cubre RF-001, RF-002) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-020 — Test (rojo) en `notes/layoutCss.test.ts`: sustituye **explícitamente** las aserciones de U-7 (riel `sticky` + `max-height: 100vh`; icono `height: 38px`) por las del marco fijo (`.app-shell` `height: 100dvh`; `.app-body` `min-height: 0`; `.vault-rail` y `.app-main` `overflow-y: auto`; `.vault-rail` sin `position: sticky`); añade "sin literales de color" en `notes.css`, `editor.css` y `vaults/VaultChip.css` (cubre RF-009, RF-006, RF-007) [zona: test] [P-5]
+- [x] T-020 — Test (rojo) en `notes/layoutCss.test.ts`: sustituye **explícitamente** las aserciones de U-7 (riel `sticky` + `max-height: 100vh`; icono `height: 38px`) por las del marco fijo (`.app-shell` `height: 100dvh`; `.app-body` `min-height: 0`; `.vault-rail` y `.app-main` `overflow-y: auto`; `.vault-rail` sin `position: sticky`); añade "sin literales de color" en `notes.css`, `editor.css` y `vaults/VaultChip.css` (cubre RF-009, RF-006, RF-007) [zona: test] [P-5]
   - CHECK: `cd frontend && npx vitest run src/notes/layoutCss.test.ts`
   - EXPECT: fallan las aserciones nuevas del marco (`.app-shell` sin `height: 100dvh`).
 - [ ] T-021 — Marco de altura fija en `layout/AppLayout.css` y riel con scroll propio en `notes/notes.css` (56 px, `--bg-secondary`, `padding: var(--space-3) 0`, `gap: var(--space-2)`) (cubre RF-009) [zona: frontend] [P-5]
