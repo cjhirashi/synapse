@@ -271,8 +271,10 @@ decide qué se acepta:
   y restaurarla la vuelve a reservar. Conflicto → rechazo `note-path-taken`.
 - **Limitación aceptada (B-1):** si la bóveda se borra por REST entre la comprobación de bóveda
   activa del push y la escritura `_bulk_docs`, la nota se guarda igual: CouchDB no tiene
-  transacciones entre documentos. El efecto coincide con RF-014 —la nota queda oculta y
-  congelada mientras la bóveda esté borrada y reaparece al restaurarla—; no hay fuga de datos.
+  transacciones entre documentos. El efecto coincide con RF-014: mientras la bóveda esté
+  borrada la nota queda congelada (todo push posterior recibe `vault-not-found`) y la app no
+  la muestra, aunque sigue replicándose al cliente; reaparece al restaurar la bóveda. No hay
+  fuga entre usuarios.
 - **Borrado:** `deleted_at` (papelera de la bóveda), nunca lápida de CouchDB; una lápida sólo
   cierra una rama de conflicto (`delete-not-allowed` en otro caso).
 - **Marcas de tiempo:** `core/timestamps.py` es el único formato RFC 3339 UTC de ancho fijo

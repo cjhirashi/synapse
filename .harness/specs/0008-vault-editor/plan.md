@@ -569,6 +569,15 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
-| B-1 · si la bóveda se borra por REST entre la comprobación de "bóveda activa" del push y su `_bulk_docs`, la nota se guarda en una bóveda ya en la papelera | Low | CouchDB no ofrece transacciones entre documentos; la comprobación y la escritura no son atómicas (mismo límite que el arrendamiento de reservas de 0003) | **Limitación aceptada y documentada** (Art. 10: diferido explícito, sin código): el efecto coincide con RF-014 — la nota queda oculta y congelada mientras la bóveda esté borrada y reaparece al restaurarla; no hay fuga entre usuarios. Se registra en `backend/README.md` §Notas. |
+| B-1 · si la bóveda se borra por REST entre la comprobación de "bóveda activa" del push y su `_bulk_docs`, la nota se guarda en una bóveda ya en la papelera | Low | CouchDB no ofrece transacciones entre documentos; la comprobación y la escritura no son atómicas (mismo límite que el arrendamiento de reservas de 0003) | **Limitación aceptada y documentada** (Art. 10: diferido explícito, sin código): el efecto coincide con RF-014 — mientras la bóveda esté borrada la nota queda congelada (todo push posterior recibe `vault-not-found`) y la app no la muestra, aunque sigue replicándose al cliente; reaparece al restaurar la bóveda; no hay fuga entre usuarios. Se registra en `backend/README.md` §Notas. |
 | U-8 · "Restaurar" en la papelera de notas deja el foco en `body` y no anuncia la restauración | Low (a11y) | la fila enfocada se desmonta sin destino de foco (familia de C-5) | Foco al siguiente "Restaurar" (o al anterior, o a "Volver a las notas") y `role="status"` con la ruta restaurada; test. |
 | D-2 · `backend/app/services/README.md` describe el id de reserva sin el sha256 de H-1 | Low (docs) | — | Ajustar la viñeta de `note_service.py`. |
+| (corrida sobre e5df5f6) D-3 · la redacción de B-1 decía "oculta" aunque la nota sigue replicándose al cliente | Low (docs) | — | Redacción corregida en `backend/README.md` §Notas y aquí (coordinador). |
+
+## 32. Enmienda 23 (2026-10-23) — Converge sobre e5df5f6
+> Editor limpio; U-8 y D-2 de raíz; D-3 (redacción de B-1) corregido por el coordinador.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| U-9 · "Restaurar" que falla por ruta ocupada deja el foco en `body` | Low (a11y) | el `catch` de `NoteTrash.restore` no asigna destino de foco (familia de C-5/H1) | Devolver el foco al "Restaurar" de la misma fila (la nota sigue en la papelera); test. |
+| F-5 · `VaultWorkspacePage.test.tsx` "RF-003: crear una nota la abre en edición" intermitente (1/8 con 4 suites simultáneas) | Low (pruebas) | plazo local fuera de la política de T-150 mientras carga el *chunk* perezoso del editor | Investigar la causa con carga; quitar el plazo local en favor de `ASYNC_TIMEOUT_MS` y asegurar que la precarga del editor (`beforeAll`) cubre el mismo módulo que monta la página. Criterio 12/12 de §24. |
