@@ -25,6 +25,12 @@ actualizado: 2026-10-22
 
 # SPEC-0008 · Editor de documentos dentro de una bóveda
 
+> **Re-anclaje 2026-10-23** (T-003 de TASKS-0009): SPEC-0009 (rediseño visual) cambia el
+> vestido de `frontend/src/notes/**` y `frontend/src/editor/**` (riel, barra lateral, columna
+> del editor, marco de altura fija). Sin cambio de requisitos: los RF de esta spec, sus roles,
+> nombres accesibles y rutas se conservan; sólo se sustituyen las aserciones de U-7 de
+> `layoutCss.test.ts` por las del marco fijo (PLAN-0009 P-5, RF-007 de SPEC-0009).
+
 > Fase 1 (Specify) cerrada por AIRA a partir de: (a) el diseño original de agosto 2026
 > en `diseño/1.1.4 - Diseño UI-UX/1.1.4.4` (vista), `diseño/1.1.2.../ADR-010` (stack del
 > editor) y `diseño/1.1.5.../1.1.5.2`/`1.1.5.5` (modelo de datos y sincronización); (b) la

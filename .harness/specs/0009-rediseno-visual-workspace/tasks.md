@@ -48,7 +48,7 @@ actualizado: 2026-10-23
   - EXPECT: gate "Compuerta abierta"; `1054 passed` (o el número vigente), 0 failed, ~16 min.
 
 ### A · Re-anclajes previos (PLAN-0009 P-10)
-- [ ] T-003 — Nota de re-anclaje en `0008-vault-editor/spec.md` (modo `strict`): SPEC-0009 cambia el vestido de `notes/**` y `editor/**` sin tocar sus RF [doc] [P-10]
+- [x] T-003 — Nota de re-anclaje en `0008-vault-editor/spec.md` (modo `strict`): SPEC-0009 cambia el vestido de `notes/**` y `editor/**` sin tocar sus RF [doc] [P-10]
   - CHECK: `git diff --name-only -- .harness/specs/0008-vault-editor/spec.md && bash .harness/gate/check.sh | grep 0008`
   - EXPECT: el archivo aparece en el diff; la línea de 0008 en ✅ (no "DRIFT").
 - [ ] T-004 — Nota de re-anclaje en `0007-fastapi-sirve-spa/spec.md` (modo `strict`, dueña de `backend/README.md` y `frontend/README.md`) [doc] [P-10]
