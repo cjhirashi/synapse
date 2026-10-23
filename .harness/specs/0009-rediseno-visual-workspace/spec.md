@@ -6,23 +6,68 @@ estado: draft            # draft | in-review | approved | implemented | verified
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: b8f2838   # HEAD de feature/sprint-1-auth al redactar esta spec
 anchor_mode: advisory
-covers:
+covers:                  # fijado en PLAN-0009 §9 (archivos con dueño anterior: PLAN-0009 P-10)
+  # frontend — maquetación (bloque A)
+  - frontend/index.html
+  - frontend/src/theme/useTheme.ts
+  - frontend/src/theme/useTheme.test.tsx
+  - frontend/src/layout/AppLayout.css
   - frontend/src/notes/notes.css
   - frontend/src/notes/VaultRail.tsx
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/NoteSidebar.tsx
+  - frontend/src/notes/*.test.tsx
+  - frontend/src/notes/*.test.ts
   - frontend/src/editor/editor.css
   - frontend/src/editor/NoteEditor.tsx
   - frontend/src/editor/CodeView.tsx
   - frontend/src/editor/MilkdownView.tsx
-  - frontend/src/notes/*.test.tsx
   - frontend/src/editor/*.test.tsx
-  - backend/app/adapters/vault_repository.py
-  - backend/app/services/vault_service.py
-  - backend/app/routers/vaults.py
+  - frontend/src/vaults/vaultIcon.ts
+  - frontend/src/vaults/vaultIcon.test.ts
+  - frontend/src/vaults/VaultChip.tsx
+  - frontend/src/vaults/VaultChip.css
+  - frontend/src/vaults/VaultChip.test.tsx
+  - frontend/src/vaults/IconPicker.tsx
+  - frontend/src/vaults/IconPicker.test.tsx
+  - frontend/src/vaults/VaultForm.tsx
+  - frontend/src/vaults/VaultForm.test.tsx
+  - frontend/src/vaults/VaultListPage.tsx
+  - frontend/src/vaults/VaultListPage.test.tsx
+  - frontend/src/vaults/fields.ts
+  # frontend — cableado funcional (bloque C)
+  - frontend/src/sync/vaultRules.ts
+  - frontend/src/sync/vaultRules.test.ts
+  - frontend/src/sync/vaultStore.ts
+  - frontend/src/sync/vaultStore.test.ts
+  - frontend/src/sync/merge.ts
+  - frontend/src/sync/merge.test.ts
+  - frontend/src/sync/conflicts.ts
+  - frontend/src/sync/ConflictView.tsx
+  - frontend/src/sync/RejectionsPage.tsx
+  - frontend/src/sync/vaultIcon.integration.test.ts
+  # sistema — fidelidad visual y RNF-001 en navegador real
+  - frontend/playwright.config.ts
+  - frontend/e2e/**
+  # backend — Vault.icon (bloque B)
   - backend/app/core/schemas.py
-  - backend/alembic/versions/*vault_icon*
+  - backend/app/services/vault_service.py
+  - backend/app/services/sync_push.py
+  - backend/app/routers/vaults.py
   - backend/tests/test_vault*.py
+  - backend/tests/test_sync_push.py
+  - backend/tests/test_sync_rules_mirror.py
+  - backend/tests/fixtures/vault_rules_cases.json
+  # contratos
+  - .harness/specs/0009-rediseno-visual-workspace/contracts/**
+  - .harness/specs/0003-vault-crud/contracts/openapi.yaml
+  # documentación (PLAN-0009 §8)
+  - backend/README.md
+  - backend/app/core/README.md
+  - backend/app/services/README.md
+  - backend/tests/README.md
+  - frontend/README.md
+  - frontend/src/README.md
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi)", fecha: 2026-10-23 }
