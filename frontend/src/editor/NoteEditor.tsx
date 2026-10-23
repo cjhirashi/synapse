@@ -36,6 +36,11 @@ export interface ViewProps {
   /** Nombre accesible del área de texto. */
   label: string;
   readOnly: boolean;
+  /**
+   * Una vista con escritura diferida (Milkdown) entrega aquí su vaciado síncrono: el editor lo llama
+   * antes de alternar vista o modo y antes de guardar, para no perder lo escrito en el último instante (E-6).
+   */
+  registerFlush?: (flush: (() => void) | null) => void;
 }
 
 export interface NoteEditorViews {
@@ -98,16 +103,32 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [error, setError] = useState<string | null>(null);
 
   const dirty = note !== null && draft !== note.content;
+  // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
+  const noteRef = useRef(note);
+  noteRef.current = note;
+  const dirtyRef = useRef(dirty);
+  dirtyRef.current = dirty;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const editOnOpenRef = useRef(editOnOpen);
+  editOnOpenRef.current = editOnOpen;
+  /** Vaciado síncrono de la vista Visual (la registra `MilkdownView`): lo escrito en los últimos 200 ms (E-6). */
+  const flushVisual = useRef<(() => void) | null>(null);
+  const registerFlush = useCallback((flush: (() => void) | null) => {
+    flushVisual.current = flush;
+  }, []);
   /**
    * Bloquea la navegación interna mientras haya cambios sin guardar (VF-1), pero sólo si
    * cambia de pantalla (`pathname`; no una URL con otro search/hash) y el destino no es
    * `/login`: ahí la sesión ya terminó (el aviso se dio en el cierre de sesión, N-1, o la
    * sesión caducó en el servidor) y bloquear sólo dejaría la app a medias (N-2).
    */
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      dirty && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login",
-  );
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => {
+    // Antes de decidir, lo escrito en el último instante pasa al borrador (E-6).
+    flushVisual.current?.();
+    const pending = noteRef.current !== null && draftRef.current !== noteRef.current.content;
+    return pending && currentLocation.pathname !== nextLocation.pathname && nextLocation.pathname !== "/login";
+  });
 
   // El padre conoce siempre el borrador sin guardar (no se emite `null` al desmontar: ahí es justo
   // cuando hace falta conservarlo).
@@ -118,15 +139,6 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   // Mientras hay borrador sucio, el cierre de sesión lo sabe y avisa antes de cerrar nada (N-1).
   useEffect(() => (dirty ? unsavedDrafts.register() : undefined), [dirty, unsavedDrafts]);
 
-  // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
-  const noteRef = useRef(note);
-  noteRef.current = note;
-  const dirtyRef = useRef(dirty);
-  dirtyRef.current = dirty;
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
-  const editOnOpenRef = useRef(editOnOpen);
-  editOnOpenRef.current = editOnOpen;
 
   useImperativeHandle(
     ref,
@@ -219,6 +231,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   }, [dirty]);
 
   const onDraft = useCallback((value: string) => {
+    // La ref se adelanta al render: un vaciado seguido de un guardado en el mismo turno lee el texto nuevo.
+    draftRef.current = value;
     setDraft(value);
     setSaved(false);
   }, []);
@@ -258,6 +272,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * crearía una rama de conflicto con contenido idéntico).
    */
   async function save(): Promise<boolean> {
+    flushVisual.current?.(); // lo escrito en los últimos 200 ms entra al guardado (E-6)
     if (inFlight.current) {
       const ok = await inFlight.current;
       return ok ? save() : false;
@@ -297,6 +312,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     } finally {
       setSaving(false);
     }
+  }
+
+  /** Alterna Visual/Código: primero el vaciado, para que Código arranque con lo último que se escribió (E-6). */
+  function switchView(next: View) {
+    flushVisual.current?.();
+    setView(next);
   }
 
   async function leave() {
@@ -354,10 +375,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         <div className="note-editor-toolbar">
           {mode === "edit" && (
             <div role="group" aria-label="Vista del editor" className="note-editor-views">
-              <button type="button" aria-pressed={view === "visual"} onClick={() => setView("visual")}>
+              <button type="button" aria-pressed={view === "visual"} onClick={() => switchView("visual")}>
                 Visual
               </button>
-              <button type="button" aria-pressed={view === "code"} onClick={() => setView("code")}>
+              <button type="button" aria-pressed={view === "code"} onClick={() => switchView("code")}>
                 Código
               </button>
             </div>
@@ -437,9 +458,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       <div className="note-editor-body">
         {mode === "read" ? (
-          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly />
+          <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} />
         ) : view === "visual" ? (
-          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} />
+          <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} />
         ) : (
           <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} />
         )}

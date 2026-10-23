@@ -15,11 +15,12 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, rootCtx } from "@milkdown/core";
+import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import { commonmark, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
 import { gfm } from "@milkdown/preset-gfm";
+import type { Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView } from "@milkdown/prose/view";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
@@ -54,6 +55,11 @@ interface MilkdownViewProps {
   label: string;
   /** Entrega la `EditorView` de ProseMirror al estar lista (`null` al destruirla). */
   onView?: (view: EditorView | null) => void;
+  /**
+   * Entrega el vaciado síncrono (`flush`) del editor (`null` al desmontar): emite YA, por `onChange`,
+   * lo escrito que el listener de Milkdown aún tiene pendiente en su debounce de 200 ms (E-6).
+   */
+  registerFlush?: (flush: (() => void) | null) => void;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -61,9 +67,13 @@ interface Running {
   editor: Editor;
   ready: Promise<unknown>;
   readOnly: boolean;
+  /** La vista, una vez creado el editor. */
+  view: EditorView | null;
+  /** Documento que ya se emitió (o con el que se creó): lo distinto de él es una edición pendiente. */
+  baseDoc: PMNode | null;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** El markdown que tiene el editor ahora: el último recibido del padre o emitido por él. */
@@ -73,12 +83,31 @@ export function MilkdownView({ value, onChange, readOnly, label, onView }: Milkd
   const onViewRef = useRef(onView);
   onViewRef.current = onView;
 
+  /**
+   * Emite ya lo que el usuario escribió y el listener aún no entregó (E-6). `@milkdown/plugin-listener`
+   * emite con un debounce de 200 ms y su `destroy` descarta lo pendiente: sin esto, cambiar de vista,
+   * guardar o desmontar dentro de esa ventana perdía el último cambio (o guardaba el texto anterior).
+   * Sólo emite si el documento difiere del último emitido: abrir sin editar nunca reserializa.
+   */
+  function flushRunning(target: Running | null) {
+    if (!target || !target.view || !target.baseDoc || target.readOnly) return;
+    const doc = target.view.state.doc;
+    if (doc.eq(target.baseDoc)) return;
+    target.baseDoc = doc;
+    const markdown = target.editor.ctx.get(serializerCtx)(doc);
+    if (markdown === current.current) return;
+    current.current = markdown;
+    onChangeRef.current(markdown);
+  }
+
   /** Destruye el editor en marcha, esperando a que termine de crearse si aún no lo hizo. */
   function stop() {
     const previous = running.current;
     running.current = null;
     if (!previous) return;
     onViewRef.current?.(null);
+    // Antes de destruirlo: su `destroy` cancela el debounce del listener (E-6).
+    flushRunning(previous);
     void previous.ready.then(() => previous.editor.destroy());
   }
 
@@ -104,6 +133,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView }: Milkd
           },
         }));
         ctx.get(listenerCtx).markdownUpdated((_ctx, markdown) => {
+          // La emisión del listener cubre el documento actual: nada pendiente para `flush`.
+          if (running.current?.editor === editor && running.current.view) running.current.baseDoc = running.current.view.state.doc;
           if (markdown === current.current) return;
           current.current = markdown;
           onChangeRef.current(markdown);
@@ -120,14 +151,23 @@ export function MilkdownView({ value, onChange, readOnly, label, onView }: Milkd
       // Si mientras se creaba lo reemplazaron, `stop()` ya lo destruirá: no se anuncia.
       if (running.current?.editor !== editor) return;
       const view = editor.ctx.get(editorViewCtx);
+      running.current.view = view;
+      running.current.baseDoc = view.state.doc;
       // `@milkdown/core` fuerza `role="textbox"` en el DOM de la vista al crearla (después de las
       // `attributes` de ProseMirror, VU-2): se reasigna el rol real. En lectura es un documento,
       // no un cuadro de texto (`aria-readonly` no es válido en `document`, C-3).
       view.dom.setAttribute("role", readOnly ? "document" : "textbox");
       onViewRef.current?.(view);
     });
-    running.current = { editor, ready, readOnly };
+    running.current = { editor, ready, readOnly, view: null, baseDoc: null };
   }, [value, readOnly, label]);
+
+  // El padre puede pedir el vaciado síncrono antes de alternar vista o modo y antes de guardar (E-6).
+  useEffect(() => {
+    registerFlush?.(() => flushRunning(running.current));
+    return () => registerFlush?.(null);
+    // `flushRunning` sólo usa refs: no hace falta como dependencia.
+  }, [registerFlush]);
 
   // Al desmontar (y entre las dos pasadas de StrictMode) se destruye el editor.
   useEffect(() => stop, []);
