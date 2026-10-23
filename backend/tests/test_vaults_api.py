@@ -226,6 +226,68 @@ def test_rf_005_name_with_control_characters_is_422_without_saving(ready_admin, 
     assert not any(d.get("name") == "a\u0000b" for d in before.values())
 
 
+# --- RF-012 (SPEC-0009): `icon` ---
+
+def test_rf_012_icon_travels_through_post_get_list_and_patch(ready_admin, db):
+    created = create(ready_admin, icon="book-open:success")
+    assert created.status_code == 201, created.text
+    vault_id, etag = created.json()["id"], created.headers["etag"]
+    assert created.json()["icon"] == "book-open:success"
+    assert stored_docs(user_db(db))[f"vault:{vault_id}"]["icon"] == "book-open:success"
+    assert ready_admin.get(f"/vaults/{vault_id}").json()["icon"] == "book-open:success"
+    listed = ready_admin.get("/vaults").json()["items"]
+    assert [v["icon"] for v in listed if v["id"] == vault_id] == ["book-open:success"]
+    # PATCH sin `icon` lo conserva; con valor lo cambia; con `null` lo borra.
+    kept = ready_admin.patch(f"/vaults/{vault_id}", json={"name": "Otro"}, headers={"If-Match": etag})
+    assert kept.json()["icon"] == "book-open:success"
+    changed = ready_admin.patch(f"/vaults/{vault_id}", json={"icon": "star"},
+                                headers={"If-Match": kept.headers["etag"]})
+    assert changed.json()["icon"] == "star"
+    cleared = ready_admin.patch(f"/vaults/{vault_id}", json={"icon": None},
+                                headers={"If-Match": changed.headers["etag"]})
+    assert cleared.status_code == 200 and cleared.json()["icon"] is None
+    assert ready_admin.get(f"/vaults/{vault_id}").json()["icon"] is None
+
+
+def test_rf_012_vault_created_without_icon_publishes_null(ready_admin):
+    assert create(ready_admin).json()["icon"] is None
+
+
+def test_rf_012_a_stored_vault_without_the_icon_key_still_reads_as_null(ready_admin, db):
+    # Bóveda anterior a SPEC-0009: el documento no tiene la clave.
+    created = create(ready_admin)
+    vault_id = created.json()["id"]
+    doc_id = f"vault:{vault_id}"
+    url = f"{settings.COUCHDB_URL}/{user_db(db)}/{doc_id}"
+    doc = httpx.get(url, auth=AUTH).json()
+    del doc["icon"]
+    httpx.put(url, json=doc, auth=AUTH).raise_for_status()
+    assert ready_admin.get(f"/vaults/{vault_id}").json()["icon"] is None
+    assert [v["icon"] for v in ready_admin.get("/vaults").json()["items"]] == [None]
+
+
+@pytest.mark.parametrize("method", ["post", "patch"])
+@pytest.mark.parametrize(("icon", "detail"), [
+    ("Folder", "String should match pattern"),
+    ("javascript:x:y", "String should match pattern"),
+    ("a" * 65, "String should have at most 64 characters"),
+    ("", "String should have at least 1 character"),
+])
+def test_rf_012_invalid_icon_is_422_at_icon_without_echoing_the_value(ready_admin, db, method, icon, detail):
+    if method == "post":
+        res = ready_admin.post("/vaults", json={"name": "n", "icon": icon})
+    else:
+        created = create(ready_admin)
+        res = ready_admin.patch(f"/vaults/{created.json()['id']}", json={"icon": icon},
+                                headers={"If-Match": created.headers["etag"]})
+    body = assert_problem(res, 422, "validation-error")
+    assert [e["pointer"] for e in body["errors"]] == ["#/icon"]
+    assert body["errors"][0]["detail"].startswith(detail)
+    if len(icon) > 1:
+        assert icon not in res.text
+    assert not any(d.get("icon") == icon for d in stored_docs(user_db(db)).values())
+
+
 @pytest.mark.parametrize(
     "payload",
     [{"name": None}, {"tags": None}, {"name": ""}, {"owner_id": "x"}, {"tags": ["t" * 33]}],

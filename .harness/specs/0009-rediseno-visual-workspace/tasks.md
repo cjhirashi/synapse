@@ -164,7 +164,7 @@ actualizado: 2026-10-23
 - [x] T-038 — `services/sync_push.py`: `_VAULT_KEYS` + `icon`, `_VAULT_REQUIRED` sin `icon`, `_FIELD_RULES["icon"]`, comprobación sólo si la clave está (cubre RF-012) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_sync_push.py tests/test_sync_rules_mirror.py tests/test_note_sync_push.py`
   - EXPECT: `passed`, 0 failed (batería de 0005/0008 sin tocar).
-- [ ] T-039 — Test (rojo) `test_vaults_api.py` (CouchDB real): `POST`/`PATCH`/`GET`/listado con `icon`; `PATCH {"icon": null}` borra; `icon` inválido → 422 RFC 9457 con `pointer` `/icon` y mensaje del catálogo, sin eco del valor (cubre RF-012) [zona: test]
+- [x] T-039 — Test (rojo) `test_vaults_api.py` (CouchDB real): `POST`/`PATCH`/`GET`/listado con `icon`; `PATCH {"icon": null}` borra; `icon` inválido → 422 RFC 9457 con `pointer` `/icon` y mensaje del catálogo, sin eco del valor (cubre RF-012) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vaults_api.py -k icon`
   - EXPECT: con T-034/T-036 ya hechos, falla sólo si la ruta no publica `icon`; si pasa en verde a la primera, se anota (la ruta no necesita código) y se comprueba el rojo con un mutante (quitar `icon` de `VaultOut`).
 - [ ] T-040 — Re-exportar `0003-vault-crud/contracts/openapi.yaml` con `backend/scripts/export_openapi.py` (cubre RF-012) [zona: contrato]
