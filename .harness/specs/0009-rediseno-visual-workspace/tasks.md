@@ -218,7 +218,7 @@ actualizado: 2026-10-23
 - [x] T-054 — `contracts/vault-icon.schema.json`: confirmar que coincide con `VaultIcon` (patrón y `maxLength`) con un test en `test_vault_schemas.py` [doc]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_vault_schemas.py -k contract`
   - EXPECT: `passed`.
-- [ ] T-055 — `0003-vault-crud/contracts/openapi.yaml`: re-export final tras cualquier cambio posterior a T-040 [doc]
+- [x] T-055 — `0003-vault-crud/contracts/openapi.yaml`: re-export final tras cualquier cambio posterior a T-040 [doc]
   - CHECK: `cd backend && python3 scripts/export_openapi.py && git diff --exit-code -- ../.harness/specs/0003-vault-crud/contracts/ && python3 -m pytest -q tests/test_contract.py`
   - EXPECT: sin diff; `passed`.
 - [ ] T-056 — `backend/README.md` §Bóvedas (`icon`: gramática, `null`, `PATCH` con `null`, sin catálogo en el servidor) y §Sincronización (clave opcional `icon`, `validation-error:icon`) [doc]
