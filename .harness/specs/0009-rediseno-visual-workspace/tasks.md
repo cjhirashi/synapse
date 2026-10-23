@@ -65,7 +65,7 @@ actualizado: 2026-10-23
 - [x] T-007 — Test (rojo) V-1/V-2: riel (R-1…R-5, círculo 50 % inactivo, `--radius-md` activo, barra 3 × 20 `--accent`, fondo `--bg-secondary`) y tooltip (nombre completo, x ≥ 56, dentro del *viewport*) en oscuro/claro a 1440 y 1024, con capturas (cubre RF-001, RF-002) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-1|V-2"`
   - EXPECT: falla: chip 38 × 38 (≠ 34) con radio 10 px; no hay elemento de tooltip. Capturas `rail-*.png` generadas.
-- [ ] T-008 — Test (rojo) V-3: barra lateral (R-6…R-11; fondo del formulario ≠ fondo del panel del árbol; `svg[data-icon]` de carpeta/nota por fila; fila de 120 caracteres con elipsis y `scrollWidth = clientWidth`) con capturas (cubre RF-003, RF-004, RF-010) [zona: test]
+- [x] T-008 — Test (rojo) V-3: barra lateral (R-6…R-11; fondo del formulario ≠ fondo del panel del árbol; `svg[data-icon]` de carpeta/nota por fila; fila de 120 caracteres con elipsis y `scrollWidth = clientWidth`) con capturas (cubre RF-003, RF-004, RF-010) [zona: test]
   - CHECK: `cd frontend && npm run test:visual -- --grep "V-3"`
   - EXPECT: falla: ancho de la barra 280 (≠ 240); no hay `.note-tree-panel` ni `svg[data-icon]`.
 - [ ] T-009 — Test (rojo) V-4/V-5: barra superior del editor (R-12), columna centrada de 780 px (R-13, R-14, \|izq − der\| ≤ 2), x del panel 296 (R-15) en lectura/Visual/Código; estado vacío centrado ±4 px, con capturas (cubre RF-005, RF-008) [zona: test]
