@@ -97,10 +97,14 @@ function isStatus(err: unknown, status: number): boolean {
   return (err as { status?: number } | null)?.status === status;
 }
 
-/** Título → ruta: se añade `.md` si no termina ya en `.md` (sin distinguir mayúsculas). */
+/**
+ * Título → ruta: se añade `.md` si no termina ya en `.md` (sin distinguir mayúsculas).
+ * Única regla para `create` y `rename` (VU-6): el nombre visible no depende de cómo se nombró la nota.
+ * Un texto vacío se deja vacío para que `checkPath` lo rechace (no se vuelve «.md»).
+ */
 function titleToPath(title: string): string {
   const path = normalizePath(title);
-  return /\.md$/i.test(path) ? path : `${path}.md`;
+  return path === "" || /\.md$/i.test(path) ? path : `${path}.md`;
 }
 
 export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions = {}): NoteStore {
@@ -229,7 +233,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async rename(id, path, rev) {
-      const normalized = normalizePath(path);
+      const normalized = titleToPath(path);
       if (checkPath(normalized) !== null) throw new NoteValidationError(["path"]);
       const doc = await load(id, false);
       assertCurrent(doc, rev);
