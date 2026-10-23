@@ -14,12 +14,37 @@ const CONSUMERS = [
   "../vaults/VaultForm.tsx",
 ];
 
+/** Fuente sin comentarios (los de bloque y los de línea): los textos explicativos no cuentan como uso. */
+const code = (file: string) => read(file).replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+
 test.each(CONSUMERS)("%s no inyecta marcado ni usa icon como URL o atributo", (file) => {
-  const source = read(file);
+  const source = code(file);
   expect(source).not.toMatch(/dangerouslySetInnerHTML|innerHTML|insertAdjacentHTML|outerHTML/);
-  // Ni `icon` ni lo derivado de él (glyph, color) entran en href, src, action ni url().
-  expect(source).not.toMatch(/\b(href|src|srcSet|action|formAction|xlinkHref)=\{[^}]*\b(icon|glyph|color)\b/);
+  // Ni `icon` ni lo derivado de él (glyph, color) entran en un atributo de enlace o recurso (`to` de
+  // `<Link>`/`<NavLink>` acaba en `href`) ni en un `style`; el valor se busca hasta el fin de línea para
+  // cubrir objetos anidados (`style={{ backgroundImage: vault.icon }}`).
+  expect(source).not.toMatch(/\b(href|src|srcSet|action|formAction|xlinkHref|to|style)=\{[^\n]*\b(icon|glyph|color)\b/);
   expect(source).not.toMatch(/url\(/);
+});
+
+// El rastreo anterior no ve una indirección (`const t = vault.icon; to={t}`): por eso, en los dos
+// consumidores que sólo lo muestran, `icon` sólo puede pasar a `VaultChip` o a `parseIcon`.
+test.each(["../notes/VaultRail.tsx", "../vaults/VaultListPage.tsx"])("%s sólo pasa icon a VaultChip o parseIcon", (file) => {
+  const rest = code(file)
+    .replace(/<VaultChip [^>]*\bicon=\{vault\.icon\}/g, "<VaultChip")
+    .replace(/parseIcon\(vault\.icon\)/g, "parseIcon()")
+    .replace(/^import .*$/gm, "")
+    .replace(/"[^"\n]*"/g, '""'); // las clases (`vault-rail-icon`) no son usos del valor
+  expect(rest, "otro uso de icon").not.toMatch(/\bicon\b/);
+});
+
+test("el `style` de los consumidores: VaultChip (--chip-color), muestras del selector (--swatch) y la posición del tooltip del riel; ningún otro", () => {
+  for (const file of CONSUMERS) {
+    const styles = [...code(file).matchAll(/\bstyle=\{/g)].length;
+    // VaultRail: la posición numérica del tooltip (`top`/`left`), sin relación con `icon`.
+    const allowed = ["VaultChip.tsx", "IconPicker.tsx", "VaultRail.tsx"].some((name) => file.endsWith(name)) ? 1 : 0;
+    expect(styles, file).toBe(allowed);
+  }
 });
 
 test("VaultChip: el único estilo en línea es la variable --chip-color, tomada de la paleta", () => {
