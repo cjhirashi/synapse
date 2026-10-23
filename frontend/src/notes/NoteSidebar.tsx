@@ -377,7 +377,17 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
         </div>
       )}
       {renaming && (
-        <form className="note-tree-rename" onSubmit={rename}>
+        <form
+          className="note-tree-rename"
+          onSubmit={rename}
+          onKeyDown={(event) => {
+            // Escape cancela el renombrado (U-3).
+            if (event.key === "Escape") {
+              event.preventDefault();
+              cancelRename();
+            }
+          }}
+        >
           <label>
             Ruta de la nota
             <input value={renaming.path} onChange={(event) => setRenaming({ note: renaming.note, path: event.target.value })} autoFocus />

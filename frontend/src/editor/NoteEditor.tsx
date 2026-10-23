@@ -24,6 +24,7 @@ import { noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView } from "./MilkdownView";
 import "./editor.css";
 
@@ -395,8 +396,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       )}
       {error && <p role="alert">{error}</p>}
       {pendingId !== null && (
-        <div role="alertdialog" aria-labelledby="note-switch-title" className="note-editor-confirm">
-          <p id="note-switch-title">Esta nota tiene cambios sin guardar.</p>
+        <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
           <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
             Guardar y abrir
           </button>
@@ -406,12 +406,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           <button type="button" onClick={keepEditing}>
             Seguir editando
           </button>
-        </div>
+        </ConfirmDialog>
       )}
 
       {blocker.state === "blocked" && (
-        <div role="alertdialog" aria-labelledby="note-leave-title" className="note-editor-confirm">
-          <p id="note-leave-title">Esta nota tiene cambios sin guardar.</p>
+        <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." onCancel={() => blocker.reset()}>
           <button type="button" onClick={() => void saveAndLeave()} disabled={saving}>
             Guardar y salir
           </button>
@@ -421,19 +420,18 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           <button type="button" onClick={() => blocker.reset()}>
             Seguir editando
           </button>
-        </div>
+        </ConfirmDialog>
       )}
 
       {discardAsk !== null && (
-        <div role="alertdialog" aria-labelledby="note-discard-title" className="note-editor-confirm">
-          <p id="note-discard-title">Esta nota tiene cambios sin guardar.</p>
+        <ConfirmDialog titleId="note-discard-title" title="Esta nota tiene cambios sin guardar." onCancel={() => answerDiscard(false)}>
           <button type="button" onClick={() => answerDiscard(true)}>
             Borrar y descartar cambios
           </button>
           <button type="button" onClick={() => answerDiscard(false)}>
             Seguir editando
           </button>
-        </div>
+        </ConfirmDialog>
       )}
 
       <div className="note-editor-body">
