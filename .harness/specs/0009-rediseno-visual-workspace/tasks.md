@@ -184,7 +184,7 @@ actualizado: 2026-10-23
 - [x] T-044 — Test (rojo) `sync/vaultStore.test.ts`: `create` con/sin `icon` (por omisión `null`); `update` valida y fusiona `icon`; documento sin clave → `icon: null` (cubre RF-012) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/sync/vaultStore.test.ts`
   - EXPECT: fallan las pruebas nuevas.
-- [ ] T-045 — `sync/vaultStore.ts`: `icon` en `VaultDoc`/`Vault`/`toVault`, `FIELD_ORDER`/`FIELD_RULES` (cubre RF-012) [zona: frontend]
+- [x] T-045 — `sync/vaultStore.ts`: `icon` en `VaultDoc`/`Vault`/`toVault`, `FIELD_ORDER`/`FIELD_RULES` (cubre RF-012) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/sync/vaultStore.test.ts && npm run typecheck`
   - EXPECT: todos `passed`.
 - [ ] T-046 — Test (rojo) `sync/merge.test.ts` (+ `conflicts.test.ts`): `icon` cambiado en un lado se fusiona; iguales no cuentan; choque → gana W sin `manual`; `sameExceptUpdatedAt` compara `icon`; documento sin clave = `null` (cubre RF-012) [zona: test] [P-6]

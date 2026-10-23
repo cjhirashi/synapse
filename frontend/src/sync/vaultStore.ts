@@ -17,7 +17,7 @@ import { nameKey, validateVault, FIELD_RULES, type VaultField, type VaultFields 
 /** Prefijo de los ids de bóveda en CouchDB/PouchDB (PLAN-0005 §2.3). */
 export const ID_PREFIX = "vault:";
 /** Orden de los campos en los errores de validación (el mismo que `validateVault`). */
-const FIELD_ORDER: VaultField[] = ["name", "description", "tags"];
+const FIELD_ORDER: VaultField[] = ["name", "description", "tags", "icon"];
 
 /** Documento de bóveda tal como se guarda (mismas claves que 0003, sin `_revisions`). */
 interface VaultDoc {
