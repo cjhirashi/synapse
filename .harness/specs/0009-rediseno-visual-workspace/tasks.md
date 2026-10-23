@@ -136,7 +136,7 @@ actualizado: 2026-10-23
 - [x] T-030 — `vaults/IconPicker.tsx` (controlado, **sin persistir** todavía) montado en `vaults/VaultForm.tsx` con estado local; chip en `vaults/VaultListPage.tsx` (cubre RF-011) [zona: frontend]
   - CHECK: `cd frontend && npx vitest run src/vaults && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-031 — Suite completa del frontend tras la maquetación: sólo cambiaron los tests explícitos de RF-007 (cubre RF-007) [zona: sistema]
+- [x] T-031 — Suite completa del frontend tras la maquetación: sólo cambiaron los tests explícitos de RF-007 (cubre RF-007) [zona: sistema]
   - CHECK: `cd frontend && npx vitest run && npm run typecheck && git diff --stat <commit de T-002> -- 'src/**/*.test.ts*' && npm run test:perf`
   - EXPECT: 0 failed; en el diff de tests de 0008 sólo `VaultRail.test.tsx` (pruebas añadidas + nombre con ícono) y `layoutCss.test.ts` (U-7 sustituido); `test:perf` p95 < 300 ms.
 
