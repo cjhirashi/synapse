@@ -431,3 +431,8 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | C-5 · tras borrar o renombrar el foco cae a `body` (WCAG 2.4.3) | Medium-Low | el elemento enfocado se desmonta sin destino de foco | Foco a la fila vecina tras borrar (o "Nueva nota" si no queda ninguna); al `treeitem` de la nota tras guardar/cancelar el renombrado. |
 | C-6 · F2/Supr ignoran `busy` (doble `remove` con la misma `rev`) | Low | los atajos no comparten la guarda del botón | Misma guarda `busy` en los atajos. |
 | C-7 · T-128…T-130 fuera de la tabla de cobertura | Low | — | Corregido por el coordinador en `tasks.md`. |
+
+## 16. Enmienda 7 (2026-10-23) — Converge corrida 1 ter
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| H1 · borrar la única nota de una carpeta deja el foco en `body` y una petición de foco colgada (la carpeta reaparecida roba el foco) | Medium | el vecino se calcula sobre las filas **antes** del borrado; las carpetas sin notas desaparecen del árbol derivado | Calcular el vecino sobre el árbol resultante (sin la nota y sin las carpetas que quedan vacías); si la clave pedida no existe tras releer, foco a "Nueva nota" y la petición se descarta. Tests: nota única en carpeta; última fila del árbol. |

@@ -461,6 +461,11 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx src/notes/VaultWorkspacePage.test.tsx && npx vitest run && npm run typecheck`
   - EXPECT: rojo (foco en `body`; doble `remove`) → `passed`.
 
+### P · Enmienda 7 (PLAN-0008 §16) — H1
+- [ ] T-132 — Test (rojo, commit propio) y corrección H1: borrar la única nota de una carpeta desplegada → foco en la fila vecina superviviente o "Nueva nota", nunca `body`; sin petición de foco pendiente (una nota nueva en esa carpeta no roba el foco) (cubre RF-019, RF-010) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx && npx vitest run && npm run typecheck`
+  - EXPECT: rojo (`document.activeElement === body`) → `passed`.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -473,7 +478,7 @@ actualizado: 2026-10-22
 | RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
 | RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110 | CodeView.test, MilkdownView.test, NoteEditor.test | Pass |
 | RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075, T-096, T-111 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration | Pass |
-| RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-131 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration | Pass |
+| RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-132 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration | Pass |
 | RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration | Pass |
 | RF-012 | T-028, T-029, T-034, T-035, T-059, T-060, T-094 | untitled.test, noteStore.test, NoteSidebar.test | Pass |
 | RF-013 | T-002…T-010, T-017, T-018, T-022, T-026, T-027, T-034, T-035, T-059, T-060, T-071, T-072, T-075, T-103, T-104 | test_note_rules, test_reservations, test_note_service, test_note_sync_push, test_contract, noteRules.test, noteStore.test, RejectionsPage.test, notes.integration | Pass |
@@ -482,7 +487,7 @@ actualizado: 2026-10-22
 | RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration | Pass |
 | RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |
 | RF-018 | T-067, T-068, T-094, T-121, T-122 | VaultListPage.test | Pass |
-| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-131 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test | Pass |
+| RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-132 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test | Pass |
 | RNF-001 | T-074, T-078, T-094, T-124, T-126 | tree.perf.test | Pass |
 | doc: contracts/note.schema.json | T-080 | test_note_contract | Pass |
 | doc: 0005-sync/contracts/openapi.yaml | T-022, T-081 | test_contract | Pass |
