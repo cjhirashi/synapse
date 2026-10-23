@@ -411,3 +411,16 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | VU-4 · el árbol no tiene scroll propio (1 000 notas → página de ~12 000 px) | Low | la sidebar crece con su contenido | Sidebar con altura acotada al viewport y scroll propio; captura con 1 000 notas. |
 | VU-6 · renombrar no añade `.md` (crear sí) | Low | dos reglas de título→ruta | Una sola función título→ruta para `create` y `rename`; test rojo. |
 | VU-5 · tras el cambio de contraseña forzado se vuelve al formulario vacío (la contraseña sí cambió) | Medium — **SPEC-0002** | `RequireAuth` decide con `must_change_password` en caché tras el cambio (por confirmar) | Fuera del alcance funcional de 0008 pero rompe el primer ingreso de todo usuario: corrección de raíz con test rojo anotado con el RF de 0002 que corresponda, commit propio citándolo; re-anclaje de 0002 al cierre. |
+
+## 14. Enmienda 5 (2026-10-23) — Converge, corrida 1 (accesibilidad del árbol)
+> Suites en verde (backend 1050, frontend 740, sync 25, perf p95 116,6 ms) y trazabilidad `Pass`
+> RF por RF; cuatro hallazgos nuevos con una raíz común: las acciones de nota viven dentro del
+> `role="tree"`.
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| C-1 · cada nota añade 2 paradas de Tab (≈ 2 000 con 1 000 notas), anula el *roving tabindex* | Medium | botones de acción por fila dentro del árbol | Las acciones salen del árbol: barra de acciones de la nota seleccionada (en la cabecera del editor/sidebar: "Renombrar", "Borrar"), una sola parada de Tab cada una; atajos desde el `treeitem` enfocado: F2 renombrar, Supr borrar (con la confirmación de VF-2 si está sucia). |
+| C-2 · acciones ocultas hasta *hover*, sin vía táctil | Low | `max-width:0; opacity:0` + `:hover` | Resuelto por C-1 (la barra es siempre visible con una nota seleccionada). |
+| C-3 · `aria-readonly` no es válido en `role="document"` | Low | VU-2 lo pidió así | Quitar `aria-readonly`; `role="document"` basta en lectura. |
+| C-4 · `<button>` dentro de `role="tree"` (hijos no permitidos) | Low | igual que C-1 | Resuelto por C-1. |
+| (ajeno) `localStorage is not defined` en `sync/localDb.ts:56` durante `test:sync` | — | entorno Node de la integración (0005) | Backlog de 0005, sin efecto en resultados; no se toca aquí. |
