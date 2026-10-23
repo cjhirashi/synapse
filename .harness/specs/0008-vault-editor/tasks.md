@@ -267,22 +267,22 @@ actualizado: 2026-10-22
   - EXPECT: 0 failed; umbral de 80 % cumplido; el build lista un *chunk* aparte con Milkdown/CodeMirror (anotar su tamaño gzip en `history.md`) y el *chunk* principal no los incluye.
 
 ### H · Integración real y RNF-001 (PLAN-0008 §5)
-- [ ] T-074 — `vitest.sync.config.ts` incluye `src/{sync,notes}/*.integration.test.ts`; `vite.config.ts` excluye `*.perf.test.tsx` salvo con `NOTES_PERF=1`; script `test:perf` en `package.json` (cubre RNF-001) [zona: configuración]
+- [x] T-074 — `vitest.sync.config.ts` incluye `src/{sync,notes}/*.integration.test.ts`; `vite.config.ts` excluye `*.perf.test.tsx` salvo con `NOTES_PERF=1`; script `test:perf` en `package.json` (cubre RNF-001) [zona: configuración]
   - CHECK: `cd frontend && npx vitest run && npm run test:sync`
   - EXPECT: suite normal sin cambios de número; integración existente 16/16 `passed`.
-- [ ] T-075 — Test `notes/notes.integration.test.ts` (dos dispositivos reales, backend y CouchDB reales): nota creada sin conexión llega; edición concurrente → conflicto manual en ambos y resolver converge; misma ruta en dos dispositivos → `note-path-taken` en uno (cubre RF-003, RF-009, RF-013) [zona: test]
+- [x] T-075 — Test `notes/notes.integration.test.ts` (dos dispositivos reales, backend y CouchDB reales): nota creada sin conexión llega; edición concurrente → conflicto manual en ambos y resolver converge; misma ruta en dos dispositivos → `note-path-taken` en uno (cubre RF-003, RF-009, RF-013) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed` (si falla, es un defecto de B–E y se corrige en su módulo, no en la prueba).
-- [ ] T-076 — Casos de `notes.integration.test.ts`: bóveda borrada en A y nota editada en B → `vault-not-found`; restaurar la bóveda → el reintento la sube; bóveda + nota + renombrado de la bóveda con el corte de lote entre ambas → la nota acaba aceptada; notas intactas tras borrar y restaurar la bóveda (cubre RF-004, RF-014) [zona: test]
+- [x] T-076 — Casos de `notes.integration.test.ts`: bóveda borrada en A y nota editada en B → `vault-not-found`; restaurar la bóveda → el reintento la sube; bóveda + nota + renombrado de la bóveda con el corte de lote entre ambas → la nota acaba aceptada; notas intactas tras borrar y restaurar la bóveda (cubre RF-004, RF-014) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-077 — Casos de `notes.integration.test.ts`: diez notas de 2 MiB suben (reparto de `_bulk_docs`) y bajan al otro dispositivo; una de 2 MiB + 1 se rechaza en el cliente y no se pierde la anterior; renombrar/borrar/restaurar se replican (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
+- [x] T-077 — Casos de `notes.integration.test.ts`: diez notas de 2 MiB suben (reparto de `_bulk_docs`) y bajan al otro dispositivo; una de 2 MiB + 1 se rechaza en el cliente y no se pierde la anterior; renombrar/borrar/restaurar se replican (cubre RF-010, RF-011, RF-016, RF-017) [zona: test]
   - CHECK: `cd frontend && npm run test:sync -- src/notes/notes.integration.test.ts`
   - EXPECT: todos `passed`.
-- [ ] T-078 — Test de rendimiento `notes/tree.perf.test.tsx`: 1 000 notas (+200 de otra bóveda), 30 montajes de `VaultWorkspacePage`, 3 de calentamiento, p95 hasta el árbol completo de primer nivel (cubre RNF-001) [zona: test]
+- [x] T-078 — Test de rendimiento `notes/tree.perf.test.tsx`: 1 000 notas (+200 de otra bóveda), 30 montajes de `VaultWorkspacePage`, 3 de calentamiento, p95 hasta el árbol completo de primer nivel (cubre RNF-001) [zona: test]
   - CHECK: `cd frontend && npm run test:perf`
   - EXPECT: `passed` con el p95 impreso < 300 ms (anotar el valor en `history.md`).
-- [ ] T-079 — Integración completa (canal de 0005 + notas) sin regresión (cubre RF-004, RF-006) [zona: sistema]
+- [x] T-079 — Integración completa (canal de 0005 + notas) sin regresión (cubre RF-004, RF-006) [zona: sistema]
   - CHECK: `cd frontend && npm run test:sync`
   - EXPECT: todos los archivos `*.integration.test.ts` de `sync/` y `notes/` `passed`, 0 failed.
 

@@ -1053,3 +1053,9 @@
 - [2026-10-22] T-119 (RF-004…RF-006, RF-016): cierre enmienda 3 — CHECK: pytest completa sola → 1045 passed, 1 deselected, 0 failed (16m33s); vitest 45 files/733 tests passed; gate Compuerta abierta
 - [2026-10-22] **Re-verificación backend (tras enmienda 3): REJECTED** — VB-1…VB-3 corregidos de raíz (rojos reales; VB-2 sin lectura del cuerpo sin sesión en todo `/sync`); nuevo VB-5 Medium (entero de 5000 dígitos → `ValueError` → 400 no declarado). Acotado: 261 passed, vitest noteRules 104 passed, gate abierto. → T-120.
 - [2026-10-23] T-120 (RF-005): VB-5, _DeepJsonRequest trata RecursionError/ValueError como JSON inválido (422 declarado); rojo: 5 failed (400) — CHECK: pytest test_note_sync_api test_sync_api test_contract → 83 passed; gate abierta
+- [2026-10-23] T-074 (RNF-001): vitest.sync incluye notes/, perf.test excluido salvo NOTES_PERF=1, script test:perf; arreglada recursión infinita del helper vaultConflicts en conflicts.integration — CHECK: vitest 733 passed, test:sync 16/16 → ok
+- [2026-10-23] T-075 (RF-003, RF-009, RF-013): notes.integration — nota offline llega, conflicto concurrente converge, note-path-taken — CHECK: test:sync notes 9/9 (x3 corridas) → passed
+- [2026-10-23] T-076 (RF-004, RF-014): vault-not-found + restaurar reintenta, corte de lote (55 notas) acaba aceptado, notas intactas tras borrar/restaurar — CHECK: test:sync notes 9/9 → passed
+- [2026-10-23] T-077 (RF-010, RF-011, RF-016, RF-017): 10 notas de 2 MiB suben/bajan, 2 MiB+1 rechazada en cliente, renombrar/borrar/restaurar replican — CHECK: test:sync notes 9/9 → passed
+- [2026-10-23] T-078 (RNF-001): tree.perf.test.tsx, 1000 notas (+200 otra bóveda), 27 montajes medidos — p95 110.0 ms (mediana 80.7, máx 111.5) < 300 ms — CHECK: npm run test:perf → passed
+- [2026-10-23] T-079 (RF-004, RF-006): integración completa — CHECK: vitest 733/733, test:sync 6 archivos 25/25, test:perf p95 108.8 ms, typecheck ok, gate abierta → ok
