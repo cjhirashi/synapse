@@ -97,7 +97,7 @@ actualizado: 2026-10-23
 - [x] T-017 — `vaults/VaultChip.tsx` + `vaults/VaultChip.css` (34 px, círculo → `--radius-md` en *hover*/activo, tinte `color-mix` 18 %, aro 2 px, glifo `--text-primary` 18 px / iniciales 12 px 700) (cubre RF-001, RF-006) [zona: frontend] [P-2, P-12]
   - CHECK: `cd frontend && npx vitest run src/vaults/VaultChip.test.tsx && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-018 — Test (rojo) en `notes/VaultRail.test.tsx`: el riel usa `VaultChip` con el `icon` del documento sembrado en la réplica; tooltip con el nombre completo al `hover` y al foco, que desaparece al salir; sin atributo `title`; nombre accesible con iniciales igual que hoy y, con ícono, igual al nombre (cambio explícito de RF-007) (cubre RF-001, RF-002, RF-007) [zona: test]
+- [x] T-018 — Test (rojo) en `notes/VaultRail.test.tsx`: el riel usa `VaultChip` con el `icon` del documento sembrado en la réplica; tooltip con el nombre completo al `hover` y al foco, que desaparece al salir; sin atributo `title`; nombre accesible con iniciales igual que hoy y, con ícono, igual al nombre (cambio explícito de RF-007) (cubre RF-001, RF-002, RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultRail.test.tsx`
   - EXPECT: fallan las pruebas nuevas (no hay tooltip; el chip es texto plano); las existentes siguen `passed`.
 - [ ] T-019 — `notes/VaultRail.tsx`: `VaultChip` + `RailTooltip` (portal en `document.body`, `position: fixed`, `aria-hidden`), sin `title`; barra de activa `::before` en `notes/notes.css` (cubre RF-001, RF-002) [zona: frontend]
