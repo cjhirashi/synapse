@@ -193,7 +193,7 @@ actualizado: 2026-10-23
 - [x] T-047 — `sync/merge.ts`, `sync/conflicts.ts`, `sync/ConflictView.tsx` (la resolución manual conserva el `icon` de la ganadora) (cubre RF-012) [zona: frontend] [P-6]
   - CHECK: `cd frontend && npx vitest run src/sync && npm run typecheck`
   - EXPECT: todos `passed`.
-- [ ] T-048 — Test (rojo) `vaults/VaultForm.test.tsx` y `notes/VaultRail.test.tsx`: guardar desde el selector persiste `icon` (sólo si cambió) en la réplica y el riel muestra el chip nuevo sin recargar (`dataVersion`) (cubre RF-011, RF-012) [zona: test]
+- [x] T-048 — Test (rojo) `vaults/VaultForm.test.tsx` y `notes/VaultRail.test.tsx`: guardar desde el selector persiste `icon` (sólo si cambió) en la réplica y el riel muestra el chip nuevo sin recargar (`dataVersion`) (cubre RF-011, RF-012) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/vaults/VaultForm.test.tsx src/notes/VaultRail.test.tsx`
   - EXPECT: fallan las pruebas nuevas (el selector aún no persiste).
 - [ ] T-049 — `vaults/VaultForm.tsx`: `icon` en `changes` y en `create`/`update` (cubre RF-011, RF-012) [zona: frontend]

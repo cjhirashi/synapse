@@ -221,3 +221,57 @@ test("RF-019: «Cancelar» vuelve a la lista sin guardar", async () => {
   expect(screen.getByText("lista de bóvedas")).toBeInTheDocument();
   expect(create).not.toHaveBeenCalled();
 });
+
+// --- SPEC-0009 RF-011, RF-012: el selector de ícono se guarda en la réplica (sólo si cambió) ---
+
+test("RF-011, RF-012: crear con un ícono y color elegidos lo guarda en la bóveda", async () => {
+  const { value } = syncValue();
+  const { user } = renderAt(value, "/vaults/new");
+  await user.type(screen.getByLabelText("Nombre"), "Notas");
+  await user.click(screen.getByRole("radio", { name: "Cohete" }));
+  await user.click(screen.getByRole("radio", { name: "Verde" }));
+  await user.click(screen.getByRole("button", { name: "Crear bóveda" }));
+  expect(await screen.findByText("lista de bóvedas")).toBeInTheDocument();
+  expect((await value.vaults.list())[0].icon).toBe("rocket:success");
+});
+
+test("RF-012: crear sin tocar el selector no envía icon", async () => {
+  const { value } = syncValue();
+  const create = vi.spyOn(value.vaults, "create");
+  const { user } = renderAt(value, "/vaults/new");
+  await user.type(screen.getByLabelText("Nombre"), "Notas");
+  await user.click(screen.getByRole("button", { name: "Crear bóveda" }));
+  expect(create.mock.calls[0][0]).not.toHaveProperty("icon");
+});
+
+test("RF-011, RF-012: editar cambia sólo el ícono y lo envía con la revisión", async () => {
+  const { value, vault, user } = await editing();
+  const update = vi.spyOn(value.vaults, "update");
+  await screen.findByDisplayValue("Notas");
+  await user.click(screen.getByRole("radio", { name: "Estrella" }));
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+  expect(update).toHaveBeenCalledWith(vault.id, { icon: "star" }, vault.rev);
+  expect(await screen.findByText("lista de bóvedas")).toBeInTheDocument();
+  expect((await value.vaults.get(vault.id)).icon).toBe("star");
+});
+
+test("RF-012: editar sin tocar el ícono no lo envía (y sin otros cambios no escribe)", async () => {
+  const { value, user } = await editing();
+  const update = vi.spyOn(value.vaults, "update");
+  await screen.findByDisplayValue("Notas");
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+  expect(update).not.toHaveBeenCalled();
+});
+
+test("RF-011, RF-012: «Iniciales» + «Automático» quita el ícono que la bóveda ya tenía (icon: null)", async () => {
+  const { value, db } = syncValue();
+  const vault = await seedStore(db).create({ name: "Notas", description: null, tags: [], icon: "star:success" });
+  const update = vi.spyOn(value.vaults, "update");
+  const { user } = renderAt(value, `/vaults/${vault.id}/edit`);
+  await screen.findByDisplayValue("Notas");
+  expect(screen.getByRole("radio", { name: "Estrella" })).toBeChecked();
+  await user.click(screen.getByRole("radio", { name: "Iniciales" }));
+  await user.click(screen.getByRole("radio", { name: "Automático" }));
+  await user.click(screen.getByRole("button", { name: "Guardar cambios" }));
+  expect(update).toHaveBeenCalledWith(vault.id, { icon: null }, vault.rev);
+});

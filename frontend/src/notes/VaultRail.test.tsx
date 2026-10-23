@@ -1,5 +1,5 @@
 // Riel de bóvedas (SPEC-0008 RF-001; PLAN-0008 §2.6).
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
@@ -164,4 +164,25 @@ test("RF-002: el icono ya no lleva el atributo title nativo (evita el doble tool
   await seedWithIcon(db, "Notas", null);
   renderRail(value);
   expect(await screen.findByRole("link", { name: "NO Notas" })).not.toHaveAttribute("title");
+});
+
+// RF-012: el cambio de ícono hecho en la réplica llega al riel sin recargar (se relee con `dataVersion`).
+test("RF-012: un icon cambiado en la réplica se refleja en el chip del riel sin recargar", async () => {
+  const { value, db } = syncValue();
+  const vault = await seedStore(db).create({ name: "Notas", description: null, tags: [], icon: "star:success" });
+  const view = (version: number) => (
+    <WithSync value={{ ...value, dataVersion: version }}>
+      <MemoryRouter>
+        <VaultRail />
+      </MemoryRouter>
+    </WithSync>
+  );
+  const { rerender } = render(view(0));
+  const link = await screen.findByRole("link", { name: "Notas" });
+  expect(link.querySelector('svg[data-icon="star"]')).not.toBeNull();
+
+  await value.vaults.update(vault.id, { icon: "rocket:danger" }, vault.rev);
+  rerender(view(1));
+  await waitFor(() => expect(screen.getByRole("link", { name: "Notas" }).querySelector('svg[data-icon="rocket"]')).not.toBeNull());
+  expect(screen.getByRole("link", { name: "Notas" }).querySelector(".vault-chip")).toHaveStyle({ "--chip-color": "var(--danger)" });
 });
