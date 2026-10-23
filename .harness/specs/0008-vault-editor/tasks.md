@@ -468,31 +468,31 @@ actualizado: 2026-10-22
 
 ### Q · Enmienda 8 (PLAN-0008 §17) — Converge con 4 revisores
 > Test rojo en commit propio antes de cada corrección.
-- [ ] T-133 — H-1: test (rojo) de API con ruta `"ﷺ"*300` → 201 y unicidad; id de reserva `note-path:{vault}:{sha256}` (cubre RF-013, RF-011) [zona: servicio]
+- [x] T-133 — H-1: test (rojo) de API con ruta `"ﷺ"*300` → 201 y unicidad; id de reserva `note-path:{vault}:{sha256}` (cubre RF-013, RF-011) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_service.py tests/test_note_sync_api.py tests/test_note_sync_push.py`
   - EXPECT: rojo (503) → `passed`.
-- [ ] T-134 — H-2: test (rojo) `_rev` con 5 000 dígitos → `invalid-id`; tope en el patrón (cubre RF-006) [zona: servicio]
+- [x] T-134 — H-2: test (rojo) `_rev` con 5 000 dígitos → `validation-error:_rev`; tope en el patrón (cubre RF-006) [zona: servicio]
   - CHECK: `cd backend && python3 -m pytest -q -p no:cacheprovider tests/test_note_sync_push.py tests/test_sync_push.py tests/test_note_sync_api.py`
   - EXPECT: rojo (ValueError) → `passed`.
-- [ ] T-135 — E-1: test (rojo) doble Ctrl+S → una sola escritura, sin `_conflicts`; guardados serializados (cubre RF-008) [zona: editor]
+- [x] T-135 — E-1: test (rojo) doble Ctrl+S → una sola escritura, sin `_conflicts`; guardados serializados (cubre RF-008) [zona: editor]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: rojo → `passed`.
-- [ ] T-136 — E-2: test (rojo) bóveda a la papelera por sync con borrador sucio → 404 con el borrador visible y "Copiar texto" (cubre RF-014, RF-002) [zona: pantalla]
+- [x] T-136 — E-2: test (rojo) bóveda a la papelera por sync con borrador sucio → 404 con el borrador visible y "Copiar texto" (cubre RF-014, RF-002) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-137 — U-1/U-3: test (rojo) foco al abrir los diálogos, Escape, retorno del foco; Escape en el renombrado (cubre RF-008, RF-010, RF-019) [zona: pantalla]
+- [x] T-137 — U-1/U-3: test (rojo) foco al abrir los diálogos, Escape, retorno del foco; Escape en el renombrado (cubre RF-008, RF-010, RF-019) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes/NoteSidebar.test.tsx`
   - EXPECT: rojo → `passed`.
-- [ ] T-138 — U-2/U-4/S-5: contraste (texto primario + indicador de acento), nombre accesible del riel con iniciales, `displayName` no vacío; tests y capturas claro/oscuro (cubre RF-019, RF-001) [zona: pantalla]
+- [x] T-138 — U-2/U-4/S-5: contraste (texto primario + indicador de acento), nombre accesible del riel con iniciales, `displayName` no vacío; tests y capturas claro/oscuro (cubre RF-019, RF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/notes` + capturas
   - EXPECT: `passed`; contraste ≥ 4,5:1 calculado y visible en capturas.
-- [ ] T-139 — S-1: test (rojo) `list`/`create`/`rename` no leen `content` (espía sobre la réplica) y el índice se actualiza con cambios locales y del pull; índice de resumen incremental; barrido de conflictos sin cuerpos (cubre RF-001, RF-019, RF-009, RNF-001) [zona: cliente]
+- [x] T-139 — S-1: test (rojo) `list`/`create`/`rename` no leen `content` (espía sobre la réplica) y el índice se actualiza con cambios locales y del pull; índice de resumen incremental; barrido de conflictos sin cuerpos (cubre RF-001, RF-019, RF-009, RNF-001) [zona: cliente]
   - CHECK: `cd frontend && npx vitest run src/notes src/sync && npm run test:perf`
   - EXPECT: rojo → `passed`; p95 < 300 ms.
-- [ ] T-140 — S-2/S-3/S-4: doble borrado converge; cuota en `resolve`; comentario corregido (cubre RF-009, RF-016) [zona: cliente]
+- [x] T-140 — S-2/S-3/S-4: doble borrado converge; cuota en `resolve`; comentario corregido (cubre RF-009, RF-016) [zona: cliente]
   - CHECK: `cd frontend && npx vitest run src/notes src/sync`
   - EXPECT: rojo → `passed`.
-- [ ] T-141 — U-5: docs actualizadas al código final (routers README, backend README §Límites y H-1/H-2, frontend/src README) [doc]
+- [x] T-141 — U-5: docs actualizadas al código final (routers README, backend README §Límites y H-1/H-2, frontend/src README) [doc]
   - CHECK: `grep -c "sesión\|422" backend/app/routers/README.md && grep -c "F2\|Acciones de la nota\|card-list\|titleToPath" frontend/src/README.md`
   - EXPECT: ≥ 1 y ≥ 3.
 
