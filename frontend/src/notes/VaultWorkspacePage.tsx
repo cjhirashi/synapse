@@ -11,6 +11,7 @@
  *   descarga (P-3).
  */
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { FileText, FolderOpen } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
@@ -145,7 +146,11 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   return (
     <div className="vault-workspace">
       <div className="vault-workspace-side">
-        <h1>{vault.name}</h1>
+        {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. */}
+        <header className="vault-workspace-header">
+          <FolderOpen size={14} aria-hidden="true" data-icon="folder-open" />
+          <h1>{vault.name}</h1>
+        </header>
         <NoteSidebar
           vaultId={vault.id}
           openId={openId}
@@ -160,11 +165,21 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
         )}
         {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
-        <div hidden={showTrash}>
+        <div hidden={showTrash} className="vault-workspace-content">
           {openId === null ? (
-            <p>Abre o crea una nota para empezar.</p>
+            // Estado vacío centrado en el panel (SPEC-0009 RF-008).
+            <div className="vault-workspace-empty">
+              <FileText size={32} aria-hidden="true" data-icon="file-text" />
+              <p>Abre o crea una nota para empezar.</p>
+            </div>
           ) : (
-            <Suspense fallback={<p>Cargando el editor…</p>}>
+            <Suspense
+              fallback={
+                <div className="vault-workspace-empty">
+                  <p>Cargando el editor…</p>
+                </div>
+              }
+            >
               <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} />
             </Suspense>
           )}

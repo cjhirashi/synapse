@@ -56,6 +56,7 @@ test("RF-001, RF-015: bóveda activa → su nombre, el árbol y el editor vacío
 test("RF-003: la cabecera de la barra tiene el ícono de la bóveda y su nombre como h1", async () => {
   const { value, vault } = await setup();
   const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
   const header = container.querySelector(".vault-workspace-header")!;
   expect(header).not.toBeNull();
   expect(header.querySelector('svg[data-icon="folder-open"]')).not.toBeNull();
@@ -68,7 +69,9 @@ test("RF-003: la cabecera de la barra tiene el ícono de la bóveda y su nombre 
 test("RF-008: el estado vacío del editor es un bloque con ícono y el mismo texto", async () => {
   const { value, vault } = await setup();
   const { container } = render(tree(value, `/vaults/${vault.id}`));
-  const empty = (await waitFor(() => container.querySelector(".vault-workspace-empty"))) as HTMLElement;
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  const empty = container.querySelector<HTMLElement>(".vault-workspace-empty")!;
+  expect(empty).not.toBeNull();
   expect(empty.querySelector('svg[data-icon="file-text"]')).not.toBeNull();
   expect(within(empty).getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
 });
