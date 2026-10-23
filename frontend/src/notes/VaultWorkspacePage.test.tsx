@@ -217,3 +217,38 @@ test("RF-014, RF-002: bóveda a la papelera con borrador sucio → 404 que muest
   await userEvent.click(screen.getByRole("button", { name: "Copiar texto" }));
   expect(writeText).toHaveBeenCalledWith("borrador");
 });
+
+// E-3 (PLAN-0008 §18): sólo la pérdida involuntaria conserva el borrador; descartarlo a propósito lo suelta.
+test("RF-014: un borrador descartado a propósito («Borrar y descartar cambios») no reaparece en el 404", async () => {
+  const { value, vault, rerender } = await openDirtyNote();
+  await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Borrar y descartar cambios" }));
+  await waitFor(() => expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull());
+  const current = await value.vaults.get(vault.id);
+  await value.vaults.softDelete(vault.id, current.rev);
+  rerender(tree({ ...value, dataVersion: 1 }, `/vaults/${vault.id}`));
+  expect(await screen.findByRole("alert")).toHaveTextContent("no existe");
+  expect(screen.queryByRole("textbox", { name: "Borrador sin guardar" })).toBeNull();
+});
+
+// E-4: sin API de portapapeles no hay rechazo sin manejar: se avisa y se selecciona el texto.
+test("RF-014: «Copiar texto» sin navigator.clipboard avisa y selecciona el texto", async () => {
+  const { value, vault, rerender } = await openDirtyNote();
+  const current = await value.vaults.get(vault.id);
+  await value.vaults.softDelete(vault.id, current.rev);
+  rerender(tree({ ...value, dataVersion: 1 }, `/vaults/${vault.id}`));
+  const draft = (await screen.findByRole("textbox", { name: "Borrador sin guardar" })) as HTMLTextAreaElement;
+  Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+  await userEvent.click(screen.getByRole("button", { name: "Copiar texto" }));
+  expect(await screen.findByText("No se pudo copiar; selecciona el texto.")).toBeInTheDocument();
+  expect([draft.selectionStart, draft.selectionEnd]).toEqual([0, draft.value.length]);
+  expect(draft).toHaveFocus();
+});
+
+// E-5: el diálogo de descarte abre sobre la respuesta segura, no sobre la acción destructiva.
+test("RF-010: el diálogo «Borrar y descartar cambios» enfoca primero «Seguir editando»", async () => {
+  await openDirtyNote();
+  await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  const dialog = await screen.findByRole("alertdialog");
+  await waitFor(() => expect(within(dialog).getByRole("button", { name: "Seguir editando" })).toHaveFocus());
+});
