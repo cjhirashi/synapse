@@ -548,6 +548,11 @@ actualizado: 2026-10-22
   - CHECK: `cd frontend && npx vitest run src/editor src/notes src/sync/LogoutDialog.test.tsx`
   - EXPECT: rojo → `passed`.
 
+### AA · Enmienda 18 (PLAN-0008 §27) — E-8, D-1
+- [ ] T-153 — E-8: test (rojo, commit propio) "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto nuevo; `restoreAndSave` usa `readDraft()`. D-1: línea en blanco en `frontend/src/README.md` (cubre RF-017, RF-008) [zona: editor]
+  - CHECK: `cd frontend && npx vitest run src/editor && git diff --check`
+  - EXPECT: rojo → `passed`; sin avisos de espacios.
+
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
@@ -558,7 +563,7 @@ actualizado: 2026-10-22
 | RF-005 | T-001, T-003…T-005, T-013, T-014, T-026, T-027, T-114, T-115, T-118, T-120, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126, T-146 | test_note_contract, test_note_rules, test_note_sync_push, noteRules.test | Pass |
 | RF-006 | T-011, T-012, T-019…T-021, T-079, T-117, T-134, T-000, T-023, T-073, T-094, T-108, T-113, T-116, T-119, T-126, T-146 | test_note_sync_filter, test_note_sync_api, test_note_sync_isolation, test_note_sync_push (`_rev` acotado) | Pass |
 | RF-007 | T-025, T-048, T-049, T-052…T-055, T-094, T-107, T-121…T-123, T-129, T-000, T-073, T-108, T-113, T-126, T-151 | safeUrl.test, MilkdownView.test, NoteEditor.test | Pass |
-| RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-151, T-152 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
+| RF-008 | T-024, T-025, T-050…T-056, T-094, T-099, T-100, T-109, T-110, T-135, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-151, T-152, T-153 | CodeView.test, MilkdownView.test, NoteEditor.test, NoteEditor.test (guardados serializados, ConfirmDialog), NoteEditorLeave.test | Pass |
 | RF-009 | T-032, T-033, T-038…T-041, T-069, T-070, T-075, T-096, T-111, T-139, T-140, T-142, T-000, T-073, T-094, T-095, T-108, T-113, T-126 | mergeNote.test, noteStore.test, conflicts.test, NoteConflictCard.test, ConflictView.test, notes.integration, mergeNote.test (doble borrado), conflicts.test (cuota, barrido sin cuerpos) | Pass |
 | RF-010 | T-017, T-018, T-036, T-037, T-059…T-062, T-077, T-094, T-101, T-102, T-128…T-132, T-137, T-144, T-000, T-073, T-108, T-113, T-126, T-152 | test_note_sync_push, noteStore.test, NoteSidebar.test, NoteTrash.test, VaultWorkspacePage.test (Supr con confirmación), notes.integration, NoteEditor.test (ConfirmDialog de borrado) | Pass |
 | RF-011 | T-006, T-007, T-009, T-010, T-017, T-018, T-036, T-037, T-059, T-060, T-077, T-094, T-101, T-102, T-127, T-128…T-131, T-133, T-000, T-073, T-108, T-113, T-126, T-147, T-148, T-150 | test_reservations, test_note_service, test_note_sync_push, noteStore.test, NoteSidebar.test, notes.integration, test_note_service, test_note_sync_api (reserva sha256) | Pass |
@@ -567,7 +572,7 @@ actualizado: 2026-10-22
 | RF-014 | T-015, T-016, T-040, T-041, T-044, T-045, T-063, T-064, T-071, T-072, T-076, T-095, T-096, T-111, T-136, T-144, T-000, T-073, T-094, T-097, T-098, T-108, T-113, T-126, T-149, T-150 | test_note_sync_push, conflicts.test, repush.test, VaultWorkspacePage.test, RejectionsPage.test, notes.integration, VaultWorkspacePage.test (bóveda a la papelera con borrador) | Pass |
 | RF-015 | T-063, T-064, T-094, T-000, T-073, T-108, T-113, T-126 | VaultWorkspacePage.test | Pass |
 | RF-016 | T-003…T-005, T-013, T-014, T-019, T-020, T-026, T-027, T-036, T-037, T-042, T-043, T-054, T-055, T-077, T-140, T-142, T-000, T-023, T-073, T-094, T-108, T-113, T-119, T-126 | test_note_rules, test_note_sync_push, test_note_sync_api, noteRules.test, noteStore.test, remote.test, NoteEditor.test, notes.integration, conflicts.test (StorageFullError) | Pass |
-| RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104, T-000, T-073, T-108, T-113, T-126 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |
+| RF-017 | T-009, T-010, T-017, T-018, T-036, T-037, T-061, T-062, T-077, T-094, T-103, T-104, T-000, T-073, T-108, T-113, T-126, T-153 | test_note_service, test_note_sync_push, noteStore.test, NoteTrash.test, notes.integration | Pass |
 | RF-018 | T-067, T-068, T-094, T-121, T-122, T-000, T-073, T-108, T-113, T-126 | VaultListPage.test | Pass |
 | RF-019 | T-030, T-031, T-046, T-047, T-059, T-060, T-063, T-064, T-094, T-105, T-106, T-121, T-122, T-128…T-132, T-137, T-138, T-139, T-000, T-073, T-108, T-113, T-126, T-148, T-150 | noteTree.test, NoteSidebar.test (una parada de Tab, barra de acciones, F2/Supr, foco), VaultWorkspacePage.test, NoteSidebar.test (Escape, contraste, displayName), noteStore.test (índice de resumen) | Pass |
 | RNF-001 | T-074, T-078, T-094, T-124, T-126, T-139, T-143, T-000, T-145 | tree.perf.test, tree.perf.test (índice de resumen) | Pass |
@@ -579,7 +584,7 @@ actualizado: 2026-10-22
 | doc: backend/app/routers/README.md | T-085, T-141 | — | Pass |
 | doc: backend/tests/README.md | T-086 | — | Pass |
 | doc: frontend/README.md | T-087 | — | Pass |
-| doc: frontend/src/README.md | T-088, T-141, T-145 | — | Pass |
+| doc: frontend/src/README.md | T-088, T-141, T-145, T-153 | — | Pass |
 | doc: 0008-vault-editor/diagrams | T-089 | — | Pass |
 | doc: 0005-sync/diagrams | T-090 | — | Pass |
 | doc: ARCHIFY.md | T-091 | — | Pass |

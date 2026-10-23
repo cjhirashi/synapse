@@ -530,3 +530,11 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | E-7 · tras E-6, los caminos que deciden por `dirtyRef` antes de desmontar (cambiar de nota, borrar la abierta, `unsavedDrafts` en el logout, `beforeunload`) siguen viendo "limpio" en los 200 ms del debounce y pierden texto sin diálogo | Medium-Low (pérdida de texto, RF-008) | **raíz común de E-6 y E-7**: "sucio" y "texto" se derivan del markdown que Milkdown emite con debounce; cada camino tenía que acordarse de vaciar | (1) "Sucio" es **síncrono**: `MilkdownView` informa en la misma transacción de ProseMirror (`tr.docChanged`, sin debounce) y CodeMirror igual (`update.docChanged`). (2) El texto se obtiene por **un único lector** (`readDraft()`: vacía y devuelve el markdown actual) que usan guardar, alternar, diálogos, `confirmDiscard`, cambio de nota, `unsavedDrafts` y `beforeunload`; nadie lee `draft` directamente para decidir. (3) `beforeunload` registrado mientras haya editor en modo edición y decide con el estado síncrono. Tests rojos con editores reales y acción en < 200 ms para cada camino. |
+
+## 27. Enmienda 18 (2026-10-23) — Converge sobre 0233c57
+> Backend, sync cliente: limpios; E-7 de raíz (sin `dirtyRef`, `pending` nunca queda colgado, deshacer vuelve a limpio).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| E-8 · "Restaurar y guardar" < 200 ms tras teclear en Visual guarda el texto anterior (queda "Cambios sin guardar", sin pérdida) | Low | `restoreAndSave` lee `draftRef.current` en vez del lector único | `readDraft()`; test rojo. |
+| D-1 · `frontend/src/README.md`: falta una línea en blanco y dos párrafos se funden al renderizar | Low | — | Añadirla. |
