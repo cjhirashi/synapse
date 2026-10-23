@@ -52,8 +52,9 @@
   flex-direction: column;
   gap: var(--space-3);
   width: 280px;
-  flex-shrink: 0;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
 }
 
 .note-sidebar-new {
@@ -67,6 +68,13 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). */
+.note-tree {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .note-tree-group {
@@ -151,10 +159,14 @@
   gap: var(--space-6);
 }
 
+/* Columna fija al viewport: su altura se acota y el árbol (flex) absorbe el resto con scroll. */
 .vault-workspace-side {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - 2 * var(--space-4));
 }
 
 .vault-workspace-side h1 {
@@ -175,6 +187,14 @@
   .vault-workspace-side,
   .note-sidebar {
     width: 100%;
+  }
+  /* Apilado: sin columna fija; el árbol conserva su scroll acotado. */
+  .vault-workspace-side {
+    position: static;
+    max-height: none;
+  }
+  .note-tree {
+    max-height: 50vh;
   }
 }
 

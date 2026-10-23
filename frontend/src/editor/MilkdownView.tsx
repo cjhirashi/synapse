@@ -22,6 +22,8 @@ import { commonmark, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkd
 import { gfm } from "@milkdown/preset-gfm";
 import type { EditorView } from "@milkdown/prose/view";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
+// Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
+import "prosemirror-view/style/prosemirror.css";
 
 /**
  * Los esquemas de enlace e imagen con la URL filtrada por `safeUrl`. Reemplazan a los de
