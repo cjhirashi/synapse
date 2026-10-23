@@ -529,7 +529,7 @@ actualizado: 2026-10-22
   - EXPECT: las 4 con `exit=0`.
 
 ### W · Enmienda 14 (PLAN-0008 §23) — F-3
-- [ ] T-149 — F-3: `repush.test.ts` sin esperas fijas (positivos con `vi.waitFor`; negativos tras la señal del feed + `settled()`); auditoría de esperas por tiempo en los tests de 0008 (lista en history.md: sustituida o justificada) (cubre RF-004, RF-014) [zona: test]
+- [x] T-149 — F-3: `repush.test.ts` sin esperas fijas (positivos con `vi.waitFor`; negativos tras la señal del feed + `settled()`); auditoría de esperas por tiempo en los tests de 0008 (lista en history.md: sustituida o justificada) (cubre RF-004, RF-014) [zona: test]
   - CHECK: `cd frontend && grep -rn "setTimeout" src/notes src/editor src/sync --include=*.test.ts* ; for i in 1 2 3 4; do (npx vitest run src/notes src/sync src/editor > /tmp/s8/f3-$i.log 2>&1; echo "corrida $i exit=$?") & done; wait`
   - EXPECT: cada `setTimeout` restante con comentario que lo justifica; las 4 corridas simultáneas con `exit=0`.
 
