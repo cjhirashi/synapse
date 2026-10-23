@@ -93,6 +93,42 @@ y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy 
 mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
 (`backend/README.md`, «Despliegue»).
 
+## Rediseño visual del workspace (SPEC-0009)
+
+Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas salen del mockup 1.1.4.4
+(PLAN-0009 §5.4) y todo color, radio, sombra y espaciado, de `styles/tokens.css`.
+
+- **Marco de altura fija** (`layout/AppLayout.css`): `.app-shell` mide `100dvh` y no hace scroll;
+  cabecera y barra de sincronización ocupan lo suyo y cada columna tiene el suyo (el riel, sin
+  barra visible; `.app-main` con el contenido centrado a 880 px; el workspace de una bóveda no
+  tiene padding ni scroll de página y sus columnas hacen el suyo). Por debajo de 800 px el
+  workspace se apila y vuelve a hacer scroll como página. Sustituye al riel `sticky` de U-7.
+- **Tema oscuro por defecto** (`theme/useTheme.ts` y el script de `index.html`): sin preferencia
+  guardada se usa el tema oscuro (`DEFAULT_THEME_MODE`); el defecto no se escribe en `localStorage`.
+  Una preferencia guardada (claro/sistema/oscuro) se respeta. Los estilos base de `button` de
+  `global.css` están en `:where()` (especificidad 0) para que los de componente ganen.
+- **Íconos de bóveda** (`vaults/`): `vaultIcon.ts` (puro) es dueño de la gramática `glifo[:color]`
+  (`parseIcon`/`formatIcon`), del set curado de 24 glifos de `lucide-react` (`ICON_SET`), de la
+  paleta de 5 claves de tokens (`PALETTE`) y del color derivado del id (`derivedColor`, nunca
+  `danger`). `VaultChip.tsx` dibuja el chip de 34 px (círculo; `--radius-md` al pasar el cursor,
+  enfocar o estar activo) con el ícono o las iniciales; sólo pinta lo que sale de esas listas
+  cerradas (un glifo o color desconocido cae a iniciales/color derivado), nunca `icon` como
+  URL, marcado o estilo (`iconSafety.test.ts`). `IconPicker.tsx` (dos `radiogroup`, «Ícono» y
+  «Color») está en `VaultForm`, que guarda `icon` sólo si cambió; `VaultListPage` muestra el chip.
+  La regla de `icon` vive una vez en TS (`sync/vaultRules.ts`, `checkIcon`) y una en Python.
+- **Riel con tooltip** (`notes/VaultRail.tsx`): `RailTooltip` se monta en `document.body` (el riel
+  hace scroll y recortaría) al pasar el cursor o enfocar con el teclado; sin `title` nativo. El
+  nombre accesible es el nombre con ícono y «iniciales nombre» con iniciales.
+- **Barra lateral de 240 px** (`notes/notes.css`, `NoteSidebar.tsx`): cabecera con la carpeta abierta y
+  el nombre, formulario «Nueva nota» como bloque propio, panel del árbol con scroll propio (filas de
+  27/25 px, íconos de carpeta/nota, sangría de 24 px), barra de acciones de la nota **bajo** el
+  árbol (si fuera sobre él, al enfocar una fila se desplazaría y el clic no la abriría) y pie con la
+  papelera de la bóveda.
+- **Editor** (`editor/editor.css`): barra superior fija de 43 px y cuerpo sin tarjeta con una
+  columna centrada de 780 px (`.note-editor-column`; avisos y confirmaciones dentro). El estado
+  vacío (`.vault-workspace-empty`) va centrado en el panel.
+- **Verificación visual:** `e2e/` (Playwright 1.56.0; ver `frontend/README.md`, `npm run test:visual`).
+
 ## Notas y editor (SPEC-0008)
 
 **Ruta y marco.** `main.tsx` usa `createBrowserRouter` (una ruta comodín que monta `App`,
@@ -101,7 +137,7 @@ cuyas `<Routes>` no cambian) porque `useBlocker` sólo existe en data routers. `
 editor; la nota abierta vive sólo en el estado de la página (ni URL ni almacenamiento: al
 entrar el editor está vacío). `new` y `trash` ganan a `:id` por ser rutas estáticas. El
 **riel** (`notes/VaultRail.tsx`, montado por `layout/AppLayout.tsx` a la izquierda de toda
-pantalla privada) lista las bóvedas activas con sus iniciales y se relee con `dataVersion`.
+pantalla privada) lista las bóvedas activas con su ícono (o sus iniciales) y se relee con `dataVersion`.
 
 Módulos de `notes/`:
 
@@ -110,7 +146,7 @@ Módulos de `notes/`:
 | `noteStore.ts` | operaciones sobre la réplica: crear (id `note:{vault}:{uuid v4}`, `Sin título.md` si no hay título), leer, guardar, renombrar/mover (mismo `_id`), borrar a la papelera (`deleted_at`, nunca lápida) y restaurar. **`titleToPath`** es la única regla título→ruta (añade `.md` si falta) y la usan `create` y `rename`. Un **índice de resumen** en memoria (`{id, path, rev, deleted_at, updated_at}`, sin `content`) se construye una vez y se actualiza con `changes` desde la última secuencia: `list`, la unicidad de rutas y «Sin título n» no releen el cuerpo de las notas (S-1) |
 | `noteRules.ts` | espejo de `core/note_rules.py` (ruta, 2 MiB, frontmatter, `pathKey`) sobre la batería compartida `note_rules_cases.json` |
 | `noteTree.ts`, `untitled.ts` | árbol a partir de las rutas (carpetas derivadas, sin carpetas vacías) y siguiente nombre libre por `pathKey` |
-| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"` que sólo contiene `treeitem`s: una parada de Tab, teclado WAI-ARIA) y «Nueva nota». **«Renombrar»/«Borrar»** viven en la barra «Acciones de la nota» (`role="toolbar"`, siempre visible, fuera del árbol) para la nota seleccionada; **F2** y **Supr** las atajan desde el `treeitem` enfocado (Supr respeta la confirmación de borrador sucio; ambas comparten la guarda de operación en curso). **Foco:** tras borrar va a la fila vecina que sobrevive en el árbol resultante (o a «Nueva nota»); tras guardar o cancelar (también con Escape) el renombrado vuelve al `treeitem`. Papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
+| `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"` que sólo contiene `treeitem`s: una parada de Tab, teclado WAI-ARIA) y «Nueva nota». **«Renombrar»/«Borrar»** viven en la barra «Acciones de la nota» (`role="toolbar"`, siempre visible, fuera del árbol y bajo él) para la nota seleccionada; **F2** y **Supr** las atajan desde el `treeitem` enfocado (Supr respeta la confirmación de borrador sucio; ambas comparten la guarda de operación en curso). **Foco:** tras borrar va a la fila vecina que sobrevive en el árbol resultante (o a «Nueva nota»); tras guardar o cancelar (también con Escape) el renombrado vuelve al `treeitem`. Papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
 | `mergeNote.ts`, `NoteConflictCard.tsx` | conflictos de nota: nunca se elige por fecha; sólo se cierra solo lo que difiere en `updated_at` y lo demás lo decide el usuario en `sync/ConflictView.tsx` |
 | `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
 | `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |

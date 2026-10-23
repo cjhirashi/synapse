@@ -14,7 +14,10 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   revisión en orden (id, reenvío, lápida, forma —revisiones hexadecimales—, normalización,
   reglas, nombre), escribe las
   aceptadas juntas y responde los rechazos `{id, rev, error: "forbidden", reason}`. Usa
-  `VaultService` para reservar y liberar nombres (en un hilo: es síncrono).
+  `VaultService` para reservar y liberar nombres (en un hilo: es síncrono). Las claves de una
+  bóveda se distinguen en **admitidas** (`_VAULT_KEYS`, incluye `icon`) y **obligatorias**
+  (`_VAULT_REQUIRED`, sin `icon`: los documentos anteriores a SPEC-0009 no lo tienen); `icon`
+  sólo se valida (`VaultIcon | None`, sin normalizar → `validation-error:icon`) si la clave está.
 - `reservations.py` (`Reservations`, SPEC-0008): el algoritmo de reserva de unicidad con
   arrendamiento de 30 s (`RESERVATION_LEASE`), extraído de `VaultService` sin cambiarlo; lo
   parametrizan el tipo de documento, el campo del dueño y el predicado `holds`.

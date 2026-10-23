@@ -39,6 +39,7 @@ function sameTags(x: string[], y: string[]): boolean {
 /** ¿Son la misma bóveda salvo `updated_at`? (paso 7; etiquetas en el mismo orden). */
 function sameExceptUpdatedAt(w: MergeBody, l: MergeBody): boolean {
   return w.name === l.name && w.description === l.description && w.deleted_at === l.deleted_at
+    && (w.icon ?? null) === (l.icon ?? null)
     && w.owner_id === l.owner_id && w.created_at === l.created_at
     && w.tags.length === l.tags.length && w.tags.every((tag, i) => tag === l.tags[i]);
 }
@@ -87,15 +88,24 @@ export function mergeVault(w: MergeBody, l: MergeBody, a: MergeBody | null, now:
   const pick = <F extends (typeof SCALAR_FIELDS)[number]>(field: F): MergeBody[F] =>
     w[field] !== a[field] ? w[field] : l[field];
 
+  // `icon` (SPEC-0009 RF-012, P-6): lo que sólo un lado cambió gana; si ambos lo cambiaron distinto gana W y
+  // el conflicto NO pasa a resolución manual (es un dato cosmético, sin pérdida relevante). Sin clave = null.
+  const iconOf = (body: MergeBody) => body.icon ?? null;
+  const icon = iconOf(w) !== iconOf(a) ? iconOf(w) : iconOf(l);
+
   // Paso 6: el resultado debe cumplir las mismas reglas que cualquier escritura (RF-015).
-  const checked = validateVault({ name: pick("name"), description: pick("description"), tags: mergeTags(w.tags, l.tags, a.tags) });
+  const checked = validateVault({ name: pick("name"), description: pick("description"), tags: mergeTags(w.tags, l.tags, a.tags), icon });
   if (!checked.ok) return { kind: "manual", reason: "invalid", fields: checked.fields };
 
-  // Paso 5: `created_at` y `owner_id` no cambian (los de W); `updated_at` = ahora.
+  // Paso 5: `created_at` y `owner_id` no cambian (los de W); `updated_at` = ahora. La clave `icon` sólo se
+  // escribe si algún lado la tenía o el resultado no es null: un documento anterior sigue sin ella.
+  const { icon: mergedIcon, ...content } = checked.value;
+  const keepIcon = mergedIcon !== null || w.icon !== undefined || l.icon !== undefined;
   return {
     kind: "merged",
     doc: {
-      ...checked.value,
+      ...content,
+      ...(keepIcon ? { icon: mergedIcon } : {}),
       owner_id: w.owner_id,
       created_at: w.created_at,
       updated_at: now,

@@ -6,9 +6,10 @@
     <title>Synapse</title>
     <script>
       // Aplica el tema antes del primer paint - evita un parpadeo de tema equivocado
-      // mientras React monta (useTheme reacciona después del primer render).
+      // mientras React monta (useTheme reacciona después del primer render). El defecto
+      // ("dark") es DEFAULT_THEME_MODE de theme/useTheme.ts: deben coincidir.
       (function () {
-        var mode = localStorage.getItem("synapse-theme") || "system";
+        var mode = localStorage.getItem("synapse-theme") || "dark";
         var resolved = mode === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : mode;
         document.documentElement.setAttribute("data-theme", resolved);
       })();

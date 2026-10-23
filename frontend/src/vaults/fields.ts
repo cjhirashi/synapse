@@ -9,6 +9,7 @@ export const FIELD_MESSAGES: Record<VaultField, string> = {
   name: "El nombre debe tener entre 1 y 100 caracteres, sin caracteres de control.",
   description: "La descripción admite hasta 2000 caracteres.",
   tags: "Hasta 20 etiquetas de 1 a 32 caracteres cada una.",
+  icon: "El ícono elegido no es válido.",
 };
 
 export const NAME_TAKEN = "Ya tienes una bóveda con ese nombre.";

@@ -336,6 +336,23 @@ def test_rf_005_valid_push_is_stored_with_its_rev_and_reserves_the_name(ready_ad
     assert names == ["Proyectos"]
 
 
+def test_rf_012_pushed_icon_reads_the_same_in_couchdb_and_in_rest(ready_admin, db):
+    # SPEC-0009: con `icon` (valor y `null`) y sin la clave (documento anterior) → REST da `null`.
+    owner = owner_of(db)
+    with_icon = vault_doc(owner, name="Con", icon="book-open:success")
+    with_null = vault_doc(owner, name="Nula", icon=None)
+    without = vault_doc(owner, name="Sin")
+    assert (push(ready_admin, [with_icon, with_null, without]).json()) == []
+    stored = {d["name"]: d for d in (couch_get(user_db(db), x["_id"]).json()
+                                     for x in (with_icon, with_null, without))}
+    assert stored["Con"]["icon"] == "book-open:success" and stored["Nula"]["icon"] is None
+    assert "icon" not in stored["Sin"]
+    rest = {v["name"]: v["icon"] for v in ready_admin.get("/vaults").json()["items"]}
+    assert rest == {"Con": "book-open:success", "Nula": None, "Sin": None}
+    one = ready_admin.get(f"/vaults/{with_icon['_id'].split(':')[1]}")
+    assert one.json()["icon"] == stored["Con"]["icon"]
+
+
 def test_rf_006_invalid_documents_are_rejected_one_by_one(ready_admin, db):
     owner = owner_of(db)
     good = vault_doc(owner, name="Buena")

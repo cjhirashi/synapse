@@ -21,6 +21,7 @@ const FIELD_NAMES: Record<VaultField, string> = {
   name: "el nombre",
   description: "la descripción",
   tags: "las etiquetas",
+  icon: "el ícono",
 };
 
 /** "el nombre", "el nombre y la descripción", "el nombre, la descripción y las etiquetas". */

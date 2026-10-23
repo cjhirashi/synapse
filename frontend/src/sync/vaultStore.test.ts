@@ -192,3 +192,55 @@ describe("almacenamiento", () => {
     expect(utcNow(new Date("2026-10-13T10:00:00.123Z"))).toBe("2026-10-13T10:00:00.123000Z");
   });
 });
+
+// SPEC-0009 RF-012: `icon` («glifo[:color]» o null) se guarda, se valida y se fusiona como los demás campos.
+describe("icon (RF-012)", () => {
+  it("create con icon lo guarda en el documento y lo devuelve", async () => {
+    const vault = await store.create(input("Notas", { icon: "star:success" }));
+    expect(vault.icon).toBe("star:success");
+    expect((await db.get(`vault:${vault.id}`) as { icon?: string }).icon).toBe("star:success");
+  });
+
+  it("create sin icon no escribe la clave y la bóveda sale con icon null", async () => {
+    const vault = await store.create(input("Notas"));
+    expect(vault.icon).toBeNull();
+    expect(await db.get(`vault:${vault.id}`)).not.toHaveProperty("icon");
+  });
+
+  it("create con icon null lo escribe como null", async () => {
+    const vault = await store.create(input("Notas", { icon: null }));
+    expect((await db.get(`vault:${vault.id}`) as { icon?: null }).icon).toBeNull();
+  });
+
+  it("un documento sin la clave (anterior a la feature) se lee con icon null en get y list", async () => {
+    const vault = await store.create(input("Vieja"));
+    expect((await store.get(vault.id)).icon).toBeNull();
+    expect((await store.list())[0].icon).toBeNull();
+  });
+
+  it("create con icon inválido lanza VaultValidationError([icon]) sin escribir", async () => {
+    const err = await store.create(input("Notas", { icon: "Folder" })).catch((e) => e);
+    expect(err).toBeInstanceOf(VaultValidationError);
+    expect(err.fields).toEqual(["icon"]);
+    expect(await store.list()).toEqual([]);
+  });
+
+  it("update: icon ausente conserva, valor cambia y null borra", async () => {
+    const created = await store.create(input("Notas", { icon: "star:success" }));
+    const renamed = await store.update(created.id, { name: "Otras" }, created.rev);
+    expect(renamed.icon).toBe("star:success");
+    const changed = await store.update(created.id, { icon: "rocket" }, renamed.rev);
+    expect(changed.icon).toBe("rocket");
+    const cleared = await store.update(created.id, { icon: null }, changed.rev);
+    expect(cleared.icon).toBeNull();
+    expect((await db.get(`vault:${created.id}`) as { icon?: null }).icon).toBeNull();
+  });
+
+  it("update con icon inválido lanza VaultValidationError([icon]) y no cambia nada", async () => {
+    const created = await store.create(input("Notas", { icon: "star" }));
+    const err = await store.update(created.id, { icon: "a_b" }, created.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(VaultValidationError);
+    expect(err.fields).toEqual(["icon"]);
+    expect((await store.get(created.id)).icon).toBe("star");
+  });
+});

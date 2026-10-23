@@ -17,7 +17,7 @@ import { nameKey, validateVault, FIELD_RULES, type VaultField, type VaultFields 
 /** Prefijo de los ids de bóveda en CouchDB/PouchDB (PLAN-0005 §2.3). */
 export const ID_PREFIX = "vault:";
 /** Orden de los campos en los errores de validación (el mismo que `validateVault`). */
-const FIELD_ORDER: VaultField[] = ["name", "description", "tags"];
+const FIELD_ORDER: VaultField[] = ["name", "description", "tags", "icon"];
 
 /** Documento de bóveda tal como se guarda (mismas claves que 0003, sin `_revisions`). */
 interface VaultDoc {
@@ -27,6 +27,8 @@ interface VaultDoc {
   name: string;
   description: string | null;
   tags: string[];
+  /** Ícono «glifo[:color]» (SPEC-0009); los documentos anteriores no traen la clave. */
+  icon?: string | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -36,6 +38,7 @@ interface VaultDoc {
 /** Bóveda vista por la UI: `id` sin el prefijo y `rev` en lugar del `etag` de la API REST. */
 export interface Vault extends VaultFields {
   id: string;
+  // `icon` (SPEC-0009) llega de `VaultFields`; `toVault` lo da siempre (`null` si el documento no lo trae).
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -115,6 +118,7 @@ function toVault(doc: VaultDoc): Vault {
     name: doc.name,
     description: doc.description,
     tags: doc.tags,
+    icon: doc.icon ?? null,
     owner_id: doc.owner_id,
     created_at: doc.created_at,
     updated_at: doc.updated_at,

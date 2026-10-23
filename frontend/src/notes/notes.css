@@ -1,6 +1,6 @@
 /* Pantallas de notas (SPEC-0008): riel de bóvedas, sidebar con el árbol y espacio de trabajo. */
 
-/* --- Riel de bóvedas --- */
+/* --- Riel de bóvedas (SPEC-0009 RF-001, RF-009; medidas R-1…R-5 de PLAN-0009 §5.4) --- */
 .vault-rail {
   display: flex;
   flex-direction: column;
@@ -11,65 +11,134 @@
   padding: var(--space-3) 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
-  /* Riel fijo en la vista con scroll propio (U-7): con decenas de bóvedas no se alarga con la página ni se
-     pierde al bajar. La cabecera no es fija, así que el riel se pega arriba y su altura se acota al viewport. */
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  max-height: 100vh;
+  /* Scroll propio dentro del marco de altura fija (AppLayout.css): con decenas de bóvedas el riel se
+     desplaza solo, sin barra visible (como el del mockup) y sin mover la página. */
   overflow-y: auto;
+  scrollbar-width: none;
 }
 
+/* El enlace es sólo la caja de 34 px del chip: ancla de la barra de la bóveda activa. */
 .vault-rail-icon {
-  /* No se encogen cuando el riel (flex en columna, con `max-height`) se llena: el riel hace scroll (U-7). */
+  position: relative;
+  /* No se encoge cuando el riel se llena: el riel hace scroll. */
   flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  border-radius: var(--radius-md);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
+  display: block;
+  width: 34px;
+  height: 34px;
 }
 
 .vault-rail-icon:hover {
   text-decoration: none;
-  color: var(--text-primary);
-  background: var(--accent-soft);
-}
-
-/* La bóveda abierta: fondo suave y aro de acento (sólo tokens, con contraste en ambos temas). */
-.vault-rail-icon[aria-current="page"] {
-  background: var(--accent-soft);
-  color: var(--text-primary);
-  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .vault-rail-icon:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: var(--radius-md);
 }
 
-/* --- Sidebar con el árbol de notas --- */
+/* Chip: círculo en reposo; al pasar el cursor, enfocar o estar activo se vuelve cuadrado redondeado
+   (el gesto del mockup 1.1.4.4, PLAN-0009 P-12). */
+.vault-rail-icon:hover .vault-chip,
+.vault-rail-icon:focus-visible .vault-chip,
+.vault-rail-icon[aria-current="page"] .vault-chip {
+  border-radius: var(--radius-md);
+}
+
+/* Barra de la bóveda activa: 3 × 20 px en acento, pegada al borde izquierdo del riel (el enlace está
+   centrado en los 56 px del riel, así que la barra sale hacia la izquierda hasta tocarlo). */
+.vault-rail-icon[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent);
+}
+
+/* Tooltip del riel (RailTooltip, en <body>): a la derecha del riel y centrado en vertical con el chip.
+   `top`/`left` los fija el componente con la caja del enlace; el desplazamiento y el aspecto, aquí. */
+.rail-tooltip {
+  position: fixed;
+  z-index: 10;
+  transform: translateY(-50%);
+  margin-left: var(--space-2);
+  max-width: 280px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  box-shadow: var(--shadow-panel);
+  color: var(--text-primary);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  animation: fadeIn var(--dur-fast) var(--ease-out);
+}
+
+/* --- Barra lateral con el árbol de notas (SPEC-0009 RF-003, RF-004, RF-010; R-6…R-11 de PLAN-0009 §5.4) --- */
+/* Columna de 240 px pegada al riel, a todo el alto del marco: cabecera, formulario, panel del árbol
+   (con scroll propio), acciones de la nota y pie con la papelera. */
 .note-sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  width: 280px;
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
 }
 
+/* Formulario «Nueva nota»: bloque propio de fondo distinto al del panel del árbol (RF-003). */
 .note-sidebar-new {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.note-sidebar-new label {
+  margin: 0;
+}
+
+.note-sidebar-new input {
+  padding: var(--space-1) var(--space-2);
+  font-size: 12px;
+}
+
+.note-sidebar-new button[type="submit"] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+
+.note-sidebar > p {
+  margin: 0 var(--space-2) var(--space-2);
+}
+
+/* Panel del árbol: fondo propio, separado del formulario por un borde, y el árbol hace el scroll. */
+.note-tree-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.note-tree-panel > p {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .note-tree,
@@ -84,36 +153,54 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
-}
-
-.note-tree-group {
-  padding-left: var(--space-4);
+  overflow-x: hidden;
 }
 
 .note-tree-item {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
 }
 
-/* Las filas son botones: sin el aspecto de botón del formulario, como una lista de archivos. */
+/* Las filas son botones: sin el aspecto de botón del formulario, a sangre como una lista de archivos.
+   La sangría es de 24 px por nivel (`--depth` lo fija NoteSidebar); la nota entra 20 px más (el
+   chevron de 12 px + el hueco) para alinear su ícono con el de la carpeta hermana. */
 .note-tree-row,
 .note-tree-row:not([type="submit"]) {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   flex: 1;
+  width: 100%;
   min-width: 0;
-  padding: 6px var(--space-2);
+  height: 27px;
+  padding: 0 var(--space-4) 0 calc(var(--space-4) + var(--depth, 0) * var(--space-6));
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
-  color: var(--text-primary);
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 12px;
   text-align: left;
 }
 
-/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`). */
+.note-tree-note,
+.note-tree-note:not([type="submit"]) {
+  height: 25px;
+  padding-left: calc(var(--space-4) + var(--depth, 0) * var(--space-6) + 12px + var(--space-2));
+}
+
+.note-tree-row svg {
+  flex-shrink: 0;
+}
+
+.note-tree-icon-folder {
+  color: var(--warning);
+}
+
+.note-tree-icon-note {
+  color: var(--text-muted);
+}
+
+/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`, RF-010). */
 .note-tree-name {
   min-width: 0;
   overflow: hidden;
@@ -123,25 +210,33 @@
 
 .note-tree-row:not([type="submit"]):hover {
   background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1) + barra de acento, como el riel. */
+/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1, P-3) + barra de acento, como el riel. */
 .note-tree-row[aria-selected="true"] {
   background: var(--accent-soft);
   color: var(--text-primary);
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
-/* Barra de acciones de la nota seleccionada: fuera del árbol y siempre visible (también en táctil). */
+/* El cursor sobre la fila seleccionada no le quita el fondo de selección (el hover es más específico). */
+.note-tree-row[aria-selected="true"]:not([type="submit"]):hover {
+  background: var(--accent-soft);
+}
+
+/* Acciones de la nota seleccionada y renombrado: bajo el panel del árbol (así no desplazan sus filas) y
+   siempre visibles (también en táctil). */
 .note-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  margin: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
 }
 
 .note-actions-name {
@@ -150,65 +245,154 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
 .note-actions button {
-  padding: 4px var(--space-3);
-  font-size: 13px;
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
 }
 
 .note-tree-rename {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin: var(--space-2);
   padding: var(--space-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
 
-/* --- Espacio de trabajo de la bóveda --- */
-.vault-workspace {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-6);
+/* Pie: papelera de la bóveda como una fila más, pegada abajo. */
+.note-sidebar-footer {
+  border-top: 1px solid var(--border);
 }
 
-/* Columna fija al viewport: su altura se acota y el árbol (flex) absorbe el resto con scroll. */
+.note-sidebar-trash,
+.note-sidebar-trash:not([type="submit"]) {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-align: left;
+}
+
+.note-sidebar-trash:not([type="submit"]):hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* --- Espacio de trabajo de la bóveda --- */
+/* Ocupa todo el alto del marco fijo (AppLayout.css); cada columna hace su propio scroll. */
+.vault-workspace {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+/* Barra lateral: 240 px, fondo `--bg-secondary` y borde derecho, pegada al riel (R-6, R-10, R-15). */
 .vault-workspace-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  position: sticky;
-  top: var(--space-4);
-  max-height: calc(100vh - 2 * var(--space-4));
+  flex-shrink: 0;
+  width: 240px;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-secondary);
 }
 
-.vault-workspace-side h1 {
+/* Cabecera de la barra (R-7, 51 px): carpeta abierta en acento + nombre de la bóveda con elipsis. */
+.vault-workspace-header {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  height: 51px;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--accent);
+}
+
+.vault-workspace-header svg {
+  flex-shrink: 0;
+}
+
+.vault-workspace-header h1 {
+  min-width: 0;
   margin: 0;
-  font-size: 20px;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
+/* Panel del editor (R-15: empieza en x = 296 = riel + barra): columna a todo el alto; la barra superior
+   del editor queda fija y su cuerpo hace el scroll. */
 .vault-workspace-main {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Contenedor del editor (o del estado vacío); `hidden` lo oculta con la papelera abierta, así que el
+   `display` sólo se declara para el caso visible. */
+.vault-workspace-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.vault-workspace-content[hidden] {
+  display: none;
+}
+
+/* Estado vacío (RF-008): ícono + texto centrados en ambos ejes del panel. */
+.vault-workspace-empty {
+  display: grid;
+  flex: 1;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+  color: var(--text-muted);
+}
+
+.vault-workspace-empty p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Papelera de notas dentro del panel: misma columna centrada que el editor. */
+.vault-workspace-main > .note-trash {
+  max-width: 780px;
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-16);
 }
 
 @media (max-width: 800px) {
   .vault-workspace {
     flex-direction: column;
+    height: auto;
   }
-  .vault-workspace-side,
-  .note-sidebar {
-    width: 100%;
-  }
-  /* Apilado: sin columna fija; el árbol conserva su scroll acotado. */
   .vault-workspace-side {
-    position: static;
-    max-height: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
   }
+  /* Apilado: el árbol conserva su scroll acotado. */
   .note-tree {
     max-height: 50vh;
   }

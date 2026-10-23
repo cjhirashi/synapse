@@ -357,3 +357,62 @@ test("RF-011, RF-019: Escape cancela el renombrado sin escribir y devuelve el fo
   expect(rename).not.toHaveBeenCalled();
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
 });
+
+// --- SPEC-0009: estructura de la barra lateral rediseñada (RF-003, RF-004, RF-010) ---
+
+test("RF-003: el formulario «Nueva nota» es un bloque propio, fuera del panel del árbol", async () => {
+  const { container } = await setup(["Hola.md"]);
+  const form = container.querySelector(".note-sidebar-new")!;
+  const panel = container.querySelector<HTMLElement>(".note-tree-panel")!;
+  expect(form.tagName).toBe("FORM");
+  expect(panel).not.toBeNull();
+  expect(panel).not.toContainElement(form as HTMLElement);
+  // El árbol (role=tree) vive dentro del panel; los roles y nombres no cambian.
+  expect(within(panel).getByRole("tree", { name: "Notas" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Título de la nota nueva (opcional)")).toBeInTheDocument();
+});
+
+test("RF-004: cada carpeta lleva su ícono (cerrada/abierta) y cada nota el suyo", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md", "Raíz.md"]);
+  const folder = await screen.findByRole("treeitem", { name: "Carpeta" });
+  expect(folder.querySelector('svg[data-icon="folder"]')).not.toBeNull();
+  expect(folder.querySelector('svg[data-icon="folder-open"]')).toBeNull();
+  expect(screen.getByRole("treeitem", { name: "Raíz" }).querySelector('svg[data-icon="file-text"]')).not.toBeNull();
+
+  await user.click(folder);
+  expect(folder.querySelector('svg[data-icon="folder-open"]')).not.toBeNull();
+  expect(folder.querySelector('svg[data-icon="folder"]')).toBeNull();
+  expect(screen.getByRole("treeitem", { name: "Hoja" }).querySelector('svg[data-icon="file-text"]')).not.toBeNull();
+});
+
+test("RF-003: «Papelera de la bóveda» es el pie de la barra, después del árbol", async () => {
+  const { container, user, onShowTrash } = await setup(["Hola.md"]);
+  const footer = container.querySelector<HTMLElement>(".note-sidebar-footer")!;
+  const panel = container.querySelector(".note-tree-panel")!;
+  const trash = within(footer).getByRole("button", { name: "Papelera de la bóveda" });
+  expect(panel.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await user.click(trash);
+  expect(onShowTrash).toHaveBeenCalledOnce();
+});
+
+// Raíz del defecto real de 0008 que sólo se ve en un navegador: al enfocar una nota aparecía la barra de
+// acciones sobre el árbol, la fila se desplazaba y el clic nunca llegaba a abrirla. La barra va tras el
+// panel del árbol, así que seleccionar no mueve ninguna fila.
+test("RF-003, RF-007: la barra de acciones de la nota seleccionada va después del panel del árbol", async () => {
+  const { container, user } = await setup(["Uno.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
+  const bar = screen.getByRole("toolbar", { name: "Acciones de la nota" });
+  const panel = container.querySelector(".note-tree-panel")!;
+  expect(panel.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(panel).not.toContainElement(bar);
+});
+
+test("RF-010: una fila de 120 caracteres conserva el nombre completo en title y el recorte es de CSS", async () => {
+  const long = `${"nombre-larguisimo-".repeat(7)}fin`.slice(0, 120);
+  expect(long).toHaveLength(120);
+  await setup([`${long}.md`]);
+  const row = await screen.findByRole("treeitem", { name: long });
+  expect(row.querySelector(".note-tree-name")).toHaveAttribute("title", long);
+  // El texto no se corta por JS: el elemento lleva el nombre entero y la elipsis la pone `.note-tree-name`.
+  expect(row.querySelector(".note-tree-name")).toHaveTextContent(long);
+});

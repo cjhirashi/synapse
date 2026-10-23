@@ -77,6 +77,7 @@ def _stored(couch, doc: dict) -> bool:
 
 @pytest.mark.parametrize("extra", [
     "_attachments", "_conflicts", "owner_id", "color", "title",
+    "icon",  # SPEC-0009 RF-012: sólo las bóvedas llevan `icon`
 ])
 async def test_rf_005_note_shape_rejects_keys_outside_the_list(push, couch, vault, extra):
     doc = _note(**{extra: "x"})

@@ -3,7 +3,7 @@ id: SPEC-0002
 tipo: spec
 feature: 0002-auth
 estado: verified         # verified por el usuario (2026-10-17): aprobó y mergeó PR #3 (merge b75e99c)
-anchor_commit: 0e6c5e5   # re-anclaje por SPEC-0008 (T-092 de TASKS-0008)
+anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
 anchor_mode: advisory
 covers:
   - frontend/src/**/settings/**
@@ -107,6 +107,13 @@ actualizado: 2026-10-12
 > monta el riel de bóvedas, y `RequireAuth.tsx`/`ChangePasswordPage.tsx` corrigen el regreso al
 > formulario tras el cambio de contraseña forzado (**RF-020**, defecto preexistente destapado por
 > la verificación en navegador; test anotado `RF-020`). Sin cambio de requisitos.
+
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 (rediseño visual) tocó
+> archivos de estos `covers` sin cambiar requisitos: `frontend/index.html` y `theme/useTheme.ts`
+> (tema oscuro por defecto sin preferencia guardada, RF-006a de 0009; la preferencia guardada se
+> respeta), `layout/AppLayout.css` (marco de altura fija P-5 y desborde a 390 px) y
+> `styles/global.css` (estilos base de `button` en `:where(...)`: la cabecera pasa de 80 a 70 px y
+> el toggle/menú de cuenta recuperan su CSS de componente). Sin cambio de requisitos.
 
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su

@@ -4,7 +4,7 @@ tipo: spec
 feature: 0008-vault-editor
 estado: implemented      # 2026-10-23: Fase 4 completa, Gate 4 en verde; Converge 1/2 (cortado por AIRA). NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 0e6c5e5   # cierre de la implementación (2026-10-23)
+anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
 anchor_mode: strict
 covers:                  # fijado en PLAN-0008 §9 (pendiente del GATE 2); compartidos sin reclamar: ver PLAN-0008 §9
   - backend/app/core/note_rules.py
@@ -24,6 +24,18 @@ actualizado: 2026-10-22
 ---
 
 # SPEC-0008 · Editor de documentos dentro de una bóveda
+
+> **Re-anclaje 2026-10-23** (T-003 de TASKS-0009): SPEC-0009 (rediseño visual) cambia el
+> vestido de `frontend/src/notes/**` y `frontend/src/editor/**` (riel, barra lateral, columna
+> del editor, marco de altura fija). Sin cambio de requisitos: los RF de esta spec, sus roles,
+> nombres accesibles y rutas se conservan; sólo se sustituyen las aserciones de U-7 de
+> `layoutCss.test.ts` por las del marco fijo (PLAN-0009 P-5, RF-007 de SPEC-0009).
+
+> **Re-anclaje 2026-10-23 (cierre)** (T-063 de TASKS-0009): SPEC-0009 cambió el vestido visual del
+> workspace (`notes/*`, `editor/*`: riel con chips, panel del árbol con iconos, editor centrado de
+> 780 px, marco fijo) y corrigió de raíz un defecto de 0008 visible sólo en navegador real (el
+> primer clic en una nota no la abría: la barra de acciones se movió bajo el árbol). Ningún
+> `role`/`aria-*` debilitado (RF-007 de 0009). Sin cambio de requisitos de esta spec.
 
 > Fase 1 (Specify) cerrada por AIRA a partir de: (a) el diseño original de agosto 2026
 > en `diseño/1.1.4 - Diseño UI-UX/1.1.4.4` (vista), `diseño/1.1.2.../ADR-010` (stack del

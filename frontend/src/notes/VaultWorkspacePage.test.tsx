@@ -52,6 +52,30 @@ test("RF-001, RF-015: bóveda activa → su nombre, el árbol y el editor vacío
   expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });
 
+// SPEC-0009 RF-003: la cabecera de la barra lateral lleva el ícono de carpeta abierta y el nombre (h1).
+test("RF-003: la cabecera de la barra tiene el ícono de la bóveda y su nombre como h1", async () => {
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  const header = container.querySelector(".vault-workspace-header")!;
+  expect(header).not.toBeNull();
+  expect(header.querySelector('svg[data-icon="folder-open"]')).not.toBeNull();
+  expect(within(header as HTMLElement).getByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
+  // El resto de la barra (formulario, árbol) va fuera de la cabecera.
+  expect(header.querySelector("form, [role='tree']")).toBeNull();
+});
+
+// SPEC-0009 RF-008: el estado vacío es un bloque propio con ícono, con el mismo texto de siempre.
+test("RF-008: el estado vacío del editor es un bloque con ícono y el mismo texto", async () => {
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  const empty = container.querySelector<HTMLElement>(".vault-workspace-empty")!;
+  expect(empty).not.toBeNull();
+  expect(empty.querySelector('svg[data-icon="file-text"]')).not.toBeNull();
+  expect(within(empty).getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+});
+
 test.each([
   ["no canónico", "no-es-un-uuid"],
   ["mayúsculas", "11111111-1111-4111-8111-11111111111A"],

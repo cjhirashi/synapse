@@ -10,6 +10,7 @@ import {
   type Vault,
 } from "../sync/vaultStore";
 import { isStorageFull, STORAGE_FULL } from "./errors";
+import IconPicker from "./IconPicker";
 import { FIELD_MESSAGES, formatTags, NAME_TAKEN, parseTags, toDescription } from "./fields";
 
 type FieldErrors = Partial<Record<VaultField, string>>;
@@ -25,6 +26,8 @@ function changes(input: VaultFields, original: Vault): Partial<VaultFields> {
   if (input.name !== original.name) diff.name = input.name;
   if (input.description !== toDescription(original.description ?? "")) diff.description = input.description;
   if (input.tags.join("\n") !== original.tags.join("\n")) diff.tags = input.tags;
+  // Un documento anterior no trae la clave: cuenta como `null` (sin ícono).
+  if ((input.icon ?? null) !== (original.icon ?? null)) diff.icon = input.icon ?? null;
   return diff;
 }
 
@@ -47,6 +50,8 @@ export default function VaultForm() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [tags, setTags] = useState("");
+  // Ícono elegido en el selector (SPEC-0009 RF-011); se guarda con el resto (RF-012), sólo si cambió.
+  const [icon, setIcon] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,6 +65,7 @@ export default function VaultForm() {
         setName(vault.name);
         setDescription(vault.description ?? "");
         setTags(formatTags(vault.tags));
+        setIcon(vault.icon ?? null);
         setLoad("ready");
       } catch (err) {
         if (!(err instanceof VaultNotFoundError)) console.error(err);
@@ -73,7 +79,8 @@ export default function VaultForm() {
     if (id !== undefined) void fetchVault(id);
   }, [id, fetchVault]);
 
-  function edit(field: VaultField, value: string) {
+  /** Campos de texto del formulario; el ícono lo cambia su selector (`setIcon`). */
+  function edit(field: Exclude<VaultField, "icon">, value: string) {
     ({ name: setName, description: setDescription, tags: setTags })[field](value);
     setFieldErrors(({ [field]: _cleared, ...rest }) => rest);
   }
@@ -100,7 +107,14 @@ export default function VaultForm() {
     e.preventDefault();
     setFieldErrors({});
     setFormError(null);
-    const input: VaultFields = { name, description: toDescription(description), tags: parseTags(tags) };
+    // `icon` sólo viaja cuando hay uno elegido (crear) o cambió (editar, en `changes`): sin tocar el
+    // selector la bóveda nueva no lleva la clave.
+    const input: VaultFields = {
+      name,
+      description: toDescription(description),
+      tags: parseTags(tags),
+      ...(icon !== null || original !== null ? { icon } : {}),
+    };
     setBusy(true);
     try {
       if (original === null) {
@@ -157,6 +171,8 @@ export default function VaultForm() {
         <input value={tags} onChange={(e) => edit("tags", e.target.value)} placeholder="trabajo, ideas" {...errorProps("tags")} />
       </label>
       {errorText("tags")}
+      <IconPicker vaultId={id} name={name} value={icon} onChange={setIcon} />
+      {errorText("icon")}
       {formError && <p role="alert">{formError}</p>}
       <button type="submit" disabled={busy}>
         {editing ? "Guardar cambios" : "Crear bóveda"}

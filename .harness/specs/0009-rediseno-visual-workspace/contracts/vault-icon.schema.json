@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "synapse:contracts:0009-rediseno-visual-workspace:vault-icon",
+  "title": "Campo `icon` de una bóveda (`Vault.icon`)",
+  "description": "Contrato del único campo nuevo de SPEC-0009 (spec §3, PLAN-0009 §3-§4). Un mismo valor viaja por las dos vías de escritura de bóvedas: la API REST de 0003 (`POST /vaults`, `PATCH /vaults/{id}`, y en la salida `VaultOut`/`VaultListItem`; el esquema publicado se re-exporta en `0003-vault-crud/contracts/openapi.yaml`) y el documento `vault:{uuid}` de la réplica que valida el push de `/sync` (0005; las rutas y el patrón `validation-error:.+` de `reason` no cambian). Canon de la regla: `VaultIcon` en `backend/app/core/schemas.py`; espejo del cliente: `checkIcon` de `frontend/src/sync/vaultRules.ts`; batería común: `backend/tests/fixtures/vault_rules_cases.json`. El servidor sólo valida la gramática: NO valida contra el catálogo de íconos ni contra la paleta (spec §3) — el cliente resuelve un glifo o un color desconocido a las iniciales y al color derivado, igual que `null`. Sin normalización: el valor debe llegar ya en su forma final (un valor fuera de la gramática es `validation-error:icon` en el push y 422 en REST).",
+  "oneOf": [
+    { "type": "null", "description": "Sin elección: iniciales del nombre sobre el color derivado del id de la bóveda (RF-001). Equivale a la clave ausente en documentos anteriores a SPEC-0009." },
+    {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$",
+      "description": "`{glifo}` o `{glifo}:{color}`. `glifo`: nombre kebab-case de un ícono del set curado de `lucide-react` (p. ej. `folder-heart`) o la palabra reservada `initials` (iniciales con color elegido). `color`: clave de la paleta de tokens (`accent`, `info`, `success`, `warning`, `danger` → `var(--accent)`…); sin `:color` se usa el color derivado.",
+      "examples": ["folder-heart", "book-open:success", "initials:warning"]
+    }
+  ],
+  "x-document-key": "En el documento `vault:{uuid}` la clave `icon` es OPCIONAL (documentos anteriores no la tienen); si está, vale `null` o la cadena de arriba. REST la expone siempre en la salida (`null` si falta).",
+  "x-rejection-reasons": ["validation-error:icon"],
+  "x-rest": {
+    "VaultCreate.icon": "opcional; `null` o ausente = sin elección",
+    "VaultUpdate.icon": "opcional; `null` explícito borra la elección (como `description`)",
+    "VaultOut.icon": "obligatorio y anulable",
+    "VaultListItem.icon": "obligatorio y anulable (hereda de VaultOut)"
+  }
+}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
+import VaultChip from "./VaultChip";
 import { isStale, isStorageFull, STORAGE_FULL } from "./errors";
 import { useVaultPages } from "./useVaultPages";
 
@@ -59,7 +60,10 @@ export default function VaultListPage() {
         <ul className="card-list">
           {items.map((vault) => (
             <li key={vault.id} aria-labelledby={`vault-${vault.id}`}>
-              <h2 id={`vault-${vault.id}`}>{vault.name}</h2>
+              <div className="vault-list-title">
+                <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
+                <h2 id={`vault-${vault.id}`}>{vault.name}</h2>
+              </div>
               {vault.description && <p>{vault.description}</p>}
               {vault.tags.length > 0 && (
                 <ul className="chip-list" aria-label="Etiquetas">

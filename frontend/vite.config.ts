@@ -36,8 +36,10 @@ export default defineConfig({
     // La sincronización real necesita backend y CouchDB: va aparte (`npm run test:sync`).
     // RNF-001 de 0008 (`*.perf.test.tsx`, mide tiempos) tampoco corre en `npm test`: sólo con
     // `NOTES_PERF=1` (`npm run test:perf`), para no volver inestable la suite normal.
+    // `e2e/` son pruebas de Playwright en navegador real (`npm run test:visual`), no de Vitest.
     exclude: [
       ...configDefaults.exclude,
+      "e2e/**",
       "src/**/*.integration.test.ts",
       ...(process.env.NOTES_PERF === "1" ? [] : ["src/**/*.perf.test.tsx"]),
     ],

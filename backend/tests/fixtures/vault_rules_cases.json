@@ -516,6 +516,138 @@
     null
    ],
    "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "folder",
+   "valid": true,
+   "normalized": "folder"
+  },
+  {
+   "field": "icon",
+   "input": "folder-heart",
+   "valid": true,
+   "normalized": "folder-heart"
+  },
+  {
+   "field": "icon",
+   "input": "book-open:success",
+   "valid": true,
+   "normalized": "book-open:success"
+  },
+  {
+   "field": "icon",
+   "input": "initials:warning",
+   "valid": true,
+   "normalized": "initials:warning"
+  },
+  {
+   "field": "icon",
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": true,
+   "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "field": "icon",
+   "input": null,
+   "valid": true,
+   "normalized": null
+  },
+  {
+   "field": "icon",
+   "input": "",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": " folder",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "Folder",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "a::b",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "a:",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": ":a",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "-a",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "a-",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "a_b",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "<svg>",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "javascript:x",
+   "valid": true,
+   "normalized": "javascript:x"
+  },
+  {
+   "field": "icon",
+   "input": "carpeta-ñ",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": 1,
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": [],
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "javascript:alert(1)",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "folder\n",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "ａ",
+   "valid": false
+  },
+  {
+   "field": "icon",
+   "input": "é",
+   "valid": false
   }
  ],
  "name_keys": [

@@ -2,6 +2,17 @@
 
 Configuración global, seguridad, logger y puertos (interfaces abstractas).
 
+## Esquemas de bóveda (SPEC-0003, SPEC-0009)
+
+- `schemas.py` — modelos y tipos anotados de la API de bóvedas, canon de sus reglas (el push las
+  reutiliza). `VaultIcon` (SPEC-0009) es el texto `glifo[:color]`: 1–64 caracteres, patrón
+  `^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$`, sin `strip` ni minúsculas (un espacio
+  o una mayúscula es inválido, no «sin normalizar»). Sólo valida la gramática: el catálogo de
+  glifos y la paleta viven en el cliente. `VaultCreate.icon` y `VaultUpdate.icon` son
+  `VaultIcon | None` (en `PATCH`, ausente conserva y `null` borra); `VaultOut.icon` es
+  obligatorio y anulable. Contrato:
+  `.harness/specs/0009-rediseno-visual-workspace/contracts/vault-icon.schema.json`.
+
 ## Errores (SPEC-0004)
 
 - `errors.py` — catálogo de errores de dominio. Cada subclase de `DomainError` con `slug`

@@ -15,7 +15,7 @@
  *   `toLowerCase` más las excepciones de `CaseFolding.txt`.
  */
 
-export type VaultField = "name" | "description" | "tags";
+export type VaultField = "name" | "description" | "tags" | "icon";
 
 export type RuleResult<T> = { ok: true; value: T } | { ok: false };
 
@@ -23,6 +23,11 @@ export interface VaultFields {
   name: string;
   description: string | null;
   tags: string[];
+  /**
+   * Ícono «glifo[:color]» (SPEC-0009 RF-012). Opcional: ausente en los documentos anteriores y en lo que
+   * escribe un llamador que no lo toca; `null` es «sin ícono».
+   */
+  icon?: string | null;
 }
 
 // Límites de `core/schemas.py` (SPEC-0003 RF-005).
@@ -30,6 +35,7 @@ export const NAME_MAX = 100;
 export const DESCRIPTION_MAX = 2000;
 export const TAG_MAX = 32;
 export const TAGS_MAX = 20;
+export const ICON_MAX = 64;
 
 // Propiedad Unicode `White_Space`: lo que quita `strip_whitespace` de pydantic.
 const WHITE_SPACE = /^\p{White_Space}$/u;
@@ -89,24 +95,46 @@ export function checkTags(value: unknown): RuleResult<string[]> {
   return ok([...new Set(tags)]);
 }
 
+/** Gramática de `VaultIcon` (contracts/vault-icon.schema.json): `glifo[:color]` en `[a-z0-9]` con guiones internos. */
+const ICON_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?::[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
+
+/**
+ * `VaultIcon | None`: sin normalizar (el valor llega ya en su forma final, un espacio o una mayúscula es
+ * inválido) y sin consultar un catálogo: sólo la gramática, igual que el servidor.
+ */
+export function checkIcon(value: unknown): RuleResult<string | null> {
+  if (value === null) return ok(null);
+  if (typeof value !== "string" || codePoints(value) > ICON_MAX || !ICON_PATTERN.test(value)) return INVALID;
+  return ok(value);
+}
+
 export const FIELD_RULES: Record<VaultField, (value: unknown) => RuleResult<unknown>> = {
   name: checkName,
   description: checkDescription,
   tags: checkTags,
+  icon: checkIcon,
 };
 
-/** Valida y normaliza los tres campos; si falla, enumera los inválidos en orden. */
-export function validateVault(input: Record<VaultField, unknown>):
+/**
+ * Valida y normaliza los campos; si falla, enumera los inválidos en orden. `icon` sólo se valida (y
+ * se devuelve) si el llamador lo trae: así quien no lo toca no escribe la clave.
+ */
+export function validateVault(input: Record<"name" | "description" | "tags", unknown> & { icon?: unknown }):
   | { ok: true; value: VaultFields }
   | { ok: false; fields: VaultField[] } {
   const name = checkName(input.name);
   const description = checkDescription(input.description);
   const tags = checkTags(input.tags);
-  if (name.ok && description.ok && tags.ok) {
-    return { ok: true, value: { name: name.value, description: description.value, tags: tags.value } };
+  const icon = input.icon === undefined ? null : checkIcon(input.icon);
+  if (name.ok && description.ok && tags.ok && (icon === null || icon.ok)) {
+    const value: VaultFields = { name: name.value, description: description.value, tags: tags.value };
+    if (icon !== null) value.icon = icon.value;
+    return { ok: true, value };
   }
-  const results: [VaultField, RuleResult<unknown>][] = [["name", name], ["description", description], ["tags", tags]];
-  return { ok: false, fields: results.filter(([, result]) => !result.ok).map(([field]) => field) };
+  const results: [VaultField, RuleResult<unknown> | null][] = [
+    ["name", name], ["description", description], ["tags", tags], ["icon", icon],
+  ];
+  return { ok: false, fields: results.filter(([, result]) => result !== null && !result.ok).map(([field]) => field) };
 }
 
 // Plegado completo de `CaseFolding.txt` (Unicode 16) donde difiere de la minúscula de cada

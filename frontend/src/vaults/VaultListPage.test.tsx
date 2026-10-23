@@ -215,3 +215,20 @@ test("RF-018: si la réplica no se puede leer, avisa y permite reintentar", asyn
   await user.click(screen.getByRole("button", { name: "Reintentar" }));
   expect(await screen.findByRole("listitem", { name: "Notas" })).toBeInTheDocument();
 });
+
+// SPEC-0009 RF-011: la lista muestra el mismo chip que el riel (ícono o iniciales), sólo decorativo.
+test("RF-011, RF-001: cada fila muestra el chip de su bóveda, con ícono o con iniciales", async () => {
+  const { value, db } = syncValue();
+  const vault = await seedStore(db).create({ name: "Con ícono", description: null, tags: [] });
+  // `icon` aún no lo escribe el almacén (PLAN-0009 §6.1): se siembra directamente en la réplica.
+  await db.put({ ...(await db.get(`vault:${vault.id}`)), icon: "star:warning" });
+  await seedStore(db).create({ name: "Sin ícono", description: null, tags: [] });
+  renderPage(value);
+
+  const withIcon = await screen.findByRole("listitem", { name: "Con ícono" });
+  expect(withIcon.querySelector('.vault-chip svg[data-icon="star"]')).not.toBeNull();
+  const without = screen.getByRole("listitem", { name: "Sin ícono" });
+  expect(without.querySelector(".vault-chip")).toHaveTextContent("SÍ");
+  // El chip es decorativo: el nombre accesible de la fila sigue siendo el del título.
+  expect(withIcon.querySelector(".vault-chip")).toHaveAttribute("aria-hidden", "true");
+});
