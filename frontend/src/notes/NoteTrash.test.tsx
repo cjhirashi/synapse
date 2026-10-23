@@ -95,3 +95,12 @@ test("RF-017: si no queda ninguna, el foco va a «Volver a las notas»", async (
   await waitFor(() => expect(screen.getByRole("button", { name: "Volver a las notas" })).toHaveFocus());
   expect(screen.getByRole("status")).toHaveTextContent("Restaurada «Sola.md»");
 });
+
+// U-9 (PLAN-0008 §32): si restaurar falla, el foco vuelve al «Restaurar» de la misma fila (que sigue existiendo).
+test("RF-017, RF-013: con la ruta ocupada el foco vuelve al «Restaurar» de esa fila", async () => {
+  const { user, value } = await setup(["Misma.md"], ["Misma.md"]);
+  await value.notes.create(VAULT, "misma"); // otra nota activa ocupa la ruta
+  await user.click(await screen.findByRole("button", { name: "Restaurar «Misma.md»" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
+  await waitFor(() => expect(screen.getByRole("button", { name: "Restaurar «Misma.md»" })).toHaveFocus());
+});
