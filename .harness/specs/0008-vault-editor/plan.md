@@ -511,3 +511,12 @@ cierre, P-2): de 0003 `backend/app/services/vault_service.py`, `frontend/src/vau
 | Hallazgo | Severidad | Causa raíz | Corrección |
 |---|---|---|---|
 | F-3 · `repush.test.ts` `settle()` espera `setTimeout(20)` fijo: bajo carga, 1–2 casos positivos fallan y los negativos pasan **vacíamente** | Low | espera por tiempo en vez de por condición | Positivos: `vi.waitFor` sobre la condición. Negativos: señal determinista (el `change` del feed de la propia réplica tras escribir, después `settled()`), de modo que la ausencia se afirme después de que el disparador haya tenido su oportunidad. **Además**, auditoría de toda espera por tiempo fijo en los tests de 0008 (`src/notes`, `src/editor`, `src/sync` tocados por 0008): cada una se sustituye por una condición o se justifica en un comentario. |
+
+## 24. Enmienda 15 (2026-10-23) — Converge sobre 325ab6c: política única de plazos en las pruebas
+> Backend, editor y sync cliente limpios (sync: 6/6 mutantes de `repush` detectados). UI: 3 de 8
+> corridas con 4 suites simultáneas fallan 1 test (`NoteSidebar` foco tras renombrar; `VaultListPage`
+> "Cargar más", de 0003).
+
+| Hallazgo | Severidad | Causa raíz | Corrección |
+|---|---|---|---|
+| F-4 · intermitencias bajo carga que reaparecen test a test (F-1, F-2, F-3, F-4) | Low (pruebas) | no hay una política única de plazos: `asyncUtilTimeout` (RTL) sí está configurado, pero `vi.waitFor` usa su propio plazo de 1 s y el presupuesto por test es el de vitest (5 s) | **Política única**, en un solo lugar: (1) `testTimeout`/`hookTimeout` del proyecto jsdom en la configuración de vitest con margen para carga; (2) las esperas por condición de los tests del frontend usan el `waitFor` de RTL (lee `asyncUtilTimeout`) o un helper compartido que aplica el mismo plazo a `vi.waitFor`; (3) **criterio de estabilidad escrito**: 3 rondas de 4 corridas simultáneas de la suite completa de frontend, 12/12 en verde. Afecta tests de 0003/0005 sólo en sus esperas (re-anclaje al cierre). |
