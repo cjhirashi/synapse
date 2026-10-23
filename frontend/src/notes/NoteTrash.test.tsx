@@ -100,7 +100,16 @@ test("RF-017: si no queda ninguna, el foco va a «Volver a las notas»", async (
 test("RF-017, RF-013: con la ruta ocupada el foco vuelve al «Restaurar» de esa fila", async () => {
   const { user, value } = await setup(["Misma.md"], ["Misma.md"]);
   await value.notes.create(VAULT, "misma"); // otra nota activa ocupa la ruta
-  await user.click(await screen.findByRole("button", { name: "Restaurar «Misma.md»" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
-  await waitFor(() => expect(screen.getByRole("button", { name: "Restaurar «Misma.md»" })).toHaveFocus());
+  // jsdom no suelta el foco de un botón que se deshabilita (un navegador real sí): en vez de emularlo se
+  // comprueba que el componente enfoca la fila de nuevo, además del foco que ya le dio el clic.
+  const focus = vi.spyOn(HTMLElement.prototype, "focus");
+  try {
+    await user.click(await screen.findByRole("button", { name: "Restaurar «Misma.md»" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
+    const button = screen.getByRole("button", { name: "Restaurar «Misma.md»" });
+    await waitFor(() => expect(focus.mock.contexts.filter((el) => el === button).length).toBeGreaterThanOrEqual(2));
+    expect(button).toHaveFocus();
+  } finally {
+    focus.mockRestore();
+  }
 });
