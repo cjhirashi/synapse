@@ -141,15 +141,16 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       // La secuencia se toma ANTES de leer: lo que cambie mientras se construye se reaplica luego (idempotente).
       const seq = (await db.info()).update_seq;
       // Por lotes (S-7): nunca hay más de INDEX_BATCH cuerpos en memoria a la vez; de cada uno sólo
-      // se conserva el resumen. `startkey` es el último id leído y `skip: 1` lo hace exclusivo.
+      // se conserva el resumen. La cota inferior del siguiente lote es ESTRICTA: el último id leído
+      // más `\u0000` (la cadena inmediatamente mayor). Con `skip: 1` se perdía una nota viva si ese
+      // id desaparecía entre lotes (S-8).
       let last: string | null = null;
       for (;;) {
         const page: PouchDB.Core.AllDocsResponse<NoteDoc> = await db.allDocs<NoteDoc>({
-          startkey: last ?? NOTE_ID_PREFIX,
+          startkey: last === null ? NOTE_ID_PREFIX : `${last}\u0000`,
           endkey: `${NOTE_ID_PREFIX}￰`,
           include_docs: true,
           limit: INDEX_BATCH,
-          ...(last === null ? {} : { skip: 1 }),
         });
         for (const row of page.rows) if (row.doc?.type === "note") indexPut(row.doc);
         if (page.rows.length < INDEX_BATCH) break;

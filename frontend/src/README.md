@@ -138,10 +138,14 @@ razón `draft`). La navegación a `/login` no se bloquea.
 Los guardados se **serializan** (E-1): un guardado en vuelo absorbe un doble Ctrl+S o el
 auto-repeat y, si el borrador cambió mientras tanto, se guarda después sobre la revisión nueva
 (nunca dos veces con la misma, que crearía una rama de conflicto idéntica). Los tres diálogos de
-confirmación del editor (`ConfirmDialog`) mueven el foco a su primer botón, lo atrapan, cierran
-con Escape como «Seguir editando» y devuelven el foco al disparador. Si la bóveda pasa a la
-papelera por sync con un borrador sucio, el 404 lo muestra en sólo lectura con «Copiar texto»
-(E-2; RF-014: no se edita ni se guarda).
+confirmación del editor (`ConfirmDialog`) atrapan el foco, cierran con Escape como «Seguir
+editando» y lo devuelven al disparador. El foco inicial es configurable con `data-autofocus`
+(por omisión, el primer botón): el diálogo de descarte («Borrar y descartar cambios») enfoca
+«Seguir editando». Si la bóveda pasa a la papelera por sync con un borrador sucio, el 404 lo
+muestra en sólo lectura con «Copiar texto» (E-2; RF-014: no se edita ni se guarda); ese
+borrador se suelta si la nota se cerró a propósito (p. ej. «Borrar y descartar cambios», E-3), y
+sin API de portapapeles se avisa «No se pudo copiar; selecciona el texto.» y el textarea queda
+seleccionado (E-4).
 
 **Reparto de `_bulk_docs`:** una nota de 2 MiB hace que un lote de 50 supere cualquier tope.
 `sync/remote.ts` parte un `POST _bulk_docs` de más de 8 MiB (`BULK_CHUNK_BYTES`) en
