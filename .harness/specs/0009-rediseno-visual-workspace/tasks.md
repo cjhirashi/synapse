@@ -210,7 +210,7 @@ actualizado: 2026-10-23
 - [x] T-052 — Test `frontend/e2e/workspace-perf.spec.ts`: 1 000 notas sembradas, 30 navegaciones SPA a `/vaults/{id}`, tiempo hasta el árbol en el DOM (`MutationObserver` + `performance.now()`), falla si p95 > 150 ms; imprime mediana y p95. Rojo comprobado con un mutante (umbral 1 ms) (cubre RNF-001) [zona: test] [P-8]
   - CHECK: `cd frontend && npm run test:visual -- --grep "RNF-001"`
   - EXPECT: `passed`; salida `RNF-001 (0009): mediana … p95 ≤ 150 ms`; con el mutante, `failed`.
-- [ ] T-053 — Regresión en jsdom sin cambios (cubre RNF-001) [zona: sistema]
+- [x] T-053 — Regresión en jsdom sin cambios (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && npm run test:perf`
   - EXPECT: `RNF-001 (0008): p95 … ms` < 300 ms.
 
