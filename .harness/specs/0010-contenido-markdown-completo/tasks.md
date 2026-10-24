@@ -155,7 +155,7 @@ actualizado: 2026-10-24
   - EXPECT: vitest `passed`; en V-8 pasan las aserciones de layout del estado de error/fallo; las que exigen SVG real siguen rojas hasta F.
 
 **Componente 4 · Prosa y tablas (cita, código en línea, tareas, tablas)**
-- [ ] T-031 [rojo] — `editor/taskItemView.test.ts` (lectura `role="img"` "Pendiente"/"Completada" sin foco; Visual `input` con nombre = texto) + `layoutCss.test.ts` (cita, código en línea, `td > p {margin:0}`, envoltorio de tabla) (cubre RF-026, RF-037, RF-038, RF-039) [zona: test]
+- [x] T-031 [rojo] — `editor/taskItemView.test.ts` (lectura `role="img"` "Pendiente"/"Completada" sin foco; Visual `input` con nombre = texto) + `layoutCss.test.ts` (cita, código en línea, `td > p {margin:0}`, envoltorio de tabla) (cubre RF-026, RF-037, RF-038, RF-039) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/taskItemView.test.ts src/notes/layoutCss.test.ts`
   - EXPECT: falla al importar `./taskItemView` y las reglas CSS ausentes.
 - [ ] T-032 — Estilos de cita y código en línea (R-5, R-6) + `editor/tableView.ts` (`TableView` con envoltorio `note-table-scroll`, región en lectura) + CSS de tabla (R-7) (cubre RF-026, RF-037, RF-038) [zona: pantalla]
