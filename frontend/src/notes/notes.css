@@ -297,6 +297,21 @@
   white-space: nowrap;
 }
 
+/* El foco queda dentro de la fila: el árbol recorta lo que sobresale (T-049, M-4). */
+.note-tree-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-create-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.note-create-fields[hidden] {
+  display: none;
+}
+
 .note-tree-row:not([type="submit"]):hover {
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -513,4 +528,11 @@
   background: var(--bg-tertiary);
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+/* ≤ 640 px (T-049, H-2): el árbol apilado cede altura para que el editor quede a la vista. */
+@media (max-width: 640px) {
+  .note-tree {
+    max-height: 24vh;
+  }
 }

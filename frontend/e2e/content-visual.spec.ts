@@ -378,7 +378,8 @@ for (const { theme, size, key } of COMBOS) {
     expectExact(`R-9nc ${key}`, "color del número", num.color, tokenColor(theme, "--text-secondary"));
     // Línea activa con `--bg-secondary` (no el literal del mockup, C-3).
     await page.locator(".code-view .cm-content").click();
-    await expect(page.locator(".cm-activeLine").first()).toBeVisible();
+    // `highlightActiveLine` pinta tras el evento de foco: se espera al valor final (antes daba medidas a medias).
+    await expect(page.locator(".cm-activeLine").first()).toHaveCSS("background-color", tokenColor(theme, "--bg-secondary"));
     expectExact(`R-9a ${key}`, "línea activa = --bg-secondary", (await measure(page, ".cm-activeLine")).bg, tokenColor(theme, "--bg-secondary"));
     // Colores del markdown (§2.3-h): h1 700, negrita `--accent-hover` 600, código `--warning-text`, enlace `--info-text`.
     const style = (selector: string) => page.locator(selector).first().evaluate((el) => ({ color: getComputedStyle(el).color, weight: getComputedStyle(el).fontWeight }));
@@ -517,45 +518,51 @@ for (const { theme, size, key } of COMBOS) {
       // Orden y nombres: Atrás, Adelante, migas, lápiz, ⋮.
       const back = header.getByRole("button", { name: "Atrás" });
       const forward = header.getByRole("button", { name: "Adelante" });
+      // A ≤ 480 px las flechas se ocultan (T-049, H-1; siguen Alt+←/→) y las migas colapsan los ancestros a «…».
+      const narrow = size.width <= 480;
       const pencil = header.getByRole("button", { name: "Editar", exact: true });
       const menu = header.getByRole("button", { name: "Opciones de la nota" });
-      for (const control of [back, forward, pencil, menu]) await expect(control).toBeVisible();
+      for (const control of narrow ? [pencil, menu] : [back, forward, pencil, menu]) await expect(control).toBeVisible();
+      if (narrow) for (const control of [back, forward]) await expect(control).toBeHidden();
       const nav = page.getByRole("navigation", { name: "Ruta" });
       await expect(nav.locator("ol")).toBeVisible();
       const name = nav.getByRole("heading", { level: 2 });
       await expect(name).toHaveAttribute("aria-current", "page");
       await expect(name).toHaveAttribute("title", target.path.replace(/\.md$/, ""));
-      const order = await Promise.all([back, forward, nav, pencil, menu].map(async (l) => (await l.boundingBox())!.x));
+      const order = await Promise.all((narrow ? [nav, pencil, menu] : [back, forward, nav, pencil, menu]).map(async (l) => (await l.boundingBox())!.x));
       expect([...order].sort((a, b) => a - b), "orden visual = orden del DOM").toEqual(order);
 
       // Todos los controles centrados en la misma línea (± 1) y de 28 × 28 (R-2).
-      const centers = await Promise.all([back, forward, pencil, menu, name].map(async (l) => { const b = (await l.boundingBox())!; return b.y + b.height / 2; }));
+      const centers = await Promise.all((narrow ? [pencil, menu, name] : [back, forward, pencil, menu, name]).map(async (l) => { const b = (await l.boundingBox())!; return b.y + b.height / 2; }));
       expect(Math.max(...centers) - Math.min(...centers), "una sola línea").toBeLessThanOrEqual(1);
-      for (const control of [back, forward, pencil, menu]) {
+      for (const control of narrow ? [pencil, menu] : [back, forward, pencil, menu]) {
         const b = (await control.boundingBox())!;
         expectMeasure(`R-2w ${key}`, "ancho del control", b.width, 28, 1);
         expectMeasure(`R-2h ${key}`, "alto del control", b.height, 28, 1);
       }
 
       // «Adelante» sin historial: deshabilitada y atenuada frente a un control activo.
-      await expect(forward).toBeDisabled();
-      expect(await forward.evaluate((el) => getComputedStyle(el).opacity)).toBe("0.5");
+      if (!narrow) {
+        await expect(forward).toBeDisabled();
+        expect(await forward.evaluate((el) => getComputedStyle(el).opacity)).toBe("0.5");
+      }
       expect(await menu.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
 
       // Migas (R-12): carpetas 13 px `--text-secondary` de 28 px; nombre 13 px/600 `--text-primary`; separador `/`.
       if (deep) {
         const folders = nav.getByRole("button");
         expect(await folders.count()).toBeGreaterThanOrEqual(1);
+        if (narrow) await expect(folders).toHaveText(["…"]);
         const first = folders.first();
         expect(await first.evaluate((el) => getComputedStyle(el).textOverflow)).toBe("ellipsis");
         expectMeasure(`R-12h ${key}`, "alto de la carpeta", (await first.boundingBox())!.height, 28, 1);
         expectExact(`R-12c ${key}`, "color de la carpeta", await first.evaluate((el) => getComputedStyle(el).color), tokenColor(theme, "--text-secondary"));
         await expect(nav.locator("li > span[aria-hidden='true']").first()).toHaveText("/");
-        await expect(nav.getByRole("button", { name: /^Proyectos/ })).toBeVisible();
+        if (!narrow) await expect(nav.getByRole("button", { name: /^Proyectos/ })).toBeVisible();
         // La primera carpeta y el nombre nunca desaparecen; a 1440 la ruta cabe completa.
         const widths = await folders.evaluateAll((els) => els.map((el) => ({ clipped: el.scrollWidth > el.clientWidth })));
-        if (size.width === 1440) expect(widths.every((w) => !w.clipped), "1440: ruta completa").toBe(true);
-        else expect(widths.some((w) => w.clipped) || (await name.evaluate((el) => el.scrollWidth > el.clientWidth)), "estrecho: algún segmento truncado con «…»").toBe(true);
+        // La ruta cabe completa a 1440 y 1024 (migas más ceñidas desde T-049); a 390 los ancestros son un «…» y el nombre se lee.
+        if (!narrow) expect(widths.every((w) => !w.clipped), "la ruta cabe completa").toBe(true);
       } else {
         expect(await nav.getByRole("button").count(), "nota en la raíz: sólo el nombre").toBe(0);
       }
@@ -777,8 +784,8 @@ for (const theme of THEMES) {
     await expect(page.getByRole("button", { name: "Nueva carpeta" })).toBeHidden();
     await expect(page.getByText("Usa / para crear subcarpetas")).toBeHidden();
     const header = await measure(page, HEADER);
-    expect(header.y, "la barra del editor empieza antes de y = 600 de 844").toBeLessThanOrEqual(600);
     await shot(page, `mobile-${theme}-390`);
+    expect(header.y, "la barra del editor empieza antes de y = 640 de 844 (antes ≈ 705)").toBeLessThanOrEqual(640);
     await toggle.click();
     await expect(toggle).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("button", { name: "Nueva carpeta" })).toBeVisible();
@@ -797,9 +804,11 @@ test("0010 V-6 M-1 foco del editor con aire en Visual y sin marco de columna en 
   expect(parseFloat(frame.pad), "con aire").toBeGreaterThanOrEqual(12);
   await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.locator(".code-view .cm-content").focus();
-  const code = await page.locator(".code-view .cm-editor").evaluate((el) => ({ outline: getComputedStyle(el).outlineStyle, shadow: getComputedStyle(el).boxShadow }));
-  expect(code.outline, "sin contorno de columna").toBe("none");
-  expect(code.shadow, "borde de foco en --accent").toContain(tokenColor("dark", "--accent"));
+  const editor = page.locator(".code-view .cm-editor");
+  // CodeMirror marca `cm-focused` tras el evento de foco: se espera a que llegue.
+  await expect(editor).toHaveClass(/cm-focused/);
+  expect(await editor.evaluate((el) => getComputedStyle(el).outlineStyle), "sin contorno de columna").toBe("none");
+  expect(await editor.evaluate((el) => getComputedStyle(el).boxShadow), "borde de foco en --accent").toContain(tokenColor("dark", "--accent"));
   await context.close();
 });
 

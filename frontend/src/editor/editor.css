@@ -22,6 +22,39 @@
   background: var(--bg-secondary);
 }
 
+/* ≤ 480 px (T-049, H-1): sin flechas (siguen Alt+←/→) y con el nombre de la nota ocupando lo que queda (≥ 96 px);
+   los ancestros ya vienen colapsados a «…» desde `NoteBreadcrumb`. */
+@media (max-width: 480px) {
+  .note-editor-header .note-nav-button[aria-keyshortcuts] {
+    display: none;
+  }
+
+  .note-crumb-name {
+    flex: 1 1 auto;
+    min-width: 96px;
+  }
+
+  .note-breadcrumb li:last-child {
+    flex-shrink: 1;
+    min-width: 96px;
+  }
+}
+
+/* Área de golpe de 44 px con puntero táctil sin crecer la barra de 43 px (T-049, M-5): un `::after` ampliado. */
+@media (pointer: coarse) {
+  .note-editor-header .note-nav-button,
+  .note-editor-header .note-menu-button {
+    position: relative;
+  }
+
+  .note-editor-header .note-nav-button::after,
+  .note-editor-header .note-menu-button::after {
+    position: absolute;
+    inset: -5px; /* 36 px de botón − 2 de borde + 10 = 44 px */
+    content: "";
+  }
+}
+
 /* Menú ⋮ (SPEC-0010 RF-061; R-13; P-17): botón de 28 × 28 y menú en un portal sobre el contenido,
    de ≥ 200 px, con ítems de 32 px (40 en táctil), radio de 10 px y la sombra del panel. */
 .note-menu-button {
@@ -149,13 +182,14 @@
   box-sizing: border-box;
   max-width: 24ch;
   height: 28px;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-1);
   overflow: hidden;
   border-color: transparent;
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-secondary);
   font-size: 13px;
+  font-weight: 600; /* ancestros en negrita atenuada, como la captura de Obsidian (L-1) */
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -186,7 +220,7 @@
   box-sizing: border-box;
   min-width: 6ch;
   margin: 0;
-  padding: 0 var(--space-2);
+  padding: 0 var(--space-1);
   overflow: hidden;
   color: var(--text-primary);
   font-size: 13px;
@@ -572,6 +606,12 @@
   gap: var(--space-2);
   max-height: min(50vh, 360px);
   overflow-y: auto;
+  /* Sombras de desbordamiento (T-049, M-2): las capas `local` tapan la sombra cuando el contenido está en el borde. */
+  background:
+    linear-gradient(var(--bg-tertiary) 30%, transparent) 0 0 / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--bg-tertiary) 70%) 0 100% / 100% 24px no-repeat local,
+    linear-gradient(color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 0 0 / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, color-mix(in srgb, var(--text-secondary) 35%, transparent)) 0 100% / 100% 10px no-repeat scroll;
 }
 
 .props-form-head,
@@ -820,9 +860,17 @@
   overflow-wrap: anywhere;
 }
 
-.milkdown-view .ProseMirror:focus-visible {
+/* Foco del editor (T-049, M-1): el contorno va en el contenedor, que tiene aire (padding compensado con margen
+   negativo para no mover el texto), y no pegado al texto del `.ProseMirror`. */
+.milkdown-view {
+  margin: calc(-1 * var(--space-3));
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.milkdown-view:has(.ProseMirror:focus-visible) {
   outline: 2px solid var(--accent);
-  outline-offset: 4px;
+  outline-offset: 0;
 }
 
 .milkdown-view .ProseMirror h1,
@@ -1117,6 +1165,17 @@
   max-width: 100%;
   margin: var(--space-3) 0;
   overflow-x: auto;
+  /* Sombras laterales de desbordamiento (T-049, M-3), como el formulario de propiedades. */
+  background:
+    linear-gradient(to right, var(--bg-primary) 30%, transparent) 0 0 / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--bg-primary) 30%, transparent) 100% 0 / 24px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 0 0 / 10px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 100% 0 / 10px 100% no-repeat scroll;
+}
+
+.note-table-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .milkdown-view .ProseMirror table {
@@ -1258,9 +1317,10 @@ li.note-task[data-checked="true"] .note-task-body {
   font-size: 13px;
 }
 
+/* En Código el foco no enmarca toda la columna: un borde de 2 px en `--accent` a la izquierda (el mockup no tiene marco). */
 .code-view .cm-editor.cm-focused {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 .code-view .cm-scroller {

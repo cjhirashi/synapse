@@ -8,6 +8,7 @@
  * `nav`); lo que cabe no se limita. Sin medidas (ancho 0, jsdom) no se limita nada.
  */
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { crumbs, fit } from "./breadcrumb";
 
 interface NoteBreadcrumbProps {
@@ -19,6 +20,8 @@ interface NoteBreadcrumbProps {
 
 export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
   const { folders, name } = crumbs(path);
+  /** ≤ 480 px (T-049, H-1): los ancestros se colapsan a un «…» y el nombre de la nota conserva su sitio. */
+  const compact = useMediaQuery("(max-width: 480px)");
   const nav = useRef<HTMLElement>(null);
   /** Ancho máximo de cada segmento (`null` = sin límite): carpetas en orden y el nombre al final. */
   const [limits, setLimits] = useState<Array<number | null>>([]);
@@ -27,7 +30,7 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
 
   const measure = useCallback(() => {
     const root = nav.current;
-    if (!root || root.clientWidth <= 0) {
+    if (!root || root.clientWidth <= 0 || compact) {
       setLimits([]);
       return;
     }
@@ -38,7 +41,7 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
     naturalWidths.current.widths = natural;
     const granted = fit(natural, root.clientWidth);
     setLimits(granted.map((width, i) => (width < natural[i] ? width : null)));
-  }, [path]);
+  }, [path, compact]);
 
   useLayoutEffect(() => {
     measure();
@@ -56,7 +59,22 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
   return (
     <nav ref={nav} className="note-breadcrumb" aria-label="Ruta">
       <ol>
-        {folders.map((folder, index) => (
+        {compact && folders.length > 0 && (
+          <li>
+            <button
+              type="button"
+              className="note-crumb"
+              title={`Mostrar «${folders[folders.length - 1].name}» en el árbol`}
+              onClick={() => onRevealFolder(folders[folders.length - 1].path)}
+            >
+              …
+            </button>
+            <span aria-hidden="true" className="note-crumb-sep">
+              /
+            </span>
+          </li>
+        )}
+        {!compact && folders.map((folder, index) => (
           <li key={folder.path} hidden={isHidden(index)}>
             <button
               type="button"
@@ -74,7 +92,7 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
           </li>
         ))}
         <li>
-          <h2 data-crumb className="note-crumb-name" style={style(folders.length)} aria-current="page" title={[...folders.map((f) => f.name), name].join("/")}>
+          <h2 data-crumb className="note-crumb-name" style={compact ? undefined : style(folders.length)} aria-current="page" title={[...folders.map((f) => f.name), name].join("/")}>
             {name}
           </h2>
         </li>

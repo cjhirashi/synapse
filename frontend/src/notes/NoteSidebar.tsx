@@ -26,6 +26,7 @@
  */
 import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
 import { noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
@@ -92,6 +93,10 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   const [activeFolder, setActiveFolder] = useState("");
   /** Formulario «Nueva carpeta» abierto, su texto y su error. */
   const [folderForm, setFolderForm] = useState<{ name: string; error: boolean } | null>(null);
+  /** A ≤ 640 px el bloque de creación es un disclosure («Crear…»): la barra lateral no empuja al editor fuera de la pantalla. */
+  const compact = useMediaQuery("(max-width: 640px)");
+  const [createOpen, setCreateOpen] = useState(false);
+  const fieldsId = useId();
   const uid = useId();
   const createInId = "note-create-in";
   const hintId = `${uid}-folder-hint`;
@@ -450,6 +455,13 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             Crear en: <strong title={activeFolder || "Raíz"}>{activeFolder || "Raíz"}</strong>
           </span>
         </p>
+        {compact && (
+          <button type="button" className="note-sidebar-secondary" aria-expanded={createOpen} aria-controls={fieldsId} onClick={() => setCreateOpen((open) => !open)}>
+            <Plus size={14} aria-hidden="true" />
+            Crear…
+          </button>
+        )}
+        <div id={fieldsId} className="note-create-fields" hidden={compact && !createOpen}>
         <label>
           Título de la nota nueva (opcional)
           <input value={title} onChange={(event) => setTitle(event.target.value)} aria-describedby={`${createInId} ${hintId}`} />
@@ -472,6 +484,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           <CornerDownRight size={12} aria-hidden="true" />
           Usa / para crear subcarpetas (por ejemplo, Proyectos/Ideas)
         </p>
+        </div>
       </form>
       {folderForm !== null && (
           <form

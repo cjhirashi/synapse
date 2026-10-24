@@ -217,7 +217,7 @@ actualizado: 2026-10-24
 - [x] T-048 — Comparación lado a lado: capturas de la app frente a `mockup-*` (panel, cita, código en línea, vista Código, barra), `reference/obsidian-breadcrumb.png` (migas, flechas, lápiz, ⋮) y `career-*` (tabla, bloque de código, chasis Mermaid); revisión rápida del experto-ux-ui; hallazgos con severidad en `history.md` (cubre RNF-005) [zona: sistema]
   - CHECK: `ls /tmp/s10/e2e/*.png | wc -l && grep -c "T-048" .harness/memory/history.md`
   - EXPECT: ≥ 60 capturas; entrada en `history.md` con cada par comparado y los hallazgos (o "sin hallazgos").
-- [ ] T-049 — Corregir los desvíos de T-048 desde la raíz (una sub-entrada por hallazgo, test o medida que lo fija) (cubre RNF-005) [zona: pantalla]
+- [x] T-049 — Corregir los desvíos de T-048 desde la raíz (una sub-entrada por hallazgo, test o medida que lo fija) (cubre RNF-005) [zona: pantalla]
   - CHECK: `CV --grep "0010 V-(1|2|3|4|5|6|10|11|12|13|14) "`
   - EXPECT: mismo resultado que T-047 sin los desvíos; si no hubo hallazgos, se cierra con "sin hallazgos" en `history.md`.
 - [ ] T-050 — Sonda de rendimiento: abrir en lectura la nota de ~200 KiB (sin resaltado ni Mermaid todavía), 30 aperturas a 1440 (`e2e/content-perf.spec.ts`, prueba `0010 RNF-001 sonda`) (cubre RNF-001) [zona: sistema]
