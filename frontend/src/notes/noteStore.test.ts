@@ -96,7 +96,7 @@ describe("RF-001, RF-019: list y get", () => {
     await store.create(OTHER_VAULT, "B");
     const [item, ...rest] = await store.list(VAULT);
     expect(rest).toEqual([]);
-    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null });
+    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null, size: 0 });
     expect(item).not.toHaveProperty("content");
   });
 
@@ -124,6 +124,18 @@ describe("RF-001, RF-019: list y get", () => {
     const a = await store.create(VAULT, "A");
     await trash(a.id);
     await expect(store.get(a.id)).rejects.toBeInstanceOf(NoteNotFoundError);
+  });
+
+  // RNF-001 (PLAN-0010 §10.5): el resumen lleva `size` (longitud de `content`) para que el programador
+  // de precálculo elija candidatas sin leer los cuerpos; se actualiza con cada revisión.
+  it("el resumen lleva `size` = longitud de content y se actualiza con cada revisión", async () => {
+    const a = await store.create(VAULT, "A");
+    const size = async () => (await store.list(VAULT)).find((n) => n.id === a.id)?.size;
+    expect(await size()).toBe(0);
+    const saved = await store.save(a.id, "hola mundo", a.rev); // 10 caracteres
+    expect(await size()).toBe(10);
+    await store.save(a.id, "x".repeat(50), saved.rev);
+    expect(await size()).toBe(50);
   });
 });
 

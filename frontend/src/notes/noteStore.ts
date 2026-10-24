@@ -55,6 +55,9 @@ export interface NoteSummary {
   rev: string;
   updated_at: string;
   deleted_at: string | null;
+  /** Longitud de `content` (RNF-001, PLAN-0010 §10.5): el programador de precálculo elige candidatas
+   *  sin leer los cuerpos. Se calcula al indexar (el índice ya lee el documento completo). */
+  size: number;
 }
 
 export interface NoteStoreOptions {
@@ -90,7 +93,7 @@ function toNote(doc: NoteDoc): Note {
 }
 
 function toSummary(doc: NoteDoc): NoteSummary {
-  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at };
+  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at, size: doc.content.length };
 }
 
 function isStatus(err: unknown, status: number): boolean {
