@@ -81,6 +81,8 @@ test.each([
   ["notes/notes.css", "notes.css"],
   ["editor/editor.css", "../editor/editor.css"],
   ["vaults/VaultChip.css", "../vaults/VaultChip.css"],
+  // SPEC-0010 RF-040: el resaltado también sale sólo de tokens (alias `--syntax-*`).
+  ["editor/syntax.css", "../editor/syntax.css"],
 ])("RF-006: %s no tiene literales de color", (_name, path) => {
   const css = read(path).replace(/\/\*[\s\S]*?\*\//g, "");
   expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
