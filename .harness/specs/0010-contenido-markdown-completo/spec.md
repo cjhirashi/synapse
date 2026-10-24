@@ -2,7 +2,7 @@
 id: SPEC-0010
 tipo: spec
 feature: 0010-contenido-markdown-completo
-estado: draft            # draft | in-review | approved | implemented | verified | deprecated
+estado: approved         # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 09bd982   # HEAD de feature/sprint-1-auth al abrir la Fase 1 (2026-10-24)
 anchor_mode: advisory
@@ -39,7 +39,7 @@ covers:                  # BORRADOR: lo fija el PLAN-0010 (archivos con dueño a
   - backend/app/core/README.md
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente
+  fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-24, nota: "incluye RF-052 (zoom/pan con svg-pan-zoom en carga diferida) por paridad con career-admin" }
   fase_2: pendiente
 actualizado: 2026-10-24
 ---
