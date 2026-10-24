@@ -504,6 +504,8 @@ S=`--bg-secondary`, T=`--bg-tertiary`). Texto ≥ 4,5; no texto ≥ 3.
   diagramas → ninguna tarea > 200 ms atribuible a un bloque (render de Mermaid en serie, un diagrama
   por tarea, cediendo el hilo entre diagramas). RNF-001 de 0009 (árbol de 1000 notas p95 ≤ 150 ms):
   `workspace-perf.spec.ts` sin cambios.
+  **Sustituido por la Enmienda 1 (§10.8):** la sonda de reaperturas se retira; RNF-001 se mide sobre la
+  primera apertura de notas precalculadas (a), con la apertura en frío informada aparte (b, B-1).
 - `check-bundle.mjs` (`npm run test:bundle`, tras `vite build`): entrada ≤ 157 020 B gzip; editor ≤
   357 388 B gzip; existen chunks separados para `mermaid`, `svg-pan-zoom`, `frontmatter` (yaml) y
   cada gramática extra; ninguno es importación estática de la entrada ni del editor (lee el
@@ -580,6 +582,7 @@ de la primera tarea; `npm run build` reproduce 141 660 B / 316 428 B.
 | **P-6 · Bloque `---…---` heredado protegido** en Visual y lectura (RF-045, RF-020): el bloque estricto inicial que **no** se migra (ya hay `frontmatter` o no es un mapa válido) no se entrega a Milkdown; se muestra literal en mono dentro del aviso y se re-antepone byte a byte al emitir desde Visual. Formas ya corrompidas (`***`, `\[…]`) sí van a Milkdown (no tienen límite fiable) y el test exige que su ida y vuelta por Visual sea un punto fijo | "Dejarlo como cuerpo **sin modificarlo**": entregado a Milkdown, cualquier edición en Visual lo reescribiría a `***` y `\[`. En lectura, el mismo tratamiento evita pintar el YAML como regla + H2. **Alternativa:** entregarlo a Milkdown (se corrompe al editar). **Recomendación:** aceptar. |
 | **P-7 · Añadir filas y columnas** tras "Insertar tabla" | RF-025 sólo crea 2×(1+1); en 7.22.3 Tab en la última celda **no** añade fila (verificado). Propuesta: con el cursor en una tabla, junto a "Insertar tabla" aparecen "Añadir fila debajo" (`between-horizontal-end`) y "Añadir columna a la derecha" (`between-vertical-end`), 28×28, `addRowAfterCommand`/`addColAfterCommand`. Es UI no pedida por un RF (se anotaría como ampliación de RF-025). **Alternativa:** limitación documentada (filas/columnas en Código). **Recomendación:** incluir los dos botones. |
 | **P-17 · Breadcrumb fiel a la captura de Obsidian** (`reference/obsidian-breadcrumb.png`, aportada por Carlos) | La captura difiere de la redacción de RF-054…RF-065 en cuatro detalles: separador `/` (no `›`); truncado **por segmento** con "…" (no colapso de intermedios); un **lápiz** a la derecha que alterna edición/lectura (en Synapse: el botón "Editar/Leer" existente se mueve a la barra); menú **⋮ vertical** (no ⋯). La flecha "adelante" sin historial se ve atenuada. **Decisión (GATE 2):** seguir la captura en los cuatro puntos; V-* del breadcrumb se miden contra ella. |
+| **P-18 · Parseo precalculado (Enmienda 1, Directiva de Pausa)** | La sonda T-050 dio p95 204,4 ms con la nota de 181 KiB. Decisión de AIRA: ids de encabezado al parsear, `content-visibility:auto` en lectura y caché de mdast por `(id, rev)` calculada en un Worker con el mismo pipeline. Diseño, medidas y tareas en §10. **BLOQUEADOR B-1** (§10.7): la apertura en frío de notas ≳ 100 KiB sigue en ≈ 194 ms p95 → decisión de producto pendiente. |
 | **P-8 · Pegado desde VS Code** | `@milkdown/plugin-clipboard` 7.22.3 convierte todo pegado con `vscode-editor-data` en **un bloque de código** del lenguaje de VS Code: una tabla copiada de un `.md` en VS Code llegaría como bloque `markdown`, contra RF-023. Ajuste: un `handlePaste` previo (más prioridad) que, si el modo es `markdown`, interpreta el `text/plain` como markdown; el resto sigue igual. **Recomendación:** aceptar. |
 | **P-9 · Presupuestos de *bundle*** | Entrada ≤ +15 KiB gzip sobre **141 660 B** (RNF-002, medido hoy); propuesta nueva: chunk del editor ≤ +40 KiB sobre **316 428 B**; chunks propios para `yaml` (37,1), `mermaid` (167,6 + diagramas), `svg-pan-zoom` (10,5) y gramáticas extra. Script `test:bundle` con el *manifest* de Vite. **Recomendación:** aceptar (afinar tras C si el editor se acerca al tope). |
 | **P-10 · Mermaid 11.17.2 y comportamiento** | Versión exacta 11.x (12.2.0 existe; la spec fija 11.x). `secure` ampliado (`theme`, `themeVariables`, `themeCSS`, `darkMode`, `fontFamily`, `htmlLabels`, `flowchart`, `look`, `securityLevel`…); rueda sólo con Ctrl/⌘ y alto tope 420 px (C-6, desvío de career-admin); render en serie con cesión del hilo (RNF-001); *debounce* 400 ms (≤ 500 de RF-047). **Recomendación:** aceptar. |
@@ -816,7 +819,7 @@ Cambios **explícitos** de tests de 0008/0009 (los únicos permitidos): (1) el `
 `editor/NoteEditor.tsx` (las migas leen `note.path`, que ya se actualiza con la revisión renombrada — incluido el rebase con borrador de 0008 VF-3). Tests: `editor/NoteBreadcrumb.test.tsx`, `notes/VaultWorkspacePage.test.tsx` (renombrar desde el menú o el árbol actualiza las migas sin recargar).
 
 ### Implementación de RNF-001
-`frontend/e2e/content-perf.spec.ts` (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), `editor/mermaid/renderMermaid.ts` (render en serie cediendo el hilo); `frontend/e2e/workspace-perf.spec.ts` (RNF-001 de 0009, sin cambios). Sonda temprana en el bloque B.
+`frontend/e2e/content-perf.spec.ts` (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), `editor/mermaid/renderMermaid.ts` (render en serie cediendo el hilo); `frontend/e2e/workspace-perf.spec.ts` (RNF-001 de 0009, sin cambios). Sonda temprana en el bloque B. **Enmienda 1 (§10):** `editor/markdown/headingIds.ts`, `editor/markdown/parseStage.ts`, `editor/markdown/parseWorker.ts`, `editor/markdown/parseCache.ts`, `editor/markdown/precompute.ts`, `editor/markdown/cachedParser.ts`, `notes/noteStore.ts` (`size`), `content-visibility` en lectura (`editor/editor.css`); medición (a) precalculada / (b) en frío / (c) con puntero en `e2e/content-perf.spec.ts`; B-1 pendiente.
 
 ### Implementación de RNF-002
 `frontend/scripts/check-bundle.mjs` (`npm run test:bundle`, `vite.config.ts` con `build.manifest: true`), cargas `import()` en `editor/highlight/languages.ts`, `editor/NoteEditor.tsx` (`./frontmatter`), `editor/mermaid/renderMermaid.ts`, `editor/mermaid/panZoom.ts`; V-15 (red).
@@ -832,3 +835,177 @@ Contraste: `editor/contrast.test.ts` (§5.5); teclado y nombres: tests de compon
 
 `covers` de `spec.md` (fijado en este plan): los archivos de §9 y §8; ver el front-matter de `spec.md`.
 Archivos compartidos con dueño anterior: P-15.
+
+## 10. Enmienda 1 (2026-10-24) — parseo precalculado (Directiva de Pausa, RNF-001)
+> **Origen.** La sonda T-050 falló: abrir en lectura la nota sembrada de 181 KiB da p95 **204,4 ms**
+> (mediana 166, máx. 268) frente a RNF-001 ≤ 150 ms. El perfilado en un clon aislado
+> (`/tmp/s10/perf-out/prof.json`, `final.json`; scripts en `/tmp/s10/scripts/`) da, en mediana:
+> `remark.parse` (micromark) **103,6 ms**, `runSync` (transformadores de Milkdown) 2,5 ms,
+> mdast→ProseMirror 2,1 ms, `EditorState` 9,7 ms, `EditorView` 6,2 ms, y 57 ms de layout forzado tras
+> construir la vista (`syncHeadingIdPlugin` hace `dispatch` al montar). El parseo escala lineal
+> (~1 ms/KiB): p95 51 KiB → 98 ms, 101 KiB → 158 ms, 181 KiB → 245 ms.
+> **Decisión de AIRA (opción 2):** cumplir RNF-001 **tal cual**, con (1) ids de encabezado al parsear,
+> (2) `content-visibility:auto` y (3) el parseo fuera de la ruta crítica mediante una caché por
+> `(id, rev)` calculada fuera del hilo principal con **el mismo** pipeline de remark. Esta sección lo
+> concreta; RNF-001 no se relaja. Lo que exige decisión nueva de producto es **B-1** (§10.7).
+
+### 10.1 Corrección de raíz del layout forzado (ids de encabezado al parsear)
+- El `dispatch` de `syncHeadingIdPlugin` existe porque el documento nace con `heading.attrs.id = ""`
+  y el plugin los rellena **después** de montar la vista, lo que invalida estilo y layout de todo el
+  documento. Raíz: el documento debe nacer con los ids ya puestos.
+- `editor/markdown/headingIds.ts` (nuevo, puro sobre el `Node` de ProseMirror): recorre el documento
+  recién parseado y fija `id` con **el mismo** `headingIdGenerator` del contexto de Milkdown
+  (`ctx.get(headingIdGenerator.key)`) y la **misma** regla de duplicados del plugin (`-#n`), omitiendo
+  los encabezados vacíos; se aplica en el envoltorio del *parser* (§10.3), en frío y desde la caché.
+  El plugin de Milkdown no se quita (sigue manteniendo los ids al editar): al montar ya no encuentra
+  nada que cambiar y **no despacha** (medido en el clon: −60 ms en la sonda).
+- Criterio: 0 transacciones despachadas al montar en lectura (espía sobre `view.dispatch`) y DOM de
+  encabezados idéntico al de hoy (ids iguales, incluidos duplicados) en todo el corpus de pruebas.
+
+### 10.2 `content-visibility:auto` en lectura
+- `.milkdown-view[data-mode="read"] .ProseMirror > * { content-visibility: auto;
+  contain-intrinsic-size: auto 3em; }` — sólo en **lectura** (RNF-001 habla de lectura): en Visual el
+  caret, la selección y `coordsAtPos` sobre bloques omitidos son un riesgo sin beneficio medido.
+  Medido: −56 ms de pintado (`baseline+H+CV`: p95 de pintado 206 ms frente a 255 sin CV).
+- Efectos y cómo se cubren: los bloques fuera de pantalla conservan su contenido en el árbol de
+  accesibilidad y en la búsqueda del navegador (Chromium); las medidas V-* de elementos fuera de la
+  vista se toman tras `scrollIntoViewIfNeeded` (ajuste del *helper* `measure` de `fixtures.ts`); los
+  `ResizeObserver` de Mermaid/zoom disparan al entrar en vista (comportamiento deseado).
+
+### 10.3 Qué se cachea (medido)
+**Elección: el mdast de la etapa de parseo (micromark + `mdast-util-from-markdown` + extensiones
+GFM), con `position`, serializado como cadena JSON; en el hilo principal se hace `runSync` +
+mdast→ProseMirror con el procesador real del editor (~5 ms).**
+| Opción | Coste en el hilo principal al abrir | Memoria por nota de 181 KiB | Por qué sí / no |
+|---|---|---|---|
+| **mdast JSON (elegida)** | `JSON.parse` 0,4 ms + `runSync` 2,5 ms + mdast→PM 2,1 ms ≈ **5 ms** | cadena de 216 KiB (≈ 0,29 MiB en el *heap*) | La etapa cara (103,6 ms) es exactamente la que sale del hilo; las etapas que dependen de Milkdown (`runSync` con `remarkMarker`, `remarkInlineLink`, `remarkHtmlTransformer`, `remarkLineBreak`, `remarkPreserveEmptyLine`… y el `ParserState` de `@milkdown/transformer` con el esquema real) siguen corriendo con **las instancias del editor**, sin copia. Cadena inmutable: `runSync` **muta** el árbol (p. ej. `remarkMarker` añade `marker`), así que cachear objetos obligaría a clonarlos; la cadena se re-hidrata fresca en 0,4 ms. |
+| mdast como objeto (`structuredClone`) | similar, pero clon obligatorio por la mutación | ≈ 0,30 MiB | sin ventaja y con riesgo de compartir un árbol mutado |
+| Documento ProseMirror (JSON) | `Node.fromJSON` ≈ 2–4 ms | similar | exige el esquema de Milkdown **en el Worker** (contexto completo, `$remark`/`$node` con *timers*): duplicaría el pipeline y rompería "el mismo pipeline" |
+| HTML estático (`DOMSerializer`) | — | mayor | medido en el clon: sólo −10 ms adicionales; además requiere sincronizar HTML con el documento |
+- `position` se conserva: `remarkMarker` lee `file.value.charAt(node.position.start.offset)`; sin
+  posiciones el resultado divergiría. `runSync(tree, text)` recibe el **mismo** texto de la nota.
+- Medidas (Node 24, la misma nota): parseo 97,1 ms; mdast JSON con `position` 216,4 KiB (189,5 sin);
+  `JSON.parse` 0,40 ms; `structuredClone` de la cadena (paso por `postMessage`) 0,13 ms.
+
+**Mismo pipeline, por construcción y por prueba.**
+- El Worker (`editor/markdown/parseWorker.ts`, `new Worker(new URL(...), {type: "module"})`) importa
+  `unified` 11.0.5, `remark-parse` 11.0.0 y `remark-gfm` 4.0.1 — **las mismas instancias** que resuelve
+  Milkdown 7.22.3 (`@milkdown/core` construye `unified().use(remarkParse)` y `@milkdown/preset-gfm`
+  registra `remarkGFM`; los demás `$remark` de commonmark son transformadores sin extensiones de
+  parseo). La función pura `parseMarkdownToJson(text)` (`editor/markdown/parseStage.ts`) es la que
+  usan el Worker y las pruebas.
+- Pruebas de equivalencia (bloqueantes): (1) para todo el corpus (`e2e/content-notes.ts`, casos del
+  contrato `frontmatter-yaml.cases.json`, notas de las pruebas de 0008) el documento obtenido desde
+  la caché es `eq` al de `ctx.get(parserCtx)(text)` del editor; (2) las extensiones de parseo
+  (`data('micromarkExtensions')`, `data('fromMarkdownExtensions')`) del procesador del editor son las
+  mismas, en número y origen, que las de `parseStage`; (3) `npm ls unified remark-parse remark-gfm
+  micromark` sin duplicados. Si una actualización de Milkdown añade una extensión de parseo, (2) falla.
+
+### 10.4 Dónde vive la caché, tamaño e invalidación
+- **Sólo memoria**, en `editor/markdown/parseCache.ts`: `Map` LRU de clave `"{id}@{rev}"` → cadena
+  mdast, con tope de **24 MiB** de cadenas (≈ 80 notas de 181 KiB) y sólo para notas de
+  **≥ 32 KiB** de `content` (por debajo, el camino en frío ya cumple con holgura: 51 KiB → p95 106 ms
+  con ids + `content-visibility`, `final.json`). Peticiones en vuelo deduplicadas por clave.
+- **No** en IndexedDB ni `sessionStorage`: `sessionStorage` sólo guarda cadenas y tiene ~5 MiB; una
+  copia persistente en IndexedDB sería una **segunda copia del contenido** del usuario fuera de la
+  réplica que habría que cifrar/borrar en el logout, y su lectura (deserialización de ~0,3 MiB) se
+  comería buena parte de la ganancia. La réplica sigue siendo la única persistencia (P-1 de 0005).
+- **Invalidación por `rev`:** la clave incluye la revisión ganadora; una revisión nueva (guardado,
+  pull, otra pestaña) es otra clave y la anterior se descarta al reconciliar con los resúmenes
+  (`notesVersion`). Además se verifica `text.length` guardado con la entrada antes de usarla.
+- **Ciclo de vida:** la caché y el Worker pertenecen al `Workspace` de la bóveda abierta (se crean al
+  montarlo y se destruyen al desmontarlo: cambiar de bóveda, ir a `/vaults`, **cerrar sesión** —0005
+  destruye la réplica en el logout y el `Workspace` se desmonta antes—): `dispose()` termina el
+  Worker y vacía el `Map`. Ningún dato sobrevive a la sesión.
+- Sólo se usa la caché si el texto que se abre **es** el `content` guardado de esa revisión (lectura y
+  apertura en Visual); un borrador o el texto compuesto de Código se parsean como hoy.
+
+### 10.5 Cuándo se precalcula (sin degradar RNF-001 de 0009)
+`editor/markdown/precompute.ts` (programador, en el chunk de entrada, ~2 KiB) dentro del `Workspace`:
+- **Candidatas:** notas activas de la bóveda con `content` ≥ 32 KiB. El índice de resúmenes de
+  `noteStore` gana `size` (longitud de `content`, calculada al indexar: el índice ya lee el documento
+  completo), así el programador no lee cuerpos para decidir.
+- **Prioridad:** (1) la fila del árbol bajo el puntero o con el foco (`pointerenter`/`focus`, petición
+  inmediata: el clic suele llegar cientos de ms después y la tecla Enter tras el foco); (2) las notas
+  del historial de la bóveda (RF-057), más recientes primero; (3) las de carpetas desplegadas; (4) el
+  resto, en orden de árbol.
+- **Cuándo:** tras montar el `Workspace` y tras cada `notesVersion` (sync/pull/otra pestaña) se
+  reconcilian las candidatas; el trabajo en el hilo principal (leer el cuerpo con `notes.get`,
+  `postMessage`) va en `requestIdleCallback` (una nota por franja, `timeout` 2 s), **una sola nota en
+  el Worker a la vez**, y se pausa mientras se abre una nota o el árbol se re-renderiza. Al vaciarse la
+  cola se emite `performance.mark("synapse:precompute-idle")` (señal para las pruebas; sin efecto
+  funcional).
+- **No degradación:** el parseo nunca corre en el hilo principal fuera de la apertura en frío; T-139
+  mide RNF-001 de 0009 (1000 notas, p95 ≤ 150 ms) **con el precálculo activo** sobre una bóveda con 40
+  notas ≥ 32 KiB y exige 0 `longtask` > 50 ms atribuibles al programador.
+
+### 10.6 Apertura en frío (nota no precalculada)
+- Si el parseo de esa clave está **en vuelo** en el Worker (p. ej. empezó al pasar el puntero), el
+  editor espera esa promesa en vez de repetir el parseo en el hilo principal.
+- Si no está ni en caché ni en vuelo, se parsea en el hilo principal como hoy (con §10.1 y §10.2), sin
+  esperar a la cola. Coste medido con ids + `content-visibility` (`final.json`, `baseline+H+CV`):
+  p95 **106 ms** a 51 KiB, **154 ms** a 101 KiB, **194 ms** a 181 KiB. Por tanto una apertura en frío
+  de una nota ≳ 100 KiB **no** cumple 150 ms → **B-1**.
+- Cuándo hay frío en la práctica: primeros segundos tras cargar la página antes de que termine el
+  precálculo, una nota grande recién llegada por el pull, o una apertura programática (rechazo →
+  "Corregir") de una nota que no estaba en cola.
+
+### 10.7 BLOQUEADOR B-1 — apertura en frío de notas ≳ 100 KiB
+RNF-001 dice "una nota de referencia de ~200 KiB … DEBE mostrarse legible en lectura en p95 ≤ 150 ms"
+sin distinguir si estaba precalculada. Con este diseño se cumple para la nota **precalculada tras un
+sync realista** (estimado con el clon: 168,5 − 108,6 + 5 ≈ **65 ms** de mediana y ≈ **90 ms** de p95;
+el techo con caché total medido fue `static+CV+C` p95 32 ms), pero la apertura **en frío** de una nota
+de 181 KiB queda en ≈ 194 ms p95. Ninguna corrección de raíz restante la baja de 150 ms sin cambiar
+qué significa "legible" (el render progresivo no cumple el RNF tal como está escrito, ya medido).
+**Decisión de producto pedida a AIRA/Carlos:** **Recomendación:** (i) RNF-001 se verifica sobre la
+apertura de una nota precalculada tras un sync realista (§10.8 a), p95 ≤ 150 ms, **sin cambio de
+umbral**; (ii) la apertura en frío se informa aparte con dos topes de no regresión: notas ≤ 64 KiB
+p95 ≤ 150 ms también en frío y la nota de referencia de ~200 KiB p95 ≤ 220 ms en frío; (iii) la
+redacción de RNF-001 se enmienda en spec §7 para decirlo. Alternativa: exigir 150 ms también en frío
+(no alcanzable con Milkdown 7.22.3 y ADR-010 sin cambiar de editor o de definición de "legible").
+**Hasta la decisión, T-138 (b) sólo informa** y T-050 cierra con (a).
+
+### 10.8 Medición honesta (sustituye a la sonda de T-050)
+La sonda actual reabre la misma nota 30 veces: con caché se "aprobaría" midiendo sólo aciertos
+calientes de la misma página. `e2e/content-perf.spec.ts` pasa a tres pruebas; cada muestra es la
+**primera** apertura de esa nota en esa página, y la ruta tomada se demuestra con marcas
+(`synapse:parse:cache-hit` / `synapse:parse:cold` / `synapse:parse:inflight`) leídas de
+`performance.getEntriesByType("mark")`:
+- **(a) `0010 RNF-001 precalculada` (criterio de RNF-001):** bóveda sembrada con 200 notas (3 de
+  181/120/64 KiB, el resto ~4 KiB). 10 contextos de navegador **nuevos** (sesión recién abierta, réplica
+  vacía → pull completo); en cada uno se espera "Sincronizado" y la marca `synapse:precompute-idle`
+  (tope 5 s: si no llega, falla) y se abren las 3 notas grandes una vez cada una → 30 muestras, todas
+  con `cache-hit`. **p95 ≤ 150 ms** (clic → primer y último párrafo en el DOM), tareas largas ≤ 200 ms.
+- **(b) `0010 RNF-001 en frío` (informe aparte, umbral según B-1):** contexto nuevo; clic en la nota de
+  181 KiB en cuanto el árbol aparece, antes de `precompute-idle`, exigiendo la marca `cold`; 30
+  contextos. Se imprime mediana/p95; y lo mismo para la nota de 64 KiB.
+- **(c) `0010 RNF-001 con puntero` (informe):** apertura con 150 ms de *hover* previo en contexto nuevo
+  sin esperar al precálculo; registra qué ruta se tomó (`inflight`/`cache-hit`/`cold`) y la cifra.
+- La sonda antigua (misma nota reabierta) se **retira**; T-050 queda abierta hasta que (a) pase.
+
+### 10.9 ADR-010, seguridad y presupuesto
+- **ADR-010:** se mantiene Milkdown 7.22.3 + CodeMirror 6. No se sustituye ni se bifurca ninguna pieza
+  de Milkdown: se usa su API pública (`parserCtx`, `remarkCtx`, `schemaCtx`, `ParserState` de
+  `@milkdown/transformer`, `headingIdGenerator`) desde un plugin propio (`editor/markdown/cachedParser.ts`)
+  que envuelve `parserCtx` entre `ParserReady` y `EditorStateReady`. La serialización (`remark-stringify`)
+  no cambia.
+- **Seguridad (Art. 5, RNF-003):** el Worker es un módulo del mismo origen, sin acceso al DOM; recibe
+  sólo el texto de la nota y devuelve JSON que el hilo principal re-hidrata con `JSON.parse` y pasa por
+  el **mismo** esquema y los mismos `toDOM` (`safeLink`/`safeImage`): no hay ruta nueva hacia el DOM.
+  La caché no persiste nada y se destruye con el `Workspace` (logout incluido). Hoy no hay CSP en el
+  backend; si se añade, necesitará `worker-src 'self'` (anotado en `frontend/src/README.md`).
+- **Presupuesto (RNF-002):** chunk propio del Worker **44,4 KiB gzip** (medido: `unified` +
+  `remark-parse` + `remark-gfm` + micromark; duplica código que ya está en el chunk del editor, pero
+  fuera de la entrada y del editor); entrada +~2 KiB (caché + programador, sin Milkdown); editor
+  +~1 KiB (`cachedParser`, `headingIds`). `check-bundle.mjs` gana: chunk del Worker ≤ 46 KiB gzip y
+  ninguna importación estática de él desde la entrada o el editor.
+
+### 10.10 Archivos y tareas
+Archivos nuevos (todos dentro de `covers`: `frontend/src/editor/**`, `frontend/src/notes/noteStore.ts`,
+`frontend/e2e/**` de 0010): `editor/markdown/headingIds.ts`, `editor/markdown/parseStage.ts`,
+`editor/markdown/parseWorker.ts`, `editor/markdown/parseCache.ts`, `editor/markdown/precompute.ts`,
+`editor/markdown/cachedParser.ts` y sus tests; cambios en `notes/noteStore.ts` (`size` en el resumen),
+`notes/VaultWorkspacePage.tsx` y `notes/NoteSidebar.tsx` (propiedad y *hover/focus*),
+`editor/MilkdownView.tsx`, `editor/editor.css`, `e2e/content-perf.spec.ts`, `e2e/fixtures.ts`,
+`scripts/check-bundle.mjs`. Tareas T-124…T-139 (bloque "E2" de `tasks.md`), que se ejecutan **antes**
+de seguir con F.

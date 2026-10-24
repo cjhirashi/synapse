@@ -13,7 +13,7 @@ actualizado: 2026-10-24
 > humano propio**: el Gate 3 es el chequeo automático de cobertura, orden y `CHECK`/`EXPECT`.
 > **Orden de method.md v1.9 (maquetación primero):** 0 línea base → A re-anclajes → B capturas de
 > referencia → C comprobaciones visuales en rojo + `test:bundle` → D tokens y maquetación de los 7
-> componentes con notas sembradas → **E revisión visual temprana (T-047…T-050)** → F lógica
+> componentes con notas sembradas → **E revisión visual temprana (T-047…T-050)** → **E2 Enmienda 1: parseo precalculado (T-124…T-139)** → F lógica
 > (desde T-051) → G RNF → H validación del experto-ux-ui → I documentación → J verificación final.
 > **Ninguna tarea de lógica ni de backend antes de T-051** (la revisión temprana T-047…T-050 la precede).
 
@@ -223,6 +223,59 @@ actualizado: 2026-10-24
 - [ ] T-050 — Sonda de rendimiento: abrir en lectura la nota de ~200 KiB (sin resaltado ni Mermaid todavía), 30 aperturas a 1440 (`e2e/content-perf.spec.ts`, prueba `0010 RNF-001 sonda`) (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --grep "sonda"`
   - EXPECT: imprime mediana y p95; p95 ≤ 150 ms. Si Milkdown solo ya supera 150 ms, se **detiene** el avance y se eleva como hallazgo (riesgo de PLAN-0010 §7), sin parche.
+  - **Enmienda 1 (PLAN-0010 §10):** la sonda falló (p95 204,4 ms, 181 KiB). La reapertura de la misma nota se retira como método (con caché sería un acierto engañoso); T-050 se cierra con T-138 (a).
+
+### E2 · Enmienda 1 — parseo precalculado (Directiva de Pausa, PLAN-0010 §10; antes de seguir con F)
+> T-050 sigue **abierta** hasta que T-138 (a) pase. B-1 (apertura en frío ≳ 100 KiB) espera
+> decisión de AIRA/Carlos: hasta entonces T-138 (b) sólo informa.
+- [ ] T-124 [rojo] — `editor/markdown/headingIds.test.ts` + `MilkdownView.test.tsx`: montar en lectura despacha **0** transacciones (espía en `view.dispatch`) y los ids de encabezado del DOM son idénticos a los que hoy pone `syncHeadingIdPlugin` (corpus `e2e/content-notes.ts` con duplicados y encabezados vacíos) (cubre RNF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/markdown/headingIds.test.ts src/editor/MilkdownView.test.tsx -t "RNF-001"`
+  - EXPECT: falla: 1 `dispatch` al montar y `headingIds` no existe.
+- [ ] T-125 — `editor/markdown/headingIds.ts` (mismo `headingIdGenerator`, misma regla `-#n`) aplicado al documento recién parseado (cubre RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor`
+  - EXPECT: `passed`; 0 `dispatch` al montar; ids iguales.
+- [ ] T-126 [rojo] — `notes/layoutCss.test.ts`: `content-visibility: auto` + `contain-intrinsic-size` sólo en `.milkdown-view[data-mode="read"] .ProseMirror > *` (y nunca en Visual) (cubre RNF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/layoutCss.test.ts -t "content-visibility"`
+  - EXPECT: falla (regla ausente).
+- [ ] T-127 — Regla CSS + `data-mode` en `MilkdownView` + `measure` de `fixtures.ts` con `scrollIntoViewIfNeeded`; sin regresión visual (cubre RNF-001, RNF-005) [zona: estilos]
+  - CHECK: `cd frontend && npx vitest run src && CV`
+  - EXPECT: vitest `passed`; `content-visual` igual que tras T-049 (mismas V-* en verde); capturas `prose-*`, `table-*` leídas sin cambios visibles.
+- [ ] T-128 [rojo] — `editor/markdown/parseStage.test.ts` (equivalencia): para todo el corpus (`content-notes.ts`, casos de `frontmatter-yaml.cases.json`, notas de pruebas de 0008) el documento desde mdast cacheado es `eq` a `parserCtx(text)` del editor; mismas extensiones de parseo (`micromarkExtensions`, `fromMarkdownExtensions`) que el procesador del editor; `npm ls unified remark-parse remark-gfm micromark` sin duplicados (cubre RNF-001, RNF-003) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/markdown/parseStage.test.ts && npm ls unified remark-parse remark-gfm micromark | grep -c deduped`
+  - EXPECT: falla al importar `./parseStage` / `./cachedParser`.
+- [ ] T-129 [rojo] — `scripts/check-bundle.mjs`: chunk del Worker de parseo presente, ≤ 46 KiB gzip, sin importación estática desde la entrada ni el editor; entrada y editor dentro del presupuesto (cubre RNF-002) [zona: sistema]
+  - CHECK: `cd frontend && npm run build && npm run test:bundle`
+  - EXPECT: falla "chunk parseWorker ausente".
+- [ ] T-130 — `editor/markdown/parseStage.ts` (`parseMarkdownToJson`: `unified().use(remarkParse).use(remarkGfm)`, con `position`), `editor/markdown/parseWorker.ts` (módulo Worker) y `editor/markdown/cachedParser.ts` (plugin que envuelve `parserCtx`: `JSON.parse` → `remarkCtx.runSync(tree, text)` → `ParserState` → `headingIds`; marcas `synapse:parse:*`) (cubre RNF-001, RNF-002) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor && npm run build && npm run test:bundle`
+  - EXPECT: `passed`; Worker en chunk propio ≤ 46 KiB gzip; entrada ≤ 157 020 B.
+- [ ] T-131 [rojo] — `editor/markdown/parseCache.test.ts` (Worker simulado): clave `{id}@{rev}`, guarda cadenas, sólo `content` ≥ 32 KiB, LRU por bytes con tope 24 MiB, peticiones en vuelo deduplicadas, revisión nueva invalida, verificación de longitud, fallo del Worker → sin entrada y sin excepción, `dispose()` termina el Worker y vacía; ninguna escritura en `indexedDB`/`localStorage`/`sessionStorage` (cubre RNF-001, RNF-003) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/markdown/parseCache.test.ts`
+  - EXPECT: falla al importar `./parseCache`.
+- [ ] T-132 — `editor/markdown/parseCache.ts` (cubre RNF-001, RNF-003) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor/markdown`
+  - EXPECT: `passed`.
+- [ ] T-133 [rojo] — `noteStore.test.ts`: los resúmenes llevan `size` (longitud de `content`) y se actualiza con cada revisión; `editor/markdown/precompute.test.ts` (reloj e *idle* simulados): candidatas ≥ 32 KiB, prioridad *hover*/foco > historial > carpetas desplegadas > resto, una nota a la vez, pausa durante una apertura, reconciliación tras `notesVersion`, marca `synapse:precompute-idle`, `dispose` (cubre RNF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts src/editor/markdown/precompute.test.ts`
+  - EXPECT: fallan (`size` ausente; `./precompute` no existe).
+- [ ] T-134 — `size` en el índice de `notes/noteStore.ts` + `editor/markdown/precompute.ts` (cubre RNF-001) [zona: almacén]
+  - CHECK: `cd frontend && npx vitest run src/notes src/editor/markdown`
+  - EXPECT: `passed`; `tree.perf.test.tsx` (`npm run test:perf`) p95 < 300 ms sin cambio relevante.
+- [ ] T-135 [rojo] — Integración (jsdom): el `Workspace` crea la caché y el programador y los destruye al desmontar (cambio de bóveda y cierre de sesión: Worker terminado, `Map` vacío); `pointerenter`/`focus` en una fila del árbol pide su precálculo con prioridad; abrir una nota precalculada **no** llama a `remark.parse` en el hilo principal (espía) y da el mismo DOM que en frío; un borrador distinto del `content` guardado no usa la caché; con el parseo en vuelo, el editor lo espera (cubre RNF-001, RNF-003) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx src/editor/MilkdownView.test.tsx -t "precalc"`
+  - EXPECT: fallan.
+- [ ] T-136 — Cableado: `VaultWorkspacePage.tsx` (propiedad y `dispose`), `NoteSidebar.tsx` (*hover*/foco), `NoteEditor`/`MilkdownView` (caché en lectura y apertura en Visual del `content` guardado; espera del parseo en vuelo) (cubre RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src && npm run typecheck`
+  - EXPECT: `passed`; typecheck exit 0.
+- [ ] T-137 [rojo] — `e2e/content-perf.spec.ts` redefinido (PLAN-0010 §10.8): retira la sonda de reaperturas; `0010 RNF-001 precalculada` (10 contextos nuevos × 3 notas grandes, espera "Sincronizado" + `synapse:precompute-idle` ≤ 5 s, exige marca `cache-hit`), `0010 RNF-001 en frío` (exige `cold`; 181 y 64 KiB) y `0010 RNF-001 con puntero` (150 ms de *hover*); `seedContent` con la bóveda de 200 notas (3 grandes) (cubre RNF-001) [zona: sistema]
+  - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --list`
+  - EXPECT: lista las 3 pruebas nuevas y ya no la "sonda"; contra el código anterior a T-130, (a) falla por ausencia de la marca `cache-hit`.
+- [ ] T-138 — Correr (a), (b) y (c) en Chromium real y anotar cifras en `history.md`; **cierra T-050** si (a) pasa (cubre RNF-001) [zona: sistema]
+  - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts`
+  - EXPECT: (a) `passed` con p95 ≤ 150 ms y todas las muestras `cache-hit`; (b) y (c) imprimen mediana/p95 por tamaño (sin umbral hasta la decisión B-1; con B-1 aceptado según la recomendación: 64 KiB ≤ 150 ms y ~200 KiB ≤ 220 ms en frío).
+- [ ] T-139 — No degradación de RNF-001 de 0009 con el precálculo activo: `workspace-perf.spec.ts` + variante con 40 notas ≥ 32 KiB entre las 1 000, `PerformanceObserver('longtask')` durante el precálculo (cubre RNF-001) [zona: sistema]
+  - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/workspace-perf.spec.ts`
+  - EXPECT: p95 ≤ 150 ms en ambas variantes; 0 tareas largas > 50 ms atribuibles al programador.
 
 ### F · Lógica
 **F.0 · Dependencias**
@@ -441,7 +494,7 @@ actualizado: 2026-10-24
 - [ ] T-115 — `frontend/README.md`: dependencias nuevas, `npm run test:bundle`, `VISUAL_OUT_DIR=/tmp/s10/e2e`, `content-visual`/`content-perf` [doc]
   - CHECK: `grep -c "test:bundle\|content-visual\|content-perf" frontend/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-116 — `frontend/src/README.md`: módulos nuevos (`folders`, `noteHistory`, `frontmatter`, `properties`, `breadcrumb`, `highlight/`, `mermaid/`, *node views*, `Notice`, `NoteMenu`, `NoteBreadcrumb`), sesión D1, carpeta activa, historial, carga diferida [doc]
+- [ ] T-116 — `frontend/src/README.md`: módulos nuevos (`folders`, `noteHistory`, `frontmatter`, `properties`, `breadcrumb`, `highlight/`, `mermaid/`, *node views*, `Notice`, `NoteMenu`, `NoteBreadcrumb`), sesión D1, carpeta activa, historial, carga diferida, y (Enmienda 1) `editor/markdown/` — caché de parseo por `(id, rev)` en memoria, Worker de parseo, programador de precálculo y la nota `worker-src 'self'` si algún día hay CSP [doc]
   - CHECK: `grep -c "noteHistory\|frontmatter.ts\|NoteBreadcrumb\|codeBlockView\|highlight/" frontend/src/README.md`
   - EXPECT: ≥ 5.
 - [ ] T-117 — Re-anclajes de cierre en `0007`, `0008` y `0009` `spec.md` (ancla al commit de cierre) [doc] [P-15]
@@ -536,11 +589,11 @@ actualizado: 2026-10-24
 | RF-063 | T-011, T-015, T-036, T-037, T-038, T-039, T-106, T-120, T-121 | editor/breadcrumb.test.ts, editor/NoteBreadcrumb.test.tsx (anchos simulados); V-10 (1440/1024/390). | Pendiente |
 | RF-064 | T-003, T-015, T-042, T-043, T-047, T-120, T-121 | notes/layoutCss.test.ts; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009). | Pendiente |
 | RF-065 | T-100, T-101, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, notes/VaultWorkspacePage.test.tsx (renombrar desde el menú o el árbol actualiza las migas sin recargar). | Pendiente |
-| RNF-001 | T-050, T-102, T-103, T-120, T-121 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pendiente |
-| RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pendiente |
-| RNF-003 | T-020, T-027, T-078, T-090, T-105, T-120, T-121 | editor/securityGuard.test.ts, editor/mermaid/renderMermaid.test.ts, editor/MilkdownView.test.tsx, editor/PropertiesPanel.test.tsx (<script> y URLs com… | Pendiente |
+| RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pendiente |
+| RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121, T-129, T-130 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pendiente |
+| RNF-003 | T-020, T-027, T-078, T-090, T-105, T-120, T-121, T-128, T-131, T-132, T-135 | editor/securityGuard.test.ts, editor/mermaid/renderMermaid.test.ts, editor/MilkdownView.test.tsx, editor/PropertiesPanel.test.tsx (<script> y URLs com… | Pendiente |
 | RNF-004 | T-016, T-018, T-019, T-046, T-106, T-107, T-120, T-121 | Contraste: editor/contrast.test.ts (§5.5); teclado y nombres: tests de componentes con getByRole; diagramas con role="img" + nombre (editor/codeBlockV… | Pendiente |
-| RNF-005 | T-008, T-009, T-012, T-047, T-048, T-049, T-106, T-120, T-121, T-123 | frontend/e2e/content-visual.spec.ts (V-1…V-16, claro/oscuro, 1440/1024/390) + frontend/e2e/fixtures.ts (seedContent) + capturas de referencia (§5.2, P… | Pendiente |
+| RNF-005 | T-008, T-009, T-012, T-047, T-048, T-049, T-106, T-120, T-121, T-123, T-127 | frontend/e2e/content-visual.spec.ts (V-1…V-16, claro/oscuro, 1440/1024/390) + frontend/e2e/fixtures.ts (seedContent) + capturas de referencia (§5.2, P… | Pendiente |
 | doc: contracts/frontmatter-yaml.cases.json | T-052, T-108 | frontmatter.test.ts | Pendiente |
 | doc: 0008 note.schema.json (delta de path) | T-064, T-067, T-109 | test_note_contract.py | Pendiente |
 | doc: ADR-006 extensión de tokens | T-019, T-110 | contrast.test.ts | Pendiente |
@@ -553,7 +606,7 @@ actualizado: 2026-10-24
 | doc: 0007/0008/0009 spec.md (re-anclajes) | T-005, T-006, T-007, T-117 | gate (drift) | Pendiente |
 | doc: 0008 diagrams / ARCHIFY.md (sin cambio) | T-118 | — | Pendiente |
 | doc: .harness/memory/state.md | T-119 | — | Pendiente |
-| doc: plan.md (enmienda P-17 y medidas de referencia) | T-010, T-011 | — | Pendiente |
+| doc: plan.md (enmienda P-17, medidas de referencia y Enmienda 1 §10) | T-010, T-011 | — | Pendiente |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre cuando la spec pase a `implemented`.
