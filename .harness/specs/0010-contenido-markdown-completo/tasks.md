@@ -211,7 +211,7 @@ actualizado: 2026-10-24
   - EXPECT: `passed` en claro/oscuro.
 
 ### E · Revisión visual temprana (antes de cualquier lógica o backend)
-- [ ] T-047 — Corrida de percepción completa de lo maquetado: `CV --grep "0010 V-(1|2|3|4|5|6|10|11|12|13|14) "` en claro/oscuro a 1440/1024/390 y tabla de medidas R-1…R-16 en `history.md` (cubre RF-009, RF-026, RF-037, RF-054, RF-064, RNF-005) [zona: sistema]
+- [x] T-047 — Corrida de percepción completa de lo maquetado: `CV --grep "0010 V-(1|2|3|4|5|6|10|11|12|13|14) "` en claro/oscuro a 1440/1024/390 y tabla de medidas R-1…R-16 en `history.md` (cubre RF-009, RF-026, RF-037, RF-054, RF-064, RNF-005) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(1|2|3|4|5|6|10|11|12|13|14) " && cat /tmp/s10/e2e/measurements.json | python3 -I -m json.tool | head -80`
   - EXPECT: todo en verde salvo las aserciones de resaltado real (`sx-*` en V-5) y del bloque YAML (V-6), pendientes de F; medidas dentro de tolerancia.
 - [ ] T-048 — Comparación lado a lado: capturas de la app frente a `mockup-*` (panel, cita, código en línea, vista Código, barra), `reference/obsidian-breadcrumb.png` (migas, flechas, lápiz, ⋮) y `career-*` (tabla, bloque de código, chasis Mermaid); revisión rápida del experto-ux-ui; hallazgos con severidad en `history.md` (cubre RNF-005) [zona: sistema]
