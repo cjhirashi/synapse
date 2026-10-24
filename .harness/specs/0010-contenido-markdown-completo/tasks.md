@@ -97,7 +97,7 @@ actualizado: 2026-10-24
 - [x] T-014 [rojo] — `0010 V-5` (bloque de código), `0010 V-6` (vista Código), `0010 V-7` (Mermaid), `0010 V-8` (error y fallo de carga), `0010 V-9` (zoom) (cubre RF-027, RF-029, RF-033, RF-046, RF-049, RF-052, RF-053) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(5|6|7|8|9) "`
   - EXPECT: fallan: sin cabecera de bloque ni `span.sx-*` (V-5), sin `sx-*` ni números de línea (V-6), sin `svg` de diagrama (V-7/V-8/V-9).
-- [ ] T-015 [rojo] — `0010 V-10` (encabezado contra la captura de Obsidian, P-17: separador `/`, truncado por segmento, lápiz, ⋮, "Adelante" atenuada, 43 px una línea a 1440/1024/390), `0010 V-11` (menú ⋮), `0010 V-12` (barra lateral: "Raíz", carpeta activa, "Crear en", "Nueva carpeta", pista) (cubre RF-002, RF-006, RF-043, RF-054, RF-056, RF-061, RF-063, RF-064) [zona: sistema]
+- [x] T-015 [rojo] — `0010 V-10` (encabezado contra la captura de Obsidian, P-17: separador `/`, truncado por segmento, lápiz, ⋮, "Adelante" atenuada, 43 px una línea a 1440/1024/390), `0010 V-11` (menú ⋮), `0010 V-12` (barra lateral: "Raíz", carpeta activa, "Crear en", "Nueva carpeta", pista) (cubre RF-002, RF-006, RF-043, RF-054, RF-056, RF-061, RF-063, RF-064) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(10|11|12) "`
   - EXPECT: fallan: sin `nav[aria-label="Ruta"]`, sin "Opciones de la nota", sin fila "Raíz".
 - [ ] T-016 [rojo] — `0010 V-13` (todo color computado ∈ tokens del tema), `0010 V-14` (reduced-motion), `0010 V-15` (red: chunks pedidos según la nota) (cubre RF-040, RNF-002, RNF-004) [zona: sistema]

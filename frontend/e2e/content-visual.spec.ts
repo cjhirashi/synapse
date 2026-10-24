@@ -490,3 +490,175 @@ for (const theme of THEMES) {
     await context.close();
   });
 }
+
+const HEADER = ".note-editor-header";
+
+// V-10 · encabezado fiel a `reference/obsidian-breadcrumb.png` (RF-054, RF-056, RF-063, RF-064; P-17; R-1, R-2, R-12)
+for (const { theme, size, key } of COMBOS) {
+  for (const deep of [false, true]) {
+    test(`0010 V-10 encabezado ${deep ? "con ruta profunda" : "con nota en la raíz"}, ${key} (RF-054, RF-056, RF-063, RF-064)`, async ({ browser, content }) => {
+      const target = deep ? note("deep") : note("root");
+      const { context, page } = await openContent(browser, content, target.key, { theme, size });
+      const header = page.locator(HEADER);
+      await expect(header).toBeVisible();
+      // R-1: 43 px y una sola línea sin scroll horizontal, a los tres anchos.
+      expectMeasure(`R-1 ${key}${deep ? " deep" : ""}`, "alto de la barra", (await measure(page, HEADER)).h, 43, 2);
+      const bar = await measure(page, HEADER);
+      expect(bar.scrollWidth, "la barra no desborda").toBeLessThanOrEqual(bar.clientWidth + 1);
+      await expectNoPageScroll(page);
+
+      // Orden y nombres: Atrás, Adelante, migas, lápiz, ⋮.
+      const back = header.getByRole("button", { name: "Atrás" });
+      const forward = header.getByRole("button", { name: "Adelante" });
+      const pencil = header.getByRole("button", { name: "Editar", exact: true });
+      const menu = header.getByRole("button", { name: "Opciones de la nota" });
+      for (const control of [back, forward, pencil, menu]) await expect(control).toBeVisible();
+      const nav = page.getByRole("navigation", { name: "Ruta" });
+      await expect(nav.locator("ol")).toBeVisible();
+      const name = nav.getByRole("heading", { level: 2 });
+      await expect(name).toHaveAttribute("aria-current", "page");
+      await expect(name).toHaveAttribute("title", target.path.replace(/\.md$/, ""));
+      const order = await Promise.all([back, forward, nav, pencil, menu].map(async (l) => (await l.boundingBox())!.x));
+      expect([...order].sort((a, b) => a - b), "orden visual = orden del DOM").toEqual(order);
+
+      // Todos los controles centrados en la misma línea (± 1) y de 28 × 28 (R-2).
+      const centers = await Promise.all([back, forward, pencil, menu, name].map(async (l) => { const b = (await l.boundingBox())!; return b.y + b.height / 2; }));
+      expect(Math.max(...centers) - Math.min(...centers), "una sola línea").toBeLessThanOrEqual(1);
+      for (const control of [back, forward, pencil, menu]) {
+        const b = (await control.boundingBox())!;
+        expectMeasure(`R-2w ${key}`, "ancho del control", b.width, 28, 1);
+        expectMeasure(`R-2h ${key}`, "alto del control", b.height, 28, 1);
+      }
+
+      // «Adelante» sin historial: deshabilitada y atenuada frente a un control activo.
+      await expect(forward).toBeDisabled();
+      expect(await forward.evaluate((el) => getComputedStyle(el).opacity)).toBe("0.5");
+      expect(await menu.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+
+      // Migas (R-12): carpetas 13 px `--text-secondary` de 28 px; nombre 13 px/600 `--text-primary`; separador `/`.
+      if (deep) {
+        const folders = nav.getByRole("button");
+        expect(await folders.count()).toBeGreaterThanOrEqual(1);
+        const first = folders.first();
+        expect(await first.evaluate((el) => getComputedStyle(el).textOverflow)).toBe("ellipsis");
+        expectMeasure(`R-12h ${key}`, "alto de la carpeta", (await first.boundingBox())!.height, 28, 1);
+        expectExact(`R-12c ${key}`, "color de la carpeta", await first.evaluate((el) => getComputedStyle(el).color), tokenColor(theme, "--text-secondary"));
+        await expect(nav.locator("li > span[aria-hidden='true']").first()).toHaveText("/");
+        await expect(nav.getByRole("button", { name: /^Proyectos/ })).toBeVisible();
+        // La primera carpeta y el nombre nunca desaparecen; a 1440 la ruta cabe completa.
+        const widths = await folders.evaluateAll((els) => els.map((el) => ({ clipped: el.scrollWidth > el.clientWidth })));
+        if (size.width === 1440) expect(widths.every((w) => !w.clipped), "1440: ruta completa").toBe(true);
+        else expect(widths.some((w) => w.clipped) || (await name.evaluate((el) => el.scrollWidth > el.clientWidth)), "estrecho: algún segmento truncado con «…»").toBe(true);
+      } else {
+        expect(await nav.getByRole("button").count(), "nota en la raíz: sólo el nombre").toBe(0);
+      }
+      expectExact(`R-12n ${key}`, "nombre 13 px", (await measure(page, `${HEADER} h2`)).fontSize, "13px");
+      expect((await measure(page, `${HEADER} h2`)).color).toBe(tokenColor(theme, "--text-primary"));
+      expect(await name.evaluate((el) => getComputedStyle(el).fontWeight)).toBe("600");
+
+      await shot(page, `header${deep ? "-collapsed" : ""}-${key}`, { clip: { x: 296, y: 0, width: size.width - 296, height: 60 } });
+      await context.close();
+    });
+  }
+}
+
+test("0010 V-10 encabezado en edición cabe en una línea a 390 (RF-064)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "deep", { theme: "dark", size: MOBILE, edit: true });
+  const bar = await measure(page, HEADER);
+  expectMeasure("R-1 edición 390", "alto de la barra", bar.h, 43, 2);
+  expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth + 1);
+  // Sólo iconos, con el mismo nombre accesible.
+  for (const name of ["Visual", "Código", "Guardar", "Leer"]) await expect(page.locator(HEADER).getByRole("button", { name, exact: true })).toBeVisible();
+  const save = (await page.locator(HEADER).getByRole("button", { name: "Guardar" }).boundingBox())!;
+  expect(save.width, "Guardar sólo icono").toBeLessThanOrEqual(36);
+  await expectNoPageScroll(page);
+  await shot(page, "header-edit-dark-390", { clip: { x: 0, y: 0, width: 390, height: 120 } });
+  await context.close();
+});
+
+// V-11 · menú ⋮ (RF-061; R-13)
+for (const theme of THEMES) {
+  test(`0010 V-11 menú de la nota, ${theme} (RF-061)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "deep", { theme, size: SIZES[1] });
+    const button = page.getByRole("button", { name: "Opciones de la nota" });
+    await expect(button).toHaveAttribute("aria-haspopup", "menu");
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await button.click();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    // Orden de P-4 y la acción destructiva al final, separada.
+    await expect(menu.getByRole("menuitem")).toHaveText(["Renombrar o mover", "Copiar ruta", "Ver en Código", "Borrar"]);
+    // En un portal (hijo directo de <body>), dentro del viewport y no recortado.
+    expect(await menu.evaluate((el) => el.parentElement === document.body)).toBe(true);
+    const box = (await menu.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(SIZES[1].width);
+    expect(box.y + box.height).toBeLessThanOrEqual(SIZES[1].height);
+    // R-13: ancho ≥ 200, ítem de 32, radio 10, `--bg-secondary`.
+    expect(box.width).toBeGreaterThanOrEqual(200 - 1);
+    expectMeasure(`R-13h ${theme}`, "alto del ítem", (await menu.getByRole("menuitem").first().boundingBox())!.height, 32, 1);
+    const style = await measure(page, '[role="menu"]');
+    expectExact(`R-13r ${theme}`, "radio", style.radius, "10px");
+    expectExact(`R-13bg ${theme}`, "fondo = --bg-secondary", style.bg, tokenColor(theme, "--bg-secondary"));
+    expectExact(`R-13d ${theme}`, "«Borrar» en --danger-text", await menu.getByRole("menuitem", { name: "Borrar" }).evaluate((el) => getComputedStyle(el).color), tokenColor(theme, "--danger-text"));
+    await shot(page, `menu-${theme}`);
+    // Esc cierra y devuelve el foco al botón.
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
+    await expect(button).toBeFocused();
+    await context.close();
+  });
+}
+
+// V-12 · barra lateral: «Raíz», carpeta activa, «Crear en», «Nueva carpeta», pista (RF-002, RF-006, RF-043; R-14)
+for (const { theme, size, key } of COMBOS) {
+  test(`0010 V-12 barra lateral de carpetas, ${key} (RF-002, RF-006, RF-043)`, async ({ browser, content }) => {
+    const { context, page } = await openWorkspace(browser, content, { theme, size });
+    const tree = page.getByRole("tree", { name: "Notas" });
+    const items = tree.getByRole("treeitem");
+    await expect(items.first()).toHaveAccessibleName(/Raíz/);
+    expectMeasure(`R-14r ${key}`, "alto de «Raíz»", (await items.first().boundingBox())!.height, 27, 1);
+    await expect(items.first()).toHaveAttribute("aria-current", "true");
+    const create = page.locator("#note-create-in");
+    await expect(create).toContainText("Crear en: Raíz");
+    expect(await create.getAttribute("aria-live")).toBe("polite");
+    expectMeasure(`R-14f ${key}`, "«Crear en» 12 px", parseFloat(await create.evaluate((el) => getComputedStyle(el).fontSize)), 12, 0);
+
+    // Carpeta activa: se marca con `aria-current`, fondo `--bg-tertiary`, peso 600 y barra inset de 3 px.
+    const folder = tree.getByRole("treeitem", { name: "Tablas", exact: true });
+    await folder.click();
+    await expect(folder).toHaveAttribute("aria-current", "true");
+    await expect(items.first()).not.toHaveAttribute("aria-current", "true");
+    await expect(create).toContainText("Crear en: Tablas");
+    const active = await measure(page, '.note-tree-folder[aria-current="true"]');
+    expectExact(`R-14bg ${key}`, "carpeta activa = --bg-tertiary", active.bg, tokenColor(theme, "--bg-tertiary"));
+    expect(await page.locator('.note-tree-folder[aria-current="true"]').evaluate((el) => getComputedStyle(el).fontWeight)).toBe("600");
+    expect(await page.locator('.note-tree-folder[aria-current="true"]').evaluate((el) => getComputedStyle(el).boxShadow)).toContain("3px");
+
+    // Pista de `/` asociada a los campos y «Nueva carpeta».
+    await expect(page.getByText("Usa / para crear subcarpetas")).toBeVisible();
+    await expect(page.getByLabel("Título de la nota nueva (opcional)")).toHaveAttribute("aria-describedby", /\S/);
+    await page.getByRole("button", { name: "Nueva carpeta" }).click();
+    const nameInput = page.getByLabel("Nombre de la carpeta");
+    await expect(nameInput).toBeFocused();
+    await expect(nameInput).toHaveAttribute("aria-describedby", /\S/);
+    await expect(page.getByRole("button", { name: "Crear carpeta" })).toBeVisible();
+    await shot(page, `sidebar-folders-${key}`, { clip: { x: 0, y: 0, width: 300, height: size.height } });
+    await page.keyboard.press("Escape");
+    await expect(nameInput).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Nueva carpeta" })).toBeFocused();
+    await expectNoPageScroll(page);
+    await context.close();
+  });
+}
+
+// V-12 · crear carpeta de verdad y el error de duplicada: depende de la lógica (RF-001, RF-003…RF-005)
+test("0010 V-12 crear una carpeta y rechazar una duplicada (RF-003, RF-004, RF-005)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: SIZES[0] });
+  await page.getByRole("button", { name: "Nueva carpeta" }).click();
+  await page.getByLabel("Nombre de la carpeta").fill("Tablas");
+  await page.getByRole("button", { name: "Crear carpeta" }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "Ya existe una carpeta con ese nombre" })).toBeVisible();
+  await context.close();
+});
