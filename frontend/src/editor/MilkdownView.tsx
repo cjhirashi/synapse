@@ -243,5 +243,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   // Al desmontar (y entre las dos pasadas de StrictMode) se destruye el editor.
   useEffect(() => stop, []);
 
-  return <div className="milkdown-view" ref={host} />;
+  // `data-mode` activa `content-visibility: auto` en los bloques del documento SÓLO en lectura
+  // (RNF-001, PLAN-0010 §10.2): en Visual no se aplica (riesgo con caret/selección sin beneficio).
+  return <div className="milkdown-view" data-mode={readOnly ? "read" : "edit"} ref={host} />;
 }

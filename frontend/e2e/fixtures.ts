@@ -331,6 +331,10 @@ export interface Measure {
 /** Caja y estilos computados del primer elemento que casa con `selector`. */
 export async function measure(page: Page, selector: string): Promise<Measure> {
   return page.locator(selector).first().evaluate((el) => {
+    // RNF-001 (PLAN-0010 §10.2): con `content-visibility: auto` en lectura, un bloque fuera de la vista
+    // conserva su tamaño reservado (`contain-intrinsic-size`) hasta que entra en pantalla. Se lleva a la
+    // vista antes de medir para obtener su caja real (Chromium: `scrollIntoViewIfNeeded`).
+    (el as unknown as { scrollIntoViewIfNeeded?: () => void }).scrollIntoViewIfNeeded?.();
     const r = el.getBoundingClientRect();
     const c = getComputedStyle(el);
     return {

@@ -860,6 +860,16 @@
   overflow-wrap: anywhere;
 }
 
+/* RNF-001 (PLAN-0010 §10.2): en LECTURA, cada bloque de primer nivel del documento usa
+   `content-visibility: auto` para saltarse el pintado/layout mientras está fuera de la vista
+   (−56 ms en la nota de 181 KiB). `contain-intrinsic-size` le da un tamaño reservado estable para
+   que la barra de scroll no salte. Nunca en Visual: ahí el caret, la selección y `coordsAtPos`
+   sobre bloques omitidos serían un riesgo sin beneficio medido. */
+.milkdown-view[data-mode="read"] .ProseMirror > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3em;
+}
+
 /* Foco del editor (T-049, M-1): el contorno va en el contenedor, que tiene aire (padding compensado con margen
    negativo para no mover el texto), y no pegado al texto del `.ProseMirror`. */
 .milkdown-view {

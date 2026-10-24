@@ -115,6 +115,20 @@ test("RF-039: la casilla de tarea mide 16 × 16 con borde de 2 px en --text-seco
   expect(mark).toMatch(/border-radius: var\(--radius-xs\)/);
 });
 
+// SPEC-0010 RNF-001 (PLAN-0010 §10.2): `content-visibility: auto` saca del pintado los bloques fuera
+// de pantalla (−56 ms en la nota de 181 KiB). SÓLO en lectura: en Visual el caret, la selección y
+// `coordsAtPos` sobre bloques omitidos serían un riesgo sin beneficio medido.
+test("RNF-001: content-visibility sólo en los bloques del documento en lectura, nunca en Visual", () => {
+  const css = read("../editor/editor.css");
+  const body = rule(css, '.milkdown-view[data-mode="read"] .ProseMirror > *');
+  expect(body).toMatch(/content-visibility: auto/);
+  expect(body).toMatch(/contain-intrinsic-size: /);
+  // La única aparición de `content-visibility` es esa regla (extraída arriba por su selector de
+  // lectura): no hay ninguna versión para Visual (`data-mode="edit"` ni el selector sin `data-mode`).
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  expect(clean.match(/content-visibility/g)).toHaveLength(1);
+});
+
 // Los colores salen sólo de tokens (`var(--…)` o `color-mix` de tokens), nunca de literales.
 test.each([
   ["notes/notes.css", "notes.css"],
