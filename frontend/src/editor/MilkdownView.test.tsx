@@ -121,4 +121,19 @@ describe("MilkdownView", () => {
     expect(container.querySelector("script")).toBeNull();
     expect(container).toHaveTextContent("<script>");
   });
+
+  // RF-036: la node view del bloque de código no cambia el documento: el texto del `pre` es el del bloque
+  // (la cabecera queda fuera) y montar no emite ningún cambio, así que serializar da lo mismo que entró.
+  it("un bloque de código se pinta con su chasis y su contenido es exactamente el de la entrada", async () => {
+    const onChange = vi.fn();
+    const code = "uno\n\n  dos\tcon tab";
+    const { container, view } = await mount({ value: "```ts\n" + code + "\n```\n", onChange });
+    const block = container.querySelector(".code-block");
+    expect(block).not.toBeNull();
+    expect(block?.querySelector(".code-block-label")).toHaveTextContent("ts");
+    expect(block?.querySelector("pre")?.textContent).toBe(code);
+    expect(view.state.doc.child(0).textContent).toBe(code);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(onChange).not.toHaveBeenCalled();
+  });
 });
