@@ -122,7 +122,7 @@ actualizado: 2026-10-24
 - [x] T-021 — `editor/properties.ts` (`toRows`) + `editor/PropertiesPanel.tsx` + estilos (R-3, R-4) y montaje en lectura en `NoteEditor` (cubre RF-009, RF-010, RF-013) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-1 "`
   - EXPECT: vitest `passed`; V-1 `passed` en claro/oscuro y 3 anchos; capturas `props-read-*` leídas.
-- [ ] T-022 [rojo] — `properties.test.ts` (`convert`, `validateRows`, `parseNumberInput`, `fromRows` conserva complejos) + `editor/PropertiesForm.test.tsx` (columnas, nombres accesibles, añadir/quitar con foco y anuncios, cambio de tipo, errores con `aria-describedby`, resumen `role="alert"`, "Añadir propiedad" compacto sin propiedades) (cubre RF-010, RF-011, RF-013) [zona: test]
+- [x] T-022 [rojo] — `properties.test.ts` (`convert`, `validateRows`, `parseNumberInput`, `fromRows` conserva complejos) + `editor/PropertiesForm.test.tsx` (columnas, nombres accesibles, añadir/quitar con foco y anuncios, cambio de tipo, errores con `aria-describedby`, resumen `role="alert"`, "Añadir propiedad" compacto sin propiedades) (cubre RF-010, RF-011, RF-013) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/properties.test.ts src/editor/PropertiesForm.test.tsx`
   - EXPECT: fallan `convert`/`validateRows` y la importación de `PropertiesForm`.
 - [ ] T-023 — `properties.ts` (resto) + `editor/PropertiesForm.tsx` con estado local (sin guardar) + estilos (R-16, 390 apilado, `pointer:coarse`) montado en Visual (cubre RF-010, RF-011, RF-013) [zona: pantalla]
