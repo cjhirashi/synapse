@@ -74,13 +74,13 @@ actualizado: 2026-10-24
   - EXPECT: el archivo en el diff; 0007 en ✅.
 
 ### B · Capturas de referencia
-- [ ] T-008 — career-admin en **sólo lectura** (`http://localhost:8002`): script Playwright **fuera del repo** (`/tmp/s10/ref/career-capture.ts`, contenedor 1.56.0 con `--network host`) que navega a un recurso con tabla, bloque de código resaltado y Mermaid, y captura claro/oscuro a 1440 (y el Mermaid tras "acercar") (cubre RF-026, RF-033, RF-046, RF-052, RNF-005) [zona: sistema]
+- [x] T-008 — career-admin en **sólo lectura** (`http://localhost:8002`): script Playwright **fuera del repo** (`/tmp/s10/ref/career-capture.ts`, contenedor 1.56.0 con `--network host`) que navega a un recurso con tabla, bloque de código resaltado y Mermaid, y captura claro/oscuro a 1440 (y el Mermaid tras "acercar") (cubre RF-026, RF-033, RF-046, RF-052, RNF-005) [zona: sistema]
   - CHECK: `ls /tmp/s10/ref/career-{table,code,mermaid,mermaid-zoom}-{dark,light}.png | wc -l && python3 -I -c "import json;print(sorted(json.load(open('/tmp/s10/ref/career-geometry.json'))))"`
   - EXPECT: `8`; `career-geometry.json` con alto de fila de tabla, padding de celda, tamaño de etiqueta de lenguaje, fuente del `pre`, alto del área Mermaid y tamaño de los controles de zoom; el script no hace ningún `POST/PUT/PATCH/DELETE` (registro de red del script: 0 peticiones de escritura).
 - [x] T-009 — Mockup 1.1.4.4 renderizado en el contenedor (claro/oscuro, 1440/1024) y geometría de `.frontmatter`, `blockquote`, `code`, `.edit-view-code`/`.cm-*`, `.editor-topbar` (cubre RF-009, RF-029, RF-037, RF-038, RNF-005) [zona: sistema]
   - CHECK: `ls /tmp/s10/ref/mockup-{read,code}-{dark,light}-{1440,1024}.png | wc -l && test -s /tmp/s10/ref/mockup-geometry.json && echo ok`
   - EXPECT: `8` y `ok`; los valores coinciden con PLAN-0010 §5.4 (R-3, R-5, R-6, R-9; topbar 43 ± 2).
-- [ ] T-010 — Medidas de referencia copiadas: career-admin y mockup a `history.md`, y las de career-admin a la columna "Mockup / referencia" de PLAN-0010 §5.4 (R-7, R-8, R-11) [doc]
+- [x] T-010 — Medidas de referencia copiadas: career-admin y mockup a `history.md`, y las de career-admin a la columna "Mockup / referencia" de PLAN-0010 §5.4 (R-7, R-8, R-11) [doc]
   - CHECK: `git diff -- .harness/specs/0010-contenido-markdown-completo/plan.md | grep -c "career"`
   - EXPECT: ≥ 3 líneas cambiadas con las cifras medidas en T-008.
 - [x] T-011 — Enmienda del plan por **P-17**: §2.3-i (separador `/`, truncado por segmento con "…", lápiz en la barra en lugar de "Editar/Leer", menú ⋮), §5.3 V-10/V-11 y §5.4 R-12/R-13 medidos contra `reference/obsidian-breadcrumb.png` (alturas, separación, color atenuado de "Adelante"), §9 RF-054/RF-061/RF-063 (cubre RF-054, RF-056, RF-061, RF-063) [doc] [P-17]
@@ -88,7 +88,7 @@ actualizado: 2026-10-24
   - EXPECT: ≥ 5 menciones de P-17; ≥ 3 referencias a la captura (V-10, R-12, §2.3-i).
 
 ### C · Comprobaciones visuales en rojo y presupuesto de *bundle*
-- [ ] T-012 — `e2e/fixtures.ts`: `seedContent()` siembra por el push de `/sync` las notas de PLAN-0010 §5.2 (frontmatter de todos los tipos y 12 propiedades, YAML heredado válido y corrompido, tabla ancha, 11 lenguajes + desconocido + sin lenguaje, cita, código en línea, tareas, Mermaid válido/inválido/ancho, ruta profunda, nota en la raíz, nota de ~200 KiB con 50 bloques y 5 Mermaid) + prueba de humo `0010 V-0 siembra` (cubre RNF-005) [zona: sistema]
+- [x] T-012 — `e2e/fixtures.ts`: `seedContent()` siembra por el push de `/sync` las notas de PLAN-0010 §5.2 (frontmatter de todos los tipos y 12 propiedades, YAML heredado válido y corrompido, tabla ancha, 11 lenguajes + desconocido + sin lenguaje, cita, código en línea, tareas, Mermaid válido/inválido/ancho, ruta profunda, nota en la raíz, nota de ~200 KiB con 50 bloques y 5 Mermaid) + prueba de humo `0010 V-0 siembra` (cubre RNF-005) [zona: sistema]
   - CHECK: `CV --grep "0010 V-0"`
   - EXPECT: `1 passed`: las 14 notas aparecen en el árbol y 0 cambios rechazados.
 - [ ] T-013 [rojo] — `e2e/content-visual.spec.ts`: `0010 V-1` (panel en lectura), `0010 V-2` (formulario), `0010 V-3` (cita/código en línea/tareas), `0010 V-4` (tabla), en claro/oscuro a 1440/1024/390 con R-3…R-7, R-10, R-16 (cubre RF-009, RF-011, RF-026, RF-037, RF-038, RF-039) [zona: sistema]

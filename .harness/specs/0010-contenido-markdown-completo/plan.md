@@ -467,11 +467,11 @@ dice y §7 lo justifica.
 | R-4 | texto del panel | mono 11 px `--text-muted` (C-1, falla 4,5:1) | clave mono 12 `--text-secondary`; valor 13 `--text-primary` | exacto |
 | R-5 | cita | borde izq. 3 `--accent`, padding 8/16, margen 16 0, `--accent-soft`, radio 0 6 6 0, `--text-dim`, cursiva | igual (`--text-secondary`) | ± 1 / exacto en color |
 | R-6 | código en línea | `--surface2`, padding 2/6, radio 4, mono 12, `--accent-hover` | igual (`--bg-tertiary`, `--radius-xs`, `.857em` = 12 sobre 14) | ± 1 |
-| R-7 | fila de tabla (una línea) | hoy ~62 px (`/tmp/s10/shots`) | ≤ 40 (objetivo 31,4); celda padding 4/12; `th` `--bg-tertiary` 13/600 | ≤ 40; ± 2 sobre 31,4 |
-| R-8 | bloque de código | career: etiqueta superpuesta 10 px (C-5) | cabecera 36; etiqueta mono 12 `--text-secondary`; "Copiar" 28 de alto, ≥ 84 de ancho; `pre` padding 12/16, mono 13/1,6; caja borde 1 `--border`, radio 6, `--bg-tertiary` | ± 1 |
+| R-7 | fila de tabla (una línea) | hoy ~62 px (`/tmp/s10/shots`); career-admin (render local de su fuente, `/tmp/s10/ref/career/`): fila 29 px, celda padding 4/8, `th` 700 | ≤ 40 (objetivo 31,4); celda padding 4/12; `th` `--bg-tertiary` 13/600 | ≤ 40; ± 2 sobre 31,4 |
+| R-8 | bloque de código | career-admin: etiqueta superpuesta 10 px mayúsculas en (12,8), `pre` padding superior 28 con lenguaje, mono 12/16, radio 8, «Copiar» 26 × 26 siempre visible (C-5) | cabecera 36; etiqueta mono 12 `--text-secondary`; "Copiar" 28 de alto, ≥ 84 de ancho; `pre` padding 12/16, mono 13/1,6; caja borde 1 `--border`, radio 6, `--bg-tertiary` | ± 1 |
 | R-9 | vista Código | mono 13 / 1,8; `.cm-linenum` 28 px `--text-muted`; `.cm-cursor-line` `rgba(255,255,255,.03)` | mono 13 / 1,8; números 12 `--text-secondary`; línea activa `--bg-secondary` (C-2, C-3) | exacto |
 | R-10 | casilla de tarea | — | 16 × 16, borde 2 `--text-secondary`, radio 4; zona de clic ≥ 24 × 24 | ± 1 |
-| R-11 | área de Mermaid | career: alto fijo 22 rem (C-6) | 96 ≤ alto ≤ 420; `svg` ≤ ancho de columna; controles 28 × 28 a 8 px de la esquina | ± 2 |
+| R-11 | área de Mermaid | career-admin: contenedor de 352 px fijo, controles acercar/alejar/restablecer de 26 × 26 abajo a la derecha (C-6) | 96 ≤ alto ≤ 420; `svg` ≤ ancho de columna; controles 28 × 28 a 8 px de la esquina | ± 2 |
 | R-12 | migas | `reference/obsidian-breadcrumb.png` (P-17): separador `/` más tenue que el texto, cada segmento truncado con «…», lápiz y `⋮` a la derecha, «Adelante» atenuada | carpeta 13 px `--text-secondary`, 28 de alto; nombre `h2` 13/600 `--text-primary`; separador `/` 13 px `--text-secondary`; «Adelante» sin historial opacidad .5; lápiz y `⋮` 28 × 28 | ± 1 |
 | R-13 | menú `⋮` | `⋮` vertical de `reference/obsidian-breadcrumb.png` (P-17) | ancho ≥ 200, ítem 32 (40 táctil), radio 10, `--bg-secondary`, `--shadow-panel` | ± 1 |
 | R-14 | barra lateral | 0009 R-8 (fila 27/25) | "Raíz" 27; "Crear en" 12 px; carpeta activa `--bg-tertiary` + 600 + barra inset 3 `--text-secondary` | ± 1 |

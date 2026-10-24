@@ -7,6 +7,7 @@
 //   comparaciones de color no dependan de una copia de los valores.
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { CONTENT_NOTES, noteName, type ContentNote } from "./content-notes";
 import { OUT_DIR } from "./out-dir";
 
 export const THEMES = ["dark", "light"] as const;
@@ -157,30 +158,24 @@ async function createNote(page: Page, title: string, content: string): Promise<v
 /** ~4 KiB de contenido por nota: el árbol no debe cargarlo (`list` lo omite). */
 const FILLER = "lorem ipsum dolor sit amet ".repeat(150);
 
-/**
- * `count` notas de una bóveda con la misma distribución que `tree.perf.test.tsx` (100 en la raíz, el resto en
- * carpetas de hasta 3 niveles), escritas directamente en la base CouchDB del usuario (admin de pruebas): la
- * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
- * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
- */
-export async function seedNotesBulk(userCookie: string, vaultId: string, count: number): Promise<number> {
-  const me = (await (await api("/auth/me", { cookie: userCookie })).json()) as { user_id: string };
-  const stamp = "2026-10-12T09:00:00.000Z";
-  const paths = Array.from({ length: count }, (_, i) => {
-    const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
-    return `${folder}nota-${i}.md`;
-  });
-  const docs = paths.map((path) => ({
+/** Documento `note:` listo para `_bulk_docs` (misma forma que escribe `noteStore`). */
+function noteDoc(vaultId: string, note: { path: string; frontmatter: Record<string, unknown>; content: string }, stamp: string) {
+  return {
     _id: `note:${vaultId}:${crypto.randomUUID()}`,
     type: "note",
     vault_id: vaultId,
-    path,
-    frontmatter: {},
-    content: FILLER,
+    path: note.path,
+    frontmatter: note.frontmatter,
+    content: note.content,
     created_at: stamp,
     updated_at: stamp,
     deleted_at: null,
-  }));
+  };
+}
+
+/** Escribe documentos directamente en la base CouchDB del usuario (admin de pruebas); la réplica los trae por el pull. */
+async function bulkDocs(userCookie: string, docs: object[]): Promise<void> {
+  const me = (await (await api("/auth/me", { cookie: userCookie })).json()) as { user_id: string };
   const couch = process.env.COUCHDB_URL ?? "http://localhost:15984";
   const auth = `Basic ${Buffer.from(`${process.env.COUCHDB_USER ?? "admin"}:${process.env.COUCHDB_PASSWORD ?? "testpass"}`).toString("base64")}`;
   const res = await fetch(`${couch}/synapse_user_${me.user_id}/_bulk_docs`, {
@@ -189,6 +184,22 @@ export async function seedNotesBulk(userCookie: string, vaultId: string, count: 
     body: JSON.stringify({ docs }),
   });
   if (!res.ok) throw new Error(`_bulk_docs → ${res.status}: ${await res.text()}`);
+}
+
+/**
+ * `count` notas de una bóveda con la misma distribución que `tree.perf.test.tsx` (100 en la raíz, el resto en
+ * carpetas de hasta 3 niveles), escritas directamente en la base CouchDB del usuario (admin de pruebas): la
+ * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
+ * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
+ */
+export async function seedNotesBulk(userCookie: string, vaultId: string, count: number): Promise<number> {
+  const stamp = "2026-10-12T09:00:00.000Z";
+  const paths = Array.from({ length: count }, (_, i) => {
+    const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
+    return `${folder}nota-${i}.md`;
+  });
+  const docs = paths.map((path) => noteDoc(vaultId, { path, frontmatter: {}, content: FILLER }, stamp));
+  await bulkDocs(userCookie, docs);
   const top = new Set(paths.map((path) => (path.includes("/") ? path.split("/")[0] : path)));
   return top.size;
 }
@@ -220,6 +231,41 @@ export async function seedCrowded(): Promise<Seeded> {
     vaults.push({ id: await createVault(user.cookie, name), name, icon: null });
   }
   return { email: user.email, password: user.password, vaults, longNoteName: LONG_NOTE_NAME };
+}
+
+/** Usuario sembrado con las notas de contenido (`content-notes.ts`) en una bóveda única (SPEC-0010 PLAN-0010 §5.2). */
+export interface SeededContent extends Seeded {
+  notes: ContentNote[];
+}
+
+/**
+ * Bóveda «Contenido» con las notas de PLAN-0010 §5.2 escritas en la base CouchDB del usuario
+ * (como las dejaría otro dispositivo): el navegador las trae por el pull, con su `frontmatter`.
+ */
+export async function seedContent(): Promise<SeededContent> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Contenido", "folder-heart:accent");
+  const stamp = "2026-10-24T09:00:00.000Z";
+  await bulkDocs(user.cookie, CONTENT_NOTES.map((note) => noteDoc(vaultId, note, stamp)));
+  return {
+    email: user.email,
+    password: user.password,
+    vaults: [{ id: vaultId, name: "Contenido", icon: "folder-heart:accent" }],
+    longNoteName: LONG_NOTE_NAME,
+    notes: CONTENT_NOTES,
+  };
+}
+
+/** Despliega todas las carpetas del árbol y abre la nota `note` (clic en cada tramo de su ruta). */
+export async function openContentNote(page: Page, note: ContentNote): Promise<void> {
+  const tree = page.getByRole("tree", { name: "Notas" });
+  const segments = note.path.split("/");
+  for (const folder of segments.slice(0, -1)) {
+    const row = tree.getByRole("treeitem", { name: folder, exact: true });
+    if ((await row.getAttribute("aria-expanded")) === "false") await row.click();
+  }
+  await tree.getByRole("treeitem", { name: noteName(note), exact: true }).click();
+  await expect(tree.getByRole("treeitem", { name: noteName(note), exact: true })).toHaveAttribute("aria-selected", "true");
 }
 
 /**
@@ -382,7 +428,13 @@ export function expectExact(key: string, label: string, got: string, target: str
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded; crowded: Seeded }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent }>({
+  content: [
+    async ({}, use) => {
+      await use(await seedContent());
+    },
+    { scope: "worker" },
+  ],
   crowded: [
     async ({}, use) => {
       await use(await seedCrowded());
