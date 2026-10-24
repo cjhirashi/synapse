@@ -84,7 +84,7 @@ después `not-normalized:path`; así `X/ .md` da `validation-error:path` (su for
 | `notes/noteHistory.ts` (nuevo) | `History = {entries: string[]; index: number}`; `push(h, id)` (descarta "adelante", no duplica el actual, tope **50** quitando el más antiguo), `step(h, dir, isValid)` → `{history, target} \| null` (salta las entradas inválidas en esa dirección, RF-058), `canStep(h, dir, isValid)`; `load(storage, vaultId)` / `save(storage, vaultId, h)` en la clave `synapse:note-history:{vaultId}` de `sessionStorage` (forma validada al leer: ids de esa bóveda con `parseNoteId`; corrupta → historial vacío). | RF-056…RF-058 |
 | `editor/frontmatter.ts` (nuevo, **chunk diferido**: única importación de `yaml`) | `splitFrontmatter(text)` → `{yaml: string \| null, body}` (línea 1 exactamente `---` hasta la siguiente exactamente `---`; `\n`/`\r\n`); `composeCode(fm, body)` (RF-014); `parseFrontmatterYaml(yaml)` → `{value} \| {error: code, line?}` con `parseDocument(src, {version:"1.2", schema:"core", uniqueKeys:true, intAsBigInt:true, strict:true})`: errores de sintaxis/duplicados del parser, *warnings* o etiquetas fuera del core → `unsupported-tag`, raíz no mapa → `not-a-map`, clave no escalar → `invalid-key`, clave vacía o nula → `empty-key`, `bigint` fuera de ±(2^53−1) → `unsafe-integer`, no finitos → `non-finite`, alias con `maxAliasCount:100`; `stringifyFrontmatter(fm)` con `{version:"1.2", schema:"core", lineWidth:0, minContentWidth:0}`; `classifyLegacy(fm, content)` → `none \| migrate \| looks-yaml` (regla de "corrompido" en el `_doc` del contrato). Contrato: `contracts/frontmatter-yaml.cases.json`. | RF-014…RF-019, RF-044, RF-045 |
 | `editor/properties.ts` (nuevo) | Modelo del formulario: `toRows(fm)` (tipo inferido: `text`/`number`/`boolean`/`list`/`complex`), `fromRows(rows)` (orden de filas = orden de claves), `convert(value, from, to)` (reglas de §2.3-b; devuelve `{value, emptied}`), `validateRows(rows)` → errores por fila (`empty-key`, `duplicate-key` por igualdad exacta de clave, `invalid-number`), `parseNumberInput(text)` (`type="text" inputmode="decimal"`: decimal finito sin exponente; entero dentro del rango seguro). | RF-011…RF-013, RF-020 |
-| `editor/breadcrumb.ts` (nuevo) | `crumbs(path)` → carpetas `{name, path}` + nombre de la nota (`displayName`); `collapse(widths, available)` → índices visibles (primera carpeta y nombre siempre; intermedios a "…"; si aún no cabe, el nombre se trunca), puro y probado sin *layout*. | RF-054, RF-063 |
+| `editor/breadcrumb.ts` (nuevo) | `crumbs(path)` → carpetas `{name, path}` + nombre de la nota (`displayName`); `fit(widths, available)` → anchos máximos por segmento (P-17: truncado **por segmento** con «…»; la primera carpeta y el nombre nunca desaparecen; se acortan antes las intermedias y por último el nombre), puro y probado sin *layout*. | RF-054, RF-063 |
 | `editor/highlight/languages.ts` (nuevo) | **Registro único** de RF-030: `LanguageDescription.of({name, alias, load})` para `typescript`(`ts`), `javascript`(`js`), `tsx`, `python`(`py`), `json`, `shell`(`bash`,`sh`), `css`, `html`, `sql`, `yaml`(`yml`), `markdown`(`md`); `findLanguage(info)` sin distinguir mayúsculas (primera palabra de la info del bloque). Cargadores con `import()` (las gramáticas de js/ts/tsx/css/html/markdown ya van en el chunk del editor desde 0008 vía `@codemirror/lang-markdown`; python/sql/yaml/json/shell salen en chunks propios). | RF-027…RF-031 |
 | `editor/highlight/highlighter.ts` (nuevo) | `tagHighlighter` de `@lezer/highlight` → clases `sx-keyword`, `sx-string`, `sx-number`, `sx-type`, `sx-function`, `sx-plain`, `sx-comment`, `sx-deletion`, `sx-heading1`, `sx-heading`, `sx-meta`, `sx-strong`, `sx-emphasis`, `sx-link`, `sx-url`, `sx-code`, `sx-quote`, `sx-atom` (tabla de §2.3-e). Lo usan **las dos** vistas. | RF-027…RF-029, RF-040 |
 | `editor/mermaid/themeVariables.ts` (nuevo) | `themeVariables(read)` — lee los tokens resueltos (`getComputedStyle(documentElement)`), compone `--accent-soft` sobre `--bg-secondary` a hex opaco (`composite(rgba, bg)`) y devuelve el mapa de §2.3-f; `darkMode` según `data-theme`. | RF-050 |
@@ -282,7 +282,13 @@ cadenas `--syntax-string`, números/booleanos `--syntax-number`; líneas dentro 
 RF-054…RF-065).** `header.note-editor-header` mantiene **43 px** pero pasa a `padding: 0 16px`
 (con 8 px verticales los controles de 28 px no caben), controles centrados, `gap 8` (390 px: `gap 4`,
 `padding 0 8px`). Orden DOM = visual = tabulación: Atrás, Adelante, migas, [Visual|Código], Insertar
-tabla (y, con el cursor en una tabla, Añadir fila/columna, P-7), Guardar, Editar/Leer, estado, `⋯`.
+tabla (y, con el cursor en una tabla, Añadir fila/columna, P-7), Guardar, estado, **lápiz** (Editar/Leer), `⋮`.
+**Enmienda P-17 (T-011, GATE 2): este apartado sigue `reference/obsidian-breadcrumb.png`** (captura de
+Obsidian de 1073×84 px medida con Chromium: texto de cabecera con altura de versal ≈ 12 px; separador `/`
+más tenue que los segmentos y pegado al siguiente (≈ 8 px) y más lejos del anterior (≈ 18 px); cada
+segmento se trunca **por sí mismo** con «…» (`2 - SECCIÓ…`, `2.1 - SECCIÓN - Gr…`); el último se ve completo;
+«Atrás» activa, «Adelante» atenuada sin historial; lápiz y `⋮` a la derecha). Donde este plan decía `›`,
+colapso de intermedios o `⋯`, manda la captura.
 - Atrás/Adelante: 28×28, `arrow-left`/`arrow-right` 16 px `--text-secondary`, `aria-label`
   "Atrás"/"Adelante", `aria-keyshortcuts="Alt+ArrowLeft"|"Alt+ArrowRight"`, tooltip "Atrás · Alt+←"
   al hover y al foco; `disabled` en los extremos; tras cancelar el aviso de cambios el foco vuelve
@@ -290,14 +296,17 @@ tabla (y, con el cursor en una tabla, Añadir fila/columna, P-7), Guardar, Edita
 - `nav[aria-label="Ruta"] > ol` (`flex:1; min-width:0; white-space:nowrap`): carpeta = `<button>`
   13 px `--text-secondary`, 28 px, padding `0 8px`, `--radius-sm`, `max-width:24ch` con elipsis,
   `title="Mostrar «{carpeta}» en el árbol"`; hover `--bg-tertiary` + `--text-primary`; foco anillo con
-  `outline-offset:-2px`; active `--accent-soft`; separador `chevron-right` 12 px decorativo; nombre
+  `outline-offset:-2px`; active `--accent-soft`; separador **`/`** (texto decorativo, `aria-hidden`, 13 px
+  `--text-secondary`, margen `0 4px`; P-17, como la captura de Obsidian); nombre
   = `<h2 aria-current="page">` 13 px/**600** `--text-primary`, `min-width:6ch`, elipsis, `title` =
   ruta completa; nota en la raíz: sólo el `h2`.
-- Colapso (RF-063): `ResizeObserver` sobre la lista + `breadcrumb.collapse`; intermedios → botón
-  "…" (`aria-label="Mostrar carpetas ocultas"`, `aria-haspopup="menu"`) que abre un menú con los
-  ocultos (cada uno = RF-055). Resultado esperado: 1440 (≈630 px para migas) ruta completa hasta ~5
-  niveles; 1024 (≈214 px) `carpeta › … › Nota`; 390 (≈114 px) `… › Nota`.
-- Menú `⋯` (`NoteMenu`, P-4): botón 28×28 `ellipsis`, `aria-label="Opciones de la nota"`,
+- Truncado **por segmento** (RF-063, P-17): `ResizeObserver` sobre la lista + `breadcrumb.fit` (puro):
+  cada carpeta recibe un ancho máximo y se corta con «…» (elipsis de CSS, el `title` conserva el nombre);
+  la primera carpeta y el nombre nunca desaparecen; si aun así no cabe, primero se acortan las carpetas
+  intermedias (mínimo «…» sola, 3ch) y por último el nombre (`min-width:6ch`). Sin menú de ocultos.
+  Resultado esperado: 1440 (≈630 px para migas) ruta completa hasta ~5 niveles; 1024 (≈214 px) todos
+  los segmentos con «…»; 390 (≈114 px) `Carpeta… / Nota…` con el nombre prioritario.
+- Menú `⋮` (`NoteMenu`, P-4, P-17): botón 28×28 `ellipsis-vertical`, `aria-label="Opciones de la nota"`,
   `aria-haspopup="menu"`, `aria-expanded`, `aria-controls`; menú en **portal** (no lo recorta
   ningún `overflow`), `role="menu"` `aria-labelledby`, fondo `--bg-secondary`, borde `--border`,
   `--radius-md`, `--shadow-panel`, padding 4, `min-width:200px`, alineado a la derecha, 4 px debajo;
@@ -309,8 +318,10 @@ tabla (y, con el cursor en una tabla, Añadir fila/columna, P-7), Guardar, Edita
   apertura `opacity`+`translateY(-4px)` 120 ms, cierre sin animación. "Copiar ruta" anuncia "Ruta
   copiada" (o "No se pudo copiar la ruta") en la región `role="status"` de la barra
   (`.note-editor-state`; con texto `min-width:12ch`, vacía sin reserva como en 0009 A1-4).
-- ≤ 560 px: Visual/Código/Guardar/Editar-Leer pasan a sólo icono (`eye`/`code`, `save`,
-  `pencil`/`book-open`) con el **mismo nombre accesible**; el texto del estado se oculta visualmente
+- Lápiz (P-17): el botón «Editar/Leer» de 0008 pasa a icono (`pencil` en lectura, `book-open` en
+  edición, 16 px `--text-secondary`, 28×28) **conservando** su nombre accesible «Editar»/«Leer»; va a la
+  derecha, antes de `⋮`, como en la captura de Obsidian.
+- ≤ 560 px: Visual/Código/Guardar pasan a sólo icono (`eye`/`code`, `save`; el lápiz ya lo es) con el **mismo nombre accesible**; el texto del estado se oculta visualmente
   (sigue en el árbol de accesibilidad). Siempre **una línea**, sin scroll horizontal.
 
 **j) Barra lateral (`notes/NoteSidebar.tsx`, `notes/notes.css`, RF-001…RF-006, RF-042, RF-043).**
@@ -436,8 +447,8 @@ medida sale de tolerancia (§5.4) o un color computado no es el token esperado d
 | V-7 | `mermaid-{tema}-{ancho}.png` | career-admin (`MermaidDiagram`) | R-11; `svg` dentro de `role="img"` con nombre; 0 `script`/`foreignObject`/`[on*]`/`a[href]` en el SVG; relleno de nodo = `--accent-soft` compuesto del tema; tras cambiar de tema el relleno cambia sin recargar |
 | V-8 | `mermaid-error-{tema}.png`, `mermaid-loadfail-{tema}.png` (chunk abortado con `page.route`) | RF-049/RF-053 | el resto de la nota renderizado; mensaje y fuente visibles; "Reintentar" presente; 0 excepciones no capturadas (`pageerror`) |
 | V-9 | `mermaid-zoom-{tema}.png` | career-admin | diagrama ancho: controles visibles, `aria-label` correctos; `+` por teclado cambia el `transform`; "Reajustar" deshabilitado al estar ajustado; diagrama que cabe: sin controles |
-| V-10 | `header-{tema}-{ancho}.png`, `header-collapsed-{tema}-{ancho}.png` | Obsidian (P-14) + R-12 de 0009 | R-1, R-2, R-12; una sola línea (todos los controles con el mismo `top` ± 1) y sin scroll horizontal; ruta profunda: 1440 completa, 1024 con "…", 390 `… › nombre`; primera carpeta y nombre siempre visibles; `title` = ruta |
-| V-11 | `menu-{tema}.png` | `ux-0010` §5.4 (copiado en §2.3-i) | R-13; menú en portal, dentro del *viewport*, no recortado; orden de ítems (P-4); flechas/Esc devuelven el foco; "Copiar ruta" anuncia "Ruta copiada" |
+| V-10 | `header-{tema}-{ancho}.png`, `header-collapsed-{tema}-{ancho}.png` | `reference/obsidian-breadcrumb.png` (P-17) + R-12 de 0009 | R-1, R-2, R-12; una sola línea (todos los controles con el mismo `top` ± 1) y sin scroll horizontal; separador `/` tenue; ruta profunda: 1440 completa, 1024 y 390 con cada segmento truncado por «…» (`text-overflow`); primera carpeta y nombre siempre visibles; lápiz (nombre «Editar»/«Leer») y `⋮` a la derecha; «Adelante» sin historial con menor contraste que «Atrás» activa; `title` = ruta |
+| V-11 | `menu-{tema}.png` | `ux-0010` §5.4 (copiado en §2.3-i) y el `⋮` de `reference/obsidian-breadcrumb.png` (P-17) | R-13; menú en portal, dentro del *viewport*, no recortado; orden de ítems (P-4); flechas/Esc devuelven el foco; "Copiar ruta" anuncia "Ruta copiada" |
 | V-12 | `sidebar-folders-{tema}-{ancho}.png` | R-6…R-11 de 0009 + `ux-0010` §6 | R-14; "Raíz" primera fila; carpeta activa con `aria-current` y barra; "Crear en: …" cambia al activar una carpeta; pista visible; error de carpeta duplicada visible y asociado |
 | V-13 | todas | RF-040 | color de fondo, borde y texto computados de todos los componentes nuevos ∈ valores del tema activo en `tokens.css` (o composición `color-mix`/alias de ellos) |
 | V-14 | `reduced-motion` (contexto ya emulado) | `ux-0010` §8.5 | `transition-duration`/`animation-duration` computados = 0 en menú, copiar, filas y casillas; `scrollTop` de revelar sin animación |
@@ -461,8 +472,8 @@ dice y §7 lo justifica.
 | R-9 | vista Código | mono 13 / 1,8; `.cm-linenum` 28 px `--text-muted`; `.cm-cursor-line` `rgba(255,255,255,.03)` | mono 13 / 1,8; números 12 `--text-secondary`; línea activa `--bg-secondary` (C-2, C-3) | exacto |
 | R-10 | casilla de tarea | — | 16 × 16, borde 2 `--text-secondary`, radio 4; zona de clic ≥ 24 × 24 | ± 1 |
 | R-11 | área de Mermaid | career: alto fijo 22 rem (C-6) | 96 ≤ alto ≤ 420; `svg` ≤ ancho de columna; controles 28 × 28 a 8 px de la esquina | ± 2 |
-| R-12 | migas | Obsidian (P-14) | carpeta 13 px `--text-secondary`, 28 de alto; nombre `h2` 13/600 `--text-primary`; chevron 12 | ± 1 |
-| R-13 | menú `⋯` | — | ancho ≥ 200, ítem 32 (40 táctil), radio 10, `--bg-secondary`, `--shadow-panel` | ± 1 |
+| R-12 | migas | `reference/obsidian-breadcrumb.png` (P-17): separador `/` más tenue que el texto, cada segmento truncado con «…», lápiz y `⋮` a la derecha, «Adelante» atenuada | carpeta 13 px `--text-secondary`, 28 de alto; nombre `h2` 13/600 `--text-primary`; separador `/` 13 px `--text-secondary`; «Adelante» sin historial opacidad .5; lápiz y `⋮` 28 × 28 | ± 1 |
+| R-13 | menú `⋮` | `⋮` vertical de `reference/obsidian-breadcrumb.png` (P-17) | ancho ≥ 200, ítem 32 (40 táctil), radio 10, `--bg-secondary`, `--shadow-panel` | ± 1 |
 | R-14 | barra lateral | 0009 R-8 (fila 27/25) | "Raíz" 27; "Crear en" 12 px; carpeta activa `--bg-tertiary` + 600 + barra inset 3 `--text-secondary` | ± 1 |
 | R-15 | columna y cuerpo | 0009 R-13/R-14 | sin cambio: 780 máx. centrada; 14 px / 1,8 | ± 2 / exacto |
 | R-16 | formulario de propiedades | `ux-0010` §1.2 | columnas 160 / 96 / 1fr / 28; controles 28; separación 8 | ± 1 |
@@ -769,7 +780,7 @@ Cambios **explícitos** de tests de 0008/0009 (los únicos permitidos): (1) el `
 `editor/mermaid/renderMermaid.ts` (`import()` rechazado → estado `load-failed`), `editor/codeBlockView.ts` (aviso + "Reintentar" + bloque de código). Tests: `editor/mermaid/renderMermaid.test.ts`; V-8.
 
 ### Implementación de RF-054
-`editor/NoteBreadcrumb.tsx` (`nav[aria-label="Ruta"]`, `ol`, `h2 aria-current="page"`), `editor/breadcrumb.ts`, `editor/NoteEditor.tsx`, `editor/editor.css`. Tests: `editor/NoteBreadcrumb.test.tsx`, `editor/breadcrumb.test.ts`; V-10.
+`editor/NoteBreadcrumb.tsx` (`nav[aria-label="Ruta"]`, `ol`, separador `/`, `h2 aria-current="page"`; P-17), `editor/breadcrumb.ts`, `editor/NoteEditor.tsx`, `editor/editor.css`. Tests: `editor/NoteBreadcrumb.test.tsx`, `editor/breadcrumb.test.ts`; V-10.
 
 ### Implementación de RF-055
 `editor/NoteBreadcrumb.tsx` (botón de carpeta → `onRevealFolder`), `notes/VaultWorkspacePage.tsx` (carpeta activa), `notes/NoteSidebar.tsx` (`revealFolder`: desplegar, desplazar sólo el panel, sin mover foco). Tests: `notes/VaultWorkspacePage.test.tsx`, `notes/NoteSidebar.test.tsx`; V-10, V-12.
@@ -790,13 +801,13 @@ Cambios **explícitos** de tests de 0008/0009 (los únicos permitidos): (1) el `
 `notes/VaultWorkspacePage.tsx` (la posición sólo se mueve en `onOpened`; `onCancelOpen` no la toca), `editor/NoteEditor.tsx` (diálogo existente de 0008, foco de vuelta al botón). Tests: `notes/VaultWorkspacePage.test.tsx`, `editor/NoteEditorLeave.test.tsx` (sin cambios de lo existente).
 
 ### Implementación de RF-061
-`editor/NoteMenu.tsx` (botón, menú en portal, roles, teclado, orden P-4), `editor/editor.css`. Tests: `editor/NoteMenu.test.tsx`; V-11.
+`editor/NoteMenu.tsx` (botón `⋮`, menú en portal, roles, teclado, orden P-4; P-17), `editor/editor.css`. Tests: `editor/NoteMenu.test.tsx`; V-11.
 
 ### Implementación de RF-062
 `editor/NoteMenu.tsx` → `notes/NoteSidebar.tsx` (`startRename`, `remove` con `confirmDelete`: mismos flujos y mensajes), `editor/NoteEditor.tsx` ("Ver en Código" → edición + Código; "Copiar ruta" → `path` completo + "Ruta copiada"). Tests: `editor/NoteMenu.test.tsx`, `notes/VaultWorkspacePage.test.tsx`; V-11.
 
 ### Implementación de RF-063
-`editor/breadcrumb.ts` (`collapse`), `editor/NoteBreadcrumb.tsx` (`ResizeObserver`, botón "…" con menú, elipsis y `title`). Tests: `editor/breadcrumb.test.ts`, `editor/NoteBreadcrumb.test.tsx` (anchos simulados); V-10 (1440/1024/390).
+`editor/breadcrumb.ts` (`fit`: truncado por segmento, P-17), `editor/NoteBreadcrumb.tsx` (`ResizeObserver`, elipsis por segmento y `title`). Tests: `editor/breadcrumb.test.ts`, `editor/NoteBreadcrumb.test.tsx` (anchos simulados); V-10 (1440/1024/390).
 
 ### Implementación de RF-064
 `editor/editor.css` (43 px, `padding 0 16px`, controles 28, ≤ 560 px sólo icono), `editor/NoteEditor.tsx`. Tests: `notes/layoutCss.test.ts`; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009).

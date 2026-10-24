@@ -83,7 +83,7 @@ actualizado: 2026-10-24
 - [ ] T-010 — Medidas de referencia copiadas: career-admin y mockup a `history.md`, y las de career-admin a la columna "Mockup / referencia" de PLAN-0010 §5.4 (R-7, R-8, R-11) [doc]
   - CHECK: `git diff -- .harness/specs/0010-contenido-markdown-completo/plan.md | grep -c "career"`
   - EXPECT: ≥ 3 líneas cambiadas con las cifras medidas en T-008.
-- [ ] T-011 — Enmienda del plan por **P-17**: §2.3-i (separador `/`, truncado por segmento con "…", lápiz en la barra en lugar de "Editar/Leer", menú ⋮), §5.3 V-10/V-11 y §5.4 R-12/R-13 medidos contra `reference/obsidian-breadcrumb.png` (alturas, separación, color atenuado de "Adelante"), §9 RF-054/RF-061/RF-063 (cubre RF-054, RF-056, RF-061, RF-063) [doc] [P-17]
+- [x] T-011 — Enmienda del plan por **P-17**: §2.3-i (separador `/`, truncado por segmento con "…", lápiz en la barra en lugar de "Editar/Leer", menú ⋮), §5.3 V-10/V-11 y §5.4 R-12/R-13 medidos contra `reference/obsidian-breadcrumb.png` (alturas, separación, color atenuado de "Adelante"), §9 RF-054/RF-061/RF-063 (cubre RF-054, RF-056, RF-061, RF-063) [doc] [P-17]
   - CHECK: `grep -c "P-17" .harness/specs/0010-contenido-markdown-completo/plan.md && grep -n "obsidian-breadcrumb" .harness/specs/0010-contenido-markdown-completo/plan.md | wc -l`
   - EXPECT: ≥ 5 menciones de P-17; ≥ 3 referencias a la captura (V-10, R-12, §2.3-i).
 
