@@ -100,7 +100,7 @@ actualizado: 2026-10-24
 - [x] T-015 [rojo] — `0010 V-10` (encabezado contra la captura de Obsidian, P-17: separador `/`, truncado por segmento, lápiz, ⋮, "Adelante" atenuada, 43 px una línea a 1440/1024/390), `0010 V-11` (menú ⋮), `0010 V-12` (barra lateral: "Raíz", carpeta activa, "Crear en", "Nueva carpeta", pista) (cubre RF-002, RF-006, RF-043, RF-054, RF-056, RF-061, RF-063, RF-064) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(10|11|12) "`
   - EXPECT: fallan: sin `nav[aria-label="Ruta"]`, sin "Opciones de la nota", sin fila "Raíz".
-- [ ] T-016 [rojo] — `0010 V-13` (todo color computado ∈ tokens del tema), `0010 V-14` (reduced-motion), `0010 V-15` (red: chunks pedidos según la nota) (cubre RF-040, RNF-002, RNF-004) [zona: sistema]
+- [x] T-016 [rojo] — `0010 V-13` (todo color computado ∈ tokens del tema), `0010 V-14` (reduced-motion), `0010 V-15` (red: chunks pedidos según la nota) (cubre RF-040, RNF-002, RNF-004) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(13|14|15) "`
   - EXPECT: V-13/V-14 fallan por ausencia de los componentes; V-15 falla porque no existen chunks de `mermaid`/`frontmatter`.
 - [ ] T-017 [rojo] — `frontend/scripts/check-bundle.mjs` + `build.manifest: true` en `vite.config.ts` + script `test:bundle`: entrada ≤ 157 020 B gzip, editor ≤ 357 388 B gzip, chunks separados de `mermaid`, `svg-pan-zoom`, `frontmatter` y gramáticas extra sin importación estática desde la entrada ni el editor (cubre RNF-002) [zona: sistema] [P-9]

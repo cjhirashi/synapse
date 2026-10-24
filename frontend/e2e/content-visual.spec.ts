@@ -662,3 +662,75 @@ test("0010 V-12 crear una carpeta y rechazar una duplicada (RF-003, RF-004, RF-0
   await expect(page.getByRole("alert").filter({ hasText: "Ya existe una carpeta con ese nombre" })).toBeVisible();
   await context.close();
 });
+
+// V-13 · todo color computado ∈ tokens del tema (RF-040, RNF-004)
+const COLOR_SCOPES = [".note-properties", ".code-block", ".note-table-scroll", ".note-editor-header", ".note-sidebar"];
+for (const theme of THEMES) {
+  test(`0010 V-13 colores = tokens del tema, ${theme} (RF-040, RNF-004)`, async ({ browser, content }) => {
+    const { context, page } = await openWorkspace(browser, content, { theme, size: SIZES[0] });
+    const allowed = themeColors(theme);
+    const stray: string[] = [];
+    for (const key of ["props-types", "code", "table", "prose", "deep"]) {
+      await openContentNote(page, note(key));
+      await expect(page.locator(".milkdown-view .ProseMirror")).toBeVisible();
+      for (const scope of COLOR_SCOPES) {
+        const found = await page.locator(`${scope}, ${scope} *`).evaluateAll((els) =>
+          els.flatMap((el) => {
+            const c = getComputedStyle(el);
+            return [c.color, c.backgroundColor, c.borderTopColor, c.borderLeftColor].map((color) => `${(el as HTMLElement).className || el.tagName}|${color}`);
+          }),
+        );
+        stray.push(...found.filter((entry) => !allowed.has(entry.split("|")[1])));
+      }
+    }
+    // Existen los componentes nuevos cuyos colores se comprueban.
+    await expect(page.locator(".note-properties, .code-block, .note-breadcrumb, .note-menu-button").first()).toBeAttached();
+    expect(stray, "colores fuera de tokens").toEqual([]);
+    await context.close();
+  });
+}
+
+// V-14 · reduced-motion: ninguna transición ni animación en los componentes nuevos (RNF-004)
+test("0010 V-14 sin movimiento con prefers-reduced-motion (RNF-004)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: SIZES[0] });
+  await openContentNote(page, note("code"));
+  await page.getByRole("button", { name: "Opciones de la nota" }).click();
+  const selectors = [".code-block-copy", '[role="menuitem"]', ".note-breadcrumb button", `${HEADER} button`];
+  const found: string[] = [];
+  for (const selector of selectors) {
+    const durations = await page.locator(selector).evaluateAll((els) => els.flatMap((el) => [getComputedStyle(el).transitionDuration, getComputedStyle(el).animationDuration]));
+    expect(durations.length, `existe ${selector}`).toBeGreaterThan(0);
+    // `global.css` fija 0,01 ms con reduced-motion: cualquier duración perceptible (> 1 ms) es un fallo.
+    found.push(...durations.flatMap((d) => d.split(",")).map((d) => d.trim()).filter((d) => parseFloat(d) > 0.001));
+  }
+  expect(found, "duraciones perceptibles").toEqual([]);
+  await context.close();
+});
+
+// V-15 · red: sólo se piden los chunks que la nota necesita (RNF-002)
+test("0010 V-15 carga diferida de chunks según la nota (RNF-002)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: SIZES[0] });
+  const requested: string[] = [];
+  page.on("request", (req) => {
+    const m = req.url().match(/\/assets\/([^?]+\.js)$/);
+    if (m) requested.push(m[1]);
+  });
+  const heavy = /mermaid|svg-pan-zoom|frontmatter|python|sql|yaml|json|shell/i;
+  const hits = (re: RegExp) => requested.filter((name) => re.test(name));
+
+  await openContentNote(page, note("plain"));
+  await expect(page.locator(".milkdown-view .ProseMirror")).toBeVisible();
+  expect(hits(heavy), "nota simple: ningún chunk pesado").toEqual([]);
+
+  await openContentNote(page, note("code"));
+  await expect.poll(() => hits(/python/i).length, { message: "python se pide al mostrar su bloque" }).toBeGreaterThan(0);
+  expect(hits(/mermaid|svg-pan-zoom/i), "sin Mermaid en una nota sin diagramas").toEqual([]);
+
+  await openContentNote(page, note("mermaid"));
+  await expect.poll(() => hits(/mermaid/i).length, { message: "mermaid se pide con un diagrama" }).toBeGreaterThan(0);
+
+  expect(hits(/frontmatter/i), "lectura: sin chunk de frontmatter").toEqual([]);
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect.poll(() => hits(/frontmatter/i).length, { message: "frontmatter se pide al editar" }).toBeGreaterThan(0);
+  await context.close();
+});
