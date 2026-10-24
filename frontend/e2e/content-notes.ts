@@ -57,6 +57,19 @@ function bigNote(): string {
 
 export const DEEP_PATH = "Proyectos/Clientes/2026/Trimestre 4/Acuerdos/Plan de entregas.md";
 
+/**
+ * Casos de encabezados con duplicados y encabezados vacíos para las pruebas de ids precalculados
+ * (RNF-001, PLAN-0010 §10.1): el documento debe nacer con los mismos ids que pondría
+ * `syncHeadingIdPlugin` (generador `textContent` en minúsculas con espacios a guiones, regla de
+ * duplicados `-#n`, los vacíos no reciben id ni cuentan para los duplicados). `ids` es el id que
+ * `toDOM` debe pintar en cada encabezado, en orden.
+ */
+export const HEADING_CASES: Array<{ key: string; md: string; ids: string[] }> = [
+  { key: "duplicados", md: "# Alpha\n\n## Beta\n\n## Beta\n\n## Beta\n", ids: ["alpha", "beta", "beta-#2", "beta-#3"] },
+  { key: "vacío-entre-duplicados", md: "# Uno\n\n#\n\n# Uno\n", ids: ["uno", "", "uno-#2"] },
+  { key: "espacios-y-mayúsculas", md: "#   Título  Con   Espacios  \n\n## Título Con Espacios\n", ids: ["título-con-espacios", "título-con-espacios-#2"] },
+];
+
 export const CONTENT_NOTES: ContentNote[] = [
   {
     key: "props-types",

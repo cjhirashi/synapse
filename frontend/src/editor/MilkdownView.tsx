@@ -15,15 +15,16 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { Editor, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
-import { commonmark, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
+import { commonmark, headingIdGenerator, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
 import { gfm } from "@milkdown/preset-gfm";
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { codeBlockViewFactory } from "./codeBlockView";
+import { applyHeadingIds } from "./markdown/headingIds";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
@@ -188,6 +189,15 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
         ]);
+        // RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos. El
+        // `editorStateOptionsCtx` recibe el documento recién parseado (por `parserCtx`) justo antes de
+        // `EditorState.create`: le aplicamos `applyHeadingIds` con el MISMO generador y regla `-#n` que
+        // `syncHeadingIdPlugin`, así el plugin no despacha ninguna transacción al montar (sin relayout).
+        ctx.update(editorStateOptionsCtx, (prev) => (options) => {
+          const base = prev(options);
+          if (!base.doc) return base;
+          return { ...base, doc: applyHeadingIds(base.doc, ctx.get(headingIdGenerator.key)) };
+        });
         // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
         ctx.update(prosePluginsCtx, (plugins) =>
           plugins.concat(

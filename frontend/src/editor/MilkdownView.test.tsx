@@ -1,7 +1,8 @@
 // SPEC-0008 RF-007, RF-008: vista Visual (Milkdown real en jsdom, con los polyfills de test-setup).
 import { act, render, screen, waitFor } from "@testing-library/react";
-import type { EditorView } from "@milkdown/prose/view";
-import { describe, expect, it, vi } from "vitest";
+import { EditorView } from "@milkdown/prose/view";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
 import { MilkdownView } from "./MilkdownView";
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
@@ -135,5 +136,35 @@ describe("MilkdownView", () => {
     expect(view.state.doc.child(0).textContent).toBe(code);
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+// RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos, así que
+// `syncHeadingIdPlugin` no encuentra nada que cambiar y NO despacha ninguna transacción al montar
+// (el `dispatch` al montar forzaba el relayout de todo el documento). Los ids del DOM son idénticos
+// a los que pone el plugin hoy (mismo generador y misma regla de duplicados `-#n`).
+describe("MilkdownView · ids de encabezado precalculados (RNF-001)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  /** Ids de los encabezados del DOM, en orden. */
+  const domHeadingIds = (root: ParentNode): string[] =>
+    [...root.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((h) => h.id);
+
+  it("montar en lectura no despacha ninguna transacción (espía en view.dispatch)", async () => {
+    const dispatch = vi.spyOn(EditorView.prototype, "dispatch");
+    await mount({ value: HEADING_CASES[0].md, readOnly: true });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it("montar la nota grande en lectura tampoco despacha (51 encabezados)", async () => {
+    const big = CONTENT_NOTES.find((n) => n.key === "big")!;
+    const dispatch = vi.spyOn(EditorView.prototype, "dispatch");
+    await mount({ value: big.content, readOnly: true });
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it.each(HEADING_CASES)("los ids del DOM son los del plugin para $key", async ({ md, ids }) => {
+    const { container } = await mount({ value: md, readOnly: true });
+    expect(domHeadingIds(container)).toEqual(ids);
   });
 });
