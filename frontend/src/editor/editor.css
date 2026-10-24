@@ -615,20 +615,23 @@
   margin: 0;
 }
 
-.milkdown-view .ProseMirror pre,
-.milkdown-view .ProseMirror code {
+.milkdown-view .ProseMirror pre {
+  padding: var(--space-3);
+  overflow-x: auto;
   font-family: var(--font-mono);
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
 }
 
-.milkdown-view .ProseMirror pre {
-  padding: var(--space-3);
-  overflow-x: auto;
-}
-
-.milkdown-view .ProseMirror code {
-  padding: 1px 4px;
+/* Código en línea (SPEC-0010 RF-038; R-6): el del mockup, con `--accent-hover` (el texto de acento) y
+   12 px sobre el cuerpo de 14 (.857em). No toca el `pre` de los bloques. */
+.milkdown-view .ProseMirror :not(pre) > code {
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-tertiary);
+  color: var(--accent-hover);
+  font-family: var(--font-mono);
+  font-size: 0.857em;
 }
 
 /* Bloque de código (SPEC-0010 RF-033…RF-036; R-8): caja con cabecera propia de 36 px (la etiqueta ya no
@@ -845,21 +848,153 @@
   overflow-wrap: normal;
 }
 
+/* Cita (SPEC-0010 RF-037; R-5): barra de acento, relleno `--accent-soft` y cursiva; el texto es
+   `--text-secondary` (el `--text-dim` del mockup) con ≥ 4,5:1 sobre el relleno. */
 .milkdown-view .ProseMirror blockquote {
-  margin: var(--space-3) 0;
-  padding-left: var(--space-4);
-  border-left: 3px solid var(--border);
+  margin: var(--space-4) 0;
+  padding: var(--space-2) var(--space-4);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-soft);
   color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Una cita dentro de otra no repite el relleno. */
+.milkdown-view .ProseMirror blockquote blockquote {
+  background: transparent;
+}
+
+@media (max-width: 560px) {
+  .milkdown-view .ProseMirror blockquote {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+/* Tablas (SPEC-0010 RF-026; R-7): ancho del contenido con mínimo del 100 %, celdas de 4/12 y sin margen
+   en el párrafo de la celda (esa era la causa de las filas de ~62 px). El scroll horizontal es del
+   envoltorio `.note-table-scroll` (tableView.ts), no del documento. */
+.note-table-scroll {
+  max-width: 100%;
+  margin: var(--space-3) 0;
+  overflow-x: auto;
 }
 
 .milkdown-view .ProseMirror table {
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .milkdown-view .ProseMirror th,
 .milkdown-view .ProseMirror td {
+  min-width: 80px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
+  text-align: left;
+}
+
+.milkdown-view .ProseMirror td > p,
+.milkdown-view .ProseMirror th > p {
+  margin: 0;
+}
+
+.milkdown-view .ProseMirror th {
+  background: var(--bg-tertiary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.milkdown-view .ProseMirror .selectedCell {
+  background: var(--accent-soft);
+}
+
+/* Tareas (SPEC-0010 RF-039; R-10): casilla de 16 × 16, borde de 2 px, marcada con el acento. En lectura es una
+   imagen sin foco; en Visual, un `input` con una zona de clic de ≥ 24 × 24. */
+.milkdown-view .ProseMirror li.note-task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-left: calc(-1 * var(--space-6));
+  list-style: none;
+}
+
+.note-task-slot {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.note-task-mark {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--text-secondary);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  appearance: none;
+}
+
+.note-task-mark::after {
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg-primary);
+  border-width: 0 2px 2px 0;
+  content: "";
+  opacity: 0;
+  transform: rotate(45deg);
+}
+
+input.note-task-mark {
+  cursor: pointer;
+}
+
+input.note-task-mark:hover {
+  border-color: var(--accent);
+}
+
+input.note-task-mark:active {
+  transform: scale(0.92);
+}
+
+/* Zona de clic ampliada a ≥ 24 × 24 (WCAG 2.2). */
+input.note-task-mark::before {
+  position: absolute;
+  inset: -4px;
+  content: "";
+}
+
+li.note-task[data-checked="true"] .note-task-mark {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+li.note-task[data-checked="true"] .note-task-mark::after {
+  opacity: 1;
+}
+
+li.note-task[data-checked="true"] .note-task-body {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.note-task-body {
+  min-width: 0;
+  flex: 1;
+}
+
+/* El párrafo de la tarea no lleva margen (como el `li > p` de las listas normales). */
+.note-task-body > p {
+  margin: 0;
 }
 
 .milkdown-view .ProseMirror img {

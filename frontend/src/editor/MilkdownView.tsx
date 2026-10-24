@@ -24,6 +24,8 @@ import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { codeBlockViewFactory } from "./codeBlockView";
+import { tableViewFactory } from "./tableView";
+import { taskItemViewFactory } from "./taskItemView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
 import "prosemirror-view/style/prosemirror.css";
@@ -178,8 +180,14 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(history)
       .use(listener)
       .config((ctx) => {
-        // *Node views* de SPEC-0010: el bloque de código con su cabecera y «Copiar» (RF-033…RF-036).
-        ctx.update(nodeViewCtx, (views) => [...views, ["code_block", codeBlockViewFactory()] as [string, NodeViewConstructor]]);
+        // *Node views* de SPEC-0010: bloque de código con cabecera y «Copiar» (RF-033…RF-036), casillas de tarea
+        // (RF-039) y tabla con envoltorio de scroll (RF-026).
+        ctx.update(nodeViewCtx, (views) => [
+          ...views,
+          ["code_block", codeBlockViewFactory()] as [string, NodeViewConstructor],
+          ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
+          ["table", tableViewFactory()] as [string, NodeViewConstructor],
+        ]);
         // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
         ctx.update(prosePluginsCtx, (plugins) =>
           plugins.concat(
