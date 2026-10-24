@@ -166,7 +166,7 @@ actualizado: 2026-10-24
   - EXPECT: `passed`; capturas `prose-*` leídas (casilla por tarea, tachado en hechas).
 
 **Componente 5 · Vista Código**
-- [ ] T-034 [rojo] — `editor/CodeView.test.tsx`: números de línea, línea activa, clases `sx-*` en encabezados/negrita/enlace/código/marcas del markdown (cubre RF-029) [zona: test]
+- [x] T-034 [rojo] — `editor/CodeView.test.tsx`: números de línea, línea activa, clases `sx-*` en encabezados/negrita/enlace/código/marcas del markdown (cubre RF-029) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/CodeView.test.tsx`
   - EXPECT: fallan (sin `.cm-lineNumbers` ni `sx-*`).
 - [ ] T-035 — `editor/highlight/highlighter.ts` (`tagHighlighter` → `sx-*`) + `CodeView` con `syntaxHighlighting`, `lineNumbers`, `highlightActiveLine` + tema por variables (R-9) (cubre RF-029, RF-040) [zona: pantalla] [P-11]

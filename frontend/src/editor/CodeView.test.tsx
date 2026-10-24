@@ -45,4 +45,34 @@ describe("CodeView", () => {
     expect(viewOf(container)).toBe(view);
     expect(onChange).not.toHaveBeenCalled();
   });
+
+  // RF-029: números de línea y línea activa (P-11).
+  it("muestra los números de línea y marca la línea activa", () => {
+    const { container } = render(<CodeView value={"uno\ndos\ntres"} onChange={() => {}} label="Código" />);
+    const numbers = [...container.querySelectorAll(".cm-lineNumbers .cm-gutterElement")].map((el) => el.textContent).filter((text) => /\d/.test(text ?? ""));
+    expect(numbers).toEqual(["1", "2", "3"]);
+    expect(container.querySelector(".cm-activeLine")).not.toBeNull();
+  });
+
+  /** Texto de los tramos con una clase `sx-*` en el documento montado. */
+  function spans(container: HTMLElement, className: string): string[] {
+    return [...container.querySelectorAll(`.cm-line .${className}`)].map((el) => el.textContent ?? "");
+  }
+
+  // RF-029, RF-040
+  it("colorea el markdown con clases sx-*: encabezados, negrita, cursiva, enlace, código y marcas", () => {
+    const doc = "# Título\n\n## Sub\n\nUn **fuerte**, *suave*, `código` y [enlace](https://example.com).\n\n> cita\n\n- item";
+    const { container } = render(<CodeView value={doc} onChange={() => {}} label="Código" />);
+    expect(spans(container, "sx-heading1").join("")).toContain("Título");
+    expect(spans(container, "sx-heading").join("")).toContain("Sub");
+    expect(spans(container, "sx-strong").join("")).toContain("fuerte");
+    expect(spans(container, "sx-emphasis").join("")).toContain("suave");
+    expect(spans(container, "sx-code").join("")).toContain("código");
+    expect(spans(container, "sx-link").join("")).toContain("enlace");
+    expect(spans(container, "sx-url").join("")).toContain("https://example.com");
+    expect(spans(container, "sx-quote").join("")).toContain("cita");
+    // Las marcas del markdown (`#`, `**`, `>`, `-`, backticks, corchetes) llevan sx-meta.
+    const marks = spans(container, "sx-meta").join("");
+    for (const mark of ["#", "**", ">", "-", "`"]) expect(marks).toContain(mark);
+  });
 });
