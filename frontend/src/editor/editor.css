@@ -21,6 +21,102 @@
   background: var(--bg-secondary);
 }
 
+/* Menú ⋮ (SPEC-0010 RF-061; R-13; P-17): botón de 28 × 28 y menú en un portal sobre el contenido,
+   de ≥ 200 px, con ítems de 32 px (40 en táctil), radio de 10 px y la sombra del panel. */
+.note-menu-button {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.note-menu-button:hover,
+.note-menu-button[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-menu {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  min-width: 200px;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-panel);
+  animation: note-menu-in var(--dur-fast) var(--ease-out);
+}
+
+@keyframes note-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.note-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+}
+
+.note-menu-item:hover,
+.note-menu-item:focus {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-menu-item:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-menu-item[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note-menu-item-danger,
+.note-menu-item-danger:hover,
+.note-menu-item-danger:focus {
+  color: var(--danger-text);
+}
+
+.note-menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+@media (pointer: coarse) {
+  .note-menu-item {
+    height: 40px;
+  }
+
+  .note-menu-button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /* Migas (SPEC-0010 RF-054, RF-063; P-17; R-12): ocupan el hueco de la barra y cada segmento se trunca por
    sí mismo con «…» (el ancho máximo lo pone `NoteBreadcrumb`); el separador «/» es tenue y decorativo. */
 .note-breadcrumb {

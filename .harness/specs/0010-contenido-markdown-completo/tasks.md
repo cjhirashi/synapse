@@ -189,7 +189,7 @@ actualizado: 2026-10-24
 - [x] T-040 [rojo] — `editor/NoteMenu.test.tsx`: botón ⋮ "Opciones de la nota" (`aria-haspopup`, `aria-expanded`), `role="menu"` en portal, orden P-4, teclado (Enter/Espacio/↓/↑/Inicio/Fin/Esc/Tab), "Ver en Código" `aria-disabled` en Código, acciones como *props* (cubre RF-061) [zona: test] [P-4, P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteMenu.test.tsx`
   - EXPECT: falla al importar `./NoteMenu`.
-- [ ] T-041 — `editor/NoteMenu.tsx` + estilos (R-13) (cubre RF-061) [zona: pantalla]
+- [x] T-041 — `editor/NoteMenu.tsx` + estilos (R-13) (cubre RF-061) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteMenu.test.tsx`
   - EXPECT: `passed`.
 - [ ] T-042 [rojo] — `editor/NoteEditor.test.tsx`: cabecera en el orden Atrás, Adelante, migas, Visual|Código, Insertar tabla (sólo Visual), Guardar, estado, **lápiz** (nombre "Editar"/"Leer"), ⋮; flechas con `canBack/canForward` de *props* (deshabilitadas y "Adelante" atenuada); ≤ 560 px sólo iconos con el mismo nombre; + actualización **explícita** RF-041 del nombre del `h2` en `NoteEditor.test.tsx`/`VaultWorkspacePage.test.tsx` (cubre RF-041, RF-054, RF-056, RF-064) [zona: test] [P-17]
