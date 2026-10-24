@@ -94,7 +94,7 @@ actualizado: 2026-10-24
 - [x] T-013 [rojo] — `e2e/content-visual.spec.ts`: `0010 V-1` (panel en lectura), `0010 V-2` (formulario), `0010 V-3` (cita/código en línea/tareas), `0010 V-4` (tabla), en claro/oscuro a 1440/1024/390 con R-3…R-7, R-10, R-16 (cubre RF-009, RF-011, RF-026, RF-037, RF-038, RF-039) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(1|2|3|4) "`
   - EXPECT: fallan por la causa esperada: sin `role="group"` "Propiedades" (V-1/V-2), 0 casillas de tarea (V-3), fila de tabla ~62 px > 40 (V-4).
-- [ ] T-014 [rojo] — `0010 V-5` (bloque de código), `0010 V-6` (vista Código), `0010 V-7` (Mermaid), `0010 V-8` (error y fallo de carga), `0010 V-9` (zoom) (cubre RF-027, RF-029, RF-033, RF-046, RF-049, RF-052, RF-053) [zona: sistema]
+- [x] T-014 [rojo] — `0010 V-5` (bloque de código), `0010 V-6` (vista Código), `0010 V-7` (Mermaid), `0010 V-8` (error y fallo de carga), `0010 V-9` (zoom) (cubre RF-027, RF-029, RF-033, RF-046, RF-049, RF-052, RF-053) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(5|6|7|8|9) "`
   - EXPECT: fallan: sin cabecera de bloque ni `span.sx-*` (V-5), sin `sx-*` ni números de línea (V-6), sin `svg` de diagrama (V-7/V-8/V-9).
 - [ ] T-015 [rojo] — `0010 V-10` (encabezado contra la captura de Obsidian, P-17: separador `/`, truncado por segmento, lápiz, ⋮, "Adelante" atenuada, 43 px una línea a 1440/1024/390), `0010 V-11` (menú ⋮), `0010 V-12` (barra lateral: "Raíz", carpeta activa, "Crear en", "Nueva carpeta", pista) (cubre RF-002, RF-006, RF-043, RF-054, RF-056, RF-061, RF-063, RF-064) [zona: sistema]

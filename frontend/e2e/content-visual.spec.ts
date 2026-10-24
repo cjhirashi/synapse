@@ -278,3 +278,215 @@ for (const { theme, size, key } of COMBOS) {
     await context.close();
   });
 }
+
+/** Lenguajes de RF-030 (nombre declarado en el bloque) que deben llevar al menos un `sx-*`. */
+const HIGHLIGHTED = CONTENT_NOTES.find((n) => n.key === "code") ? ["typescript", "javascript", "tsx", "python", "json", "bash", "css", "html", "sql", "yaml", "markdown"] : [];
+
+// V-5 · bloque de código: chasis (RF-033, RF-034; R-8)
+for (const { theme, size, key } of COMBOS) {
+  test(`0010 V-5 bloque de código: chasis, ${key} (RF-033, RF-034, RF-035)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "code", { theme, size });
+    const blocks = page.locator(".milkdown-view .ProseMirror .code-block");
+    await expect(blocks).toHaveCount(13);
+
+    // R-8: caja, cabecera de 36 px, «Copiar» de 28 × ≥ 84 y `pre` de 12/16 en mono 13/1,6.
+    const box = await measure(page, ".code-block");
+    expectExact(`R-8bg ${key}`, "fondo = --bg-tertiary", box.bg, tokenColor(theme, "--bg-tertiary"));
+    expectExact(`R-8bd ${key}`, "borde = --border", box.borderTopColor, tokenColor(theme, "--border"));
+    expectMeasure(`R-8r ${key}`, "radio", parseFloat(box.radius), 6, 1);
+    const header = await measure(page, ".code-block-header");
+    expectMeasure(`R-8h ${key}`, "alto de la cabecera", header.h, 36, 1);
+    const copy = await measure(page, ".code-block-copy");
+    expectMeasure(`R-8ch ${key}`, "alto de «Copiar»", copy.h, 28, 1);
+    expect(copy.w, "«Copiar» ≥ 84 px").toBeGreaterThanOrEqual(84 - 1);
+    const pre = await measure(page, ".code-block pre");
+    expectMeasure(`R-8pl ${key}`, "padding horizontal del pre", parseFloat(pre.paddingLeft), 16, 1);
+    expectMeasure(`R-8pf ${key}`, "tamaño del pre", parseFloat(pre.fontSize), 13, 0.5);
+    expectMeasure(`R-8pi ${key}`, "interlineado del pre", parseFloat(pre.lineHeight), 13 * 1.6, 0.5);
+
+    // Etiqueta = lenguaje declarado tal cual, o «texto» si no hay.
+    const labels = await page.locator(".code-block-label").allTextContents();
+    expect(labels.slice(0, 3)).toEqual(["typescript", "javascript", "tsx"]);
+    expect(labels[labels.length - 1]).toBe("texto");
+    const label = await measure(page, ".code-block-label");
+    expectExact(`R-8lc ${key}`, "color de la etiqueta", label.color, tokenColor(theme, "--text-secondary"));
+    expect(await page.locator(".code-block-label").first().evaluate((el) => getComputedStyle(el).textTransform)).toBe("none");
+    // «Copiar»: nombre accesible fijo y siempre visible.
+    await expect(page.getByRole("button", { name: "Copiar código" }).first()).toBeVisible();
+    await expectNoPageScroll(page);
+
+    await shot(page, `codeblock-${key}`);
+    await context.close();
+  });
+}
+
+// V-5 · resaltado real con los tokens del tema (RF-027, RF-030, RF-031, RF-032, RF-040; RNF-004)
+for (const { theme, size, key } of DESKTOP_THEMES) {
+  test(`0010 V-5 resaltado de sintaxis, ${key} (RF-027, RF-030, RF-031, RF-032)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "code", { theme, size });
+    const errors = trackErrors(page);
+    const blocks = page.locator(".milkdown-view .ProseMirror .code-block");
+    await expect(blocks).toHaveCount(13);
+    for (const lang of HIGHLIGHTED) {
+      const block = blocks.filter({ has: page.locator(".code-block-label", { hasText: new RegExp(`^${lang}$`) }) });
+      await expect(block.locator('span[class*="sx-"]').first(), `un sx-* en ${lang}`).toBeAttached();
+    }
+    // Lenguaje desconocido y sin lenguaje: mono sin decoraciones.
+    for (const label of ["brainfuck", "texto"]) {
+      const block = blocks.filter({ has: page.locator(".code-block-label", { hasText: new RegExp(`^${label}$`) }) });
+      await expect(block.locator('span[class*="sx-"]'), `0 sx-* en ${label}`).toHaveCount(0);
+    }
+    // Colores computados = tokens, con contraste ≥ 4,5:1 sobre el fondo del bloque.
+    const bg = (await measure(page, ".code-block")).bg;
+    const expected: Record<string, string> = {
+      "sx-keyword": "--accent-hover",
+      "sx-string": "--success-text",
+      "sx-number": "--warning-text",
+      "sx-type": "--info-text",
+      "sx-comment": "--text-secondary",
+    };
+    for (const [cls, token] of Object.entries(expected)) {
+      const span = page.locator(`.code-block .${cls}`).first();
+      await expect(span, `existe ${cls}`).toBeAttached();
+      const color = await span.evaluate((el) => getComputedStyle(el).color);
+      expectExact(`R-sx ${cls} ${key}`, `${cls} = ${token}`, color, tokenColor(theme, token));
+      expect(contrast(color, bg), `${cls}: contraste ≥ 4,5`).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(errors, "sin errores de consola").toEqual([]);
+    await context.close();
+  });
+}
+
+// V-6 · vista Código (RF-029, RF-040; R-9)
+for (const { theme, size, key } of COMBOS) {
+  test(`0010 V-6 vista Código, ${key} (RF-029, RF-040)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "prose", { theme, size, code: true });
+    await expect(page.locator(".cm-lineNumbers")).toBeVisible();
+    // R-9: mono 13 px, interlineado 1,8 y números de línea de 12 px en `--text-secondary`.
+    const line = await measure(page, ".code-view .cm-line");
+    expectExact(`R-9f ${key}`, "tamaño", line.fontSize, "13px");
+    expectMeasure(`R-9l ${key}`, "interlineado", parseFloat(line.lineHeight), 13 * 1.8, 0.5);
+    const num = await measure(page, ".cm-lineNumbers .cm-gutterElement:not([style*='height: 0'])");
+    expectExact(`R-9n ${key}`, "tamaño del número", num.fontSize, "12px");
+    expectExact(`R-9nc ${key}`, "color del número", num.color, tokenColor(theme, "--text-secondary"));
+    // Línea activa con `--bg-secondary` (no el literal del mockup, C-3).
+    await page.locator(".code-view .cm-content").click();
+    await expect(page.locator(".cm-activeLine").first()).toBeVisible();
+    expectExact(`R-9a ${key}`, "línea activa = --bg-secondary", (await measure(page, ".cm-activeLine")).bg, tokenColor(theme, "--bg-secondary"));
+    // Colores del markdown (§2.3-h): h1 700, negrita `--accent-hover` 600, código `--warning-text`, enlace `--info-text`.
+    const style = (selector: string) => page.locator(selector).first().evaluate((el) => ({ color: getComputedStyle(el).color, weight: getComputedStyle(el).fontWeight }));
+    expect((await style(".code-view .sx-heading1")).weight).toBe("700");
+    const strong = await style(".code-view .sx-strong");
+    expect(strong.color).toBe(tokenColor(theme, "--accent-hover"));
+    expect(strong.weight).toBe("600");
+    expect((await style(".code-view .sx-code")).color).toBe(tokenColor(theme, "--warning-text"));
+    expect((await style(".code-view .sx-link")).color).toBe(tokenColor(theme, "--info-text"));
+    await expectNoPageScroll(page);
+    await shot(page, `code-view-${key}`);
+    await context.close();
+  });
+}
+
+// V-6 · bloque YAML de propiedades en Código (RF-014, RF-029): depende de la lógica del frontmatter
+test("0010 V-6 bloque YAML en Código, oscuro 1440 (RF-014, RF-029)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "props-types", { theme: "dark", size: SIZES[0], code: true });
+  const first = page.locator(".code-view .cm-line").first();
+  await expect(first).toHaveText("---");
+  expect((await measure(page, ".code-view .cm-line")).bg, "bloque YAML con fondo --bg-secondary").toBe(tokenColor("dark", "--bg-secondary"));
+  await context.close();
+});
+
+const MERMAID_AREA = '.code-block[data-language="mermaid"] [role="img"]';
+
+// V-7 · Mermaid (RF-046, RF-050, RF-051; RNF-003; R-11)
+for (const { theme, size, key } of COMBOS) {
+  test(`0010 V-7 diagrama Mermaid, ${key} (RF-046, RF-050, RNF-003)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "mermaid", { theme, size });
+    const area = page.locator(MERMAID_AREA).first();
+    await expect(area.locator("svg").first()).toBeVisible({ timeout: 20_000 });
+    await expect(area).toHaveAccessibleName(/\S/);
+    // R-11: alto entre 96 y 420; el SVG cabe en la columna.
+    const m = await measure(page, MERMAID_AREA);
+    expect(m.h).toBeGreaterThanOrEqual(96 - 2);
+    expect(m.h).toBeLessThanOrEqual(420 + 2);
+    const column = await measure(page, ".note-editor-column");
+    const svg = await measure(page, `${MERMAID_AREA} svg`);
+    expect(svg.w, "el SVG cabe en la columna").toBeLessThanOrEqual(column.w + 1);
+    // Seguridad: el SVG no trae script, foreignObject, atributos on* ni enlaces navegables.
+    const unsafe = await area.evaluate((el) => ({
+      script: el.querySelectorAll("script").length,
+      foreign: el.querySelectorAll("foreignObject").length,
+      handlers: [...el.querySelectorAll("*")].filter((n) => [...n.attributes].some((a) => a.name.startsWith("on"))).length,
+      links: el.querySelectorAll("a[href], [href], [xlink\\:href]").length,
+    }));
+    expect(unsafe).toEqual({ script: 0, foreign: 0, handlers: 0, links: 0 });
+    await expectNoPageScroll(page);
+    await shot(page, `mermaid-${key}`);
+    await context.close();
+  });
+}
+
+test("0010 V-7 el diagrama sigue el tema sin recargar (RF-050)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "mermaid", { theme: "dark", size: SIZES[0] });
+  const node = () => page.locator(`${MERMAID_AREA} svg .node rect, ${MERMAID_AREA} svg .node polygon`).first().evaluate((el) => getComputedStyle(el).fill);
+  await expect(page.locator(`${MERMAID_AREA} svg`).first()).toBeVisible({ timeout: 20_000 });
+  const before = await node();
+  await page.getByRole("button", { name: /claro/i }).first().click();
+  await expect.poll(node, { timeout: 10_000 }).not.toBe(before);
+  await context.close();
+});
+
+// V-8 · fallos de Mermaid (RF-049, RF-053)
+for (const theme of THEMES) {
+  test(`0010 V-8 diagrama inválido, ${theme} (RF-049)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "mermaid-invalid", { theme, size: SIZES[0] });
+    const errors = trackErrors(page);
+    const group = page.getByRole("group", { name: "Error en el diagrama" });
+    await expect(group).toBeVisible({ timeout: 20_000 });
+    await expect(group).toContainText("No se pudo dibujar el diagrama");
+    await expect(page.getByText("El resto de la nota se ve igual.")).toBeVisible();
+    expect((await measure(page, '[aria-label="Error en el diagrama"]')).bg).toBe(tokenColor(theme, "--danger-bg"));
+    expect(errors.filter((e) => !/mermaid|Parse error|Syntax/i.test(e)), "sin excepciones no capturadas").toEqual([]);
+    await shot(page, `mermaid-error-${theme}`);
+    await context.close();
+  });
+
+  test(`0010 V-8 fallo de carga del diagrama, ${theme} (RF-053)`, async ({ browser, content }) => {
+    const { context, page } = await openWorkspace(browser, content, { theme, size: SIZES[0] });
+    // El chunk de Mermaid se aborta: la nota se ve y el bloque ofrece reintentar.
+    await page.route(/mermaid[^/]*\.js/i, (route) => route.abort());
+    const errors = trackErrors(page);
+    await openContentNote(page, note("mermaid"));
+    await expect(page.getByText("No se pudo cargar el diagrama").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Reintentar" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Diagramas válidos" })).toBeVisible();
+    expect(errors.filter((e) => /Uncaught|TypeError/.test(e)), "0 excepciones no capturadas").toEqual([]);
+    await shot(page, `mermaid-loadfail-${theme}`);
+    await context.close();
+  });
+}
+
+// V-9 · zoom del diagrama ancho (RF-052)
+for (const theme of THEMES) {
+  test(`0010 V-9 zoom del diagrama, ${theme} (RF-052)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "mermaid-wide", { theme, size: SIZES[0] });
+    const controls = page.getByRole("group", { name: "Controles del diagrama" });
+    await expect(controls).toBeVisible({ timeout: 20_000 });
+    await expect(controls.getByRole("button", { name: "Acercar" })).toBeVisible();
+    await expect(controls.getByRole("button", { name: "Alejar" })).toBeVisible();
+    const fit = controls.getByRole("button", { name: "Reajustar vista" });
+    await expect(fit).toBeDisabled();
+    const transform = () => page.locator(`${MERMAID_AREA} .svg-pan-zoom_viewport`).first().getAttribute("transform");
+    const before = await transform();
+    await page.locator(MERMAID_AREA).first().focus();
+    await page.keyboard.press("+");
+    await expect.poll(transform).not.toBe(before);
+    await expect(fit).toBeEnabled();
+    await shot(page, `mermaid-zoom-${theme}`);
+    // Un diagrama que cabe no muestra controles.
+    await openContentNote(page, note("mermaid"));
+    await expect(page.locator(`${MERMAID_AREA} svg`).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("group", { name: "Controles del diagrama" })).toHaveCount(0);
+    await context.close();
+  });
+}
