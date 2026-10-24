@@ -142,7 +142,7 @@ actualizado: 2026-10-24
 - [x] T-027 — `editor/icons.ts` (glifos Lucide con `createElementNS`) + `editor/codeBlockView.ts` + registro de la *node view* en `MilkdownView` (cubre RF-033, RF-034, RF-035, RF-036, RNF-003) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
-- [ ] T-028 — Estilos del chasis (caja, cabecera 36, "Copiar" 28 × ≥ 84 y estados, `pre` 12/16 mono 13/1,6) (cubre RF-033, RF-040) [zona: estilos]
+- [x] T-028 — Estilos del chasis (caja, cabecera 36, "Copiar" 28 × ≥ 84 y estados, `pre` 12/16 mono 13/1,6) (cubre RF-033, RF-040) [zona: estilos]
   - CHECK: `cd frontend && npx vitest run src/notes/layoutCss.test.ts && CV --grep "0010 V-5 "`
   - EXPECT: layoutCss `passed`; V-5 pasa las medidas R-8 y la etiqueta; **siguen rojas** sólo las aserciones de `sx-*` (resaltado real en F); capturas `codeblock-*` leídas.
 

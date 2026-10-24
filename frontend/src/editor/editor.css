@@ -631,6 +631,83 @@
   padding: 1px 4px;
 }
 
+/* Bloque de código (SPEC-0010 RF-033…RF-036; R-8): caja con cabecera propia de 36 px (la etiqueta ya no
+   se superpone al código como en career-admin, C-5) y `pre` de 12/16 en mono 13/1,6. Sin `overflow:hidden`
+   en la caja para no recortar el anillo de foco; el scroll horizontal es del `pre`. */
+.milkdown-view .ProseMirror .code-block {
+  margin: var(--space-3) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.code-block-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.code-block-copy {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-width: 84px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.code-block-copy:hover {
+  border-color: var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.code-block-copy:active {
+  background: var(--accent-soft);
+  transform: scale(0.97);
+}
+
+.code-block-copy[data-state="copied"] svg {
+  color: var(--success-text);
+}
+
+.code-block-copy[data-state="failed"] svg {
+  color: var(--danger-text);
+}
+
+.milkdown-view .ProseMirror .code-block pre {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-ligatures: none;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
 .milkdown-view .ProseMirror blockquote {
   margin: var(--space-3) 0;
   padding-left: var(--space-4);
