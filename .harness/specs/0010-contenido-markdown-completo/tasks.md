@@ -186,7 +186,7 @@ actualizado: 2026-10-24
 - [x] T-039 — `editor/NoteBreadcrumb.tsx` (`ResizeObserver` + `breadcrumb.ts`, `onRevealFolder` inyectado) + estilos (cubre RF-054, RF-063) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteBreadcrumb.test.tsx`
   - EXPECT: `passed`.
-- [ ] T-040 [rojo] — `editor/NoteMenu.test.tsx`: botón ⋮ "Opciones de la nota" (`aria-haspopup`, `aria-expanded`), `role="menu"` en portal, orden P-4, teclado (Enter/Espacio/↓/↑/Inicio/Fin/Esc/Tab), "Ver en Código" `aria-disabled` en Código, acciones como *props* (cubre RF-061) [zona: test] [P-4, P-17]
+- [x] T-040 [rojo] — `editor/NoteMenu.test.tsx`: botón ⋮ "Opciones de la nota" (`aria-haspopup`, `aria-expanded`), `role="menu"` en portal, orden P-4, teclado (Enter/Espacio/↓/↑/Inicio/Fin/Esc/Tab), "Ver en Código" `aria-disabled` en Código, acciones como *props* (cubre RF-061) [zona: test] [P-4, P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteMenu.test.tsx`
   - EXPECT: falla al importar `./NoteMenu`.
 - [ ] T-041 — `editor/NoteMenu.tsx` + estilos (R-13) (cubre RF-061) [zona: pantalla]
