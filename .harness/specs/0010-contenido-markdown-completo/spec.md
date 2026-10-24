@@ -49,7 +49,7 @@ covers:                  # fijado en PLAN-0010 §9 (archivos con dueño anterior
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-24, nota: "incluye RF-052 (zoom/pan con svg-pan-zoom en carga diferida) por paridad con career-admin" }
-  fase_2: pendiente
+  fase_2: { por: "AIRA en nombre de Carlos (autoridad delegada)", fecha: 2026-10-24 }
 actualizado: 2026-10-24
 ---
 
