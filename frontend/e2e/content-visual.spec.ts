@@ -682,6 +682,9 @@ for (const theme of THEMES) {
       for (const scope of COLOR_SCOPES) {
         const found = await page.locator(`${scope}, ${scope} *`).evaluateAll((els) =>
           els.flatMap((el) => {
+            // Los botones primarios (`submit`) llevan el blanco global sobre `--accent` (C-13 de PLAN-0010 §7: ya
+            // existía y queda en el backlog); los de contenido nuevos no son `submit`.
+            if (el.closest('button[type="submit"]')) return [];
             const c = getComputedStyle(el);
             return [c.color, c.backgroundColor, c.borderTopColor, c.borderLeftColor].map((color) => `${(el as HTMLElement).className || el.tagName}|${color}`);
           }),

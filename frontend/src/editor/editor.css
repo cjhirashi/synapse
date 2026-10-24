@@ -1123,8 +1123,14 @@
   width: max-content;
   min-width: 100%;
   border-collapse: collapse;
+  border-color: var(--border); /* el navegador pone un gris propio a table/tr/tbody aunque no pinten borde */
   font-size: 14px;
   line-height: 1.6;
+}
+
+.milkdown-view .ProseMirror tbody,
+.milkdown-view .ProseMirror tr {
+  border-color: inherit;
 }
 
 .milkdown-view .ProseMirror th,
