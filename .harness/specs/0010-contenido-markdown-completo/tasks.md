@@ -234,10 +234,10 @@ actualizado: 2026-10-24
 - [x] T-125 — `editor/markdown/headingIds.ts` (mismo `headingIdGenerator`, misma regla `-#n`) aplicado al documento recién parseado (cubre RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`; 0 `dispatch` al montar; ids iguales.
-- [ ] T-126 [rojo] — `notes/layoutCss.test.ts`: `content-visibility: auto` + `contain-intrinsic-size` sólo en `.milkdown-view[data-mode="read"] .ProseMirror > *` (y nunca en Visual) (cubre RNF-001) [zona: test]
+- [x] T-126 [rojo] — `notes/layoutCss.test.ts`: `content-visibility: auto` + `contain-intrinsic-size` sólo en `.milkdown-view[data-mode="read"] .ProseMirror > *` (y nunca en Visual) (cubre RNF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/layoutCss.test.ts -t "content-visibility"`
   - EXPECT: falla (regla ausente).
-- [ ] T-127 — Regla CSS + `data-mode` en `MilkdownView` + `measure` de `fixtures.ts` con `scrollIntoViewIfNeeded`; sin regresión visual (cubre RNF-001, RNF-005) [zona: estilos]
+- [x] T-127 — Regla CSS + `data-mode` en `MilkdownView` + `measure` de `fixtures.ts` con `scrollIntoViewIfNeeded`; sin regresión visual (cubre RNF-001, RNF-005) [zona: estilos]
   - CHECK: `cd frontend && npx vitest run src && CV`
   - EXPECT: vitest `passed`; `content-visual` igual que tras T-049 (mismas V-* en verde); capturas `prose-*`, `table-*` leídas sin cambios visibles.
 - [ ] T-128 [rojo] — `editor/markdown/parseStage.test.ts` (equivalencia): para todo el corpus (`content-notes.ts`, casos de `frontmatter-yaml.cases.json`, notas de pruebas de 0008) el documento desde mdast cacheado es `eq` a `parserCtx(text)` del editor; mismas extensiones de parseo (`micromarkExtensions`, `fromMarkdownExtensions`) que el procesador del editor; `npm ls unified remark-parse remark-gfm micromark` sin duplicados (cubre RNF-001, RNF-003) [zona: test]
