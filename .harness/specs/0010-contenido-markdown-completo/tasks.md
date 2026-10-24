@@ -203,7 +203,7 @@ actualizado: 2026-10-24
 - [x] T-044 [rojo] — `notes/NoteSidebar.test.tsx`: fila "Raíz" primer `treeitem`, carpeta activa con `aria-current` (estado local), "Crear en: …" con `aria-live`, botón y formulario "Nueva carpeta" (etiqueta, Esc, foco), pista con `aria-describedby` en los 3 campos; + actualización **explícita** RF-041 de las pruebas de orden/Inicio del árbol (cubre RF-002, RF-006, RF-041, RF-043) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: fallan las pruebas nuevas.
-- [ ] T-045 — `NoteSidebar.tsx` (fila "Raíz", estado visual de carpeta activa local, "Crear en", formulario "Nueva carpeta" sin persistir, pista) + `notes.css` (R-14) (cubre RF-002, RF-006, RF-043) [zona: pantalla]
+- [x] T-045 — `NoteSidebar.tsx` (fila "Raíz", estado visual de carpeta activa local, "Crear en", formulario "Nueva carpeta" sin persistir, pista) + `notes.css` (R-14) (cubre RF-002, RF-006, RF-043) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && CV --grep "0010 V-12 "`
   - EXPECT: vitest `passed`; V-12 en verde salvo crear de verdad (F); capturas `sidebar-folders-*` leídas.
 - [ ] T-046 — V-13/V-14 sobre todo lo maquetado (colores ∈ tokens, reduced-motion) (cubre RF-040, RNF-004) [zona: sistema]
