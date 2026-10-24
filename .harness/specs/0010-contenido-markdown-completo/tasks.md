@@ -177,7 +177,7 @@ actualizado: 2026-10-24
 - [x] T-036 [rojo] — `editor/breadcrumb.test.ts`: `crumbs(path)`, raíz = sólo nombre, truncado **por segmento** con "…" según anchos simulados (primera carpeta y nombre nunca desaparecen) (cubre RF-054, RF-063) [zona: test] [P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/breadcrumb.test.ts`
   - EXPECT: falla al importar `./breadcrumb`.
-- [ ] T-037 — `editor/breadcrumb.ts` (cubre RF-054, RF-063) [zona: núcleo]
+- [x] T-037 — `editor/breadcrumb.ts` (cubre RF-054, RF-063) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/breadcrumb.test.ts`
   - EXPECT: `passed`.
 - [ ] T-038 [rojo] — `editor/NoteBreadcrumb.test.tsx`: `nav[aria-label="Ruta"] > ol`, separador `/` decorativo, carpetas como botones con `title`, `h2 aria-current="page"` con el nombre, `title` = ruta completa, segmentos truncados con "…" (cubre RF-054, RF-063) [zona: test] [P-17]
