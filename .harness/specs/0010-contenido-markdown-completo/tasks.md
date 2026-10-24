@@ -46,19 +46,19 @@ actualizado: 2026-10-24
 ## Tareas
 
 ### 0 · Línea base
-- [ ] T-000 — Instalar dependencias y compilar el worktree limpio (cubre RNF-002: línea base) [zona: sistema]
+- [x] T-000 — Instalar dependencias y compilar el worktree limpio (cubre RNF-002: línea base) [zona: sistema]
   - CHECK: `cd frontend && npm ci && npm run build`
   - EXPECT: `npm ci` sin errores; `build` exit 0 ("built in").
-- [ ] T-001 — Medir la línea base del *bundle* y anotarla en `history.md` (cubre RNF-002) [zona: sistema]
+- [x] T-001 — Medir la línea base del *bundle* y anotarla en `history.md` (cubre RNF-002) [zona: sistema]
   - CHECK: `cd frontend/dist/assets && for f in index-*.js NoteEditor-*.js; do echo "$f $(gzip -9c $f | wc -c)"; done`
   - EXPECT: entrada `141660`, editor `316428` (PLAN-0010 §2.5); si difieren, se anota la cifra real como base y se corrige el presupuesto (base + 15 360 / + 40 960).
-- [ ] T-002 — Suites del frontend en verde (cubre RF-041: línea base de 0008/0009) [zona: sistema]
+- [x] T-002 — Suites del frontend en verde (cubre RF-041: línea base de 0008/0009) [zona: sistema]
   - CHECK: `cd frontend && npx vitest run && npm run typecheck && npm run test:perf && npm run test:sync`
   - EXPECT: `Tests 946 passed (946)` (o el número vigente) con 0 failed; typecheck exit 0; `test:perf` p95 < 300 ms; `test:sync` 27/27.
-- [ ] T-003 — Verificación visual de 0009 en verde (cubre RF-041, RF-064: R-12 de 0009) [zona: sistema]
+- [x] T-003 — Verificación visual de 0009 en verde (cubre RF-041, RF-064: R-12 de 0009) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/base npm run test:visual`
   - EXPECT: `42 passed` (V-1…V-10 de 0009, regresión, RNF-001 p95 ≤ 150 ms).
-- [ ] T-004 — Suite del backend en verde, **sola** contra `:15984` (cubre RF-007: línea base de la regla de ruta) [zona: sistema]
+- [x] T-004 — Suite del backend en verde, **sola** contra `:15984` (cubre RF-007: línea base de la regla de ruta) [zona: sistema]
   - CHECK: `bash .harness/gate/check.sh && (cd backend && python3 -m pytest -q)`
   - EXPECT: gate "Compuerta abierta"; `1135 passed` (o el vigente), 0 failed, ~17 min.
 
