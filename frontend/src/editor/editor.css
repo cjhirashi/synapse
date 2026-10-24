@@ -21,16 +21,77 @@
   background: var(--bg-secondary);
 }
 
-.note-editor-header h2 {
+/* Migas (SPEC-0010 RF-054, RF-063; P-17; R-12): ocupan el hueco de la barra y cada segmento se trunca por
+   sí mismo con «…» (el ancho máximo lo pone `NoteBreadcrumb`); el separador «/» es tenue y decorativo. */
+.note-breadcrumb {
   flex: 1;
   min-width: 0;
-  margin: 0;
   overflow: hidden;
+}
+
+.note-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.note-breadcrumb li {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.note-crumb {
+  box-sizing: border-box;
+  max-width: 24ch;
+  height: 28px;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
+}
+
+.note-crumb:hover {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-crumb:active {
+  background: var(--accent-soft);
+}
+
+/* El anillo de foco queda dentro del botón: el contenedor recorta lo que sobresale. */
+.note-crumb:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-crumb-sep {
+  flex-shrink: 0;
+  margin: 0 var(--space-1);
   color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.note-crumb-name {
+  box-sizing: border-box;
+  min-width: 6ch;
+  margin: 0;
+  padding: 0 var(--space-2);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-editor-toolbar {

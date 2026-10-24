@@ -88,7 +88,7 @@ describe("NoteBreadcrumb · truncado por segmento (anchos simulados)", () => {
     natural.set("Proyectos", 100).set("Clientes", 100).set("Plan de entregas", 100);
     navWidth = 500;
     render(<NoteBreadcrumb path={PATH} onRevealFolder={() => {}} />);
-    expect(maxWidths()).toEqual(["100px", "100px", "100px"]);
+    expect(maxWidths()).toEqual(["", "", ""]);
   });
 
   // RF-063
@@ -96,7 +96,8 @@ describe("NoteBreadcrumb · truncado por segmento (anchos simulados)", () => {
     natural.set("Proyectos", 100).set("Clientes", 100).set("Plan de entregas", 200);
     navWidth = 300; // separadores: 2 × 16 → quedan 68 para las dos carpetas
     render(<NoteBreadcrumb path={PATH} onRevealFolder={() => {}} />);
-    expect(maxWidths()).toEqual(["34px", "34px", "200px"]);
+    // El nombre conserva su ancho: sólo se limitan los segmentos que no caben.
+    expect(maxWidths()).toEqual(["34px", "34px", ""]);
   });
 
   // RF-063
@@ -106,7 +107,7 @@ describe("NoteBreadcrumb · truncado por segmento (anchos simulados)", () => {
     render(<NoteBreadcrumb path={PATH} onRevealFolder={() => {}} />);
     navWidth = 600;
     act(() => resize?.());
-    expect(maxWidths()).toEqual(["100px", "100px", "200px"]);
+    expect(maxWidths()).toEqual(["", "", ""]);
   });
 
   // RF-063

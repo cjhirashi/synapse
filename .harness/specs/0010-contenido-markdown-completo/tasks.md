@@ -183,7 +183,7 @@ actualizado: 2026-10-24
 - [x] T-038 [rojo] — `editor/NoteBreadcrumb.test.tsx`: `nav[aria-label="Ruta"] > ol`, separador `/` decorativo, carpetas como botones con `title`, `h2 aria-current="page"` con el nombre, `title` = ruta completa, segmentos truncados con "…" (cubre RF-054, RF-063) [zona: test] [P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteBreadcrumb.test.tsx`
   - EXPECT: falla al importar `./NoteBreadcrumb`.
-- [ ] T-039 — `editor/NoteBreadcrumb.tsx` (`ResizeObserver` + `breadcrumb.ts`, `onRevealFolder` inyectado) + estilos (cubre RF-054, RF-063) [zona: pantalla]
+- [x] T-039 — `editor/NoteBreadcrumb.tsx` (`ResizeObserver` + `breadcrumb.ts`, `onRevealFolder` inyectado) + estilos (cubre RF-054, RF-063) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteBreadcrumb.test.tsx`
   - EXPECT: `passed`.
 - [ ] T-040 [rojo] — `editor/NoteMenu.test.tsx`: botón ⋮ "Opciones de la nota" (`aria-haspopup`, `aria-expanded`), `role="menu"` en portal, orden P-4, teclado (Enter/Espacio/↓/↑/Inicio/Fin/Esc/Tab), "Ver en Código" `aria-disabled` en Código, acciones como *props* (cubre RF-061) [zona: test] [P-4, P-17]
