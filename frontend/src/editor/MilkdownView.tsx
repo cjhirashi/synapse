@@ -15,14 +15,15 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { Editor, defaultValueCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import { commonmark, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
 import { gfm } from "@milkdown/preset-gfm";
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin } from "@milkdown/prose/state";
-import type { EditorView } from "@milkdown/prose/view";
+import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
+import { codeBlockViewFactory } from "./codeBlockView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
 import "prosemirror-view/style/prosemirror.css";
@@ -177,6 +178,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(history)
       .use(listener)
       .config((ctx) => {
+        // *Node views* de SPEC-0010: el bloque de código con su cabecera y «Copiar» (RF-033…RF-036).
+        ctx.update(nodeViewCtx, (views) => [...views, ["code_block", codeBlockViewFactory()] as [string, NodeViewConstructor]]);
         // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
         ctx.update(prosePluginsCtx, (plugins) =>
           plugins.concat(

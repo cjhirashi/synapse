@@ -139,7 +139,7 @@ actualizado: 2026-10-24
 - [x] T-026 [rojo] — `editor/codeBlockView.test.ts`: cabecera `contenteditable=false` con etiqueta tal cual o "texto", "Copiar" (`aria-label` fijo, éxito "Copiado", fallo sin excepción, región viva), `pre` como `contentDOM`; `MilkdownView.test.tsx`: serializar tras montar = entrada (cubre RF-033, RF-034, RF-035, RF-036) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts src/editor/MilkdownView.test.tsx`
   - EXPECT: falla al importar `./codeBlockView`.
-- [ ] T-027 — `editor/icons.ts` (glifos Lucide con `createElementNS`) + `editor/codeBlockView.ts` + registro de la *node view* en `MilkdownView` (cubre RF-033, RF-034, RF-035, RF-036, RNF-003) [zona: pantalla]
+- [x] T-027 — `editor/icons.ts` (glifos Lucide con `createElementNS`) + `editor/codeBlockView.ts` + registro de la *node view* en `MilkdownView` (cubre RF-033, RF-034, RF-035, RF-036, RNF-003) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
 - [ ] T-028 — Estilos del chasis (caja, cabecera 36, "Copiar" 28 × ≥ 84 y estados, `pre` 12/16 mono 13/1,6) (cubre RF-033, RF-040) [zona: estilos]

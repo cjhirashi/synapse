@@ -16,7 +16,7 @@ const schema = new Schema({
 function mount(language: string, text: string, writeText?: (text: string) => Promise<void>): NodeView {
   const node = schema.nodes.code_block.create({ language }, text ? schema.text(text) : undefined);
   const factory = codeBlockViewFactory({ writeText });
-  return factory(node, {} as EditorView, () => 0);
+  return factory(node, {} as EditorView, () => 0, [], {} as never);
 }
 
 const copyButton = (view: NodeView) => view.dom.querySelector<HTMLButtonElement>(".code-block-copy")!;
