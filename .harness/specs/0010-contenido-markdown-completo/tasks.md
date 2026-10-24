@@ -174,7 +174,7 @@ actualizado: 2026-10-24
   - EXPECT: vitest `passed`; V-6 en verde salvo el bloque YAML (F); capturas `code-view-*` leídas frente a `mockup-code-*`.
 
 **Componente 6 · Encabezado (migas, flechas, lápiz, ⋮) — P-17**
-- [ ] T-036 [rojo] — `editor/breadcrumb.test.ts`: `crumbs(path)`, raíz = sólo nombre, truncado **por segmento** con "…" según anchos simulados (primera carpeta y nombre nunca desaparecen) (cubre RF-054, RF-063) [zona: test] [P-17]
+- [x] T-036 [rojo] — `editor/breadcrumb.test.ts`: `crumbs(path)`, raíz = sólo nombre, truncado **por segmento** con "…" según anchos simulados (primera carpeta y nombre nunca desaparecen) (cubre RF-054, RF-063) [zona: test] [P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/breadcrumb.test.ts`
   - EXPECT: falla al importar `./breadcrumb`.
 - [ ] T-037 — `editor/breadcrumb.ts` (cubre RF-054, RF-063) [zona: núcleo]
