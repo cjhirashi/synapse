@@ -200,7 +200,7 @@ actualizado: 2026-10-24
   - EXPECT: vitest `passed` (incluida toda la suite de 0008/0009); V-10/V-11 en verde en layout a 1440/1024/390 (43 ± 2, una línea, sin scroll horizontal); capturas `header-*`, `menu-*` leídas junto a `reference/obsidian-breadcrumb.png`.
 
 **Componente 7 · Barra lateral de carpetas**
-- [ ] T-044 [rojo] — `notes/NoteSidebar.test.tsx`: fila "Raíz" primer `treeitem`, carpeta activa con `aria-current` (estado local), "Crear en: …" con `aria-live`, botón y formulario "Nueva carpeta" (etiqueta, Esc, foco), pista con `aria-describedby` en los 3 campos; + actualización **explícita** RF-041 de las pruebas de orden/Inicio del árbol (cubre RF-002, RF-006, RF-041, RF-043) [zona: test]
+- [x] T-044 [rojo] — `notes/NoteSidebar.test.tsx`: fila "Raíz" primer `treeitem`, carpeta activa con `aria-current` (estado local), "Crear en: …" con `aria-live`, botón y formulario "Nueva carpeta" (etiqueta, Esc, foco), pista con `aria-describedby` en los 3 campos; + actualización **explícita** RF-041 de las pruebas de orden/Inicio del árbol (cubre RF-002, RF-006, RF-041, RF-043) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/NoteSidebar.test.tsx`
   - EXPECT: fallan las pruebas nuevas.
 - [ ] T-045 — `NoteSidebar.tsx` (fila "Raíz", estado visual de carpeta activa local, "Crear en", formulario "Nueva carpeta" sin persistir, pista) + `notes.css` (R-14) (cubre RF-002, RF-006, RF-043) [zona: pantalla]

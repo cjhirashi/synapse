@@ -32,9 +32,9 @@ async function setup(paths: string[] = []) {
 }
 
 test("RF-019: árbol role=tree con las carpetas plegadas; se despliegan al pulsarlas", async () => {
-  const { user } = await setup(["Raíz.md", "Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
+  const { user } = await setup(["Inicio.md", "Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
   const tree = await screen.findByRole("tree", { name: "Notas" });
-  expect(within(tree).getByRole("treeitem", { name: "Raíz" })).toBeInTheDocument();
+  expect(within(tree).getByRole("treeitem", { name: "Inicio" })).toBeInTheDocument();
   const folder = within(tree).getByRole("treeitem", { name: "Carpeta" });
   expect(folder).toHaveAttribute("aria-expanded", "false");
   expect(within(tree).queryByRole("treeitem", { name: "Otra" })).toBeNull();
@@ -101,12 +101,12 @@ test("RF-003: un título inválido muestra el mensaje de ruta", async () => {
 });
 
 test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con el mismo id", async () => {
-  const { user, value } = await setup(["Raíz.md"]);
+  const { user, value } = await setup(["Inicio.md"]);
   const [{ id }] = await value.notes.list(VAULT);
-  await user.click(await screen.findByRole("treeitem", { name: "Raíz" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar «Raíz»" }));
+  await user.click(await screen.findByRole("treeitem", { name: "Inicio" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar «Inicio»" }));
   const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
-  expect(input).toHaveValue("Raíz.md");
+  expect(input).toHaveValue("Inicio.md");
   await user.clear(input);
   await user.click(input);
   await user.paste("Carpeta/Movida.md"); // un solo evento en vez de 17 pulsaciones (menos trabajo bajo carga)
@@ -114,7 +114,7 @@ test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con
   // La carpeta de destino se despliega sola para que la nota movida reciba el foco (C-5).
   expect(await screen.findByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-expanded", "true");
   expect(await screen.findByRole("treeitem", { name: "Movida" })).toBeInTheDocument();
-  expect(screen.queryByRole("treeitem", { name: "Raíz" })).toBeNull();
+  expect(screen.queryByRole("treeitem", { name: "Inicio" })).toBeNull();
   expect((await value.notes.get(id)).path).toBe("Carpeta/Movida.md");
 });
 
@@ -176,29 +176,32 @@ test("RF-019: la carpeta de la nota abierta se despliega sola", async () => {
 
 // VF-9: el árbol anuncia role="tree", así que responde al teclado del patrón WAI-ARIA.
 test("RF-019: roving tabindex, un solo treeitem tabulable y el foco lo sigue", async () => {
-  const { user } = await setup(["Carpeta/Otra.md", "Raíz.md"]);
+  const { user } = await setup(["Carpeta/Otra.md", "Inicio.md"]);
   const items = () => within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem");
   expect(items().filter((item) => item.getAttribute("tabindex") === "0")).toHaveLength(1);
   expect(items()[0]).toHaveAttribute("tabindex", "0");
+  // SPEC-0010 RF-041: la fila «Raíz» es ahora el primer treeitem; ↓ baja a la primera carpeta.
+  expect(items()[0]).toHaveAccessibleName("Raíz");
   act(() => items()[0].focus());
   await user.keyboard("{ArrowDown}");
-  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
-  expect(items().filter((item) => item.getAttribute("tabindex") === "0")).toEqual([screen.getByRole("treeitem", { name: "Raíz" })]);
+  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toHaveFocus();
+  expect(items().filter((item) => item.getAttribute("tabindex") === "0")).toEqual([screen.getByRole("treeitem", { name: "Carpeta" })]);
 });
 
 test("RF-019: ↑/↓ recorren los elementos visibles y Inicio/Fin saltan a los extremos", async () => {
-  const { user } = await setup(["Carpeta/Otra.md", "Raíz.md", "Zeta.md"]);
+  const { user } = await setup(["Carpeta/Otra.md", "Inicio.md", "Zeta.md"]);
   act(() => screen.getByRole("treeitem", { name: "Carpeta" }).focus());
   await user.keyboard("{ArrowDown}");
-  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  expect(screen.getByRole("treeitem", { name: "Inicio" })).toHaveFocus();
   await user.keyboard("{ArrowDown}");
   expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
   await user.keyboard("{ArrowDown}"); // en el último no pasa nada
   expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
   await user.keyboard("{ArrowUp}");
-  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  expect(screen.getByRole("treeitem", { name: "Inicio" })).toHaveFocus();
   await user.keyboard("{Home}");
-  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toHaveFocus();
+  // SPEC-0010 RF-041: Inicio salta a la fila «Raíz», que ahora abre el árbol.
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
   await user.keyboard("{End}");
   expect(screen.getByRole("treeitem", { name: "Zeta" })).toHaveFocus();
 });
@@ -373,11 +376,11 @@ test("RF-003: el formulario «Nueva nota» es un bloque propio, fuera del panel 
 });
 
 test("RF-004: cada carpeta lleva su ícono (cerrada/abierta) y cada nota el suyo", async () => {
-  const { user } = await setup(["Carpeta/Hoja.md", "Raíz.md"]);
+  const { user } = await setup(["Carpeta/Hoja.md", "Inicio.md"]);
   const folder = await screen.findByRole("treeitem", { name: "Carpeta" });
   expect(folder.querySelector('svg[data-icon="folder"]')).not.toBeNull();
   expect(folder.querySelector('svg[data-icon="folder-open"]')).toBeNull();
-  expect(screen.getByRole("treeitem", { name: "Raíz" }).querySelector('svg[data-icon="file-text"]')).not.toBeNull();
+  expect(screen.getByRole("treeitem", { name: "Inicio" }).querySelector('svg[data-icon="file-text"]')).not.toBeNull();
 
   await user.click(folder);
   expect(folder.querySelector('svg[data-icon="folder-open"]')).not.toBeNull();
@@ -395,7 +398,7 @@ test("RF-003: «Papelera de la bóveda» es el pie de la barra, después del ár
   expect(onShowTrash).toHaveBeenCalledOnce();
 });
 
-// Raíz del defecto real de 0008 que sólo se ve en un navegador: al enfocar una nota aparecía la barra de
+// Inicio del defecto real de 0008 que sólo se ve en un navegador: al enfocar una nota aparecía la barra de
 // acciones sobre el árbol, la fila se desplazaba y el clic nunca llegaba a abrirla. La barra va tras el
 // panel del árbol, así que seleccionar no mueve ninguna fila.
 test("RF-003, RF-007: la barra de acciones de la nota seleccionada va después del panel del árbol", async () => {
@@ -415,4 +418,122 @@ test("RF-010: una fila de 120 caracteres conserva el nombre completo en title y 
   expect(row.querySelector(".note-tree-name")).toHaveAttribute("title", long);
   // El texto no se corta por JS: el elemento lleva el nombre entero y la elipsis la pone `.note-tree-name`.
   expect(row.querySelector(".note-tree-name")).toHaveTextContent(long);
+});
+
+// --- SPEC-0010 RF-002, RF-006, RF-043: «Raíz», carpeta activa, «Crear en», «Nueva carpeta» y pista ---------------
+
+const tree = () => screen.getByRole("tree", { name: "Notas" });
+const rootRow = () => within(tree()).getByRole("treeitem", { name: "Raíz" });
+
+test("RF-043: «Raíz» es el primer treeitem, sin chevron, y arranca como carpeta activa", async () => {
+  await setup(["Carpeta/Hoja.md", "Nota.md"]);
+  const items = within(tree()).getAllByRole("treeitem");
+  expect(items[0]).toBe(rootRow());
+  expect(rootRow()).not.toHaveAttribute("aria-expanded");
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
+  expect(rootRow().querySelector('svg[data-icon="house"]')).not.toBeNull();
+});
+
+test("RF-043: «Raíz» está aunque la bóveda no tenga notas", async () => {
+  await setup();
+  expect(screen.getByRole("tree", { name: "Notas" })).toBeInTheDocument();
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
+});
+
+test("RF-002, RF-043: «Crear en» es una región viva que dice la carpeta activa", async () => {
+  const { user } = await setup(["Carpeta/Sub/Hoja.md"]);
+  const live = () => document.getElementById("note-create-in")!;
+  expect(live()).toHaveAttribute("aria-live", "polite");
+  expect(live()).toHaveAttribute("aria-atomic", "true");
+  expect(live()).toHaveTextContent("Crear en: Raíz");
+  await user.click(within(tree()).getByRole("treeitem", { name: "Carpeta" }));
+  expect(live()).toHaveTextContent("Crear en: Carpeta");
+  await user.click(within(tree()).getByRole("treeitem", { name: "Sub" }));
+  expect(live()).toHaveTextContent("Crear en: Carpeta/Sub");
+  expect(live().querySelector("strong")).toHaveAttribute("title", "Carpeta/Sub");
+});
+
+test("RF-043: pulsar una carpeta la despliega y la marca como activa (aria-current); «Raíz» deja de serlo", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md", "Otra/Hoja.md"]);
+  const carpeta = within(tree()).getByRole("treeitem", { name: "Carpeta" });
+  await user.click(carpeta);
+  expect(carpeta).toHaveAttribute("aria-expanded", "true");
+  expect(carpeta).toHaveAttribute("aria-current", "true");
+  expect(rootRow()).not.toHaveAttribute("aria-current");
+  await user.click(within(tree()).getByRole("treeitem", { name: "Otra" }));
+  expect(carpeta).not.toHaveAttribute("aria-current");
+  await user.click(rootRow());
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
+  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Raíz");
+});
+
+test("RF-043: ←/→ sólo pliegan y despliegan; no cambian la carpeta activa", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md"]);
+  const carpeta = within(tree()).getByRole("treeitem", { name: "Carpeta" });
+  act(() => carpeta.focus());
+  await user.keyboard("{ArrowRight}");
+  expect(carpeta).toHaveAttribute("aria-expanded", "true");
+  expect(carpeta).not.toHaveAttribute("aria-current");
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
+  await user.keyboard("{Enter}");
+  expect(carpeta).toHaveAttribute("aria-current", "true");
+});
+
+test("RF-042: al abrir una nota la carpeta activa pasa a ser la suya (se distingue de la nota seleccionada)", async () => {
+  const { value, rerender, ui } = await setup(["Carpeta/Sub/Hoja.md", "Raiz.md"]);
+  const hoja = (await value.notes.list(VAULT)).find((n) => n.path.endsWith("Hoja.md"))!;
+  rerender(ui(value, hoja.id));
+  const sub = await screen.findByRole("treeitem", { name: "Sub" });
+  expect(sub).toHaveAttribute("aria-current", "true");
+  expect(await screen.findByRole("treeitem", { name: "Hoja" })).toHaveAttribute("aria-selected", "true");
+  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Carpeta/Sub");
+  const raiz = (await value.notes.list(VAULT)).find((n) => n.path === "Raiz.md")!;
+  rerender(ui(value, raiz.id));
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
+});
+
+test("RF-006: la pista de «/» está visible y la describen el título, el renombrado y «Nueva carpeta»", async () => {
+  const { user } = await setup(["Uno.md"]);
+  const hint = screen.getByText(/Usa \/ para crear subcarpetas/);
+  expect(hint).toHaveTextContent("Usa / para crear subcarpetas (por ejemplo, Proyectos/Ideas)");
+  const title = screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" });
+  expect(title.getAttribute("aria-describedby")).toContain(hint.id);
+  expect(title.getAttribute("aria-describedby")).toContain("note-create-in");
+  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
+  await user.click(screen.getByRole("button", { name: "Renombrar «Uno»" }));
+  expect(screen.getByRole("textbox", { name: "Ruta de la nota" }).getAttribute("aria-describedby")).toContain(hint.id);
+  await user.keyboard("{Escape}");
+  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  expect(screen.getByRole("textbox", { name: "Nombre de la carpeta" }).getAttribute("aria-describedby")).toContain(hint.id);
+});
+
+test("RF-004: «Nueva carpeta» abre un formulario con el foco en el campo; Esc lo cierra y devuelve el foco al botón", async () => {
+  const { user } = await setup(["Uno.md"]);
+  const open = screen.getByRole("button", { name: "Nueva carpeta" });
+  await user.click(open);
+  const input = screen.getByRole("textbox", { name: "Nombre de la carpeta" });
+  expect(input).toHaveFocus();
+  expect(screen.getByRole("button", { name: "Crear carpeta" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Cancelar" })).toBeInTheDocument();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("textbox", { name: "Nombre de la carpeta" })).toBeNull();
+  expect(open).toHaveFocus();
+});
+
+test("RF-004: «Cancelar» cierra el formulario de carpeta", async () => {
+  const { user } = await setup();
+  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(screen.queryByRole("textbox", { name: "Nombre de la carpeta" })).toBeNull();
+});
+
+test("RF-004: enviar el nombre vacío muestra el error asociado al campo (role=alert)", async () => {
+  const { user } = await setup();
+  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
+  const input = screen.getByRole("textbox", { name: "Nombre de la carpeta" });
+  const alert = screen.getByRole("alert");
+  expect(alert).toHaveTextContent("Escribe un nombre. No puede estar vacío ni tener tramos vacíos (a//b).");
+  expect(input).toHaveAttribute("aria-invalid", "true");
+  expect(input.getAttribute("aria-describedby")).toContain(alert.id);
 });
