@@ -102,7 +102,8 @@ test("0010 V-0 siembra (RNF-005)", async ({ browser, content }) => {
     await closed.first().click();
   }
   // Notas = filas de árbol sin `aria-expanded` (las carpetas lo llevan).
-  await expect(tree.locator('[role="treeitem"]:not([aria-expanded])')).toHaveCount(CONTENT_NOTES.length);
+  // Notas = filas sin `aria-expanded` salvo la fila «Raíz» (RF-043).
+  await expect(tree.locator('[role="treeitem"]:not([aria-expanded]):not(.note-tree-root)')).toHaveCount(CONTENT_NOTES.length);
   await expect(page.getByText(/cambios? rechazados?/)).toHaveCount(0);
   await context.close();
 });

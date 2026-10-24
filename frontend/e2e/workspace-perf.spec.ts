@@ -27,7 +27,8 @@ test("RNF-001: abrir una bóveda de 1 000 notas muestra el árbol en p95 ≤ 150
   await page.goto("/vaults");
   // La réplica trae las 1 000 notas por el pull antes de medir (no se mide la descarga, sino abrir la bóveda).
   await page.goto(`/vaults/${vaultId}`);
-  await expect(page.getByRole("treeitem")).toHaveCount(firstLevel, { timeout: 120_000 });
+  // SPEC-0010 RF-041: el árbol tiene ahora la fila «Raíz» como primer treeitem (+1).
+  await expect(page.getByRole("treeitem")).toHaveCount(firstLevel + 1, { timeout: 120_000 });
   await waitForSynced(page);
 
   const samples: number[] = [];

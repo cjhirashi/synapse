@@ -264,8 +264,12 @@ export async function openContentNote(page: Page, note: ContentNote): Promise<vo
     const row = tree.getByRole("treeitem", { name: folder, exact: true });
     if ((await row.getAttribute("aria-expanded")) === "false") await row.click();
   }
-  await tree.getByRole("treeitem", { name: noteName(note), exact: true }).click();
-  await expect(tree.getByRole("treeitem", { name: noteName(note), exact: true })).toHaveAttribute("aria-selected", "true");
+  const row = tree.getByRole("treeitem", { name: noteName(note), exact: true });
+  // Un redibujado del árbol (el pull aún trae notas) puede tragarse el primer clic: se repite hasta que quede abierta.
+  await expect(async () => {
+    await row.click();
+    await expect(row).toHaveAttribute("aria-selected", "true", { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 }
 
 /**
