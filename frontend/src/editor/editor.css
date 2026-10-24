@@ -99,6 +99,54 @@
   flex: 1 1 100%;
 }
 
+/* Variantes del aviso (SPEC-0010 §2.3-d): borde izquierdo de 3 px del color del tipo, icono y texto primario. */
+.note-notice-info {
+  border-left: 3px solid var(--info-text);
+}
+
+.note-notice-warning {
+  border-left: 3px solid var(--warning-text);
+}
+
+.note-notice-error {
+  border-color: var(--danger-border);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+}
+
+.note-notice-info .note-notice-icon {
+  color: var(--info-text);
+}
+
+.note-notice-warning .note-notice-icon {
+  color: var(--warning-text);
+}
+
+.note-notice-error .note-notice-icon {
+  color: var(--danger-text);
+}
+
+.note-notice-icon {
+  flex-shrink: 0;
+}
+
+.note-notice-body {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.note-notice-close {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
 /* Cuerpo sin tarjeta: el área de scroll ocupa el resto del panel y el contenido va en una columna
    centrada de 780 px como máximo (R-13), con avisos y confirmaciones dentro de la misma columna. */
 .note-editor-body {
