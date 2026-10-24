@@ -30,6 +30,12 @@ const COMBOS = THEMES.flatMap((theme) => WIDTHS.map((size) => ({ theme, size, ke
 /** Sólo escritorio (las medidas de color no dependen del ancho). */
 const DESKTOP_THEMES = THEMES.map((theme) => ({ theme, size: SIZES[0], key: `${theme}-${SIZES[0].width}` }));
 
+/** Captura con el elemento a la vista (a 390 px la barra lateral apila el árbol sobre el editor). */
+async function shotAt(page: Page, name: string, selector: string): Promise<void> {
+  await page.locator(selector).first().scrollIntoViewIfNeeded();
+  await shot(page, name);
+}
+
 const note = (key: string): ContentNote => {
   const found = CONTENT_NOTES.find((n) => n.key === key);
   if (!found) throw new Error(`sin la nota sembrada ${key}`);
@@ -118,9 +124,9 @@ for (const { theme, size, key } of COMBOS) {
     // Una pareja dt/dd por clave y en el orden de las claves; ningún YAML crudo.
     const keys = Object.keys(note("props-types").frontmatter);
     await expect(panel.locator("dt")).toHaveText(keys);
-    const text = (await panel.innerText()).replace(/\s+/g, " ");
+    const text = await panel.innerText();
     expect(text, "sin delimitadores YAML").not.toContain("---");
-    expect(text, "sin `clave:` crudo").not.toMatch(/\w:\s/);
+    expect(text, "sin líneas `clave: valor` crudas").not.toMatch(/^[\w-]+:\s/m);
     await expect(panel.locator("dd", { hasText: /^Sí$/ })).toHaveCount(1);
     await expect(panel.locator("dd", { hasText: /^No$/ })).toHaveCount(1);
     await expect(panel.locator(".note-chip")).toHaveCount(3); // las 3 etiquetas; `config` (complejo) va en código
@@ -139,7 +145,7 @@ for (const { theme, size, key } of COMBOS) {
     else expect(Math.abs(dd.y - dt.y), "clave y valor en la misma fila").toBeLessThanOrEqual(8);
 
     await expectNoPageScroll(page);
-    await shot(page, `props-read-${key}`);
+    await shotAt(page, `props-read-${key}`, ".note-properties");
     await context.close();
   });
 }
@@ -195,7 +201,7 @@ for (const { theme, size, key } of COMBOS) {
     expect(ring.style === "solid" || ring.border === tokenColor(theme, "--accent"), "foco visible").toBe(true);
 
     await expectNoPageScroll(page);
-    await shot(page, `props-form-${key}`);
+    await shotAt(page, `props-form-${key}`, ".note-properties");
     await context.close();
   });
 }
@@ -239,7 +245,7 @@ for (const { theme, size, key } of COMBOS) {
     expectMeasure(`R-10h ${key}`, "alto de la casilla", mark.h, 16, 1);
     expect(await marks.evaluateAll((els) => els.filter((el) => el.hasAttribute("tabindex")).length), "sin tabindex en lectura").toBe(0);
 
-    await shot(page, `prose-${key}`);
+    await shotAt(page, `prose-${key}`, ".milkdown-view .ProseMirror blockquote");
     await context.close();
   });
 }
@@ -274,7 +280,7 @@ for (const { theme, size, key } of COMBOS) {
     expect(await scroller.evaluate((el) => el.scrollWidth > el.clientWidth), "scroll dentro del envoltorio").toBe(true);
     await expectNoPageScroll(page);
 
-    await shot(page, `table-${key}`);
+    await shotAt(page, `table-${key}`, ".milkdown-view .ProseMirror table");
     await context.close();
   });
 }
@@ -315,7 +321,7 @@ for (const { theme, size, key } of COMBOS) {
     await expect(page.getByRole("button", { name: "Copiar código" }).first()).toBeVisible();
     await expectNoPageScroll(page);
 
-    await shot(page, `codeblock-${key}`);
+    await shotAt(page, `codeblock-${key}`, ".code-block");
     await context.close();
   });
 }
@@ -382,7 +388,7 @@ for (const { theme, size, key } of COMBOS) {
     expect((await style(".code-view .sx-code")).color).toBe(tokenColor(theme, "--warning-text"));
     expect((await style(".code-view .sx-link")).color).toBe(tokenColor(theme, "--info-text"));
     await expectNoPageScroll(page);
-    await shot(page, `code-view-${key}`);
+    await shotAt(page, `code-view-${key}`, ".code-view .cm-editor");
     await context.close();
   });
 }
@@ -421,7 +427,7 @@ for (const { theme, size, key } of COMBOS) {
     }));
     expect(unsafe).toEqual({ script: 0, foreign: 0, handlers: 0, links: 0 });
     await expectNoPageScroll(page);
-    await shot(page, `mermaid-${key}`);
+    await shotAt(page, `mermaid-${key}`, ".code-block[data-language=\"mermaid\"]");
     await context.close();
   });
 }

@@ -119,7 +119,7 @@ actualizado: 2026-10-24
 - [x] T-020 [rojo] — `editor/properties.test.ts` (`toRows`: inferencia de tipos y complejos) + `editor/PropertiesPanel.test.tsx` (`dl` por clave en orden, "Sí/No", chips, complejo con `lock`, "(vacío)", sin panel con `{}`/ausente, `<script>` y URLs como texto, "Mostrar n más" con ≥ 10) (cubre RF-009, RF-010, RF-013, RNF-003) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/properties.test.ts src/editor/PropertiesPanel.test.tsx`
   - EXPECT: falla al importar `./properties` / `./PropertiesPanel`.
-- [ ] T-021 — `editor/properties.ts` (`toRows`) + `editor/PropertiesPanel.tsx` + estilos (R-3, R-4) y montaje en lectura en `NoteEditor` (cubre RF-009, RF-010, RF-013) [zona: pantalla]
+- [x] T-021 — `editor/properties.ts` (`toRows`) + `editor/PropertiesPanel.tsx` + estilos (R-3, R-4) y montaje en lectura en `NoteEditor` (cubre RF-009, RF-010, RF-013) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-1 "`
   - EXPECT: vitest `passed`; V-1 `passed` en claro/oscuro y 3 anchos; capturas `props-read-*` leídas.
 - [ ] T-022 [rojo] — `properties.test.ts` (`convert`, `validateRows`, `parseNumberInput`, `fromRows` conserva complejos) + `editor/PropertiesForm.test.tsx` (columnas, nombres accesibles, añadir/quitar con foco y anuncios, cambio de tipo, errores con `aria-describedby`, resumen `role="alert"`, "Añadir propiedad" compacto sin propiedades) (cubre RF-010, RF-011, RF-013) [zona: test]

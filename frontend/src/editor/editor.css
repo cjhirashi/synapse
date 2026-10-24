@@ -122,6 +122,151 @@
   }
 }
 
+/* Botón fantasma compartido (SPEC-0010 §2.3-b/c): «Mostrar n más», «Añadir propiedad». */
+.note-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.note-ghost-button:hover {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-ghost-button:active {
+  background: var(--accent-soft);
+}
+
+/* Panel de propiedades en lectura (SPEC-0010 RF-009; R-3, R-4): la caja del mockup `.frontmatter`,
+   con clave mono 12 px `--text-secondary` y valor 13 px `--text-primary` (el mockup usa
+   `--text-muted`, que no llega a 4,5:1: P-2). El margen inferior más el `gap` de la columna dan 24 px. */
+.note-properties {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.note-properties dl {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.note-property {
+  display: grid;
+  grid-template-columns: minmax(80px, 160px) 1fr;
+  column-gap: var(--space-4);
+  align-items: baseline;
+}
+
+.note-properties dt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.note-properties dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note-prop-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.note-prop-empty {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.note-prop-bool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.note-prop-bool svg {
+  color: var(--text-secondary);
+}
+
+.note-prop-bool .note-prop-bool-on {
+  color: var(--accent-hover);
+}
+
+/* Lista de strings: un chip por elemento. */
+.note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Valor complejo: JSON de sólo lectura en una caja con scroll propio. */
+.note-prop-complex {
+  display: block;
+  max-height: 96px;
+  overflow: auto;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.note-prop-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* 390 px: clave sobre valor y menos relleno. */
+@media (max-width: 560px) {
+  .note-properties {
+    padding: var(--space-3);
+  }
+
+  .note-property {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Milkdown: el contenido es ProseMirror; se hereda la tipografía de la app. */
 .milkdown-view .ProseMirror {
   outline: none;

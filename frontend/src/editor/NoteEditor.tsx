@@ -27,6 +27,7 @@ import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView } from "./MilkdownView";
+import { PropertiesPanel } from "./PropertiesPanel";
 import "./editor.css";
 import "./syntax.css";
 
@@ -511,6 +512,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
             </ConfirmDialog>
           )}
+
+          {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición las ofrecerá el formulario. */}
+          {mode === "read" && <PropertiesPanel frontmatter={note.frontmatter} />}
 
           {mode === "read" ? (
             <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
