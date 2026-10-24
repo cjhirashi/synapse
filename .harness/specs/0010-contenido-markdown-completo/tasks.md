@@ -150,7 +150,7 @@ actualizado: 2026-10-24
 - [x] T-029 [rojo] — `codeBlockView.test.ts`: rama `mermaid` con un renderizador inyectado falso: área `role="img"` con nombre, estados cargando/error/fallo de carga ("Reintentar")/vacío, "Ver código" con `aria-expanded`, en lectura el código oculto, en Visual vista previa debajo, controles de zoom sólo si el SVG fijo excede (cubre RF-046, RF-047, RF-049, RF-052, RF-053) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts`
   - EXPECT: fallan las pruebas de la rama `mermaid`.
-- [ ] T-030 — Chasis Mermaid en `codeBlockView.ts` (interfaz `MermaidRenderer` inyectable; por defecto un renderizador que aún no carga nada) + estilos (R-11, controles 28 × 28) (cubre RF-046, RF-047, RF-049, RF-052, RF-053) [zona: pantalla]
+- [x] T-030 — Chasis Mermaid en `codeBlockView.ts` (interfaz `MermaidRenderer` inyectable; por defecto un renderizador que aún no carga nada) + estilos (R-11, controles 28 × 28) (cubre RF-046, RF-047, RF-049, RF-052, RF-053) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(8|9) "`
   - EXPECT: vitest `passed`; en V-8 pasan las aserciones de layout del estado de error/fallo; las que exigen SVG real siguen rojas hasta F.
 

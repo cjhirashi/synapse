@@ -165,7 +165,10 @@ interface MermaidMount {
 function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600 }: MermaidMount = {}): NodeView {
   const node = schema.nodes.code_block.create({ language: "mermaid" }, text ? schema.text(text) : undefined);
   const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth };
-  return codeBlockViewFactory(deps)(node, { editable } as EditorView, () => 0, [], {} as never);
+  const view = codeBlockViewFactory(deps)(node, { editable } as EditorView, () => 0, [], {} as never);
+  // `toBeVisible` exige el nodo dentro del documento.
+  document.body.append(view.dom);
+  return view;
 }
 
 const area = (view: NodeView) => view.dom.querySelector<HTMLElement>('[role="img"], .mermaid-area')!;
@@ -173,7 +176,10 @@ const flush = () => vi.advanceTimersByTimeAsync(0);
 
 describe("codeBlockView · Mermaid", () => {
   beforeEach(() => vi.useFakeTimers());
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.replaceChildren();
+  });
 
   // RF-046
   it("muestra «Dibujando diagrama…» con aria-busy mientras el renderizador no responde", async () => {
@@ -300,10 +306,10 @@ describe("codeBlockView · Mermaid", () => {
     view.update!(next, [], {} as never);
     await vi.advanceTimersByTimeAsync(399);
     expect(render).toHaveBeenCalledTimes(1);
-    expect(view.dom.querySelector("svg")).toHaveAttribute("data-n", "1");
+    expect(view.dom.querySelector("svg[data-fake]")).toHaveAttribute("data-n", "1");
     await vi.advanceTimersByTimeAsync(1);
     expect(render).toHaveBeenCalledTimes(2);
-    expect(view.dom.querySelector("svg")).toHaveAttribute("data-n", "2");
+    expect(view.dom.querySelector("svg[data-fake]")).toHaveAttribute("data-n", "2");
   });
 
   // RF-046

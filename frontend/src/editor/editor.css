@@ -658,7 +658,14 @@
   color: var(--text-secondary);
 }
 
-.code-block-copy {
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.code-block-copy,
+.code-block-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -675,13 +682,15 @@
   white-space: nowrap;
 }
 
-.code-block-copy:hover {
+.code-block-copy:hover,
+.code-block-toggle:hover {
   border-color: var(--border);
   background: var(--bg-primary);
   color: var(--text-primary);
 }
 
-.code-block-copy:active {
+.code-block-copy:active,
+.code-block-toggle:active {
   background: var(--accent-soft);
   transform: scale(0.97);
 }
@@ -692,6 +701,134 @@
 
 .code-block-copy[data-state="failed"] svg {
   color: var(--danger-text);
+}
+
+/* Mermaid (SPEC-0010 RF-046…RF-053; R-11): el área va bajo la cabecera (lectura) o bajo el código (Visual),
+   de 96 a 420 px de alto y con el SVG dentro de la columna; los controles de zoom flotan abajo a la derecha. */
+.mermaid-caption {
+  margin: 0;
+  padding: var(--space-1) var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.mermaid-frame {
+  position: relative;
+}
+
+.mermaid-area {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-height: 96px;
+  max-height: 420px;
+  padding: var(--space-3);
+  overflow: hidden;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.mermaid-area svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.mermaid-empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.mermaid-controls {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.mermaid-controls button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+}
+
+.mermaid-controls button:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.mermaid-controls button:disabled {
+  opacity: 0.5;
+}
+
+/* Error de diagrama (RF-049) y fallo de carga (RF-053): el resto de la nota no se ve afectado. */
+.mermaid-error,
+.mermaid-loadfail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--danger-border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.mermaid-loadfail {
+  border-color: var(--border);
+  border-left-color: var(--warning-text);
+  background: var(--bg-secondary);
+}
+
+.mermaid-error-title,
+.mermaid-loadfail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.mermaid-error-title svg {
+  color: var(--danger-text);
+}
+
+.mermaid-loadfail-title svg {
+  color: var(--warning-text);
+}
+
+.mermaid-error-detail {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.mermaid-error-guide {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 
 .milkdown-view .ProseMirror .code-block pre {
