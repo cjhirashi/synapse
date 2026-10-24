@@ -91,7 +91,7 @@ actualizado: 2026-10-24
 - [x] T-012 — `e2e/fixtures.ts`: `seedContent()` siembra por el push de `/sync` las notas de PLAN-0010 §5.2 (frontmatter de todos los tipos y 12 propiedades, YAML heredado válido y corrompido, tabla ancha, 11 lenguajes + desconocido + sin lenguaje, cita, código en línea, tareas, Mermaid válido/inválido/ancho, ruta profunda, nota en la raíz, nota de ~200 KiB con 50 bloques y 5 Mermaid) + prueba de humo `0010 V-0 siembra` (cubre RNF-005) [zona: sistema]
   - CHECK: `CV --grep "0010 V-0"`
   - EXPECT: `1 passed`: las 14 notas aparecen en el árbol y 0 cambios rechazados.
-- [ ] T-013 [rojo] — `e2e/content-visual.spec.ts`: `0010 V-1` (panel en lectura), `0010 V-2` (formulario), `0010 V-3` (cita/código en línea/tareas), `0010 V-4` (tabla), en claro/oscuro a 1440/1024/390 con R-3…R-7, R-10, R-16 (cubre RF-009, RF-011, RF-026, RF-037, RF-038, RF-039) [zona: sistema]
+- [x] T-013 [rojo] — `e2e/content-visual.spec.ts`: `0010 V-1` (panel en lectura), `0010 V-2` (formulario), `0010 V-3` (cita/código en línea/tareas), `0010 V-4` (tabla), en claro/oscuro a 1440/1024/390 con R-3…R-7, R-10, R-16 (cubre RF-009, RF-011, RF-026, RF-037, RF-038, RF-039) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(1|2|3|4) "`
   - EXPECT: fallan por la causa esperada: sin `role="group"` "Propiedades" (V-1/V-2), 0 casillas de tarea (V-3), fila de tabla ~62 px > 40 (V-4).
 - [ ] T-014 [rojo] — `0010 V-5` (bloque de código), `0010 V-6` (vista Código), `0010 V-7` (Mermaid), `0010 V-8` (error y fallo de carga), `0010 V-9` (zoom) (cubre RF-027, RF-029, RF-033, RF-046, RF-049, RF-052, RF-053) [zona: sistema]

@@ -62,10 +62,7 @@ export const CONTENT_NOTES: ContentNote[] = [
     key: "props-types",
     path: "Propiedades/Tipos de propiedad.md",
     frontmatter: {
-      titulo: "Plan de entregas",
-      proyecto: "Synapse",
-      version: 3,
-      precio: 12.5,
+      version: 3.5,
       activo: true,
       borrador: false,
       etiquetas: ["diseño", "editor", "markdown"],
@@ -97,7 +94,7 @@ export const CONTENT_NOTES: ContentNote[] = [
   },
   {
     key: "table",
-    path: "Tablas/Tablas.md",
+    path: "Tablas/Tabla de ejemplo.md",
     frontmatter: {},
     content: [
       "# Tablas",
@@ -134,7 +131,7 @@ export const CONTENT_NOTES: ContentNote[] = [
       "",
       "> Cualquier usuario puede editar documentos de su propia bóveda — no es una capacidad exclusiva del administrador.",
       "",
-      "El botón `Editar` activa el modo edición y el atajo `Ctrl+S` guarda la nota.",
+      "El botón `Editar` activa el modo edición y el atajo `Ctrl+S` guarda la nota. Consulta [la guía](https://example.com/guia) y **no olvides** guardar.",
       "",
       "- [ ] Escribir la especificación",
       "- [x] Revisar el plan",
