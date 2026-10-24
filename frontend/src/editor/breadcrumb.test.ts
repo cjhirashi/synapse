@@ -55,10 +55,22 @@ describe("fit", () => {
 
   // RF-063
   it("la primera carpeta y el nombre nunca desaparecen, aunque no quepan", () => {
-    const widths = fit([100, 100, 100], 60, OPTIONS);
+    const widths = fit([100, 100, 100, 100, 100], 60, OPTIONS);
     expect(widths[0]).toBeGreaterThanOrEqual(OPTIONS.min);
-    expect(widths[1]).toBeGreaterThanOrEqual(OPTIONS.min);
-    expect(widths[2]).toBeGreaterThanOrEqual(OPTIONS.nameMin);
+    expect(widths[4]).toBeGreaterThanOrEqual(OPTIONS.nameMin);
+  });
+
+  // RF-063
+  it("si el nombre no alcanza su mínimo se ocultan primero las carpetas intermedias y al final la última", () => {
+    // 4 carpetas + nombre en 150 px: con todas en su mínimo al nombre le quedan 150-40-96 = 14 < 48: se oculta la
+    // segunda carpeta (intermedia) y ya le quedan 150-30-72 = 48.
+    const widths = fit([100, 100, 100, 100, 100], 150, OPTIONS);
+    expect(widths).toEqual([OPTIONS.min, 0, OPTIONS.min, OPTIONS.min, 150 - 3 * OPTIONS.separator - 3 * OPTIONS.min]);
+    // Aún más estrecho: también se oculta la última carpeta.
+    const narrower = fit([100, 100, 100, 100, 100], 90, OPTIONS);
+    expect(narrower[0]).toBe(OPTIONS.min);
+    expect(narrower.slice(1, 4)).toEqual([0, 0, 0]);
+    expect(narrower[4]).toBeGreaterThanOrEqual(OPTIONS.nameMin);
   });
 
   // RF-063

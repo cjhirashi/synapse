@@ -11,12 +11,13 @@
 /* Barra superior (SPEC-0009 RF-005, R-12): 43 px, `--bg-secondary`, borde inferior; título a la
    izquierda con elipsis y los controles a la derecha. Queda fija: sólo el cuerpo hace scroll. */
 .note-editor-header {
+  position: relative; /* ancla de lo que sólo se oculta a la vista (etiquetas ≤ 560 px, estado vacío) */
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: 43px;
-  padding: var(--space-2) var(--space-4);
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--bg-secondary);
 }
@@ -137,7 +138,11 @@
 .note-breadcrumb li {
   display: flex;
   align-items: center;
-  min-width: 0;
+  flex-shrink: 0; /* sin encoger: lo que no cabe lo ocultan `fit` y el recorte del nav */
+}
+
+.note-breadcrumb li[hidden] {
+  display: none;
 }
 
 .note-crumb {
@@ -198,8 +203,85 @@
 }
 
 .note-editor-toolbar button {
-  padding: var(--space-1) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 var(--space-2);
   font-size: 12px;
+}
+
+/* Flechas, tabla y lápiz (SPEC-0010 R-2; P-17): botones de icono de 28 × 28 (36 con puntero táctil) con el
+   nombre en `aria-label`; sin historial las flechas se ven atenuadas, como «Adelante» en la captura. */
+.note-editor-header .note-nav-button {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.note-editor-header .note-nav-button:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-editor-header .note-nav-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  .note-editor-header .note-nav-button,
+  .note-editor-header .note-menu-button,
+  .note-editor-toolbar button {
+    width: auto;
+    min-width: 36px;
+    height: 36px;
+  }
+}
+
+/* ≤ 560 px (R-1): Visual, Código y Guardar quedan en sólo icono —la etiqueta sigue en el árbol de
+   accesibilidad— y el estado se oculta a la vista; la barra siempre cabe en una línea. */
+@media (max-width: 560px) {
+  .note-editor-header {
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+  }
+
+  .note-crumb,
+  .note-crumb-name {
+    padding: 0 var(--space-1);
+  }
+
+  .note-btn-label,
+  .note-editor-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .note-editor-toolbar {
+    gap: var(--space-1);
+  }
+
+  .note-editor-toolbar button {
+    justify-content: center;
+    min-width: 28px;
+    padding: 0 var(--space-1);
+  }
 }
 
 .note-editor-views {

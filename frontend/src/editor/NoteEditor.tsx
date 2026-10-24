@@ -17,16 +17,18 @@
  * borrador sucio pregunta antes de descartarlo (VF-2).
  */
 import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent } from "../notes/noteRules";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { noteErrorMessage } from "../notes/messages";
-import { displayName } from "../notes/noteTree";
 import type { Note } from "../notes/noteStore";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView } from "./MilkdownView";
+import { NoteBreadcrumb } from "./NoteBreadcrumb";
+import { NoteMenu } from "./NoteMenu";
 import { PropertiesForm } from "./PropertiesForm";
 import { PropertiesPanel } from "./PropertiesPanel";
 import "./editor.css";
@@ -71,6 +73,13 @@ interface NoteEditorProps {
    * bóveda desaparece (papelera por sync) y este editor se desmonta (E-2).
    */
   onDirtyDraft?: (draft: string | null) => void;
+  /** Historial de notas abiertas (SPEC-0010 RF-056): las flechas de la barra se habilitan según estos datos. */
+  canBack?: boolean;
+  canForward?: boolean;
+  onBack?: () => void;
+  onForward?: () => void;
+  /** Una carpeta de las migas: el árbol debe mostrarla (RF-055). */
+  onRevealFolder?: (folderPath: string) => void;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -82,13 +91,8 @@ export interface NoteEditorHandle {
 type Mode = "read" | "edit";
 type View = "visual" | "code";
 
-/** Nombre mostrado: la ruta sin la extensión `.md`, como en el árbol (S-5: nunca vacío). */
-function title(path: string): string {
-  return displayName(path);
-}
-
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -418,42 +422,91 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
   return (
     <section className="note-editor" aria-label="Editor de nota" onKeyDown={onKeyDown}>
+      {/* Barra superior (SPEC-0009 R-12, SPEC-0010 P-17, como la captura de Obsidian): Atrás, Adelante, migas,
+          controles de edición, estado, lápiz Editar/Leer y menú ⋮. El orden del DOM es el visual y el de tabulación. */}
       <header className="note-editor-header">
-        <h2>{title(note.path)}</h2>
+        <button
+          type="button"
+          className="note-nav-button"
+          aria-label="Atrás"
+          aria-keyshortcuts="Alt+ArrowLeft"
+          title="Atrás · Alt+←"
+          disabled={!canBack}
+          onClick={onBack}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="note-nav-button"
+          aria-label="Adelante"
+          aria-keyshortcuts="Alt+ArrowRight"
+          title="Adelante · Alt+→"
+          disabled={!canForward}
+          onClick={onForward}
+        >
+          <ArrowRight size={16} aria-hidden="true" />
+        </button>
+        <NoteBreadcrumb path={note.path} onRevealFolder={(folder) => onRevealFolder?.(folder)} />
         <div className="note-editor-toolbar">
           {mode === "edit" && (
             <div role="group" aria-label="Vista del editor" className="note-editor-views">
               <button type="button" aria-pressed={view === "visual"} onClick={() => switchView("visual")}>
-                Visual
+                <Eye size={14} aria-hidden="true" />
+                <span className="note-btn-label">Visual</span>
               </button>
               <button type="button" aria-pressed={view === "code"} onClick={() => switchView("code")}>
-                Código
+                <CodeIcon size={14} aria-hidden="true" />
+                <span className="note-btn-label">Código</span>
               </button>
             </div>
           )}
-          {mode === "edit" && (
-            <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
-              Guardar
+          {/* Insertar tabla (RF-025): sólo en Visual; la acción se cablea con la lógica del portapapeles y las tablas. */}
+          {mode === "edit" && view === "visual" && (
+            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla">
+              <Table size={16} aria-hidden="true" />
             </button>
           )}
-          {mode === "read" ? (
-            <button
-              type="button"
-              onClick={() => {
-                setFocusEditor(true);
-                setMode("edit");
-              }}
-            >
-              Editar
-            </button>
-          ) : (
-            <button type="button" onClick={() => void leave()} disabled={saving}>
-              Leer
+          {mode === "edit" && (
+            <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
+              <Save size={14} aria-hidden="true" />
+              <span className="note-btn-label">Guardar</span>
             </button>
           )}
           <span className="note-editor-state" role="status">
             {dirty ? "Cambios sin guardar" : saved ? "Guardado" : ""}
           </span>
+          {mode === "read" ? (
+            <button
+              type="button"
+              className="note-nav-button"
+              aria-label="Editar"
+              title="Editar"
+              onClick={() => {
+                setFocusEditor(true);
+                setMode("edit");
+              }}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
+          ) : (
+            <button type="button" className="note-nav-button" aria-label="Leer" title="Leer" onClick={() => void leave()} disabled={saving}>
+              <BookOpen size={16} aria-hidden="true" />
+            </button>
+          )}
+          {/* Renombrar, copiar la ruta y borrar reutilizan los flujos del árbol y del portapapeles (RF-062): se cablean
+              con la lógica de carpetas; «Ver en Código» ya funciona. */}
+          <NoteMenu
+            inCode={mode === "edit" && view === "code"}
+            onRename={() => undefined}
+            onCopyPath={() => undefined}
+            onViewInCode={() => {
+              setFocusEditor(true);
+              setMode("edit");
+              setView("code");
+            }}
+            onDelete={() => undefined}
+          />
         </div>
       </header>
 

@@ -197,7 +197,8 @@ for (const theme of THEMES) {
 
         // A1-4: sin texto de estado no se reserva hueco: "Editar" queda a la distancia del relleno de la barra.
         if (view === "read") {
-          const edit = await measure(page, '.note-editor-header button:has-text("Editar")');
+          // SPEC-0010 RF-041 (P-17): «Editar» pasó a ser un lápiz sin texto; conserva su nombre accesible.
+          const edit = await measure(page, '.note-editor-header button[aria-label="Editar"]');
           const header = await measure(page, ".note-editor-header");
           expectMeasure(`A1-4 ${key}`, "hueco a la derecha de «Editar»", header.x + header.w - (edit.x + edit.w), 16, 2);
         }

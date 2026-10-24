@@ -562,7 +562,7 @@ for (const { theme, size, key } of COMBOS) {
       expect((await measure(page, `${HEADER} h2`)).color).toBe(tokenColor(theme, "--text-primary"));
       expect(await name.evaluate((el) => getComputedStyle(el).fontWeight)).toBe("600");
 
-      await shot(page, `header${deep ? "-collapsed" : ""}-${key}`, { clip: { x: 296, y: 0, width: size.width - 296, height: 60 } });
+      await shot(page, `header${deep ? "-collapsed" : ""}-${key}`, { selector: HEADER });
       await context.close();
     });
   }
@@ -578,7 +578,7 @@ test("0010 V-10 encabezado en edición cabe en una línea a 390 (RF-064)", async
   const save = (await page.locator(HEADER).getByRole("button", { name: "Guardar" }).boundingBox())!;
   expect(save.width, "Guardar sólo icono").toBeLessThanOrEqual(36);
   await expectNoPageScroll(page);
-  await shot(page, "header-edit-dark-390", { clip: { x: 0, y: 0, width: 390, height: 120 } });
+  await shot(page, "header-edit-dark-390", { selector: HEADER });
   await context.close();
 });
 

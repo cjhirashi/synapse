@@ -22,6 +22,8 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
   const nav = useRef<HTMLElement>(null);
   /** Ancho máximo de cada segmento (`null` = sin límite): carpetas en orden y el nombre al final. */
   const [limits, setLimits] = useState<Array<number | null>>([]);
+  /** Último ancho natural medido de cada segmento: uno oculto (`display: none`) mide 0 y no debe contar como «cabe». */
+  const naturalWidths = useRef<{ path: string; widths: number[] }>({ path, widths: [] });
 
   const measure = useCallback(() => {
     const root = nav.current;
@@ -30,10 +32,13 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
       return;
     }
     // `scrollWidth` es el ancho natural aunque ya haya un `max-width` que lo recorte.
-    const natural = [...root.querySelectorAll<HTMLElement>("[data-crumb]")].map((el) => el.scrollWidth);
+    if (naturalWidths.current.path !== path) naturalWidths.current = { path, widths: [] };
+    const known = naturalWidths.current.widths;
+    const natural = [...root.querySelectorAll<HTMLElement>("[data-crumb]")].map((el, i) => el.scrollWidth || known[i] || 0);
+    naturalWidths.current.widths = natural;
     const granted = fit(natural, root.clientWidth);
     setLimits(granted.map((width, i) => (width < natural[i] ? width : null)));
-  }, []);
+  }, [path]);
 
   useLayoutEffect(() => {
     measure();
@@ -44,13 +49,15 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
     return () => observer.disconnect();
   }, [measure, path]);
 
-  const style = (index: number) => (limits[index] != null ? { maxWidth: `${limits[index]}px` } : undefined);
+  /** Un ancho 0 oculta la carpeta y su separador (no cabe ni en su mínimo). */
+  const isHidden = (index: number) => limits[index] === 0;
+  const style = (index: number) => (limits[index] != null && limits[index] > 0 ? { maxWidth: `${limits[index]}px` } : undefined);
 
   return (
     <nav ref={nav} className="note-breadcrumb" aria-label="Ruta">
       <ol>
         {folders.map((folder, index) => (
-          <li key={folder.path}>
+          <li key={folder.path} hidden={isHidden(index)}>
             <button
               type="button"
               data-crumb

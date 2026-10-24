@@ -195,7 +195,7 @@ actualizado: 2026-10-24
 - [x] T-042 [rojo] — `editor/NoteEditor.test.tsx`: cabecera en el orden Atrás, Adelante, migas, Visual|Código, Insertar tabla (sólo Visual), Guardar, estado, **lápiz** (nombre "Editar"/"Leer"), ⋮; flechas con `canBack/canForward` de *props* (deshabilitadas y "Adelante" atenuada); ≤ 560 px sólo iconos con el mismo nombre; + actualización **explícita** RF-041 del nombre del `h2` en `NoteEditor.test.tsx`/`VaultWorkspacePage.test.tsx` (cubre RF-041, RF-054, RF-056, RF-064) [zona: test] [P-17]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditor.test.tsx src/notes/VaultWorkspacePage.test.tsx`
   - EXPECT: fallan sólo las pruebas nuevas y las de nombre del `h2` actualizadas.
-- [ ] T-043 — Cabecera nueva en `NoteEditor.tsx` (migas, flechas, lápiz, ⋮ con acciones *stub*, "Insertar tabla" inerte) + `editor.css` (43 px, `padding 0 16px`, 28 px, `pointer:coarse` 36) (cubre RF-054, RF-056, RF-061, RF-064) [zona: pantalla]
+- [x] T-043 — Cabecera nueva en `NoteEditor.tsx` (migas, flechas, lápiz, ⋮ con acciones *stub*, "Insertar tabla" inerte) + `editor.css` (43 px, `padding 0 16px`, 28 px, `pointer:coarse` 36) (cubre RF-054, RF-056, RF-061, RF-064) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && CV --grep "0010 V-(10|11) "`
   - EXPECT: vitest `passed` (incluida toda la suite de 0008/0009); V-10/V-11 en verde en layout a 1440/1024/390 (43 ± 2, una línea, sin scroll horizontal); capturas `header-*`, `menu-*` leídas junto a `reference/obsidian-breadcrumb.png`.
 

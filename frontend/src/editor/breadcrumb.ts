@@ -50,22 +50,35 @@ function waterFill(natural: number[], budget: number): number[] {
 /**
  * Ancho que se concede a cada segmento (`natural` = carpetas… y nombre al final) dentro de `available`.
  * Si todo cabe, los naturales. Si no, el nombre conserva el suyo y las carpetas se recortan por igual;
- * cuando ni así caben, las carpetas bajan al mínimo y el nombre toma lo que queda (nunca menos de
- * `nameMin`): la primera carpeta y el nombre nunca desaparecen y lo que sobre lo recorta el CSS.
+ * cuando ni así caben, las carpetas bajan al mínimo y el nombre toma lo que queda. Si el nombre no
+ * alcanza ni su mínimo, se **ocultan** carpetas (ancho 0): primero las intermedias, de la segunda en
+ * adelante, y al final la última; la primera carpeta y el nombre nunca desaparecen y lo que aun así
+ * sobre lo recorta el CSS.
  */
 export function fit(natural: number[], available: number, options: FitOptions = FIT_DEFAULTS): number[] {
   if (natural.length === 0 || available <= 0) return [...natural];
-  const gaps = options.separator * (natural.length - 1);
-  if (natural.reduce((sum, w) => sum + w, 0) + gaps <= available) return [...natural];
+  const gaps = (segments: number) => options.separator * Math.max(0, segments - 1);
+  if (natural.reduce((sum, w) => sum + w, 0) + gaps(natural.length) <= available) return [...natural];
 
   const folders = natural.slice(0, -1);
   const name = natural[natural.length - 1];
   const nameWidth = (room: number) => Math.min(name, Math.max(options.nameMin, room));
   if (folders.length === 0) return [nameWidth(available)];
 
-  const folderBudget = available - gaps - name;
+  const folderBudget = available - gaps(natural.length) - name;
   if (folderBudget >= folders.length * options.min) return [...waterFill(folders, folderBudget), name];
 
+  // Carpetas al mínimo; si el nombre se queda sin su mínimo, se van ocultando carpetas.
   const floors = folders.map((w) => Math.min(options.min, w));
-  return [...floors, nameWidth(available - gaps - floors.reduce((sum, w) => sum + w, 0))];
+  const hideOrder = [...folders.keys()].slice(1, -1).concat(folders.length > 1 ? [folders.length - 1] : []);
+  const hidden = new Set<number>();
+  const roomFor = () => {
+    const shown = floors.filter((_, i) => !hidden.has(i));
+    return available - gaps(shown.length + 1) - shown.reduce((sum, w) => sum + w, 0);
+  };
+  for (const index of hideOrder) {
+    if (roomFor() >= options.nameMin) break;
+    hidden.add(index);
+  }
+  return [...floors.map((w, i) => (hidden.has(i) ? 0 : w)), nameWidth(roomFor())];
 }
