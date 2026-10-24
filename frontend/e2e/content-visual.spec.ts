@@ -372,7 +372,7 @@ for (const { theme, size, key } of COMBOS) {
     const line = await measure(page, ".code-view .cm-line");
     expectExact(`R-9f ${key}`, "tamaño", line.fontSize, "13px");
     expectMeasure(`R-9l ${key}`, "interlineado", parseFloat(line.lineHeight), 13 * 1.8, 0.5);
-    const num = await measure(page, ".cm-lineNumbers .cm-gutterElement:not([style*='height: 0'])");
+    const num = await measure(page, ".cm-lineNumbers .cm-gutterElement:not([style*='visibility'])");
     expectExact(`R-9n ${key}`, "tamaño del número", num.fontSize, "12px");
     expectExact(`R-9nc ${key}`, "color del número", num.color, tokenColor(theme, "--text-secondary"));
     // Línea activa con `--bg-secondary` (no el literal del mockup, C-3).

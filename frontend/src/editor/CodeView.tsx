@@ -9,9 +9,12 @@
  */
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
-import { markdown } from "@codemirror/lang-markdown";
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { Annotation, EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { syntaxHighlighting } from "@codemirror/language";
+import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { styleTags } from "@lezer/highlight";
+import { synapseHighlighter, taskMarkerTag } from "./highlight/highlighter";
 
 /** Marca las transacciones que vienen del padre (no son ediciones del usuario). */
 const external = Annotation.define<boolean>();
@@ -41,7 +44,13 @@ export function CodeView({ value, onChange, label, autoFocus = false }: CodeView
         extensions: [
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          markdown(),
+          // Markdown GFM (tablas, tareas, tachado) con la marca de tarea como etiqueta propia.
+          markdown({ base: markdownLanguage, extensions: [{ props: [styleTags({ TaskMarker: taskMarkerTag })] }] }),
+          // SPEC-0010 RF-029 (P-11): como el mockup, con números de línea, línea activa y el markdown coloreado
+          // con las clases `sx-*` (los colores son tokens: ver `syntax.css` y la vista Código en `editor.css`).
+          syntaxHighlighting(synapseHighlighter),
+          lineNumbers(),
+          highlightActiveLine(),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({ "aria-label": label }),
           EditorView.updateListener.of((update) => {

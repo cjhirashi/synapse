@@ -49,7 +49,8 @@ describe("CodeView", () => {
   // RF-029: números de línea y línea activa (P-11).
   it("muestra los números de línea y marca la línea activa", () => {
     const { container } = render(<CodeView value={"uno\ndos\ntres"} onChange={() => {}} label="Código" />);
-    const numbers = [...container.querySelectorAll(".cm-lineNumbers .cm-gutterElement")].map((el) => el.textContent).filter((text) => /\d/.test(text ?? ""));
+    // El primer elemento del margen es un separador invisible con el número más ancho: no es una línea.
+    const numbers = [...container.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement")].filter((el) => el.style.visibility !== "hidden").map((el) => el.textContent);
     expect(numbers).toEqual(["1", "2", "3"]);
     expect(container.querySelector(".cm-activeLine")).not.toBeNull();
   });

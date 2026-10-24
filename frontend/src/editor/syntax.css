@@ -89,6 +89,10 @@
   color: var(--warning-text);
 }
 
+.sx-task {
+  color: var(--accent-hover);
+}
+
 .sx-quote {
   color: var(--text-secondary);
   font-style: italic;

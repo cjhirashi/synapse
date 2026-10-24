@@ -169,7 +169,7 @@ actualizado: 2026-10-24
 - [x] T-034 [rojo] — `editor/CodeView.test.tsx`: números de línea, línea activa, clases `sx-*` en encabezados/negrita/enlace/código/marcas del markdown (cubre RF-029) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/CodeView.test.tsx`
   - EXPECT: fallan (sin `.cm-lineNumbers` ni `sx-*`).
-- [ ] T-035 — `editor/highlight/highlighter.ts` (`tagHighlighter` → `sx-*`) + `CodeView` con `syntaxHighlighting`, `lineNumbers`, `highlightActiveLine` + tema por variables (R-9) (cubre RF-029, RF-040) [zona: pantalla] [P-11]
+- [x] T-035 — `editor/highlight/highlighter.ts` (`tagHighlighter` → `sx-*`) + `CodeView` con `syntaxHighlighting`, `lineNumbers`, `highlightActiveLine` + tema por variables (R-9) (cubre RF-029, RF-040) [zona: pantalla] [P-11]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-6 "`
   - EXPECT: vitest `passed`; V-6 en verde salvo el bloque YAML (F); capturas `code-view-*` leídas frente a `mockup-code-*`.
 

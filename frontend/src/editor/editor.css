@@ -1001,7 +1001,10 @@ li.note-task[data-checked="true"] .note-task-body {
   max-width: 100%;
 }
 
-/* CodeMirror: monoespaciado, sin fondo propio, en la misma columna que la vista visual. */
+/* Vista Código (SPEC-0010 RF-029, RF-040; R-9): mono 13 px con interlineado 1,8 como el mockup
+   (`.edit-view-code`), números de línea en `--text-secondary` (el `--text-muted` del mockup no llega a
+   4,5:1, P-2), línea activa en `--bg-secondary` (no el literal del mockup, C-3) y cursor de 2 px en
+   `--accent`. Los colores del markdown vienen de las clases `sx-*` (`syntax.css`). */
 .code-view .cm-editor {
   min-height: 280px;
   background: transparent;
@@ -1015,11 +1018,46 @@ li.note-task[data-checked="true"] .note-task-body {
   outline-offset: 4px;
 }
 
+.code-view .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.8;
+}
+
 .code-view .cm-content {
   caret-color: var(--accent);
 }
 
+.code-view .cm-cursor {
+  border-left: 2px solid var(--accent);
+}
+
+.code-view .cm-editor .cm-selectionBackground,
+.code-view .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.code-view .cm-editor .cm-activeLine {
+  background: var(--bg-secondary);
+}
+
 .code-view .cm-gutters {
-  background: transparent;
   border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.code-view .cm-lineNumbers .cm-gutterElement {
+  min-width: 28px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+}
+
+.code-view .cm-editor .cm-activeLineGutter {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+/* El énfasis de los marcadores dentro de una negrita sigue el color de la negrita (como el mockup). */
+.code-view .sx-strong .sx-meta {
+  color: inherit;
 }
