@@ -111,7 +111,7 @@ actualizado: 2026-10-24
 - [x] T-018 [rojo] — `editor/contrast.test.ts` (pares de PLAN-0010 §5.5, 6 tokens nuevos en ambos temas, `--text-muted`/`--accent` prohibidos como `color`) y `notes/layoutCss.test.ts` ampliado (sin literales de color en `editor.css`, `syntax.css`, `notes.css`) (cubre RF-040, RNF-004) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/contrast.test.ts src/notes/layoutCss.test.ts`
   - EXPECT: falla "--success-text no definido" (y los otros 5).
-- [ ] T-019 — Tokens de ADR-006 en `styles/tokens.css` (claro y oscuro) + `editor/syntax.css` con los alias `--syntax-*` y las clases `sx-*` (cubre RF-040, RNF-004) [zona: estilos] [P-1, P-2]
+- [x] T-019 — Tokens de ADR-006 en `styles/tokens.css` (claro y oscuro) + `editor/syntax.css` con los alias `--syntax-*` y las clases `sx-*` (cubre RF-040, RNF-004) [zona: estilos] [P-1, P-2]
   - CHECK: `cd frontend && npx vitest run src/editor/contrast.test.ts src/notes/layoutCss.test.ts`
   - EXPECT: `passed`; mínimo verde/ámbar claro sobre T = 4,58.
 

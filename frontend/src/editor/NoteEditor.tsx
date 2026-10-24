@@ -28,6 +28,7 @@ import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView } from "./MilkdownView";
 import "./editor.css";
+import "./syntax.css";
 
 /** Contrato común de las dos vistas del markdown (reales o falsas en las pruebas). */
 export interface ViewProps {
