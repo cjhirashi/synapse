@@ -240,7 +240,7 @@ actualizado: 2026-10-24
 - [x] T-127 — Regla CSS + `data-mode` en `MilkdownView` + `measure` de `fixtures.ts` con `scrollIntoViewIfNeeded`; sin regresión visual (cubre RNF-001, RNF-005) [zona: estilos]
   - CHECK: `cd frontend && npx vitest run src && CV`
   - EXPECT: vitest `passed`; `content-visual` igual que tras T-049 (mismas V-* en verde); capturas `prose-*`, `table-*` leídas sin cambios visibles.
-- [ ] T-128 [rojo] — `editor/markdown/parseStage.test.ts` (equivalencia): para todo el corpus (`content-notes.ts`, casos de `frontmatter-yaml.cases.json`, notas de pruebas de 0008) el documento desde mdast cacheado es `eq` a `parserCtx(text)` del editor; mismas extensiones de parseo (`micromarkExtensions`, `fromMarkdownExtensions`) que el procesador del editor; `npm ls unified remark-parse remark-gfm micromark` sin duplicados (cubre RNF-001, RNF-003) [zona: test]
+- [x] T-128 [rojo] — `editor/markdown/parseStage.test.ts` (equivalencia): para todo el corpus (`content-notes.ts`, casos de `frontmatter-yaml.cases.json`, notas de pruebas de 0008) el documento desde mdast cacheado es `eq` a `parserCtx(text)` del editor; mismas extensiones de parseo (`micromarkExtensions`, `fromMarkdownExtensions`) que el procesador del editor; `npm ls unified remark-parse remark-gfm micromark` sin duplicados (cubre RNF-001, RNF-003) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/markdown/parseStage.test.ts && npm ls unified remark-parse remark-gfm micromark | grep -c deduped`
   - EXPECT: falla al importar `./parseStage` / `./cachedParser`.
 - [ ] T-129 [rojo] — `scripts/check-bundle.mjs`: chunk del Worker de parseo presente, ≤ 46 KiB gzip, sin importación estática desde la entrada ni el editor; entrada y editor dentro del presupuesto (cubre RNF-002) [zona: sistema]
@@ -249,16 +249,16 @@ actualizado: 2026-10-24
 - [ ] T-130 — `editor/markdown/parseStage.ts` (`parseMarkdownToJson`: `unified().use(remarkParse).use(remarkGfm)`, con `position`), `editor/markdown/parseWorker.ts` (módulo Worker) y `editor/markdown/cachedParser.ts` (plugin que envuelve `parserCtx`: `JSON.parse` → `remarkCtx.runSync(tree, text)` → `ParserState` → `headingIds`; marcas `synapse:parse:*`) (cubre RNF-001, RNF-002) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && npm run build && npm run test:bundle`
   - EXPECT: `passed`; Worker en chunk propio ≤ 46 KiB gzip; entrada ≤ 157 020 B.
-- [ ] T-131 [rojo] — `editor/markdown/parseCache.test.ts` (Worker simulado): clave `{id}@{rev}`, guarda cadenas, sólo `content` ≥ 32 KiB, LRU por bytes con tope 24 MiB, peticiones en vuelo deduplicadas, revisión nueva invalida, verificación de longitud, fallo del Worker → sin entrada y sin excepción, `dispose()` termina el Worker y vacía; ninguna escritura en `indexedDB`/`localStorage`/`sessionStorage` (cubre RNF-001, RNF-003) [zona: test]
+- [x] T-131 [rojo] — `editor/markdown/parseCache.test.ts` (Worker simulado): clave `{id}@{rev}`, guarda cadenas, sólo `content` ≥ 32 KiB, LRU por bytes con tope 24 MiB, peticiones en vuelo deduplicadas, revisión nueva invalida, verificación de longitud, fallo del Worker → sin entrada y sin excepción, `dispose()` termina el Worker y vacía; ninguna escritura en `indexedDB`/`localStorage`/`sessionStorage` (cubre RNF-001, RNF-003) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/markdown/parseCache.test.ts`
   - EXPECT: falla al importar `./parseCache`.
-- [ ] T-132 — `editor/markdown/parseCache.ts` (cubre RNF-001, RNF-003) [zona: pantalla]
+- [x] T-132 — `editor/markdown/parseCache.ts` (cubre RNF-001, RNF-003) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor/markdown`
   - EXPECT: `passed`.
-- [ ] T-133 [rojo] — `noteStore.test.ts`: los resúmenes llevan `size` (longitud de `content`) y se actualiza con cada revisión; `editor/markdown/precompute.test.ts` (reloj e *idle* simulados): candidatas ≥ 32 KiB, prioridad *hover*/foco > historial > carpetas desplegadas > resto, una nota a la vez, pausa durante una apertura, reconciliación tras `notesVersion`, marca `synapse:precompute-idle`, `dispose` (cubre RNF-001) [zona: test]
+- [x] T-133 [rojo] — `noteStore.test.ts`: los resúmenes llevan `size` (longitud de `content`) y se actualiza con cada revisión; `editor/markdown/precompute.test.ts` (reloj e *idle* simulados): candidatas ≥ 32 KiB, prioridad *hover*/foco > historial > carpetas desplegadas > resto, una nota a la vez, pausa durante una apertura, reconciliación tras `notesVersion`, marca `synapse:precompute-idle`, `dispose` (cubre RNF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts src/editor/markdown/precompute.test.ts`
   - EXPECT: fallan (`size` ausente; `./precompute` no existe).
-- [ ] T-134 — `size` en el índice de `notes/noteStore.ts` + `editor/markdown/precompute.ts` (cubre RNF-001) [zona: almacén]
+- [x] T-134 — `size` en el índice de `notes/noteStore.ts` + `editor/markdown/precompute.ts` (cubre RNF-001) [zona: almacén]
   - CHECK: `cd frontend && npx vitest run src/notes src/editor/markdown`
   - EXPECT: `passed`; `tree.perf.test.tsx` (`npm run test:perf`) p95 < 300 ms sin cambio relevante.
 - [ ] T-135 [rojo] — Integración (jsdom): el `Workspace` crea la caché y el programador y los destruye al desmontar (cambio de bóveda y cierre de sesión: Worker terminado, `Map` vacío); `pointerenter`/`focus` en una fila del árbol pide su precálculo con prioridad; abrir una nota precalculada **no** llama a `remark.parse` en el hilo principal (espía) y da el mismo DOM que en frío; un borrador distinto del `content` guardado no usa la caché; con el parseo en vuelo, el editor lo espera (cubre RNF-001, RNF-003) [zona: test]
