@@ -6,37 +6,46 @@ estado: approved         # draft | in-review | approved | implemented | verified
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 09bd982   # HEAD de feature/sprint-1-auth al abrir la Fase 1 (2026-10-24)
 anchor_mode: advisory
-covers:                  # BORRADOR: lo fija el PLAN-0010 (archivos con dueño anterior: 0008/0009)
-  # frontend — editor (propiedades, tablas, resaltado, Mermaid, estilos, breadcrumb)
+covers:                  # fijado en PLAN-0010 §9 (archivos con dueño anterior 0007/0008/0009: PLAN-0010 P-15)
+  # frontend — editor (sesión de frontmatter, propiedades, node views, resaltado, Mermaid, migas, menú)
   - frontend/src/editor/**
   - frontend/src/styles/tokens.css
-  # frontend — carpetas, carpeta activa, historial de navegación y reglas de ruta
+  # frontend — carpetas, carpeta activa, historial y reglas de ruta
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/noteStore.ts
   - frontend/src/notes/noteRules.ts
-  - frontend/src/notes/noteTree.ts
-  - frontend/src/notes/messages.ts
+  - frontend/src/notes/folders.ts
+  - frontend/src/notes/noteHistory.ts
   - frontend/src/notes/untitled.ts
+  - frontend/src/notes/messages.ts
   - frontend/src/notes/notes.css
   - frontend/src/notes/*.test.ts
   - frontend/src/notes/*.test.tsx
-  # dependencias nuevas (portapapeles de Milkdown, YAML, resaltador, mermaid, svg-pan-zoom)
+  # dependencias y presupuesto de bundle (RNF-002)
   - frontend/package.json
   - frontend/package-lock.json
-  # sistema — fidelidad visual y rendimiento en navegador real
-  - frontend/e2e/**
+  - frontend/scripts/check-bundle.mjs
+  # sistema — fidelidad visual y rendimiento en navegador real (reutiliza la infraestructura de 0009)
+  - frontend/e2e/content-visual.spec.ts
+  - frontend/e2e/content-perf.spec.ts
+  - frontend/e2e/fixtures.ts
   # backend — regla de ruta compartida (RF-007)
   - backend/app/core/note_rules.py
   - backend/tests/test_note_rules.py
+  - backend/tests/test_note_contract.py
+  - backend/tests/test_note_sync_push.py
   - backend/tests/fixtures/note_rules_cases.json
   # contratos
   - .harness/specs/0010-contenido-markdown-completo/contracts/**
   - .harness/specs/0008-vault-editor/contracts/note.schema.json
-  # documentación
+  # decisiones y documentación
+  - .harness/decisions/ADR-006-extension-tokens-contenido.md
   - frontend/README.md
   - frontend/src/README.md
+  - backend/README.md
   - backend/app/core/README.md
+  - backend/tests/README.md
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-24, nota: "incluye RF-052 (zoom/pan con svg-pan-zoom en carga diferida) por paridad con career-admin" }
