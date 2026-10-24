@@ -161,7 +161,7 @@ actualizado: 2026-10-24
 - [x] T-032 — Estilos de cita y código en línea (R-5, R-6) + `editor/tableView.ts` (`TableView` con envoltorio `note-table-scroll`, región en lectura) + CSS de tabla (R-7) (cubre RF-026, RF-037, RF-038) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes/layoutCss.test.ts && CV --grep "0010 V-(3|4) "`
   - EXPECT: vitest `passed`; V-4 fila ≤ 40 (≈ 31,4) y scroll dentro del envoltorio; V-3 cita/código en línea en verde (casillas aún rojas).
-- [ ] T-033 — `editor/taskItemView.ts` (presentación en lectura y Visual) + CSS de casillas (R-10) (cubre RF-039) [zona: pantalla]
+- [x] T-033 — `editor/taskItemView.ts` (presentación en lectura y Visual) + CSS de casillas (R-10) (cubre RF-039) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor/taskItemView.test.ts && CV --grep "0010 V-3 "`
   - EXPECT: `passed`; capturas `prose-*` leídas (casilla por tarea, tachado en hechas).
 
