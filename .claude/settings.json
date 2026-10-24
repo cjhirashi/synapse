@@ -33,6 +33,16 @@
     }
   },
   "skills": {
+    "_nota_ui_ux_pro_max": "Reinstalada 2026-10-23 (revierte ADR-004 del 2026-10-15, autorizado por Carlos tras ver que el editor de notas de SPEC-0008/0009 quedó muy básico sin ella) vía `npx ui-ux-pro-max-cli@latest init --ai claude`, igual mecanismo que design-html. El installer trae el paquete completo en .claude/skills/ (ui-ux-pro-max, design-system, ui-styling, design, brand, banner-design, slides); de ese paquete, para Synapse solo aplica ui-ux-pro-max (estilos/paletas/tipografía/WCAG) — el resto (branding, banners, slides) está instalado porque viene empaquetado, no porque Synapse lo necesite.",
+    "ui-ux-pro-max": {
+      "enabled": true,
+      "use_cases": [
+        "Fase 1/2 de cualquier feature con frontend: el `experto-ux-ui` lo usa para proponer paleta/tipografía/componentes en vez de solo criticar contra un checklist",
+        "Fase 4: revisar/mejorar la UI ya construida contra el motor de validación (contraste WCAG AA, estados de foco, responsive) antes de que cierre el `revisor`",
+        "SPEC-0008/0009 (editor de notas): nivel de acabado visual del workspace, panel de propiedades, bloques de código y tablas"
+      ],
+      "when": "mismos momentos que `experto-ux-ui.md` (Fase 1/2/4) — ver `.claude/agents/experto-ux-ui.md`"
+    },
     "archify": {
       "enabled": true,
       "use_cases": [

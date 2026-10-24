@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-10-23] Harness — reinstalación de la skill `ui-ux-pro-max` (ADR-005)
+- **Fase alcanzada:** no es feature de producto — mantenimiento de arnés, registrado por ADR (sin fases SDD).
+- **Origen:** Carlos probó SPEC-0008/0009 en navegador real (capturas) y encontró el editor de notas muy por debajo del mockup original de `1.1.4.4`: sin panel de propiedades, sin tablas, sin resaltado de sintaxis, sin guía visual para crear carpetas. Preguntó si el harness tenía una skill de diseño de frontend funcionando. AIRA diagnosticó: el `experto-ux-ui` existe pero solo critica contra un checklist, sin motor de generación — `ui-ux-pro-max` se había retirado explícitamente en ADR-004 (2026-10-15), con el costo ya anotado entonces ("se pierde la generación automática... puede quedar desactualizado"). Carlos autorizó revertir esa parte de ADR-004.
+- **Cambios:** `npx ui-ux-pro-max-cli@latest init --ai claude` (mismo mecanismo que `design-html`) instaló `.claude/skills/{ui-ux-pro-max,design-system,ui-styling,design,brand,banner-design,slides}/`; `.claude/settings.json` ganó la entrada `ui-ux-pro-max` (uso real) con nota del paquete completo instalado; `.claude/agents/experto-ux-ui.md` actualizado — ya no dice "sin skill de generación", apunta a usarla junto con (no en reemplazo de) `diseño/1.1.4.1`. ADR-005 documenta la reversión completa; `security-review`/`verify` de ADR-004 quedan intactas.
+- **Gate:** no aplica (sin cambios de código de aplicación; no se corrió `check.sh`).
+- **Docs actualizadas:** `.claude/settings.json`, `.claude/agents/experto-ux-ui.md`, `.harness/decisions/ADR-005-…`, este archivo. `state.md` pendiente de actualizar por separado si Claude Code lo considera relevante para su contexto activo.
+- **Pendiente:** el hueco de completitud funcional (tablas, resaltado de sintaxis, propiedades, anidado de notas) es un asunto aparte, ya relayado a Claude Code directamente el mismo día — `ui-ux-pro-max` no lo resuelve por sí sola, es sobre huecos de la feature, no de paleta/tipografía.
+- **Próximo paso:** ninguno de este cambio; Claude Code sigue trabajando los hallazgos de SPEC-0008/0009 en paralelo.
+
+
 ## [2026-10-22] Implementación del sistema de diseño MD3+Cyan (1.1.4.1, aprobado 2026-08-12)
 - **Fase alcanzada:** no es feature de producto — implementación de diseño ya aprobado, autorizada directo por Carlos, sin carril SDD completo (es CSS/estructura visual sobre comportamiento ya verificado, no RF- nuevo).
 - **Origen:** al ver las capturas reales (sin estilos) tomadas tras los 3 fixes de la entrada anterior, Carlos pidió explícitamente "diseña bien el frontend, usa los skills de diseño". El frontend no tenía ningún CSS hasta este punto — HTML semántico puro.
