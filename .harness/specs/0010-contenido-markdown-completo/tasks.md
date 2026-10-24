@@ -228,10 +228,10 @@ actualizado: 2026-10-24
 ### E2 · Enmienda 1 — parseo precalculado (Directiva de Pausa, PLAN-0010 §10; antes de seguir con F)
 > T-050 sigue **abierta** hasta que T-138 (a) pase. B-1 (apertura en frío ≳ 100 KiB) espera
 > decisión de AIRA/Carlos: hasta entonces T-138 (b) sólo informa.
-- [ ] T-124 [rojo] — `editor/markdown/headingIds.test.ts` + `MilkdownView.test.tsx`: montar en lectura despacha **0** transacciones (espía en `view.dispatch`) y los ids de encabezado del DOM son idénticos a los que hoy pone `syncHeadingIdPlugin` (corpus `e2e/content-notes.ts` con duplicados y encabezados vacíos) (cubre RNF-001) [zona: test]
+- [x] T-124 [rojo] — `editor/markdown/headingIds.test.ts` + `MilkdownView.test.tsx`: montar en lectura despacha **0** transacciones (espía en `view.dispatch`) y los ids de encabezado del DOM son idénticos a los que hoy pone `syncHeadingIdPlugin` (corpus `e2e/content-notes.ts` con duplicados y encabezados vacíos) (cubre RNF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/markdown/headingIds.test.ts src/editor/MilkdownView.test.tsx -t "RNF-001"`
   - EXPECT: falla: 1 `dispatch` al montar y `headingIds` no existe.
-- [ ] T-125 — `editor/markdown/headingIds.ts` (mismo `headingIdGenerator`, misma regla `-#n`) aplicado al documento recién parseado (cubre RNF-001) [zona: pantalla]
+- [x] T-125 — `editor/markdown/headingIds.ts` (mismo `headingIdGenerator`, misma regla `-#n`) aplicado al documento recién parseado (cubre RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`; 0 `dispatch` al montar; ids iguales.
 - [ ] T-126 [rojo] — `notes/layoutCss.test.ts`: `content-visibility: auto` + `contain-intrinsic-size` sólo en `.milkdown-view[data-mode="read"] .ProseMirror > *` (y nunca en Visual) (cubre RNF-001) [zona: test]
