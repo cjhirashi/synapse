@@ -76,6 +76,12 @@ aprobaciones:
 actualizado: 2026-10-23
 ---
 
+> **Re-anclaje 2026-10-24** (T-006 de TASKS-0010, P-15): SPEC-0010 (contenido Markdown completo) toca
+> `tokens.css` (seis tokens nuevos, ADR-006), `notes.css`, `editor.css`, `NoteSidebar`,
+> `VaultWorkspacePage` y `e2e/**` (nuevas specs `content-*`). Sin cambio de los RF de esta spec:
+> la maquetación de 0009 (43 px de barra, columna de 780 px, marco fijo) se conserva y V-1…V-10
+> siguen en verde (RF-041 de SPEC-0010).
+
 # SPEC-0009 · Rediseño visual del workspace de bóvedas y notas
 
 > Redactada por AIRA a partir de la evaluación directa de Carlos sobre la app ya

@@ -23,6 +23,11 @@ aprobaciones:
 actualizado: 2026-10-22
 ---
 
+> **Re-anclaje 2026-10-24** (T-005 de TASKS-0010, P-15): SPEC-0010 (contenido Markdown completo) toca
+> `frontend/src/notes/**`, `frontend/src/editor/**`, `note.schema.json` (patrón de `path`) y la
+> batería `note_rules_cases.json`. Sin cambio de los RF de esta spec: roles, nombres accesibles y
+> rutas se conservan; los únicos tests de 0008 que cambian están listados en PLAN-0010 §9 RF-041.
+
 # SPEC-0008 · Editor de documentos dentro de una bóveda
 
 > **Re-anclaje 2026-10-23** (T-003 de TASKS-0009): SPEC-0009 (rediseño visual) cambia el

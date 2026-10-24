@@ -34,6 +34,10 @@ aprobaciones:
 actualizado: 2026-10-17
 ---
 
+> **Re-anclaje 2026-10-24** (T-007 de TASKS-0010, P-15): SPEC-0010 actualiza `backend/README.md` y
+> `frontend/README.md` (contenido Markdown, carpetas, pruebas visuales y de *bundle*). Sin cambio
+> de requisitos de esta spec.
+
 # SPEC-0007 · FastAPI sirve la SPA
 
 > **Re-anclaje 2026-10-23** (T-004 de TASKS-0009): SPEC-0009 actualiza `frontend/README.md` y

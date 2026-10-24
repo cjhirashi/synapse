@@ -63,13 +63,13 @@ actualizado: 2026-10-24
   - EXPECT: gate "Compuerta abierta"; `1135 passed` (o el vigente), 0 failed, ~17 min.
 
 ### A · Re-anclajes al inicio (PLAN-0010 P-15)
-- [ ] T-005 — Nota de re-anclaje en `0008-vault-editor/spec.md` (`strict`): 0010 toca `notes/**`, `editor/**`, `note.schema.json` y la batería sin cambiar sus RF [doc] [P-15]
+- [x] T-005 — Nota de re-anclaje en `0008-vault-editor/spec.md` (`strict`): 0010 toca `notes/**`, `editor/**`, `note.schema.json` y la batería sin cambiar sus RF [doc] [P-15]
   - CHECK: `git diff --name-only -- .harness/specs/0008-vault-editor/spec.md && bash .harness/gate/check.sh | grep 0008-vault`
   - EXPECT: el archivo en el diff; la línea de 0008 en ✅ (no "DRIFT").
-- [ ] T-006 — Nota de re-anclaje en `0009-rediseno-visual-workspace/spec.md` (`strict`: `tokens.css`, `notes.css`, `editor.css`, `NoteSidebar`, `VaultWorkspacePage`, `e2e/**`) [doc] [P-15]
+- [x] T-006 — Nota de re-anclaje en `0009-rediseno-visual-workspace/spec.md` (`strict`: `tokens.css`, `notes.css`, `editor.css`, `NoteSidebar`, `VaultWorkspacePage`, `e2e/**`) [doc] [P-15]
   - CHECK: `git diff --name-only -- .harness/specs/0009-rediseno-visual-workspace/spec.md && bash .harness/gate/check.sh | grep 0009-rediseno`
   - EXPECT: el archivo en el diff; 0009 en ✅.
-- [ ] T-007 — Nota de re-anclaje en `0007-fastapi-sirve-spa/spec.md` (`strict`, dueña de `backend/README.md` y `frontend/README.md`) [doc] [P-15]
+- [x] T-007 — Nota de re-anclaje en `0007-fastapi-sirve-spa/spec.md` (`strict`, dueña de `backend/README.md` y `frontend/README.md`) [doc] [P-15]
   - CHECK: `git diff --name-only -- .harness/specs/0007-fastapi-sirve-spa/spec.md && bash .harness/gate/check.sh | grep 0007-fastapi`
   - EXPECT: el archivo en el diff; 0007 en ✅.
 
