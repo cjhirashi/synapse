@@ -12,7 +12,8 @@
     "test:sync": "scripts/sync-integration.sh",
     "test:sync:perf": "SYNC_PERF=1 scripts/sync-integration.sh",
     "test:perf": "NOTES_PERF=1 vitest run src/notes/tree.perf.test.tsx",
-    "test:visual": "scripts/visual.sh"
+    "test:visual": "scripts/visual.sh",
+    "test:bundle": "node scripts/check-bundle.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",

@@ -9,6 +9,8 @@ const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
 export default defineConfig({
   plugins: [react()],
+  // `dist/.vite/manifest.json` lo lee `scripts/check-bundle.mjs` (presupuesto de bundle, SPEC-0010 RNF-002).
+  build: { manifest: true },
   server: {
     proxy: {
       "/auth": BACKEND,

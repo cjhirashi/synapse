@@ -103,7 +103,7 @@ actualizado: 2026-10-24
 - [x] T-016 [rojo] — `0010 V-13` (todo color computado ∈ tokens del tema), `0010 V-14` (reduced-motion), `0010 V-15` (red: chunks pedidos según la nota) (cubre RF-040, RNF-002, RNF-004) [zona: sistema]
   - CHECK: `CV --grep "0010 V-(13|14|15) "`
   - EXPECT: V-13/V-14 fallan por ausencia de los componentes; V-15 falla porque no existen chunks de `mermaid`/`frontmatter`.
-- [ ] T-017 [rojo] — `frontend/scripts/check-bundle.mjs` + `build.manifest: true` en `vite.config.ts` + script `test:bundle`: entrada ≤ 157 020 B gzip, editor ≤ 357 388 B gzip, chunks separados de `mermaid`, `svg-pan-zoom`, `frontmatter` y gramáticas extra sin importación estática desde la entrada ni el editor (cubre RNF-002) [zona: sistema] [P-9]
+- [x] T-017 [rojo] — `frontend/scripts/check-bundle.mjs` + `build.manifest: true` en `vite.config.ts` + script `test:bundle`: entrada ≤ 157 020 B gzip, editor ≤ 357 388 B gzip, chunks separados de `mermaid`, `svg-pan-zoom`, `frontmatter` y gramáticas extra sin importación estática desde la entrada ni el editor (cubre RNF-002) [zona: sistema] [P-9]
   - CHECK: `cd frontend && npm run build && npm run test:bundle`
   - EXPECT: tamaños dentro (base 141 660 / 316 428) y **falla** "chunk mermaid ausente" (aún no existe).
 
