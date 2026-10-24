@@ -27,6 +27,7 @@ import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView } from "./MilkdownView";
+import { PropertiesForm } from "./PropertiesForm";
 import { PropertiesPanel } from "./PropertiesPanel";
 import "./editor.css";
 import "./syntax.css";
@@ -515,6 +516,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
           {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición las ofrecerá el formulario. */}
           {mode === "read" && <PropertiesPanel frontmatter={note.frontmatter} />}
+          {/* En Visual, el formulario con estado propio (todavía sin guardar: lo cablea la sesión de edición). */}
+          {mode === "edit" && view === "visual" && <PropertiesForm key={note.rev} frontmatter={note.frontmatter} />}
 
           {mode === "read" ? (
             <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
