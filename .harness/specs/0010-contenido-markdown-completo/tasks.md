@@ -128,7 +128,7 @@ actualizado: 2026-10-24
 - [x] T-023 — `properties.ts` (resto) + `editor/PropertiesForm.tsx` con estado local (sin guardar) + estilos (R-16, 390 apilado, `pointer:coarse`) montado en Visual (cubre RF-010, RF-011, RF-013) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-2 "`
   - EXPECT: vitest `passed`; V-2 `passed`; capturas `props-form-*` (incl. 390) leídas.
-- [ ] T-024 [rojo] — `editor/Notice.test.tsx`: variantes info/advertencia/error (icono, borde 3 px, rol `status`/`alert`, "Cerrar aviso", acción opcional) con los textos de PLAN-0010 §2.3-d (cubre RF-008, RF-017, RF-019, RF-044, RF-045) [zona: test]
+- [x] T-024 [rojo] — `editor/Notice.test.tsx`: variantes info/advertencia/error (icono, borde 3 px, rol `status`/`alert`, "Cerrar aviso", acción opcional) con los textos de PLAN-0010 §2.3-d (cubre RF-008, RF-017, RF-019, RF-044, RF-045) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/Notice.test.tsx`
   - EXPECT: falla al importar `./Notice`.
 - [ ] T-025 — `editor/Notice.tsx` + estilos (variantes sobre `.note-editor-notice`) (cubre RF-008, RF-017, RF-019, RF-044, RF-045) [zona: pantalla]
