@@ -643,6 +643,8 @@ for (const { theme, size, key } of COMBOS) {
     expect(await page.locator('.note-tree-folder[aria-current="true"]').evaluate((el) => getComputedStyle(el).fontWeight)).toBe("600");
     expect(await page.locator('.note-tree-folder[aria-current="true"]').evaluate((el) => getComputedStyle(el).boxShadow)).toContain("3px");
 
+    // A ≤ 640 px el bloque de creación es un disclosure («Crear…», H-2 de T-049): se abre antes de comprobar el resto.
+    if (size.width <= 640) await page.getByRole("button", { name: "Crear…" }).click();
     // Pista de `/` asociada a los campos y «Nueva carpeta».
     await expect(page.getByText("Usa / para crear subcarpetas")).toBeVisible();
     await expect(page.getByLabel("Título de la nota nueva (opcional)")).toHaveAttribute("aria-describedby", /\S/);
@@ -742,5 +744,127 @@ test("0010 V-15 carga diferida de chunks según la nota (RNF-002)", async ({ bro
   expect(hits(/frontmatter/i), "lectura: sin chunk de frontmatter").toEqual([]);
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await expect.poll(() => hits(/frontmatter/i).length, { message: "frontmatter se pide al editar" }).toBeGreaterThan(0);
+  await context.close();
+});
+
+// --- T-049: correcciones de la revisión visual temprana (T-048, /tmp/s10/ux/t048.md) ---------------------------
+
+// H-1 · a 390 en edición la nota actual se lee: ancestros colapsados a «…», flechas ocultas y nombre ≥ 96 px
+for (const theme of THEMES) {
+  test(`0010 V-10 H-1 el nombre de la nota se lee en edición a 390, ${theme} (RF-063, RF-064)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "deep", { theme, size: MOBILE, edit: true });
+    const nav = page.getByRole("navigation", { name: "Ruta" });
+    const name = nav.getByRole("heading", { level: 2 });
+    expect((await name.boundingBox())!.width, "el nombre mide ≥ 96 px").toBeGreaterThanOrEqual(96);
+    await expect(page.locator(HEADER).getByRole("button", { name: "Atrás" })).toBeHidden();
+    await expect(page.locator(HEADER).getByRole("button", { name: "Adelante" })).toBeHidden();
+    // Los ancestros son un único «…» que muestra la carpeta contenedora en el árbol.
+    await expect(nav.getByRole("button")).toHaveCount(1);
+    await expect(nav.getByRole("button")).toHaveText("…");
+    const bar = await measure(page, HEADER);
+    expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth + 1);
+    await shot(page, `header-edit-${theme}-390`, { selector: HEADER });
+    await context.close();
+  });
+}
+
+// H-2 · a 390 el bloque de creación es un disclosure colapsado y el editor queda a la vista
+for (const theme of THEMES) {
+  test(`0010 V-12 H-2 «Crear…» colapsado a 390 deja el editor a la vista, ${theme} (RF-002, RF-006)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "root", { theme, size: MOBILE });
+    const toggle = page.getByRole("button", { name: "Crear…" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(page.getByRole("button", { name: "Nueva carpeta" })).toBeHidden();
+    await expect(page.getByText("Usa / para crear subcarpetas")).toBeHidden();
+    const header = await measure(page, HEADER);
+    expect(header.y, "la barra del editor empieza antes de y = 600 de 844").toBeLessThanOrEqual(600);
+    await shot(page, `mobile-${theme}-390`);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByRole("button", { name: "Nueva carpeta" })).toBeVisible();
+    await context.close();
+  });
+}
+
+// M-1 · el foco del editor no se pega al texto: marco en un contenedor con aire (Visual) y sin marco de columna (Código)
+test("0010 V-6 M-1 foco del editor con aire en Visual y sin marco de columna en Código (RNF-004)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "prose", { theme: "dark", size: SIZES[0], edit: true });
+  const pm = page.locator(".milkdown-view .ProseMirror");
+  await pm.focus();
+  expect(await pm.evaluate((el) => getComputedStyle(el).outlineStyle), "el ProseMirror no lleva el contorno").toBe("none");
+  const frame = await page.locator(".milkdown-view").evaluate((el) => ({ style: getComputedStyle(el).outlineStyle, pad: getComputedStyle(el).paddingLeft }));
+  expect(frame.style, "el contenedor sí").toBe("solid");
+  expect(parseFloat(frame.pad), "con aire").toBeGreaterThanOrEqual(12);
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  await page.locator(".code-view .cm-content").focus();
+  const code = await page.locator(".code-view .cm-editor").evaluate((el) => ({ outline: getComputedStyle(el).outlineStyle, shadow: getComputedStyle(el).boxShadow }));
+  expect(code.outline, "sin contorno de columna").toBe("none");
+  expect(code.shadow, "borde de foco en --accent").toContain(tokenColor("dark", "--accent"));
+  await context.close();
+});
+
+// M-2 · el formulario con muchas propiedades avisa de que hay más (sombras de desplazamiento)
+test("0010 V-2 M-2 el formulario con scroll muestra sombras de desbordamiento (RF-011)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "props-twelve", { theme: "dark", size: SIZES[0], edit: true });
+  const scroller = page.locator(".props-form-scroll");
+  const info = await scroller.evaluate((el) => ({ over: el.scrollHeight > el.clientHeight, att: getComputedStyle(el).backgroundAttachment, img: getComputedStyle(el).backgroundImage }));
+  expect(info.over, "hay desbordamiento").toBe(true);
+  expect(info.att).toContain("local");
+  expect(info.att).toContain("scroll");
+  expect(info.img).toContain("gradient");
+  await context.close();
+});
+
+// M-3 · la tabla ancha tiene sombra lateral y su envoltorio se enfoca con visible foco
+test("0010 V-4 M-3 la tabla ancha muestra sombra de scroll y su envoltorio es enfocable (RF-026)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "table", { theme: "dark", size: SIZES[1] });
+  const wrap = page.locator(".note-table-scroll").nth(1);
+  const info = await wrap.evaluate((el) => ({ tab: el.getAttribute("tabindex"), att: getComputedStyle(el).backgroundAttachment, img: getComputedStyle(el).backgroundImage }));
+  expect(info.tab).toBe("0");
+  expect(info.att).toContain("local");
+  expect(info.img).toContain("gradient");
+  await wrap.focus();
+  await page.keyboard.press("ArrowRight");
+  expect(await wrap.evaluate((el) => getComputedStyle(el).outlineStyle), "foco visible").toBe("solid");
+  await context.close();
+});
+
+// M-4 · el foco de las filas del árbol queda dentro de la fila
+test("0010 V-12 M-4 el foco de una fila del árbol no se sale del panel (RNF-004)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: MOBILE });
+  const row = page.getByRole("tree", { name: "Notas" }).getByRole("treeitem", { name: "Nota en la raíz", exact: true });
+  await row.focus();
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowUp");
+  expect(await page.evaluate(() => getComputedStyle(document.activeElement as Element).outlineOffset)).toBe("-2px");
+  await context.close();
+});
+
+// M-5 · con puntero táctil flechas, lápiz y ⋮ tienen un área de golpe de 44 px sin crecer la barra de 43 px
+test("0010 V-10 M-5 área de golpe de 44 px con puntero táctil (RF-064)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: MOBILE, touch: true });
+  await openContentNote(page, note("root"));
+  expect(await page.evaluate(() => matchMedia("(pointer: coarse)").matches), "puntero táctil").toBe(true);
+  for (const name of ["Opciones de la nota", "Editar"]) {
+    const hit = await page.locator(HEADER).getByRole("button", { name }).evaluate((el) => {
+      const c = getComputedStyle(el, "::after");
+      return { w: parseFloat(c.width), h: parseFloat(c.height) };
+    });
+    expect(hit.w, `${name}: ancho de golpe`).toBeGreaterThanOrEqual(44);
+    expect(hit.h, `${name}: alto de golpe`).toBeGreaterThanOrEqual(44);
+  }
+  expectMeasure("R-1 táctil 390", "alto de la barra", (await measure(page, HEADER)).h, 43, 2);
+  await context.close();
+});
+
+// L-1/L-2 · migas como Obsidian: ancestros en negrita atenuada y separador más ceñido
+test("0010 V-10 L-1 ancestros en negrita atenuada y separador ceñido (P-17)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "deep", { theme: "dark", size: SIZES[0] });
+  const ancestor = page.getByRole("navigation", { name: "Ruta" }).getByRole("button").first();
+  expect(await ancestor.evaluate((el) => getComputedStyle(el).fontWeight)).toBe("600");
+  expectExact("L-1", "color del ancestro", await ancestor.evaluate((el) => getComputedStyle(el).color), tokenColor("dark", "--text-secondary"));
+  const sep = (await page.locator(".note-crumb-sep").first().boundingBox())!;
+  const next = (await page.getByRole("navigation", { name: "Ruta" }).getByRole("button").nth(1).boundingBox())!;
+  expect(next.x - (sep.x + sep.width), "aire tras el separador ≤ 8 px").toBeLessThanOrEqual(8);
   await context.close();
 });

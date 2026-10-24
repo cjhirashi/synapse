@@ -109,6 +109,8 @@ export interface OpenOptions {
   size?: Size;
   /** Preferencia del sistema del navegador (lo que resolvería el modo "sistema"). */
   colorScheme?: "light" | "dark";
+  /** Puntero táctil (`pointer: coarse`): comprueba las áreas de golpe de 44 px (SPEC-0010 T-049). */
+  touch?: boolean;
 }
 
 /**
@@ -116,10 +118,10 @@ export interface OpenOptions {
  * guardado. `theme: null` deja `localStorage` vacío (V-8).
  */
 export async function newSession(browser: Browser, user: { email: string; password: string }, options: OpenOptions = {}): Promise<BrowserContext> {
-  const { theme = "dark", size = SIZES[0], colorScheme } = options;
+  const { theme = "dark", size = SIZES[0], colorScheme, touch = false } = options;
   // `reducedMotion` aquí y no sólo en la config: `browser.newContext` no hereda `use.contextOptions`, y sin él las
   // transiciones de fondo (120 ms en los botones) hacen que una medida justo tras un cambio lea el color a medias.
-  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme, reducedMotion: "reduce" });
+  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme, reducedMotion: "reduce", hasTouch: touch });
   if (theme !== null) await context.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
   const login = await context.request.post("/auth/login", { data: { email: user.email, password: user.password } });
   if (!login.ok()) throw new Error(`login → ${login.status()}`);
