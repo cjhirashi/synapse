@@ -2,7 +2,7 @@
 import { Schema } from "@milkdown/prose/model";
 import type { EditorView, NodeView } from "@milkdown/prose/view";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { codeBlockViewFactory } from "./codeBlockView";
+import { codeBlockViewFactory, MermaidLoadError, MermaidSyntaxError, type CodeBlockDeps, type MermaidRenderer } from "./codeBlockView";
 
 const schema = new Schema({
   nodes: {
@@ -140,5 +140,178 @@ describe("codeBlockView", () => {
     const label = view.dom.querySelector(".code-block-label")!;
     expect(view.ignoreMutation!({ type: "characterData", target: label } as unknown as MutationRecord)).toBe(true);
     expect(view.ignoreMutation!({ type: "childList", target: view.contentDOM! } as unknown as MutationRecord)).toBe(false);
+  });
+});
+
+// --- Rama `mermaid` con un renderizador falso inyectado (SPEC-0010 RF-046…RF-053) -------------------
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+/** SVG falso con el tamaño de su `viewBox` (jsdom no hace *layout*). */
+function fakeSvg(width: number, height = 100): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("data-fake", "1");
+  return svg;
+}
+
+interface MermaidMount {
+  text?: string;
+  editable?: boolean;
+  renderer?: MermaidRenderer;
+  columnWidth?: number;
+}
+
+function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600 }: MermaidMount = {}): NodeView {
+  const node = schema.nodes.code_block.create({ language: "mermaid" }, text ? schema.text(text) : undefined);
+  const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth };
+  return codeBlockViewFactory(deps)(node, { editable } as EditorView, () => 0, [], {} as never);
+}
+
+const area = (view: NodeView) => view.dom.querySelector<HTMLElement>('[role="img"], .mermaid-area')!;
+const flush = () => vi.advanceTimersByTimeAsync(0);
+
+describe("codeBlockView · Mermaid", () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  // RF-046
+  it("muestra «Dibujando diagrama…» con aria-busy mientras el renderizador no responde", async () => {
+    const renderer: MermaidRenderer = { render: () => new Promise(() => {}) };
+    const view = mountMermaid({ renderer });
+    await flush();
+    expect(area(view)).toHaveAttribute("aria-busy", "true");
+    expect(area(view)).toHaveTextContent("Dibujando diagrama…");
+  });
+
+  // RF-046, RF-051
+  it("el SVG devuelto va dentro de un role=img con nombre «Diagrama Mermaid»", async () => {
+    const view = mountMermaid({ renderer: { render: async () => fakeSvg(300) } });
+    await flush();
+    const el = view.dom.querySelector('[role="img"]')!;
+    expect(el).toHaveAttribute("aria-label", "Diagrama Mermaid");
+    expect(el.querySelector("svg[data-fake]")).not.toBeNull();
+    expect(el).not.toHaveAttribute("aria-busy", "true");
+  });
+
+  // RF-051
+  it("el nombre accesible sale de accTitle cuando el diagrama lo declara", async () => {
+    const view = mountMermaid({ text: "flowchart TD\n  accTitle: Flujo de guardado\n  A --> B", renderer: { render: async () => fakeSvg(300) } });
+    await flush();
+    expect(view.dom.querySelector('[role="img"]')).toHaveAttribute("aria-label", "Flujo de guardado");
+  });
+
+  // RF-049
+  it("un error de sintaxis muestra el grupo «Error en el diagrama» con la línea y, en lectura, la fuente", async () => {
+    const renderer: MermaidRenderer = { render: async () => Promise.reject(new MermaidSyntaxError("Parse error on line 3", 3)) };
+    const view = mountMermaid({ renderer });
+    await flush();
+    const group = view.dom.querySelector('[role="group"][aria-label="Error en el diagrama"]')!;
+    expect(group).not.toBeNull();
+    expect(group).toHaveTextContent("No se pudo dibujar el diagrama");
+    expect(group).toHaveTextContent("Parse error on line 3");
+    expect(group).toHaveTextContent("Revisa la sintaxis del bloque mermaid (línea 3) y vuelve a intentarlo.");
+    expect(view.dom.querySelector("[role='alert']")).toBeNull(); // no `alert` por bloque
+    // En lectura la fuente se ve debajo como bloque de código.
+    expect(view.contentDOM).toBeVisible();
+  });
+
+  // RF-053
+  it("un fallo de carga muestra «No se pudo cargar el diagrama» y «Reintentar» vuelve a pedirlo", async () => {
+    const render = vi.fn().mockRejectedValueOnce(new MermaidLoadError("chunk")).mockResolvedValueOnce(fakeSvg(300));
+    const view = mountMermaid({ renderer: { render } });
+    await flush();
+    expect(view.dom).toHaveTextContent("No se pudo cargar el diagrama");
+    const retry = [...view.dom.querySelectorAll("button")].find((b) => b.textContent?.includes("Reintentar"))!;
+    expect(retry).toBeTruthy();
+    retry.click();
+    await flush();
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(view.dom.querySelector("svg[data-fake]")).not.toBeNull();
+  });
+
+  // RF-046
+  it("sin renderizador instalado el bloque queda en «No se pudo cargar el diagrama» (aún no carga nada)", async () => {
+    const view = mountMermaid();
+    await flush();
+    expect(view.dom).toHaveTextContent("No se pudo cargar el diagrama");
+  });
+
+  // RF-048
+  it("vacío: en lectura no hay área; en Visual invita a escribir", async () => {
+    const renderer: MermaidRenderer = { render: vi.fn() };
+    const read = mountMermaid({ text: "   ", renderer });
+    await flush();
+    expect(read.dom.querySelector(".mermaid-area")).toBeNull();
+    const visual = mountMermaid({ text: "  ", editable: true, renderer });
+    await flush();
+    expect(visual.dom).toHaveTextContent("Escribe el diagrama en el bloque de arriba");
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  // RF-047
+  it("«Ver código» tiene aria-expanded: en lectura el código está oculto y se muestra al activarlo", async () => {
+    const view = mountMermaid({ renderer: { render: async () => fakeSvg(300) } });
+    await flush();
+    const toggle = [...view.dom.querySelectorAll("button")].find((b) => b.textContent?.includes("Ver código"))!;
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(view.contentDOM).not.toBeVisible();
+    toggle.click();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(view.contentDOM).toBeVisible();
+  });
+
+  // RF-047
+  it("en Visual el código sigue editable y la vista previa va debajo con el rótulo «Vista previa»", async () => {
+    const view = mountMermaid({ editable: true, renderer: { render: async () => fakeSvg(300) } });
+    await flush();
+    expect(view.contentDOM).toBeVisible();
+    const children = [...view.dom.children];
+    expect(children.indexOf(view.contentDOM!)).toBeLessThan(children.findIndex((c) => c.classList.contains("mermaid-preview")));
+    expect(view.dom.querySelector(".mermaid-preview")).toHaveTextContent("Vista previa");
+  });
+
+  // RF-052
+  it("los controles de zoom sólo aparecen si el SVG excede la columna y «Reajustar vista» arranca deshabilitado", async () => {
+    const wide = mountMermaid({ renderer: { render: async () => fakeSvg(2000) }, columnWidth: 600 });
+    await flush();
+    const group = wide.dom.querySelector('[role="group"][aria-label="Controles del diagrama"]')!;
+    expect(group).not.toBeNull();
+    const names = [...group.querySelectorAll("button")].map((b) => b.getAttribute("aria-label"));
+    expect(names).toEqual(["Acercar", "Alejar", "Reajustar vista"]);
+    expect(group.querySelector<HTMLButtonElement>('[aria-label="Reajustar vista"]')!.disabled).toBe(true);
+    const narrow = mountMermaid({ renderer: { render: async () => fakeSvg(300) }, columnWidth: 600 });
+    await flush();
+    expect(narrow.dom.querySelector('[aria-label="Controles del diagrama"]')).toBeNull();
+  });
+
+  // RF-047
+  it("en Visual re-dibuja a los 400 ms de la última tecla conservando el SVG anterior", async () => {
+    let n = 0;
+    const render = vi.fn(async () => {
+      const svg = fakeSvg(300);
+      svg.setAttribute("data-n", String(++n));
+      return svg;
+    });
+    const view = mountMermaid({ editable: true, renderer: { render } });
+    await flush();
+    expect(render).toHaveBeenCalledTimes(1);
+    const next = schema.nodes.code_block.create({ language: "mermaid" }, schema.text("flowchart TD\n  A --> C"));
+    view.update!(next, [], {} as never);
+    await vi.advanceTimersByTimeAsync(399);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(view.dom.querySelector("svg")).toHaveAttribute("data-n", "1");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(view.dom.querySelector("svg")).toHaveAttribute("data-n", "2");
+  });
+
+  // RF-046
+  it("un bloque que no es mermaid no pide el renderizador", async () => {
+    const render = vi.fn();
+    const node = schema.nodes.code_block.create({ language: "ts" }, schema.text("a"));
+    codeBlockViewFactory({ mermaid: { render } })(node, { editable: false } as EditorView, () => 0, [], {} as never);
+    await flush();
+    expect(render).not.toHaveBeenCalled();
   });
 });
