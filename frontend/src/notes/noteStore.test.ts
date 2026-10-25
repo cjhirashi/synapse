@@ -415,3 +415,54 @@ describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
     expect(paths).toContain("n200.md");
   });
 });
+
+describe("SPEC-0010 RF-001/RF-003/RF-008: carpetas y puerta de ruta", () => {
+  it("RF-003: create con carpeta pone la nota dentro (título relativo)", async () => {
+    const note = await store.create(VAULT, "Nota", "Proyectos");
+    expect(note.path).toBe("Proyectos/Nota.md");
+  });
+
+  it("RF-001: el título con `/` anida bajo la carpeta", async () => {
+    const note = await store.create(VAULT, "sub/Nota", "Proyectos");
+    expect(note.path).toBe("Proyectos/sub/Nota.md");
+  });
+
+  it("RF-012: sin título en una carpeta usa «Carpeta/Sin título n» de esa carpeta", async () => {
+    const first = await store.create(VAULT, "", "Proyectos");
+    expect(first.path).toBe("Proyectos/Sin título.md");
+    await store.create(VAULT, "", ""); // «Sin título.md» en la raíz no cuenta para la carpeta
+    const second = await store.create(VAULT, "", "Proyectos");
+    expect(second.path).toBe("Proyectos/Sin título 2.md");
+  });
+
+  it("RF-007: `Carpeta/` (sin nombre de nota) se rechaza sin escribir", async () => {
+    const err = await store.create(VAULT, "Carpeta/").catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["path"]);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual([]);
+  });
+
+  /** Siembra directa de una nota con ruta inválida (como la dejaría una réplica vieja). */
+  async function seedInvalid(path: string): Promise<string> {
+    const id = `note:${VAULT}:${"a".repeat(8)}-${"b".repeat(4)}-4${"c".repeat(3)}-8${"d".repeat(3)}-${"e".repeat(12)}`;
+    await db.put({ _id: id, type: "note", vault_id: VAULT, path, frontmatter: {}, content: "", created_at: nextTime(), updated_at: nextTime(), deleted_at: null });
+    return id;
+  }
+
+  it("RF-008 (P-12): guardar una nota con ruta inválida se rechaza con NoteValidationError(path)", async () => {
+    const id = await seedInvalid("X/.md");
+    const doc = await store.get(id);
+    const err = await store.save(id, "nuevo contenido", doc.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["path"]);
+    expect((await store.get(id)).content).toBe(""); // no escribió
+  });
+
+  it("RF-008 (P-12): borrar una nota con ruta inválida también se rechaza", async () => {
+    const id = await seedInvalid("X/.md");
+    const doc = await store.get(id);
+    const err = await store.softDelete(id, doc.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["path"]);
+  });
+});

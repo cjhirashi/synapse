@@ -17,6 +17,7 @@ import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
+import { joinPath } from "./folders";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
 export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
@@ -70,7 +71,7 @@ export interface NoteStoreOptions {
 export interface NoteStore {
   list(vaultId: string, options?: { deleted?: boolean }): Promise<NoteSummary[]>;
   get(id: string): Promise<Note>;
-  create(vaultId: string, title?: string): Promise<Note>;
+  create(vaultId: string, title?: string, folder?: string): Promise<Note>;
   rename(id: string, path: string, rev: string): Promise<Note>;
   softDelete(id: string, rev: string): Promise<Note>;
   restore(id: string, rev: string): Promise<Note>;
@@ -110,7 +111,10 @@ function isStatus(err: unknown, status: number): boolean {
  */
 function titleToPath(title: string): string {
   const path = normalizePath(title);
-  return path === "" || /\.md$/i.test(path) ? path : `${path}.md`;
+  // No añade `.md` si el último segmento quedó vacío (`Carpeta/`): así `checkPath` lo rechaza como
+  // carpeta sin nombre de nota (SPEC-0010 RF-007), en vez de inventar `Carpeta/.md`.
+  const last = path.split("/").at(-1) ?? "";
+  return last === "" || /\.md$/i.test(path) ? path : `${path}.md`;
 }
 
 /** Cuerpos leídos por lote al construir el índice de resumen. */
@@ -278,15 +282,16 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       return toNote(await load(id, false));
     },
 
-    async create(vaultId, title) {
+    async create(vaultId, title, folder = "") {
       const requested = title?.trim() ?? "";
       let path: string;
       if (requested === "") {
-        // RF-012: sin título, el menor «Sin título n» libre entre las activas de la bóveda.
+        // RF-012: sin título, el menor «Sin título n» libre entre las activas de ESA carpeta.
         const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
-        path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))));
+        path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))), folder);
       } else {
-        path = titleToPath(requested);
+        // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
+        path = titleToPath(joinPath(folder, requested));
       }
       if (checkPath(path) !== null) throw new NoteValidationError(["path"]);
       await assertPathFree(vaultId, path, null);
@@ -315,6 +320,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
 
     async softDelete(id, rev) {
       const doc = await load(id, false);
+      // Puerta RF-008 (P-12): una nota con ruta inválida (sembrada por una réplica vieja) debe
+      // renombrarse antes de borrarla; no se opera sobre ella con la ruta rota.
+      if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
       assertCurrent(doc, rev);
       const timestamp = now();
       return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
@@ -332,6 +340,8 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       if (checkContent(content) !== null) throw new NoteValidationError(["content"]);
       if (frontmatter !== undefined && checkFrontmatter(frontmatter) !== null) throw new NoteValidationError(["frontmatter"]);
       const doc = await load(id, false);
+      // Puerta RF-008 (P-12): no se guarda sobre una nota cuya ruta ya es inválida; pide renombrar antes.
+      if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
       if (doc._rev === baseRev) {
         try {
           // `frontmatter` ausente conserva el del documento; presente lo reemplaza.
