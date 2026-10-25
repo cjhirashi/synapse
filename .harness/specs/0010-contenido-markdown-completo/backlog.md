@@ -9,6 +9,12 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 - [ ] **Slice 1 — Caché de parseo precalculado (RNF-001, enmienda ya aprobada)**:
   T-050, T-124…T-139. Demoable: nota de 200 KiB abre ≤150ms con caché
   precalculada, medido con `content-perf.spec.ts`.
+  **Estado (2026-10-25):** implementación completa y verificada en jsdom/node
+  (T-124…T-136, T-129/T-130; commits 386f702…84f1c3c). Falta la medición en
+  Chromium real (T-137 por escribir, T-138/T-139 por correr) — **bloqueada en
+  sesión headless** (el contenedor Playwright vía `docker run` exige aprobación
+  no disponible). **T-050 sigue abierta.** No marcar `[x]` hasta que T-138(a)
+  dé p95 ≤ 150 ms. Detalle en `.harness/memory/history.md`.
 - [ ] **Slice 2 — Frontmatter editable**: T-051 (deps), T-052…T-062. Demoable:
   editar propiedades en Visual o Código, guardar, sobrevive sync.
 - [ ] **Slice 3 — Carpetas y rutas**: T-063…T-077. Demoable: crear/renombrar
