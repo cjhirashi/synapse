@@ -52,8 +52,9 @@ test("RNF-001: abrir una bóveda de 1 000 notas muestra el árbol de primer nive
   const mine = noteDocs(vault.id, NOTES);
   await db.bulkDocs([...mine, ...noteDocs(other.id, OTHER_VAULT_NOTES)]);
 
-  // Elementos que debe mostrar el primer nivel: carpetas (plegadas) y notas de la raíz.
-  const firstLevel = buildTree(mine).length;
+  // Elementos que debe mostrar el primer nivel: la fila «Raíz» (RF-002/RF-041, siempre la primera)
+  // más las carpetas (plegadas) y notas de la raíz que produce `buildTree`.
+  const firstLevel = buildTree(mine).length + 1;
   expect(firstLevel).toBeGreaterThan(FOLDERS);
 
   const samples: number[] = [];
