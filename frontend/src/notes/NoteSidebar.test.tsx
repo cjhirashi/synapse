@@ -342,7 +342,8 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
   await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
-  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Carpeta/Nueva");
+  // «Carpeta» sigue siendo la carpeta activa (SPEC-0010 RF-043): basta el título relativo «Nueva».
+  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Nueva");
   await user.click(screen.getByRole("button", { name: "Nueva nota" }));
   await screen.findByRole("treeitem", { name: "Carpeta" });
   expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus();
@@ -533,7 +534,55 @@ test("RF-004: enviar el nombre vacío muestra el error asociado al campo (role=a
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
   const input = screen.getByRole("textbox", { name: "Nombre de la carpeta" });
   const alert = screen.getByRole("alert");
-  expect(alert).toHaveTextContent("Escribe un nombre. No puede estar vacío ni tener tramos vacíos (a//b).");
+  expect(alert).toHaveTextContent("Escribe un nombre. No puede estar vacío.");
   expect(input).toHaveAttribute("aria-invalid", "true");
   expect(input.getAttribute("aria-describedby")).toContain(alert.id);
+});
+
+// --- SPEC-0010 RF-001/RF-003/RF-004/RF-042: carpeta activa y «Nueva carpeta» ---
+
+test("RF-042: «Nueva carpeta» crea una nota dentro y la abre en edición", async () => {
+  const { user, value, onOpen } = await setup();
+  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
+  await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Sin título.md"));
+  expect(onOpen).toHaveBeenCalledWith(expect.any(String), { edit: true });
+});
+
+test("RF-004: «Nueva carpeta» duplicada muestra el error y no crea nada", async () => {
+  const { user, value } = await setup(["Proyectos/Hoja.md"]);
+  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
+  await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("Ya hay una carpeta «Proyectos» aquí.");
+  expect((await value.notes.list(VAULT)).length).toBe(1); // sólo la nota sembrada
+});
+
+test("RF-003: «Nueva nota» se crea en la carpeta activa", async () => {
+  const { user, value } = await setup(["Proyectos/Hoja.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Proyectos" })); // carpeta activa = Proyectos
+  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Idea");
+  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Idea.md"));
+});
+
+test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
+  const { createRef } = await import("react");
+  const { value } = syncValue({}, memoryDb());
+  await value.notes.create(VAULT, "Proyectos/Sub/Hoja.md");
+  const ref = createRef<import("./NoteSidebar").NoteSidebarHandle>();
+  render(
+    <WithSync value={value}>
+      <MemoryRouter>
+        <NoteSidebar ref={ref} vaultId={VAULT} openId={null} onOpen={vi.fn()} onDeleted={vi.fn()} onShowTrash={vi.fn()} />
+      </MemoryRouter>
+    </WithSync>,
+  );
+  await waitFor(() => expect(screen.queryByText("Cargando…")).toBeNull());
+  // La subcarpeta está plegada (no visible) hasta revelarla.
+  expect(screen.queryByRole("treeitem", { name: "Sub" })).toBeNull();
+  act(() => ref.current!.revealFolder("Proyectos/Sub"));
+  expect(await screen.findByRole("treeitem", { name: "Sub" })).toBeInTheDocument();
+  expect(screen.getByRole("treeitem", { name: "Sub" })).toHaveAttribute("aria-current", "true");
 });

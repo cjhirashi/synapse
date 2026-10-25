@@ -17,7 +17,7 @@ import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX } from "./noteRules";
-import NoteSidebar from "./NoteSidebar";
+import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
@@ -167,6 +167,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
 
   /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
   const editorRef = useRef<NoteEditorHandle>(null);
+  /** Acciones de la sidebar que piden el editor y las migas (revelar carpeta, renombrar, borrar). */
+  const sidebarRef = useRef<NoteSidebarHandle>(null);
 
   function open(id: string, options?: { edit: boolean }) {
     setOpenId(id);
@@ -183,6 +185,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           <h1 title={vault.name}>{vault.name}</h1>
         </header>
         <NoteSidebar
+          ref={sidebarRef}
           vaultId={vault.id}
           openId={openId}
           onOpen={open}
@@ -212,7 +215,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} />
             </Suspense>
           )}
         </div>

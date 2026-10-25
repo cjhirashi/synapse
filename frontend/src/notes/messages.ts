@@ -19,6 +19,20 @@ export const VAULT_NOT_FOUND =
   "La bóveda de esta nota no existe en el servidor o está en la papelera. Se reintentará sola cuando la bóveda esté activa.";
 export const GENERIC_FAILURE = "No se pudo completar la operación. Inténtalo de nuevo.";
 
+/** Mensaje del nombre de carpeta inválido o duplicado (RF-004, RF-005). `duplicate` lleva el nombre. */
+export function folderNameMessage(code: "empty" | "empty-segment" | "control" | "duplicate", name = ""): string {
+  switch (code) {
+    case "empty":
+      return "Escribe un nombre. No puede estar vacío.";
+    case "empty-segment":
+      return "El nombre no puede tener tramos vacíos (por ejemplo, a//b).";
+    case "control":
+      return "El nombre no puede tener caracteres de control.";
+    case "duplicate":
+      return `Ya hay una carpeta «${name}» aquí.`;
+  }
+}
+
 /** Motivo legible de cada código de error del YAML del frontmatter (RF-017). */
 const YAML_REASON: Record<string, string> = {
   "yaml-syntax": "tiene un error de sintaxis",

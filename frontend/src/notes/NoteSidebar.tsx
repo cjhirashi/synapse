@@ -24,12 +24,13 @@
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { CSSProperties, FormEvent, forwardRef, KeyboardEvent, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
-import { noteErrorMessage } from "./messages";
+import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
+import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 
 interface NoteSidebarProps {
@@ -52,15 +53,6 @@ interface NoteSidebarProps {
    */
   onPrefetch?: (id: string) => void;
 }
-
-/** Carpetas que contienen a `path`: `a/b/c.md` → `a`, `a/b`. */
-function ancestors(path: string): string[] {
-  const segments = path.split("/").slice(0, -1);
-  return segments.map((_, i) => segments.slice(0, i + 1).join("/"));
-}
-
-/** Carpeta que contiene a `path` (`""` = raíz). */
-const parentFolder = (path: string): string => path.split("/").slice(0, -1).join("/");
 
 /** Fila visible del árbol, en orden de pantalla (lo que recorre el teclado). */
 interface Row {
@@ -89,15 +81,26 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
   });
 }
 
-export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch }: NoteSidebarProps) {
+/** Acciones que el `Workspace` (y, por él, el editor y el menú ⋮) piden a la sidebar por `ref` (RF-062, RF-055). */
+export interface NoteSidebarHandle {
+  startRename(id: string): void;
+  remove(id: string): Promise<void>;
+  /** Despliega la carpeta (y sus antecesoras), la deja activa y la desplaza a la vista (RF-055). */
+  revealFolder(folderPath: string): void;
+}
+
+const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function NoteSidebar(
+  { vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch },
+  ref,
+) {
   const { notes, notesVersion } = useSync();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [title, setTitle] = useState("");
   /** Carpeta activa (`""` = raíz): dónde se crea lo nuevo. Estado visual del árbol (RF-043). */
   const [activeFolder, setActiveFolder] = useState("");
-  /** Formulario «Nueva carpeta» abierto, su texto y su error. */
-  const [folderForm, setFolderForm] = useState<{ name: string; error: boolean } | null>(null);
+  /** Formulario «Nueva carpeta» abierto, su texto y su mensaje de error (`null` = sin error). */
+  const [folderForm, setFolderForm] = useState<{ name: string; message: string | null } | null>(null);
   /** A ≤ 640 px el bloque de creación es un disclosure («Crear…»): la barra lateral no empuja al editor fuera de la pantalla. */
   const compact = useMediaQuery("(max-width: 640px)");
   const [createOpen, setCreateOpen] = useState(false);
@@ -283,7 +286,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   async function create(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const note = await notes.create(vaultId, title);
+      // RF-001/RF-003: la nota nueva nace en la carpeta activa (`""` = raíz). La carpeta se despliega
+      // sola al abrirse la nota (efecto de «nota abierta»); no se toca `expanded` aquí (robaría el foco).
+      const note = await notes.create(vaultId, title, activeFolder);
       setTitle("");
       await reload();
       onOpen(note.id, { edit: true });
@@ -439,16 +444,65 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     refocusNewFolder.current = true;
   }
 
-  /** «Crear carpeta»: valida lo visible (nombre no vacío); la creación real llega con la lógica de carpetas. */
-  function submitFolder(event: FormEvent) {
+  /**
+   * «Crear carpeta» (RF-004, RF-005, RF-042): valida el nombre (vacío/tramo/control) y que no exista ya
+   * en la carpeta activa; si es válido crea `{activa}/{nombre}/Sin título.md`, despliega la carpeta y
+   * abre la nota en edición. Una carpeta no se guarda por sí sola: existe por tener una nota dentro.
+   */
+  async function submitFolder(event: FormEvent) {
     event.preventDefault();
     if (folderForm === null) return;
-    if (folderForm.name.trim() === "") {
-      setFolderForm({ ...folderForm, error: true });
+    const name = folderForm.name;
+    const invalid = checkFolderName(name);
+    if (invalid !== null) {
+      setFolderForm({ ...folderForm, message: folderNameMessage(invalid) });
       return;
     }
-    closeFolderForm();
+    if (folderExists(items?.filter((item) => item.deleted_at === null) ?? [], activeFolder, name)) {
+      setFolderForm({ ...folderForm, message: folderNameMessage("duplicate", name) });
+      return;
+    }
+    const ok = await run(async () => {
+      const note = await notes.create(vaultId, "", joinPath(activeFolder, name));
+      await reload();
+      // La carpeta nueva queda activa; su despliegue lo hace el efecto de «nota abierta» al abrirla.
+      setActiveFolder(joinPath(activeFolder, name));
+      onOpen(note.id, { edit: true });
+    });
+    if (ok) closeFolderForm();
   }
+
+  /** Despliega una carpeta y sus antecesoras, la deja activa y la trae a la vista (RF-055). */
+  function revealFolder(folderPath: string) {
+    if (folderPath === "") {
+      setActiveFolder("");
+      return;
+    }
+    const prefixes = ancestors(joinPath(folderPath, "_")); // antecesoras + la propia carpeta
+    setExpanded((prev) => new Set([...prev, ...prefixes]));
+    setActiveFolder(folderPath);
+    // Sólo se desplaza el panel del árbol, no la página (`scrollIntoView` no existe en jsdom: se omite).
+    requestAnimationFrame(() => {
+      const row = treeRef.current?.querySelector<HTMLElement>(`[data-key="${folderKey(folderPath)}"]`);
+      row?.scrollIntoView?.({ block: "nearest" });
+    });
+  }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      startRename(id) {
+        const note = items?.find((item) => item.id === id);
+        if (note) startRename(note);
+      },
+      remove(id) {
+        const note = items?.find((item) => item.id === id);
+        return note ? remove(note) : Promise.resolve();
+      },
+      revealFolder,
+    }),
+    [items],
+  );
 
   const selected = items?.find((item) => item.id === selectedId) ?? null;
   const selectedName = selected ? displayName(selected.path.split("/").pop() ?? selected.path) : "";
@@ -482,7 +536,7 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
           type="button"
           className="note-sidebar-secondary"
           hidden={folderForm !== null}
-          onClick={() => setFolderForm({ name: "", error: false })}
+          onClick={() => setFolderForm({ name: "", message: null })}
         >
           <FolderPlus size={14} aria-hidden="true" />
           Nueva carpeta
@@ -510,15 +564,15 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               <input
                 autoFocus
                 value={folderForm.name}
-                onChange={(event) => setFolderForm({ name: event.target.value, error: false })}
-                aria-invalid={folderForm.error ? true : undefined}
-                aria-describedby={folderForm.error ? `${hintId} ${folderErrorId}` : hintId}
+                onChange={(event) => setFolderForm({ name: event.target.value, message: null })}
+                aria-invalid={folderForm.message !== null ? true : undefined}
+                aria-describedby={folderForm.message !== null ? `${hintId} ${folderErrorId}` : hintId}
               />
             </label>
-            {folderForm.error && (
+            {folderForm.message !== null && (
               <p id={folderErrorId} role="alert" className="note-sidebar-error">
                 <CircleAlert size={12} aria-hidden="true" />
-                Escribe un nombre. No puede estar vacío ni tener tramos vacíos (a//b).
+                {folderForm.message}
               </p>
             )}
             <div className="note-sidebar-folder-actions">
@@ -593,4 +647,6 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       </div>
     </aside>
   );
-}
+});
+
+export default NoteSidebar;
