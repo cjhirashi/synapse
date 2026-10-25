@@ -73,6 +73,7 @@ test("0010 RNF-001 precalculada: abrir las notas grandes precalculadas en p95 �
     await page.waitForFunction(() => performance.getEntriesByName("synapse:precompute-idle").length > 0, undefined, { timeout: 5_000 });
     for (const big of contentPerf.big) {
       const { ms, route, longest } = await measureOpen(page, big.name, big.lastHeading);
+      console.log(`  [a] ctx${c + 1} «${big.name}»: ${ms.toFixed(0)} ms, ruta ${route}, tarea larga ${longest.toFixed(0)} ms`);
       expect(route, `ruta de «${big.name}» (debe venir de la caché precalculada)`).toBe("cache-hit");
       samples.push(ms);
       worstLongtask = Math.max(worstLongtask, longest);
