@@ -2,7 +2,12 @@
 id: SPEC-0010
 tipo: spec
 feature: 0010-contenido-markdown-completo
-estado: approved         # draft | in-review | approved | implemented | verified | deprecated
+estado: superseded-por-backlog  # draft | in-review | approved | implemented | verified | deprecated | superseded-por-backlog
+# --- piloto slice-development (2026-10-25) ---
+# Tareas restantes (desde T-050) migradas a `backlog.md` de esta misma carpeta como
+# slices verticales; las tareas ya [x] en tasks.md quedan tal cual, no se re-documentan.
+# Fuente de verdad del trabajo pendiente: backlog.md, no tasks.md. Detalle de la
+# migración y su motivo en synthesis.planes-de-ejecución-pendientes (wiki de AIRA).
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 09bd982   # HEAD de feature/sprint-1-auth al abrir la Fase 1 (2026-10-24)
 anchor_mode: advisory
