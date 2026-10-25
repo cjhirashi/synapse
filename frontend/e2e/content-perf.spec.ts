@@ -10,7 +10,7 @@
 //      precálculo, exigiendo la marca `cold`.
 //  (c) `0010 RNF-001 con puntero` — informe: 150 ms de hover previo; registra qué ruta se tomó.
 import type { Page } from "@playwright/test";
-import { expect, newSession, openWorkspace, SIZES, test, waitForSynced } from "./fixtures";
+import { expect, newSession, openWorkspace, SIZES, test } from "./fixtures";
 
 const P95_MS = Number(process.env.RNF001_P95_MS ?? 150);
 const PARSE_MARKS = ["cache-hit", "cold", "inflight"] as const;
@@ -107,31 +107,39 @@ test("0010 RNF-001 precalculada: abrir las notas grandes precalculadas en p95 po
   expect(worstLongtask, `tarea larga ${worstLongtask.toFixed(1)} ms > 200 ms`).toBeLessThanOrEqual(200);
 });
 
-test("0010 RNF-001 en frío: abrir una nota grande antes del precálculo (cold, informe según B-1)", async ({ browser, contentPerf }) => {
+// (b) INFORME del camino en frío (§10.7/B-1). Hallazgo de T-138 (2026-10-25, AIRA): con el precálculo
+// activo NO se puede forzar `cold` de forma determinista —el Worker cachea la nota grande en < 2 s y la
+// marca `inflight` nunca se emite (una petición en vuelo re-hidrata y marca `cache-hit`)—, así que esta
+// prueba ABRE en cuanto aparece la fila y REGISTRA la ruta real de cada muestra: reporta la latencia de
+// las que salieron `cold` (el techo de no regresión que buscaba B-1, comparable con la sonda original de
+// T-050: p95 204 ms a 181 KiB) y la tasa de aciertos del precálculo (que ganara la carrera es un buen
+// resultado del producto). Sin aserción de ruta: el baseline en frío ya está medido y aquí es informe.
+test("0010 RNF-001 en frío: ruta y latencia al abrir en cuanto aparece la fila (informe B-1)", async ({ browser, contentPerf }) => {
   test.setTimeout(900_000);
   const CONTEXTS = 30;
   // La de referencia (~181 KiB) y la de 64 KiB (tope de no regresión en frío, §10.7/B-1).
   const targets = [contentPerf.big[0], contentPerf.big[2]];
   for (const target of targets) {
-    const samples: number[] = [];
+    const byRoute: Record<string, number[]> = { cold: [], "cache-hit": [], otra: [] };
     for (let c = 0; c < CONTEXTS; c += 1) {
       const context = await newSession(browser, contentPerf, { theme: "dark", size: SIZES[0] });
       const page = await context.newPage();
       await page.goto(`/vaults/${contentPerf.vaults[0].id}`);
-      // Clic en cuanto la fila aparece (el pull la trae), antes de que el precálculo la toque: ruta en frío.
+      // Clic en cuanto la fila aparece (el pull la trae): a veces gana el precálculo, a veces el clic.
       await expect(page.getByRole("treeitem", { name: target.name, exact: true })).toBeVisible({ timeout: 90_000 });
       const { ms, route } = await measureOpen(page, target.name, target.lastHeading);
-      expect(route, `«${target.name}» debe abrirse en frío (precálculo aún no la tocó)`).toBe("cold");
-      samples.push(ms);
+      (byRoute[route ?? "otra"] ?? byRoute.otra).push(ms);
       await context.close();
     }
-    const median = percentile(samples, 0.5);
-    const p95 = percentile(samples, 0.95);
-    const max = Math.max(...samples);
+    const total = Object.values(byRoute).reduce((n, a) => n + a.length, 0);
+    const report = (label: string, arr: number[]): string =>
+      arr.length ? `${label} n=${arr.length} mediana ${percentile(arr, 0.5).toFixed(1)} p95 ${percentile(arr, 0.95).toFixed(1)} máx ${Math.max(...arr).toFixed(1)} ms` : `${label} n=0`;
     console.log(
-      `RNF-001 (0010 en frío · ${target.name}): mediana ${median.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, máx ${max.toFixed(1)} ms ` +
-        `(${samples.length} aperturas en frío en contextos nuevos; informe, sin umbral de corte hasta B-1)`,
+      `RNF-001 (0010 en frío · ${target.name}, ${total} contextos nuevos): ` +
+        `${report("cold", byRoute.cold)} | ${report("cache-hit", byRoute["cache-hit"])} ` +
+        `| aciertos de precálculo ${(((byRoute["cache-hit"].length) / total) * 100).toFixed(0)}%`,
     );
+    expect(total, "todas las muestras se midieron").toBe(CONTEXTS);
   }
 });
 
@@ -145,10 +153,9 @@ test("0010 RNF-001 con puntero: 150 ms de hover previo antes de abrir (informe d
     const context = await newSession(browser, contentPerf, { theme: "dark", size: SIZES[0] });
     const page = await context.newPage();
     await page.goto(`/vaults/${contentPerf.vaults[0].id}`);
-    await waitForSynced(page);
+    // Sin esperar al precálculo (§10.8c): el hover dispara `onPrefetch` → el precálculo prioriza esta nota.
     const row = page.getByRole("treeitem", { name: target.name, exact: true });
     await expect(row).toBeVisible({ timeout: 90_000 });
-    // El hover dispara `onPrefetch` → el precálculo prioriza esta nota; 150 ms y se abre.
     await row.hover();
     await page.waitForTimeout(150);
     const { ms, route } = await measureOpen(page, target.name, target.lastHeading);
