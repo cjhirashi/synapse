@@ -28,8 +28,16 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   looks-yaml con bloque protegido P-6). jsdom 1271/1271, typecheck, gate verde,
   integración `test:sync` notas 11/11, visual Chromium V-1/V-2/V-6 22/22. Commits
   efa1851, c1e8385, 7c44c4c, 80eeb90, a73b6f8, b419960, a0bf54a. Session-End en history.md.
-- [ ] **Slice 3 — Carpetas y rutas**: T-063…T-077. Demoable: crear/renombrar
+- [x] **Slice 3 — Carpetas y rutas**: T-063…T-077. Demoable: crear/renombrar
   carpetas, migas de pan, nota con ruta inválida se repara.
+  **CERRADA (2026-10-25, AIRA).** Bug `.md` (nombre de archivo vacío) corregido en
+  servidor (`check_path`, `note.schema.json`) y cliente (`checkPath`), con batería
+  común +6 casos y push real. `folders.ts`/`untitled.ts` por carpeta; `create` en
+  carpeta activa + puerta RF-008 en `save`/`softDelete`; NoteSidebar con carpeta
+  activa, «Nueva carpeta» real (validación + duplicada) y `NoteSidebarHandle`
+  (startRename/remove/revealFolder); aviso RF-008 «Renombrar» en NoteEditor. Backend
+  test_note_rules/contract/push verdes; frontend suite 1305/1305; gate verde; visual
+  Chromium V-12 (crear/duplicar carpeta) verde. Commits e025fb9…95bb107. Session-End en history.md.
 - [ ] **Slice 4 — Pegado, tablas, checkboxes**: T-078…T-083. Demoable: pegar
   markdown/VS Code, insertar tabla, marcar checkbox.
 - [ ] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095. Demoable:
