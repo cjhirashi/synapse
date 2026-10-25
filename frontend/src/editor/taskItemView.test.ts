@@ -1,5 +1,6 @@
 // SPEC-0010 RF-039: casillas de las listas de tareas (node view de `list_item`).
 import { Schema } from "@milkdown/prose/model";
+import { EditorState } from "@milkdown/prose/state";
 import type { EditorView } from "@milkdown/prose/view";
 import { describe, expect, it } from "vitest";
 import { taskItemViewFactory } from "./taskItemView";
@@ -83,6 +84,24 @@ describe("taskItemView", () => {
     expect(view.dom.querySelector(".note-task-mark")).toHaveAttribute("aria-label", "Completada");
     expect(view.dom).toHaveAttribute("data-checked", "true");
     expect(view.update!(item(null), [], {} as never)).toBe(false);
+  });
+
+  // SPEC-0010 RF-039 (F.4): alternar la casilla en Visual escribe `checked` en el documento y lo anuncia.
+  it("alternar la casilla en Visual cambia `checked` en una transacción y anuncia «Marcada»", () => {
+    const doc = schema.nodes.doc.create(null, item(false));
+    let state = EditorState.create({ schema, doc });
+    const view = { editable: true, get state() { return state; }, dispatch: (tr: ReturnType<typeof state.tr.setNodeMarkup>) => { state = state.apply(tr); } } as unknown as EditorView;
+    const nv = taskItemViewFactory()(doc.firstChild!, view, () => 0, [], {} as never);
+    const box = nv.dom.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+    box.click();
+    expect(state.doc.firstChild!.attrs.checked).toBe(true);
+    expect(nv.dom.querySelector('[role="status"]')).toHaveTextContent("Marcada");
+  });
+
+  // RF-039: en lectura no hay casilla operable (nada que alternar).
+  it("en lectura la casilla no es un input (no se puede alternar)", () => {
+    const view = mount(false, false);
+    expect(view.dom.querySelector('input[type="checkbox"]')).toBeNull();
   });
 
   // RF-039

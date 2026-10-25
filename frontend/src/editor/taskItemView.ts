@@ -9,7 +9,7 @@
  *   nombre accesible. Alternarlo es lógica (SPEC-0010 F.4): por ahora la casilla sólo refleja el estado.
  */
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
-import type { NodeView, NodeViewConstructor } from "@milkdown/prose/view";
+import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 
 const isTask = (node: PMNode): boolean => node.attrs.checked !== null && node.attrs.checked !== undefined;
 
@@ -32,7 +32,7 @@ class TaskItemView implements NodeView {
   private readonly slot: HTMLElement;
   private node: PMNode;
 
-  constructor(node: PMNode, private readonly editable: boolean) {
+  constructor(node: PMNode, private readonly editable: boolean, private readonly view?: EditorView, private readonly getPos?: () => number | undefined) {
     this.node = node;
     const rendered = DOMSerializer.renderSpec(document, node.type.spec.toDOM!(node)).dom as HTMLElement;
     this.dom = rendered;
@@ -45,8 +45,26 @@ class TaskItemView implements NodeView {
 
     this.contentDOM = document.createElement("div");
     this.contentDOM.className = "note-task-body";
-    this.dom.append(this.slot, this.contentDOM);
+    // Región viva para anunciar «Marcada»/«Sin marcar» al alternar (RF-039); fuera del contenido editable.
+    this.live = document.createElement("span");
+    this.live.className = "sr-only";
+    this.live.setAttribute("role", "status");
+    this.live.setAttribute("aria-live", "polite");
+    this.live.setAttribute("contenteditable", "false");
+    this.dom.append(this.slot, this.contentDOM, this.live);
     this.paint();
+  }
+
+  private readonly live: HTMLElement;
+
+  /** Alterna el estado de la tarea (RF-039): escribe `checked` en el documento y lo anuncia. */
+  private toggle(): void {
+    if (!this.editable || !this.view || !this.getPos) return;
+    const pos = this.getPos();
+    if (pos === undefined) return;
+    const next = !this.checked;
+    this.view.dispatch(this.view.state.tr.setNodeMarkup(pos, undefined, { ...this.node.attrs, checked: next }));
+    this.live.textContent = next ? "Marcada" : "Sin marcar";
   }
 
   private get checked(): boolean {
@@ -60,8 +78,12 @@ class TaskItemView implements NodeView {
       box.className = "note-task-mark";
       box.checked = this.checked;
       box.setAttribute("aria-label", this.node.textContent.trim() || "Tarea");
-      // El estado lo manda el documento: sin alternado propio hasta que lo cablee la lógica (F.4).
-      box.addEventListener("click", (event) => event.preventDefault());
+      // El documento es la verdad: se evita el toggle nativo y se escribe el cambio en una transacción.
+      box.addEventListener("mousedown", (event) => event.preventDefault());
+      box.addEventListener("click", (event) => {
+        event.preventDefault();
+        this.toggle();
+      });
       this.slot.replaceChildren(box);
     } else {
       const mark = document.createElement("span");
@@ -89,4 +111,5 @@ class TaskItemView implements NodeView {
   }
 }
 
-export const taskItemViewFactory = (): NodeViewConstructor => (node, view) => (isTask(node) ? new TaskItemView(node, view.editable) : plainItem(node));
+export const taskItemViewFactory = (): NodeViewConstructor => (node, view, getPos) =>
+  isTask(node) ? new TaskItemView(node, view.editable, view, getPos as () => number | undefined) : plainItem(node);

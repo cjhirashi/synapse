@@ -384,10 +384,10 @@ actualizado: 2026-10-24
 - [ ] T-081 — `registerCommands` (`insertTableCommand({row:2,col:2})`, `addRowAfterCommand`, `addColAfterCommand`), `onTableContext` y botones de la barra (cubre RF-025) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-4 "`
   - EXPECT: vitest `passed`; V-4 en verde incluida la tabla insertada desde la UI.
-- [ ] T-082 [rojo] — Alternar una casilla en Visual cambia `checked`, serializa `- [x]`/`- [ ]` y marca la nota con cambios; en lectura no cambia nada (cubre RF-039) [zona: test]
+- [x] T-082 [rojo] — Alternar una casilla en Visual cambia `checked`, serializa `- [x]`/`- [ ]` y marca la nota con cambios; en lectura no cambia nada (cubre RF-039) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/taskItemView.test.ts src/editor/MilkdownView.test.tsx -t "tarea"`
   - EXPECT: fallan.
-- [ ] T-083 — Alternado en `taskItemView.ts` (`setNodeMarkup`, anuncio "Marcada"/"Sin marcar") (cubre RF-039) [zona: pantalla]
+- [x] T-083 — Alternado en `taskItemView.ts` (`setNodeMarkup`, anuncio "Marcada"/"Sin marcar") (cubre RF-039) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-3 "`
   - EXPECT: `passed`.
 
