@@ -40,6 +40,12 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   Chromium V-12 (crear/duplicar carpeta) verde. Commits e025fb9…95bb107. Session-End en history.md.
 - [ ] **Slice 4 — Pegado, tablas, checkboxes**: T-078…T-083. Demoable: pegar
   markdown/VS Code, insertar tabla, marcar checkbox.
+  **EN CURSO (2026-10-25, AIRA): T-082/T-083 (casilla de tarea alternable, RF-039)
+  cerradas y verdes** (taskItemView 9/9; commit befb1e8). **Faltan:** T-078/T-079
+  (pegado markdown/VS Code con `@milkdown/plugin-clipboard` + handlePaste) y
+  T-080/T-081 (insertar tabla / fila / columna por `registerCommands`). Son
+  integración profunda de Milkdown; se dejaron sin empezar para no partirlas a medias
+  al final de una sesión muy larga. El repo queda verde (no bloquea nada).
 - [ ] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095. Demoable:
   bloque de código coloreado, diagrama Mermaid renderizado con zoom/pan.
 - [ ] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
