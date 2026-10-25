@@ -73,8 +73,15 @@ export function checkPath(value: unknown): string | null {
   if (typeof value !== "string" || !wellFormed(value)) return "validation-error:path";
   const normalized = normalizePath(value);
   const length = [...normalized].length;
+  const segments = normalized.split("/");
+  // SPEC-0010 RF-007 (espejo de `core/note_rules.check_path`): el último segmento (nombre del
+  // archivo) no puede ser sólo `.md` (sin mayúsculas): sería una nota sin nombre.
   const valid =
-    length >= 1 && length <= PATH_MAX && normalized.split("/").every((segment) => segment !== "") && !CONTROL.test(normalized);
+    length >= 1 &&
+    length <= PATH_MAX &&
+    segments.every((segment) => segment !== "") &&
+    !CONTROL.test(normalized) &&
+    segments[segments.length - 1].toLowerCase() !== ".md";
   if (!valid) return "validation-error:path";
   return normalized === value ? null : "not-normalized:path";
 }
