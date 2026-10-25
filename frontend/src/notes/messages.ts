@@ -19,6 +19,29 @@ export const VAULT_NOT_FOUND =
   "La bóveda de esta nota no existe en el servidor o está en la papelera. Se reintentará sola cuando la bóveda esté activa.";
 export const GENERIC_FAILURE = "No se pudo completar la operación. Inténtalo de nuevo.";
 
+/** Motivo legible de cada código de error del YAML del frontmatter (RF-017). */
+const YAML_REASON: Record<string, string> = {
+  "yaml-syntax": "tiene un error de sintaxis",
+  "not-a-map": "debe ser una lista de propiedades «clave: valor»",
+  "duplicate-key": "tiene una propiedad repetida",
+  "empty-key": "tiene una propiedad sin nombre",
+  "invalid-key": "tiene una propiedad con un nombre no válido",
+  "non-finite": "tiene un número que no es finito",
+  "unsafe-integer": "tiene un entero demasiado grande",
+  "unsupported-tag": "usa una etiqueta YAML no admitida",
+};
+
+/** Aviso de YAML del frontmatter inválido, con el motivo y la línea (1-based en el texto completo). */
+export function frontmatterYamlMessage(code: string, line?: number): string {
+  const reason = YAML_REASON[code] ?? "no se pudo leer";
+  return `El frontmatter no es un YAML válido: ${reason}${line !== undefined ? ` (línea ${line})` : ""}.`;
+}
+
+/** Aviso de frontmatter que supera el tope de 64 KiB (RF-019), con el tamaño medido. */
+export function frontmatterTooLargeMessage(bytes: number): string {
+  return `Las propiedades ocupan ${(bytes / 1024).toFixed(1)} KiB y superan el límite de 64 KiB: no se guardaron.`;
+}
+
 /** Texto para el usuario de un error de las operaciones sobre notas. */
 export function noteErrorMessage(err: unknown): string {
   if (err instanceof NoteValidationError) {

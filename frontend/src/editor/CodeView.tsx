@@ -1,23 +1,48 @@
 /**
- * Vista Código del editor: envoltorio de CodeMirror 6 sobre el markdown crudo (SPEC-0008
- * RF-008; PLAN-0008 §2.6).
+ * Vista Código del editor: envoltorio de CodeMirror 6 sobre el markdown crudo con el bloque YAML del
+ * frontmatter resaltado (SPEC-0008 RF-008; SPEC-0010 RF-015, RF-017, RF-029; PLAN-0010 §2.1, §6).
  *
- * Contrato `{value, onChange}`, el mismo que `MilkdownView`: el padre es dueño del texto
- * (`draft`). `onChange` sólo se emite por ediciones del usuario; cuando el padre cambia
- * `value` (p. ej. tras editar en la vista Visual) el documento se reemplaza marcando la
- * transacción como externa, para no devolver al padre su propio texto.
+ * Contrato `{value, onChange}`, el mismo que `MilkdownView`: el padre es dueño del texto. `onChange`
+ * sólo se emite por ediciones del usuario; cuando el padre cambia `value` el documento se reemplaza
+ * marcando la transacción como externa, para no devolver al padre su propio texto.
+ *
+ * El lenguaje es `yamlFrontmatter`: el bloque inicial `---\n…\n---` se colorea como YAML y el resto como
+ * markdown. Una línea con error de YAML (`errorLine`, 1-based) se marca con `.cm-error-line`, y el padre
+ * puede saltar a ella con el `reveal` que esta vista registra (como `registerFlush`).
  */
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { Annotation, EditorState } from "@codemirror/state";
+import { yamlFrontmatter } from "@codemirror/lang-yaml";
+import { Annotation, EditorState, StateEffect, StateField } from "@codemirror/state";
 import { syntaxHighlighting } from "@codemirror/language";
-import { EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
+import { Decoration, type DecorationSet, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { styleTags } from "@lezer/highlight";
 import { synapseHighlighter, taskMarkerTag } from "./highlight/highlighter";
 
 /** Marca las transacciones que vienen del padre (no son ediciones del usuario). */
 const external = Annotation.define<boolean>();
+
+/** Fija (o limpia con `null`) la línea 1-based a resaltar como error de YAML. */
+const setErrorLineEffect = StateEffect.define<number | null>();
+
+/** Campo que mantiene la decoración de la línea de error y la provee a la vista. */
+const errorLineField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    let next = deco.map(tr.changes);
+    for (const effect of tr.effects) {
+      if (!effect.is(setErrorLineEffect)) continue;
+      const line = effect.value;
+      next =
+        line === null || line < 1 || line > tr.state.doc.lines
+          ? Decoration.none
+          : Decoration.set([Decoration.line({ class: "cm-error-line" }).range(tr.state.doc.line(line).from)]);
+    }
+    return next;
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
 
 interface CodeViewProps {
   value: string;
@@ -26,9 +51,13 @@ interface CodeViewProps {
   label: string;
   /** Foco en el editor al montar la vista (U-6). */
   autoFocus?: boolean;
+  /** Línea (1-based) a resaltar por un error de YAML, o `null`. */
+  errorLine?: number | null;
+  /** Registra una función que salta a una línea («Ir a la línea N»); `null` al desmontar. */
+  registerReveal?: (reveal: ((line: number) => void) | null) => void;
 }
 
-export function CodeView({ value, onChange, label, autoFocus = false }: CodeViewProps) {
+export function CodeView({ value, onChange, label, autoFocus = false, errorLine = null, registerReveal }: CodeViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
   // La última `onChange`, para que el editor (creado una sola vez) no quede con una vieja.
@@ -44,11 +73,12 @@ export function CodeView({ value, onChange, label, autoFocus = false }: CodeView
         extensions: [
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          // Markdown GFM (tablas, tareas, tachado) con la marca de tarea como etiqueta propia.
-          markdown({ base: markdownLanguage, extensions: [{ props: [styleTags({ TaskMarker: taskMarkerTag })] }] }),
+          // Frontmatter YAML + markdown GFM (tablas, tareas, tachado) con la marca de tarea como etiqueta propia.
+          yamlFrontmatter({ content: markdown({ base: markdownLanguage, extensions: [{ props: [styleTags({ TaskMarker: taskMarkerTag })] }] }) }),
           // SPEC-0010 RF-029 (P-11): como el mockup, con números de línea, línea activa y el markdown coloreado
           // con las clases `sx-*` (los colores son tokens: ver `syntax.css` y la vista Código en `editor.css`).
           syntaxHighlighting(synapseHighlighter),
+          errorLineField,
           lineNumbers(),
           highlightActiveLine(),
           EditorView.lineWrapping,
@@ -79,6 +109,23 @@ export function CodeView({ value, onChange, label, autoFocus = false }: CodeView
       });
     }
   }, [value]);
+
+  // Pinta (o limpia) la línea de error cuando el padre la cambia.
+  useEffect(() => {
+    view.current?.dispatch({ effects: setErrorLineEffect.of(errorLine) });
+  }, [errorLine]);
+
+  // Registra «Ir a la línea N»: lleva el cursor a esa línea, la centra y enfoca el editor.
+  useEffect(() => {
+    registerReveal?.((line: number) => {
+      const instance = view.current;
+      if (!instance) return;
+      const target = instance.state.doc.line(Math.min(Math.max(line, 1), instance.state.doc.lines));
+      instance.dispatch({ selection: { anchor: target.from }, effects: EditorView.scrollIntoView(target.from, { y: "center" }) });
+      instance.focus();
+    });
+    return () => registerReveal?.(null);
+  }, [registerReveal]);
 
   return <div className="code-view" ref={host} />;
 }

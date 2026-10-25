@@ -3,7 +3,7 @@
 // es el texto compuesto `---\nYAML\n---\nbody`. Alternar no pierde nada; guardar escribe `content` y
 // `frontmatter` juntos. Vistas falsas (textarea) + el `PropertiesForm` real que monta el editor.
 import { type ComponentProps } from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DataMemoryRouter } from "../test-utils/router";
@@ -82,6 +82,35 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     // El padre pide otra nota: con cambios sin guardar debe aparecer la confirmación (dirty por props).
     rerender(ui(other.id));
     expect(await screen.findByText("Esta nota tiene cambios sin guardar.")).toBeInTheDocument();
+  });
+
+  it("guardar desde Código con YAML inválido no guarda, se queda en Código y avisa con la línea (RF-015, RF-017)", async () => {
+    const { value, note } = await setup("# B\n", { a: 1 });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    // Clave duplicada en el bloque (línea 2 del YAML → línea 3 en el texto, por el `---` de apertura).
+    fireEvent.change(code(), { target: { value: "---\na: 1\na: 2\n---\n# B\n" } });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    const alerta = screen.getByRole("alert");
+    expect(alerta).toHaveTextContent(/repetida/i);
+    expect(alerta).toHaveTextContent(/línea 3/);
+    expect(screen.getByRole("button", { name: "Ir a la línea 3" })).toBeInTheDocument();
+    // No cambió de vista (sigue en Código) ni guardó.
+    expect(code()).toBeInTheDocument();
+    const reloaded = await value.notes.get(note.id);
+    expect(reloaded.frontmatter).toEqual({ a: 1 });
+    expect(reloaded.content).toBe("# B\n");
+  });
+
+  it("guardar desde Código con frontmatter > 64 KiB avisa con los KiB y no guarda (RF-019)", async () => {
+    const { value, note } = await setup("# B\n", { a: 1 });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    fireEvent.change(code(), { target: { value: `---\nbig: ${"x".repeat(70 * 1024)}\n---\n# B\n` } });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(/KiB/);
+    expect(screen.getByRole("alert")).toHaveTextContent(/64/);
+    expect((await value.notes.get(note.id)).frontmatter).toEqual({ a: 1 });
   });
 
   it("alternar Visual↔Código sin guardar conserva el body editado y el cambio de propiedad", async () => {

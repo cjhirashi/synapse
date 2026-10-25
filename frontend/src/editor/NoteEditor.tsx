@@ -19,11 +19,11 @@
 import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
-import { checkContent } from "../notes/noteRules";
+import { checkContent, checkFrontmatter } from "../notes/noteRules";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
-import { noteErrorMessage } from "../notes/messages";
+import { frontmatterTooLargeMessage, frontmatterYamlMessage, noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
 import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
@@ -55,6 +55,10 @@ export interface ViewProps {
   autoFocus?: boolean;
   /** mdast precalculado de este `value` (RNF-001, §10.3); sólo lo usa la vista Visual. */
   preparsedMdast?: string | null;
+  /** Línea (1-based) a resaltar por un error de YAML; sólo la vista Código (RF-017/RF-029). */
+  errorLine?: number | null;
+  /** Registra «Ir a la línea N» (como `registerFlush`); sólo la vista Código. */
+  registerReveal?: (reveal: ((line: number) => void) | null) => void;
 }
 
 export interface NoteEditorViews {
@@ -131,6 +135,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Línea (1-based, en el texto compuesto) del error de YAML para ofrecer «Ir a la línea N». */
+  const [errorLine, setErrorLine] = useState<number | null>(null);
 
   /**
    * Edición en curso que la vista Visual aún no emitió (E-7): informada en la misma transacción, sin
@@ -173,6 +179,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const flushVisual = useRef<(() => void) | null>(null);
   const registerFlush = useCallback((flush: (() => void) | null) => {
     flushVisual.current = flush;
+  }, []);
+  /** «Ir a la línea N» de la vista Código (la registra `CodeView`, como `registerFlush`). */
+  const revealLine = useRef<((line: number) => void) | null>(null);
+  const registerReveal = useCallback((reveal: ((line: number) => void) | null) => {
+    revealLine.current = reveal;
   }, []);
   const onViewDirty = useCallback((value: boolean) => setPending(value), []);
 
@@ -384,6 +395,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     codeTextRef.current = value;
     setCodeText(value);
     setSaved(false);
+    setErrorLine(null);
+    setError(null);
   }, []);
 
   // Al pasar a edición se precarga el módulo `frontmatter` (Código y guardar lo necesitan; lectura no).
@@ -445,13 +458,36 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   async function writeDraft(): Promise<boolean> {
     const current = noteRef.current;
     if (current === null) return false;
-    const edit = currentEdit();
-    if (!edit.valid) {
-      // YAML inválido en Código (el aviso con línea y «Ir a la línea N» lo refina T-058/T-059).
-      setError(noteErrorMessage(new NoteValidationError(["frontmatter"])));
+    // Commit de la sesión: en Código la verdad es el texto compuesto → `split`+`parse`. Un YAML inválido
+    // (RF-015/017) no guarda ni cambia de vista: avisa con el motivo y la línea (+1 por el `---` de apertura).
+    let body: string;
+    let nextProps: Record<string, unknown>;
+    if (viewRef.current === "code") {
+      const fm = await loadFm();
+      const split = fm.splitFrontmatter(codeTextRef.current ?? "");
+      body = split.body;
+      if (split.yaml === null) {
+        nextProps = {};
+      } else {
+        const parsed = fm.parseFrontmatterYaml(split.yaml);
+        if ("error" in parsed) {
+          const line = parsed.line === undefined ? undefined : parsed.line + 1;
+          setError(frontmatterYamlMessage(parsed.error, line));
+          setErrorLine(line ?? null);
+          return false;
+        }
+        nextProps = parsed.value;
+      }
+    } else {
+      flushVisual.current?.();
+      body = draftRef.current;
+      nextProps = propsRef.current;
+    }
+    // RF-019: el frontmatter no puede pasar de 64 KiB; aviso con el tamaño medido, antes del almacén.
+    if (checkFrontmatter(nextProps) !== null) {
+      setError(frontmatterTooLargeMessage(new TextEncoder().encode(JSON.stringify(nextProps)).length));
       return false;
     }
-    const { body, props: nextProps } = edit;
     if (body === current.content && canonical(nextProps) === canonical(current.frontmatter)) return true; // nada que guardar
     // Aviso inmediato: el almacén también valida, pero así no hay ida y vuelta.
     if (checkContent(body) !== null) {
@@ -460,6 +496,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     }
     setSaving(true);
     setError(null);
+    setErrorLine(null);
     try {
       const saved = await notes.save(current.id, body, current.rev, nextProps);
       // La revisión nueva está disponible de inmediato para el guardado siguiente (antes del render).
@@ -667,7 +704,19 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
             </div>
           )}
-          {error && <p role="alert">{error}</p>}
+          {error && (
+            <p role="alert">
+              {error}
+              {errorLine !== null && (
+                <>
+                  {" "}
+                  <button type="button" className="note-editor-reveal" onClick={() => revealLine.current?.(errorLine)}>
+                    Ir a la línea {errorLine}
+                  </button>
+                </>
+              )}
+            </p>
+          )}
           {pendingId !== null && (
             <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
               <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
@@ -719,7 +768,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           ) : view === "visual" ? (
             <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} />
           ) : (
-            <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
+            <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}
         </div>
       </div>

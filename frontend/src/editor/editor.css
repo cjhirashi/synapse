@@ -1355,6 +1355,12 @@ li.note-task[data-checked="true"] .note-task-body {
   background: var(--bg-secondary);
 }
 
+/* SPEC-0010 RF-017: la línea con el error de YAML del frontmatter, resaltada hasta que el usuario edita. */
+.code-view .cm-editor .cm-error-line {
+  background: var(--danger-bg);
+  box-shadow: inset 2px 0 0 var(--danger);
+}
+
 .code-view .cm-gutters {
   border: none;
   background: transparent;

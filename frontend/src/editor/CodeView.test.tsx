@@ -76,4 +76,33 @@ describe("CodeView", () => {
     const marks = spans(container, "sx-meta").join("");
     for (const mark of ["#", "**", ">", "-", "`"]) expect(marks).toContain(mark);
   });
+
+  // SPEC-0010 RF-017/RF-029: decoración de la línea de error de YAML.
+  it("resalta la línea de error indicada y la limpia con null", () => {
+    const doc = "---\na: 1\na: 2\n---\n# B";
+    const { container, rerender } = render(<CodeView value={doc} onChange={() => {}} label="Código" errorLine={3} />);
+    const lines = () => [...container.querySelectorAll<HTMLElement>(".cm-line")];
+    expect(lines()[2]).toHaveClass("cm-error-line");
+    expect(lines().filter((l) => l.classList.contains("cm-error-line"))).toHaveLength(1);
+    rerender(<CodeView value={doc} onChange={() => {}} label="Código" errorLine={null} />);
+    expect(container.querySelector(".cm-error-line")).toBeNull();
+  });
+
+  // SPEC-0010 RF-017: «Ir a la línea N» lleva el cursor a esa línea.
+  it("registerReveal expone un salto que mueve el cursor a la línea pedida", () => {
+    let reveal: ((line: number) => void) | null = null;
+    const { container } = render(<CodeView value={"uno\ndos\ntres\ncuatro"} onChange={() => {}} label="Código" registerReveal={(r) => (reveal = r)} />);
+    expect(reveal).toBeTypeOf("function");
+    reveal!(3);
+    const view = viewOf(container);
+    expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(3);
+  });
+
+  // SPEC-0010 RF-029: el bloque inicial `---…---` se trata como YAML (yamlFrontmatter), no como markdown.
+  it("colorea el bloque de frontmatter como YAML (clave de propiedad resaltada)", () => {
+    const { container } = render(<CodeView value={"---\ntitulo: Plan\n---\n# Cuerpo"} onChange={() => {}} label="Código" />);
+    // La clave YAML recibe una clase de resaltado (sx-*), distinta del texto plano del cuerpo.
+    const highlighted = [...container.querySelectorAll(".cm-line [class*='sx-']")].map((el) => el.textContent ?? "").join(" ");
+    expect(highlighted).toContain("titulo");
+  });
 });
