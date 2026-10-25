@@ -20,6 +20,8 @@ import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useIm
 import { ArrowLeft, ArrowRight, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent } from "../notes/noteRules";
+import { canonical } from "../sync/canonical";
+import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
@@ -116,6 +118,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   /** Pregunta de descarte abierta por `confirmDiscard`: quien espera la respuesta. */
   const [discardAsk, setDiscardAsk] = useState<{ answer: (ok: boolean) => void } | null>(null);
   const [draft, setDraft] = useState("");
+  /**
+   * Propiedades de la sesión de edición (D1, RF-012): objeto `frontmatter` que se edita en Visual con
+   * el formulario. En Código la verdad es `codeText` (el texto compuesto `---\nYAML\n---\nbody`).
+   */
+  const [props, setProps] = useState<Record<string, unknown>>({});
+  const [codeText, setCodeText] = useState<string | null>(null);
   /** mdast precalculado del `content` cargado (RNF-001), o `null` si no estaba en la caché. */
   const [preparsed, setPreparsed] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("read");
@@ -137,14 +145,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   useEffect(() => {
     if (focusEditor) setFocusEditor(false);
   }, [focusEditor]);
-  const dirty = note !== null && (pending || draft !== note.content);
-  /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado (§10.4). */
-  const savedPreparsed = note !== null && draft === note.content ? preparsed : null;
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);
   noteRef.current = note;
   const draftRef = useRef(draft);
   draftRef.current = draft;
+  const propsRef = useRef(props);
+  propsRef.current = props;
+  const codeTextRef = useRef(codeText);
+  codeTextRef.current = codeText;
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  /** Módulo `frontmatter` cargado con `import()` al pasar a edición (lectura no lo descarga, RNF-002). */
+  const fmRef = useRef<typeof Frontmatter | null>(null);
+  const fmPromise = useRef<Promise<typeof Frontmatter> | null>(null);
+  const loadFm = useCallback(async () => {
+    fmPromise.current ??= import("./frontmatter");
+    return (fmRef.current = await fmPromise.current);
+  }, []);
   const onDirtyDraftRef = useRef(onDirtyDraft);
   onDirtyDraftRef.current = onDirtyDraft;
   const editOnOpenRef = useRef(editOnOpen);
@@ -158,21 +176,48 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   }, []);
   const onViewDirty = useCallback((value: boolean) => setPending(value), []);
 
+  // «Sucio» (RF-021): en Código, el texto compuesto difiere del de la nota; en Visual, el body o las
+  // propiedades (comparadas en forma canónica, sync/canonical.ts) difieren de la nota guardada.
+  const dirty =
+    note !== null &&
+    (pending ||
+      (view === "code"
+        ? codeText !== (fmRef.current ? fmRef.current.composeCode(note.frontmatter, note.content) : codeText)
+        : draft !== note.content || canonical(props) !== canonical(note.frontmatter)));
+  /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado (§10.4). */
+  const savedPreparsed = note !== null && draft === note.content ? preparsed : null;
+
   /**
-   * ÚNICO lector del texto actual (E-7): vacía lo pendiente del debounce de la vista Visual y devuelve
-   * el markdown vigente. Guardar, alternar, los diálogos, `confirmDiscard`, el cambio de nota, la
-   * revisión nueva, el cierre de sesión, `beforeunload` y el bloqueo de navegación deciden con esto,
-   * nunca leyendo `draft` (que va con retraso) directamente. Sólo usa refs: sirve desde cualquier cierre.
+   * Texto y propiedades vigentes de la sesión (síncrono, por refs). En Código parte del texto compuesto
+   * (`split`+`parse`); si el YAML es inválido devuelve `valid: false` y conserva lo último válido. En
+   * Visual vacía el debounce y devuelve `{body: draft, props}`.
    */
-  function readDraft(): string {
+  function currentEdit(): { body: string; props: Record<string, unknown>; valid: boolean } {
+    if (viewRef.current === "code") {
+      const fm = fmRef.current;
+      const text = codeTextRef.current ?? "";
+      if (!fm) return { body: draftRef.current, props: propsRef.current, valid: false };
+      const { yaml, body } = fm.splitFrontmatter(text);
+      if (yaml === null) return { body, props: {}, valid: true };
+      const parsed = fm.parseFrontmatterYaml(yaml);
+      if ("error" in parsed) return { body: draftRef.current, props: propsRef.current, valid: false };
+      return { body, props: parsed.value, valid: true };
+    }
     flushVisual.current?.();
-    return draftRef.current;
+    return { body: draftRef.current, props: propsRef.current, valid: true };
   }
 
-  /** ¿Hay cambios sin guardar AHORA? (síncrono; ver `readDraft`). */
+  /** ¿Hay cambios sin guardar AHORA? (síncrono; body o propiedades distintos de la nota guardada). */
   function hasUnsaved(): boolean {
     const current = noteRef.current;
-    return current !== null && readDraft() !== current.content;
+    if (current === null) return false;
+    if (viewRef.current === "code") {
+      const fm = fmRef.current;
+      const text = codeTextRef.current ?? "";
+      return fm ? text !== fm.composeCode(current.frontmatter, current.content) : true;
+    }
+    flushVisual.current?.();
+    return draftRef.current !== current.content || canonical(propsRef.current) !== canonical(current.frontmatter);
   }
   /**
    * Bloquea la navegación interna mientras haya cambios sin guardar (VF-1), pero sólo si
@@ -185,10 +230,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   });
 
   // El padre conoce siempre el borrador sin guardar (no se emite `null` al desmontar: ahí es justo
-  // cuando hace falta conservarlo).
+  // cuando hace falta conservarlo). En Código el cuerpo vigente se deriva del texto compuesto.
   useEffect(() => {
-    onDirtyDraft?.(dirty ? draft : null);
-  }, [dirty, draft, onDirtyDraft]);
+    if (!dirty) {
+      onDirtyDraft?.(null);
+      return;
+    }
+    const body = view === "code" && fmRef.current ? fmRef.current.splitFrontmatter(codeText ?? "").body : draft;
+    onDirtyDraft?.(body);
+  }, [dirty, draft, codeText, view, onDirtyDraft]);
 
   // Mientras hay borrador sucio, el cierre de sesión lo sabe y avisa antes de cerrar nada (N-1).
   useEffect(() => (dirty ? unsavedDrafts.register() : undefined), [dirty, unsavedDrafts]);
@@ -228,9 +278,13 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         setPreparsed(preparsedJson);
         setNote(loaded);
         setDraft(loaded.content);
+        setProps(loaded.frontmatter);
+        setCodeText(null);
         setMode(editOnOpenRef.current ? "edit" : "read");
         setFocusEditor(editOnOpenRef.current);
         setView("visual");
+        // Al abrir ya en edición, el módulo `frontmatter` se precarga (lo necesitará Código/guardar).
+        if (editOnOpenRef.current) void loadFm();
       },
       (err) => {
         if (!alive) return;
@@ -259,8 +313,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         if (!hasUnsaved()) {
           setNote(latest);
           setDraft(latest.content);
+          setProps(latest.frontmatter);
+          if (viewRef.current === "code" && fmRef.current) setCodeText(fmRef.current.composeCode(latest.frontmatter, latest.content));
           setMissing(false);
-        } else if (latest.content === base.content) {
+        } else if (latest.content === base.content && canonical(latest.frontmatter) === canonical(base.frontmatter)) {
           setNote(latest);
           setMissing(false);
         }
@@ -316,6 +372,25 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     if (noteRef.current !== null && value !== noteRef.current.content) onDirtyDraftRef.current?.(value);
   }, []);
 
+  /** El formulario de propiedades (Visual) emitió un objeto válido nuevo. */
+  const onProps = useCallback((next: Record<string, unknown>) => {
+    propsRef.current = next;
+    setProps(next);
+    setSaved(false);
+  }, []);
+
+  /** La vista Código (verdad mientras se está en ella, RF-021) cambió su texto compuesto. */
+  const onCodeChange = useCallback((value: string) => {
+    codeTextRef.current = value;
+    setCodeText(value);
+    setSaved(false);
+  }, []);
+
+  // Al pasar a edición se precarga el módulo `frontmatter` (Código y guardar lo necesitan; lectura no).
+  useEffect(() => {
+    if (mode === "edit") void loadFm();
+  }, [mode, loadFm]);
+
   /**
    * La nota está en la papelera (la mandó otro dispositivo) y aún hay borrador: lo restaura
    * (sujeto a RF-013: con la ruta ocupada falla y el borrador queda como está) y lo guarda
@@ -330,7 +405,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       const trashed = (await notes.list(current.vault_id, { deleted: true })).find((item) => item.id === current.id);
       if (!trashed) throw new NoteNotFoundError();
       const restored = await notes.restore(current.id, trashed.rev);
-      setNote(await notes.save(current.id, readDraft(), restored.rev)); // lector único (E-8)
+      const edit = currentEdit(); // lector único (E-8): body + propiedades vigentes
+      setNote(await notes.save(current.id, edit.body, restored.rev, edit.valid ? edit.props : current.frontmatter));
       setMissing(false);
       setSaved(true);
     } catch (err) {
@@ -369,20 +445,34 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   async function writeDraft(): Promise<boolean> {
     const current = noteRef.current;
     if (current === null) return false;
-    const content = draftRef.current;
-    if (content === current.content) return true; // nada que guardar
-    // Aviso inmediato: el almacén también lo valida, pero así no hay ida y vuelta.
-    if (checkContent(content) !== null) {
+    const edit = currentEdit();
+    if (!edit.valid) {
+      // YAML inválido en Código (el aviso con línea y «Ir a la línea N» lo refina T-058/T-059).
+      setError(noteErrorMessage(new NoteValidationError(["frontmatter"])));
+      return false;
+    }
+    const { body, props: nextProps } = edit;
+    if (body === current.content && canonical(nextProps) === canonical(current.frontmatter)) return true; // nada que guardar
+    // Aviso inmediato: el almacén también valida, pero así no hay ida y vuelta.
+    if (checkContent(body) !== null) {
       setError(noteErrorMessage(new NoteValidationError(["content"])));
       return false;
     }
     setSaving(true);
     setError(null);
     try {
-      const saved = await notes.save(current.id, content, current.rev);
+      const saved = await notes.save(current.id, body, current.rev, nextProps);
       // La revisión nueva está disponible de inmediato para el guardado siguiente (antes del render).
       noteRef.current = saved;
       setNote(saved);
+      // En Visual NO se tocan `draft`/`props`: son el estado vivo del usuario (si siguió escribiendo
+      // durante el guardado en vuelo, debe conservarse para guardarlo luego, E-1). En Código se
+      // renormaliza el texto compuesto a la forma guardada, para que «sucio» vuelva a ser falso.
+      if (viewRef.current === "code" && fmRef.current) {
+        const text = fmRef.current.composeCode(saved.frontmatter, saved.content);
+        codeTextRef.current = text;
+        setCodeText(text);
+      }
       setSaved(true);
       return true;
     } catch (err) {
@@ -393,10 +483,33 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     }
   }
 
-  /** Alterna Visual/Código: primero el vaciado, para que Código arranque con lo último que se escribió (E-6). */
-  function switchView(next: View) {
-    flushVisual.current?.();
-    setView(next);
+  /**
+   * Alterna Visual/Código (RF-021). A Código: vaciado de Visual y compón el texto `---\nYAML\n---\nbody`.
+   * A Visual: el texto de Código es la verdad → `split`+`parse` a `{props, body}`; si el YAML es inválido
+   * se queda en Código (el aviso lo da el guardado, T-058).
+   */
+  async function switchView(next: View) {
+    if (next === viewRef.current) return;
+    await loadFm();
+    if (next === "code") {
+      flushVisual.current?.();
+      const text = fmRef.current!.composeCode(propsRef.current, draftRef.current);
+      codeTextRef.current = text;
+      viewRef.current = "code";
+      setCodeText(text);
+      setView("code");
+      return;
+    }
+    const edit = currentEdit();
+    if (!edit.valid) return;
+    draftRef.current = edit.body;
+    propsRef.current = edit.props;
+    codeTextRef.current = null;
+    viewRef.current = "visual";
+    setDraft(edit.body);
+    setProps(edit.props);
+    setCodeText(null);
+    setView("visual");
   }
 
   async function leave() {
@@ -594,17 +707,19 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </ConfirmDialog>
           )}
 
-          {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición las ofrecerá el formulario. */}
+          {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición el formulario de la sesión (D1). */}
           {mode === "read" && <PropertiesPanel frontmatter={note.frontmatter} />}
-          {/* En Visual, el formulario con estado propio (todavía sin guardar: lo cablea la sesión de edición). */}
-          {mode === "edit" && view === "visual" && <PropertiesForm key={note.rev} frontmatter={note.frontmatter} />}
+          {/* En Visual, el formulario parte de las propiedades vigentes (`props`) y las emite con `onProps`.
+              `key={note.rev}` lo reinicia tras guardar o cambiar de nota; al volver de Código se remonta
+              con `props` ya actualizado por `switchView`, así alternar no pierde ediciones. */}
+          {mode === "edit" && view === "visual" && <PropertiesForm key={note.rev} frontmatter={props} onChange={onProps} />}
 
           {mode === "read" ? (
             <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={savedPreparsed} />
           ) : view === "visual" ? (
             <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} />
           ) : (
-            <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
+            <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
           )}
         </div>
       </div>
