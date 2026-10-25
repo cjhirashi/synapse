@@ -194,13 +194,26 @@ async function bulkDocs(userCookie: string, docs: object[]): Promise<void> {
  * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
  * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
  */
-export async function seedNotesBulk(userCookie: string, vaultId: string, count: number): Promise<number> {
+/** ~40 KiB de contenido: supera el umbral de precálculo de 32 KiB (SPEC-0010 §10.4). */
+const BIG_FILLER = `# Nota grande\n\n${"lorem ipsum dolor sit amet ".repeat(1500)}\n`;
+
+export async function seedNotesBulk(
+  userCookie: string,
+  vaultId: string,
+  count: number,
+  options: { bigEvery?: number } = {},
+): Promise<number> {
   const stamp = "2026-10-12T09:00:00.000Z";
+  const { bigEvery } = options;
   const paths = Array.from({ length: count }, (_, i) => {
     const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
     return `${folder}nota-${i}.md`;
   });
-  const docs = paths.map((path) => noteDoc(vaultId, { path, frontmatter: {}, content: FILLER }, stamp));
+  // Con `bigEvery` cada enésima nota lleva ~40 KiB (≥ 32 KiB): el precálculo tiene trabajo real
+  // (T-139, no degradación del RNF-001 de 0009 con el programador activo).
+  const docs = paths.map((path, i) =>
+    noteDoc(vaultId, { path, frontmatter: {}, content: bigEvery && i % bigEvery === 0 ? BIG_FILLER : FILLER }, stamp),
+  );
   await bulkDocs(userCookie, docs);
   const top = new Set(paths.map((path) => (path.includes("/") ? path.split("/")[0] : path)));
   return top.size;
