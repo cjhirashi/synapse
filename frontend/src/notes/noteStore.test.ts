@@ -248,6 +248,41 @@ describe("RF-003, RF-016: save", () => {
   it("save sobre una nota inexistente → no encontrada", async () => {
     await expect(store.save(`note:${VAULT}:${"3".repeat(8)}`, "x", "1-abc")).rejects.toBeInstanceOf(NoteNotFoundError);
   });
+
+  it("RF-012: save con frontmatter escribe content y frontmatter juntos", async () => {
+    const a = await store.create(VAULT, "A");
+    const saved = await store.save(a.id, "# Hola", a.rev, { título: "Nota", n: 3, t: ["a", "b"] });
+    expect(saved.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"] });
+    expect(saved.content).toBe("# Hola");
+    const reloaded = await store.get(a.id);
+    expect(reloaded.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"] });
+  });
+
+  it("RF-012: save sin frontmatter conserva el anterior", async () => {
+    const a = await store.create(VAULT, "A");
+    const withFm = await store.save(a.id, "cuerpo 1", a.rev, { k: 1 });
+    const without = await store.save(a.id, "cuerpo 2", withFm.rev);
+    expect(without.frontmatter).toEqual({ k: 1 });
+    expect(without.content).toBe("cuerpo 2");
+  });
+
+  it("RF-022 (P-8): la rama de conflicto lleva el frontmatter nuevo que se pasó", async () => {
+    const a = await store.create(VAULT, "A");
+    await store.save(a.id, "otra pestaña", a.rev, { origen: "otra" }); // adelanta la revisión
+    const branch = await store.save(a.id, "mi edición", a.rev, { origen: "mía" }); // sobre a.rev (desfasada)
+    expect(branch.content).toBe("mi edición");
+    expect(branch.frontmatter).toEqual({ origen: "mía" });
+  });
+
+  it("RF-019: frontmatter cuyo JSON supera 64 KiB → NoteValidationError(frontmatter) sin escribir", async () => {
+    const a = await store.create(VAULT, "A");
+    const huge = { big: "x".repeat(70 * 1024) };
+    const err = await store.save(a.id, "cuerpo", a.rev, huge).catch((e) => e);
+    expect(err).toBeInstanceOf(NoteValidationError);
+    expect(err.fields).toEqual(["frontmatter"]);
+    expect((await store.get(a.id)).rev).toBe(a.rev);
+    expect((await store.get(a.id)).frontmatter).toEqual({});
+  });
 });
 
 describe("RF-010: cuota", () => {

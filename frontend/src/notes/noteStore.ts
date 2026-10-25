@@ -14,7 +14,7 @@
  */
 import { child } from "../sync/conflicts";
 import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
-import { NOTE_ID_PREFIX, checkContent, checkPath, normalizePath, pathKey } from "./noteRules";
+import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
 
@@ -74,8 +74,11 @@ export interface NoteStore {
   rename(id: string, path: string, rev: string): Promise<Note>;
   softDelete(id: string, rev: string): Promise<Note>;
   restore(id: string, rev: string): Promise<Note>;
-  /** Guarda el contenido editado sobre la revisión `baseRev` que se cargó. */
-  save(id: string, content: string, baseRev: string): Promise<Note>;
+  /**
+   * Guarda el contenido editado sobre la revisión `baseRev` que se cargó. `frontmatter` ausente
+   * conserva el del documento; presente se valida (RF-019) y se escribe junto al contenido.
+   */
+  save(id: string, content: string, baseRev: string, frontmatter?: Record<string, unknown>): Promise<Note>;
 }
 
 function toNote(doc: NoteDoc): Note {
@@ -229,7 +232,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
    * `updated_at`, así que dos guardados no dan la misma revisión: que dos ramas con el mismo
    * contenido no se queden en conflicto lo garantiza `mergeNote` (converge ignorando `updated_at`).
    */
-  async function saveAsBranch(id: string, baseRev: string, content: string): Promise<Note> {
+  async function saveAsBranch(id: string, baseRev: string, content: string, frontmatter?: Record<string, unknown>): Promise<Note> {
     let base: NoteDoc & { _revisions: { start: number; ids: string[] }; _deleted?: boolean };
     try {
       base = await db.get(id, { rev: baseRev, revs: true });
@@ -243,7 +246,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       type: "note" as const,
       vault_id: base.vault_id,
       path: base.path,
-      frontmatter: base.frontmatter,
+      frontmatter: frontmatter ?? base.frontmatter,
       content,
       created_at: base.created_at,
       updated_at: now(),
@@ -325,18 +328,20 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       return write({ ...doc, deleted_at: null, updated_at: now() });
     },
 
-    async save(id, content, baseRev) {
+    async save(id, content, baseRev, frontmatter) {
       if (checkContent(content) !== null) throw new NoteValidationError(["content"]);
+      if (frontmatter !== undefined && checkFrontmatter(frontmatter) !== null) throw new NoteValidationError(["frontmatter"]);
       const doc = await load(id, false);
       if (doc._rev === baseRev) {
         try {
-          return await write({ ...doc, content, updated_at: now() });
+          // `frontmatter` ausente conserva el del documento; presente lo reemplaza.
+          return await write({ ...doc, content, frontmatter: frontmatter ?? doc.frontmatter, updated_at: now() });
         } catch (err) {
           // Otra escritura se coló entre la lectura y la nuestra: es el mismo caso de abajo.
           if (!(err instanceof NoteChangedError)) throw err;
         }
       }
-      return saveAsBranch(id, baseRev, content);
+      return saveAsBranch(id, baseRev, content, frontmatter);
     },
   };
 }
