@@ -19,6 +19,7 @@ import type { Vault } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar from "./NoteSidebar";
 import NoteTrash from "./NoteTrash";
+import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
 
 const NoteEditor = lazy(() => import("../editor/NoteEditor"));
@@ -116,6 +117,36 @@ function SalvagedDraft({ text }: { text: string }) {
 function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft: string | null) => void }) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { notes, notesVersion } = useSync();
+
+  // RNF-001 (PLAN-0010 §10.4/§10.5): caché de parseo + programador de precálculo propios de esta
+  // bóveda. El `Workspace` está `key`-ado por bóveda, así que montar/desmontar = cambio de bóveda o
+  // logout: el `dispose` termina el Worker y vacía la caché (ningún dato sobrevive a la sesión).
+  const [parsing, setParsing] = useState<ParseWorkspace | null>(null);
+  useEffect(() => {
+    const pw = createParseWorkspace(notes);
+    setParsing(pw);
+    return () => {
+      pw?.dispose();
+      setParsing(null);
+    };
+  }, [notes]);
+
+  // Tras montar y tras cada `notesVersion` (sync/pull/otra pestaña) se reconcilian las candidatas
+  // (resúmenes con `size`): el programador precalcula las notas grandes sin leer sus cuerpos para decidir.
+  useEffect(() => {
+    if (!parsing) return;
+    let alive = true;
+    notes
+      .list(vault.id)
+      .then((summaries) => {
+        if (alive) parsing.scheduler.reconcile(summaries.map((s) => ({ id: s.id, rev: s.rev, size: s.size })));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [parsing, notes, notesVersion, vault.id]);
   /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
 
@@ -158,6 +189,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
           onShowTrash={() => setShowTrash(true)}
           confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
+          onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
         />
       </div>
       <div className="vault-workspace-main">
@@ -180,7 +212,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} />
             </Suspense>
           )}
         </div>

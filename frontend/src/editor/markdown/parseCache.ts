@@ -75,6 +75,14 @@ export class ParseCache {
     return promise;
   }
 
+  /**
+   * La petición en vuelo de esa revisión, si la hay (p. ej. empezó al pasar el puntero), o `null`.
+   * El editor la espera en vez de reparsear en el hilo principal (§10.6). No arranca una nueva.
+   */
+  pending(id: string, rev: string): Promise<string | null> | null {
+    return this.#inflight.get(`${id}@${rev}`) ?? null;
+  }
+
   /** Lectura síncrona: el JSON cacheado de esa revisión sólo si la longitud del texto coincide. */
   get(id: string, rev: string, textLength: number): string | null {
     const key = `${id}@${rev}`;

@@ -46,6 +46,11 @@ interface NoteSidebarProps {
    * Sin esta función se borra sin preguntar.
    */
   confirmDelete?: () => Promise<boolean>;
+  /**
+   * Puntero o foco sobre la fila de una nota (RNF-001, §10.5): pide su precálculo con prioridad (el
+   * clic suele llegar cientos de ms después, o Enter tras el foco). Sin esta función no hace nada.
+   */
+  onPrefetch?: (id: string) => void;
 }
 
 /** Carpetas que contienen a `path`: `a/b/c.md` → `a`, `a/b`. */
@@ -84,7 +89,7 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
   });
 }
 
-export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete }: NoteSidebarProps) {
+export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch }: NoteSidebarProps) {
   const { notes, notesVersion } = useSync();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
@@ -392,7 +397,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             onFocus={() => {
               setFocusKey(noteKey(note.id));
               setSelectedId(note.id);
+              onPrefetch?.(note.id);
             }}
+            onPointerEnter={() => onPrefetch?.(note.id)}
             className="note-tree-row note-tree-note"
             style={indent}
             onClick={() => onOpen(note.id)}

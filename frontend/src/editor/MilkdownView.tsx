@@ -24,6 +24,7 @@ import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { codeBlockViewFactory } from "./codeBlockView";
+import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
 import { applyHeadingIds } from "./markdown/headingIds";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
@@ -73,6 +74,12 @@ interface MilkdownViewProps {
   onDirty?: (dirty: boolean) => void;
   /** Foco en el editor en cuanto termina de crearse el que sigue a esta petición (U-6). */
   autoFocus?: boolean;
+  /**
+   * mdast precalculado (cadena JSON) de ESTE `value`, si la caché lo tenía (RNF-001, §10.3): el editor
+   * lo re-hidrata en vez de reparsear con micromark en el hilo principal. Sólo se pasa cuando `value`
+   * ES el `content` guardado de la nota; `null`/ausente → parseo en frío como siempre.
+   */
+  preparsedMdast?: string | null;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -88,7 +95,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** El markdown que tiene el editor ahora: el último recibido del padre o emitido por él. */
@@ -180,6 +187,12 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(gfm)
       .use(history)
       .use(listener)
+      .use(cachedParser)
+      .config((ctx) => {
+        // RNF-001 (§10.3): si el padre entregó el mdast precalculado de este `value`, `cachedParser`
+        // lo re-hidrata en vez de reparsear con micromark en el hilo principal.
+        ctx.set(preparsedMdastCtx, preparsedMdast);
+      })
       .config((ctx) => {
         // *Node views* de SPEC-0010: bloque de código con cabecera y «Copiar» (RF-033…RF-036), casillas de tarea
         // (RF-039) y tabla con envoltorio de scroll (RF-026).

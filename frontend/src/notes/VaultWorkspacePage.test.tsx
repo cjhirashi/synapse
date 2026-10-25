@@ -9,13 +9,35 @@ import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
+import { parseMarkdownToJson } from "../editor/markdown/parseStage";
+import { PARSE_MARK } from "../editor/markdown/cachedParser";
+
+// RNF-001 (PLAN-0010 §10.4/§10.5): en jsdom no hay `Worker`, así que `createParseWorkspace` devolvería
+// `null`. Se sustituye por una caché y un programador falsos para comprobar el CABLEADO: creación y
+// `dispose` por bóveda, prioridad por puntero/foco, y que el mdast precalculado llega al editor.
+const parseFakes = vi.hoisted(() => {
+  const scheduler = { reconcile: vi.fn(), prioritize: vi.fn(), pause: vi.fn(), resume: vi.fn(), dispose: vi.fn() };
+  const cache = { get: vi.fn((): string | null => null), pending: vi.fn((): Promise<string | null> | null => null) };
+  const dispose = vi.fn();
+  const createParseWorkspace = vi.fn(() => ({ cache, scheduler, dispose }));
+  return { scheduler, cache, dispose, createParseWorkspace };
+});
+vi.mock("./parseWorkspace", () => ({ createParseWorkspace: parseFakes.createParseWorkspace }));
 
 // El editor se carga con `React.lazy`: la primera importación (Milkdown + CodeMirror, transformados
 // por Vite) puede tardar más que el tiempo de espera de `findBy*` si la máquina va cargada. Se
 // paga aquí, una vez, para que las pruebas midan la pantalla y no la carga del módulo.
 beforeAll(() => import("../editor/NoteEditor"), 30_000);
 
-afterEach(() => localStorage.clear());
+afterEach(() => {
+  localStorage.clear();
+  parseFakes.cache.get.mockReturnValue(null);
+  parseFakes.cache.pending.mockReturnValue(null);
+  parseFakes.scheduler.prioritize.mockClear();
+  parseFakes.scheduler.reconcile.mockClear();
+  parseFakes.dispose.mockClear();
+  parseFakes.createParseWorkspace.mockClear();
+});
 
 /** Estado de navegación actual, para comprobar que el espacio de trabajo lo consume. */
 function NavState() {
@@ -275,4 +297,51 @@ test("RF-010: el diálogo «Borrar y descartar cambios» enfoca primero «Seguir
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(within(dialog).getByRole("button", { name: "Seguir editando" })).toHaveFocus());
+});
+
+// --- RNF-001: precálculo (PLAN-0010 §10) -------------------------------------------------------
+test("precalc: el workspace crea la caché/programador al montar y los destruye al desmontar", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { unmount } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(parseFakes.createParseWorkspace).toHaveBeenCalled();
+  unmount();
+  expect(parseFakes.dispose).toHaveBeenCalled();
+});
+
+test("precalc: pointerenter en una fila del árbol pide su precálculo con prioridad", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.hover(await screen.findByRole("treeitem", { name: "Hola" }));
+  expect(parseFakes.scheduler.prioritize).toHaveBeenCalledWith(note.id);
+});
+
+test("precalc: abrir una nota precalculada entrega su mdast al editor (marca cache-hit)", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  await value.notes.save(note.id, "# Hola\n\ncuerpo de la nota", note.rev);
+  parseFakes.cache.get.mockReturnValue(parseMarkdownToJson("# Hola\n\ncuerpo de la nota"));
+  const mark = vi.spyOn(performance, "mark");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  await waitFor(() => expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit));
+  expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cold);
+  mark.mockRestore();
+});
+
+test("precalc: con el parseo en vuelo, el editor espera esa promesa en vez de reparsear", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  await value.notes.save(note.id, "# Hola\n\notro cuerpo", note.rev);
+  parseFakes.cache.get.mockReturnValue(null); // nada cacheado aún…
+  parseFakes.cache.pending.mockReturnValue(Promise.resolve(parseMarkdownToJson("# Hola\n\notro cuerpo"))); // …pero sí en vuelo
+  const mark = vi.spyOn(performance, "mark");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  await waitFor(() => expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit));
+  mark.mockRestore();
 });

@@ -23,6 +23,7 @@ import { checkContent } from "../notes/noteRules";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
+import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -50,6 +51,8 @@ export interface ViewProps {
   onDirty?: (dirty: boolean) => void;
   /** Foco en el editor al montarse (U-6): sólo cuando el usuario acaba de pasar a edición. */
   autoFocus?: boolean;
+  /** mdast precalculado de este `value` (RNF-001, §10.3); sólo lo usa la vista Visual. */
+  preparsedMdast?: string | null;
 }
 
 export interface NoteEditorViews {
@@ -80,6 +83,12 @@ interface NoteEditorProps {
   onForward?: () => void;
   /** Una carpeta de las migas: el árbol debe mostrarla (RF-055). */
   onRevealFolder?: (folderPath: string) => void;
+  /**
+   * Caché de parseo del workspace (RNF-001, §10.3/§10.6): al abrir en lectura (o en Visual el `content`
+   * guardado) se consulta por `{id, rev}`; un acierto o una petición en vuelo evitan reparsear con
+   * micromark en el hilo principal. Sin caché, el editor parsea en frío como siempre.
+   */
+  parseCache?: Pick<ParseCache, "get" | "pending"> | null;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -92,7 +101,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder, parseCache = null },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -107,6 +116,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   /** Pregunta de descarte abierta por `confirmDiscard`: quien espera la respuesta. */
   const [discardAsk, setDiscardAsk] = useState<{ answer: (ok: boolean) => void } | null>(null);
   const [draft, setDraft] = useState("");
+  /** mdast precalculado del `content` cargado (RNF-001), o `null` si no estaba en la caché. */
+  const [preparsed, setPreparsed] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("read");
   const [view, setView] = useState<View>("visual");
   const [saving, setSaving] = useState(false);
@@ -127,6 +138,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     if (focusEditor) setFocusEditor(false);
   }, [focusEditor]);
   const dirty = note !== null && (pending || draft !== note.content);
+  /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado (§10.4). */
+  const savedPreparsed = note !== null && draft === note.content ? preparsed : null;
   // Lo que los efectos y los manejadores de eventos necesitan sin volver a crearse.
   const noteRef = useRef(note);
   noteRef.current = note;
@@ -136,6 +149,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   onDirtyDraftRef.current = onDirtyDraft;
   const editOnOpenRef = useRef(editOnOpen);
   editOnOpenRef.current = editOnOpen;
+  const parseCacheRef = useRef(parseCache);
+  parseCacheRef.current = parseCache;
   /** Vaciado síncrono de la vista Visual (la registra `MilkdownView`): lo escrito en los últimos 200 ms (E-6). */
   const flushVisual = useRef<(() => void) | null>(null);
   const registerFlush = useCallback((flush: (() => void) | null) => {
@@ -196,9 +211,21 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setError(null);
     setSaved(false);
     setPending(false);
+    setPreparsed(null);
     notes.get(openId).then(
-      (loaded) => {
+      async (loaded) => {
         if (!alive) return;
+        // RNF-001 (§10.3/§10.6): al abrir, un acierto de caché (o una petición en vuelo que empezó al
+        // pasar el puntero) entrega el mdast precalculado; así el editor no reparsea con micromark en
+        // el hilo principal. No se arranca un parseo nuevo aquí: si no hay nada, se parsea en frío.
+        let preparsedJson: string | null = null;
+        const cache = parseCacheRef.current;
+        if (cache) {
+          preparsedJson = cache.get(loaded.id, loaded.rev, loaded.content.length);
+          if (!preparsedJson) preparsedJson = (await cache.pending(loaded.id, loaded.rev)) ?? null;
+        }
+        if (!alive) return;
+        setPreparsed(preparsedJson);
         setNote(loaded);
         setDraft(loaded.content);
         setMode(editOnOpenRef.current ? "edit" : "read");
@@ -573,9 +600,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {mode === "edit" && view === "visual" && <PropertiesForm key={note.rev} frontmatter={note.frontmatter} />}
 
           {mode === "read" ? (
-            <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} />
+            <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={savedPreparsed} />
           ) : view === "visual" ? (
-            <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} />
+            <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} />
           ) : (
             <Code value={draft} onChange={onDraft} label="Editor de código" readOnly={false} autoFocus={focusEditor} />
           )}

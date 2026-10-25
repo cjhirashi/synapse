@@ -51,6 +51,7 @@ export function docFromMdastJson(remark: RemarkParser, schema: Schema, json: str
 const CachedParserReady = createTimer("SynapseCachedParserReady");
 
 export const cachedParser: MilkdownPlugin = (ctx) => {
+  ctx.inject(preparsedMdastCtx, null);
   ctx.record(CachedParserReady);
   // El estado del editor debe esperar a que `parserCtx` esté envuelto antes de construir el documento.
   ctx.update(editorStateTimerCtx, (timers) => (timers.includes(CachedParserReady) ? timers : [...timers, CachedParserReady]));

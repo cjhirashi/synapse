@@ -3,6 +3,8 @@ import { act, render, screen, waitFor } from "@testing-library/react";
 import { EditorView } from "@milkdown/prose/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
+import { PARSE_MARK } from "./markdown/cachedParser";
+import { parseMarkdownToJson } from "./markdown/parseStage";
 import { MilkdownView } from "./MilkdownView";
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
@@ -166,5 +168,41 @@ describe("MilkdownView · ids de encabezado precalculados (RNF-001)", () => {
   it.each(HEADING_CASES)("los ids del DOM son los del plugin para $key", async ({ md, ids }) => {
     const { container } = await mount({ value: md, readOnly: true });
     expect(domHeadingIds(container)).toEqual(ids);
+  });
+});
+
+// RNF-001 precalc (PLAN-0010 §10.3): con el mdast precalculado, el editor NO reparsea con micromark
+// en el hilo principal (marca `cache-hit`) y produce el MISMO documento que en frío.
+describe("MilkdownView · apertura precalculada (RNF-001)", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  async function renderView(props: { value: string; preparsedMdast?: string | null }) {
+    let view: EditorView | null = null;
+    const utils = render(
+      <MilkdownView value={props.value} readOnly onChange={() => {}} label="Visual" preparsedMdast={props.preparsedMdast ?? null} onView={(v) => (view = v)} />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    return utils;
+  }
+
+  const MD = CONTENT_NOTES.find((n) => n.key === "big")!.content;
+
+  it("abrir precalculada marca cache-hit y da el mismo DOM que en frío", async () => {
+    const cold = await renderView({ value: MD });
+    const coldHtml = cold.container.querySelector(".ProseMirror")!.innerHTML;
+    cold.unmount();
+
+    const mark = vi.spyOn(performance, "mark");
+    const warm = await renderView({ value: MD, preparsedMdast: parseMarkdownToJson(MD) });
+    expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit);
+    expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cold);
+    expect(warm.container.querySelector(".ProseMirror")!.innerHTML).toBe(coldHtml);
+  });
+
+  it("sin mdast precalculado marca cold (parseo en el hilo principal)", async () => {
+    const mark = vi.spyOn(performance, "mark");
+    await renderView({ value: MD, preparsedMdast: null });
+    expect(mark).toHaveBeenCalledWith(PARSE_MARK.cold);
+    expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cacheHit);
   });
 });
