@@ -124,6 +124,8 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
     ({"path": None}, "validation-error:path"),
     ({"path": " Nota.md"}, "not-normalized:path"),
     ({"path": "Carpeta / Nota.md"}, "not-normalized:path"),
+    ({"path": "X/.md"}, "validation-error:path"),  # SPEC-0010 RF-007: nombre de archivo vacío
+    ({"path": ".md"}, "validation-error:path"),
     ({"content": 5}, "validation-error:content"),
     ({"content": None}, "validation-error:content"),
     ({"content": "a\ud800b"}, "validation-error:content"),
@@ -138,6 +140,13 @@ async def test_rf_016_note_fields_follow_the_rules_of_note_rules(push, couch, va
     doc = _note(**change)
     assert await push.push([doc]) == [_rejected(doc, reason)]
     assert not _stored(couch, doc)
+
+
+async def test_rf_007_note_in_a_folder_with_a_real_name_is_accepted(push, couch, vault):
+    # SPEC-0010 RF-007: el último segmento con nombre (`X/a.md`) sí se acepta; sólo `X/.md` se rechaza.
+    doc = _note(path="X/a.md")
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
 
 
 async def test_rf_016_note_field_content_of_exactly_two_mib_is_saved(push, couch, vault):

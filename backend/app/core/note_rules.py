@@ -53,10 +53,13 @@ def check_path(value: object) -> str | None:
     if not isinstance(value, str) or not _well_formed(value):
         return "validation-error:path"
     normalized = normalize_path(value)
+    # SPEC-0010 RF-007: el último segmento (el nombre del archivo) no puede ser sólo `.md` (sin
+    # mayúsculas): sería una nota sin nombre, como la que producía `titleToPath("Carpeta/")`.
     valid = (
         1 <= len(normalized) <= PATH_MAX
         and all(normalized.split("/"))
         and not any(unicodedata.category(char) == "Cc" for char in normalized)
+        and normalized.split("/")[-1].casefold() != ".md"
     )
     if not valid:
         return "validation-error:path"

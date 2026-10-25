@@ -176,6 +176,36 @@
    "input": null,
    "code": "validation-error:path",
    "normalized": null
+  },
+  {
+   "input": "X/.md",
+   "code": "validation-error:path",
+   "normalized": "X/.md"
+  },
+  {
+   "input": "X/.MD",
+   "code": "validation-error:path",
+   "normalized": "X/.MD"
+  },
+  {
+   "input": ".md",
+   "code": "validation-error:path",
+   "normalized": ".md"
+  },
+  {
+   "input": "X/ .md",
+   "code": "validation-error:path",
+   "normalized": "X/.md"
+  },
+  {
+   "input": "X/a.md",
+   "code": null,
+   "normalized": "X/a.md"
+  },
+  {
+   "input": ".md/a.md",
+   "code": null,
+   "normalized": ".md/a.md"
   }
  ],
  "content": [

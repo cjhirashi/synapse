@@ -34,6 +34,28 @@ def test_rf_005_the_schema_limits_equal_the_rule_constants():
     assert properties["frontmatter"]["x-max-json-utf8-bytes"] == note_rules.FRONTMATTER_MAX_BYTES
 
 
+def test_rf_007_path_pattern_plus_maxlength_match_check_path_over_the_battery():
+    # SPEC-0010 RF-007: el patrón `path` + `maxLength` del esquema aceptan EXACTAMENTE las rutas
+    # (ya normalizadas) que `check_path` no rechaza; en particular, un último segmento `.md` sin
+    # nombre (`X/.md`, `.md`) queda fuera de ambos.
+    pattern = SCHEMA["properties"]["path"]["pattern"]
+    max_len = SCHEMA["properties"]["path"]["maxLength"]
+    cases = json.loads(
+        (Path(__file__).resolve().parent / "fixtures/note_rules_cases.json").read_text()
+    )["path"]
+    for case in cases:
+        normalized = case.get("normalized")
+        if not isinstance(normalized, str):
+            continue  # entradas no-cadena (5, None): no hay forma normalizada que validar
+        try:
+            normalized.encode("utf-8")
+        except UnicodeEncodeError:
+            continue  # sustitutos sueltos: `check_path` los rechaza aparte; un patrón regex no lo expresa
+        by_schema = len(normalized) <= max_len and re.match(pattern, normalized) is not None
+        by_rule = note_rules.check_path(normalized) is None
+        assert by_schema == by_rule, (repr(normalized), by_schema, by_rule)
+
+
 def test_rf_006_the_rev_pattern_bounds_the_generation_like_the_push():
     # El push acota la generación de `_rev` (H-2): el contrato no puede prometer más. El
     # patrón del servidor lleva grupos de captura; el del esquema es el mismo sin ellos.
