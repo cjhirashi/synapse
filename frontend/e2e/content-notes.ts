@@ -79,6 +79,8 @@ export interface PerfNote {
   path: string;
   name: string;
   content: string;
+  /** Tamaño objetivo en KiB (define el tier de RNF-001: ≤ 120 KiB → 150 ms; el extremo ~200 KiB → 250 ms). */
+  kib: number;
   /** Texto del último encabezado (marcador de «cuerpo legible completo» para las pruebas). */
   lastHeading: string;
 }
@@ -111,7 +113,7 @@ export const PERF_BIG_NOTES: PerfNote[] = [
   { key: "perf-64", kib: 64 },
 ].map(({ key, kib }) => {
   const name = `Nota de ${kib} KiB`;
-  return { key, path: `${name}.md`, name, content: perfBigNote(name, kib), lastHeading: `Fin de ${name}` };
+  return { key, path: `${name}.md`, name, kib, content: perfBigNote(name, kib), lastHeading: `Fin de ${name}` };
 });
 
 /**
