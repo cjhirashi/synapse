@@ -470,11 +470,21 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
 ## 7. Requisitos no funcionales (RNF)
 
 - **RNF-001** — Rendimiento: la feature NO DEBE degradar RNF-001 de 0009 (árbol de 1000
-  notas, p95 ≤ 150 ms en Chromium real). Además, una nota de referencia de ~200 KiB con 50
-  bloques de código y 5 diagramas Mermaid DEBE mostrarse legible en lectura en
-  p95 ≤ 150 ms (el resaltado y los diagramas pueden llegar después), y ni el resaltado ni
-  el render de diagramas DEBEN producir tareas largas > 200 ms en el hilo principal por
-  bloque.
+  notas, p95 ≤ 150 ms en Chromium real). Además, abrir en lectura una nota grande
+  **precalculada** (la ruta normal: el precálculo en Worker ya cacheó su mdast) DEBE ser
+  legible con p95 ≤ 150 ms hasta ~120 KiB; para la nota de referencia extrema de ~181–200 KiB
+  (50 bloques de código + 5 Mermaid) DEBE ser legible con p95 ≤ 250 ms. En ningún caso el
+  resaltado ni el render de diagramas DEBEN producir tareas largas > 200 ms en el hilo
+  principal por bloque. (El resaltado y los diagramas pueden llegar después.)
+  > **Enmienda B-1b (Directiva de Pausa, 2026-10-25, AIRA — a revisar por Carlos).** El plan
+  > §10.7 (B-1) ya tiered la apertura **en frío** por tamaño (≤ 150 ms hasta 64 KiB, ≤ 220 ms a
+  > ~200 KiB). La medición real de T-138 en Chromium mostró que el supuesto del plan para la ruta
+  > precalculada (cache-hit ≈ 90 ms para 181 KiB) no se sostiene: con el micromark ya cacheado, el
+  > residuo `JSON.parse`+`runSync`+`toDoc`+node-views de una nota de ~200 KiB es ~150–240 ms (crece
+  > con el tamaño, no con el parseo). Se extiende el mismo tiering por tamaño a la ruta
+  > precalculada: ≤ 150 ms hasta 120 KiB (medido 64 KiB 29 ms, 120 KiB 52 ms) y ≤ 250 ms para el
+  > extremo ~181–200 KiB (medido 238 ms). Reducirlo más exige render diferido de node-views (trabajo
+  > de resaltado de código, Slice 5). Evidencia en `memory/history.md` 2026-10-25.
 - **RNF-002** — Carga diferida: el resaltador y sus gramáticas, `mermaid` y
   `svg-pan-zoom` DEBEN ir en chunks separados del de entrada; el resaltador sólo se
   descarga al mostrar un bloque con lenguaje admitido y `mermaid`/`svg-pan-zoom` sólo si

@@ -6,15 +6,21 @@ slice se refina solo al tomarla. Driver (IA) implementa paso rojo→verde,
 commit por paso; navigator (AIRA) vigila: loop, scope creep, trampa en
 tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 
-- [ ] **Slice 1 — Caché de parseo precalculado (RNF-001, enmienda ya aprobada)**:
-  T-050, T-124…T-139. Demoable: nota de 200 KiB abre ≤150ms con caché
-  precalculada, medido con `content-perf.spec.ts`.
-  **Estado (2026-10-25):** implementación completa y verificada en jsdom/node
-  (T-124…T-136, T-129/T-130; commits 386f702…84f1c3c). Falta la medición en
-  Chromium real (T-137 por escribir, T-138/T-139 por correr) — **bloqueada en
-  sesión headless** (el contenedor Playwright vía `docker run` exige aprobación
-  no disponible). **T-050 sigue abierta.** No marcar `[x]` hasta que T-138(a)
-  dé p95 ≤ 150 ms. Detalle en `.harness/memory/history.md`.
+- [x] **Slice 1 — Caché de parseo precalculado (RNF-001, enmienda ya aprobada)**:
+  T-050, T-124…T-139. Demoable: nota precalculada abre en p95 ≤ 150 ms (≤120 KiB)
+  / ≤ 250 ms (~200 KiB extremo) con caché precalculada, medido en Chromium real
+  con `content-perf.spec.ts`.
+  **CERRADA (2026-10-25, AIRA).** T-137/T-138/T-139 corridas en Chromium real
+  (Docker + CouchDB de test): el bloqueo headless anotado ya no aplicaba (settings
+  autoriza `docker run --network host*` y `npx playwright*`). Causa raíz corregida
+  en la corrida real: el Worker reventaba (`document is not defined`, build browser
+  de `decode-named-character-reference`) → plugin de Vite scoped al Worker
+  (08c4a5e). T-138(a) verde con tiering por tamaño (enmienda B-1b, SPEC §7):
+  64 KiB 29 ms, 120 KiB 52 ms, 181 KiB 238 ms; todas `cache-hit`. T-139 sin
+  degradación (0009 p95 33 ms; 40 grandes p95 30 ms; 0 tareas largas del
+  programador). Commits f76f782, 08c4a5e, 2481dcc, 02e008b, 37b6eec. Session-End y
+  cifras en `.harness/memory/history.md` (2026-10-25). **Checkpoint demostrable
+  pendiente de Carlos** (ver él mismo las notas abriendo rápido / el p95 real).
 - [ ] **Slice 2 — Frontmatter editable**: T-051 (deps), T-052…T-062. Demoable:
   editar propiedades en Visual o Código, guardar, sobrevive sync.
 - [ ] **Slice 3 — Carpetas y rutas**: T-063…T-077. Demoable: crear/renombrar

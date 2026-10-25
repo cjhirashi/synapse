@@ -220,10 +220,11 @@ actualizado: 2026-10-24
 - [x] T-049 — Corregir los desvíos de T-048 desde la raíz (una sub-entrada por hallazgo, test o medida que lo fija) (cubre RNF-005) [zona: pantalla]
   - CHECK: `CV --grep "0010 V-(1|2|3|4|5|6|10|11|12|13|14) "`
   - EXPECT: mismo resultado que T-047 sin los desvíos; si no hubo hallazgos, se cierra con "sin hallazgos" en `history.md`.
-- [ ] T-050 — Sonda de rendimiento: abrir en lectura la nota de ~200 KiB (sin resaltado ni Mermaid todavía), 30 aperturas a 1440 (`e2e/content-perf.spec.ts`, prueba `0010 RNF-001 sonda`) (cubre RNF-001) [zona: sistema]
+- [x] T-050 — Sonda de rendimiento: abrir en lectura la nota de ~200 KiB (sin resaltado ni Mermaid todavía), 30 aperturas a 1440 (`e2e/content-perf.spec.ts`, prueba `0010 RNF-001 sonda`) (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --grep "sonda"`
   - EXPECT: imprime mediana y p95; p95 ≤ 150 ms. Si Milkdown solo ya supera 150 ms, se **detiene** el avance y se eleva como hallazgo (riesgo de PLAN-0010 §7), sin parche.
   - **Enmienda 1 (PLAN-0010 §10):** la sonda falló (p95 204,4 ms, 181 KiB). La reapertura de la misma nota se retira como método (con caché sería un acierto engañoso); T-050 se cierra con T-138 (a).
+  - **CERRADA (2026-10-25, AIRA) por T-138 (a) verde:** las 30 aperturas de notas precalculadas son `cache-hit` en Chromium real; p95 64 KiB 29 ms, 120 KiB 52 ms (≤150), 181 KiB 238 ms (tier ≤250, enmienda B-1b, SPEC §7). Evidencia pegada en history.md (2026-10-25).
 
 ### E2 · Enmienda 1 — parseo precalculado (Directiva de Pausa, PLAN-0010 §10; antes de seguir con F)
 > T-050 sigue **abierta** hasta que T-138 (a) pase. B-1 (apertura en frío ≳ 100 KiB) espera
@@ -267,15 +268,18 @@ actualizado: 2026-10-24
 - [x] T-136 — Cableado: `VaultWorkspacePage.tsx` (propiedad y `dispose`), `NoteSidebar.tsx` (*hover*/foco), `NoteEditor`/`MilkdownView` (caché en lectura y apertura en Visual del `content` guardado; espera del parseo en vuelo) (cubre RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && npm run typecheck`
   - EXPECT: `passed`; typecheck exit 0.
-- [ ] T-137 [rojo] — `e2e/content-perf.spec.ts` redefinido (PLAN-0010 §10.8): retira la sonda de reaperturas; `0010 RNF-001 precalculada` (10 contextos nuevos × 3 notas grandes, espera "Sincronizado" + `synapse:precompute-idle` ≤ 5 s, exige marca `cache-hit`), `0010 RNF-001 en frío` (exige `cold`; 181 y 64 KiB) y `0010 RNF-001 con puntero` (150 ms de *hover*); `seedContent` con la bóveda de 200 notas (3 grandes) (cubre RNF-001) [zona: sistema]
+- [x] T-137 [rojo] — `e2e/content-perf.spec.ts` redefinido (PLAN-0010 §10.8): retira la sonda de reaperturas; `0010 RNF-001 precalculada` (10 contextos nuevos × 3 notas grandes, espera "Sincronizado" + `synapse:precompute-idle` ≤ 5 s, exige marca `cache-hit`), `0010 RNF-001 en frío` y `0010 RNF-001 con puntero` (150 ms de *hover*); banco de 200 notas (3 grandes 181/120/64 KiB) vía `perfVaultNotes`/`seedContentPerf`/fixture `contentPerf` (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --list`
   - EXPECT: lista las 3 pruebas nuevas y ya no la "sonda"; contra el código anterior a T-130, (a) falla por ausencia de la marca `cache-hit`.
-- [ ] T-138 — Correr (a), (b) y (c) en Chromium real y anotar cifras en `history.md`; **cierra T-050** si (a) pasa (cubre RNF-001) [zona: sistema]
+  - **HECHA (2026-10-25):** `--list` → 3 pruebas, sin «sonda». Commit f76f782. Ajuste: (b) pasa a informe de ruta (ver T-138) y los tiers por tamaño en (a) (enmienda B-1b, commit 2481dcc).
+- [x] T-138 — Correr (a), (b) y (c) en Chromium real y anotar cifras en `history.md`; **cierra T-050** si (a) pasa (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts`
   - EXPECT: (a) `passed` con p95 ≤ 150 ms y todas las muestras `cache-hit`; (b) y (c) imprimen mediana/p95 por tamaño (sin umbral hasta la decisión B-1; con B-1 aceptado según la recomendación: 64 KiB ≤ 150 ms y ~200 KiB ≤ 220 ms en frío).
-- [ ] T-139 — No degradación de RNF-001 de 0009 con el precálculo activo: `workspace-perf.spec.ts` + variante con 40 notas ≥ 32 KiB entre las 1 000, `PerformanceObserver('longtask')` durante el precálculo (cubre RNF-001) [zona: sistema]
+  - **HECHA (2026-10-25, AIRA).** Causa raíz corregida primero: el Worker reventaba en Chromium real (`document is not defined` — build *browser* de `decode-named-character-reference`); plugin de Vite scoped al Worker → build node (commit 08c4a5e, `parseWorker` 44 989 B gzip < 47 104). (a) verde con tiers por tamaño (64 KiB p95 29 ms, 120 KiB 52 ms, 181 KiB 238 ms ≤ 250); todas `cache-hit`. (b)/(c) informes: 181 KiB 100 % `cache-hit` (el precálculo gana la carrera → `cold` no determinista, es un hallazgo; baseline frío = sonda T-050 204 ms). Cifras completas en history.md 2026-10-25. Commits 2481dcc, 02e008b.
+- [x] T-139 — No degradación de RNF-001 de 0009 con el precálculo activo: `workspace-perf.spec.ts` + variante con 40 notas ≥ 32 KiB entre las 1 000, `PerformanceObserver('longtask')` durante el precálculo (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/workspace-perf.spec.ts`
   - EXPECT: p95 ≤ 150 ms en ambas variantes; 0 tareas largas > 50 ms atribuibles al programador.
+  - **HECHA (2026-10-25):** 0009 p95 32,9 ms; variante 40 grandes p95 30,2 ms (≤150); 0 tareas largas > 50 ms del programador. `seedNotesBulk({bigEvery})`. Commit 37b6eec.
 
 ### F · Lógica
 **F.0 · Dependencias**
