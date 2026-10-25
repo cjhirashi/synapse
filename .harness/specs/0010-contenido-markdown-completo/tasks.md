@@ -323,51 +323,51 @@ actualizado: 2026-10-24
   - EXPECT: `27 + n passed`, 0 failed (nada más usando `:15984`).
 
 **F.2 · Bug `.md` en servidor y cliente (batería común + delta del contrato de 0008)**
-- [ ] T-063 [rojo] — `backend/tests/fixtures/note_rules_cases.json`: `X/.md`, `X/.MD`, `.md`, `X/ .md` → `validation-error:path`; `X/a.md`, `.md/a.md` → `null` (cubre RF-007) [zona: test]
+- [x] T-063 [rojo] — `backend/tests/fixtures/note_rules_cases.json`: `X/.md`, `X/.MD`, `.md`, `X/ .md` → `validation-error:path`; `X/a.md`, `.md/a.md` → `null` (cubre RF-007) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_rules.py`
   - EXPECT: 4 casos fallan (hoy `check_path` los acepta).
-- [ ] T-064 [rojo] — `test_note_contract.py`: el patrón `path` de `note.schema.json` coincide con `check_path` en todos los casos `path` de la batería (cubre RF-007) [zona: test]
+- [x] T-064 [rojo] — `test_note_contract.py`: el patrón `path` de `note.schema.json` coincide con `check_path` en todos los casos `path` de la batería (cubre RF-007) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_contract.py`
   - EXPECT: falla en `X/.md` (el patrón actual lo acepta).
-- [ ] T-065 [rojo] — `test_note_sync_push.py` (CouchDB real): revisión con `path` `X/.md` → `validation-error:path` y la anterior intacta; `X/a.md` aceptada (cubre RF-007) [zona: test]
+- [x] T-065 [rojo] — `test_note_sync_push.py` (CouchDB real): revisión con `path` `X/.md` → `validation-error:path` y la anterior intacta; `X/a.md` aceptada (cubre RF-007) [zona: test]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_sync_push.py -k "md"`
   - EXPECT: falla (el push hoy la acepta).
-- [ ] T-066 — `core/note_rules.py` `check_path`: último segmento `.md` sin mayúsculas → inválido (cubre RF-007) [zona: núcleo]
+- [x] T-066 — `core/note_rules.py` `check_path`: último segmento `.md` sin mayúsculas → inválido (cubre RF-007) [zona: núcleo]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_rules.py tests/test_note_sync_push.py`
   - EXPECT: `passed`.
-- [ ] T-067 — Delta de `0008-vault-editor/contracts/note.schema.json` (patrón y descripción de `path`, PLAN-0010 §4) (cubre RF-007) [doc] [zona: contrato]
+- [x] T-067 — Delta de `0008-vault-editor/contracts/note.schema.json` (patrón y descripción de `path`, PLAN-0010 §4) (cubre RF-007) [doc] [zona: contrato]
   - CHECK: `cd backend && python3 -m pytest -q tests/test_note_contract.py && bash ../.harness/gate/check.sh | grep 0008-vault`
   - EXPECT: `passed`; 0008 en ✅ (re-anclado en T-005).
-- [ ] T-068 [rojo] — `notes/noteRules.test.ts` con la batería ampliada (cubre RF-007) [zona: test]
+- [x] T-068 [rojo] — `notes/noteRules.test.ts` con la batería ampliada (cubre RF-007) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteRules.test.ts`
   - EXPECT: fallan los 4 casos nuevos.
-- [ ] T-069 — `notes/noteRules.ts` `checkPath` (cubre RF-007) [zona: núcleo]
+- [x] T-069 — `notes/noteRules.ts` `checkPath` (cubre RF-007) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/noteRules.test.ts`
   - EXPECT: `passed`.
 
 **F.3 · Carpetas y destino**
-- [ ] T-070 [rojo] — `notes/folders.test.ts` (`parentFolder`, `ancestors`, `joinPath`, `checkFolderName`, `folderExists` con NFKC+casefold) + `notes/untitled.test.ts` (por carpeta) (cubre RF-001, RF-003, RF-004, RF-005, RF-042) [zona: test]
+- [x] T-070 [rojo] — `notes/folders.test.ts` (`parentFolder`, `ancestors`, `joinPath`, `checkFolderName`, `folderExists` con NFKC+casefold) + `notes/untitled.test.ts` (por carpeta) (cubre RF-001, RF-003, RF-004, RF-005, RF-042) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/folders.test.ts src/notes/untitled.test.ts`
   - EXPECT: falla al importar `./folders` y el caso de carpeta de `untitled`.
-- [ ] T-071 — `notes/folders.ts` + `notes/untitled.ts` (cubre RF-001, RF-003, RF-004, RF-005, RF-042) [zona: núcleo]
+- [x] T-071 — `notes/folders.ts` + `notes/untitled.ts` (cubre RF-001, RF-003, RF-004, RF-005, RF-042) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/folders.test.ts src/notes/untitled.test.ts`
   - EXPECT: `passed`.
-- [ ] T-072 [rojo] — `noteStore.test.ts`: `create` en carpeta (título relativo, `/` anida, sin título → "Sin título n" de esa carpeta), `Carpeta/` rechazada sin escribir, puerta RF-008 en `save` y `softDelete` (P-12) (cubre RF-001, RF-003, RF-007, RF-008) [zona: test] [P-12]
+- [x] T-072 [rojo] — `noteStore.test.ts`: `create` en carpeta (título relativo, `/` anida, sin título → "Sin título n" de esa carpeta), `Carpeta/` rechazada sin escribir, puerta RF-008 en `save` y `softDelete` (P-12) (cubre RF-001, RF-003, RF-007, RF-008) [zona: test] [P-12]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: fallan las pruebas nuevas (hoy crea `Carpeta/.md`).
-- [ ] T-073 — `notes/noteStore.ts` (`titleToPath`, `create(…, folder)`, puerta RF-008) + `notes/messages.ts` (carpeta y ruta inválida) (cubre RF-001, RF-003, RF-004, RF-005, RF-007, RF-008) [zona: almacén]
+- [x] T-073 — `notes/noteStore.ts` (`titleToPath`, `create(…, folder)`, puerta RF-008) + `notes/messages.ts` (carpeta y ruta inválida) (cubre RF-001, RF-003, RF-004, RF-005, RF-007, RF-008) [zona: almacén]
   - CHECK: `cd frontend && npx vitest run src/notes`
   - EXPECT: `passed`.
-- [ ] T-074 [rojo] — `VaultWorkspacePage.test.tsx` + `NoteSidebar.test.tsx`: carpeta activa real (raíz al entrar, padre al abrir, clic/Enter en carpeta, "Raíz"; ←/→ no la cambian), "Nueva nota" en la carpeta activa, "Nueva carpeta" (crea `…/Sin título.md`, despliega, abre en edición; vacío/tramo vacío/control/duplicada con su mensaje y sin escribir), `revealFolder` (despliega y desplaza sólo el panel) (cubre RF-001, RF-002, RF-003, RF-004, RF-005, RF-042, RF-043, RF-055) [zona: test]
+- [x] T-074 [rojo] — `VaultWorkspacePage.test.tsx` + `NoteSidebar.test.tsx`: carpeta activa real (raíz al entrar, padre al abrir, clic/Enter en carpeta, "Raíz"; ←/→ no la cambian), "Nueva nota" en la carpeta activa, "Nueva carpeta" (crea `…/Sin título.md`, despliega, abre en edición; vacío/tramo vacío/control/duplicada con su mensaje y sin escribir), `revealFolder` (despliega y desplaza sólo el panel) (cubre RF-001, RF-002, RF-003, RF-004, RF-005, RF-042, RF-043, RF-055) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx src/notes/NoteSidebar.test.tsx`
   - EXPECT: fallan las pruebas nuevas.
-- [ ] T-075 — `activeFolder` en `Workspace`, `NoteSidebarHandle` (`startRename`, `remove`, `revealFolder`) y formulario "Nueva carpeta" persistente (cubre RF-001…RF-005, RF-042, RF-043, RF-055) [zona: pantalla]
+- [x] T-075 — `activeFolder` en `Workspace`, `NoteSidebarHandle` (`startRename`, `remove`, `revealFolder`) y formulario "Nueva carpeta" persistente (cubre RF-001…RF-005, RF-042, RF-043, RF-055) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && CV --grep "0010 V-12 "`
   - EXPECT: vitest `passed`; V-12 completa en verde (crear carpeta real, error de duplicada).
-- [ ] T-076 [rojo] — RF-008: una nota existente con ruta inválida (sembrada directamente en la réplica) se lista, se abre, guardar pide renombrar con "Renombrar" y conserva el borrador; borrar también lo pide (cubre RF-008) [zona: test] [P-12]
+- [x] T-076 [rojo] — RF-008: una nota existente con ruta inválida (sembrada directamente en la réplica) se lista, se abre, guardar pide renombrar con "Renombrar" y conserva el borrador; borrar también lo pide (cubre RF-008) [zona: test] [P-12]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditorFrontmatter.test.tsx src/notes/VaultWorkspacePage.test.tsx -t "RF-008"`
   - EXPECT: fallan.
-- [ ] T-077 — Aviso RF-008 en `NoteEditor` (botón → `startRename`) y en el flujo de borrar (cubre RF-008) [zona: pantalla]
+- [x] T-077 — Aviso RF-008 en `NoteEditor` (botón → `startRename`) y en el flujo de borrar (cubre RF-008) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src`
   - EXPECT: `passed`.
 

@@ -555,7 +555,7 @@ test("RF-004: «Nueva carpeta» duplicada muestra el error y no crea nada", asyn
   await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
   await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
-  expect(screen.getByRole("alert")).toHaveTextContent("Ya hay una carpeta «Proyectos» aquí.");
+  expect(screen.getByRole("alert")).toHaveTextContent("Ya existe una carpeta con ese nombre («Proyectos»).");
   expect((await value.notes.list(VAULT)).length).toBe(1); // sólo la nota sembrada
 });
 

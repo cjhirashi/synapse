@@ -29,7 +29,7 @@ export function folderNameMessage(code: "empty" | "empty-segment" | "control" | 
     case "control":
       return "El nombre no puede tener caracteres de control.";
     case "duplicate":
-      return `Ya hay una carpeta «${name}» aquí.`;
+      return `Ya existe una carpeta con ese nombre («${name}»).`;
   }
 }
 
