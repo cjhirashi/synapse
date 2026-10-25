@@ -5,13 +5,15 @@
 //   - chunks propios para Mermaid, svg-pan-zoom, frontmatter (yaml) y cada gramática extra;
 //   - ninguno de ellos es importación estática de la entrada ni del editor (sólo `import()`).
 // Bases medidas con `npm run build` en 29470e0: entrada 141 660 B, editor 316 428 B (gzip -9).
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { gzipSync } from "node:zlib";
 
 const DIST = resolve(import.meta.dirname, "../dist");
 const ENTRY_LIMIT = 141_660 + 15 * 1024; // 157 020
 const EDITOR_LIMIT = 316_428 + 40 * 1024; // 357 388
+// SPEC-0010 Enmienda 1 (RNF-002, §10.9): el Worker de parseo va en su propio chunk, ≤ 46 KiB gzip.
+const WORKER_LIMIT = 46 * 1024; // 47 104
 
 /** Chunks que deben existir aparte (patrón sobre el nombre del archivo emitido o su fuente). */
 const SEPARATE = {
@@ -67,6 +69,26 @@ for (const [label, pattern] of Object.entries(SEPARATE)) {
   for (const [rootLabel, root] of [["entrada", entry], ["editor", editor]]) {
     const leaked = staticClosure(root).filter((chunk) => matching.includes(chunk));
     if (leaked.length > 0) failures.push(`${label} es importación estática de la ${rootLabel}: ${leaked.map((c) => c.file).join(", ")}`);
+  }
+}
+
+// Chunk del Worker de parseo (SPEC-0010 §10.9): Vite lo compila en un build de rollup aparte, así que
+// NO está en `manifest.json` (por eso no puede ser importación estática de la entrada ni del editor);
+// se busca directo en `dist/assets` y se verifica su tamaño gzip.
+const workerFiles = readdirSync(resolve(DIST, "assets")).filter((file) => /parseWorker.*\.js$/.test(file));
+if (workerFiles.length === 0) {
+  failures.push("chunk parseWorker ausente");
+} else {
+  for (const file of workerFiles) {
+    const size = gzipSize(`assets/${file}`);
+    console.log(`parseWorker: ${size} B gzip (límite ${WORKER_LIMIT})`);
+    if (size > WORKER_LIMIT) failures.push(`parseWorker ${size} B > ${WORKER_LIMIT} B gzip`);
+  }
+  // Defensa en profundidad: que ningún chunk del manifest con «parseWorker» en el nombre sea alcanzable
+  // estáticamente desde la entrada o el editor (no debería existir: el Worker va aparte).
+  for (const [rootLabel, root] of [["entrada", entry], ["editor", editor]]) {
+    const leaked = staticClosure(root).filter((chunk) => /parseWorker/i.test(chunk.file ?? ""));
+    if (leaked.length > 0) failures.push(`parseWorker es importación estática de la ${rootLabel}: ${leaked.map((c) => c.file).join(", ")}`);
   }
 }
 
