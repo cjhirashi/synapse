@@ -59,6 +59,8 @@ export interface ViewProps {
   errorLine?: number | null;
   /** Registra «Ir a la línea N» (como `registerFlush`); sólo la vista Código. */
   registerReveal?: (reveal: ((line: number) => void) | null) => void;
+  /** Bloque heredado protegido que no se entrega a la vista y se re-antepone al emitir (P-6); sólo Visual. */
+  prefix?: string;
 }
 
 export interface NoteEditorViews {
@@ -128,6 +130,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    */
   const [props, setProps] = useState<Record<string, unknown>>({});
   const [codeText, setCodeText] = useState<string | null>(null);
+  /**
+   * YAML heredado en `content` (NC-2, RF-044/RF-045): `prefix` es el bloque estricto protegido que no se
+   * entrega a Visual (P-6); `legacyNotice` es el aviso de la sesión (`migrate` antes de guardar, `moved`
+   * tras guardar, `looks-yaml` cuando el inicio parece YAML pero no se trata como propiedades).
+   */
+  const [prefix, setPrefix] = useState("");
+  const [legacyNotice, setLegacyNotice] = useState<"migrate" | "moved" | "looks-yaml" | null>(null);
+  /** Fuerza el remontaje del `PropertiesForm` cuando `beginEdit` reinicia las propiedades (migración async). */
+  const [formKey, setFormKey] = useState(0);
   /** mdast precalculado del `content` cargado (RNF-001), o `null` si no estaba en la caché. */
   const [preparsed, setPreparsed] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("read");
@@ -162,6 +173,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   codeTextRef.current = codeText;
   const viewRef = useRef(view);
   viewRef.current = view;
+  const legacyNoticeRef = useRef(legacyNotice);
+  legacyNoticeRef.current = legacyNotice;
   /** Módulo `frontmatter` cargado con `import()` al pasar a edición (lectura no lo descarga, RNF-002). */
   const fmRef = useRef<typeof Frontmatter | null>(null);
   const fmPromise = useRef<Promise<typeof Frontmatter> | null>(null);
@@ -195,8 +208,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       (view === "code"
         ? codeText !== (fmRef.current ? fmRef.current.composeCode(note.frontmatter, note.content) : codeText)
         : draft !== note.content || canonical(props) !== canonical(note.frontmatter)));
-  /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado (§10.4). */
-  const savedPreparsed = note !== null && draft === note.content ? preparsed : null;
+  /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado y no hay bloque protegido (§10.4, P-6). */
+  const savedPreparsed = note !== null && prefix === "" && draft === note.content ? preparsed : null;
+  /** Lo que ve la vista Visual: el cuerpo sin el bloque heredado protegido (P-6; el bloque se re-antepone al emitir). */
+  const visualValue = prefix !== "" && draft.startsWith(prefix) ? draft.slice(prefix.length) : draft;
 
   /**
    * Texto y propiedades vigentes de la sesión (síncrono, por refs). En Código parte del texto compuesto
@@ -291,11 +306,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         setDraft(loaded.content);
         setProps(loaded.frontmatter);
         setCodeText(null);
+        setPrefix("");
+        setLegacyNotice(null);
         setMode(editOnOpenRef.current ? "edit" : "read");
         setFocusEditor(editOnOpenRef.current);
         setView("visual");
-        // Al abrir ya en edición, el módulo `frontmatter` se precarga (lo necesitará Código/guardar).
-        if (editOnOpenRef.current) void loadFm();
       },
       (err) => {
         if (!alive) return;
@@ -399,10 +414,41 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setError(null);
   }, []);
 
-  // Al pasar a edición se precarga el módulo `frontmatter` (Código y guardar lo necesitan; lectura no).
+  /**
+   * Al entrar en edición (NC-2, RF-044/RF-045): carga `frontmatter` y clasifica la nota. `migrate` →
+   * la sesión parte de `{props: bloque parseado, body sin el bloque}` (aviso previo, Guardar habilitado);
+   * `looks-yaml` → el bloque estricto queda protegido (`prefix`) y se avisa; `none` → nada.
+   */
+  const beginEdit = useCallback(async () => {
+    const note = noteRef.current;
+    if (note === null) return;
+    const fm = await loadFm();
+    if (noteRef.current !== note) return; // la nota cambió mientras cargaba el módulo
+    const kind = fm.classifyLegacy(note.frontmatter, note.content);
+    setFormKey((k) => k + 1); // remonta el formulario con las propiedades que fije esta clasificación
+    if (kind === "migrate") {
+      const { yaml, body } = fm.splitFrontmatter(note.content);
+      const parsed = fm.parseFrontmatterYaml(yaml ?? "");
+      const nextProps = "value" in parsed ? parsed.value : {};
+      propsRef.current = nextProps;
+      draftRef.current = body;
+      setProps(nextProps);
+      setDraft(body);
+      setPrefix("");
+      setLegacyNotice("migrate");
+    } else if (kind === "looks-yaml") {
+      const { yaml, body } = fm.splitFrontmatter(note.content);
+      setPrefix(yaml === null ? "" : note.content.slice(0, note.content.length - body.length));
+      setLegacyNotice("looks-yaml");
+    } else {
+      setPrefix("");
+      setLegacyNotice(null);
+    }
+  }, [loadFm]);
+
   useEffect(() => {
-    if (mode === "edit") void loadFm();
-  }, [mode, loadFm]);
+    if (mode === "edit") void beginEdit();
+  }, [mode, beginEdit]);
 
   /**
    * La nota está en la papelera (la mandó otro dispositivo) y aún hay borrador: lo restaura
@@ -510,6 +556,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         codeTextRef.current = text;
         setCodeText(text);
       }
+      // NC-2 (RF-044): al guardar una migración, el bloque ya está fuera del texto; avísalo.
+      if (legacyNoticeRef.current === "migrate") setLegacyNotice("moved");
       setSaved(true);
       return true;
     } catch (err) {
@@ -704,6 +752,22 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
             </div>
           )}
+          {mode === "edit" && legacyNotice === "migrate" && (
+            <p className="note-editor-notice" role="status">
+              El inicio de la nota es YAML heredado: sus propiedades se moverán a los metadatos al guardar.
+            </p>
+          )}
+          {mode === "edit" && legacyNotice === "moved" && (
+            <p className="note-editor-notice" role="status">
+              Las propiedades se movieron fuera del texto.
+            </p>
+          )}
+          {mode === "edit" && legacyNotice === "looks-yaml" && (
+            <div className="note-editor-notice" role="status">
+              <p>El inicio de la nota parece YAML, pero no se trata como propiedades (ya hay metadatos o el bloque no es válido).</p>
+              {prefix !== "" && <pre className="note-editor-legacy-block">{prefix}</pre>}
+            </div>
+          )}
           {error && (
             <p role="alert">
               {error}
@@ -761,12 +825,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {/* En Visual, el formulario parte de las propiedades vigentes (`props`) y las emite con `onProps`.
               `key={note.rev}` lo reinicia tras guardar o cambiar de nota; al volver de Código se remonta
               con `props` ya actualizado por `switchView`, así alternar no pierde ediciones. */}
-          {mode === "edit" && view === "visual" && <PropertiesForm key={note.rev} frontmatter={props} onChange={onProps} />}
+          {mode === "edit" && view === "visual" && <PropertiesForm key={`${note.rev}-${formKey}`} frontmatter={props} onChange={onProps} />}
 
           {mode === "read" ? (
             <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={savedPreparsed} />
           ) : view === "visual" ? (
-            <Visual value={draft} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}

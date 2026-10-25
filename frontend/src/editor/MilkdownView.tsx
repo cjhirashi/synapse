@@ -80,6 +80,12 @@ interface MilkdownViewProps {
    * ES el `content` guardado de la nota; `null`/ausente → parseo en frío como siempre.
    */
   preparsedMdast?: string | null;
+  /**
+   * Bloque heredado protegido (SPEC-0010 RF-045, P-6): texto que NO se entrega a Milkdown (no se parsea
+   * ni se puede corromper al editar) y que se re-antepone byte a byte a cada markdown emitido. Por
+   * defecto `""` (sin bloque protegido).
+   */
+  prefix?: string;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -95,13 +101,16 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "" }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
-  /** El markdown que tiene el editor ahora: el último recibido del padre o emitido por él. */
+  /** El markdown que tiene el editor ahora (SIN el `prefix`): el último recibido del padre o emitido por él. */
   const current = useRef(value);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  /** `prefix` vigente para re-anteponerlo al emitir (P-6); por ref, lo leen los cierres de emisión. */
+  const prefixRef = useRef(prefix);
+  prefixRef.current = prefix;
   const onViewRef = useRef(onView);
   onViewRef.current = onView;
   const onDirtyRef = useRef(onDirty);
@@ -138,7 +147,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
     const markdown = target.editor.ctx.get(serializerCtx)(doc);
     if (markdown === current.current) return;
     current.current = markdown;
-    onChangeRef.current(markdown);
+    onChangeRef.current(prefixRef.current + markdown);
   }
 
   /** Destruye el editor en marcha, esperando a que termine de crearse si aún no lo hizo. */
@@ -178,7 +187,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           if (running.current?.editor === editor && running.current.view) settle(running.current, running.current.view.state.doc);
           if (markdown === current.current) return;
           current.current = markdown;
-          onChangeRef.current(markdown);
+          onChangeRef.current(prefixRef.current + markdown);
         });
       })
       .use(commonmark)

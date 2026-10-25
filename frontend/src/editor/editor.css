@@ -367,6 +367,20 @@
   font-size: 14px;
 }
 
+/* SPEC-0010 RF-045, P-6: el bloque heredado protegido mostrado literal dentro del aviso. */
+.note-editor-legacy-block {
+  flex-basis: 100%;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
 .note-editor-confirm p {
   margin: 0;
   flex: 1 1 100%;

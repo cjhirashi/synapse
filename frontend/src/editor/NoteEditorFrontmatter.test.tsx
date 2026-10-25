@@ -113,6 +113,43 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     expect((await value.notes.get(note.id)).frontmatter).toEqual({ a: 1 });
   });
 
+  it("migrate (RF-044): abrir en edición una nota con YAML heredado lo trata como propiedades y avisa antes de guardar", async () => {
+    await setup("---\ntitulo: X\n---\n# B\n", {});
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(await screen.findByRole("textbox", { name: "Valor de «titulo»" })).toHaveValue("X");
+    expect(visual()).toHaveValue("# B\n"); // el bloque salió del cuerpo en la sesión
+    expect(screen.getByText(/se moverán/i)).toBeInTheDocument(); // aviso previo (P-5)
+    expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled(); // Guardar habilitado sin editar
+  });
+
+  it("migrate: guardar mueve el bloque a frontmatter, lo quita del content y avisa «se movieron»", async () => {
+    const { value, note } = await setup("---\ntitulo: X\n---\n# B\n", {});
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    const reloaded = await value.notes.get(note.id);
+    expect(reloaded.frontmatter).toEqual({ titulo: "X" });
+    expect(reloaded.content).toBe("# B\n");
+    expect(screen.getByText(/se movieron fuera/i)).toBeInTheDocument();
+  });
+
+  it("migrate: salir sin guardar no cambia la nota (RF-044)", async () => {
+    const { value, note } = await setup("---\ntitulo: X\n---\n# B\n", {});
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    const reloaded = await value.notes.get(note.id); // no se guardó nada
+    expect(reloaded.frontmatter).toEqual({});
+    expect(reloaded.content).toBe("---\ntitulo: X\n---\n# B\n");
+  });
+
+  it("looks-yaml (RF-045): con frontmatter ya presente, el bloque queda como cuerpo protegido y avisa en Visual", async () => {
+    const { value, note } = await setup("---\nb: 2\n---\nBody", { a: 1 });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(screen.getByText(/parece YAML/i)).toBeInTheDocument();
+    expect(visual()).toHaveValue("Body"); // el bloque protegido no se muestra en el editor
+    expect((await value.notes.get(note.id)).content).toBe("---\nb: 2\n---\nBody"); // intacto
+  });
+
   it("alternar Visual↔Código sin guardar conserva el body editado y el cambio de propiedad", async () => {
     await setup("# Cuerpo\n", { a: "x" });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));

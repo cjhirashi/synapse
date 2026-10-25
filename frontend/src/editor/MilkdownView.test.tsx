@@ -8,7 +8,7 @@ import { parseMarkdownToJson } from "./markdown/parseStage";
 import { MilkdownView } from "./MilkdownView";
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -17,6 +17,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       readOnly={props.readOnly ?? false}
       onChange={onChange}
       label="Visual"
+      prefix={props.prefix}
       onView={(v) => {
         view = v;
       }}
@@ -76,6 +77,22 @@ describe("MilkdownView", () => {
     });
     await waitFor(() => expect(onChange).toHaveBeenCalled());
     expect(onChange.mock.calls.at(-1)?.[0].trim()).toBe("hola mundo");
+  });
+
+  // SPEC-0010 RF-045, P-6: el bloque heredado protegido no se parsea y se re-antepone byte a byte al emitir.
+  it("prefix: no renderiza el bloque protegido y lo re-antepone al emitir", async () => {
+    const onChange = vi.fn();
+    const { container, view } = await mount({ value: "# Cuerpo", prefix: "---\nb: 2\n---\n", onChange });
+    const prose = container.querySelector(".ProseMirror");
+    expect(prose).toHaveTextContent("Cuerpo");
+    expect(prose).not.toHaveTextContent("b: 2"); // el bloque no llegó a Milkdown
+    act(() => {
+      view.dispatch(view.state.tr.insertText("!", view.state.doc.content.size - 1));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const emitted = onChange.mock.calls.at(-1)?.[0] as string;
+    expect(emitted.startsWith("---\nb: 2\n---\n")).toBe(true);
+    expect(emitted).toContain("Cuerpo!");
   });
 
   // RF-008
