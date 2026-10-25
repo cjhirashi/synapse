@@ -3,9 +3,9 @@
 // es el texto compuesto `---\nYAML\n---\nbody`. Alternar no pierde nada; guardar escribe `content` y
 // `frontmatter` juntos. Vistas falsas (textarea) + el `PropertiesForm` real que monta el editor.
 import { type ComponentProps } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DataMemoryRouter } from "../test-utils/router";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { SyncContextValue } from "../sync/useSync";
@@ -148,6 +148,27 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     expect(screen.getByText(/parece YAML/i)).toBeInTheDocument();
     expect(visual()).toHaveValue("Body"); // el bloque protegido no se muestra en el editor
     expect((await value.notes.get(note.id)).content).toBe("---\nb: 2\n---\nBody"); // intacto
+  });
+
+  it("RF-008: una nota con ruta inválida se abre, se lee y avisa de «Renombrar»", async () => {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const id = `note:${VAULT}:aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee`;
+    await db.put({ _id: id, type: "note", vault_id: VAULT, path: "X/.md", frontmatter: {}, content: "# Rota\n", created_at: "2026-10-25T00:00:00.000000Z", updated_at: "2026-10-25T00:00:00.000000Z", deleted_at: null });
+    const onRename = vi.fn();
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}>
+          <NoteEditor noteId={id} views={views} onRename={onRename} />
+        </WithSync>
+      </DataMemoryRouter>,
+    );
+    // Se abre y se lee (el contenido está disponible), pero avisa de que la ruta no es válida.
+    expect(await screen.findByRole("textbox", { name: "Contenido de la nota" })).toHaveValue("# Rota\n");
+    const alerta = screen.getByRole("alert");
+    expect(alerta).toHaveTextContent(/ruta de esta nota no es válida/i);
+    await userEvent.click(within(alerta).getByRole("button", { name: "Renombrar" }));
+    expect(onRename).toHaveBeenCalled();
   });
 
   it("alternar Visual↔Código sin guardar conserva el body editado y el cambio de propiedad", async () => {

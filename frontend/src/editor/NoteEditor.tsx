@@ -19,7 +19,7 @@
 import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
-import { checkContent, checkFrontmatter } from "../notes/noteRules";
+import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -91,6 +91,8 @@ interface NoteEditorProps {
   onForward?: () => void;
   /** Una carpeta de las migas: el árbol debe mostrarla (RF-055). */
   onRevealFolder?: (folderPath: string) => void;
+  /** Renombrar la nota abierta (RF-008): el editor lo pide cuando su ruta es inválida. */
+  onRename?: () => void;
   /**
    * Caché de parseo del workspace (RNF-001, §10.3/§10.6): al abrir en lectura (o en Visual el `content`
    * guardado) se consulta por `{id, rev}`; un acierto o una petición en vuelo evitan reparsear con
@@ -109,7 +111,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder, parseCache = null },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder, onRename, parseCache = null },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -644,6 +646,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   if (note === null) return error ? <p role="alert">{error}</p> : <p>Cargando…</p>;
 
   const inConflict = conflicts.some((conflict) => conflict.kind === "note" && conflict.id === note.id);
+  // RF-008: una nota con ruta inválida (sembrada por una réplica vieja) se abre y se lee, pero no se
+  // guarda ni se borra hasta renombrarla; el aviso ofrece «Renombrar» (lo atiende la sidebar).
+  const pathInvalid = checkPath(note.path) !== null;
 
   return (
     <section className="note-editor" aria-label="Editor de nota" onKeyDown={onKeyDown}>
@@ -739,6 +744,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
       <div className="note-editor-body">
         <div className="note-editor-column">
+          {pathInvalid && (
+            <div className="note-editor-notice" role="alert">
+              <p>La ruta de esta nota no es válida. Renómbrala para poder guardarla o borrarla.</p>
+              <button type="button" onClick={() => onRename?.()}>
+                Renombrar
+              </button>
+            </div>
+          )}
           {inConflict && (
             <p className="note-editor-notice" role="status">
               Esta nota tiene versiones en conflicto. <Link to="/conflicts">Resolver en Conflictos</Link>

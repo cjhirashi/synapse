@@ -215,7 +215,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} />
             </Suspense>
           )}
         </div>
