@@ -283,42 +283,42 @@ actualizado: 2026-10-24
 
 ### F · Lógica
 **F.0 · Dependencias**
-- [ ] T-051 — Instalar con versión exacta: `@milkdown/plugin-clipboard@7.22.3 prosemirror-highlight@0.16.0 @codemirror/lang-yaml@6.1.3 @codemirror/lang-python@6.2.1 @codemirror/lang-sql@6.10.0 @codemirror/lang-json@6.0.2 @codemirror/legacy-modes@6.5.5 yaml@2.9.1 mermaid@11.17.2 svg-pan-zoom@3.6.2` (cubre RF-023, RF-027, RF-046, RF-052, RNF-002) [zona: sistema]
+- [x] T-051 — Instalar con versión exacta: `@milkdown/plugin-clipboard@7.22.3 prosemirror-highlight@0.16.0 @codemirror/lang-yaml@6.1.3 @codemirror/lang-python@6.2.1 @codemirror/lang-sql@6.10.0 @codemirror/lang-json@6.0.2 @codemirror/legacy-modes@6.5.5 yaml@2.9.1 mermaid@11.17.2 svg-pan-zoom@3.6.2` (cubre RF-023, RF-027, RF-046, RF-052, RNF-002) [zona: sistema]
   - CHECK: `cd frontend && npm install -E <lista> && npm ls prosemirror-view | grep -c "prosemirror-view@" && npm ls prosemirror-view | grep -v deduped | grep -c "prosemirror-view@" && npm run build`
   - EXPECT: versiones exactas en `package.json`; una sola instancia de `prosemirror-view` no deduplicada (`1`); build exit 0.
 
 **F.1 · Frontmatter de ida y vuelta (D1) y YAML heredado (NC-2)**
-- [ ] T-052 [rojo] — `editor/frontmatter.test.ts` recorre **todo** `contracts/frontmatter-yaml.cases.json` (`split`, `compose`, `parse`, `roundtrip`, `legacy`) (cubre RF-014, RF-015, RF-016, RF-017, RF-018, RF-044, RF-045) [zona: test]
+- [x] T-052 [rojo] — `editor/frontmatter.test.ts` recorre **todo** `contracts/frontmatter-yaml.cases.json` (`split`, `compose`, `parse`, `roundtrip`, `legacy`) (cubre RF-014, RF-015, RF-016, RF-017, RF-018, RF-044, RF-045) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/frontmatter.test.ts`
   - EXPECT: falla al importar `./frontmatter`.
-- [ ] T-053 — `editor/frontmatter.ts` con `yaml` 2.9.1 (opciones de PLAN-0010 §2.1) (cubre RF-014…RF-018, RF-044, RF-045) [zona: núcleo]
+- [x] T-053 — `editor/frontmatter.ts` con `yaml` 2.9.1 (opciones de PLAN-0010 §2.1) (cubre RF-014…RF-018, RF-044, RF-045) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/frontmatter.test.ts`
   - EXPECT: `passed` (11 + 3 + 28 + 22 + 10 casos).
-- [ ] T-054 [rojo] — `notes/noteStore.test.ts`: `save(id, content, rev, frontmatter)` escribe ambos; sin `frontmatter` conserva el anterior; rama de conflicto con el nuevo `frontmatter`; > 64 KiB rechazado sin escribir (cubre RF-012, RF-019, RF-022) [zona: test]
+- [x] T-054 [rojo] — `notes/noteStore.test.ts`: `save(id, content, rev, frontmatter)` escribe ambos; sin `frontmatter` conserva el anterior; rama de conflicto con el nuevo `frontmatter`; > 64 KiB rechazado sin escribir (cubre RF-012, RF-019, RF-022) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteStore.test.ts`
   - EXPECT: fallan las pruebas nuevas (`frontmatter` no se escribe).
-- [ ] T-055 — `notes/noteStore.ts` (`save` y `saveAsBranch` con `frontmatter`, `checkFrontmatter`) (cubre RF-012, RF-019, RF-022) [zona: almacén]
+- [x] T-055 — `notes/noteStore.ts` (`save` y `saveAsBranch` con `frontmatter`, `checkFrontmatter`) (cubre RF-012, RF-019, RF-022) [zona: almacén]
   - CHECK: `cd frontend && npx vitest run src/notes`
   - EXPECT: `passed`.
-- [ ] T-056 [rojo] — `editor/NoteEditorFrontmatter.test.tsx` (sesión): Visual = `{props, body}`, Código = texto compuesto; alternar sin guardar conserva todo; abrir en Código y guardar sin cambios deja `frontmatter` y `content` idénticos (complejos incluidos); guardar desde Visual sólo cambia `frontmatter` por el formulario; cambiar una propiedad marca "sucio"; `frontmatter.ts` no se pide en lectura (cubre RF-012, RF-014, RF-016, RF-020, RF-021) [zona: test]
+- [x] T-056 [rojo] — `editor/NoteEditorFrontmatter.test.tsx` (sesión): Visual = `{props, body}`, Código = texto compuesto; alternar sin guardar conserva todo; abrir en Código y guardar sin cambios deja `frontmatter` y `content` idénticos (complejos incluidos); guardar desde Visual sólo cambia `frontmatter` por el formulario; cambiar una propiedad marca "sucio"; `frontmatter.ts` no se pide en lectura (cubre RF-012, RF-014, RF-016, RF-020, RF-021) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditorFrontmatter.test.tsx`
   - EXPECT: fallan (la sesión aún no existe).
-- [ ] T-057 — Sesión de edición en `NoteEditor.tsx` (carga diferida de `./frontmatter`, `composeCode`, conversión al alternar, "sucio" canónico) y formulario conectado (cubre RF-012, RF-014, RF-016, RF-020, RF-021) [zona: pantalla]
+- [x] T-057 — Sesión de edición en `NoteEditor.tsx` (carga diferida de `./frontmatter`, `composeCode`, conversión al alternar, "sucio" canónico) y formulario conectado (cubre RF-012, RF-014, RF-016, RF-020, RF-021) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`, incluidas las suites de 0008 (`NoteEditor*.test.tsx`).
-- [ ] T-058 [rojo] — Guardar desde Código: separa el bloque a `frontmatter` y el resto a `content`; YAML inválido (cada código del contrato) no guarda ni cambia de vista, aviso `alert` con motivo y línea, "Ir a la línea N"; > 64 KiB con KiB en el aviso; `CodeView.test.tsx`: decoración de la línea de error y bloque YAML con `yamlFrontmatter` (cubre RF-015, RF-017, RF-019, RF-029) [zona: test]
+- [x] T-058 [rojo] — Guardar desde Código: separa el bloque a `frontmatter` y el resto a `content`; YAML inválido (cada código del contrato) no guarda ni cambia de vista, aviso `alert` con motivo y línea, "Ir a la línea N"; > 64 KiB con KiB en el aviso; `CodeView.test.tsx`: decoración de la línea de error y bloque YAML con `yamlFrontmatter` (cubre RF-015, RF-017, RF-019, RF-029) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditorFrontmatter.test.tsx src/editor/CodeView.test.tsx`
   - EXPECT: fallan las pruebas nuevas.
-- [ ] T-059 — Guardado desde Código en `NoteEditor.tsx` + `CodeView.tsx` (`yamlFrontmatter`, decoración de error, `registerReveal`) + mensajes en `notes/messages.ts` (cubre RF-015, RF-017, RF-019, RF-029) [zona: pantalla]
+- [x] T-059 — Guardado desde Código en `NoteEditor.tsx` + `CodeView.tsx` (`yamlFrontmatter`, decoración de error, `registerReveal`) + mensajes en `notes/messages.ts` (cubre RF-015, RF-017, RF-019, RF-029) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor src/notes && CV --grep "0010 V-6 "`
   - EXPECT: vitest `passed`; V-6 completa en verde (bloque YAML con fondo `--bg-secondary`).
-- [ ] T-060 [rojo] — NC-2: `migrate` (aviso previo P-5, Guardar habilitado sin ediciones, guardar mueve el bloque y muestra "Las propiedades se movieron fuera del texto", salir sin guardar no cambia nada ni pregunta) y `looks-yaml` (aviso en Visual; bloque estricto protegido byte a byte tras editar en Visual, P-6; forma corrompida = punto fijo) (cubre RF-020, RF-044, RF-045) [zona: test] [P-5, P-6]
+- [x] T-060 [rojo] — NC-2: `migrate` (aviso previo P-5, Guardar habilitado sin ediciones, guardar mueve el bloque y muestra "Las propiedades se movieron fuera del texto", salir sin guardar no cambia nada ni pregunta) y `looks-yaml` (aviso en Visual; bloque estricto protegido byte a byte tras editar en Visual, P-6; forma corrompida = punto fijo) (cubre RF-020, RF-044, RF-045) [zona: test] [P-5, P-6]
   - CHECK: `cd frontend && npx vitest run src/editor/NoteEditorFrontmatter.test.tsx src/editor/MilkdownView.test.tsx`
   - EXPECT: fallan las pruebas NC-2.
-- [ ] T-061 — `classifyLegacy` en `NoteEditor` + `prefix` en `MilkdownView` + avisos (cubre RF-020, RF-044, RF-045) [zona: pantalla]
+- [x] T-061 — `classifyLegacy` en `NoteEditor` + `prefix` en `MilkdownView` + avisos (cubre RF-020, RF-044, RF-045) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(1|2) "`
   - EXPECT: vitest `passed`; V-1/V-2 siguen en verde con la nota heredada sembrada.
-- [ ] T-062 — `notes/notes.integration.test.ts`: `frontmatter` editado sobrevive a push/pull entre dos réplicas reales y un choque de `frontmatter` queda para decisión manual (cubre RF-022) [zona: test]
+- [x] T-062 — `notes/notes.integration.test.ts`: `frontmatter` editado sobrevive a push/pull entre dos réplicas reales y un choque de `frontmatter` queda para decisión manual (cubre RF-022) [zona: test]
   - CHECK: `cd frontend && npm run test:sync`
   - EXPECT: `27 + n passed`, 0 failed (nada más usando `:15984`).
 

@@ -21,8 +21,13 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   programador). Commits f76f782, 08c4a5e, 2481dcc, 02e008b, 37b6eec. Session-End y
   cifras en `.harness/memory/history.md` (2026-10-25). **Checkpoint demostrable
   pendiente de Carlos** (ver él mismo las notas abriendo rápido / el p95 real).
-- [ ] **Slice 2 — Frontmatter editable**: T-051 (deps), T-052…T-062. Demoable:
+- [x] **Slice 2 — Frontmatter editable**: T-051 (deps), T-052…T-062. Demoable:
   editar propiedades en Visual o Código, guardar, sobrevive sync.
+  **CERRADA (2026-10-25, AIRA).** Sesión de edición D1 (props+body en Visual, texto
+  compuesto en Código), validación YAML con aviso+línea, YAML heredado (migrate/
+  looks-yaml con bloque protegido P-6). jsdom 1271/1271, typecheck, gate verde,
+  integración `test:sync` notas 11/11, visual Chromium V-1/V-2/V-6 22/22. Commits
+  efa1851, c1e8385, 7c44c4c, 80eeb90, a73b6f8, b419960, a0bf54a. Session-End en history.md.
 - [ ] **Slice 3 — Carpetas y rutas**: T-063…T-077. Demoable: crear/renombrar
   carpetas, migas de pan, nota con ruta inválida se repara.
 - [ ] **Slice 4 — Pegado, tablas, checkboxes**: T-078…T-083. Demoable: pegar
