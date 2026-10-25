@@ -7,7 +7,7 @@
 //   comparaciones de color no dependan de una copia de los valores.
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { CONTENT_NOTES, noteName, type ContentNote } from "./content-notes";
+import { CONTENT_NOTES, noteName, PERF_BIG_NOTES, perfVaultNotes, type ContentNote, type PerfNote } from "./content-notes";
 import { OUT_DIR } from "./out-dir";
 
 export const THEMES = ["dark", "light"] as const;
@@ -258,6 +258,32 @@ export async function seedContent(): Promise<SeededContent> {
   };
 }
 
+/** Usuario sembrado con el banco de 200 notas de rendimiento (§10.8): las 3 grandes + 197 pequeñas. */
+export interface SeededContentPerf extends Seeded {
+  notes: ContentNote[];
+  big: PerfNote[];
+}
+
+/**
+ * Bóveda «Rendimiento» con las 200 notas del banco (`perfVaultNotes`) escritas en la base CouchDB del
+ * usuario (como las dejaría otro dispositivo): el navegador las trae por el pull en cada contexto nuevo.
+ */
+export async function seedContentPerf(): Promise<SeededContentPerf> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Rendimiento", null);
+  const stamp = "2026-10-24T09:00:00.000Z";
+  const notes = perfVaultNotes();
+  await bulkDocs(user.cookie, notes.map((note) => noteDoc(vaultId, note, stamp)));
+  return {
+    email: user.email,
+    password: user.password,
+    vaults: [{ id: vaultId, name: "Rendimiento", icon: null }],
+    longNoteName: LONG_NOTE_NAME,
+    notes,
+    big: PERF_BIG_NOTES,
+  };
+}
+
 /** Despliega todas las carpetas del árbol y abre la nota `note` (clic en cada tramo de su ruta). */
 export async function openContentNote(page: Page, note: ContentNote): Promise<void> {
   const tree = page.getByRole("tree", { name: "Notas" });
@@ -438,10 +464,16 @@ export function expectExact(key: string, label: string, got: string, target: str
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf }>({
   content: [
     async ({}, use) => {
       await use(await seedContent());
+    },
+    { scope: "worker" },
+  ],
+  contentPerf: [
+    async ({}, use) => {
+      await use(await seedContentPerf());
     },
     { scope: "worker" },
   ],

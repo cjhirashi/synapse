@@ -70,6 +70,67 @@ export const HEADING_CASES: Array<{ key: string; md: string; ids: string[] }> = 
   { key: "espacios-y-mayúsculas", md: "#   Título  Con   Espacios  \n\n## Título Con Espacios\n", ids: ["título-con-espacios", "título-con-espacios-#2"] },
 ];
 
+/** Longitud en bytes UTF-8 (lo mismo que cuenta el navegador y la siembra). */
+const byteLen = (s: string): number => new TextEncoder().encode(s).length;
+
+/** Una nota grande del banco de rendimiento (§10.8): nombre visible, ruta, contenido y su encabezado final único. */
+export interface PerfNote {
+  key: string;
+  path: string;
+  name: string;
+  content: string;
+  /** Texto del último encabezado (marcador de «cuerpo legible completo» para las pruebas). */
+  lastHeading: string;
+}
+
+/**
+ * Nota grande de ~`targetKiB` KiB con la misma mezcla de bloques que `bigNote` (código en rotación y
+ * Mermaid cada 10 secciones) pero de tamaño parametrizable y con un encabezado final único por nombre,
+ * para que la prueba sepa cuándo el cuerpo está completo en el DOM. No reabre la misma nota: cada
+ * nombre es distinto (§10.8).
+ */
+function perfBigNote(name: string, targetKiB: number): string {
+  const target = targetKiB * 1024;
+  const filler = "lorem ipsum dolor sit amet ".repeat(125); // ~3,4 KiB
+  const lastHeading = `Fin de ${name}`;
+  const tail = [`## ${lastHeading}`, "", PARAGRAPH, ""];
+  const parts = [`# ${name}`, ""];
+  for (let i = 0; byteLen([...parts, ...tail].join("\n")) < target; i++) {
+    const sample = CODE_SAMPLES[i % CODE_SAMPLES.length];
+    parts.push(`## Sección ${i + 1}`, "", `${PARAGRAPH} ${filler}`, "", fence(sample.lang, sample.code), "");
+    if (i % 10 === 4) parts.push(fence("mermaid", i % 20 === 4 ? FLOW : SEQ), "");
+  }
+  parts.push(...tail);
+  return parts.join("\n");
+}
+
+/** Las 3 notas grandes del banco (§10.8a): ~181/120/64 KiB, en la raíz para poder abrirlas con un clic. */
+export const PERF_BIG_NOTES: PerfNote[] = [
+  { key: "perf-181", kib: 181 },
+  { key: "perf-120", kib: 120 },
+  { key: "perf-64", kib: 64 },
+].map(({ key, kib }) => {
+  const name = `Nota de ${kib} KiB`;
+  return { key, path: `${name}.md`, name, content: perfBigNote(name, kib), lastHeading: `Fin de ${name}` };
+});
+
+/**
+ * Banco de 200 notas para medir RNF-001 con parseo precalculado (§10.8): las 3 grandes
+ * (181/120/64 KiB, en la raíz) más 197 pequeñas de ~4 KiB repartidas en carpetas (ninguna llega al
+ * umbral de 32 KiB, así que sólo las 3 grandes se precalculan).
+ */
+export function perfVaultNotes(): ContentNote[] {
+  const big: ContentNote[] = PERF_BIG_NOTES.map((n) => ({ key: n.key, path: n.path, frontmatter: {}, content: n.content }));
+  const smallBody = `${"lorem ipsum dolor sit amet ".repeat(150)}`; // ~4 KiB
+  const small: ContentNote[] = Array.from({ length: 197 }, (_, i) => ({
+    key: `perf-small-${i}`,
+    path: `Notas/carpeta-${i % 20}/nota-${i}.md`,
+    frontmatter: {},
+    content: `# Nota pequeña ${i}\n\n${smallBody}\n`,
+  }));
+  return [...big, ...small];
+}
+
 export const CONTENT_NOTES: ContentNote[] = [
   {
     key: "props-types",
