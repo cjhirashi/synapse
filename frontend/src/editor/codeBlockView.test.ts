@@ -160,11 +160,12 @@ interface MermaidMount {
   editable?: boolean;
   renderer?: MermaidRenderer;
   columnWidth?: number;
+  panZoom?: CodeBlockDeps["panZoom"];
 }
 
-function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600 }: MermaidMount = {}): NodeView {
+function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600, panZoom }: MermaidMount = {}): NodeView {
   const node = schema.nodes.code_block.create({ language: "mermaid" }, text ? schema.text(text) : undefined);
-  const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth };
+  const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth, panZoom };
   const view = codeBlockViewFactory(deps)(node, { editable } as EditorView, () => 0, [], {} as never);
   // `toBeVisible` exige el nodo dentro del documento.
   document.body.append(view.dom);
@@ -395,6 +396,70 @@ describe("codeBlockView · Mermaid", () => {
     await vi.advanceTimersByTimeAsync(400);
     expect(render).toHaveBeenCalledTimes(1);
     expect(view.dom).toHaveTextContent("Escribe el diagrama en el bloque de arriba");
+  });
+
+  // RF-052: el zoom se conecta sólo si el diagrama excede, y el área se vuelve operable con el teclado.
+  describe("zoom", () => {
+    const handle = () => ({ destroy: vi.fn() });
+
+    it("zoom: un diagrama que cabe no carga ni conecta el zoom", async () => {
+      const panZoom = vi.fn(async () => handle());
+      mountMermaid({ renderer: { render: async () => fakeSvg(300) }, panZoom });
+      await flush();
+      expect(panZoom).not.toHaveBeenCalled();
+    });
+
+    it("zoom: uno ancho conecta el zoom con el área y los tres botones, y el área es enfocable y descrita", async () => {
+      const panZoom = vi.fn(async () => handle());
+      const view = mountMermaid({ renderer: { render: async () => fakeSvg(1400) }, panZoom });
+      await flush();
+      expect(panZoom).toHaveBeenCalledTimes(1);
+      const [zoomArea, svg, buttons] = panZoom.mock.calls[0] as unknown as [HTMLElement, SVGSVGElement, Record<string, HTMLButtonElement>];
+      expect(zoomArea).toBe(area(view));
+      expect(svg).toBe(view.dom.querySelector("svg[data-fake]"));
+      expect(buttons.zoomIn).toHaveAccessibleName("Acercar");
+      expect(buttons.zoomOut).toHaveAccessibleName("Alejar");
+      expect(buttons.reset).toHaveAccessibleName("Reajustar vista");
+      expect(zoomArea).toHaveAttribute("tabindex", "0");
+      expect(zoomArea).toHaveAttribute("data-zoom");
+      const hint = view.dom.querySelector(`#${zoomArea.getAttribute("aria-describedby")}`)!;
+      expect(hint).toHaveTextContent(/flechas.*\+.*-.*0.*Ctrl/i);
+    });
+
+    it("zoom: al redibujar o destruir el bloque se suelta el zoom anterior", async () => {
+      const handles: Array<ReturnType<typeof handle>> = [];
+      const panZoom = vi.fn(async () => {
+        const h = handle();
+        handles.push(h);
+        return h;
+      });
+      const view = mountMermaid({ editable: true, renderer: { render: async () => fakeSvg(1400) }, panZoom });
+      await flush();
+      edit(view, "flowchart TD\n  A --> C");
+      await vi.advanceTimersByTimeAsync(400);
+      expect(handles).toHaveLength(2);
+      expect(handles[0].destroy).toHaveBeenCalledTimes(1);
+      view.destroy!();
+      expect(handles[1].destroy).toHaveBeenCalledTimes(1);
+    });
+
+    it("zoom: un zoom que termina de cargar tras redibujar el bloque se suelta sin conectarse a un área vieja", async () => {
+      let resolveFirst: (h: ReturnType<typeof handle>) => void = () => {};
+      const first = handle();
+      const second = handle();
+      const panZoom = vi
+        .fn()
+        .mockImplementationOnce(() => new Promise((resolve) => (resolveFirst = resolve)))
+        .mockResolvedValue(second);
+      const view = mountMermaid({ editable: true, renderer: { render: async () => fakeSvg(1400) }, panZoom });
+      await flush();
+      edit(view, "flowchart TD\n  A --> C");
+      await vi.advanceTimersByTimeAsync(400);
+      resolveFirst(first);
+      await flush();
+      expect(first.destroy).toHaveBeenCalledTimes(1);
+      expect(second.destroy).not.toHaveBeenCalled();
+    });
   });
 
   // RF-046
