@@ -38,7 +38,7 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   (startRename/remove/revealFolder); aviso RF-008 «Renombrar» en NoteEditor. Backend
   test_note_rules/contract/push verdes; frontend suite 1305/1305; gate verde; visual
   Chromium V-12 (crear/duplicar carpeta) verde. Commits e025fb9…95bb107. Session-End en history.md.
-- [ ] **Slice 4 — Pegado, tablas, checkboxes**: T-078…T-083. Demoable: pegar
+- [x] **Slice 4 — Pegado, tablas, checkboxes**: T-078…T-083. Demoable: pegar
   markdown/VS Code, insertar tabla, marcar checkbox.
   **EN CURSO (2026-10-25, AIRA): T-082/T-083 (casilla de tarea alternable, RF-039)
   cerradas y verdes** (taskItemView 9/9; commit befb1e8). **Faltan:** T-078/T-079
@@ -46,6 +46,7 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   T-080/T-081 (insertar tabla / fila / columna por `registerCommands`). Son
   integración profunda de Milkdown; se dejaron sin empezar para no partirlas a medias
   al final de una sesión muy larga. El repo queda verde (no bloquea nada).
+  **CERRADA (2026-10-26).** T-078…T-083. Pegado markdown en Visual (plugin-clipboard + ajuste VS Code P-8), insertar tabla + añadir fila/columna (cursor a la primera celda), casilla alternable. jsdom 1321/1321, typecheck, gate verde, Chromium V-4 14/14. Causas raíz: `preparsedMdastCtx` no consumido (rehidratación al pegar) y cursor fuera de la tabla tras insertar. Gap: enlace `javascript:` pegado pierde la marca (queda texto). Commits bed75eb…b528bc1.
 - [ ] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095. Demoable:
   bloque de código coloreado, diagrama Mermaid renderizado con zoom/pan.
 - [ ] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
