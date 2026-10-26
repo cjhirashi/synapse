@@ -1,5 +1,18 @@
 # History — Synapse
 
+## [2026-10-26] SPEC-0011 · Identidad de marca: logo oficial — borrador de Fase 1
+- **Fase alcanzada:** Fase 1 (Specify), `estado: draft`, `fase_1: pendiente`. Rama `feature/0011-identidad-logo` en el worktree `.claude/worktrees/0011-logo` (base 29470e0).
+- **Contenido:** `.harness/specs/0011-identidad-logo/spec.md`, con RF-001…RF-020 (EARS) y RNF-001 (peso: ≤ 10 KB gzip para el SVG de cabecera y el favicon SVG; topes por PNG/ICO) y RNF-002 (capturas reales claro/oscuro a 390/1024/1440). Decisiones D1–D4 de Carlos (vía AIRA) registradas con su descarte; D-5…D-14 son propuestas del autor.
+- **Hallazgos:**
+  - El bloque de marca de `AppLayout` **no** es un enlace, así que sigue sin serlo.
+  - En `tokens.css`, en oscuro `--accent` es #0891b2 y `--accent-hover` #06b6d4 (el encargo los citaba al revés).
+  - `#06b6d4` da 2,32:1 sobre `#f8fafc`, así que no puede ser extremo del degradado en tema claro.
+  - Ningún test e2e mide hoy la cabecera global: los de 0009 miden `.vault-workspace-header` (51 px). Los 70 px salen de la nota de 0002.
+  - El login tiene su propia marca (`.auth-logo-mark`).
+- **Abierto:** 1 `[NEEDS CLARIFICATION]`: ¿el login lleva también el logo? (RF-017, recomendación: sí).
+- **Gate:** no corrido (sólo docs). **Rebotes:** 0. **Commit:** pendiente; el autor de spec no tiene shell.
+- **Próximo paso:** que Carlos resuelva RF-017 y apruebe la Fase 1 → Fase 2 (arquitecto).
+
 ## [2026-10-23] Harness — reinstalación de la skill `ui-ux-pro-max` (ADR-005)
 - **Fase alcanzada:** no es feature de producto — mantenimiento de arnés, registrado por ADR (sin fases SDD).
 - **Origen:** Carlos probó SPEC-0008/0009 en navegador real (capturas) y encontró el editor de notas muy por debajo del mockup original de `1.1.4.4`: sin panel de propiedades, sin tablas, sin resaltado de sintaxis, sin guía visual para crear carpetas. Preguntó si el harness tenía una skill de diseño de frontend funcionando. AIRA diagnosticó: el `experto-ux-ui` existe pero solo critica contra un checklist, sin motor de generación — `ui-ux-pro-max` se había retirado explícitamente en ADR-004 (2026-10-15), con el costo ya anotado entonces ("se pierde la generación automática... puede quedar desactualizado"). Carlos autorizó revertir esa parte de ADR-004.
