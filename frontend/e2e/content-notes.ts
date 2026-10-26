@@ -235,6 +235,24 @@ export const CONTENT_NOTES: ContentNote[] = [
     content: `# Diagrama inválido\n\n${PARAGRAPH}\n\n${fence("mermaid", "flowchart TD\n  A[Inicio --> B(\n  ???")}\n\nEl resto de la nota se ve igual.\n`,
   },
   {
+    // RF-051: una fuente hostil (directiva `init` que pide `loose` y otro tema, `click` con `javascript:`, `config:` del
+    // frontmatter) debe dibujarse como un diagrama normal, sin enlaces, sin scripts y con los colores del tema.
+    key: "mermaid-hostile",
+    path: "Mermaid/Diagrama hostil.md",
+    frontmatter: {},
+    content: `# Diagrama hostil\n\n${fence(
+      "mermaid",
+      [
+        '---\ntitle: Hostil\nconfig:\n  theme: forest\n  securityLevel: loose\n---',
+        '%%{init: {"securityLevel":"loose","theme":"forest","themeVariables":{"primaryColor":"#ff0000"}}}%%',
+        "flowchart TD",
+        '  A["<img src=x onerror=alert(1)>"] --> B',
+        "  click A call alert(1)",
+        '  click B href "javascript:alert(2)"',
+      ].join("\n"),
+    )}\n`,
+  },
+  {
     key: "mermaid-wide",
     path: "Mermaid/Diagrama ancho.md",
     frontmatter: {},

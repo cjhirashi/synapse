@@ -120,7 +120,8 @@ describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
     ["iframe", wrap("<iframe/>")],
     ["@import en un style", wrap("<style>@import url(https://example.com/x.css);</style>")],
     ["raíz que no es svg", '<div xmlns="http://www.w3.org/1999/xhtml">x</div>'],
-    ["XML mal formado", "<svg><g></svg>"],
+    ["dos raíces", '<svg xmlns="http://www.w3.org/2000/svg"/><svg xmlns="http://www.w3.org/2000/svg"/>'],
+    ["texto que no es SVG", "hola"],
   ])("rechaza %s", (_name, markup) => {
     expect(() => verifySvg(markup)).toThrow(MermaidSyntaxError);
   });

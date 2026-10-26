@@ -36,6 +36,8 @@ export class MermaidSyntaxError extends Error {
 /** Dibuja un diagrama: resuelve con un SVG **ya verificado**, o rechaza con uno de los dos errores. */
 export interface MermaidRenderer {
   render(source: string): Promise<SVGSVGElement>;
+  /** Avisa cuando cambia el tema (los colores van horneados en el SVG): el bloque se vuelve a dibujar (RF-050). */
+  onThemeChange?(listener: () => void): () => void;
 }
 
 /** Por defecto aún no hay renderizador: el bloque cae en «No se pudo cargar el diagrama». */
@@ -95,6 +97,7 @@ class CodeBlockView implements NodeView {
   /** Número de la última orden de dibujo: un resultado de una orden anterior se descarta. */
   private renderSeq = 0;
   private destroyed = false;
+  private unsubscribeTheme: (() => void) | null = null;
 
   constructor(node: PMNode, editable: boolean, deps: CodeBlockDeps) {
     this.node = node;
@@ -206,6 +209,7 @@ class CodeBlockView implements NodeView {
     // Lectura: el diagrama va sobre el código; Visual: el código se edita arriba y la vista previa va debajo.
     if (this.editable) this.dom.append(this.preview);
     else this.dom.insertBefore(this.preview, this.contentDOM);
+    this.unsubscribeTheme = this.renderer.onThemeChange?.(() => this.schedule(true)) ?? null;
     this.schedule(true);
   }
 
@@ -408,6 +412,8 @@ class CodeBlockView implements NodeView {
 
   destroy(): void {
     this.destroyed = true;
+    this.unsubscribeTheme?.();
+    this.unsubscribeTheme = null;
     if (this.timer) clearTimeout(this.timer);
     if (this.renderTimer) clearTimeout(this.renderTimer);
     this.timer = null;

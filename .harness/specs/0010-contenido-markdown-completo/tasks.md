@@ -412,10 +412,10 @@ actualizado: 2026-10-24
 - [x] T-089 — `editor/mermaid/themeVariables.ts` (cubre RF-050) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/mermaid/themeVariables.test.ts`
   - EXPECT: `passed`.
-- [ ] T-090 [rojo] — `editor/mermaid/renderMermaid.test.ts` (módulo `mermaid` simulado): `import()` sólo con bloque `mermaid`; configuración `strict`/`htmlLabels:false`/`secure` ampliado/`suppressErrorRendering`/`theme:"base"`; verificación del SVG (rechaza `script`, `foreignObject`, `on*`, `href`); fuentes hostiles (`%%{init}%%`, `click … call`, `click … href "javascript:…"`, `config:` de tema) sin efecto; error por bloque; fallo de carga; re-render al cambiar `data-theme`; render en serie (cubre RF-046, RF-049, RF-050, RF-051, RF-053, RNF-003) [zona: test] [P-10]
+- [x] T-090 [rojo] — `editor/mermaid/renderMermaid.test.ts` (módulo `mermaid` simulado): `import()` sólo con bloque `mermaid`; configuración `strict`/`htmlLabels:false`/`secure` ampliado/`suppressErrorRendering`/`theme:"base"`; verificación del SVG (rechaza `script`, `foreignObject`, `on*`, `href`); fuentes hostiles (`%%{init}%%`, `click … call`, `click … href "javascript:…"`, `config:` de tema) sin efecto; error por bloque; fallo de carga; re-render al cambiar `data-theme`; render en serie (cubre RF-046, RF-049, RF-050, RF-051, RF-053, RNF-003) [zona: test] [P-10]
   - CHECK: `cd frontend && npx vitest run src/editor/mermaid/renderMermaid.test.ts`
   - EXPECT: falla al importar.
-- [ ] T-091 — `editor/mermaid/renderMermaid.ts` conectado como renderizador por defecto de la *node view* (cubre RF-046, RF-049, RF-050, RF-051, RF-053) [zona: pantalla]
+- [x] T-091 — `editor/mermaid/renderMermaid.ts` conectado como renderizador por defecto de la *node view* (cubre RF-046, RF-049, RF-050, RF-051, RF-053) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(7|8) "`
   - EXPECT: vitest `passed`; V-7/V-8 en verde (SVG real, 0 `script`/`foreignObject`/`on*`/`a[href]`, colores del tema, cambio de tema sin recargar, error y fallo de carga); capturas leídas frente a `career-mermaid-*`.
 - [ ] T-092 [rojo] — Vista previa en Visual: se actualiza ≤ 500 ms tras la última tecla (temporizadores falsos, *debounce* 400) y conserva el SVG anterior; en Código no hay diagrama (cubre RF-047, RF-048) [zona: test]

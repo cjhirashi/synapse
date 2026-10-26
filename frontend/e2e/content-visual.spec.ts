@@ -501,6 +501,34 @@ test("0010 V-7 el diagrama sigue el tema sin recargar (RF-050)", async ({ browse
   await context.close();
 });
 
+// V-7 · fuente hostil (RF-051, RNF-003): se dibuja como un diagrama normal y sin efecto alguno.
+for (const theme of THEMES) {
+  test(`0010 V-7 fuente hostil de Mermaid sin efecto, ${theme} (RF-051, RNF-003)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "mermaid-hostile", { theme, size: SIZES[0] });
+    const dialogs: string[] = [];
+    page.on("dialog", (dialog) => {
+      dialogs.push(dialog.message());
+      void dialog.dismiss();
+    });
+    const area = page.locator(MERMAID_AREA).first();
+    await expect(area.locator("svg").first()).toBeVisible({ timeout: 20_000 });
+    const unsafe = await area.evaluate((el) => ({
+      script: el.querySelectorAll("script").length,
+      foreign: el.querySelectorAll("foreignObject").length,
+      img: el.querySelectorAll("img").length,
+      handlers: [...el.querySelectorAll("*")].filter((n) => [...n.attributes].some((a) => a.name.startsWith("on"))).length,
+      links: el.querySelectorAll("a, [href], [xlink\\:href]").length,
+    }));
+    expect(unsafe).toEqual({ script: 0, foreign: 0, img: 0, handlers: 0, links: 0 });
+    // La directiva y el `config:` no cambiaron el tema: el relleno del nodo es el del tema activo, no `#ff0000`.
+    const fill = await page.locator(`${MERMAID_AREA} svg .node rect, ${MERMAID_AREA} svg .node polygon`).first().evaluate((el) => getComputedStyle(el).fill);
+    expect(fill).not.toBe("rgb(255, 0, 0)");
+    await page.waitForTimeout(500);
+    expect(dialogs, "ningún alert() se ejecutó").toEqual([]);
+    await context.close();
+  });
+}
+
 // V-8 · fallos de Mermaid (RF-049, RF-053)
 for (const theme of THEMES) {
   test(`0010 V-8 diagrama inválido, ${theme} (RF-049)`, async ({ browser, content }) => {

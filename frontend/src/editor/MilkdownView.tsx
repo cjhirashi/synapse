@@ -27,6 +27,7 @@ import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { createHighlightPlugin } from "prosemirror-highlight";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { createHighlightParser } from "./highlight/proseHighlight";
+import { mermaidRenderer } from "./mermaid/renderMermaid";
 import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
 import { applyHeadingIds } from "./markdown/headingIds";
 import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
@@ -243,7 +244,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         // (RF-039) y tabla con envoltorio de scroll (RF-026).
         ctx.update(nodeViewCtx, (views) => [
           ...views,
-          ["code_block", codeBlockViewFactory()] as [string, NodeViewConstructor],
+          ["code_block", codeBlockViewFactory({ mermaid: mermaidRenderer })] as [string, NodeViewConstructor],
           ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
         ]);
