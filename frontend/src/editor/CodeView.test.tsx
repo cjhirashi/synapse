@@ -1,5 +1,5 @@
 // SPEC-0008 RF-008: vista Código (CodeMirror 6 real en jsdom, con los polyfills de test-setup).
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { describe, expect, it, vi } from "vitest";
 import { CodeView } from "./CodeView";
@@ -99,10 +99,34 @@ describe("CodeView", () => {
   });
 
   // SPEC-0010 RF-029: el bloque inicial `---…---` se trata como YAML (yamlFrontmatter), no como markdown.
-  it("colorea el bloque de frontmatter como YAML (clave de propiedad resaltada)", () => {
+  it("colorea el bloque de frontmatter como YAML (clave de propiedad resaltada)", async () => {
     const { container } = render(<CodeView value={"---\ntitulo: Plan\n---\n# Cuerpo"} onChange={() => {}} label="Código" />);
-    // La clave YAML recibe una clase de resaltado (sx-*), distinta del texto plano del cuerpo.
-    const highlighted = [...container.querySelectorAll(".cm-line [class*='sx-']")].map((el) => el.textContent ?? "").join(" ");
-    expect(highlighted).toContain("titulo");
+    // La clave YAML recibe una clase de resaltado (sx-*), distinta del texto plano del cuerpo. La gramática
+    // YAML se carga bajo demanda (chunk propio, RNF-002): el color llega en cuanto está lista.
+    await waitFor(() => {
+      const highlighted = [...container.querySelectorAll(".cm-line [class*='sx-']")].map((el) => el.textContent ?? "").join(" ");
+      expect(highlighted).toContain("titulo");
+    });
+  });
+
+  /** Clases `sx-*` de los tramos de una línea del documento montado. */
+  const lineClasses = (container: HTMLElement, text: string) =>
+    [...container.querySelectorAll(".cm-line")].filter((l) => l.textContent === text).flatMap((l) => [...l.querySelectorAll('[class*="sx-"]')].map((s) => s.className));
+
+  // RF-029, RF-030: los bloques cercados con lenguaje admitido se colorean con su gramática (carga diferida).
+  it("cercado: colorea el interior de un bloque con lenguaje admitido y no el de uno desconocido", async () => {
+    const doc = "```ts\nconst a: number = 1\n```\n\n```brainfuck\n+++ const\n```\n\n```\nconst sin lenguaje\n```";
+    const { container } = render(<CodeView value={doc} onChange={() => {}} label="Código" />);
+    await waitFor(() => expect(lineClasses(container, "const a: number = 1").some((c) => c.includes("sx-keyword"))).toBe(true));
+    expect(lineClasses(container, "const a: number = 1").some((c) => c.includes("sx-type") || c.includes("sx-number"))).toBe(true);
+    // Sin gramática, el interior se queda como texto de código (sin keywords ni números).
+    for (const line of ["+++ const", "const sin lenguaje"]) {
+      expect(lineClasses(container, line).some((c) => /sx-(keyword|number|string|type)/.test(c)), line).toBe(false);
+    }
+  });
+
+  it("cercado: un alias en mayúsculas (PY) también resuelve el lenguaje", async () => {
+    const { container } = render(<CodeView value={"```PY\ndef f(x):\n    return 1\n```"} onChange={() => {}} label="Código" />);
+    await waitFor(() => expect(lineClasses(container, "def f(x):").some((c) => c.includes("sx-keyword"))).toBe(true));
   });
 });
