@@ -33,7 +33,9 @@ const gzipSize = (file) => gzipSync(readFileSync(resolve(DIST, file)), { level: 
 const failures = [];
 
 const entry = chunks.find((chunk) => chunk.isEntry);
-const editor = chunks.find((chunk) => chunk.src.endsWith("editor/NoteEditor.tsx"));
+// El chunk del editor: Rollup le quita la fachada `src/editor/NoteEditor.tsx` (clave `_NoteEditor-*.js`, `name` «NoteEditor»)
+// cuando otro chunk diferido importa un módulo suyo; se busca por una u otra forma.
+const editor = chunks.find((chunk) => chunk.file.endsWith(".js") && (chunk.src.endsWith("editor/NoteEditor.tsx") || chunk.name === "NoteEditor"));
 if (!entry || !editor) {
   console.error("manifest sin la entrada o sin el chunk del editor");
   process.exit(1);
