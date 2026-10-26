@@ -476,7 +476,7 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
   (50 bloques de código + 5 Mermaid) DEBE ser legible con p95 ≤ 250 ms. En ningún caso el
   resaltado ni el render de diagramas DEBEN producir tareas largas > 200 ms en el hilo
   principal por bloque. (El resaltado y los diagramas pueden llegar después.)
-  > **Enmienda B-1b (Directiva de Pausa, 2026-10-25, AIRA — a revisar por Carlos).** El plan
+  > **Enmienda B-1b (Directiva de Pausa, 2026-10-25; aceptada por AIRA con autoridad delegada el 2026-10-26, sin revisión línea por línea de Carlos).** El plan
   > §10.7 (B-1) ya tiered la apertura **en frío** por tamaño (≤ 150 ms hasta 64 KiB, ≤ 220 ms a
   > ~200 KiB). La medición real de T-138 en Chromium mostró que el supuesto del plan para la ruta
   > precalculada (cache-hit ≈ 90 ms para 181 KiB) no se sostiene: con el micromark ya cacheado, el
