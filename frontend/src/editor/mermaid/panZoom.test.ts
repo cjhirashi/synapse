@@ -43,6 +43,9 @@ function mount() {
   return { area, svg, buttons };
 }
 
+/** El factor de la última llamada a un método de zoom. */
+const lastFactor = (fn: { mock: { lastCall?: unknown[] } }) => fn.mock.lastCall?.[0] as number;
+
 const opts = () => lib.state.options as FakeOptions;
 
 /** Cambia el zoom como lo haría la biblioteca (respetando 0,2…10) y avisa por `onZoom`. */
@@ -106,10 +109,10 @@ describe("panZoom · RF-052", () => {
     expect(buttons.zoomIn).toBeEnabled();
     expect(buttons.zoomOut).toBeEnabled();
     buttons.zoomIn.click();
-    expect(lib.instance.zoomBy).toHaveBeenLastCalledWith(expect.toSatisfy((f: number) => f > 1));
+    expect(lastFactor(lib.instance.zoomBy)).toBeGreaterThan(1);
     expect(buttons.reset).toBeEnabled();
     buttons.zoomOut.click();
-    expect(lib.instance.zoomBy).toHaveBeenLastCalledWith(expect.toSatisfy((f: number) => f < 1));
+    expect(lastFactor(lib.instance.zoomBy)).toBeLessThan(1);
     lib.instance.fit.mockClear();
     lib.instance.center.mockClear();
     buttons.zoomIn.click();
@@ -185,9 +188,10 @@ describe("panZoom · RF-052", () => {
     expect(lib.instance.zoomAtPointBy).not.toHaveBeenCalled();
     const ctrl = wheel({ deltaY: -100, ctrlKey: true });
     expect(ctrl.defaultPrevented).toBe(true);
-    expect(lib.instance.zoomAtPointBy).toHaveBeenLastCalledWith(expect.toSatisfy((f: number) => f > 1), expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) }));
+    expect(lastFactor(lib.instance.zoomAtPointBy)).toBeGreaterThan(1);
+    expect(lib.instance.zoomAtPointBy.mock.lastCall?.[1]).toEqual({ x: expect.any(Number), y: expect.any(Number) });
     wheel({ deltaY: 100, metaKey: true });
-    expect(lib.instance.zoomAtPointBy).toHaveBeenLastCalledWith(expect.toSatisfy((f: number) => f < 1), expect.anything());
+    expect(lastFactor(lib.instance.zoomAtPointBy)).toBeLessThan(1);
   });
 
   it("destroy suelta la instancia y los oyentes", async () => {

@@ -18,6 +18,7 @@
 import type { Node as PMNode } from "@milkdown/prose/model";
 import type { NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { icon } from "./icons";
+import { attachPanZoom, type PanZoomHandle, type ZoomButtons } from "./mermaid/panZoom";
 
 /** El módulo de Mermaid no se pudo cargar (red, chunk ausente): se ofrece «Reintentar» (RF-053). */
 export class MermaidLoadError extends Error {}
@@ -50,12 +51,17 @@ export interface CodeBlockDeps {
   mermaid?: MermaidRenderer;
   /** Ancho de la columna de lectura, para decidir si el diagrama necesita controles de zoom. */
   columnWidth?: () => number;
+  /** Conecta el zoom a un diagrama que excede (por defecto `svg-pan-zoom` en carga diferida). */
+  panZoom?: (area: HTMLElement, svg: SVGSVGElement, buttons: ZoomButtons) => Promise<PanZoomHandle>;
 }
 
 /** Espera tras la última edición antes de redibujar el diagrama en Visual (RF-047: ≤ 500 ms). */
 const RENDER_DEBOUNCE_MS = 400;
 /** Alto máximo del área del diagrama (R-11): lo que excede se recorre con el zoom. */
 const MERMAID_MAX_HEIGHT = 420;
+const MERMAID_MIN_HEIGHT = 96;
+/** Numera las ayudas de teclado de los diagramas (ids únicos en el documento). */
+let hintCounter = 0;
 
 type MermaidState = "empty" | "loading" | "ready" | "error" | "loadfail";
 
@@ -80,6 +86,7 @@ class CodeBlockView implements NodeView {
   private readonly writeText: (text: string) => Promise<void>;
   private readonly renderer: MermaidRenderer;
   private readonly columnWidth: () => number;
+  private readonly attachZoom: NonNullable<CodeBlockDeps["panZoom"]>;
   /** En lectura (`false`) el código del diagrama va oculto; en Visual siempre se ve. */
   private readonly editable: boolean;
   private node: PMNode;
@@ -98,6 +105,9 @@ class CodeBlockView implements NodeView {
   private renderSeq = 0;
   private destroyed = false;
   private unsubscribeTheme: (() => void) | null = null;
+  /** Zoom conectado al SVG actual y número de la última conexión pedida (una que llega tarde se suelta). */
+  private zoom: PanZoomHandle | null = null;
+  private zoomSeq = 0;
 
   constructor(node: PMNode, editable: boolean, deps: CodeBlockDeps) {
     this.node = node;
@@ -105,6 +115,7 @@ class CodeBlockView implements NodeView {
     this.writeText = deps.writeText ?? browserWriteText;
     this.renderer = deps.mermaid ?? NO_RENDERER;
     this.columnWidth = deps.columnWidth ?? (() => this.dom.clientWidth);
+    this.attachZoom = deps.panZoom ?? attachPanZoom;
 
     this.dom = document.createElement("div");
     this.dom.className = "code-block";
@@ -258,6 +269,7 @@ class CodeBlockView implements NodeView {
 
   private setState(state: MermaidState): void {
     this.state = state;
+    this.releaseZoom();
     this.syncChrome();
     const preview = this.preview;
     if (!preview) return;
@@ -283,9 +295,11 @@ class CodeBlockView implements NodeView {
         area.setAttribute("aria-label", this.accessibleName());
         area.append(this.svg as SVGSVGElement);
         const frame = this.wrap(area);
-        const controls = this.controls();
-        if (controls) frame.append(controls);
+        const controls = this.controls(area);
+        if (controls) frame.append(controls.group, controls.hint);
         preview.replaceChildren(this.caption(), frame);
+        // El zoom mide el SVG ya maquetado: se conecta con el área dentro del documento.
+        if (controls) this.connectZoom(area, controls.buttons);
         break;
       }
       case "error":
@@ -330,33 +344,61 @@ class CodeBlockView implements NodeView {
     return match?.[1].trim() || "Diagrama Mermaid";
   }
 
-  /** Controles de zoom: sólo si el SVG fijo excede la columna o el alto máximo (RF-052). */
-  private controls(): HTMLElement | null {
+  /**
+   * Controles de zoom: sólo si el SVG fijo excede la columna o el alto máximo (RF-052). También deja el área
+   * lista para operarlo: enfocable, con su ayuda de teclado, y con el alto fijo que el ajuste necesita.
+   */
+  private controls(area: HTMLElement): { group: HTMLElement; hint: HTMLElement; buttons: ZoomButtons } | null {
     const svg = this.svg as SVGSVGElement;
     // Tamaño natural del diagrama: su `viewBox` (o `width`/`height`); se lee del atributo, no de `viewBox.baseVal`.
     const [, , boxWidth, boxHeight] = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).map(Number);
     const width = boxWidth || Number(svg.getAttribute("width")) || 0;
     const height = boxHeight || Number(svg.getAttribute("height")) || 0;
-    if (width <= this.columnWidth() && height <= MERMAID_MAX_HEIGHT) return null;
+    const column = this.columnWidth();
+    if (width <= column && height <= MERMAID_MAX_HEIGHT) return null;
+
+    // Alto del área: el del diagrama ajustado al ancho de la columna, entre 96 y 420 px (R-11).
+    const fitted = width > 0 ? (height * Math.min(column, width)) / width : MERMAID_MAX_HEIGHT;
+    area.dataset.zoom = "";
+    area.style.setProperty("--mermaid-height", `${Math.round(Math.min(MERMAID_MAX_HEIGHT, Math.max(MERMAID_MIN_HEIGHT, fitted)))}px`);
+    area.tabIndex = 0;
+    const hint = document.createElement("span");
+    hint.id = `mermaid-hint-${++hintCounter}`;
+    hint.className = "note-visually-hidden";
+    hint.textContent = "Flechas para desplazar, + y - para acercar o alejar, 0 para reajustar. Con Ctrl o ⌘ y la rueda también se acerca.";
+    area.setAttribute("aria-describedby", hint.id);
 
     const group = document.createElement("div");
     group.className = "mermaid-controls";
     group.setAttribute("role", "group");
     group.setAttribute("aria-label", "Controles del diagrama");
-    for (const [label, glyph] of [
-      ["Acercar", "zoom-in"],
-      ["Alejar", "zoom-out"],
-      ["Reajustar vista", "maximize"],
-    ] as const) {
+    const make = (label: string, glyph: "zoom-in" | "zoom-out" | "maximize") => {
       const button = document.createElement("button");
       button.type = "button";
       button.setAttribute("aria-label", label);
       button.append(icon(glyph, 14));
-      // El diagrama arranca ajustado: no hay nada que reajustar todavía.
-      if (label === "Reajustar vista") button.disabled = true;
+      // Hasta que el zoom esté conectado (carga diferida) los botones no hacen nada: arrancan deshabilitados.
+      button.disabled = true;
       group.append(button);
-    }
-    return group;
+      return button;
+    };
+    const buttons = { zoomIn: make("Acercar", "zoom-in"), zoomOut: make("Alejar", "zoom-out"), reset: make("Reajustar vista", "maximize") };
+    return { group, hint, buttons };
+  }
+
+  /** Conecta el zoom al área; si el bloque se redibuja o se destruye antes de que cargue, se suelta al llegar. */
+  private connectZoom(area: HTMLElement, buttons: ZoomButtons): void {
+    const seq = ++this.zoomSeq;
+    void this.attachZoom(area, this.svg as SVGSVGElement, buttons).then((handle) => {
+      if (seq !== this.zoomSeq || this.destroyed) handle.destroy();
+      else this.zoom = handle;
+    });
+  }
+
+  private releaseZoom(): void {
+    this.zoomSeq += 1;
+    this.zoom?.destroy();
+    this.zoom = null;
   }
 
   private errorBox(): HTMLElement {
@@ -414,6 +456,7 @@ class CodeBlockView implements NodeView {
     this.destroyed = true;
     this.unsubscribeTheme?.();
     this.unsubscribeTheme = null;
+    this.releaseZoom();
     if (this.timer) clearTimeout(this.timer);
     if (this.renderTimer) clearTimeout(this.renderTimer);
     this.timer = null;

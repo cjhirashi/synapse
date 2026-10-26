@@ -62,6 +62,30 @@ describe("renderMermaid · configuración (RF-051, P-10)", () => {
   });
 });
 
+describe("renderMermaid · contenedor de medida (RF-046)", () => {
+  // Causa raíz hallada en Chromium (V-7): Mermaid mide el diagrama con `getBBox()` en un nodo temporal de <body>, y
+  // la regla global de `prefers-reduced-motion` (`* { transition-duration: .01ms !important }`) deja las posiciones a
+  // medio transitar al medir → viewBox desplazado y diagrama recortado. Se mide en un contenedor propio sin transiciones.
+  it("dibuja en un contenedor propio y oculto dentro del documento, que se retira al terminar", async () => {
+    let host: HTMLElement | null = null;
+    mocked.api.render.mockImplementation(async (_id: string, _text: string, container?: HTMLElement) => {
+      host = container ?? null;
+      expect(container?.isConnected).toBe(true);
+      expect(container?.classList.contains("mermaid-measure")).toBe(true);
+      return { svg: SAFE_SVG };
+    });
+    await renderer().render("flowchart TD\n A --> B");
+    expect(host).not.toBeNull();
+    expect((host as unknown as HTMLElement).isConnected).toBe(false);
+  });
+
+  it("la hoja de estilos del editor anula transiciones y animaciones dentro de ese contenedor", async () => {
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(new URL("../editor.css", import.meta.url), "utf8");
+    expect(css).toMatch(/\.mermaid-measure \*[^{]*\{[^}]*transition:\s*none\s*!important/);
+  });
+});
+
 describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
   const hostile = [
     '%%{init: {"securityLevel":"loose","theme":"dark"}}%%',

@@ -1047,7 +1047,30 @@
 
 .mermaid-area svg {
   max-width: 100%;
+  /* El tope de 420 px es del área entera: el dibujo cede su padding para no quedar recortado por abajo. */
+  max-height: calc(420px - 2 * var(--space-3));
   height: auto;
+}
+
+/* Diagrama con zoom (RF-052): el área toma el alto del diagrama ajustado (`--mermaid-height`, 96–420 px) y el SVG
+   llena el área, que es donde `svg-pan-zoom` lo ajusta, lo mueve y lo escala. El recorte lo hace el propio área. */
+.mermaid-area[data-zoom] {
+  display: block;
+  height: var(--mermaid-height);
+  max-height: none;
+  padding: 0;
+  cursor: grab;
+}
+
+.mermaid-area[data-zoom]:active {
+  cursor: grabbing;
+}
+
+.mermaid-area[data-zoom] svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
 }
 
 .mermaid-empty {
