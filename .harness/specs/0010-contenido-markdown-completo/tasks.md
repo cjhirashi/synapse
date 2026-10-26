@@ -406,10 +406,10 @@ actualizado: 2026-10-24
   - EXPECT: `passed`.
 
 **F.6 · Mermaid y zoom**
-- [ ] T-088 [rojo] — `editor/mermaid/themeVariables.test.ts` (composición de `--accent-soft`, mapa completo de PLAN-0010 §2.3-f en ambos temas) (cubre RF-050) [zona: test]
+- [x] T-088 [rojo] — `editor/mermaid/themeVariables.test.ts` (composición de `--accent-soft`, mapa completo de PLAN-0010 §2.3-f en ambos temas) (cubre RF-050) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/mermaid/themeVariables.test.ts`
   - EXPECT: falla al importar.
-- [ ] T-089 — `editor/mermaid/themeVariables.ts` (cubre RF-050) [zona: núcleo]
+- [x] T-089 — `editor/mermaid/themeVariables.ts` (cubre RF-050) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/mermaid/themeVariables.test.ts`
   - EXPECT: `passed`.
 - [ ] T-090 [rojo] — `editor/mermaid/renderMermaid.test.ts` (módulo `mermaid` simulado): `import()` sólo con bloque `mermaid`; configuración `strict`/`htmlLabels:false`/`secure` ampliado/`suppressErrorRendering`/`theme:"base"`; verificación del SVG (rechaza `script`, `foreignObject`, `on*`, `href`); fuentes hostiles (`%%{init}%%`, `click … call`, `click … href "javascript:…"`, `config:` de tema) sin efecto; error por bloque; fallo de carga; re-render al cambiar `data-theme`; render en serie (cubre RF-046, RF-049, RF-050, RF-051, RF-053, RNF-003) [zona: test] [P-10]
