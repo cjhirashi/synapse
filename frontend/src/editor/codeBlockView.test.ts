@@ -243,6 +243,28 @@ describe("codeBlockView · Mermaid", () => {
     expect(view.dom).toHaveTextContent("No se pudo cargar el diagrama");
   });
 
+  // RF-050
+  it("al cambiar el tema vuelve a dibujar el diagrama visible y, al destruirse, deja de escuchar", async () => {
+    let notify: () => void = () => {};
+    const off = vi.fn();
+    const render = vi.fn(async () => fakeSvg(300));
+    const renderer: MermaidRenderer = {
+      render,
+      onThemeChange: (listener) => {
+        notify = listener;
+        return off;
+      },
+    };
+    const view = mountMermaid({ renderer });
+    await flush();
+    expect(render).toHaveBeenCalledTimes(1);
+    notify();
+    await flush();
+    expect(render).toHaveBeenCalledTimes(2);
+    view.destroy!();
+    expect(off).toHaveBeenCalledTimes(1);
+  });
+
   // RF-048
   it("vacío: en lectura no hay área; en Visual invita a escribir", async () => {
     const renderer: MermaidRenderer = { render: vi.fn() };

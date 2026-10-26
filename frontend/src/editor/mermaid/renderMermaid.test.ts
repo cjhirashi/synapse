@@ -1,0 +1,231 @@
+// RF-046, RF-049, RF-050, RF-051, RF-053, RNF-003 (SPEC-0010; PLAN-0010 §2.3-f, P-10): el renderizador de
+// Mermaid con el módulo `mermaid` simulado. Lo que hace la biblioteca real (SVG, directivas) se verifica en
+// Chromium (V-7, V-8); aquí se fija lo que la aplicación le pide y lo que acepta de vuelta.
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { MermaidLoadError, MermaidSyntaxError } from "../codeBlockView";
+import { createMermaidRenderer, mermaidConfig, sanitizeSource, verifySvg } from "./renderMermaid";
+
+// `vi.mock` se iza sobre los imports: el contador y la API simulada se crean con `vi.hoisted`.
+const mocked = vi.hoisted(() => ({
+  loads: 0,
+  api: { initialize: vi.fn(), render: vi.fn() },
+}));
+vi.mock("mermaid", () => {
+  mocked.loads += 1;
+  return { default: mocked.api };
+});
+
+const SAFE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100" width="100%"><g class="node"><rect width="10" height="10"/></g></svg>';
+const tokens: Record<string, string> = {
+  "--bg-primary": "#12121a", "--bg-secondary": "#1a1a24", "--bg-tertiary": "#22222e", "--text-primary": "#e8e8ef", "--text-secondary": "#9a9aab",
+  "--accent": "#0891b2", "--accent-hover": "#06b6d4", "--accent-soft": "rgba(8, 145, 178, 0.18)", "--success-text": "#4ade80",
+  "--warning-text": "#fbbf24", "--info-text": "#38bdf8", "--danger-text": "#f87171", "--font-ui": "system-ui",
+};
+const read = (property: string) => tokens[property] ?? "";
+const renderer = (extra: Parameters<typeof createMermaidRenderer>[0] = {}) => createMermaidRenderer({ read, isDark: () => true, yieldToMain: async () => {}, ...extra });
+/** El texto que recibió `mermaid.render` en la llamada n. */
+const sourceOf = (n = 0) => mocked.api.render.mock.calls[n][1] as string;
+
+beforeEach(() => {
+  mocked.api.initialize.mockReset();
+  mocked.api.render.mockReset().mockResolvedValue({ svg: SAFE_SVG });
+  document.body.replaceChildren();
+  delete document.documentElement.dataset.theme;
+});
+afterEach(() => vi.restoreAllMocks());
+
+describe("renderMermaid · carga diferida (RNF-002)", () => {
+  it("no importa `mermaid` hasta el primer dibujo y lo importa una sola vez", async () => {
+    const before = mocked.loads;
+    const r = renderer();
+    expect(mocked.loads).toBe(before);
+    await r.render("flowchart TD\n A --> B");
+    await r.render("flowchart TD\n A --> C");
+    expect(mocked.loads).toBe(before + 1);
+  });
+});
+
+describe("renderMermaid · configuración (RF-051, P-10)", () => {
+  it("pide strict, sin HTML en las etiquetas, tema base con las variables de los tokens y sin dibujar el error", async () => {
+    await renderer().render("flowchart TD\n A --> B");
+    const config = mocked.api.initialize.mock.calls[0][0];
+    expect(config).toMatchObject({ startOnLoad: false, securityLevel: "strict", htmlLabels: false, theme: "base", suppressErrorRendering: true });
+    expect(config.flowchart).toMatchObject({ htmlLabels: false });
+    expect(config.themeVariables).toMatchObject({ darkMode: true, background: "#1a1a24", primaryColor: "#172f3e", textColor: "#e8e8ef" });
+  });
+
+  it("`secure` ampliado: la fuente no puede cambiar seguridad, tema, estilos, fuentes ni aspecto", () => {
+    const { secure } = mermaidConfig(read, true);
+    for (const key of ["secure", "securityLevel", "startOnLoad", "maxTextSize", "suppressErrorRendering", "theme", "themeVariables", "themeCSS", "darkMode", "fontFamily", "htmlLabels", "flowchart", "look"]) {
+      expect(secure, key).toContain(key);
+    }
+  });
+});
+
+describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
+  const hostile = [
+    '%%{init: {"securityLevel":"loose","theme":"dark"}}%%',
+    "flowchart TD",
+    "  A --> B",
+    "  click A call alert(1)",
+    '  click B href "javascript:alert(1)"',
+    "  %% un comentario normal",
+  ].join("\n");
+
+  it("quita las directivas %%{…}%% y las líneas `click`, conserva el resto y no mueve las líneas", () => {
+    const clean = sanitizeSource(hostile);
+    expect(clean).not.toMatch(/%%\{/);
+    expect(clean).not.toMatch(/click/);
+    expect(clean).toContain("flowchart TD");
+    expect(clean).toContain("A --> B");
+    expect(clean).toContain("%% un comentario normal");
+    // Mismas líneas que la fuente: los errores de Mermaid siguen apuntando a la línea del bloque.
+    expect(clean.split("\n")).toHaveLength(hostile.split("\n").length);
+  });
+
+  it("quita directivas de varias líneas y la clave `config:` del frontmatter (tema) sin tocar el título", () => {
+    const source = '---\ntitle: Plan\nconfig:\n  theme: dark\n  themeVariables:\n    primaryColor: "#f00"\n---\n%%{\n  init: {"theme": "forest"}\n}%%\nflowchart TD\n A --> B';
+    const clean = sanitizeSource(source);
+    expect(clean).toContain("title: Plan");
+    expect(clean).not.toMatch(/config|theme|forest|primaryColor|%%\{/);
+    expect(clean).toContain("flowchart TD");
+    expect(clean.split("\n")).toHaveLength(source.split("\n").length);
+  });
+
+  it("al dibujar entrega a Mermaid la fuente ya limpia", async () => {
+    await renderer().render(hostile);
+    expect(sourceOf()).not.toMatch(/%%\{|click/);
+    expect(sourceOf()).toContain("A --> B");
+  });
+});
+
+describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
+  const wrap = (inner: string, attrs = "") => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"${attrs}>${inner}</svg>`;
+
+  it("acepta un SVG de dibujo y devuelve un elemento svg del documento", () => {
+    const svg = verifySvg(wrap('<defs><marker id="m"><path d="M0 0"/></marker></defs><style>.node{fill:red}</style><g><use href="#m"/><text>hola</text></g>'));
+    expect(svg).toBeInstanceOf(SVGSVGElement);
+    expect(svg.ownerDocument).toBe(document);
+    expect(svg.getAttribute("viewBox")).toBe("0 0 10 10");
+  });
+
+  it.each([
+    ["script", wrap("<script>alert(1)</script>")],
+    ["foreignObject", wrap("<foreignObject><div>x</div></foreignObject>")],
+    ["atributo on*", wrap('<g onclick="alert(1)"/>')],
+    ["atributo on* en la raíz", wrap("<g/>", ' onload="alert(1)"')],
+    ["enlace a", wrap('<a href="https://example.com"><text>x</text></a>')],
+    ["href externo", wrap('<image href="https://example.com/x.png"/>')],
+    ["xlink:href javascript:", wrap('<use xlink:href="javascript:alert(1)"/>')],
+    ["iframe", wrap("<iframe/>")],
+    ["@import en un style", wrap("<style>@import url(https://example.com/x.css);</style>")],
+    ["raíz que no es svg", '<div xmlns="http://www.w3.org/1999/xhtml">x</div>'],
+    ["XML mal formado", "<svg><g></svg>"],
+  ])("rechaza %s", (_name, markup) => {
+    expect(() => verifySvg(markup)).toThrow(MermaidSyntaxError);
+  });
+
+  it("al dibujar rechaza el SVG inseguro de Mermaid con un error del bloque", async () => {
+    mocked.api.render.mockResolvedValue({ svg: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' });
+    await expect(renderer().render("flowchart TD\n A --> B")).rejects.toBeInstanceOf(MermaidSyntaxError);
+  });
+});
+
+describe("renderMermaid · errores por bloque (RF-049, RF-053)", () => {
+  it("un error de sintaxis llega como MermaidSyntaxError con el mensaje y la línea, y no deja nodos temporales", async () => {
+    mocked.api.render.mockImplementation(async (id: string) => {
+      // Mermaid deja un nodo temporal en <body> mientras dibuja; si falla, no lo limpia.
+      for (const prefix of ["d", ""]) {
+        const node = document.createElement("div");
+        node.id = prefix + id;
+        document.body.append(node);
+      }
+      throw new Error("Parse error on line 3:\n...A[Inicio --> B(\n-----^\nExpecting 'SQE'");
+    });
+    const error = await renderer().render("flowchart TD\n  A[Inicio --> B(\n  ???").catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(MermaidSyntaxError);
+    expect((error as MermaidSyntaxError).line).toBe(3);
+    expect((error as MermaidSyntaxError).message).toContain("Parse error");
+    expect(document.body.children).toHaveLength(0);
+  });
+
+  it("un error sin línea se entrega igual, sin línea", async () => {
+    mocked.api.render.mockRejectedValue(new Error("No diagram type detected"));
+    const error = (await renderer().render("???").catch((e: unknown) => e)) as MermaidSyntaxError;
+    expect(error).toBeInstanceOf(MermaidSyntaxError);
+    expect(error.line).toBeUndefined();
+  });
+
+  it("un valor que no es Error también se convierte en MermaidSyntaxError", async () => {
+    mocked.api.render.mockRejectedValue("boom");
+    await expect(renderer().render("???")).rejects.toBeInstanceOf(MermaidSyntaxError);
+  });
+
+  it("si el módulo no carga, MermaidLoadError; y el siguiente dibujo vuelve a intentarlo (Reintentar)", async () => {
+    const load = vi.fn().mockRejectedValueOnce(new TypeError("Failed to fetch dynamically imported module")).mockResolvedValue(mocked.api);
+    const r = renderer({ load });
+    await expect(r.render("flowchart TD\n A --> B")).rejects.toBeInstanceOf(MermaidLoadError);
+    await expect(r.render("flowchart TD\n A --> B")).resolves.toBeInstanceOf(SVGSVGElement);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it("un bloque con error no impide dibujar el siguiente", async () => {
+    mocked.api.render.mockRejectedValueOnce(new Error("Parse error on line 1")).mockResolvedValue({ svg: SAFE_SVG });
+    const r = renderer();
+    const results = await Promise.allSettled([r.render("mal"), r.render("flowchart TD\n A --> B")]);
+    expect(results.map((x) => x.status)).toEqual(["rejected", "fulfilled"]);
+  });
+});
+
+describe("renderMermaid · en serie cediendo el hilo (RNF-001)", () => {
+  it("el segundo dibujo no empieza hasta que acaba el primero, y entre ambos se cede el hilo", async () => {
+    const order: string[] = [];
+    let finishFirst: (value: { svg: string }) => void = () => {};
+    mocked.api.render
+      .mockImplementationOnce(() => {
+        order.push("start 1");
+        return new Promise((resolve) => (finishFirst = resolve));
+      })
+      .mockImplementationOnce(async () => {
+        order.push("start 2");
+        return { svg: SAFE_SVG };
+      });
+    const yieldToMain = vi.fn(async () => void order.push("yield"));
+    const r = renderer({ yieldToMain });
+    const first = r.render("uno");
+    const second = r.render("dos");
+    await vi.waitFor(() => expect(order).toEqual(["start 1"]));
+    finishFirst({ svg: SAFE_SVG });
+    await Promise.all([first, second]);
+    expect(order).toEqual(["start 1", "yield", "start 2"]);
+  });
+});
+
+describe("renderMermaid · tema (RF-050)", () => {
+  it("avisa a los suscriptores cuando cambia `data-theme` y deja de avisar al darse de baja", async () => {
+    const r = renderer();
+    const listener = vi.fn();
+    const off = r.onThemeChange(listener);
+    document.documentElement.dataset.theme = "light";
+    await vi.waitFor(() => expect(listener).toHaveBeenCalledTimes(1));
+    off();
+    document.documentElement.dataset.theme = "dark";
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it("cada dibujo se configura con los tokens y el modo oscuro de ese momento", async () => {
+    let dark = true;
+    const live: Record<string, string> = { ...tokens };
+    const r = createMermaidRenderer({ read: (p) => live[p] ?? "", isDark: () => dark, yieldToMain: async () => {} });
+    await r.render("flowchart TD\n A --> B");
+    dark = false;
+    live["--accent-soft"] = "rgba(8, 145, 178, 0.1)";
+    live["--bg-secondary"] = "#f8fafc";
+    live["--text-primary"] = "#0f172a";
+    await r.render("flowchart TD\n A --> B");
+    const [first, second] = mocked.api.initialize.mock.calls.map((call) => call[0].themeVariables);
+    expect(first).toMatchObject({ darkMode: true, primaryColor: "#172f3e", textColor: "#e8e8ef" });
+    expect(second).toMatchObject({ darkMode: false, primaryColor: "#e0f0f5", textColor: "#0f172a" });
+  });
+});
