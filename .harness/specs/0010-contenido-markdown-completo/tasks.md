@@ -378,10 +378,10 @@ actualizado: 2026-10-24
 - [x] T-079 — `.use(clipboard)` + `handlePaste` previo para VS Code `markdown` en `MilkdownView.tsx` (cubre RF-023, RF-024) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
-- [ ] T-080 [rojo] — "Insertar tabla" inserta cabecera + 1 fila × 2 columnas en el cursor; con el cursor en una tabla aparecen "Añadir fila debajo" y "Añadir columna a la derecha" y funcionan; en Código no hay botón (cubre RF-025) [zona: test] [P-7]
+- [x] T-080 [rojo] — "Insertar tabla" inserta cabecera + 1 fila × 2 columnas en el cursor; con el cursor en una tabla aparecen "Añadir fila debajo" y "Añadir columna a la derecha" y funcionan; en Código no hay botón (cubre RF-025) [zona: test] [P-7]
   - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx src/editor/NoteEditor.test.tsx -t "tabla"`
   - EXPECT: fallan.
-- [ ] T-081 — `registerCommands` (`insertTableCommand({row:2,col:2})`, `addRowAfterCommand`, `addColAfterCommand`), `onTableContext` y botones de la barra (cubre RF-025) [zona: pantalla]
+- [x] T-081 — `registerCommands` (`insertTableCommand({row:2,col:2})`, `addRowAfterCommand`, `addColAfterCommand`), `onTableContext` y botones de la barra (cubre RF-025) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-4 "`
   - EXPECT: vitest `passed`; V-4 en verde incluida la tabla insertada desde la UI.
 - [x] T-082 [rojo] — Alternar una casilla en Visual cambia `checked`, serializa `- [x]`/`- [ ]` y marca la nota con cambios; en lectura no cambia nada (cubre RF-039) [zona: test]

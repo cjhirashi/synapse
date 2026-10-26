@@ -17,7 +17,7 @@
  * borrador sucio pregunta antes de descartarlo (VF-2).
  */
 import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
+import { ArrowLeft, ArrowRight, BetweenHorizontalEnd, BetweenVerticalEnd, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { canonical } from "../sync/canonical";
@@ -29,7 +29,7 @@ import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { MilkdownView } from "./MilkdownView";
+import { MilkdownView, type TableCommands } from "./MilkdownView";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
 import { NoteMenu } from "./NoteMenu";
 import { PropertiesForm } from "./PropertiesForm";
@@ -61,6 +61,10 @@ export interface ViewProps {
   registerReveal?: (reveal: ((line: number) => void) | null) => void;
   /** Bloque heredado protegido que no se entrega a la vista y se re-antepone al emitir (P-6); sólo Visual. */
   prefix?: string;
+  /** Entrega los comandos de tabla de la vista Visual (como `registerFlush`); sólo Visual (RF-025, P-7). */
+  registerCommands?: (commands: TableCommands | null) => void;
+  /** Informa de si el cursor está en una tabla; sólo Visual (RF-025, P-7). */
+  onTableContext?: (inTable: boolean) => void;
 }
 
 export interface NoteEditorViews {
@@ -195,6 +199,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const registerFlush = useCallback((flush: (() => void) | null) => {
     flushVisual.current = flush;
   }, []);
+  /** Comandos de tabla de la vista Visual (los registra `MilkdownView`) y si el cursor está en una tabla (RF-025, P-7). */
+  const tableCommands = useRef<TableCommands | null>(null);
+  const registerCommands = useCallback((commands: TableCommands | null) => {
+    tableCommands.current = commands;
+  }, []);
+  const [inTable, setInTable] = useState(false);
   /** «Ir a la línea N» de la vista Código (la registra `CodeView`, como `registerFlush`). */
   const revealLine = useRef<((line: number) => void) | null>(null);
   const registerReveal = useCallback((reveal: ((line: number) => void) | null) => {
@@ -691,11 +701,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
             </div>
           )}
-          {/* Insertar tabla (RF-025): sólo en Visual; la acción se cablea con la lógica del portapapeles y las tablas. */}
+          {/* Insertar tabla (RF-025): sólo en Visual. Con el cursor en una tabla se ofrecen además añadir fila y
+              columna (P-7: Tab en la última celda no las crea). */}
           {mode === "edit" && view === "visual" && (
-            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla">
-              <Table size={16} aria-hidden="true" />
-            </button>
+            <>
+              <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => tableCommands.current?.insertTable()}>
+                <Table size={16} aria-hidden="true" />
+              </button>
+              {inTable && (
+                <>
+                  <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => tableCommands.current?.addRowAfter()}>
+                    <BetweenHorizontalEnd size={16} aria-hidden="true" />
+                  </button>
+                  <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => tableCommands.current?.addColAfter()}>
+                    <BetweenVerticalEnd size={16} aria-hidden="true" />
+                  </button>
+                </>
+              )}
+            </>
           )}
           {mode === "edit" && (
             <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
@@ -843,7 +866,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {mode === "read" ? (
             <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={savedPreparsed} />
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}

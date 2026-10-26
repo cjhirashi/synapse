@@ -286,6 +286,63 @@ for (const { theme, size, key } of COMBOS) {
   });
 }
 
+// V-4 · insertar tabla desde la UI y añadir fila/columna (RF-025, P-7; RF-026 en filas recién creadas)
+for (const { theme, size, key } of COMBOS) {
+  test(`0010 V-4 insertar tabla, añadir fila y columna, ${key} (RF-025)`, async ({ browser, content }) => {
+    const { context, page } = await openContent(browser, content, "plain", { theme, size, edit: true });
+    const prose = page.locator(".milkdown-view .ProseMirror");
+    await prose.click();
+    await expect(page.getByRole("button", { name: "Añadir fila debajo" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Insertar tabla", exact: true }).click();
+    const table = prose.locator("table").last();
+    await expect(table.locator("tr")).toHaveCount(2);
+    await expect(table.locator("th")).toHaveCount(2);
+    await expect(table.locator("td")).toHaveCount(2);
+    await page.getByRole("button", { name: "Añadir fila debajo" }).click();
+    await expect(table.locator("tr")).toHaveCount(3);
+    await page.getByRole("button", { name: "Añadir columna a la derecha" }).click();
+    await expect(table.locator("th")).toHaveCount(3);
+    // R-7: las filas nuevas (celdas vacías) no crecen más de 40 px.
+    const heights = await table.locator("tr").evaluateAll((trs) => trs.map((tr) => tr.getBoundingClientRect().height));
+    for (const h of heights) expect(h).toBeLessThanOrEqual(40);
+    await expectNoPageScroll(page);
+    await shotAt(page, `table-insert-${key}`, ".milkdown-view .ProseMirror table");
+    await context.close();
+  });
+}
+
+// V-4 · pegar markdown en Visual lo convierte en estructura (RF-023, RF-024)
+test("0010 V-4 pegar una tabla GFM y una tabla mal formada en Visual (RF-023, RF-024)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "plain", { theme: "dark", size: SIZES[0], edit: true });
+  const prose = page.locator(".milkdown-view .ProseMirror");
+  await prose.click();
+  /** Dispara un `paste` real con `text/plain` (y, opcional, el modo de VS Code) sobre el editor enfocado. */
+  const paste = (text: string, vscodeMode?: string) =>
+    page.evaluate(
+      ([t, mode]) => {
+        const data = new DataTransfer();
+        data.setData("text/plain", t as string);
+        if (mode) data.setData("vscode-editor-data", JSON.stringify({ mode }));
+        document.querySelector(".ProseMirror")!.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+      },
+      [text, vscodeMode ?? ""],
+    );
+  await paste("| Col A | Col B |\n|---|---|\n| uno | dos |\n\n- lista **fuerte**\n");
+  await expect(prose.locator("table").last().locator("th")).toHaveText(["Col A", "Col B"]);
+  await expect(prose.locator("ul li strong").last()).toHaveText("fuerte");
+  // VS Code (modo markdown): también estructura, no un bloque de código.
+  await paste("| X | Y |\n|---|---|\n| 1 | 2 |\n", "markdown");
+  await expect(prose.locator("table th").filter({ hasText: "X" })).toHaveCount(1);
+  // Tabla mal formada: texto íntegro, sin tabla.
+  const before = await prose.locator("table").count();
+  await paste("| mal | formada |\n| 1 | 2 | 3 |");
+  await expect(prose.locator("table")).toHaveCount(before);
+  await expect(prose).toContainText("| mal | formada |");
+  await expect(prose).toContainText("| 1 | 2 | 3 |");
+  await shotAt(page, "paste-dark", ".milkdown-view .ProseMirror table");
+  await context.close();
+});
+
 /** Lenguajes de RF-030 (nombre declarado en el bloque) que deben llevar al menos un `sx-*`. */
 const HIGHLIGHTED = CONTENT_NOTES.find((n) => n.key === "code") ? ["typescript", "javascript", "tsx", "python", "json", "bash", "css", "html", "sql", "yaml", "markdown"] : [];
 

@@ -371,8 +371,19 @@ describe("MilkdownView · comandos de tabla", () => {
     expect(inTable).not.toHaveBeenCalledWith(true);
     act(() => commands.insertTable());
     await waitFor(() => expect(inTable).toHaveBeenLastCalledWith(true));
-    act(() => view.dispatch(view.state.tr.setSelection(TextSelection.atStart(view.state.doc))));
+    act(() => view.dispatch(view.state.tr.setSelection(TextSelection.atEnd(view.state.doc))));
     await waitFor(() => expect(inTable).toHaveBeenLastCalledWith(false));
+  });
+
+  // El comando de Milkdown deja el cursor donde estaba: con el cursor a mitad de un párrafo (que parte en dos)
+  // quedaba FUERA de la tabla y no aparecían añadir fila/columna.
+  it("insertar tabla a mitad de un párrafo deja el cursor dentro de la tabla (P-7)", async () => {
+    const { commands, view, inTable } = await mountTable("hola mundo\n");
+    act(() => view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 5))));
+    act(() => commands.insertTable());
+    await waitFor(() => expect(inTable).toHaveBeenLastCalledWith(true));
+    expect(view.state.selection.$from.parent.type.name).toBe("paragraph");
+    expect(view.state.selection.$from.node(-1).type.name).toBe("table_header");
   });
 
   it("añadir fila debajo y añadir columna a la derecha crecen la tabla (P-7)", async () => {

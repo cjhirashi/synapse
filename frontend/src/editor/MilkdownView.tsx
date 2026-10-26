@@ -15,14 +15,14 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import { commonmark, headingIdGenerator, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
-import { gfm } from "@milkdown/preset-gfm";
+import { addColAfterCommand, addRowAfterCommand, gfm, insertTableCommand } from "@milkdown/preset-gfm";
 import type { Node as PMNode } from "@milkdown/prose/model";
-import { Plugin } from "@milkdown/prose/state";
+import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
@@ -54,6 +54,16 @@ const safeImage = imageSchema.extendSchema((prev) => (ctx) => ({
     { ...ctx.get(imageAttr.key)(node), ...node.attrs, src: safeImageUrl(node.attrs.src as string) || undefined },
   ],
 }));
+
+/** Comandos de tabla que `MilkdownView` entrega al padre para su barra (RF-025, P-7). */
+export interface TableCommands {
+  /** Inserta en el cursor una tabla con cabecera, 1 fila de cuerpo y 2 columnas. */
+  insertTable: () => void;
+  /** Añade una fila bajo la del cursor (sólo con el cursor en una tabla). */
+  addRowAfter: () => void;
+  /** Añade una columna a la derecha de la del cursor (sólo con el cursor en una tabla). */
+  addColAfter: () => void;
+}
 
 interface MilkdownViewProps {
   value: string;
@@ -88,6 +98,10 @@ interface MilkdownViewProps {
    * defecto `""` (sin bloque protegido).
    */
   prefix?: string;
+  /** Entrega los comandos de tabla al estar listo el editor (`null` al destruirlo), como `registerFlush`. */
+  registerCommands?: (commands: TableCommands | null) => void;
+  /** Informa de si el cursor está dentro de una tabla; sólo cuando cambia (para mostrar fila/columna, P-7). */
+  onTableContext?: (inTable: boolean) => void;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -103,7 +117,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "" }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** El markdown que tiene el editor ahora (SIN el `prefix`): el último recibido del padre o emitido por él. */
@@ -117,10 +131,23 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   onViewRef.current = onView;
   const onDirtyRef = useRef(onDirty);
   onDirtyRef.current = onDirty;
+  const registerCommandsRef = useRef(registerCommands);
+  registerCommandsRef.current = registerCommands;
+  const onTableContextRef = useRef(onTableContext);
+  onTableContextRef.current = onTableContext;
+  /** Último valor informado por `onTableContext` (sólo se informan los cambios). */
+  const inTableRef = useRef(false);
   /** Pendiente de enfocar al estar listo el primer editor (se consume una vez: recrearlo por un `value` nuevo no roba el foco). */
   const focusOnReady = useRef(autoFocus);
   // Lectura → edición reutiliza esta misma instancia (no se vuelve a montar): la petición llega por la prop.
   if (autoFocus) focusOnReady.current = true;
+
+  /** Informa de «cursor en una tabla» sólo si cambió respecto de lo último informado. */
+  function reportTable(inTable: boolean) {
+    if (inTableRef.current === inTable) return;
+    inTableRef.current = inTable;
+    onTableContextRef.current?.(inTable);
+  }
 
   /** Informa de `dirty` sólo si cambió respecto de lo último informado. */
   function report(target: Running, dirty: boolean) {
@@ -158,6 +185,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
     running.current = null;
     if (!previous) return;
     onViewRef.current?.(null);
+    registerCommandsRef.current?.(null);
+    reportTable(false);
     // Antes de destruirlo: su `destroy` cancela el debounce del listener (E-6).
     flushRunning(previous);
     void previous.ready.then(() => previous.editor.destroy());
@@ -234,7 +263,13 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
               view: () => ({
                 update: (view) => {
                   const r = running.current;
-                  if (!r || r.editor !== editor || !r.baseDoc || r.readOnly) return;
+                  if (!r || r.editor !== editor) return;
+                  // El cursor está en una tabla si alguno de sus ancestros lo es (la celda es `table_cell`/`table_header`).
+                  const { $from } = view.state.selection;
+                  let inTable = false;
+                  for (let depth = $from.depth; depth > 0 && !inTable; depth--) inTable = $from.node(depth).type.name === "table";
+                  if (!r.readOnly) reportTable(inTable);
+                  if (!r.baseDoc || r.readOnly) return;
                   report(r, !view.state.doc.eq(r.baseDoc));
                 },
               }),
@@ -258,6 +293,33 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       // no un cuadro de texto (`aria-readonly` no es válido en `document`, C-3).
       view.dom.setAttribute("role", readOnly ? "document" : "textbox");
       onViewRef.current?.(view);
+      if (!readOnly) {
+        // Los comandos de tabla (RF-025, P-7) operan sobre la selección vigente de la vista; el botón de la
+        // barra ya le quitó el foco, así que se le devuelve tras ejecutarlos para seguir escribiendo.
+        const run = (key: typeof insertTableCommand.key | typeof addRowAfterCommand.key | typeof addColAfterCommand.key, payload?: { row: number; col: number }) => {
+          editor.ctx.get(commandsCtx).call(key as never, payload as never);
+          view.focus();
+        };
+        registerCommandsRef.current?.({
+          insertTable: () => {
+            const { from } = view.state.selection;
+            run(insertTableCommand.key, { row: 2, col: 2 });
+            // `insertTableCommand` deja el cursor donde estaba: a mitad de un párrafo (que parte en dos) queda
+            // FUERA de la tabla y no se ofrecerían fila/columna. Se lleva a la primera celda de la tabla nueva
+            // (la primera a partir de `from - 1`: con el párrafo vacío la tabla lo sustituye y empieza ahí).
+            let tablePos = -1;
+            view.state.doc.descendants((node, pos) => {
+              if (tablePos >= 0 || pos < from - 1) return tablePos < 0;
+              if (node.type.name === "table") tablePos = pos;
+              return tablePos < 0;
+            });
+            const cell = tablePos >= 0 ? Selection.findFrom(view.state.doc.resolve(tablePos), 1, true) : null;
+            if (cell) view.dispatch(view.state.tr.setSelection(cell));
+          },
+          addRowAfter: () => run(addRowAfterCommand.key),
+          addColAfter: () => run(addColAfterCommand.key),
+        });
+      }
     });
     running.current = { editor, ready, readOnly, view: null, baseDoc: null, reported: false };
   }, [value, readOnly, label]);
