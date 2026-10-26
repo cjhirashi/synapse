@@ -20,7 +20,21 @@ const DNCR_NODE_BUILD = fileURLToPath(new URL("./node_modules/decode-named-chara
 export default defineConfig({
   plugins: [react()],
   // `dist/.vite/manifest.json` lo lee `scripts/check-bundle.mjs` (presupuesto de bundle, SPEC-0010 RNF-002).
-  build: { manifest: true },
+  build: {
+    manifest: true,
+    rollupOptions: {
+      output: {
+        // Cada gramática extra del resaltado (SPEC-0010 RF-030, RNF-002) sale en un chunk con su nombre —se pide sólo
+        // cuando un bloque la usa y V-15/`test:bundle` la reconocen por él—; sin esto Rollup los llama `index-<hash>`.
+        // Sólo cambia el NOMBRE del archivo: la partición en chunks sigue siendo la de los `import()` (no `manualChunks`,
+        // que arrastraría módulos compartidos de CodeMirror al chunk de la gramática).
+        chunkFileNames: (chunk) => {
+          const match = chunk.facadeModuleId?.match(/@codemirror\/(?:lang-(python|sql|yaml|json)\/|legacy-modes\/mode\/(shell)\.)/);
+          return match ? `assets/lang-${match[1] ?? match[2]}-[hash].js` : "assets/[name]-[hash].js";
+        },
+      },
+    },
+  },
   worker: {
     format: "es",
     // Sólo el bundle del Worker usa el build node de `decode-named-character-reference` (sin DOM).
