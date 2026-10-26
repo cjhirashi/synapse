@@ -223,3 +223,81 @@ describe("MilkdownView · apertura precalculada (RNF-001)", () => {
     expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cacheHit);
   });
 });
+
+// SPEC-0010 RF-023, RF-024, RNF-003 (P-8): pegar en Visual. El portapapeles de ProseMirror se alimenta con un
+// `paste` sintético cuyo `clipboardData` sólo ofrece `getData`, como el de un navegador sin `text/html`.
+describe("MilkdownView · pegar", () => {
+  /** Pega `data` (tipo → contenido) en la vista, en la selección actual. */
+  function paste(view: EditorView, data: Record<string, string>) {
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { getData: (type: string) => data[type] ?? "", types: Object.keys(data) } });
+    act(() => {
+      view.dom.dispatchEvent(event);
+    });
+  }
+
+  /** Nombres de los nodos del documento (todos los niveles), en orden. */
+  function nodeNames(view: EditorView): string[] {
+    const names: string[] = [];
+    view.state.doc.descendants((node) => {
+      names.push(node.type.name);
+    });
+    return names;
+  }
+
+  it("pegar text/plain con una tabla GFM inserta una tabla (RF-023)", async () => {
+    const { view } = await mount({ value: "" });
+    paste(view, { "text/plain": "| a | b |\n|---|---|\n| 1 | 2 |\n" });
+    expect(nodeNames(view)).toContain("table");
+    expect(view.state.doc.textContent).toBe("ab12");
+  });
+
+  it("pegar listas y énfasis inserta su estructura, no texto escapado (RF-023)", async () => {
+    const { view } = await mount({ value: "" });
+    paste(view, { "text/plain": "- uno\n- **dos**\n\n1. tres\n" });
+    const names = nodeNames(view);
+    expect(names).toContain("bullet_list");
+    expect(names).toContain("ordered_list");
+    expect(names).toContain("strong");
+    expect(view.state.doc.textContent).not.toContain("**");
+  });
+
+  it("una tabla mal formada se pega como texto, sin perder ningún carácter (RF-024)", async () => {
+    const { view } = await mount({ value: "" });
+    const text = "| a | b |\n| 1 | 2 | 3 |";
+    paste(view, { "text/plain": text });
+    expect(nodeNames(view)).not.toContain("table");
+    expect(view.state.doc.textContent.replace(/\s+/g, "")).toBe(text.replace(/\s+/g, ""));
+  });
+
+  it("filas desiguales con separador también se conservan carácter a carácter (RF-024)", async () => {
+    const { view } = await mount({ value: "" });
+    const text = "| a | b |\n|---|\n| 1 | 2 |";
+    paste(view, { "text/plain": text });
+    expect(view.state.doc.textContent).toContain("|---|");
+    expect(view.state.doc.textContent).toContain("| a | b |");
+    expect(view.state.doc.textContent).toContain("| 1 | 2 |");
+  });
+
+  it("con vscode-editor-data de modo markdown se interpreta como estructura, no como bloque de código (P-8, RF-023)", async () => {
+    const { view } = await mount({ value: "" });
+    paste(view, { "text/plain": "| a | b |\n|---|---|\n| 1 | 2 |\n", "vscode-editor-data": JSON.stringify({ mode: "markdown" }) });
+    const names = nodeNames(view);
+    expect(names).toContain("table");
+    expect(names).not.toContain("code_block");
+  });
+
+  it("con vscode-editor-data de otro modo el código sigue pegándose como bloque de ese lenguaje (P-8)", async () => {
+    const { view } = await mount({ value: "" });
+    paste(view, { "text/plain": "const a = 1;", "vscode-editor-data": JSON.stringify({ mode: "typescript" }) });
+    expect(nodeNames(view)).toContain("code_block");
+    expect(view.state.doc.firstChild?.attrs.language).toBe("typescript");
+  });
+
+  it("un enlace javascript: pegado se muestra sin href (RF-023, RNF-003)", async () => {
+    const { container, view } = await mount({ value: "" });
+    paste(view, { "text/plain": "[x](javascript:alert(1)) y [ok](https://x.test)" });
+    const hrefs = [...container.querySelectorAll(".ProseMirror a")].map((a) => a.getAttribute("href"));
+    expect(hrefs).toEqual([null, "https://x.test"]);
+  });
+});
