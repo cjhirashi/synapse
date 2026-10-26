@@ -395,3 +395,33 @@ describe("MilkdownView · comandos de tabla", () => {
     expect(shape(view)).toEqual({ rows: 3, cols: [3, 3, 3] });
   });
 });
+
+// RF-027, RF-028, RF-031, RF-032 (SPEC-0010): resaltado real en lectura y en Visual (decoraciones sx-*).
+describe("MilkdownView · resaltado de código", () => {
+  const SOURCE = "```js\nconst a = 1\n```\n\n```brainfuck\n+++\n```\n\n```\nsin lenguaje\n```\n";
+  const classesIn = (container: HTMLElement) => [...container.querySelectorAll('.code-block span[class*="sx-"]')].map((s) => s.className);
+
+  // RF-027
+  it("en lectura colorea el bloque con lenguaje admitido y no el desconocido ni el vacío (RF-031)", async () => {
+    const { container } = await mount({ value: SOURCE, readOnly: true });
+    await waitFor(() => expect(classesIn(container).some((c) => c.includes("sx-keyword"))).toBe(true));
+    const blocks = container.querySelectorAll(".code-block");
+    expect(blocks[0].querySelectorAll('span[class*="sx-"]').length).toBeGreaterThan(0);
+    expect(blocks[1].querySelectorAll('span[class*="sx-"]')).toHaveLength(0);
+    expect(blocks[2].querySelectorAll('span[class*="sx-"]')).toHaveLength(0);
+  });
+
+  // RF-028
+  it("en Visual colorea y actualiza las clases al editar el bloque", async () => {
+    const { container, view } = await mount({ value: SOURCE });
+    await waitFor(() => expect(classesIn(container).some((c) => c.includes("sx-keyword"))).toBe(true));
+    // Se cambia el contenido del primer bloque por un comentario.
+    let from = 0;
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === "code_block" && !from) from = pos + 1;
+    });
+    act(() => view.dispatch(view.state.tr.insertText("// nota", from, from + "const a = 1".length)));
+    await waitFor(() => expect(classesIn(container).some((c) => c.includes("sx-comment"))).toBe(true));
+    expect(classesIn(container).some((c) => c.includes("sx-keyword"))).toBe(false);
+  });
+});
