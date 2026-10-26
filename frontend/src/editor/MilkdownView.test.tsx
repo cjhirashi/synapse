@@ -8,6 +8,15 @@ import { PARSE_MARK } from "./markdown/cachedParser";
 import { parseMarkdownToJson } from "./markdown/parseStage";
 import { MilkdownView } from "./MilkdownView";
 
+// `mermaid` simulado: la vista previa de Visual (RF-047) se prueba con el renderizador real de la aplicación y
+// una API que devuelve un SVG mínimo con la fuente que recibió.
+const mermaid = vi.hoisted(() => ({
+  render: vi.fn(async (_id: string, text: string) => ({
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 100"><text>${text.replace(/[^\w ]/g, "")}</text></svg>`,
+  })),
+}));
+vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
+
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
 async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string }) {
   let view: EditorView | null = null;
@@ -423,5 +432,33 @@ describe("MilkdownView · resaltado de código", () => {
     act(() => view.dispatch(view.state.tr.insertText("// nota", from, from + "const a = 1".length)));
     await waitFor(() => expect(classesIn(container).some((c) => c.includes("sx-comment"))).toBe(true));
     expect(classesIn(container).some((c) => c.includes("sx-keyword"))).toBe(false);
+  });
+});
+
+// RF-046, RF-047: bloque mermaid con el renderizador real conectado a la vista (Mermaid simulado).
+describe("MilkdownView · Mermaid", () => {
+  const SOURCE = "```mermaid\nflowchart TD\n  A --> B\n```\n";
+  const preview = (container: HTMLElement) => container.querySelector('.code-block-mermaid [role="img"] svg');
+
+  it("en lectura dibuja el diagrama y oculta el código tras «Ver código»", async () => {
+    const { container } = await mount({ value: SOURCE, readOnly: true });
+    await waitFor(() => expect(preview(container)).not.toBeNull());
+    expect(container.querySelector<HTMLElement>(".code-block-mermaid pre")!.hidden).toBe(true);
+  });
+
+  it("en Visual el bloque sigue editable y la vista previa se actualiza ≤ 500 ms tras la última tecla", async () => {
+    const { container, view } = await mount({ value: SOURCE });
+    await waitFor(() => expect(preview(container)).not.toBeNull());
+    expect(container.querySelector<HTMLElement>(".code-block-mermaid pre")!.hidden).toBe(false);
+    let from = 0;
+    view.state.doc.descendants((node, pos) => {
+      if (node.type.name === "code_block" && !from) from = pos + 1;
+    });
+    const calls = mermaid.render.mock.calls.length;
+    const typedAt = Date.now();
+    act(() => view.dispatch(view.state.tr.insertText("flowchart TD\n  A --> C", from, from + "flowchart TD\n  A --> B".length)));
+    await waitFor(() => expect(mermaid.render.mock.calls.length).toBe(calls + 1), { timeout: 2000 });
+    expect(Date.now() - typedAt).toBeLessThan(500);
+    await waitFor(() => expect(preview(container)?.textContent).toContain("A  C"));
   });
 });

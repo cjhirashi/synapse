@@ -418,10 +418,10 @@ actualizado: 2026-10-24
 - [x] T-091 — `editor/mermaid/renderMermaid.ts` conectado como renderizador por defecto de la *node view* (cubre RF-046, RF-049, RF-050, RF-051, RF-053) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(7|8) "`
   - EXPECT: vitest `passed`; V-7/V-8 en verde (SVG real, 0 `script`/`foreignObject`/`on*`/`a[href]`, colores del tema, cambio de tema sin recargar, error y fallo de carga); capturas leídas frente a `career-mermaid-*`.
-- [ ] T-092 [rojo] — Vista previa en Visual: se actualiza ≤ 500 ms tras la última tecla (temporizadores falsos, *debounce* 400) y conserva el SVG anterior; en Código no hay diagrama (cubre RF-047, RF-048) [zona: test]
+- [x] T-092 [rojo] — Vista previa en Visual: se actualiza ≤ 500 ms tras la última tecla (temporizadores falsos, *debounce* 400) y conserva el SVG anterior; en Código no hay diagrama (cubre RF-047, RF-048) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts src/editor/CodeView.test.tsx -t "RF-04(7|8)"`
   - EXPECT: fallan.
-- [ ] T-093 — *Debounce* y vista previa en `codeBlockView.ts` (cubre RF-047, RF-048) [zona: pantalla]
+- [x] T-093 — *Debounce* y vista previa en `codeBlockView.ts` (cubre RF-047, RF-048) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
 - [ ] T-094 [rojo] — Zoom: `svg-pan-zoom` diferido sólo si excede; ajuste al ancho; botones con límites deshabilitados; teclado (flechas, `+`/`-`, `0`); rueda sólo con Ctrl/⌘; sin animación con reduced-motion (cubre RF-052) [zona: test]

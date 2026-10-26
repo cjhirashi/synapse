@@ -2,6 +2,12 @@
 import { render, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { describe, expect, it, vi } from "vitest";
+
+const mermaidLoads = vi.hoisted(() => ({ count: 0 }));
+vi.mock("mermaid", () => {
+  mermaidLoads.count += 1;
+  return { default: { initialize: vi.fn(), render: vi.fn() } };
+});
 import { CodeView } from "./CodeView";
 
 /** La instancia de CodeMirror que montó el componente (para despachar transacciones). */
@@ -128,5 +134,15 @@ describe("CodeView", () => {
   it("cercado: un alias en mayúsculas (PY) también resuelve el lenguaje", async () => {
     const { container } = render(<CodeView value={"```PY\ndef f(x):\n    return 1\n```"} onChange={() => {}} label="Código" />);
     await waitFor(() => expect(lineClasses(container, "def f(x):").some((c) => c.includes("sx-keyword"))).toBe(true));
+  });
+
+  // RF-048: en Código un bloque `mermaid` es texto: ni diagrama, ni área de vista previa, ni carga de Mermaid.
+  it("un bloque mermaid se muestra como texto, sin svg y sin cargar Mermaid", async () => {
+    const { container } = render(<CodeView value={"```mermaid\nflowchart TD\n  A --> B\n```"} onChange={() => {}} label="Código" />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector(".mermaid-preview, .mermaid-area, .code-block")).toBeNull();
+    expect(container.textContent).toContain("flowchart TD");
+    expect(mermaidLoads.count).toBe(0);
   });
 });

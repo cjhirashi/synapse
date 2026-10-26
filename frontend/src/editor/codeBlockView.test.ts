@@ -334,6 +334,69 @@ describe("codeBlockView · Mermaid", () => {
     expect(view.dom.querySelector("svg[data-fake]")).toHaveAttribute("data-n", "2");
   });
 
+  const edit = (view: NodeView, text: string) => view.update!(schema.nodes.code_block.create({ language: "mermaid" }, schema.text(text)), [], {} as never);
+
+  // RF-047
+  it("una ráfaga de teclas produce un solo dibujo, a los 400 ms de la última (≤ 500 ms)", async () => {
+    const render = vi.fn(async () => fakeSvg(300));
+    const view = mountMermaid({ editable: true, renderer: { render } });
+    await flush();
+    for (const text of ["flowchart TD\n  A --> B1", "flowchart TD\n  A --> B12", "flowchart TD\n  A --> B123"]) {
+      edit(view, text);
+      await vi.advanceTimersByTimeAsync(300);
+    }
+    expect(render).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(render).toHaveBeenLastCalledWith("flowchart TD\n  A --> B123");
+  });
+
+  // RF-047
+  it("un dibujo lento ya superado por otra edición se descarta y gana el último", async () => {
+    const pending: Array<(svg: SVGSVGElement) => void> = [];
+    const render = vi.fn((source: string) => new Promise<SVGSVGElement>((resolve) => pending.push((svg) => (svg.setAttribute("data-source", source), resolve(svg)))));
+    const view = mountMermaid({ editable: true, renderer: { render } });
+    await flush();
+    edit(view, "flowchart TD\n  A --> C");
+    await vi.advanceTimersByTimeAsync(400);
+    expect(render).toHaveBeenCalledTimes(2);
+    // Llegan en orden inverso: primero el nuevo y después el viejo.
+    pending[1](fakeSvg(300));
+    await flush();
+    pending[0](fakeSvg(300));
+    await flush();
+    expect(view.dom.querySelector("svg[data-fake]")).toHaveAttribute("data-source", "flowchart TD\n  A --> C");
+  });
+
+  // RF-047, RF-049
+  it("en Visual un error al teclear muestra el error con el código editable y al corregir vuelve el diagrama", async () => {
+    const render = vi.fn(async (source: string) => {
+      if (source.includes("???")) throw new MermaidSyntaxError("Parse error on line 2", 2);
+      return fakeSvg(300);
+    });
+    const view = mountMermaid({ editable: true, renderer: { render } });
+    await flush();
+    edit(view, "flowchart TD\n  ???");
+    await vi.advanceTimersByTimeAsync(400);
+    expect(view.dom.querySelector('[aria-label="Error en el diagrama"]')).not.toBeNull();
+    expect(view.contentDOM.hidden).toBe(false);
+    edit(view, "flowchart TD\n  A --> B");
+    await vi.advanceTimersByTimeAsync(400);
+    expect(view.dom.querySelector('[aria-label="Error en el diagrama"]')).toBeNull();
+    expect(view.dom.querySelector("svg[data-fake]")).not.toBeNull();
+  });
+
+  // RF-047
+  it("al vaciar el bloque en Visual la vista previa invita a escribir, sin pedir un dibujo", async () => {
+    const render = vi.fn(async () => fakeSvg(300));
+    const view = mountMermaid({ editable: true, renderer: { render } });
+    await flush();
+    view.update!(schema.nodes.code_block.create({ language: "mermaid" }), [], {} as never);
+    await vi.advanceTimersByTimeAsync(400);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(view.dom).toHaveTextContent("Escribe el diagrama en el bloque de arriba");
+  });
+
   // RF-046
   it("un bloque que no es mermaid no pide el renderizador", async () => {
     const render = vi.fn();
