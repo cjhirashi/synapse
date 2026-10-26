@@ -16,6 +16,7 @@
  */
 import { useEffect, useRef } from "react";
 import { Editor, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import { commonmark, headingIdGenerator, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
@@ -26,6 +27,7 @@ import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
 import { applyHeadingIds } from "./markdown/headingIds";
+import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
@@ -195,6 +197,9 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(safeImage)
       .use(gfm)
       .use(history)
+      // Pegar (RF-023, RF-024): el plugin oficial interpreta el `text/plain` como markdown con el parser del
+      // editor; lo que no es una tabla GFM válida queda como texto. El ajuste de VS Code (P-8) va antes.
+      .use(clipboard)
       .use(listener)
       .use(cachedParser)
       .config((ctx) => {
@@ -223,6 +228,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
         ctx.update(prosePluginsCtx, (plugins) =>
           plugins.concat(
+            // Antes que el `handlePaste` del plugin oficial (se registra después de `config`): ver P-8.
+            vscodeMarkdownPaste(ctx),
             new Plugin({
               view: () => ({
                 update: (view) => {

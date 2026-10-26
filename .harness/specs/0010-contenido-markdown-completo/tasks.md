@@ -372,10 +372,10 @@ actualizado: 2026-10-24
   - EXPECT: `passed`.
 
 **F.4 · Portapapeles, insertar tabla, fila/columna, tareas**
-- [ ] T-078 [rojo] — `MilkdownView.test.tsx`: pegar `text/plain` con tabla GFM → `table`; listas/énfasis → estructura; tabla mal formada → texto carácter a carácter; `vscode-editor-data` con modo `markdown` → estructura (P-8); enlace `javascript:` pegado sin `href` (cubre RF-023, RF-024, RNF-003) [zona: test] [P-8]
+- [x] T-078 [rojo] — `MilkdownView.test.tsx`: pegar `text/plain` con tabla GFM → `table`; listas/énfasis → estructura; tabla mal formada → texto carácter a carácter; `vscode-editor-data` con modo `markdown` → estructura (P-8); enlace `javascript:` pegado sin `href` (cubre RF-023, RF-024, RNF-003) [zona: test] [P-8]
   - CHECK: `cd frontend && npx vitest run src/editor/MilkdownView.test.tsx -t "pegar"`
   - EXPECT: fallan (hoy se pega como párrafos escapados).
-- [ ] T-079 — `.use(clipboard)` + `handlePaste` previo para VS Code `markdown` en `MilkdownView.tsx` (cubre RF-023, RF-024) [zona: pantalla]
+- [x] T-079 — `.use(clipboard)` + `handlePaste` previo para VS Code `markdown` en `MilkdownView.tsx` (cubre RF-023, RF-024) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
 - [ ] T-080 [rojo] — "Insertar tabla" inserta cabecera + 1 fila × 2 columnas en el cursor; con el cursor en una tabla aparecen "Añadir fila debajo" y "Añadir columna a la derecha" y funcionan; en Código no hay botón (cubre RF-025) [zona: test] [P-7]

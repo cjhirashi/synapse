@@ -32,7 +32,8 @@ function mark(name: string): void {
 
 /**
  * JSON del mdast que debe usar el PRÓXIMO parseo de este editor, o `null` para parsear en frío. Lo
- * pone quien abre la nota (sólo cuando el texto a abrir ES el `content` guardado de esa revisión).
+ * pone quien abre la nota (sólo cuando el texto a abrir ES el `content` guardado de esa revisión). Se consume
+ * en el primer parseo: los siguientes (pegado) son de otro texto.
  */
 export const preparsedMdastCtx = createSlice<string | null, "synapsePreparsedMdast">(null, "synapsePreparsedMdast");
 
@@ -63,6 +64,9 @@ export const cachedParser: MilkdownPlugin = (ctx) => {
     ctx.set(parserCtx, (text: string) => {
       const json = ctx.get(preparsedMdastCtx);
       if (json) {
+        // De UNA sola lectura: es el mdast del documento inicial. Todo parseo posterior (p. ej. pegar markdown,
+        // RF-023) recibe otro texto y no puede re-hidratar el de la nota abierta.
+        ctx.set(preparsedMdastCtx, null);
         try {
           const doc = docFromMdastJson(remark, schema, json, text);
           mark(PARSE_MARK.cacheHit);

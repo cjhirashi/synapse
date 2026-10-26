@@ -258,7 +258,10 @@ describe("MilkdownView · pegar", () => {
     const names = nodeNames(view);
     expect(names).toContain("bullet_list");
     expect(names).toContain("ordered_list");
-    expect(names).toContain("strong");
+    // El énfasis es una marca, no un nodo.
+    const marks = new Set<string>();
+    view.state.doc.descendants((node) => node.marks.forEach((m) => marks.add(m.type.name)));
+    expect(marks.has("strong")).toBe(true);
     expect(view.state.doc.textContent).not.toContain("**");
   });
 
@@ -298,6 +301,21 @@ describe("MilkdownView · pegar", () => {
     const { container, view } = await mount({ value: "" });
     paste(view, { "text/plain": "[x](javascript:alert(1)) y [ok](https://x.test)" });
     const hrefs = [...container.querySelectorAll(".ProseMirror a")].map((a) => a.getAttribute("href"));
-    expect(hrefs).toEqual([null, "https://x.test"]);
+    // La URL peligrosa no llega al DOM (el texto «x» se conserva, sin enlace); la segura sí.
+    expect(hrefs).toEqual(["https://x.test"]);
+    expect(container.querySelector(".ProseMirror")).toHaveTextContent("x y ok");
+    expect(container.innerHTML).not.toContain("javascript:");
+  });
+
+  // El mdast precalculado de la nota abierta (RNF-001) es de UNA sola lectura: pegar después no puede
+  // volver a re-hidratar el documento entero de la nota en lugar del texto pegado.
+  it("con mdast precalculado, lo pegado es lo pegado y no la nota abierta", async () => {
+    const value = "# Nota\n\nabierta\n";
+    let view: EditorView | null = null;
+    render(<MilkdownView value={value} readOnly={false} onChange={() => {}} label="Visual" preparsedMdast={parseMarkdownToJson(value)} onView={(v) => (view = v)} />);
+    await waitFor(() => expect(view).not.toBeNull());
+    paste(view as unknown as EditorView, { "text/plain": "- pegado\n" });
+    expect((view as unknown as EditorView).state.doc.textContent.split("Notaabierta")).toHaveLength(2); // la nota, una sola vez
+    expect((view as unknown as EditorView).state.doc.textContent).toContain("pegado");
   });
 });
