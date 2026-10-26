@@ -1,5 +1,6 @@
 // SPEC-0008 RF-007, RF-008: vista Visual (Milkdown real en jsdom, con los polyfills de test-setup).
 import { act, render, screen, waitFor } from "@testing-library/react";
+import { TextSelection } from "@milkdown/prose/state";
 import { EditorView } from "@milkdown/prose/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
@@ -317,5 +318,69 @@ describe("MilkdownView · pegar", () => {
     paste(view as unknown as EditorView, { "text/plain": "- pegado\n" });
     expect((view as unknown as EditorView).state.doc.textContent.split("Notaabierta")).toHaveLength(2); // la nota, una sola vez
     expect((view as unknown as EditorView).state.doc.textContent).toContain("pegado");
+  });
+});
+
+// SPEC-0010 RF-025 (P-7): comandos de tabla que el padre dispara desde su barra.
+describe("MilkdownView · comandos de tabla", () => {
+  type Commands = { insertTable: () => void; addRowAfter: () => void; addColAfter: () => void };
+
+  /** Monta la vista y captura los comandos y los avisos de «cursor en una tabla». */
+  async function mountTable(value = "") {
+    let commands: Commands | null = null;
+    let view: EditorView | null = null;
+    const inTable = vi.fn();
+    render(
+      <MilkdownView
+        value={value}
+        readOnly={false}
+        onChange={() => {}}
+        label="Visual"
+        registerCommands={(c) => (commands = c)}
+        onTableContext={inTable}
+        onView={(v) => (view = v)}
+      />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as Commands, view: view as unknown as EditorView, inTable };
+  }
+
+  /** Filas y celdas de la primera tabla del documento. */
+  function shape(view: EditorView): { rows: number; cols: number[] } {
+    let found: { rows: number; cols: number[] } | null = null;
+    view.state.doc.descendants((node) => {
+      if (found || node.type.name !== "table") return;
+      const cols: number[] = [];
+      node.forEach((row) => cols.push(row.childCount));
+      found = { rows: node.childCount, cols };
+    });
+    return found ?? { rows: 0, cols: [] };
+  }
+
+  it("insertar tabla pone cabecera + 1 fila de 2 columnas en el cursor (RF-025)", async () => {
+    const { commands, view } = await mountTable();
+    act(() => commands.insertTable());
+    expect(shape(view)).toEqual({ rows: 2, cols: [2, 2] });
+    expect(view.dom.querySelectorAll("th")).toHaveLength(2);
+    expect(view.dom.querySelectorAll("td")).toHaveLength(2);
+  });
+
+  it("con el cursor en una tabla se avisa, y se deja de avisar al salir de ella (P-7)", async () => {
+    const { commands, view, inTable } = await mountTable("antes\n");
+    expect(inTable).not.toHaveBeenCalledWith(true);
+    act(() => commands.insertTable());
+    await waitFor(() => expect(inTable).toHaveBeenLastCalledWith(true));
+    act(() => view.dispatch(view.state.tr.setSelection(TextSelection.atStart(view.state.doc))));
+    await waitFor(() => expect(inTable).toHaveBeenLastCalledWith(false));
+  });
+
+  it("añadir fila debajo y añadir columna a la derecha crecen la tabla (P-7)", async () => {
+    const { commands, view } = await mountTable();
+    act(() => commands.insertTable());
+    act(() => commands.addRowAfter());
+    expect(shape(view)).toEqual({ rows: 3, cols: [2, 2, 2] });
+    act(() => commands.addColAfter());
+    expect(shape(view)).toEqual({ rows: 3, cols: [3, 3, 3] });
   });
 });

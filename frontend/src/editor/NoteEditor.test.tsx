@@ -698,6 +698,36 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     return EditorView.findFromDOM(dom)!.state.doc.toString();
   }
 
+  // RF-025 (P-7)
+  it("tabla: «Insertar tabla» inserta cabecera + 1 fila × 2 columnas y, con el cursor en ella, aparecen añadir fila y columna", async () => {
+    await openReal("hola");
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola"));
+    expect(screen.queryByRole("button", { name: "Añadir fila debajo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir columna a la derecha" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Insertar tabla" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror table tr")).toHaveLength(2));
+    expect(document.querySelectorAll(".ProseMirror th")).toHaveLength(2);
+    expect(document.querySelectorAll(".ProseMirror td")).toHaveLength(2);
+    await userEvent.click(await screen.findByRole("button", { name: "Añadir fila debajo" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror table tr")).toHaveLength(3));
+    await userEvent.click(screen.getByRole("button", { name: "Añadir columna a la derecha" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror th")).toHaveLength(3));
+    expect(document.querySelectorAll(".ProseMirror td")).toHaveLength(6);
+    // La tabla marca la nota con cambios.
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+  });
+
+  // RF-025
+  it("tabla: en Código no hay botón de tabla ni de filas/columnas", async () => {
+    await openReal("hola");
+    await userEvent.click(screen.getByRole("button", { name: "Insertar tabla" }));
+    await screen.findByRole("button", { name: "Añadir fila debajo" });
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    expect(screen.queryByRole("button", { name: "Insertar tabla" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir fila debajo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir columna a la derecha" })).toBeNull();
+  });
+
   // RF-008
   it("Visual → Código → Visual sin editar deja el markdown idéntico byte a byte", async () => {
     const { value, note } = await openReal(ORIGINAL);
