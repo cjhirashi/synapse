@@ -6,19 +6,20 @@
  * sólo se emite por ediciones del usuario; cuando el padre cambia `value` el documento se reemplaza
  * marcando la transacción como externa, para no devolver al padre su propio texto.
  *
- * El lenguaje es `yamlFrontmatter`: el bloque inicial `---\n…\n---` se colorea como YAML y el resto como
- * markdown. Una línea con error de YAML (`errorLine`, 1-based) se marca con `.cm-error-line`, y el padre
+ * El lenguaje es markdown GFM con los bloques cercados coloreados por su gramática (`codeLanguages`, RF-029,
+ * RF-030) y, en cuanto carga su chunk (RNF-002), `yamlFrontmatter`: el bloque inicial `---\n…\n---` se
+ * colorea como YAML y el resto como markdown. Una línea con error de YAML (`errorLine`, 1-based) se marca con `.cm-error-line`, y el padre
  * puede saltar a ella con el `reveal` que esta vista registra (como `registerFlush`).
  */
 import { useEffect, useRef } from "react";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { yamlFrontmatter } from "@codemirror/lang-yaml";
-import { Annotation, EditorState, StateEffect, StateField } from "@codemirror/state";
+import { Annotation, Compartment, EditorState, StateEffect, StateField } from "@codemirror/state";
 import { syntaxHighlighting } from "@codemirror/language";
 import { Decoration, type DecorationSet, EditorView, highlightActiveLine, keymap, lineNumbers } from "@codemirror/view";
 import { styleTags } from "@lezer/highlight";
 import { synapseHighlighter, taskMarkerTag } from "./highlight/highlighter";
+import { findLanguage } from "./highlight/languages";
 
 /** Marca las transacciones que vienen del padre (no son ediciones del usuario). */
 const external = Annotation.define<boolean>();
@@ -44,6 +45,15 @@ const errorLineField = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
+/** Markdown GFM de la vista Código: tareas con etiqueta propia y cercados con gramática del registro único. */
+const markdownSupport = () =>
+  markdown({
+    base: markdownLanguage,
+    // Función (no la lista): la lista casa también por parte del nombre (`foo-shell` ≠ `shell`).
+    codeLanguages: (info) => findLanguage(info),
+    extensions: [{ props: [styleTags({ TaskMarker: taskMarkerTag })] }],
+  });
+
 interface CodeViewProps {
   value: string;
   onChange: (value: string) => void;
@@ -60,6 +70,8 @@ interface CodeViewProps {
 export function CodeView({ value, onChange, label, autoFocus = false, errorLine = null, registerReveal }: CodeViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<EditorView | null>(null);
+  // Lenguaje del documento en un compartimento: arranca en markdown y gana el frontmatter YAML al cargar.
+  const language = useRef(new Compartment());
   // La última `onChange`, para que el editor (creado una sola vez) no quede con una vieja.
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -73,8 +85,8 @@ export function CodeView({ value, onChange, label, autoFocus = false, errorLine 
         extensions: [
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          // Frontmatter YAML + markdown GFM (tablas, tareas, tachado) con la marca de tarea como etiqueta propia.
-          yamlFrontmatter({ content: markdown({ base: markdownLanguage, extensions: [{ props: [styleTags({ TaskMarker: taskMarkerTag })] }] }) }),
+          // Markdown GFM (tablas, tareas, tachado) con la marca de tarea como etiqueta propia y los cercados coloreados.
+          language.current.of(markdownSupport()),
           // SPEC-0010 RF-029 (P-11): como el mockup, con números de línea, línea activa y el markdown coloreado
           // con las clases `sx-*` (los colores son tokens: ver `syntax.css` y la vista Código en `editor.css`).
           syntaxHighlighting(synapseHighlighter),
@@ -93,6 +105,12 @@ export function CodeView({ value, onChange, label, autoFocus = false, errorLine 
     });
     view.current = instance;
     if (autoFocus) instance.focus();
+    // La gramática de YAML va en su propio chunk (RNF-002): al llegar, el bloque inicial `---…---` pasa a ser YAML.
+    void import("@codemirror/lang-yaml").then(({ yamlFrontmatter }) => {
+      if (view.current === instance) instance.dispatch({ effects: language.current.reconfigure(yamlFrontmatter({ content: markdownSupport() })) });
+    }, () => {
+      // Sin la gramática el bloque YAML se queda como markdown: legible, sin bloquear la edición (RF-032).
+    });
     return () => {
       instance.destroy();
       view.current = null;

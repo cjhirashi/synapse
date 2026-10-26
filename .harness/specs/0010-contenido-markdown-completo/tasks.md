@@ -398,10 +398,10 @@ actualizado: 2026-10-24
 - [x] T-085 — `highlight/languages.ts` + `highlight/proseHighlight.ts` (`prosemirror-highlight/lezer` con *parser* diferido) + registro en `MilkdownView` (cubre RF-027, RF-028, RF-030, RF-031, RF-032) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-5 "`
   - EXPECT: vitest `passed`; V-5 completa en verde (un `sx-*` por lenguaje, colores = tokens, contraste ≥ 4,5; desconocido sin `sx-*` ni errores de consola).
-- [ ] T-086 [rojo] — `CodeView.test.tsx`: bloques cercados con lenguaje admitido coloreados (`markdown({codeLanguages})`) (cubre RF-029, RF-030) [zona: test]
+- [x] T-086 [rojo] — `CodeView.test.tsx`: bloques cercados con lenguaje admitido coloreados (`markdown({codeLanguages})`) (cubre RF-029, RF-030) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/CodeView.test.tsx -t "cercado"`
   - EXPECT: falla.
-- [ ] T-087 — `codeLanguages: LANGUAGES` en `CodeView.tsx` (cubre RF-029, RF-030) [zona: pantalla]
+- [x] T-087 — `codeLanguages: LANGUAGES` en `CodeView.tsx` (cubre RF-029, RF-030) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-6 "`
   - EXPECT: `passed`.
 
