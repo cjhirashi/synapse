@@ -5,7 +5,7 @@ import { LanguageDescription } from "@codemirror/language";
 import { javascript } from "@codemirror/lang-javascript";
 import { Schema } from "@milkdown/prose/model";
 import { EditorState } from "@milkdown/prose/state";
-import type { Decoration } from "@milkdown/prose/view";
+import type { Decoration, DecorationSet } from "@milkdown/prose/view";
 import { createHighlightPlugin } from "prosemirror-highlight";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHighlightParser } from "./proseHighlight";
@@ -81,8 +81,8 @@ describe("proseHighlight · plugin", () => {
     EditorState.create({ doc: schema.node("doc", null, [schema.node("code_block", { language: "js" }, text ? [schema.text(text)] : [])]), plugins: [createHighlightPlugin({ parser })] });
   const classes = (state: EditorState) => {
     const plugin = state.plugins[0];
-    const set = plugin.props.decorations!.call(plugin, state)!;
-    return set.find().map(classOf);
+    const source = plugin.props.decorations!.call(plugin, state) as DecorationSet;
+    return source.find().map(classOf);
   };
 
   // RF-028: al editar el bloque, las clases se recalculan.

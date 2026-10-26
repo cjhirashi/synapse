@@ -24,7 +24,9 @@ import { addColAfterCommand, addRowAfterCommand, gfm, insertTableCommand } from 
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
+import { createHighlightPlugin } from "prosemirror-highlight";
 import { codeBlockViewFactory } from "./codeBlockView";
+import { createHighlightParser } from "./highlight/proseHighlight";
 import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
 import { applyHeadingIds } from "./markdown/headingIds";
 import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
@@ -259,6 +261,9 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           plugins.concat(
             // Antes que el `handlePaste` del plugin oficial (se registra después de `config`): ver P-8.
             vscodeMarkdownPaste(ctx),
+            // Resaltado de los bloques de código en lectura y Visual (RF-027, RF-028): decoraciones `sx-*`; un
+            // *parser* por vista, así reabrir la nota reintenta una gramática que falló (RF-032).
+            createHighlightPlugin({ parser: createHighlightParser() }),
             new Plugin({
               view: () => ({
                 update: (view) => {

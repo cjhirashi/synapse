@@ -392,10 +392,10 @@ actualizado: 2026-10-24
   - EXPECT: `passed`.
 
 **F.5 · Resaltado real**
-- [ ] T-084 [rojo] — `editor/highlight/languages.test.ts` (los 11 lenguajes y alias de RF-030 sin mayúsculas; desconocido → `null`) + `editor/highlight/proseHighlight.test.ts` (clases `sx-*` en lectura y Visual, se actualizan al editar, carga diferida, fallo de carga sin clases ni excepción) (cubre RF-027, RF-028, RF-030, RF-031, RF-032) [zona: test]
+- [x] T-084 [rojo] — `editor/highlight/languages.test.ts` (los 11 lenguajes y alias de RF-030 sin mayúsculas; desconocido → `null`) + `editor/highlight/proseHighlight.test.ts` (clases `sx-*` en lectura y Visual, se actualizan al editar, carga diferida, fallo de carga sin clases ni excepción) (cubre RF-027, RF-028, RF-030, RF-031, RF-032) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/highlight`
   - EXPECT: falla al importar `./languages`/`./proseHighlight`.
-- [ ] T-085 — `highlight/languages.ts` + `highlight/proseHighlight.ts` (`prosemirror-highlight/lezer` con *parser* diferido) + registro en `MilkdownView` (cubre RF-027, RF-028, RF-030, RF-031, RF-032) [zona: pantalla]
+- [x] T-085 — `highlight/languages.ts` + `highlight/proseHighlight.ts` (`prosemirror-highlight/lezer` con *parser* diferido) + registro en `MilkdownView` (cubre RF-027, RF-028, RF-030, RF-031, RF-032) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-5 "`
   - EXPECT: vitest `passed`; V-5 completa en verde (un `sx-*` por lenguaje, colores = tokens, contraste ≥ 4,5; desconocido sin `sx-*` ni errores de consola).
 - [ ] T-086 [rojo] — `CodeView.test.tsx`: bloques cercados con lenguaje admitido coloreados (`markdown({codeLanguages})`) (cubre RF-029, RF-030) [zona: test]
