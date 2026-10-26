@@ -175,6 +175,14 @@ describe("MilkdownView", () => {
 describe("MilkdownView · ids de encabezado precalculados (RNF-001)", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  /**
+   * Transacciones despachadas que no son el refresco del resaltado: cuando llega una gramática diferida,
+   * `prosemirror-highlight` despacha UNA transacción vacía (meta `prosemirror-highlight-refresh`) para pintar
+   * las clases; no es del plugin de ids, que es lo que estas pruebas vigilan.
+   */
+  const nonHighlightDispatches = (dispatch: { mock: { calls: unknown[][] } }) =>
+    dispatch.mock.calls.filter(([tr]) => !(tr as { getMeta(key: string): unknown }).getMeta("prosemirror-highlight-refresh"));
+
   /** Ids de los encabezados del DOM, en orden. */
   const domHeadingIds = (root: ParentNode): string[] =>
     [...root.querySelectorAll("h1,h2,h3,h4,h5,h6")].map((h) => h.id);
@@ -182,14 +190,14 @@ describe("MilkdownView · ids de encabezado precalculados (RNF-001)", () => {
   it("montar en lectura no despacha ninguna transacción (espía en view.dispatch)", async () => {
     const dispatch = vi.spyOn(EditorView.prototype, "dispatch");
     await mount({ value: HEADING_CASES[0].md, readOnly: true });
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(nonHighlightDispatches(dispatch)).toHaveLength(0);
   });
 
   it("montar la nota grande en lectura tampoco despacha (51 encabezados)", async () => {
     const big = CONTENT_NOTES.find((n) => n.key === "big")!;
     const dispatch = vi.spyOn(EditorView.prototype, "dispatch");
     await mount({ value: big.content, readOnly: true });
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(nonHighlightDispatches(dispatch)).toHaveLength(0);
   });
 
   it.each(HEADING_CASES)("los ids del DOM son los del plugin para $key", async ({ md, ids }) => {

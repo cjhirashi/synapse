@@ -379,7 +379,7 @@ describe("codeBlockView · Mermaid", () => {
     edit(view, "flowchart TD\n  ???");
     await vi.advanceTimersByTimeAsync(400);
     expect(view.dom.querySelector('[aria-label="Error en el diagrama"]')).not.toBeNull();
-    expect(view.contentDOM.hidden).toBe(false);
+    expect(view.contentDOM!.hidden).toBe(false);
     edit(view, "flowchart TD\n  A --> B");
     await vi.advanceTimersByTimeAsync(400);
     expect(view.dom.querySelector('[aria-label="Error en el diagrama"]')).toBeNull();
