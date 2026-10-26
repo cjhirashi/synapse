@@ -424,10 +424,10 @@ actualizado: 2026-10-24
 - [x] T-093 — *Debounce* y vista previa en `codeBlockView.ts` (cubre RF-047, RF-048) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor`
   - EXPECT: `passed`.
-- [ ] T-094 [rojo] — Zoom: `svg-pan-zoom` diferido sólo si excede; ajuste al ancho; botones con límites deshabilitados; teclado (flechas, `+`/`-`, `0`); rueda sólo con Ctrl/⌘; sin animación con reduced-motion (cubre RF-052) [zona: test]
+- [x] T-094 [rojo] — Zoom: `svg-pan-zoom` diferido sólo si excede; ajuste al ancho; botones con límites deshabilitados; teclado (flechas, `+`/`-`, `0`); rueda sólo con Ctrl/⌘; sin animación con reduced-motion (cubre RF-052) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts -t "zoom"`
   - EXPECT: fallan.
-- [ ] T-095 — `editor/mermaid/panZoom.ts` (cubre RF-052) [zona: pantalla]
+- [x] T-095 — `editor/mermaid/panZoom.ts` (cubre RF-052) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-9 "`
   - EXPECT: vitest `passed`; V-9 en verde; capturas `mermaid-zoom-*` leídas frente a `career-mermaid-zoom-*`.
 

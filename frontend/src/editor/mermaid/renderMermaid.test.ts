@@ -1,6 +1,8 @@
 // RF-046, RF-049, RF-050, RF-051, RF-053, RNF-003 (SPEC-0010; PLAN-0010 §2.3-f, P-10): el renderizador de
 // Mermaid con el módulo `mermaid` simulado. Lo que hace la biblioteca real (SVG, directivas) se verifica en
 // Chromium (V-7, V-8); aquí se fija lo que la aplicación le pide y lo que acepta de vuelta.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MermaidLoadError, MermaidSyntaxError } from "../codeBlockView";
 import { createMermaidRenderer, mermaidConfig, sanitizeSource, verifySvg } from "./renderMermaid";
@@ -80,8 +82,7 @@ describe("renderMermaid · contenedor de medida (RF-046)", () => {
   });
 
   it("la hoja de estilos del editor anula transiciones y animaciones dentro de ese contenedor", async () => {
-    const { readFileSync } = await import("node:fs");
-    const css = readFileSync(new URL("../editor.css", import.meta.url), "utf8");
+    const css = readFileSync(resolve(__dirname, "../editor.css"), "utf8");
     expect(css).toMatch(/\.mermaid-measure \*[^{]*\{[^}]*transition:\s*none\s*!important/);
   });
 });

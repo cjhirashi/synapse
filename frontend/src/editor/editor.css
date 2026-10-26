@@ -1052,6 +1052,24 @@
   height: auto;
 }
 
+/* Contenedor temporal donde Mermaid mide el diagrama (RF-046): fuera de pantalla y SIN transiciones ni animaciones.
+   La regla global de `prefers-reduced-motion` pone `transition-duration: .01ms` a todo (`*`); con ella, Mermaid
+   mide posiciones a medio transitar y el `viewBox` sale desplazado (diagrama recortado). */
+.mermaid-measure {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: 1200px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mermaid-measure,
+.mermaid-measure * {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Diagrama con zoom (RF-052): el área toma el alto del diagrama ajustado (`--mermaid-height`, 96–420 px) y el SVG
    llena el área, que es donde `svg-pan-zoom` lo ajusta, lo mueve y lo escala. El recorte lo hace el propio área. */
 .mermaid-area[data-zoom] {

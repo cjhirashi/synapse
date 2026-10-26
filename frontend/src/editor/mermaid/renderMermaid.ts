@@ -20,7 +20,7 @@ import { themeVariables, type TokenReader } from "./themeVariables";
 /** Lo mínimo que se usa de la API de `mermaid` (la real y la simulada de las pruebas lo cumplen). */
 export interface MermaidApi {
   initialize(config: Record<string, unknown>): void;
-  render(id: string, text: string): Promise<{ svg: string }>;
+  render(id: string, text: string, container?: Element): Promise<{ svg: string }>;
 }
 
 /** Renderizador con aviso de cambio de tema (los bloques se vuelven a dibujar con los colores nuevos). */
@@ -145,17 +145,24 @@ export function createMermaidRenderer({ load = loadMermaid, read = readToken, is
   async function draw(source: string): Promise<SVGSVGElement> {
     const mermaid = await module();
     const id = `synapse-mermaid-${++counter}`;
+    // Mermaid mide con `getBBox()` en un nodo temporal: se le da un contenedor propio, oculto y sin transiciones (la
+    // regla global de `prefers-reduced-motion` deja las posiciones a medio transitar y el viewBox sale desplazado).
+    const host = document.createElement("div");
+    host.className = "mermaid-measure";
+    host.setAttribute("aria-hidden", "true");
+    document.body.append(host);
     try {
       // Se reconfigura en cada dibujo: los tokens y el modo oscuro son los del momento (cambio de tema).
       mermaid.initialize(mermaidConfig(read, isDark()));
-      const { svg } = await mermaid.render(id, sanitizeSource(source));
+      const { svg } = await mermaid.render(id, sanitizeSource(source), host);
       return verifySvg(svg);
     } catch (error) {
       if (error instanceof MermaidSyntaxError) throw error;
       const message = (error instanceof Error ? error.message : String(error)).trim();
       throw new MermaidSyntaxError(message.slice(0, 600), errorLine(message));
     } finally {
-      // Mermaid deja nodos temporales en <body> cuando el dibujo falla.
+      // Con el contenedor fuera, se van también los nodos temporales que Mermaid deja cuando el dibujo falla.
+      host.remove();
       document.getElementById(`d${id}`)?.remove();
       document.getElementById(id)?.remove();
     }
