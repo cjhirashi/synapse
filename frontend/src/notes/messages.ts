@@ -43,6 +43,8 @@ const YAML_REASON: Record<string, string> = {
   "non-finite": "tiene un número que no es finito",
   "unsafe-integer": "tiene un entero demasiado grande",
   "unsupported-tag": "usa una etiqueta YAML no admitida",
+  "too-deep": "anida demasiados niveles (el máximo es 32)",
+  "alias-limit": "repite demasiados alias (&/*)",
 };
 
 /** Aviso de YAML del frontmatter inválido, con el motivo y la línea (1-based en el texto completo). */

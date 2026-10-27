@@ -55,7 +55,8 @@
     { "yaml": "prototype: 2\n", "value": { "prototype": 2 } },
     { "depth": 32, "value": "generated" },
     { "depth": 33, "error": "too-deep" },
-    { "depth": 400, "error": "too-deep" }
+    { "depth": 400, "error": "too-deep" },
+    { "yaml": "a: &a [x, x, x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b, *b]\nd: &d [*c, *c, *c, *c, *c, *c, *c, *c, *c, *c]\ne: &e [*d, *d, *d, *d, *d, *d, *d, *d, *d, *d]\n", "error": "alias-limit" }
   ],
   "roundtrip": [
     { "título": "Nota", "n": 3, "f": 2.5, "b": false, "t": ["a", "b"] },

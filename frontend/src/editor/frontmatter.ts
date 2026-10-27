@@ -6,6 +6,7 @@
  * Contrato recorrido por `frontmatter.test.ts`: `contracts/frontmatter-yaml.cases.json`.
  */
 import { isMap, isScalar, parseDocument, stringify, visit } from "yaml";
+import { exceedsDepth } from "../notes/noteRules";
 
 /** Etiquetas del esquema core (las implícitas no fijan `tag`; `!!str` sí, y es válida). */
 const CORE_TAGS = new Set([
@@ -30,7 +31,11 @@ export type ParseError =
   | "invalid-key"
   | "non-finite"
   | "unsafe-integer"
-  | "unsupported-tag";
+  | "unsupported-tag"
+  /** Más de `FRONTMATTER_MAX_DEPTH` niveles (o tantos que agotan la pila del analizador). */
+  | "too-deep"
+  /** Expansión de alias YAML por encima del límite del analizador (`maxAliasCount`). */
+  | "alias-limit";
 
 /** Línea 1 exactamente `---` hasta la siguiente línea exactamente `---`; `\n`/`\r\n` no son parte de la línea. */
 export function splitFrontmatter(text: string): { yaml: string | null; body: string } {
@@ -101,26 +106,43 @@ export function parseFrontmatterYaml(src: string): ParseResult {
 
   // Valores: `bigint` fuera de rango → unsafe-integer; no finitos → non-finite; enteros seguros → number.
   try {
-    const value = normalize(doc.toJS()) as Record<string, unknown>;
-    return { value };
+    const js = doc.toJS();
+    // Tope de profundidad ANTES de normalizar: el servidor rechaza más de 32 niveles y el cliente no debe generar
+    // un documento que el servidor rechace (Converge 1, H1).
+    if (exceedsDepth(js)) return { error: "too-deep" };
+    return { value: normalize(js) as Record<string, unknown> };
   } catch (e) {
-    return { error: (e as Error).message as ParseError };
+    if (e instanceof ValueError) return { error: e.code };
+    // Anidamiento tan profundo que agota la pila del analizador.
+    if (e instanceof RangeError) return { error: "too-deep" };
+    // El analizador corta la expansión de alias (`maxAliasCount`) lanzando un `ReferenceError`.
+    if (/alias/i.test((e as Error).message)) return { error: "alias-limit" };
+    return { error: "yaml-syntax" };
+  }
+}
+
+/** Un valor que el frontmatter no admite (entero inseguro, número no finito): lleva su código de rechazo. */
+class ValueError extends Error {
+  constructor(readonly code: "unsafe-integer" | "non-finite") {
+    super(code);
   }
 }
 
 function normalize(value: unknown): unknown {
   if (typeof value === "bigint") {
-    if (value > MAX_SAFE || value < -MAX_SAFE) throw new Error("unsafe-integer");
+    if (value > MAX_SAFE || value < -MAX_SAFE) throw new ValueError("unsafe-integer");
     return Number(value);
   }
   if (typeof value === "number") {
-    if (!Number.isFinite(value)) throw new Error("non-finite");
+    if (!Number.isFinite(value)) throw new ValueError("non-finite");
     return value;
   }
   if (Array.isArray(value)) return value.map(normalize);
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) out[k] = normalize(v);
+    // `defineProperty` y no `out[k] = …`: una clave `__proto__` sería, con la asignación, un cambio de prototipo y la
+    // clave se perdería en silencio (Converge 1, M2); así es una clave propia más.
+    for (const [k, v] of Object.entries(value)) Object.defineProperty(out, k, { value: normalize(v), enumerable: true, writable: true, configurable: true });
     return out;
   }
   return value;
