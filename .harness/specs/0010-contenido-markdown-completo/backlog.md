@@ -47,8 +47,9 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
   integración profunda de Milkdown; se dejaron sin empezar para no partirlas a medias
   al final de una sesión muy larga. El repo queda verde (no bloquea nada).
   **CERRADA (2026-10-26).** T-078…T-083. Pegado markdown en Visual (plugin-clipboard + ajuste VS Code P-8), insertar tabla + añadir fila/columna (cursor a la primera celda), casilla alternable. jsdom 1321/1321, typecheck, gate verde, Chromium V-4 14/14. Causas raíz: `preparsedMdastCtx` no consumido (rehidratación al pegar) y cursor fuera de la tabla tras insertar. Gap: enlace `javascript:` pegado pierde la marca (queda texto). Commits bed75eb…b528bc1.
-- [ ] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095. Demoable:
+- [x] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095 + Enmienda 2 (PLAN §11, T-140…T-149). Demoable:
   bloque de código coloreado, diagrama Mermaid renderizado con zoom/pan.
+  **CERRADA (2026-10-27).** Resaltado Lezer por tandas en idle, Mermaid estricto (3 capas) dibujado por visibilidad + idle, zoom/pan con svg-pan-zoom diferido. jsdom 1443/1443, typecheck, gate, test:bundle OK (entrada 146 382 B, editor 345 523 B), content-visual 100/100, RNF-001 p95 (20 contextos): 64 KiB 34,8 · 120 KiB 44,0 · 181 KiB 235,7 ms; tarea larga máx 52 ms. Causas raíz: Mermaid medía mal con la regla global de reduced-motion; Mermaid+resaltado en el camino crítico (+80/+60 ms).
 - [ ] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
   entre notas abiertas, migas clicables.
 - [ ] **Slice 7 — Perf final + seguridad + UX**: T-102…T-107. Demoable: p95

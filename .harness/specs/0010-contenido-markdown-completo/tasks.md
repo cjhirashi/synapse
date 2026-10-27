@@ -456,8 +456,8 @@ actualizado: 2026-10-24
 - [x] T-147 — Medir y anotar p95 a 64/120/181 KiB con ambos activos (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts`
   - EXPECT: `passed`; 64 y 120 KiB ≤ 150 ms, 181 KiB ≤ 250 ms; tareas largas ≤ 200 ms.
-- [ ] T-148 — Gap del diagrama muy ancho (14 nodos) diminuto: propuesta documentada en `history.md` (no se implementa si toca decisión de producto) (cubre RF-052) [zona: docs]
-- [ ] T-149 — Batería completa de cierre de la Slice 5: vitest, typecheck, gate, `test:bundle`, `content-visual`, perf (cubre RNF-001, RNF-002, RNF-003) [zona: sistema]
+- [x] T-148 — Gap del diagrama muy ancho (14 nodos) diminuto: propuesta documentada en `history.md` (no se implementa si toca decisión de producto) (cubre RF-052) [zona: docs]
+- [x] T-149 — Batería completa de cierre de la Slice 5: vitest, typecheck, gate, `test:bundle`, `content-visual`, perf (cubre RNF-001, RNF-002, RNF-003) [zona: sistema]
 
 **F.7 · Historial y breadcrumb**
 - [ ] T-096 [rojo] — `notes/noteHistory.test.ts`: `push` (descarta adelante, sin duplicar el actual, tope 50), `step` saltando inválidos, renombrada navegable por id, `load`/`save` por bóveda, forma corrupta → vacío (cubre RF-057, RF-058) [zona: test]
