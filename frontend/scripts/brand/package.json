@@ -1,0 +1,11 @@
+{
+  "name": "synapse-brand-tools",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Herramientas de generación de los assets de marca (SPEC-0011). Aisladas de frontend/package.json: no entran al bundle ni a la imagen Docker.",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.56.0",
+    "svgo": "4.0.0"
+  }
+}
