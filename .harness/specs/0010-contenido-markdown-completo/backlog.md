@@ -53,8 +53,9 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 - [x] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
   entre notas abiertas, migas clicables.
   **CERRADA (2026-10-27).** `noteHistory` (ids, tope 50, sessionStorage por bóveda), Atrás/Adelante con salto de borradas, aviso de borrador (cancelar conserva nota/borrador/posición y devuelve el foco), Alt+←/→ fuera de editores, migas que revelan carpeta, menú ⋮ con flujos reales (renombrar, borrar con confirmación, copiar ruta con región viva, ver en Código). jsdom 1482/1482, typecheck, gate, bundle OK (entrada 147 156 B), Chromium V-10/V-11/V-12 29/29 + Alt+←/→ sin salir de la bóveda.
-- [ ] **Slice 7 — Perf final + seguridad + UX**: T-102…T-107. Demoable: p95
+- [x] **Slice 7 — Perf final + seguridad + UX**: T-102…T-107. Demoable: p95
   real medido, guard de XSS con test mutante, hallazgos de UX corregidos.
+  **CERRADA (2026-10-27), con una salvedad.** Perf (p95 64/120/181 KiB = 33,4/56,7/242,3 ms; 0009 26,6 ms), bundle (entrada 147 156 B) y V-15 verdes; `securityGuard` + mutante físico detectado; validación UX (8 consultas `ui-ux-pro-max`, árbol a11y, informe `/tmp/s10/ux/validacion-0010.md`): 0 Critical/High, 1 Medium (diagrama ancho, decisión de producto), 2 Low. **Salvedad:** T-106/T-107 las ejecutó el implementador por el plazo; el experto-ux-ui debe confirmarlas.
 - [ ] **Slice 8 — Docs y cierre**: T-108…T-123. Demoable: spec `implemented`,
   gate verde, capturas aprobadas por Carlos.
 

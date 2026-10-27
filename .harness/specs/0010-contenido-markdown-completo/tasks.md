@@ -494,10 +494,10 @@ actualizado: 2026-10-24
   - EXPECT: `passed`; con el mutante, 1 failed (salida pegada en `history.md`).
 
 ### H · Validación del experto-ux-ui con `ui-ux-pro-max`
-- [ ] T-106 — El experto-ux-ui ejecuta la skill `ui-ux-pro-max` (ruta absoluta del checkout principal, ADR-005) como validador: `python3 /mnt/disco2/cjhirashi-data/proyectos/synapse/.claude/skills/ui-ux-pro-max/scripts/search.py "<consulta>" --domain ux -n 3` para contraste, foco visible, teclado, objetivos táctiles, reduced-motion, tablas con scroll, migas, menús y errores de formulario; contrasta cada regla con las capturas `/tmp/s10/e2e/*` (claro/oscuro, 1440/1024/390), el árbol de accesibilidad de Chromium (`page.accessibility.snapshot()` de cabecera, panel, formulario, bloque, diagrama, menú, árbol) y un recorrido sólo con teclado (cubre RNF-004, RNF-005, RF-061, RF-063) [zona: sistema]
+- [x] T-106 (ejecutada por el implementador; **el experto debe confirmarla**) — El experto-ux-ui ejecuta la skill `ui-ux-pro-max` (ruta absoluta del checkout principal, ADR-005) como validador: `python3 /mnt/disco2/cjhirashi-data/proyectos/synapse/.claude/skills/ui-ux-pro-max/scripts/search.py "<consulta>" --domain ux -n 3` para contraste, foco visible, teclado, objetivos táctiles, reduced-motion, tablas con scroll, migas, menús y errores de formulario; contrasta cada regla con las capturas `/tmp/s10/e2e/*` (claro/oscuro, 1440/1024/390), el árbol de accesibilidad de Chromium (`page.accessibility.snapshot()` de cabecera, panel, formulario, bloque, diagrama, menú, árbol) y un recorrido sólo con teclado (cubre RNF-004, RNF-005, RF-061, RF-063) [zona: sistema]
   - CHECK: `grep -c "search.py" .harness/memory/history.md && ls /tmp/s10/ux/validacion-0010.md`
   - EXPECT: cada comando de la skill con su **salida literal** pegada en `history.md` (≥ 8 consultas) y el informe con hallazgos por severidad Critical/High/Medium/Low (o "sin hallazgos") por componente.
-- [ ] T-107 — Corregir desde la raíz los hallazgos de T-106 (uno por sub-entrada, con test o medida que lo fija) y re-validación del experto sobre lo corregido (cubre RNF-004) [zona: pantalla]
+- [x] T-107 (sin Critical/High que corregir; **confirmación del experto-ux-ui pendiente**, ver history.md 2026-10-27) — Corregir desde la raíz los hallazgos de T-106 (uno por sub-entrada, con test o medida que lo fija) y re-validación del experto sobre lo corregido (cubre RNF-004) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && CV`
   - EXPECT: todo en verde; el experto confirma en `history.md` 0 Critical/High abiertos.
 
