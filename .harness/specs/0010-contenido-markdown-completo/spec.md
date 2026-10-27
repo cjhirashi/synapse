@@ -2,7 +2,7 @@
 id: SPEC-0010
 tipo: spec
 feature: 0010-contenido-markdown-completo
-estado: implemented      # 2026-10-27: Fase 4 completa, Converge 3 y 4 limpios (Gate 5). NO verified
+estado: verified         # 2026-10-27: T-111 aplicado a mano, T-123 aprobado por AIRA (capturas vs mockup/Obsidian). Lista para merge/deploy
 # --- piloto slice-development (2026-10-25) ---
 # Tareas restantes (desde T-050) migradas a `backlog.md` de esta misma carpeta como
 # slices verticales; las tareas ya [x] en tasks.md quedan tal cual, no se re-documentan.

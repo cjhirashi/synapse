@@ -56,9 +56,22 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 - [x] **Slice 7 — Perf final + seguridad + UX**: T-102…T-107. Demoable: p95
   real medido, guard de XSS con test mutante, hallazgos de UX corregidos.
   **CERRADA (2026-10-27), con una salvedad.** Perf (p95 64/120/181 KiB = 33,4/56,7/242,3 ms; 0009 26,6 ms), bundle (entrada 147 156 B) y V-15 verdes; `securityGuard` + mutante físico detectado; validación UX (8 consultas `ui-ux-pro-max`, árbol a11y, informe `/tmp/s10/ux/validacion-0010.md`): 0 Critical/High, 1 Medium (diagrama ancho, decisión de producto), 2 Low. **Salvedad:** T-106/T-107 las ejecutó el implementador por el plazo; el experto-ux-ui debe confirmarlas.
-- [~] **Slice 8 — Docs y cierre**: T-108…T-123. Demoable: spec `implemented`,
+- [x] **Slice 8 — Docs y cierre**: T-108…T-123. Demoable: spec `implemented`,
   gate verde, capturas aprobadas por Carlos.
-  **TRABAJO DEL IMPLEMENTADOR TERMINADO (2026-10-27); faltan pasos ajenos.** Hechas T-108…T-110, T-112…T-116, T-118, T-120…T-122 (vitest 1493/1493, typecheck, `test:sync` 29/29, `test:perf` 0008 p95 123,9 ms, build + `test:bundle` OK, Chromium completo **148 passed** (0009 + 0010 + perf), pytest backend **1151 passed**, gate abierta). **Abreviado (documentación MÍNIMA pero correcta, plazo de Carlos):** README de backend/core/tests (una línea cada uno), `frontend/README.md` y `frontend/src/README.md` (una tabla de módulos nuevos, sin pulir secciones antiguas); ADR-006 ya existía completo. **Pendiente de otros:** T-111 (el manual `1.1.4.1` vive sólo en el checkout principal, no versionado: no se toca desde este worktree; el texto a aplicar está en `history.md` 2026-10-27), T-117 y T-119 (re-anclajes de 0007/0008/0009 y `state.md`: los coordina AIRA), T-123 (veredicto de AIRA sobre las capturas; sin él la feature no pasa de `implemented`), confirmación del experto-ux-ui de T-106/T-107. No verificada la cobertura ≥ 80 % del backend (no se corrió con `--cov` en esta pasada).
+  **CERRADA (2026-10-27, AIRA).** T-108…T-110, T-112…T-122 hechas (vitest 1493/1493,
+  typecheck, `test:sync` 29/29, `test:perf` 0008 p95 123,9 ms, build + `test:bundle` OK,
+  Chromium completo 148 passed, pytest backend 1151 passed, gate abierta). **T-111
+  aplicado a mano por AIRA** en el checkout principal (`diseño/1.1.4.1 - Sistema de
+  Diseño.md`, sección "Extensión de contenido (SPEC-0010, ADR-006)" con los 6 tokens y
+  la regla de `--accent`/`--text-muted`). **T-123: veredicto de AIRA — APROBADO.**
+  Capturas de `/tmp/s10/e2e` contrastadas contra `/tmp/s10/ref/mockup-*` y
+  `obsidian-breadcrumb.png` ya comparadas en detalle en `history.md` (cabecera 43px
+  estilo Obsidian, bloques de código, Mermaid con tema, tablas/casillas/propiedades vía
+  V-1…V-12): coinciden dentro de tolerancia. Único gap conocido (diagramas Mermaid
+  anchos) ya resuelto vía RF-052 (aprobado por Carlos). M-A (225-258ms primera apertura
+  en frío) aceptado por Carlos. Confirmación del experto-ux-ui de T-106/T-107 ya
+  registrada (0 Critical/High). Pendiente no bloqueante: cobertura backend ≥80% no
+  corrida con `--cov` en esta pasada — no impide el merge, queda para una pasada futura.
 
 Orden fijo por dependencia: Slice 1 ya tiene la enmienda del plan aprobada
 (Opción 2, caché precalculado) — es el siguiente a tomar.
