@@ -4,6 +4,7 @@
  * Envuelve `parserCtx` entre `ParserReady` y `EditorStateReady` (añade su propio timer a
  * `editorStateTimerCtx`, así el estado del editor espera a que la envoltura esté puesta antes de
  * construir el documento). Al parsear:
+ *  - antes de nada el texto pasa por `joinLooseTableRows` (RF-066), el mismo paso que da el Worker;
  *  - si el que abre la nota dejó en `preparsedMdastCtx` el JSON mdast de esa revisión (cache-hit), se
  *    re-hidrata con el procesador real del editor (`remarkCtx.runSync` + mdast→ProseMirror) — sin
  *    volver a correr micromark en el hilo principal — y se marca `synapse:parse:cache-hit`;
@@ -17,6 +18,7 @@ import { ParserReady, editorStateTimerCtx, parserCtx, remarkCtx, schemaCtx } fro
 import { createSlice, createTimer, type MilkdownPlugin } from "@milkdown/ctx";
 import type { Node as PMNode, Schema } from "@milkdown/prose/model";
 import { ParserState, type RemarkParser } from "@milkdown/transformer";
+import { joinLooseTableRows } from "./looseTables";
 
 /** Marcas de rendimiento que leen las pruebas para demostrar qué ruta tomó cada apertura (§10.8). */
 export const PARSE_MARK = {
@@ -61,7 +63,10 @@ export const cachedParser: MilkdownPlugin = (ctx) => {
     const base = ctx.get(parserCtx);
     const remark = ctx.get(remarkCtx);
     const schema = ctx.get(schemaCtx);
-    ctx.set(parserCtx, (text: string) => {
+    ctx.set(parserCtx, (original: string) => {
+      // ÚNICO punto de entrada del parseo del editor (apertura, reemplazo y pegado): las tablas con líneas en blanco
+      // entre filas se normalizan aquí (RF-066), con la misma función que usa el Worker al precalcular.
+      const text = joinLooseTableRows(original);
       const json = ctx.get(preparsedMdastCtx);
       if (json) {
         // De UNA sola lectura: es el mdast del documento inicial. Todo parseo posterior (p. ej. pegar markdown,

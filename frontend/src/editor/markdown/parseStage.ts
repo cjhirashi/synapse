@@ -14,6 +14,7 @@
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import { unified } from "unified";
+import { joinLooseTableRows } from "./looseTables";
 
 /**
  * El procesador de la etapa de parseo: las MISMAS extensiones de parseo que resuelve Milkdown.
@@ -24,8 +25,12 @@ export function createParseProcessor() {
   return unified().use(remarkParse).use(remarkGfm).freeze();
 }
 
-/** mdast de `text` (con `position`) serializado como cadena JSON para cachear. */
+/**
+ * mdast de `text` (con `position`) serializado como cadena JSON para cachear. Las tablas con líneas en blanco entre
+ * filas se normalizan ANTES de parsear (RF-066), igual que en el hilo principal (`cachedParser`): el `position` del
+ * mdast refiere al texto normalizado, que es el que `docFromMdastJson` recibe al re-hidratar.
+ */
 export function parseMarkdownToJson(text: string): string {
-  const tree = createParseProcessor().parse(text);
+  const tree = createParseProcessor().parse(joinLooseTableRows(text));
   return JSON.stringify(tree);
 }

@@ -523,6 +523,8 @@ describe("MilkdownView · tablas con líneas en blanco (RF-066)", () => {
     let warmView: EditorView | null = null;
     render(<MilkdownView value={BODY} readOnly onChange={() => {}} label="Visual" preparsedMdast={parseMarkdownToJson(BODY)} onView={(v) => (warmView = v)} />);
     await waitFor(() => expect(warmView).not.toBeNull());
-    expect((warmView as unknown as EditorView).state.doc.eq(cold.view.state.doc)).toBe(true);
+    // Mismo árbol de tabla (el DOM completo lo compara la prueba de «apertura precalculada»; aquí, la tabla).
+    const tableHtml = (v: EditorView) => v.dom.querySelector("table")!.outerHTML;
+    expect(tableHtml(warmView as unknown as EditorView)).toBe(tableHtml(cold.view));
   });
 });
