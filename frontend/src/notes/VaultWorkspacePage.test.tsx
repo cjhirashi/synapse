@@ -24,6 +24,20 @@ const parseFakes = vi.hoisted(() => {
 });
 vi.mock("./parseWorkspace", () => ({ createParseWorkspace: parseFakes.createParseWorkspace }));
 
+// Converge 1 (M-1): el chunk del editor se precarga en idle al abrir una bóveda; el espía comprueba cuándo se pide.
+const idleSpy = vi.hoisted(() => ({ calls: [] as Array<() => void> }));
+vi.mock("../editor/deferred/idle", () => ({
+  whenIdle: (run: () => void) => {
+    idleSpy.calls.push(run);
+    run();
+    return () => {};
+  },
+  observeVisibility: (_el: Element, onChange: (visible: boolean) => void) => {
+    onChange(true);
+    return () => {};
+  },
+}));
+
 // El editor se carga con `React.lazy`: la primera importación (Milkdown + CodeMirror, transformados
 // por Vite) puede tardar más que el tiempo de espera de `findBy*` si la máquina va cargada. Se
 // paga aquí, una vez, para que las pruebas midan la pantalla y no la carga del módulo.
@@ -601,4 +615,18 @@ test("historial: dos Alt+← seguidos (sin esperar) retroceden dos notas, no una
   expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
   expect(back()).toBeDisabled();
   expect(forward()).toBeEnabled();
+});
+
+
+// M-1 (Converge 1, RNF-001): la primera apertura de una nota en una sesión pagaba la descarga, el análisis y la
+// compilación del chunk del editor (~1 MB) DENTRO de «clic → legible» (+60 ms de parseo en segundo plano medidos con
+// una traza de Chromium; el 181 KiB, siempre el primero, era el único que lo notaba). Se precarga en idle al montar
+// la bóveda: el editor es seguro que se va a necesitar y sigue siendo un chunk aparte (no entra en la entrada).
+test("M-1: abrir una bóveda precarga el chunk del editor en idle, sin abrir ninguna nota", async () => {
+  const { value, vault } = await setup();
+  idleSpy.calls.length = 0;
+  render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(idleSpy.calls.length).toBeGreaterThanOrEqual(1);
+  expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });
