@@ -502,37 +502,37 @@ actualizado: 2026-10-24
   - EXPECT: todo en verde; el experto confirma en `history.md` 0 Critical/High abiertos.
 
 ### I · Documentación (PLAN-0010 §8, una tarea por fila)
-- [ ] T-108 — `contracts/frontmatter-yaml.cases.json`: confirmar que el contrato del plan sigue siendo el que recorre `frontmatter.test.ts` (o actualizarlo si F encontró un caso nuevo, con su test) [doc]
+- [x] T-108 — `contracts/frontmatter-yaml.cases.json`: confirmar que el contrato del plan sigue siendo el que recorre `frontmatter.test.ts` (o actualizarlo si F encontró un caso nuevo, con su test) [doc]
   - CHECK: `git diff --stat 03f20c2 -- .harness/specs/0010-contenido-markdown-completo/contracts/ && cd frontend && npx vitest run src/editor/frontmatter.test.ts`
   - EXPECT: diff vacío o justificado en `history.md`; `passed`.
-- [ ] T-109 — Fila `note.schema.json`: comprobar que el delta de T-067 es exactamente el de PLAN-0010 §4 [doc]
+- [x] T-109 — Fila `note.schema.json`: comprobar que el delta de T-067 es exactamente el de PLAN-0010 §4 [doc]
   - CHECK: `git diff 03f20c2 -- .harness/specs/0008-vault-editor/contracts/note.schema.json | grep -c "\[mM\]\[dD\]"`
   - EXPECT: `1` (patrón nuevo) y la descripción ampliada.
-- [ ] T-110 — `.harness/decisions/ADR-006-extension-tokens-contenido.md`: 6 tokens, motivo (contraste del claro), valores, alternativa descartada, regla "`--accent`/`--text-muted` no son texto", efecto en 1.1.4.1, aprobación GATE 2 (P-1) [doc]
+- [x] T-110 — `.harness/decisions/ADR-006-extension-tokens-contenido.md`: 6 tokens, motivo (contraste del claro), valores, alternativa descartada, regla "`--accent`/`--text-muted` no son texto", efecto en 1.1.4.1, aprobación GATE 2 (P-1) [doc]
   - CHECK: `grep -c -- "--success-text\|--warning-text\|--info-text\|--danger-text\|--border-control\|--radius-xs" .harness/decisions/ADR-006-extension-tokens-contenido.md`
   - EXPECT: ≥ 6.
 - [ ] T-111 — `diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md` (no versionado) actualizado en el **checkout principal** con los 6 tokens y la regla de texto; diff pegado en `history.md` [doc]
   - CHECK: `grep -c -- "--success-text" "/mnt/disco2/cjhirashi-data/proyectos/synapse/diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md" && grep -c "1.1.4.1" .harness/memory/history.md`
   - EXPECT: ≥ 1 en ambos.
-- [ ] T-112 — `backend/README.md` §Sincronización: regla del último segmento ≠ `.md` [doc]
+- [x] T-112 — `backend/README.md` §Sincronización: regla del último segmento ≠ `.md` [doc]
   - CHECK: `grep -n "\.md" backend/README.md | grep -ci "segmento"`
   - EXPECT: ≥ 1.
-- [ ] T-113 — `backend/app/core/README.md`: `check_path` con la regla nueva [doc]
+- [x] T-113 — `backend/app/core/README.md`: `check_path` con la regla nueva [doc]
   - CHECK: `grep -n "check_path" backend/app/core/README.md | grep -c "\.md"`
   - EXPECT: ≥ 1.
-- [ ] T-114 — `backend/tests/README.md`: casos nuevos de `path` en `note_rules_cases.json` [doc]
+- [x] T-114 — `backend/tests/README.md`: casos nuevos de `path` en `note_rules_cases.json` [doc]
   - CHECK: `grep -c "X/.md\|\.md" backend/tests/README.md`
   - EXPECT: ≥ 1 línea nueva (diff no vacío).
-- [ ] T-115 — `frontend/README.md`: dependencias nuevas, `npm run test:bundle`, `VISUAL_OUT_DIR=/tmp/s10/e2e`, `content-visual`/`content-perf` [doc]
+- [x] T-115 — `frontend/README.md`: dependencias nuevas, `npm run test:bundle`, `VISUAL_OUT_DIR=/tmp/s10/e2e`, `content-visual`/`content-perf` [doc]
   - CHECK: `grep -c "test:bundle\|content-visual\|content-perf" frontend/README.md`
   - EXPECT: ≥ 3.
-- [ ] T-116 — `frontend/src/README.md`: módulos nuevos (`folders`, `noteHistory`, `frontmatter`, `properties`, `breadcrumb`, `highlight/`, `mermaid/`, *node views*, `Notice`, `NoteMenu`, `NoteBreadcrumb`), sesión D1, carpeta activa, historial, carga diferida, y (Enmienda 1) `editor/markdown/` — caché de parseo por `(id, rev)` en memoria, Worker de parseo, programador de precálculo y la nota `worker-src 'self'` si algún día hay CSP [doc]
+- [x] T-116 — `frontend/src/README.md`: módulos nuevos (`folders`, `noteHistory`, `frontmatter`, `properties`, `breadcrumb`, `highlight/`, `mermaid/`, *node views*, `Notice`, `NoteMenu`, `NoteBreadcrumb`), sesión D1, carpeta activa, historial, carga diferida, y (Enmienda 1) `editor/markdown/` — caché de parseo por `(id, rev)` en memoria, Worker de parseo, programador de precálculo y la nota `worker-src 'self'` si algún día hay CSP [doc]
   - CHECK: `grep -c "noteHistory\|frontmatter.ts\|NoteBreadcrumb\|codeBlockView\|highlight/" frontend/src/README.md`
   - EXPECT: ≥ 5.
 - [ ] T-117 — Re-anclajes de cierre en `0007`, `0008` y `0009` `spec.md` (ancla al commit de cierre) [doc] [P-15]
   - CHECK: `bash .harness/gate/check.sh | grep -E "0007-fastapi|0008-vault|0009-rediseno"`
   - EXPECT: las tres en ✅ "sin cambios en covers desde <commit de cierre>".
-- [ ] T-118 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (el flujo de datos de nota es el mismo) [doc]
+- [x] T-118 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (el flujo de datos de nota es el mismo) [doc]
   - CHECK: `git diff --stat 03f20c2 -- .harness/specs/0008-vault-editor/diagrams/ ARCHIFY.md`
   - EXPECT: sin cambios; entrada en `history.md` con la verificación.
 - [ ] T-119 — `.harness/memory/state.md`: estado de 0010 y backlog C-13/C-14 (botón primario 3,68:1, bordes de input globales) [doc]
@@ -540,13 +540,13 @@ actualizado: 2026-10-24
   - EXPECT: ≥ 3.
 
 ### J · Verificación completa y suites finales
-- [ ] T-120 — Verificación en navegador completa: `content-visual` (0010 V-0…V-15) + suite de 0009 (V-16) en claro/oscuro a 1440/1024/390; capturas finales leídas lado a lado con `mockup-*`, `obsidian-breadcrumb.png` y `career-*` (cubre RF-041, RNF-005 y todos los RF de percepción) [zona: sistema]
+- [x] T-120 — Verificación en navegador completa: `content-visual` (0010 V-0…V-15) + suite de 0009 (V-16) en claro/oscuro a 1440/1024/390; capturas finales leídas lado a lado con `mockup-*`, `obsidian-breadcrumb.png` y `career-*` (cubre RF-041, RNF-005 y todos los RF de percepción) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual`
   - EXPECT: `passed` en todo (42 de 0009 + los de 0010), 0 failed; comparación descrita en `history.md`.
-- [ ] T-121 — Suites finales del frontend: vitest, typecheck, `test:sync`, `test:perf`, `test:bundle`, y `git diff --stat 03f20c2` sobre tests de 0008/0009 limitado a los cambios explícitos de RF-041 (cubre RF-041, RNF-001, RNF-002) [zona: sistema]
+- [x] T-121 — Suites finales del frontend: vitest, typecheck, `test:sync`, `test:perf`, `test:bundle`, y `git diff --stat 03f20c2` sobre tests de 0008/0009 limitado a los cambios explícitos de RF-041 (cubre RF-041, RNF-001, RNF-002) [zona: sistema]
   - CHECK: `cd frontend && npx vitest run && npm run typecheck && npm run test:sync && npm run test:perf && npm run build && npm run test:bundle && git diff --stat 03f20c2 -- src/editor/NoteEditor*.test.tsx src/notes/*.test.tsx src/notes/*.test.ts`
   - EXPECT: 0 failed en todo; el diff de tests de 0008/0009 sólo en `NoteEditor.test.tsx`, `VaultWorkspacePage.test.tsx`, `NoteSidebar.test.tsx`, `noteRules.test.ts`, `noteStore.test.ts`, `layoutCss.test.ts`, `untitled.test.ts`, `notes.integration.test.ts` (ampliaciones o cambios de RF-041).
-- [ ] T-122 — Suite final del backend, **sola** contra `:15984`, y gate (cubre RF-007) [zona: sistema]
+- [x] T-122 — Suite final del backend, **sola** contra `:15984`, y gate (cubre RF-007) [zona: sistema]
   - CHECK: `(cd backend && python3 -m pytest -q) && bash .harness/gate/check.sh`
   - EXPECT: `1135 + n passed`, 0 failed, cobertura ≥ 80 %; gate "Compuerta abierta" con 0 error.
 - [ ] T-123 — Comparación de capturas RNF-005 presentada a AIRA para su aprobación (no la marca el agente) y entrada Session-End en `history.md` (cubre RNF-005) [zona: sistema]
