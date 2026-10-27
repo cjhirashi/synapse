@@ -2,10 +2,10 @@
 id: SPEC-0011
 tipo: spec
 feature: 0011-identidad-logo
-estado: approved         # draft | in-review | approved | implemented | verified | deprecated
+estado: implemented      # 2026-10-27: Converge 2/2 limpio. NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 29470e0   # HEAD de feature/0011-identidad-logo al redactar (lo mueve el cierre)
-anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
+anchor_commit: adb23e5   # cierre de la implementación (2026-10-27)
+anchor_mode: strict
 covers:                  # fijado en PLAN-0011 §9 (archivos con dueño anterior: PLAN-0011 P-11)
   # frontend — maquetación (bloque A): logo en cabecera y login
   - frontend/src/brand/**

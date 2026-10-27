@@ -1356,3 +1356,14 @@
   - M-2 (RF-006): brandAssets.test.ts decodifica el maskable (PNG de paleta, filtros PNG) y exige radio máximo de la silueta ≤ 204,8 px (medido 185,7); mutante con tope 0,3 → falla. Las 3 entradas del ICO (16/32/48, carga PNG con sus IHDR) ya estaban cubiertas por el test «RF-002: favicon.ico…» de T-013
   - L-1 (RF-016): index.html escribía theme-color="undefined" con un valor guardado inválido (y data-theme inválido). Causa de raíz: el script usaba `|| "dark"` en vez del respaldo de readStored. Test rojo (useTheme.test.tsx ejecuta el script de index.html con "morado" y "undefined": 2 failed) → el script valida light/dark/system y cae a "dark". Se actualizó la aserción de 0009 `|| "dark"` (pinaba el texto del script) a `? stored : "dark"`
   - CHECK: vitest 58 files, **1006 passed**; build exit 0; `test:visual` completo **80 passed (1.6m)**; pytest test_brand_assets+test_spa pasan; gate abierta
+
+## [2026-10-27] 0011-identidad-logo — implemented (Converge 2/2)
+- **Claim:** SPEC-0011 implementada en `feature/0011-identidad-logo` (worktree `.claude/worktrees/0011-logo`): T-000…T-045 hechas, RF-001…RF-020 y RNF-001/002 cubiertos, Gate 5 cumplido (Converge 1 sin Critical/High y Converge 2 sobre `adb23e5` sin Critical/High/Medium). **NO** `verified` (sólo el usuario) y sin merge (lo hace AIRA).
+- **Evidencia:** sobre `adb23e5`: vitest **1006/1006** · pytest **1155 passed** · `test:visual` **80 passed** (42 de 0009 + 38 brand) · build/typecheck exit 0 · gate abierta, 0 errores. Capturas en `/tmp/s11/e2e-brand/` y `/tmp/s11/e2e/` (RNF-002: las aprueba Carlos).
+- **Línea base:** spec/plan/tasks a `implemented`, `anchor_commit: adb23e5`, `anchor_mode: strict`; re-anclajes de cierre en 0002, 0007 y 0009; state.md con la fila de 0011 y el backlog 12.
+- **Gaps:**
+  - `ABANDON: Low-1 (Converge 2) — el script de index.html sólo se prueba con valores inválidos en vitest; light/system los cubre el e2e B-5.`
+  - `ABANDON: Low-2 (Converge 2) — el test de maskable usa un umbral de diferencia de 12 sobre la paleta cuantizada (el e2e A-2 usa el mismo); un píxel de la silueta casi igual al fondo no contaría.`
+  - `ABANDON: Medium UX (no tocados) — degradado sutil en tema claro a 28 px (las dos capas apenas se distinguen) y maskable con el logo al 72 % (P-9, margen de 19 px a la zona segura).`
+- **Riesgo residual:** (1) cabecera de 71 px (70 + borde), igual que la línea base de 0009; (2) A-3 simula la pestaña (P-13) y Chromium puede no repintar el favicon al cambiar el esquema del SO (R-1); (3) los PNG están cuantizados a 256 colores (P-5; error p99 ≤ 9/255); (4) el original versionado pesa 125 KB en el repo.
+- **Próximo paso:** Carlos aprueba las capturas de RNF-002 y decide `verified`; AIRA hace el merge de `feature/0011-identidad-logo` (conflictos esperables con 0010 en `frontend/README.md`, `frontend/src/README.md` y `frontend/e2e/`).

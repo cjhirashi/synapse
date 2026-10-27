@@ -2,7 +2,7 @@
 id: PLAN-0011
 tipo: plan
 feature: 0011-identidad-logo
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-27, nota: "P-1…P-14 aceptados tal cual; ajuste R-2: en el favicon oscuro la capa trasera termina en #0b809f (los SVG de cabecera no cambian)" }
 actualizado: 2026-10-27

@@ -2,7 +2,7 @@
 id: TASKS-0011
 tipo: tasks
 feature: 0011-identidad-logo
-estado: draft
+estado: implemented
 actualizado: 2026-10-27
 ---
 
