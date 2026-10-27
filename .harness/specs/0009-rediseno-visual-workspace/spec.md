@@ -78,6 +78,11 @@ actualizado: 2026-10-23
 
 # SPEC-0009 · Rediseño visual del workspace de bóvedas y notas
 
+> **Re-anclaje 2026-10-27 (cierre)** (T-043 de TASKS-0011): SPEC-0011 modificó `frontend/index.html`
+> (favicon, manifest, `theme-color`), `theme/useTheme.ts(+test)` (`THEME_COLOR`, `applyResolvedTheme`) y
+> `layout/AppLayout.css` (`--brand-logo-size`; se borra `.app-brand-mark`) y añadió `e2e/brand*.spec.ts` sin
+> tocar `fixtures.ts`. La cabecera mide 71 px (70 + borde) como antes. Sin cambio de requisitos.
+
 > **Re-anclaje 2026-10-27** (T-000 de TASKS-0011): SPEC-0011 (identidad de marca) toca
 > `frontend/index.html` (favicon, manifest, `theme-color`), `theme/useTheme.ts(+test)`
 > (`theme-color`), `layout/AppLayout.css` (bloque de marca) y añade `frontend/e2e/brand*.spec.ts`

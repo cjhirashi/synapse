@@ -26,7 +26,7 @@ covers:                  # fijado en PLAN-0011 §9 (archivos con dueño anterior
   # frontera HTTP de los archivos raíz (bloque D; sin código de backend nuevo)
   - backend/tests/test_brand_assets.py
   # sistema — fidelidad visual en navegador real (RNF-002)
-  - frontend/e2e/brand*.spec.ts
+  - frontend/e2e/brand*
   # documentación (PLAN-0011 §8)
   - frontend/README.md
   - frontend/src/README.md

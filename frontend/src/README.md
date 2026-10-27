@@ -8,6 +8,7 @@ src/
 ├── auth/       # login y guardia de rutas
 ├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
 ├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
+├── brand/      # logo oficial (BrandLogo + brand.css) y sus pruebas de assets (SPEC-0011)
 ├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
 ├── settings/   # ajustes de cuenta (cambiar contraseña)
 ├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
@@ -92,6 +93,20 @@ navegador (`Accept: text/html`), que reciben `index.html` para que React Router 
 y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy externo, en el
 mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
 (`backend/README.md`, «Despliegue»).
+
+## Identidad de marca (SPEC-0011)
+
+`brand/BrandLogo.tsx` es un `<span aria-hidden>` sin props con el logo como imagen de fondo
+(`brand.css`): `logo-synapse-dark.svg` por defecto y `logo-synapse-light.svg` bajo
+`:root[data-theme="light"]`, así que sigue al tema sin estado de React; el tamaño lo pone el contexto con
+`--brand-logo-size` (cabecera 28 px, login 32 px). Con `forced-colors: active` pasa a una silueta
+monocroma (`CanvasText` + máscara). Si el asset no carga no se pinta nada (sin icono roto, a diferencia
+de un `<img>`). El nombre accesible del bloque de marca es el texto «Synapse», no el logo.
+
+`theme/useTheme.ts` exporta `THEME_COLOR` (el `--bg-secondary` de cada tema) y `applyResolvedTheme`, el
+único punto que escribe `data-theme` y el `<meta name="theme-color">`; `index.html` repite la tabla en
+su script previo al pintado y `useTheme.test.tsx` vigila que coincidan con `tokens.css`.
+Los assets de `public/` los genera `scripts/brand/build.sh` (ver `frontend/README.md`).
 
 ## Rediseño visual del workspace (SPEC-0009)
 
