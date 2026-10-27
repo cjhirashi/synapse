@@ -2,40 +2,56 @@
 id: SPEC-0011
 tipo: spec
 feature: 0011-identidad-logo
-estado: draft            # draft | in-review | approved | implemented | verified | deprecated
+estado: approved         # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 29470e0   # HEAD de feature/0011-identidad-logo al redactar (lo mueve el cierre)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
-covers:                  # BORRADOR — la Fase 2 fija los nombres reales
-  - frontend/public/**                     # favicon.svg/.ico, apple-touch, iconos 192/512, manifest, logo de cabecera
-  - frontend/src/brand/**                  # componente/estilos del logo, si la Fase 2 lo separa
-  - frontend/e2e/brand*.spec.ts            # medidas y capturas del logo (RNF-002)
-  # Compartidos con otras specs (se tocan y se re-anclan, no se apropian):
-  #   frontend/index.html                  -> 0002 / 0009
-  #   frontend/src/layout/AppLayout.tsx    -> 0002
-  #   frontend/src/layout/AppLayout.css    -> 0002 / 0009
-  #   frontend/src/auth/LoginPage.tsx, AuthShell.css -> 0002 (sólo si se cierra RF-017)
-  #   backend/app/spa.py                   -> 0007 (sólo si el MIME de RF-005 lo exige)
+covers:                  # fijado en PLAN-0011 §9 (archivos con dueño anterior: PLAN-0011 P-11)
+  # frontend — maquetación (bloque A): logo en cabecera y login
+  - frontend/src/brand/**
+  - frontend/src/layout/AppLayout.tsx
+  - frontend/src/layout/AppLayout.css
+  - frontend/src/layout/AppLayout.test.tsx
+  - frontend/src/auth/LoginPage.tsx
+  - frontend/src/auth/LoginPage.test.tsx
+  - frontend/src/auth/AuthShell.css
+  - frontend/src/test-utils/wcag.ts
+  # assets publicados y su generación reproducible (bloque B)
+  - frontend/public/**
+  - frontend/scripts/brand/**
+  - frontend/index.html
+  # tema y theme-color (bloque C)
+  - frontend/src/theme/useTheme.ts
+  - frontend/src/theme/useTheme.test.tsx
+  # frontera HTTP de los archivos raíz (bloque D; sin código de backend nuevo)
+  - backend/tests/test_brand_assets.py
+  # sistema — fidelidad visual en navegador real (RNF-002)
+  - frontend/e2e/brand*.spec.ts
+  # documentación (PLAN-0011 §8)
+  - frontend/README.md
+  - frontend/src/README.md
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente       # o { por: "Nombre", fecha: YYYY-MM-DD }  (tras Specify)
+  fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-27, nota: "RF-017 = sí (login con logo + «Synapse», reglas de RF-012/RF-014); D-5…D-14 aprobadas tal cual; degradado opción B (lineal continuo userSpaceOnUse por capa, sin cortes) — D-15" }
   fase_2: pendiente       #                                          (tras Plan)
-actualizado: 2026-10-26
+actualizado: 2026-10-27
 ---
 
 # SPEC-0011 · Identidad de marca: logo oficial de Synapse
 
 > Decisiones de producto D1–D4 tomadas por Carlos (vía AIRA, 2026-10-26); no se
-> re-preguntan. El resto de §6 son propuestas del autor de spec para revisar en el Gate 1.
-> El "cómo" (un SVG o dos variantes, inline o `<img>`, herramienta de optimización) es de
-> la Fase 2.
+> re-preguntan. **GATE 1 aprobado el 2026-10-27** por AIRA en nombre de Carlos (autoridad
+> delegada): RF-017 cerrado con *sí*, D-5…D-14 aprobadas tal cual y degradado "opción B"
+> (D-15). El "cómo" (un SVG o dos variantes, inline o `<img>`, herramienta de optimización)
+> lo fija PLAN-0011.
 
 ## 1. Contexto del dominio
 - **Problema:** Synapse no tiene identidad visual propia: no hay favicon (el navegador pide
   `/favicon.ico` y recibe `404`, RF-004 de 0007), no hay manifest ni `theme-color`, y la
   cabecera y el login muestran un cuadrado degradado genérico (`.app-brand-mark`,
   `.auth-logo-mark`) en lugar del logo oficial.
-- **Fuente del logo:** `/tmp/s11/src/logo-synapse.original.svg` (125 KB; `viewBox`
+- **Fuente del logo:** el original de Carlos (copia en `.harness/assets/logo-synapse.svg` del
+  checkout principal, sin versionar; PLAN-0011 P-7 propone versionarlo) (125 KB; `viewBox`
   1500×1500 con la silueta en ≈ x 147–1350, y 214–1285, o sea ≈ 20 % de margen vacío;
   rellenos planos `#0f3ab5`, `#2643d4`, `#00e3f8` y `#001430`, este último casi siempre
   como sombreado al 35 % de opacidad). Mucho de su peso son `clipPath` duplicados.
@@ -57,7 +73,8 @@ actualizado: 2026-10-26
 - Recoloreado del logo a la familia cian con degradado, con contraste ≥ 3:1 en ambos
   temas y cambio de tema sin recargar.
 - Assets versionados en `frontend/public/` con un tope de peso.
-- Login: pendiente de decidir, ver RF-017 y "Marcadores abiertos".
+- Login: el mismo logo seguido de «Synapse» en la tarjeta de inicio de sesión (RF-017,
+  cerrado en el GATE 1).
 
 ### Fuera de alcance
 - Hacer la app instalable u offline (service worker, `display: standalone`, pantallas de
@@ -67,7 +84,7 @@ actualizado: 2026-10-26
 - Cambiar los tokens de `tokens.css` o el sistema de diseño 1.1.4.1.
 - Convertir el bloque de marca en enlace (hoy no lo es, ver D-6) y animar el logo.
 - Cabeceras de caché del favicon: las pone el Caddy externo (0007, "Fuera de alcance").
-- Modificar el original en `/tmp/s11/`: se trabaja sobre una copia.
+- Modificar el original de Carlos: se trabaja sobre una copia.
 
 ## 3. Modelo de datos y contratos de E/S  ← INVENTARIO DE FRONTERAS
 | Frontera | Dirección | Tipo | Contrato en `contracts/` |
@@ -148,9 +165,10 @@ actualizado: 2026-10-26
   resuelto (`#1a1a24` oscuro, `#f8fafc` claro).
 
 **Login y no regresión**
-- **RF-017** — `[NEEDS CLARIFICATION: ¿el login también lleva el logo?]` *Propuesta:* la
-  página de inicio de sesión DEBE mostrar el mismo logo en lugar de `.auth-logo-mark`,
-  seguido de «Synapse», con las mismas reglas de RF-012/RF-014.
+- **RF-017** — La página de inicio de sesión DEBE mostrar el mismo logo en lugar de
+  `.auth-logo-mark`, seguido del texto «Synapse», con las mismas reglas de RF-012
+  (decorativo, nombre accesible «Synapse», sin enlace ni foco) y de RF-014 (cada extremo del
+  degradado ≥ 3:1 contra el `--bg-secondary` del tema activo). *(GATE 1, 2026-10-27.)*
 - **RF-018** — El bloque de marca DEBE aparecer una sola vez por pantalla privada, sólo
   dentro de la cabecera de `AppLayout`. Las suites de 0002 y 0009 (vitest y
   `test:visual`) DEBEN seguir en verde. Sólo pueden cambiar las aserciones que nombran
@@ -173,8 +191,8 @@ actualizado: 2026-10-26
     DEBE seguir visible, la cabecera DEBE conservar su alto (RF-010) y NO DEBE aparecer un
     icono de imagen rota ni un texto alternativo visible.
 - **Login:** tiene su propia marca (`.auth-logo-mark` 32 px + «Synapse» 18 px en
-  `.auth-card`, sobre `--bg-secondary`). D1 no lo nombra. Si se mantiene el cuadrado, el
-  producto mostraría dos identidades distintas: RF-017 y "Marcadores abiertos".
+  `.auth-card`, sobre `--bg-secondary`). Pasa a mostrar el logo oficial (RF-017), así que
+  el producto tiene una sola identidad.
 - **`ChangePasswordPage`:** no tiene marca (comprobado: `.auth-logo-mark` sólo está en
   `LoginPage.tsx`), así que no se toca.
 - **Tema "sistema":** se resuelve a claro u oscuro en `data-theme` (`index.html`,
@@ -199,6 +217,8 @@ actualizado: 2026-10-26
 | D-12: respaldo `/favicon.ico` (16/32/48) en lugar de un PNG suelto | Los navegadores piden `/favicon.ico` por defecto aunque no esté declarado; el ICO cubre los antiguos y elimina el `404` actual | `favicon-32.png` (no atiende la petición implícita a `/favicon.ico`) | — |
 | D-13: en `forced-colors` el logo puede quedar monocromo (RF-019) | En modo forzado el sistema impone los colores; lo que importa es que el logo siga perceptible, no el degradado | Ocultar el logo en modo forzado; forzar a mantener el degradado (`forced-color-adjust: none`), que ignora la preferencia del usuario | — |
 | D-14: tope de peso ≤ 10 KB gzip para el SVG de cabecera y el favicon SVG (RNF-001) | El logo se pide en cada carga, en el primer pintado de cada pantalla privada. 10 KB gzip es ≈ 8 % del original sin comprimir; un SVG plano de esta complejidad, con precisión de 1–2 decimales y sin los `clipPath` duplicados, cabe con holgura. Medible con `gzip -9 | wc -c` | Sin tope ("optimizado" no es verificable); ≤ 4 KB (obligaría a simplificar la geometría y chocaría con RF-015) | — |
+| D-15 *(Carlos, GATE 1)*: degradado "opción B": un degradado lineal continuo (`userSpaceOnUse`, de la esquina superior izquierda a la inferior derecha de la silueta) por capa —capa delantera y capa trasera de tubos—, sin cortes diagonales | Carlos rechazó los bloques planos con bordes abruptos; quiere transición continua. Con un único degradado por capa ninguna forma cambia de color de golpe y la profundidad entre capas se conserva | "Opción A": bloques de color plano por forma, con bordes abruptos entre ellos (`reference/gradiente-opciones-ab.png`) | — |
+| D-16 *(Carlos, GATE 1)*: el login lleva el logo oficial seguido de «Synapse» (RF-017) | Es la primera pantalla que ve el usuario y ya tiene un bloque de marca con la misma estructura y el mismo fondo; reutiliza el asset y las reglas | Mantener `.auth-logo-mark` (dos identidades en el producto) | — |
 
 ## 7. Requisitos no funcionales (RNF)
 - **RNF-001 (peso)** — En el build:
@@ -211,16 +231,12 @@ actualizado: 2026-10-26
   Chromium (no jsdom) de:
   - la cabecera a 390, 1024 y 1440 px, en tema claro y oscuro;
   - la pestaña con el favicon en ambos temas del navegador;
-  - el login, si se cierra RF-017.
+  - el login (RF-017).
 
   Se comparan con el logo original (forma) y con `tokens.css` (color). Las aprueba Carlos;
   "los tests pasan" no las sustituye. Se guardan en la salida de `test:visual` junto a
   las medidas de RF-009/RF-010/RF-014.
 
 ## Marcadores abiertos
-- `[NEEDS CLARIFICATION: ¿El login muestra también el logo oficial en lugar de
-  `.auth-logo-mark` (RF-017)?]` — **Recomendación: sí.** Es la primera pantalla que ve el
-  usuario, ya tiene un bloque de marca con la misma estructura (marca + «Synapse») y el
-  mismo fondo (`--bg-secondary`), y dejar el cuadrado genérico mostraría dos identidades.
-  Coste marginal: reutiliza el mismo asset y las mismas reglas. Si la respuesta es no,
-  RF-017 se retira y el login queda en "Fuera de alcance".
+Ninguno. El único (`RF-017`, ¿el login lleva el logo?) se cerró con **sí** en el GATE 1
+(2026-10-27, AIRA en nombre de Carlos): ver RF-017 y D-16.

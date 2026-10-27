@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-10-27] SPEC-0011 · Identidad de marca — GATE 1 aprobado y Fase 2 (Plan) en borrador
+- **Fase alcanzada:** GATE 1 registrado (`estado: approved`, `fase_1` por AIRA en nombre de Carlos, 2026-10-27): RF-017 = sí (login con logo), D-5…D-14 aprobadas, degradado opción B (D-15), login (D-16); marcadores abiertos: 0. `plan.md` en borrador, `fase_2: pendiente`. `covers` fijado (código, tests, scripts de assets y README).
+- **Plan:** logo como `<span aria-hidden>` con `background-image` por `[data-theme]` (las dos variantes de 6b64875); favicon SVG único con `@media (prefers-color-scheme)`; paleta neutra N para rasters transparentes; tubería reproducible en `frontend/scripts/brand/` (Chromium del contenedor Playwright 1.56.0 + Pillow, cuantización a 256 colores); `theme-color` en `applyResolvedTheme` de `useTheme`. Decisiones P-1…P-14 para el GATE 2 (P-1: máscara de RF-015 con alfa > 0).
+- **Evidencia medida (en /tmp/s11plan, fuera del repo):** `<img alt="">` roto pinta un marco gris de 28×28 en Chromium; SVG con `prefers-color-scheme` como imagen cambia en vivo; `forcedColors` emulado aplica la paleta forzada; `.webmanifest` → `application/manifest+json` en python:3.11-slim; PNG 512 sin pérdida 79,8 KB (> 50) y cuantizado 13,5 KB; *maskable* al 72 % ≈ 185 px de radio (≤ 204,8).
+- **Rebotes:** 0. **Pausa:** no. **Drift:** no (aviso: P-11 exige re-anclaje al inicio de 0009/0007 en la Fase 4).
+- **Gate:** verde (2 avisos de presupuesto: history.md y method.md). **Docs:** spec.md y plan.md de 0011.
+- **Próximo paso:** GATE 2 (Carlos/AIRA) sobre P-1…P-14 → Fase 3 (Tasks).
+
 ## [2026-10-26] SPEC-0011 · Identidad de marca: logo oficial — borrador de Fase 1
 - **Fase alcanzada:** Fase 1 (Specify), `estado: draft`, `fase_1: pendiente`. Rama `feature/0011-identidad-logo` en el worktree `.claude/worktrees/0011-logo` (base 29470e0).
 - **Contenido:** `.harness/specs/0011-identidad-logo/spec.md`, con RF-001…RF-020 (EARS) y RNF-001 (peso: ≤ 10 KB gzip para el SVG de cabecera y el favicon SVG; topes por PNG/ICO) y RNF-002 (capturas reales claro/oscuro a 390/1024/1440). Decisiones D1–D4 de Carlos (vía AIRA) registradas con su descarte; D-5…D-14 son propuestas del autor.
