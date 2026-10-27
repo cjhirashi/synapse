@@ -43,6 +43,29 @@ const SEQ = "sequenceDiagram\n  participant U as Usuario\n  participant E as Edi
 // Diagrama ancho: una cadena horizontal larga que excede la columna (controles de zoom, RF-052).
 const WIDE = "flowchart LR\n" + Array.from({ length: 14 }, (_, i) => `  N${i}[Paso número ${i + 1} del proceso] --> N${i + 1}[Paso número ${i + 2} del proceso]`).join("\n");
 
+/** Un diagrama por TIPO de Mermaid (menos `journey`, que emite `foreignObject` y la spec lo prohíbe): la lista blanca de
+ *  `verifySvg` se contrasta contra el SVG real de cada uno (Converge 3). */
+const DIAGRAM_TYPES: string[] = [
+  "flowchart TD\n  A[Inicio] --> B{¿Válido?}\n  B -- Sí --> C[Guardar]\n  subgraph S\n   E((x)) --> F>y]\n  end\n  style A fill:#f9f,stroke:#333",
+  "sequenceDiagram\n  autonumber\n  participant U as Usuario\n  actor E as Editor\n  U->>E: Escribe\n  Note over U,E: nota\n  loop cada vez\n   U->>E: x\n  end",
+  "classDiagram\n  class A {\n   +int x\n  }\n  A <|-- B\n  A *-- C\n  A --> E : usa",
+  "stateDiagram-v2\n  [*] --> A\n  A --> B : go\n  state C {\n   [*] --> D\n  }",
+  "erDiagram\n  CUSTOMER ||--o{ ORDER : places\n  ORDER ||--|{ LINE : contains",
+  "gantt\n  title T\n  dateFormat YYYY-MM-DD\n  section S\n  A :a1, 2024-01-01, 30d\n  B :after a1, 20d",
+  'pie showData\n  title P\n  "a" : 10\n  "b" : 20',
+  'gitGraph\n  commit\n  branch dev\n  checkout dev\n  commit\n  checkout main\n  merge dev',
+  "mindmap\n  root((r))\n   a\n    a1\n   b",
+  "timeline\n  title T\n  2020 : a\n  2021 : b",
+  "quadrantChart\n  title Q\n  x-axis Low --> High\n  y-axis Low --> High\n  quadrant-1 A\n  P1: [0.3, 0.6]",
+  'xychart-beta\n  title "X"\n  x-axis [a, b, c]\n  bar [1, 5, 3]',
+  "sankey-beta\n  A,B,10\n  B,C,5",
+  "requirementDiagram\n  requirement r {\n   id: 1\n   text: t\n   risk: high\n   verifymethod: test\n  }\n  element e {\n   type: sim\n  }\n  e - satisfies -> r",
+  "block-beta\n  columns 2\n  a b\n  c:2",
+  "kanban\n  todo[Todo]\n   t1[Tarea]\n  done[Done]\n   t2[Otra]",
+  'C4Context\n  title C\n  Person(a, "A")\n  System(b, "B")\n  Rel(a, b, "usa")',
+  'packet-beta\n  0-15: "a"\n  16-31: "b"',
+];
+
 /** Nota de ~200 KiB con 50 bloques de código (los 13 ejemplos en rotación) y 5 Mermaid (RNF-001). */
 function bigNote(): string {
   const filler = "lorem ipsum dolor sit amet ".repeat(125); // ~3,4 KiB
@@ -251,6 +274,12 @@ export const CONTENT_NOTES: ContentNote[] = [
         '  click B href "javascript:alert(2)"',
       ].join("\n"),
     )}\n`,
+  },
+  {
+    key: "mermaid-types",
+    path: "Mermaid/Tipos de diagrama.md",
+    frontmatter: {},
+    content: `# Tipos de diagrama\n\n${DIAGRAM_TYPES.map((source) => fence("mermaid", source)).join("\n\n")}\n`,
   },
   {
     key: "mermaid-wide",

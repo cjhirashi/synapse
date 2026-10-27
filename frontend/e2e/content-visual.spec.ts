@@ -531,6 +531,20 @@ for (const theme of THEMES) {
   });
 }
 
+// V-7 · la lista blanca de `verifySvg` deja pasar el SVG REAL de cada tipo de diagrama (RNF-003, Converge 3)
+test("0010 V-7 cada tipo de diagrama de Mermaid se dibuja sin rechazos de la verificación del SVG (RF-046, RNF-003)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "mermaid-types", { theme: "dark", size: SIZES[0] });
+  const blocks = page.locator('.code-block[data-language="mermaid"]');
+  const total = await blocks.count();
+  expect(total).toBeGreaterThanOrEqual(18);
+  for (let i = 0; i < total; i += 1) {
+    await blocks.nth(i).scrollIntoViewIfNeeded();
+    await expect(blocks.nth(i).locator('[role="img"] svg').first(), `diagrama ${i + 1}`).toBeVisible({ timeout: 20_000 });
+  }
+  await expect(page.getByRole("group", { name: "Error en el diagrama" })).toHaveCount(0);
+  await context.close();
+});
+
 // V-8 · fallos de Mermaid (RF-049, RF-053)
 for (const theme of THEMES) {
   test(`0010 V-8 diagrama inválido, ${theme} (RF-049)`, async ({ browser, content }) => {
