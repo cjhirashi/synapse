@@ -77,4 +77,15 @@ Orden fijo por dependencia: Slice 1 ya tiene la enmienda del plan aprobada
   181 KiB; lo decide AIRA (no se toca).
 - **`journey`:** el diagrama `journey` de Mermaid emite `foreignObject`/`switch` incluso en modo estricto y RF-051 los prohíbe:
   se muestra como error del bloque (comportamiento preexistente; todos los demás tipos probados dibujan, e2e V-7).
+- **Medium latente:** `FORBIDDEN_CSS` (`renderMermaid.ts`) rechaza `url('#g')` / `url("#g")` DENTRO de `style` porque el regex
+  retrocede sobre la comilla. Hoy ningún tipo de Mermaid emite esa forma (usan `url(#id)` sin comillas).
+- **Low:** `attr(` no está en `FORBIDDEN_CSS`.
+- **Low:** la forma `img` de Mermaid (nodos con imagen) pide la imagen externa ANTES de `verifySvg` (amplía L-4).
+- **Low:** `link A "url"` de classDiagram rechaza el diagrama entero (la verificación no admite el `<a>`; no se ignora la sentencia).
+- **Low:** un checkpoint `_local` con `NaN` responde 503.
+- **Pendientes de AIRA:** UX-H1 / enmienda de RF-052 (diagrama muy ancho) y M-A (clic en frío antes de la precarga).
+- **T-111 no aplicada:** el manual `diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md` está sólo en el checkout principal (sin
+  versionar) y el sistema de permisos denegó escribir en él desde este worktree; el texto exacto (tabla de los 6 tokens y la
+  regla de texto) está en `history.md`, entrada de 2026-10-27 «T-111». Aplicarlo a mano.
+- **T-123 pendiente:** veredicto de AIRA sobre la comparación de capturas (RNF-005).
 

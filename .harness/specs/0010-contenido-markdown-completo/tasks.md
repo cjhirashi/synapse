@@ -529,13 +529,13 @@ actualizado: 2026-10-24
 - [x] T-116 — `frontend/src/README.md`: módulos nuevos (`folders`, `noteHistory`, `frontmatter`, `properties`, `breadcrumb`, `highlight/`, `mermaid/`, *node views*, `Notice`, `NoteMenu`, `NoteBreadcrumb`), sesión D1, carpeta activa, historial, carga diferida, y (Enmienda 1) `editor/markdown/` — caché de parseo por `(id, rev)` en memoria, Worker de parseo, programador de precálculo y la nota `worker-src 'self'` si algún día hay CSP [doc]
   - CHECK: `grep -c "noteHistory\|frontmatter.ts\|NoteBreadcrumb\|codeBlockView\|highlight/" frontend/src/README.md`
   - EXPECT: ≥ 5.
-- [ ] T-117 — Re-anclajes de cierre en `0007`, `0008` y `0009` `spec.md` (ancla al commit de cierre) [doc] [P-15]
+- [x] T-117 — Re-anclajes de cierre en `0007`, `0008` y `0009` `spec.md` (ancla al commit de cierre) [doc] [P-15]
   - CHECK: `bash .harness/gate/check.sh | grep -E "0007-fastapi|0008-vault|0009-rediseno"`
   - EXPECT: las tres en ✅ "sin cambios en covers desde <commit de cierre>".
 - [x] T-118 — `0008-vault-editor/diagrams/` y `ARCHIFY.md`: verificar que no cambian (el flujo de datos de nota es el mismo) [doc]
   - CHECK: `git diff --stat 03f20c2 -- .harness/specs/0008-vault-editor/diagrams/ ARCHIFY.md`
   - EXPECT: sin cambios; entrada en `history.md` con la verificación.
-- [ ] T-119 — `.harness/memory/state.md`: estado de 0010 y backlog C-13/C-14 (botón primario 3,68:1, bordes de input globales) [doc]
+- [x] T-119 — `.harness/memory/state.md`: estado de 0010 y backlog C-13/C-14 (botón primario 3,68:1, bordes de input globales) [doc]
   - CHECK: `grep -c "0010\|C-13\|C-14" .harness/memory/state.md`
   - EXPECT: ≥ 3.
 
