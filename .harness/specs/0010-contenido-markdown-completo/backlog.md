@@ -72,7 +72,7 @@ Orden fijo por dependencia: Slice 1 ya tiene la enmienda del plan aprobada
   (el tope general de 64 niveles es del cuerpo, no del documento). El cliente oficial no puede producirlo (su tope es 32); un
   agente que escribiera por `/sync` un frontmatter así perdería el lote, no sólo el documento. Aceptado y documentado en el
   esquema y la spec; no se cambia.
-- **Preexistente — ruido de `localStorage`** en `frontend/src/vault/vaultIcon.integration.test.ts` (o equivalente): no se toca.
+- **Preexistente — ruido de `localStorage`** en `frontend/src/sync/vaultIcon.integration.test.ts`: no se toca.
 - **M-A (clic en frío):** el clic en la primera nota ANTES de que termine la precarga del chunk del editor sigue en 225–258 ms a
   181 KiB; lo decide AIRA (no se toca).
 - **`journey`:** el diagrama `journey` de Mermaid emite `foreignObject`/`switch` incluso en modo estricto y RF-051 los prohíbe:
