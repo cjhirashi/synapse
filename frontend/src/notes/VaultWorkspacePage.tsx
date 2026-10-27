@@ -13,6 +13,7 @@
 import { KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FileText, FolderOpen } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { whenIdle } from "../editor/deferred/idle";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
@@ -23,7 +24,9 @@ import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
 
-const NoteEditor = lazy(() => import("../editor/NoteEditor"));
+/** El chunk del editor: `React.lazy` lo pide al abrir una nota y `Workspace` lo precarga en idle (M-1). */
+const loadEditor = () => import("../editor/NoteEditor");
+const NoteEditor = lazy(loadEditor);
 
 /** UUID en su forma canónica (minúsculas), la única que forman los ids de bóveda. */
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -166,6 +169,11 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     setHistory(next);
     saveHistory(sessionStorage, vault.id, next);
   }
+
+  // RNF-001 (Converge 1, M-1): el chunk del editor (~1 MB: Milkdown, CodeMirror…) se descarga, analiza y compila en idle,
+  // ya dentro de una bóveda, y no en el «clic → legible» de la primera nota. Sigue siendo un chunk aparte: `/vaults` no
+  // lo descarga (P-3) y mermaid, svg-pan-zoom, yaml y las gramáticas siguen pidiéndose sólo cuando una nota los usa.
+  useEffect(() => whenIdle(() => void loadEditor(), 2000), []);
 
   /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));

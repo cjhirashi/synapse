@@ -1052,3 +1052,11 @@ Nuevos: `editor/deferred/idle.ts` (`whenIdle`, `observeVisibility`), `editor/hig
 `editor/highlight/proseHighlight.ts`, `editor/MilkdownView.tsx`, `editor/codeBlockView.ts`, `editor/editor.css`,
 `e2e/content-perf.spec.ts`. Tareas T-140…T-149 (bloque «F.6b» de `tasks.md`).
 
+### 11.5 Nota de Converge 1 (2026-10-27) — el camino crítico a 181 KiB era el chunk del editor
+Con la Enmienda 2 aplicada el 181 KiB seguía en p95 ≈ 240–283 ms (límite 250, intermitente). Perfil CPU y traza de Chromium de
+la apertura: ~170 ms eran «program» nativo y `v8.parseOnBackground` ≈ 62 ms: la primera nota de cada sesión (la de 181 KiB
+es siempre la primera de su contexto) pagaba la descarga, el análisis y la compilación del chunk `NoteEditor` (~1 MB) dentro
+de «clic → legible». Corrección de raíz: `Workspace` precarga el chunk del editor en idle al abrir la bóveda
+(`whenIdle(loadEditor)`), sin importarlo estáticamente (sigue siendo un chunk aparte; `/vaults` no lo descarga).
+Medido en 3 corridas de 20 contextos: 181 KiB p95 121,7 / 119,5 / 114,9 ms (antes 235–257), 120 KiB 40–43 ms, 64 KiB 30–35 ms.
+

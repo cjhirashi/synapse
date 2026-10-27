@@ -62,3 +62,10 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 
 Orden fijo por dependencia: Slice 1 ya tiene la enmienda del plan aprobada
 (Opción 2, caché precalculado) — es el siguiente a tomar.
+
+## Riesgos conocidos (Converge 1, 2026-10-27)
+- **L-4:** las imágenes `http(s)` externas de una nota se cargan (el navegador las pide al abrir la nota). Es el comportamiento
+  heredado de 0008 (`safeUrl` permite `http`/`https` en imágenes); no hay CSP en el backend. Aceptado como riesgo conocido; una
+  política (proxy de imágenes o `img-src`) queda para una feature de seguridad aparte.
+- **UX-H1:** diagrama Mermaid muy ancho (escala ≈ 0,15 al ajustar): EN ESPERA de AIRA (enmienda de RF-052; propuesta A en `history.md`).
+
