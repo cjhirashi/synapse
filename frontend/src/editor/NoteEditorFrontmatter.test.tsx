@@ -184,3 +184,52 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     expect(propValue("a")).toHaveValue("xy");
   });
 });
+
+// Converge 1 (UX-H2, UX-H4): los avisos de YAML heredado usan `Notice` con los textos del plan, y en lectura el bloque
+// heredado se muestra literal (P-6: igual que el protegido en Visual), no como regla horizontal + negrita.
+describe("avisos y lectura del YAML heredado (UX-H2, UX-H4)", () => {
+  it("migrate: el aviso previo es un Notice informativo con el texto del plan («panel de propiedades»)", async () => {
+    await setup("---\ntitulo: X\n---\n# B\n", {});
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const notice = await screen.findByText(/Se moverán al panel de propiedades cuando guardes/);
+    const box = notice.closest(".note-editor-notice") as HTMLElement;
+    expect(box).toHaveClass("note-notice-info");
+    expect(box).toHaveAttribute("role", "status");
+    expect(box.querySelector("svg")).not.toBeNull();
+    expect(screen.queryByText(/metadatos/i)).toBeNull();
+  });
+
+  it("migrate: tras guardar el aviso es persistente con «Cerrar aviso»", async () => {
+    await setup("---\ntitulo: X\n---\n# B\n", {});
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    const notice = await screen.findByText(/Ahora están en el panel de propiedades/);
+    expect(notice.closest(".note-editor-notice")).toHaveClass("note-notice-info");
+    await userEvent.click(screen.getByRole("button", { name: "Cerrar aviso" }));
+    expect(screen.queryByText(/Ahora están en el panel de propiedades/)).toBeNull();
+  });
+
+  it("looks-yaml: aviso de advertencia con el texto del plan y el bloque literal", async () => {
+    await setup("---\nb: 2\n---\nBody", { a: 1 });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const notice = screen.getByText(/pero no se trata como propiedades\. Edítalo en Código si quieres convertirlo/);
+    const box = notice.closest(".note-editor-notice") as HTMLElement;
+    expect(box).toHaveClass("note-notice-warning");
+    expect(box.querySelector("pre.note-editor-legacy-block")).toHaveTextContent("b: 2");
+  });
+
+  it("lectura: el YAML heredado se muestra literal (mono) y el cuerpo va aparte, sin el bloque", async () => {
+    const { container } = await setup("---\ntitulo: X\n---\n# B\n", {});
+    const block = container.querySelector("pre.note-editor-legacy-block") as HTMLElement;
+    expect(block).toHaveTextContent("titulo: X");
+    expect(screen.getByRole("textbox", { name: "Contenido de la nota" })).toHaveValue("# B\n");
+  });
+
+  it("lectura: un `---` que no es YAML (regla horizontal) se deja como está", async () => {
+    const { container } = await setup("---\n\ntexto\n", {});
+    expect(container.querySelector("pre.note-editor-legacy-block")).toBeNull();
+    expect(screen.getByRole("textbox", { name: "Contenido de la nota" })).toHaveValue("---\n\ntexto\n");
+  });
+});
+
