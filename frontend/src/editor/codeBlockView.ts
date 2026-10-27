@@ -78,6 +78,22 @@ const FAILED_MS = 4000;
 const ANNOUNCE_COPIED = "Copiado";
 const ANNOUNCE_FAILED = "No se pudo copiar. Selecciona el código y usa Ctrl+C.";
 
+/**
+ * Región viva única de todos los bloques (UX-H7): antes cada bloque llevaba la suya, vacía, y una nota con 15 bloques
+ * sumaba 15 regiones al árbol de accesibilidad. Se crea al primer anuncio y vive en <body>, fuera de los bloques.
+ */
+function announce(message: string): void {
+  let region = document.querySelector<HTMLElement>("[data-code-announcer]");
+  if (!region) {
+    region = document.createElement("div");
+    region.className = "note-visually-hidden";
+    region.setAttribute("aria-live", "polite");
+    region.dataset.codeAnnouncer = "";
+    document.body.append(region);
+  }
+  region.textContent = message;
+}
+
 const browserWriteText = (text: string): Promise<void> =>
   navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject(new Error("sin API de portapapeles"));
 
@@ -87,7 +103,6 @@ class CodeBlockView implements NodeView {
   private readonly header: HTMLElement;
   private readonly label: HTMLElement;
   private readonly button: HTMLButtonElement;
-  private readonly live: HTMLElement;
   private readonly writeText: (text: string) => Promise<void>;
   private readonly renderer: MermaidRenderer;
   private readonly columnWidth: () => number;
@@ -148,14 +163,11 @@ class CodeBlockView implements NodeView {
     this.button.setAttribute("aria-label", "Copiar código");
     this.button.addEventListener("click", () => void this.copy());
 
-    this.live = document.createElement("span");
-    this.live.className = "note-visually-hidden";
-    this.live.setAttribute("aria-live", "polite");
 
     const actions = document.createElement("div");
     actions.className = "code-block-actions";
     actions.append(this.button);
-    this.header.append(this.label, actions, this.live);
+    this.header.append(this.label, actions);
 
     this.contentDOM = document.createElement("pre");
     this.dom.append(this.header, this.contentDOM);
@@ -192,12 +204,12 @@ class CodeBlockView implements NodeView {
     const copied = state === "copied";
     this.button.dataset.state = state;
     this.button.replaceChildren(icon(copied ? "check" : "circle-alert"), this.text(copied ? "Copiado" : "No se pudo copiar"));
-    this.live.textContent = copied ? ANNOUNCE_COPIED : ANNOUNCE_FAILED;
+    announce(copied ? ANNOUNCE_COPIED : ANNOUNCE_FAILED);
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;
       this.rest();
-      this.live.textContent = "";
+      announce("");
     }, copied ? COPIED_MS : FAILED_MS);
   }
 

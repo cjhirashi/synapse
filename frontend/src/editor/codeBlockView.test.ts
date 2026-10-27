@@ -20,9 +20,26 @@ function mount(language: string, text: string, writeText?: (text: string) => Pro
 }
 
 const copyButton = (view: NodeView) => view.dom.querySelector<HTMLButtonElement>(".code-block-copy")!;
-const live = (view: NodeView) => view.dom.querySelector<HTMLElement>("[aria-live]")!;
+/** La región viva compartida por todos los bloques (UX-H7): una sola en el documento, fuera de los bloques. */
+const live = (_view?: NodeView) => document.querySelector<HTMLElement>("[data-code-announcer]")!;
 
 describe("codeBlockView", () => {
+  // UX-H7: antes cada bloque llevaba su región `aria-live` vacía (15 en una nota de 15 bloques).
+  it("los bloques no llevan región viva propia: hay una sola compartida", async () => {
+    const ok = vi.fn().mockResolvedValue(undefined);
+    const a = mount("ts", "a", ok);
+    const b = mount("py", "b", ok);
+    expect(a.dom.querySelector("[aria-live]")).toBeNull();
+    expect(b.dom.querySelector("[aria-live]")).toBeNull();
+    copyButton(a).click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(document.querySelectorAll("[data-code-announcer]")).toHaveLength(1);
+    copyButton(b).click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(document.querySelectorAll("[data-code-announcer]")).toHaveLength(1);
+    expect(live()).toHaveTextContent("Copiado");
+  });
+
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
