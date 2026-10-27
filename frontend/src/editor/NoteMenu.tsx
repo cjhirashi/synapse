@@ -6,7 +6,7 @@
  * Patrón WAI-ARIA de menú con botón: el botón anuncia `aria-haspopup="menu"`/`aria-expanded`/`aria-controls`;
  * el menú vive en un portal (ningún `overflow` de la barra lo recorta), los ítems son un foco itinerante
  * (sólo el activo es tabulable) y el teclado cubre Enter/Espacio/↓ (abren en el primero), ↑ (en el último),
- * ↑/↓ cíclicas, Inicio/Fin, Esc (cierra y devuelve el foco) y Tab (cierra). Un clic fuera también cierra.
+ * ↑/↓ cíclicas, Inicio/Fin, Esc y Tab (cierran y devuelven el foco al botón). Un clic fuera también cierra.
  */
 import { Fragment, KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -97,9 +97,10 @@ export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete 
         close(true);
         break;
       case "Tab":
-        // Se cierra y el foco vuelve al botón: el Tab sigue desde ahí, no desde el final del documento.
+        // Patrón APG (WCAG 2.4.3): Tab cierra el menú y el foco se queda en el botón ⋮. Sin `preventDefault` el Tab se
+        // seguiría desde el botón y, siendo el último control de la página en lectura, el foco acabaría en <body>.
         close(true);
-        return;
+        break;
       default:
         return;
     }

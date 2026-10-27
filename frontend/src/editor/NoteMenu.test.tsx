@@ -102,11 +102,13 @@ describe("NoteMenu", () => {
   });
 
   // RF-061
-  it("Tab cierra el menú sin retener el foco; un clic fuera también lo cierra", async () => {
+  it("Tab cierra el menú y devuelve el foco al botón ⋮; un clic fuera también lo cierra", async () => {
     const { trigger } = setup();
     await userEvent.click(trigger);
     await userEvent.tab();
     expect(screen.queryByRole("menu")).toBeNull();
+    // UX-H3 (WCAG 2.4.3, APG): el foco vuelve al botón ⋮ y no se pierde en <body>.
+    expect(trigger).toHaveFocus();
     await userEvent.click(trigger);
     await userEvent.click(screen.getByRole("button", { name: "Fuera" }));
     expect(screen.queryByRole("menu")).toBeNull();
