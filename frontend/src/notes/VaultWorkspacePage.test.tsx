@@ -589,3 +589,16 @@ test("RF-065: el lápiz alterna lectura y edición", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Leer" }));
   expect(await screen.findByRole("button", { name: "Editar" })).toBeInTheDocument();
 });
+
+test("historial: dos Alt+← seguidos (sin esperar) retroceden dos notas, no una dos veces (L-5, RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await openFromTree("Gamma");
+  const treeEl = screen.getByRole("tree", { name: "Notas" });
+  fireEvent.keyDown(treeEl, { key: "ArrowLeft", altKey: true });
+  fireEvent.keyDown(treeEl, { key: "ArrowLeft", altKey: true });
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeEnabled();
+});
