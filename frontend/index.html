@@ -4,14 +4,20 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Synapse</title>
+    <!-- Color del chrome del navegador = --bg-secondary del tema resuelto (SPEC-0011 RF-016). El valor
+         estático es el del tema por defecto (oscuro); el script de abajo y useTheme lo mantienen. -->
+    <meta name="theme-color" content="#1a1a24" />
     <script>
       // Aplica el tema antes del primer paint - evita un parpadeo de tema equivocado
       // mientras React monta (useTheme reacciona después del primer render). El defecto
-      // ("dark") es DEFAULT_THEME_MODE de theme/useTheme.ts: deben coincidir.
+      // ("dark") es DEFAULT_THEME_MODE de theme/useTheme.ts y la tabla de colores es THEME_COLOR
+      // (el --bg-secondary de cada tema): deben coincidir; useTheme.test.tsx lo vigila.
       (function () {
         var mode = localStorage.getItem("synapse-theme") || "dark";
         var resolved = mode === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : mode;
         document.documentElement.setAttribute("data-theme", resolved);
+        var themeColor = { dark: "#1a1a24", light: "#f8fafc" };
+        document.querySelector('meta[name="theme-color"]').setAttribute("content", themeColor[resolved]);
       })();
     </script>
   </head>

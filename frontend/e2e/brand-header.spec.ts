@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { contrast } from "../src/test-utils/wcag";
 import { decodePng, expectAtLeast, parseRgb, silhouetteBox, svgStops } from "./brand-support";
-import { expect, expectMeasure, measure, MOBILE, openWorkspace, shot, SIZES, test, THEMES, type Size } from "./fixtures";
+import { expect, expectMeasure, measure, MOBILE, openWorkspace, shot, SIZES, test, THEMES, tokens, type Size, type Theme } from "./fixtures";
 import { OUT_DIR } from "./out-dir";
 
 /** Anchos de la verificación: los dos de escritorio del mockup más el móvil. */
@@ -147,3 +147,51 @@ test("B-9 el bloque de marca aparece una sola vez por pantalla privada (RF-018)"
   }
   await context.close();
 });
+
+/** Color del `<meta name="theme-color">` del documento. */
+const themeColor = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')?.content ?? null);
+
+// B-4 · cambio de tema sin recarga (RF-016)
+for (const [from, to, label] of [
+  ["dark", "light", "Tema claro"],
+  ["light", "dark", "Tema oscuro"],
+] as const) {
+  test(`B-4 cambio de tema ${from}→${to} sin recargar: logo y theme-color (RF-016)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme: from, size: SIZES[0] });
+    const logoUrl = () => page.locator(".app-brand .brand-logo").evaluate((el) => getComputedStyle(el).backgroundImage);
+    expect(await logoUrl()).toContain(`logo-synapse-${from}.svg`);
+    expect(await themeColor(page)).toBe(tokens(from)["--bg-secondary"]);
+
+    // La marca sobrevive sólo si no hay recarga de la página.
+    await page.evaluate(() => ((window as unknown as { __noReload: boolean }).__noReload = true));
+    await page.getByRole("button", { name: label }).click();
+
+    expect(await logoUrl()).toContain(`logo-synapse-${to}.svg`);
+    expect(await themeColor(page)).toBe(tokens(to)["--bg-secondary"]);
+    // El logo de la otra variante (no precargada, P-12) vuelve a estar pintado en ≤ 500 ms.
+    const header = parseRgb((await measure(page, ".app-header")).bg);
+    await expect
+      .poll(async () => silhouetteBox(await decodePng(page, await page.locator(".app-brand .brand-logo").screenshot()), header) !== null, { timeout: 500 })
+      .toBe(true);
+    expect(await page.evaluate(() => (window as unknown as { __noReload?: boolean }).__noReload), "la página no se recargó").toBe(true);
+    await context.close();
+  });
+}
+
+// B-5 · theme-color al cargar = --bg-secondary del tema resuelto (RF-016)
+const CASES: Array<{ name: string; theme: Theme | "system" | null; colorScheme?: "light" | "dark"; expected: Theme }> = [
+  { name: "sin preferencia (defecto oscuro)", theme: null, expected: "dark" },
+  { name: "synapse-theme=light", theme: "light", expected: "light" },
+  { name: "synapse-theme=dark", theme: "dark", expected: "dark" },
+  { name: "sistema con SO claro", theme: "system", colorScheme: "light", expected: "light" },
+  { name: "sistema con SO oscuro", theme: "system", colorScheme: "dark", expected: "dark" },
+];
+for (const c of CASES) {
+  test(`B-5 theme-color al cargar, ${c.name} (RF-016)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme: c.theme as Theme | null, colorScheme: c.colorScheme, size: SIZES[0] });
+    expect(await page.evaluate(() => document.documentElement.getAttribute("data-theme"))).toBe(c.expected);
+    expect(await themeColor(page)).toBe(tokens(c.expected)["--bg-secondary"]);
+    await context.close();
+  });
+}

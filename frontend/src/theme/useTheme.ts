@@ -9,11 +9,27 @@ const STORAGE_KEY = "synapse-theme";
  * previo al pintado de `index.html` repite este valor; `useTheme.test.tsx` vigila que coincidan.
  */
 export const DEFAULT_THEME_MODE: ThemeMode = "dark";
+/**
+ * `--bg-secondary` de cada tema: el color de la cabecera, que el chrome del navegador continúa
+ * (`<meta name="theme-color">`, SPEC-0011 RF-016, D-10). El script previo al pintado de `index.html`
+ * repite esta tabla; `useTheme.test.tsx` vigila que ambas coincidan con `tokens.css`.
+ */
+export const THEME_COLOR: Record<"light" | "dark", string> = { dark: "#1a1a24", light: "#f8fafc" };
 const THEME_ORDER: ThemeMode[] = ["light", "system", "dark"];
 
 function resolve(mode: ThemeMode): "light" | "dark" {
   if (mode !== "system") return mode;
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+/**
+ * Aplica el tema ya resuelto: `data-theme` en `<html>` y el `theme-color` del navegador. Es el ÚNICO
+ * punto que escribe ambos (lo usan el efecto de `mode` y el oyente de «sistema»), así el color del
+ * chrome nunca se desincroniza del tema (RF-016); sin el `<meta>` (pruebas sin index.html) no hace nada.
+ */
+export function applyResolvedTheme(resolved: "light" | "dark"): void {
+  document.documentElement.setAttribute("data-theme", resolved);
+  document.querySelector('meta[name="theme-color"]')?.setAttribute("content", THEME_COLOR[resolved]);
 }
 
 function readStored(): ThemeMode {
@@ -31,13 +47,13 @@ export function useTheme() {
   const [mode, setModeState] = useState<ThemeMode>(readStored);
 
   useEffect(() => {
-    document.documentElement.setAttribute("data-theme", resolve(mode));
+    applyResolvedTheme(resolve(mode));
   }, [mode]);
 
   useEffect(() => {
     if (mode !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = () => document.documentElement.setAttribute("data-theme", resolve("system"));
+    const onChange = () => applyResolvedTheme(resolve("system"));
     media.addEventListener("change", onChange);
     return () => media.removeEventListener("change", onChange);
   }, [mode]);
