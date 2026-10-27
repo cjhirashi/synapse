@@ -460,10 +460,10 @@ actualizado: 2026-10-24
 - [x] T-149 — Batería completa de cierre de la Slice 5: vitest, typecheck, gate, `test:bundle`, `content-visual`, perf (cubre RNF-001, RNF-002, RNF-003) [zona: sistema]
 
 **F.7 · Historial y breadcrumb**
-- [ ] T-096 [rojo] — `notes/noteHistory.test.ts`: `push` (descarta adelante, sin duplicar el actual, tope 50), `step` saltando inválidos, renombrada navegable por id, `load`/`save` por bóveda, forma corrupta → vacío (cubre RF-057, RF-058) [zona: test]
+- [x] T-096 [rojo] — `notes/noteHistory.test.ts`: `push` (descarta adelante, sin duplicar el actual, tope 50), `step` saltando inválidos, renombrada navegable por id, `load`/`save` por bóveda, forma corrupta → vacío (cubre RF-057, RF-058) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteHistory.test.ts`
   - EXPECT: falla al importar.
-- [ ] T-097 — `notes/noteHistory.ts` (cubre RF-057, RF-058) [zona: núcleo]
+- [x] T-097 — `notes/noteHistory.ts` (cubre RF-057, RF-058) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/noteHistory.test.ts`
   - EXPECT: `passed`.
 - [ ] T-098 [rojo] — `VaultWorkspacePage.test.tsx`: abrir notas llena el historial; Atrás/Adelante navegan y se deshabilitan en los extremos; nota borrada saltada; con borrador sucio aparece el aviso de 0008 y cancelar conserva nota, borrador y posición (foco al botón); Alt+←/→ fuera de un editor navega con `preventDefault`, dentro de Milkdown/CodeMirror en edición no; recarga (mismo `sessionStorage`) conserva el historial; otra bóveda, otro historial (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: test]

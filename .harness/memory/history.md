@@ -1438,3 +1438,4 @@
 - **Línea base:** rama `feature/0010-contenido-markdown`, HEAD tras este commit.
 - **Gaps:** enlace `javascript:` pegado pierde la marca (Slice 4); P-6 en lectura pendiente (Slice 7); gap de ancho arriba.
 - **Próximo paso:** Slice 6 — historial de navegación (T-096…T-101).
+- [2026-10-27] SPEC-0010 T-096/T-097 (RF-057, RF-058): `notes/noteHistory.ts` (push/step/canStep/load/save, tope 50, ids, forma validada) — CHECK: vitest noteHistory passed, typecheck exit 0
