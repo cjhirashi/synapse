@@ -167,8 +167,9 @@ for (const [from, to, label] of [
     await page.evaluate(() => ((window as unknown as { __noReload: boolean }).__noReload = true));
     await page.getByRole("button", { name: label }).click();
 
-    expect(await logoUrl()).toContain(`logo-synapse-${to}.svg`);
-    expect(await themeColor(page)).toBe(tokens(to)["--bg-secondary"]);
+    // El efecto de `useTheme` se aplica tras el clic, no dentro de él: se espera (≤ 500 ms) en lugar de leer al instante.
+    await expect.poll(logoUrl, { timeout: 500 }).toContain(`logo-synapse-${to}.svg`);
+    await expect.poll(() => themeColor(page), { timeout: 500 }).toBe(tokens(to)["--bg-secondary"]);
     // El logo de la otra variante (no precargada, P-12) vuelve a estar pintado en ≤ 500 ms.
     const header = parseRgb((await measure(page, ".app-header")).bg);
     await expect
