@@ -56,6 +56,25 @@ VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-visual.spec.ts   
 VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts     # RNF-001 de 0010 (p95 por tamaño de nota)
 ```
 
+## Identidad de marca (SPEC-0011)
+
+El logo oficial (cerebro cian con degradado) se publica desde `public/`: `logo-synapse-{dark,light}.svg`
+(cabecera y login, uno por tema), `favicon.svg` (con `@media (prefers-color-scheme: dark)`), `favicon.ico`
+(16/32/48), `apple-touch-icon.png` (180), `icons/icon-{192,512,maskable-512}.png` y `manifest.webmanifest`
+(sólo iconos y colores: la app no es instalable). Están **generados**: no se editan a mano.
+
+```
+bash scripts/brand/build.sh   # regenera todo desde scripts/brand/source/ y palettes.json (colores)
+```
+
+Requisitos: Docker con la imagen `mcr.microsoft.com/playwright:v1.56.0-jammy` (Chromium rasteriza los PNG),
+`npm ci --prefix scripts/brand` (svgo 4.0.0) y `pip install -r scripts/brand/requirements.txt` (Pillow 12.3.0);
+`build.sh` falla con un mensaje si las versiones no coinciden. Opciones: `--svg-only`, `--raster-only`,
+`--keep-tmp <dir>`. Correrlo dos veces no cambia ningún byte. Las pruebas son `src/brand/*.test.*`, 
+`backend/tests/test_brand_assets.py` y, en navegador real, `e2e/brand-header.spec.ts` y
+`e2e/brand-assets.spec.ts` dentro de `npm run test:visual` (`-- --grep "B-|A-"`); usa `VISUAL_PORT` y
+`COUCHDB_URL` propios si otra suite comparte el puerto o el CouchDB.
+
 ## Editor de notas (SPEC-0008)
 
 El editor usa dependencias fijadas a versión exacta, sin `@milkdown/react` (un envoltorio

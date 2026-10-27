@@ -115,6 +115,12 @@ actualizado: 2026-10-12
 > `styles/global.css` (estilos base de `button` en `:where(...)`: la cabecera pasa de 80 a 70 px y
 > el toggle/menú de cuenta recuperan su CSS de componente). Sin cambio de requisitos.
 
+> **Re-anclaje 2026-10-27 (cierre)** (T-043 de TASKS-0011): SPEC-0011 (identidad de marca) tocó
+> archivos de estos `covers` sin cambiar requisitos: `auth/LoginPage.tsx(+test)` y `auth/AuthShell.css`
+> (el cuadrado `.auth-logo-mark` pasa a `BrandLogo`, RF-017 de 0011), `layout/AppLayout.tsx(+test)` y
+> `layout/AppLayout.css` (bloque de marca de la cabecera), `frontend/index.html` y `theme/useTheme.ts(+test)`
+> (`<meta name="theme-color">` y `applyResolvedTheme`, RF-016 de 0011). Sin cambio de requisitos.
+
 ## 1. Contexto del dominio
 - Synapse necesita identificar usuarios y garantizar que cada uno sólo acceda a su
   propia bóveda (P2, P3). Control plane en PostgreSQL; datos en una base CouchDB por usuario.

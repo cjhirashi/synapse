@@ -88,3 +88,41 @@ test("RF-001: las rutas privadas muestran el riel de bóvedas con una entrada po
   const rail = screen.getByRole("navigation", { name: "Bóvedas abiertas" });
   expect(await within(rail).findByRole("link", { name: / Notas$/ })).toHaveAttribute("href", expect.stringMatching(/^\/vaults\/[0-9a-f-]{36}$/));
 });
+
+// --- Bloque de marca (SPEC-0011 RF-008, RF-012, RF-018) ---------------------------------------
+
+test("RF-008: la marca de la cabecera es primero el logo y después el texto «Synapse»; sin el cuadrado genérico", () => {
+  renderAt(syncValue().value);
+
+  const brand = document.querySelector(".app-header > .app-brand")!;
+  expect(brand).not.toBeNull();
+  // Orden de izquierda a derecha en el DOM: el primer hijo es el logo y el texto viene después.
+  expect(brand.firstElementChild).toHaveClass("brand-logo");
+  expect(brand.lastChild!.nodeType).toBe(Node.TEXT_NODE);
+  expect(document.querySelector(".app-brand-mark")).toBeNull();
+});
+
+test("RF-012: el nombre del bloque de marca es exactamente «Synapse» y no es un enlace ni un control enfocable", () => {
+  renderAt(syncValue().value);
+
+  const brand = document.querySelector(".app-brand")!;
+  expect(brand).toHaveTextContent(/^Synapse$/);
+  expect(brand.querySelector("a, button, input, [tabindex]")).toBeNull();
+  expect(brand.closest("a, button")).toBeNull();
+  // El logo es decorativo: el lector de pantalla lee «Synapse» una sola vez.
+  expect(brand.querySelector(".brand-logo")).toHaveAttribute("aria-hidden", "true");
+  expect(screen.getAllByText("Synapse")).toHaveLength(1);
+  // Nombre accesible: el bloque es un <div> (rol genérico) y su nombre es SÓLO su texto, exactamente «Synapse»
+  // (arriba). Cualquier aria-label/aria-labelledby/title/role lo sustituiría o lo convertiría en un control.
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role"]) expect(brand, `${attr} en el bloque`).not.toHaveAttribute(attr);
+  // El logo no aporta nombre propio: oculto a las tecnologías de asistencia y sin etiqueta ni texto.
+  const logo = brand.querySelector(".brand-logo")!;
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role", "alt"]) expect(logo, `${attr} en el logo`).not.toHaveAttribute(attr);
+});
+
+test("RF-018: hay un solo logo por pantalla privada, dentro de la cabecera", () => {
+  renderAt(syncValue().value);
+
+  expect(document.querySelectorAll(".brand-logo")).toHaveLength(1);
+  expect(document.querySelectorAll(".app-header .brand-logo")).toHaveLength(1);
+});
