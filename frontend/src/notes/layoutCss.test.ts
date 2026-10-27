@@ -140,3 +140,21 @@ test.each([
   const css = read(path).replace(/\/\*[\s\S]*?\*\//g, "");
   expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
 });
+
+// UX-H6 (Converge 1): áreas táctiles de 44 px con un `::after`, sin crecer los controles (la barra mide 43 px).
+test("UX-H6: «…» de las migas, «Copiar código» y la casilla Sí/No amplían su área a 44 px en estrecho o táctil", () => {
+  const css = read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const block = css.match(/@media \(max-width: 480px\), \(pointer: coarse\) \{([\s\S]*?)\n\}/);
+  expect(block, "bloque @media (max-width: 480px), (pointer: coarse)").not.toBeNull();
+  const body = block![1];
+  for (const selector of [".note-crumb-more", ".code-block-copy", ".props-form-bool"]) {
+    expect(body, `${selector}::after`).toContain(`${selector}::after`);
+  }
+  expect(body).toMatch(/width:\s*max\(100%,\s*44px\)/);
+  expect(body).toMatch(/height:\s*44px/);
+  // El «…» no puede recortar su propia área ampliada.
+  expect(rule(read("../editor/editor.css"), ".note-crumb-more")).toMatch(/overflow:\s*visible/);
+});
+test("UX-H6: el botón «…» de las migas lleva la clase note-crumb-more", () => {
+  expect(read("../editor/NoteBreadcrumb.tsx")).toMatch(/className="note-crumb note-crumb-more"/);
+});
