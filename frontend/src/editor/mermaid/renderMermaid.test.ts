@@ -117,6 +117,26 @@ describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
     expect(clean.split("\n")).toHaveLength(source.split("\n").length);
   });
 
+  // M-4 (Converge 1, RF-051): se ignoran por SENTENCIA, no por línea, y en cualquier tipo de diagrama.
+  it.each([
+    ["en la misma línea tras `;`", 'flowchart TD\n  A --> B; click A href "javascript:alert(1)"\n  B --> C', ["A --> B", "B --> C"]],
+    ["entre otras sentencias de la misma línea", "flowchart TD\n  A --> B;click A call f();B --> C", ["A --> B", "B --> C"]],
+    ["en classDiagram", 'classDiagram\n  class A\n  click A href "javascript:alert(1)"\n  class B', ["class A", "class B"]],
+    ["`callback` con tooltip", 'flowchart TD\n  A --> B\n  callback A "tip"', ["A --> B"]],
+    ["`link` de sequenceDiagram", "sequenceDiagram\n  A->>B: hola\n  link A: Panel @ https://example.com", ["A->>B: hola"]],
+    ["`click` con sangría y mayúsculas", "flowchart TD\n  A --> B\n    CLICK A call f()", ["A --> B"]],
+  ])("quita click/link/callback %s y conserva el resto", (_name, source, kept) => {
+    const clean = sanitizeSource(source);
+    expect(clean).not.toMatch(/click|callback|\blink\b|javascript|example\.com/i);
+    for (const statement of kept) expect(clean).toContain(statement);
+    expect(clean.split("\n")).toHaveLength(source.split("\n").length);
+  });
+
+  it("no toca sentencias que sólo contienen la palabra (un nodo llamado click, texto de etiqueta)", () => {
+    const source = 'flowchart TD\n  click --> B\n  A["haz click aquí"] --> B';
+    expect(sanitizeSource(source)).toBe(source);
+  });
+
   it("al dibujar entrega a Mermaid la fuente ya limpia", async () => {
     await renderer().render(hostile);
     expect(sourceOf()).not.toMatch(/%%\{|click/);
@@ -143,6 +163,8 @@ describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
     ["href externo", wrap('<image href="https://example.com/x.png"/>')],
     ["xlink:href javascript:", wrap('<use xlink:href="javascript:alert(1)"/>')],
     ["iframe", wrap("<iframe/>")],
+    ["@import en un style con escape CSS", wrap("<style>@im\\70ort url(https://example.com/x.css);</style>")],
+    ["url() externo con escape CSS (u\\72l)", wrap('<g style="fill: u\\72l(https://example.com/x)"/>')],
     ["@import en un style", wrap("<style>@import url(https://example.com/x.css);</style>")],
     ["raíz que no es svg", '<div xmlns="http://www.w3.org/1999/xhtml">x</div>'],
     ["dos raíces", '<svg xmlns="http://www.w3.org/2000/svg"/><svg xmlns="http://www.w3.org/2000/svg"/>'],
