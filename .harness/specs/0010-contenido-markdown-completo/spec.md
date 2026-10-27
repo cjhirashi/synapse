@@ -245,6 +245,14 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
 - **RF-019** — SI el `frontmatter` resultante supera 64 KiB (regla actual) ENTONCES el
   sistema DEBE rechazar el guardado con un mensaje, conservar el texto en edición y no
   modificar la versión guardada.
+  > **Aclaración de RF-019 / RF-016 (enmienda menor, Converge 1, 2026-10-27):** además del tamaño, el `frontmatter`
+  > DEBE tener como máximo **32 niveles de anidamiento** (el objeto raíz cuenta como 1; objetos y listas). Es un tope
+  > explícito del servidor (`FRONTMATTER_MAX_DEPTH` en `core/note_rules.py`, `validation-error:frontmatter`), no una
+  > consecuencia de capturar `RecursionError`: sin él, ~950 niveles pasaban `json.loads` y reventaban `json.dumps`
+  > (500 sin problem+json) y entre 400 y 940 se almacenaban sin límite. El cliente usa el mismo tope
+  > (`FRONTMATTER_MAX_DEPTH` en `noteRules.ts`; el YAML que lo supere se rechaza con `too-deep`), para no generar un
+  > documento que el servidor rechace. Las claves `__proto__`, `constructor` y `prototype` son claves ordinarias.
+  > Además (L4) el último segmento `.md` de RF-007 se compara por NFKC + casefold, igual que `path_key`.
 - **RF-020** — Las vistas Visual y lectura NO DEBEN leer, escribir ni serializar el YAML
   dentro de `content`; guardar desde Visual DEBE cambiar `frontmatter` sólo con lo
   editado en el formulario.

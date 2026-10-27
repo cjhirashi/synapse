@@ -556,89 +556,89 @@ actualizado: 2026-10-24
 ## Cobertura (el gate exige 100 %; `Estado` lo rellena el gate)
 | RF / doc | Tareas | Test(s) | Estado |
 |---|---|---|---|
-| RF-001 | T-070, T-071, T-072, T-073, T-074, T-075, T-120, T-121 | notes/noteStore.test.ts, notes/untitled.test.ts, notes/folders.test.ts, notes/NoteSidebar.test.tsx; V-12. | Pendiente |
-| RF-002 | T-015, T-044, T-045, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12. | Pendiente |
-| RF-003 | T-070, T-071, T-072, T-073, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx, notes/noteStore.test.ts; V-12. | Pendiente |
-| RF-004 | T-070, T-071, T-073, T-074, T-075, T-120, T-121 | notes/folders.test.ts, notes/NoteSidebar.test.tsx. | Pendiente |
-| RF-005 | T-070, T-071, T-073, T-074, T-075, T-120, T-121 | notes/folders.test.ts, notes/NoteSidebar.test.tsx; V-12. | Pendiente |
-| RF-006 | T-015, T-044, T-045, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12. | Pendiente |
-| RF-007 | T-004, T-063, T-064, T-065, T-066, T-067, T-068, T-069, T-072, T-073, T-120, T-121, T-122 | backend/tests/fixtures/note_rules_cases.json, backend/tests/test_note_rules.py, backend/tests/test_note_contract.py, backend/tests/test_note_sync_push… | Pendiente |
-| RF-008 | T-024, T-025, T-072, T-073, T-076, T-077, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx, notes/VaultWorkspacePage.test.tsx. | Pendiente |
-| RF-009 | T-009, T-013, T-020, T-021, T-047, T-120, T-121 | editor/PropertiesPanel.test.tsx, editor/properties.test.ts; V-1. | Pendiente |
-| RF-010 | T-020, T-021, T-022, T-023, T-120, T-121 | editor/PropertiesPanel.test.tsx, editor/PropertiesForm.test.tsx; V-1, V-2. | Pendiente |
-| RF-011 | T-013, T-022, T-023, T-120, T-121 | editor/PropertiesForm.test.tsx, editor/properties.test.ts; V-2. | Pendiente |
-| RF-012 | T-054, T-055, T-056, T-057, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx, notes/noteStore.test.ts. | Pendiente |
-| RF-013 | T-020, T-021, T-022, T-023, T-120, T-121 | editor/properties.test.ts, editor/PropertiesForm.test.tsx, editor/NoteEditorFrontmatter.test.tsx (guardar desde Visual conserva el valor). | Pendiente |
-| RF-014 | T-052, T-053, T-056, T-057, T-120, T-121 | editor/frontmatter.test.ts (sección compose), editor/NoteEditorFrontmatter.test.tsx; contrato contracts/frontmatter-yaml.cases.json. | Pendiente |
-| RF-015 | T-052, T-053, T-058, T-059, T-120, T-121 | editor/frontmatter.test.ts (sección split), editor/NoteEditorFrontmatter.test.tsx. | Pendiente |
-| RF-016 | T-052, T-053, T-056, T-057, T-120, T-121 | editor/frontmatter.test.ts (sección roundtrip), editor/NoteEditorFrontmatter.test.tsx (abrir en Código, alternar, guardar sin cambios → documento idén… | Pendiente |
-| RF-017 | T-024, T-025, T-052, T-053, T-058, T-059, T-120, T-121 | editor/frontmatter.test.ts (sección parse), editor/NoteEditorFrontmatter.test.tsx, editor/CodeView.test.tsx. | Pendiente |
-| RF-018 | T-052, T-053, T-120, T-121 | editor/frontmatter.test.ts; contrato contracts/frontmatter-yaml.cases.json (fechas, yes/no/on, números, listas, complejos). | Pendiente |
-| RF-019 | T-024, T-025, T-054, T-055, T-058, T-059, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx. | Pendiente |
-| RF-020 | T-056, T-057, T-060, T-061, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx (guardar desde Visual no toca el YAML de content; frontmatter cambia sólo por el formulario), editor/MilkdownVie… | Pendiente |
-| RF-021 | T-056, T-057, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx. | Pendiente |
-| RF-022 | T-054, T-055, T-062, T-120, T-121 | notes/noteStore.test.ts (rama con frontmatter), notes/mergeNote.test.ts y sync/conflicts.test.ts (existentes, sin cambios: lo confirma git diff --stat… | Pendiente |
-| RF-023 | T-051, T-078, T-079, T-120, T-121 | editor/MilkdownView.test.tsx (tabla, listas, énfasis pegados como estructura; enlace pegado con javascript: sin href). | Pendiente |
-| RF-024 | T-078, T-079, T-120, T-121 | editor/MilkdownView.test.tsx (texto pegado = texto del documento, carácter a carácter, para filas desiguales y sin separador). | Pendiente |
-| RF-025 | T-080, T-081, T-120, T-121 | editor/MilkdownView.test.tsx, editor/NoteEditor.test.tsx; V-4. | Pendiente |
-| RF-026 | T-008, T-013, T-031, T-032, T-047, T-120, T-121 | notes/layoutCss.test.ts (regla presente); V-4 (≤ 40 px medido). | Pendiente |
-| RF-027 | T-014, T-051, T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts, editor/MilkdownView.test.tsx; V-5. | Pendiente |
-| RF-028 | T-084, T-085, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/highlight/proseHighlight.test.ts (editar actualiza clases); V-5. | Pendiente |
-| RF-029 | T-009, T-014, T-034, T-035, T-058, T-059, T-086, T-087, T-120, T-121 | editor/CodeView.test.tsx; V-6. | Pendiente |
-| RF-030 | T-084, T-085, T-086, T-087, T-120, T-121 | editor/highlight/languages.test.ts; V-5 (un sx-* por lenguaje). | Pendiente |
-| RF-031 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts (sin excepción, sin console.error); V-5. | Pendiente |
-| RF-032 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts; V-15 (chunk abortado). | Pendiente |
-| RF-033 | T-008, T-014, T-026, T-027, T-028, T-120, T-121 | editor/codeBlockView.test.ts; V-5, V-7. | Pendiente |
-| RF-034 | T-026, T-027, T-120, T-121 | editor/codeBlockView.test.ts (texto exacto, mermaid copia la fuente). | Pendiente |
-| RF-035 | T-026, T-027, T-120, T-121 | editor/codeBlockView.test.ts. | Pendiente |
-| RF-036 | T-026, T-027, T-120, T-121 | editor/MilkdownView.test.tsx (serializar tras montar y tras editar otra parte = entrada, sin rastro de etiqueta/botón/SVG). | Pendiente |
-| RF-037 | T-009, T-013, T-031, T-032, T-047, T-120, T-121 | notes/layoutCss.test.ts, editor/contrast.test.ts; V-3 (R-5). | Pendiente |
-| RF-038 | T-009, T-013, T-031, T-032, T-120, T-121 | notes/layoutCss.test.ts, editor/contrast.test.ts; V-3 (R-6). | Pendiente |
-| RF-039 | T-013, T-031, T-033, T-082, T-083, T-120, T-121 | editor/taskItemView.test.ts, editor/MilkdownView.test.tsx (alternar marca sucio; serializa - [x]); V-3 (R-10). | Pendiente |
-| RF-040 | T-016, T-018, T-019, T-028, T-035, T-046, T-120, T-121 | editor/contrast.test.ts, notes/layoutCss.test.ts (sin literales), editor/mermaid/themeVariables.test.ts; V-13, V-7. | Pendiente |
-| RF-041 | T-002, T-003, T-042, T-044, T-120, T-121 | Cambios **explícitos** de tests de 0008/0009 (los únicos permitidos): (1) el h2 del editor pasa de la ruta sin .md (Carpeta/Nota) al **nombre** (Nota)… | Pendiente |
-| RF-042 | T-070, T-071, T-074, T-075, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, notes/NoteSidebar.test.tsx, notes/folders.test.ts. | Pendiente |
-| RF-043 | T-015, T-044, T-045, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12 (R-14). | Pendiente |
-| RF-044 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx. | Pendiente |
-| RF-045 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx (byte a byte tras editar en Visual; corrompido = punto fijo). | Pendiente |
-| RF-046 | T-008, T-014, T-029, T-030, T-051, T-090, T-091, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/codeBlockView.test.ts, editor/mermaid/renderMermaid.test.ts; V-7. | Pendiente |
-| RF-047 | T-029, T-030, T-092, T-093, T-120, T-121 | editor/codeBlockView.test.ts (temporizadores falsos: ≤ 500 ms); V-7. | Pendiente |
-| RF-048 | T-092, T-093, T-120, T-121 | editor/CodeView.test.tsx (sin svg ni carga de mermaid). | Pendiente |
-| RF-049 | T-014, T-029, T-030, T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts, editor/codeBlockView.test.ts; V-8. | Pendiente |
-| RF-050 | T-088, T-089, T-090, T-091, T-120, T-121 | editor/mermaid/themeVariables.test.ts, editor/mermaid/renderMermaid.test.ts; V-7 (cambio de tema sin recargar). | Pendiente |
-| RF-051 | T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts (fuentes con %%{init: {"securityLevel":"loose"}}%%, click A call f(), click A href "javascript:…", config: de tem… | Pendiente |
-| RF-052 | T-008, T-014, T-029, T-030, T-051, T-094, T-095, T-120, T-121 | editor/codeBlockView.test.ts (controles sólo si excede, límites deshabilitan); V-9. | Pendiente |
-| RF-053 | T-014, T-029, T-030, T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts; V-8. | Pendiente |
-| RF-054 | T-011, T-015, T-036, T-037, T-038, T-039, T-042, T-043, T-047, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, editor/breadcrumb.test.ts; V-10. | Pendiente |
-| RF-055 | T-074, T-075, T-100, T-101, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, notes/NoteSidebar.test.tsx; V-10, V-12. | Pendiente |
-| RF-056 | T-011, T-015, T-042, T-043, T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, editor/NoteEditor.test.tsx; V-10. | Pendiente |
-| RF-057 | T-096, T-097, T-098, T-099, T-120, T-121 | notes/noteHistory.test.ts, notes/VaultWorkspacePage.test.tsx (sobrevive a desmontar/montar con el mismo sessionStorage; otra bóveda, otra clave). | Pendiente |
-| RF-058 | T-096, T-097, T-098, T-099, T-120, T-121 | notes/noteHistory.test.ts, notes/VaultWorkspacePage.test.tsx (borrada se salta; renombrada navegable). | Pendiente |
-| RF-059 | T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx; comprobación en Chromium real dentro de V-10 (el documento no navega hacia atrás). | Pendiente |
-| RF-060 | T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, editor/NoteEditorLeave.test.tsx (sin cambios de lo existente). | Pendiente |
-| RF-061 | T-011, T-015, T-040, T-041, T-043, T-106, T-120, T-121 | editor/NoteMenu.test.tsx; V-11. | Pendiente |
-| RF-062 | T-100, T-101, T-120, T-121 | editor/NoteMenu.test.tsx, notes/VaultWorkspacePage.test.tsx; V-11. | Pendiente |
-| RF-063 | T-011, T-015, T-036, T-037, T-038, T-039, T-106, T-120, T-121 | editor/breadcrumb.test.ts, editor/NoteBreadcrumb.test.tsx (anchos simulados); V-10 (1440/1024/390). | Pendiente |
-| RF-064 | T-003, T-015, T-042, T-043, T-047, T-120, T-121 | notes/layoutCss.test.ts; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009). | Pendiente |
-| RF-065 | T-100, T-101, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, notes/VaultWorkspacePage.test.tsx (renombrar desde el menú o el árbol actualiza las migas sin recargar). | Pendiente |
-| RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pendiente |
-| RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121, T-129, T-130 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pendiente |
-| RNF-003 | T-020, T-027, T-078, T-090, T-105, T-120, T-121, T-128, T-131, T-132, T-135 | editor/securityGuard.test.ts, editor/mermaid/renderMermaid.test.ts, editor/MilkdownView.test.tsx, editor/PropertiesPanel.test.tsx (<script> y URLs com… | Pendiente |
-| RNF-004 | T-016, T-018, T-019, T-046, T-106, T-107, T-120, T-121 | Contraste: editor/contrast.test.ts (§5.5); teclado y nombres: tests de componentes con getByRole; diagramas con role="img" + nombre (editor/codeBlockV… | Pendiente |
-| RNF-005 | T-008, T-009, T-012, T-047, T-048, T-049, T-106, T-120, T-121, T-123, T-127 | frontend/e2e/content-visual.spec.ts (V-1…V-16, claro/oscuro, 1440/1024/390) + frontend/e2e/fixtures.ts (seedContent) + capturas de referencia (§5.2, P… | Pendiente |
-| doc: contracts/frontmatter-yaml.cases.json | T-052, T-108 | frontmatter.test.ts | Pendiente |
-| doc: 0008 note.schema.json (delta de path) | T-064, T-067, T-109 | test_note_contract.py | Pendiente |
-| doc: ADR-006 extensión de tokens | T-019, T-110 | contrast.test.ts | Pendiente |
+| RF-001 | T-070, T-071, T-072, T-073, T-074, T-075, T-120, T-121 | notes/noteStore.test.ts, notes/untitled.test.ts, notes/folders.test.ts, notes/NoteSidebar.test.tsx; V-12. | Pass |
+| RF-002 | T-015, T-044, T-045, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12. | Pass |
+| RF-003 | T-070, T-071, T-072, T-073, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx, notes/noteStore.test.ts; V-12. | Pass |
+| RF-004 | T-070, T-071, T-073, T-074, T-075, T-120, T-121 | notes/folders.test.ts, notes/NoteSidebar.test.tsx. | Pass |
+| RF-005 | T-070, T-071, T-073, T-074, T-075, T-120, T-121 | notes/folders.test.ts, notes/NoteSidebar.test.tsx; V-12. | Pass |
+| RF-006 | T-015, T-044, T-045, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12. | Pass |
+| RF-007 | T-004, T-063, T-064, T-065, T-066, T-067, T-068, T-069, T-072, T-073, T-120, T-121, T-122 | backend/tests/fixtures/note_rules_cases.json, backend/tests/test_note_rules.py, backend/tests/test_note_contract.py, backend/tests/test_note_sync_push… | Pass |
+| RF-008 | T-024, T-025, T-072, T-073, T-076, T-077, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx, notes/VaultWorkspacePage.test.tsx. | Pass |
+| RF-009 | T-009, T-013, T-020, T-021, T-047, T-120, T-121 | editor/PropertiesPanel.test.tsx, editor/properties.test.ts; V-1. | Pass |
+| RF-010 | T-020, T-021, T-022, T-023, T-120, T-121 | editor/PropertiesPanel.test.tsx, editor/PropertiesForm.test.tsx; V-1, V-2. | Pass |
+| RF-011 | T-013, T-022, T-023, T-120, T-121 | editor/PropertiesForm.test.tsx, editor/properties.test.ts; V-2. | Pass |
+| RF-012 | T-054, T-055, T-056, T-057, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx, notes/noteStore.test.ts. | Pass |
+| RF-013 | T-020, T-021, T-022, T-023, T-120, T-121 | editor/properties.test.ts, editor/PropertiesForm.test.tsx, editor/NoteEditorFrontmatter.test.tsx (guardar desde Visual conserva el valor). | Pass |
+| RF-014 | T-052, T-053, T-056, T-057, T-120, T-121 | editor/frontmatter.test.ts (sección compose), editor/NoteEditorFrontmatter.test.tsx; contrato contracts/frontmatter-yaml.cases.json. | Pass |
+| RF-015 | T-052, T-053, T-058, T-059, T-120, T-121 | editor/frontmatter.test.ts (sección split), editor/NoteEditorFrontmatter.test.tsx. | Pass |
+| RF-016 | T-052, T-053, T-056, T-057, T-120, T-121 | editor/frontmatter.test.ts (sección roundtrip), editor/NoteEditorFrontmatter.test.tsx (abrir en Código, alternar, guardar sin cambios → documento idén… | Pass |
+| RF-017 | T-024, T-025, T-052, T-053, T-058, T-059, T-120, T-121 | editor/frontmatter.test.ts (sección parse), editor/NoteEditorFrontmatter.test.tsx, editor/CodeView.test.tsx. | Pass |
+| RF-018 | T-052, T-053, T-120, T-121 | editor/frontmatter.test.ts; contrato contracts/frontmatter-yaml.cases.json (fechas, yes/no/on, números, listas, complejos). | Pass |
+| RF-019 | T-024, T-025, T-054, T-055, T-058, T-059, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx. | Pass |
+| RF-020 | T-056, T-057, T-060, T-061, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx (guardar desde Visual no toca el YAML de content; frontmatter cambia sólo por el formulario), editor/MilkdownVie… | Pass |
+| RF-021 | T-056, T-057, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx. | Pass |
+| RF-022 | T-054, T-055, T-062, T-120, T-121 | notes/noteStore.test.ts (rama con frontmatter), notes/mergeNote.test.ts y sync/conflicts.test.ts (existentes, sin cambios: lo confirma git diff --stat… | Pass |
+| RF-023 | T-051, T-078, T-079, T-120, T-121 | editor/MilkdownView.test.tsx (tabla, listas, énfasis pegados como estructura; enlace pegado con javascript: sin href). | Pass |
+| RF-024 | T-078, T-079, T-120, T-121 | editor/MilkdownView.test.tsx (texto pegado = texto del documento, carácter a carácter, para filas desiguales y sin separador). | Pass |
+| RF-025 | T-080, T-081, T-120, T-121 | editor/MilkdownView.test.tsx, editor/NoteEditor.test.tsx; V-4. | Pass |
+| RF-026 | T-008, T-013, T-031, T-032, T-047, T-120, T-121 | notes/layoutCss.test.ts (regla presente); V-4 (≤ 40 px medido). | Pass |
+| RF-027 | T-014, T-051, T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts, editor/MilkdownView.test.tsx; V-5. | Pass |
+| RF-028 | T-084, T-085, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/highlight/proseHighlight.test.ts (editar actualiza clases); V-5. | Pass |
+| RF-029 | T-009, T-014, T-034, T-035, T-058, T-059, T-086, T-087, T-120, T-121 | editor/CodeView.test.tsx; V-6. | Pass |
+| RF-030 | T-084, T-085, T-086, T-087, T-120, T-121 | editor/highlight/languages.test.ts; V-5 (un sx-* por lenguaje). | Pass |
+| RF-031 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts (sin excepción, sin console.error); V-5. | Pass |
+| RF-032 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts; V-15 (chunk abortado). | Pass |
+| RF-033 | T-008, T-014, T-026, T-027, T-028, T-120, T-121 | editor/codeBlockView.test.ts; V-5, V-7. | Pass |
+| RF-034 | T-026, T-027, T-120, T-121 | editor/codeBlockView.test.ts (texto exacto, mermaid copia la fuente). | Pass |
+| RF-035 | T-026, T-027, T-120, T-121 | editor/codeBlockView.test.ts. | Pass |
+| RF-036 | T-026, T-027, T-120, T-121 | editor/MilkdownView.test.tsx (serializar tras montar y tras editar otra parte = entrada, sin rastro de etiqueta/botón/SVG). | Pass |
+| RF-037 | T-009, T-013, T-031, T-032, T-047, T-120, T-121 | notes/layoutCss.test.ts, editor/contrast.test.ts; V-3 (R-5). | Pass |
+| RF-038 | T-009, T-013, T-031, T-032, T-120, T-121 | notes/layoutCss.test.ts, editor/contrast.test.ts; V-3 (R-6). | Pass |
+| RF-039 | T-013, T-031, T-033, T-082, T-083, T-120, T-121 | editor/taskItemView.test.ts, editor/MilkdownView.test.tsx (alternar marca sucio; serializa - [x]); V-3 (R-10). | Pass |
+| RF-040 | T-016, T-018, T-019, T-028, T-035, T-046, T-120, T-121 | editor/contrast.test.ts, notes/layoutCss.test.ts (sin literales), editor/mermaid/themeVariables.test.ts; V-13, V-7. | Pass |
+| RF-041 | T-002, T-003, T-042, T-044, T-120, T-121 | Cambios **explícitos** de tests de 0008/0009 (los únicos permitidos): (1) el h2 del editor pasa de la ruta sin .md (Carpeta/Nota) al **nombre** (Nota)… | Pass |
+| RF-042 | T-070, T-071, T-074, T-075, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, notes/NoteSidebar.test.tsx, notes/folders.test.ts. | Pass |
+| RF-043 | T-015, T-044, T-045, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12 (R-14). | Pass |
+| RF-044 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx. | Pass |
+| RF-045 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx (byte a byte tras editar en Visual; corrompido = punto fijo). | Pass |
+| RF-046 | T-008, T-014, T-029, T-030, T-051, T-090, T-091, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/codeBlockView.test.ts, editor/mermaid/renderMermaid.test.ts; V-7. | Pass |
+| RF-047 | T-029, T-030, T-092, T-093, T-120, T-121 | editor/codeBlockView.test.ts (temporizadores falsos: ≤ 500 ms); V-7. | Pass |
+| RF-048 | T-092, T-093, T-120, T-121 | editor/CodeView.test.tsx (sin svg ni carga de mermaid). | Pass |
+| RF-049 | T-014, T-029, T-030, T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts, editor/codeBlockView.test.ts; V-8. | Pass |
+| RF-050 | T-088, T-089, T-090, T-091, T-120, T-121 | editor/mermaid/themeVariables.test.ts, editor/mermaid/renderMermaid.test.ts; V-7 (cambio de tema sin recargar). | Pass |
+| RF-051 | T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts (fuentes con %%{init: {"securityLevel":"loose"}}%%, click A call f(), click A href "javascript:…", config: de tem… | Pass |
+| RF-052 | T-008, T-014, T-029, T-030, T-051, T-094, T-095, T-120, T-121 | editor/codeBlockView.test.ts (controles sólo si excede, límites deshabilitan); V-9. | Pass |
+| RF-053 | T-014, T-029, T-030, T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts; V-8. | Pass |
+| RF-054 | T-011, T-015, T-036, T-037, T-038, T-039, T-042, T-043, T-047, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, editor/breadcrumb.test.ts; V-10. | Pass |
+| RF-055 | T-074, T-075, T-100, T-101, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, notes/NoteSidebar.test.tsx; V-10, V-12. | Pass |
+| RF-056 | T-011, T-015, T-042, T-043, T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, editor/NoteEditor.test.tsx; V-10. | Pass |
+| RF-057 | T-096, T-097, T-098, T-099, T-120, T-121 | notes/noteHistory.test.ts, notes/VaultWorkspacePage.test.tsx (sobrevive a desmontar/montar con el mismo sessionStorage; otra bóveda, otra clave). | Pass |
+| RF-058 | T-096, T-097, T-098, T-099, T-120, T-121 | notes/noteHistory.test.ts, notes/VaultWorkspacePage.test.tsx (borrada se salta; renombrada navegable). | Pass |
+| RF-059 | T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx; comprobación en Chromium real dentro de V-10 (el documento no navega hacia atrás). | Pass |
+| RF-060 | T-098, T-099, T-120, T-121 | notes/VaultWorkspacePage.test.tsx, editor/NoteEditorLeave.test.tsx (sin cambios de lo existente). | Pass |
+| RF-061 | T-011, T-015, T-040, T-041, T-043, T-106, T-120, T-121 | editor/NoteMenu.test.tsx; V-11. | Pass |
+| RF-062 | T-100, T-101, T-120, T-121 | editor/NoteMenu.test.tsx, notes/VaultWorkspacePage.test.tsx; V-11. | Pass |
+| RF-063 | T-011, T-015, T-036, T-037, T-038, T-039, T-106, T-120, T-121 | editor/breadcrumb.test.ts, editor/NoteBreadcrumb.test.tsx (anchos simulados); V-10 (1440/1024/390). | Pass |
+| RF-064 | T-003, T-015, T-042, T-043, T-047, T-120, T-121 | notes/layoutCss.test.ts; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009). | Pass |
+| RF-065 | T-100, T-101, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, notes/VaultWorkspacePage.test.tsx (renombrar desde el menú o el árbol actualiza las migas sin recargar). | Pass |
+| RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pass |
+| RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121, T-129, T-130 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pass |
+| RNF-003 | T-020, T-027, T-078, T-090, T-105, T-120, T-121, T-128, T-131, T-132, T-135 | editor/securityGuard.test.ts, editor/mermaid/renderMermaid.test.ts, editor/MilkdownView.test.tsx, editor/PropertiesPanel.test.tsx (<script> y URLs com… | Pass |
+| RNF-004 | T-016, T-018, T-019, T-046, T-106, T-107, T-120, T-121 | Contraste: editor/contrast.test.ts (§5.5); teclado y nombres: tests de componentes con getByRole; diagramas con role="img" + nombre (editor/codeBlockV… | Pass |
+| RNF-005 | T-008, T-009, T-012, T-047, T-048, T-049, T-106, T-120, T-121, T-123, T-127 | frontend/e2e/content-visual.spec.ts (V-1…V-16, claro/oscuro, 1440/1024/390) + frontend/e2e/fixtures.ts (seedContent) + capturas de referencia (§5.2, P… | Pass |
+| doc: contracts/frontmatter-yaml.cases.json | T-052, T-108 | frontmatter.test.ts | Pass |
+| doc: 0008 note.schema.json (delta de path) | T-064, T-067, T-109 | test_note_contract.py | Pass |
+| doc: ADR-006 extensión de tokens | T-019, T-110 | contrast.test.ts | Pass |
 | doc: diseño/1.1.4.1 (no versionado) | T-111 | — | Pendiente |
-| doc: backend/README.md | T-112 | — | Pendiente |
-| doc: backend/app/core/README.md | T-113 | — | Pendiente |
-| doc: backend/tests/README.md | T-114 | — | Pendiente |
-| doc: frontend/README.md | T-115 | — | Pendiente |
-| doc: frontend/src/README.md | T-116 | — | Pendiente |
+| doc: backend/README.md | T-112 | — | Pass |
+| doc: backend/app/core/README.md | T-113 | — | Pass |
+| doc: backend/tests/README.md | T-114 | — | Pass |
+| doc: frontend/README.md | T-115 | — | Pass |
+| doc: frontend/src/README.md | T-116 | — | Pass |
 | doc: 0007/0008/0009 spec.md (re-anclajes) | T-005, T-006, T-007, T-117 | gate (drift) | Pendiente |
-| doc: 0008 diagrams / ARCHIFY.md (sin cambio) | T-118 | — | Pendiente |
+| doc: 0008 diagrams / ARCHIFY.md (sin cambio) | T-118 | — | Pass |
 | doc: .harness/memory/state.md | T-119 | — | Pendiente |
-| doc: plan.md (enmienda P-17, medidas de referencia y Enmienda 1 §10) | T-010, T-011 | — | Pendiente |
+| doc: plan.md (enmienda P-17, medidas de referencia y Enmienda 1 §10) | T-010, T-011 | — | Pass |
 
 > Esta tabla **es** la trazabilidad de la feature (no hay `traceability-matrix.md`).
 > Fila sin test, en `Fail` o `Pendiente` → el gate no abre cuando la spec pase a `implemented`.

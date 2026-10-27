@@ -148,7 +148,7 @@ Módulos nuevos (el detalle de requisitos está en `.harness/specs/0010-contenid
 Reglas: sin `innerHTML` y similares (guarda `editor/securityGuard.test.ts`); el único marcado externo es el SVG de Mermaid, ya verificado;
 color de texto sólo con `--*-text`/`--text-*` (ADR-006), nunca `--accent`/`--text-muted`.
 
-## Notas y editor (SPEC-0008)## Notas y editor (SPEC-0008)
+## Notas y editor (SPEC-0008)
 
 **Ruta y marco.** `main.tsx` usa `createBrowserRouter` (una ruta comodín que monta `App`,
 cuyas `<Routes>` no cambian) porque `useBlocker` sólo existe en data routers. `/vaults/:id`

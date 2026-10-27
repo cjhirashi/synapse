@@ -196,12 +196,14 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
   `vault:{uuid}` y `note:{vault_uuid}:{uuid}` (ambos UUID canónicos). Las reservas
   `vault-name:*` y **`note-path:*` son sólo del servidor**: ni `_changes`, ni `_all_docs`
   (un rango por prefijo, `note:` y `vault:`), ni `_bulk_get` las devuelven, y `_design/vaults`
-  tampoco. Ninguna respuesta cuenta documentos.
-  **Regla de ruta (SPEC-0010 RF-007):** el último segmento de `path` no puede ser `.md` (sin distinguir
-  mayúsculas): `X/.md` y `.md` se rechazan con `validation-error:path`; `X/a.md` y `.md/a.md` valen. Es el
-  mismo `check_path` de `core/note_rules.py` (también en el cliente y en `note.schema.json`). Los parámetros fuera de la lista blanca se descartan; uno conocido con valor
-  inválido es 422 `validation-error`. Las esperas de `_changes` se acotan a 60 s
+  tampoco. Ninguna respuesta cuenta documentos. Los parámetros fuera de la lista blanca se descartan; uno conocido
+  con valor inválido es 422 `validation-error`. Las esperas de `_changes` se acotan a 60 s
   (`MAX_WAIT_MS`).
+- **Reglas de `path` y `frontmatter` de las notas (SPEC-0010):** el último segmento de `path` no puede ser `.md`
+  (comparado por NFKC + casefold, así que `.ｍｄ` en anchos completos también cuenta): `X/.md` y `.md` se rechazan con
+  `validation-error:path`; `X/a.md` y `.md/a.md` valen. `frontmatter` admite como máximo **32 niveles** de
+  anidamiento (el raíz es 1) además de los 64 KiB: más es `validation-error:frontmatter`. Es el mismo
+  `core/note_rules.py` que espeja el cliente (`noteRules.ts`) sobre la batería `note_rules_cases.json`.
 - **Push validado (RF-005…RF-008, RF-011):** `_bulk_docs` exige `new_edits: false` y
   responde 201 con la lista de rechazos (`[]` si se aceptó todo). Cada revisión rechazada
   va como `{id, rev, error: "forbidden", reason}`; PouchDB la trata como *denied*: avisa al

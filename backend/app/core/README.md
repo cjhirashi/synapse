@@ -54,7 +54,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   64 KiB. Las usa `services/sync_push.py` y las espeja `frontend/src/notes/noteRules.ts`; ambos
   recorren `tests/fixtures/note_rules_cases.json`.
   Desde SPEC-0010 `check_path` rechaza además un último segmento `.md` (sin distinguir mayúsculas), tras normalizar:
-  `X/.md` y `X/ .md` son `validation-error:path`.
+  `X/.md` y `X/ .md` son `validation-error:path` (también `.ｍｄ` en anchos completos: NFKC + casefold). `check_frontmatter` añade un tope de 32 niveles de anidamiento (`FRONTMATTER_MAX_DEPTH`), comprobado de forma iterativa antes de serializar.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 

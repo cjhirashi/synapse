@@ -56,7 +56,7 @@ VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-visual.spec.ts   
 VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts     # RNF-001 de 0010 (p95 por tamaño de nota)
 ```
 
-## Editor de notas (SPEC-0008)## Editor de notas (SPEC-0008)
+## Editor de notas (SPEC-0008)
 
 El editor usa dependencias fijadas a versión exacta, sin `@milkdown/react` (un envoltorio
 propio en `src/editor/MilkdownView.tsx`):

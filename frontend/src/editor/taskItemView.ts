@@ -6,7 +6,8 @@
  * - Lectura: la casilla es una imagen (`role="img"`, «Pendiente»/«Completada») sin foco ni hover:
  *   no se puede operar y no es una tabulación más.
  * - Visual: un `input type="checkbox"` fuera del contenido editable, con el texto de la tarea como
- *   nombre accesible. Alternarlo es lógica (SPEC-0010 F.4): por ahora la casilla sólo refleja el estado.
+ *   nombre accesible. Alternarla cambia `checked` en el documento (`setNodeMarkup`), serializa `- [x]`/`- [ ]`,
+ *   marca la nota con cambios y anuncia «Marcada»/«Sin marcar» (RF-039).
  */
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
