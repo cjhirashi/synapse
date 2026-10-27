@@ -183,7 +183,7 @@ describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
     ["cross-fade()", wrap('<style>.a{background: cross-fade(url(#a), url(#b), 50%)}</style>')],
     ["element()", wrap('<g style="background: element(#a)"/>')],
     ["image() de CSS", wrap('<g style="background: image(\'https://example.com/x.png\')"/>')],
-    ["image-set con escape CSS", wrap('<g style="fill: ima\\67e-set(\'https://example.com/x.png\' 1x)"/>')],
+    ["image-set con escape CSS", wrap('<g style="fill: ima\\67 e-set(\'https://example.com/x.png\' 1x)"/>')],
     ["@import en un style", wrap("<style>@import url(https://example.com/x.css);</style>")],
     ["raíz que no es svg", '<div xmlns="http://www.w3.org/1999/xhtml">x</div>'],
     ["dos raíces", '<svg xmlns="http://www.w3.org/2000/svg"/><svg xmlns="http://www.w3.org/2000/svg"/>'],

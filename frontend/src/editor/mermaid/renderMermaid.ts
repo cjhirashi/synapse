@@ -90,8 +90,11 @@ function dropActionStatements(line: string): string {
   const statements: string[] = [];
   let current = "";
   let quoted = false;
+  // Con un número impar de comillas la línea está mal formada: no se fía de ellas (una comilla sin cerrar no puede
+  // esconder un `click` posterior tras un `;`).
+  const trustQuotes = (line.match(/"/g) ?? []).length % 2 === 0;
   for (const char of line) {
-    if (char === '"') quoted = !quoted;
+    if (char === '"' && trustQuotes) quoted = !quoted;
     if (char === ";" && !quoted) {
       statements.push(current);
       current = "";
@@ -104,8 +107,13 @@ function dropActionStatements(line: string): string {
 const SVG_NS = "http://www.w3.org/2000/svg";
 /** Elementos que no deben estar en un dibujo: ejecutan código, embeben HTML, navegan o animan atributos. */
 const FORBIDDEN_ELEMENTS = new Set(["script", "foreignobject", "iframe", "object", "embed", "a", "animate", "set"]);
-/** Estilos con carga externa o ejecución: `@import`, `javascript:`, `expression(` o `url()` que no sea un `#id`. */
-const FORBIDDEN_CSS = /@import|javascript:|expression\(|url\(\s*['"]?\s*(?!#)/i;
+/**
+ * Estilos con carga externa o ejecución: `@import`, `javascript:`, `expression(`, `url()` que no sea un `#id` y
+ * TODA función de CSS que pueda cargar un recurso (`image-set`, `src`, `image`, `cross-fade`, `element`, con o sin
+ * prefijo `-webkit-`): el dibujo de Mermaid no usa ninguna. El nombre debe ir pegado a `(` y no seguir a una letra o
+ * guion (`background-image:` y `src-x:` no son funciones).
+ */
+const FORBIDDEN_CSS = /@import|javascript:|expression\(|url\(\s*['"]?\s*(?!#)|(?<![\w-])(?:-webkit-)?(?:image-set|src|image|cross-fade|element)\(/i;
 
 /** El CSS con sus escapes resueltos (`u\72l(` = `url(`): la comprobación se hace sobre lo que el navegador entendería. */
 const decodeCssEscapes = (css: string): string =>
