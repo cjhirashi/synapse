@@ -251,7 +251,11 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
   > consecuencia de capturar `RecursionError`: sin él, ~950 niveles pasaban `json.loads` y reventaban `json.dumps`
   > (500 sin problem+json) y entre 400 y 940 se almacenaban sin límite. El cliente usa el mismo tope
   > (`FRONTMATTER_MAX_DEPTH` en `noteRules.ts`; el YAML que lo supere se rechaza con `too-deep`), para no generar un
-  > documento que el servidor rechace. Las claves `__proto__`, `constructor` y `prototype` son claves ordinarias.
+  > documento que el servidor rechace. Además todo cuerpo JSON de `/sync/**` admite como máximo 64 niveles
+  > (`MAX_JSON_DEPTH`, Converge 2): un frontmatter de 33 a 61 niveles se rechaza con `validation-error:frontmatter`
+  > (rechazo del documento); con 62 o más es el CUERPO el que supera el tope y lo rechaza el decodificador con un 422
+  > `validation-error` de la petición entera (la misma vía cubre `_local`, `_bulk_docs`, `_revs_diff`, `_bulk_get` y
+  > `_all_docs`). Las claves `__proto__`, `constructor` y `prototype` son claves ordinarias.
   > Además (L4) el último segmento `.md` de RF-007 se compara por NFKC + casefold, igual que `path_key`.
 - **RF-020** — Las vistas Visual y lectura NO DEBEN leer, escribir ni serializar el YAML
   dentro de `content`; guardar desde Visual DEBE cambiar `frontmatter` sólo con lo

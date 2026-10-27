@@ -11,7 +11,7 @@ cliente de pruebas lanzaría `RecursionError` antes de enviar nada (Python 3.11,
 import pytest
 
 from app.routers.sync import MAX_JSON_DEPTH
-from tests.test_sync_api import UntouchablePort, couch_override, ready_admin  # noqa: F401
+from tests.test_sync_api import UntouchablePort, couch_override  # noqa: F401
 from tests.test_vaults_api import assert_problem
 
 HEADERS = {"content-type": "application/json"}

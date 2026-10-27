@@ -574,7 +574,7 @@ actualizado: 2026-10-24
 | RF-016 | T-052, T-053, T-056, T-057, T-120, T-121 | editor/frontmatter.test.ts (sección roundtrip), editor/NoteEditorFrontmatter.test.tsx (abrir en Código, alternar, guardar sin cambios → documento idén… | Pass |
 | RF-017 | T-024, T-025, T-052, T-053, T-058, T-059, T-120, T-121 | editor/frontmatter.test.ts (sección parse), editor/NoteEditorFrontmatter.test.tsx, editor/CodeView.test.tsx. | Pass |
 | RF-018 | T-052, T-053, T-120, T-121 | editor/frontmatter.test.ts; contrato contracts/frontmatter-yaml.cases.json (fechas, yes/no/on, números, listas, complejos). | Pass |
-| RF-019 | T-024, T-025, T-054, T-055, T-058, T-059, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx. | Pass |
+| RF-019 | T-024, T-025, T-054, T-055, T-058, T-059, T-120, T-121 | notes/noteStore.test.ts, editor/NoteEditorFrontmatter.test.tsx; backend: test_note_rules.py y test_note_sync_push.py (casos `depth` de la batería), test_note_sync_api.py (33/61 niveles → `validation-error:frontmatter`; 62/400/950 → 422), test_sync_depth.py (tope general de /sync en todas las rutas), test_note_contract.py (`x-max-depth`). | Pass |
 | RF-020 | T-056, T-057, T-060, T-061, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx (guardar desde Visual no toca el YAML de content; frontmatter cambia sólo por el formulario), editor/MilkdownVie… | Pass |
 | RF-021 | T-056, T-057, T-120, T-121 | editor/NoteEditorFrontmatter.test.tsx. | Pass |
 | RF-022 | T-054, T-055, T-062, T-120, T-121 | notes/noteStore.test.ts (rama con frontmatter), notes/mergeNote.test.ts y sync/conflicts.test.ts (existentes, sin cambios: lo confirma git diff --stat… | Pass |

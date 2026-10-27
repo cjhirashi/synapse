@@ -46,8 +46,9 @@
     },
     "frontmatter": {
       "type": "object",
-      "description": "Opcional (spec §3). Claves libres con valores JSON. Su serialización JSON compacta en UTF-8 no supera 64 KiB (PLAN-0008 P-4); si no, `validation-error:frontmatter`. El cliente oficial siempre lo escribe (`{}` por defecto).",
-      "x-max-json-utf8-bytes": 65536
+      "description": "Opcional (spec §3). Claves libres con valores JSON. Su serialización JSON compacta en UTF-8 no supera 64 KiB (PLAN-0008 P-4); si no, `validation-error:frontmatter`. Anida como máximo 32 niveles (el objeto raíz cuenta como 1; SPEC-0010, Converge 1); más es `validation-error:frontmatter`. Aparte, todo cuerpo JSON de `/sync` admite como máximo 64 niveles (`MAX_JSON_DEPTH`): con 62 niveles de frontmatter o más el CUERPO entero supera ese tope y lo rechaza el decodificador con un 422 `validation-error` de la petición, no `validation-error:frontmatter`. El cliente oficial siempre lo escribe (`{}` por defecto).",
+      "x-max-json-utf8-bytes": 65536,
+      "x-max-depth": 32
     },
     "content": {
       "type": "string",

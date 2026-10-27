@@ -23,6 +23,7 @@ from starlette.types import Message, Receive
 from app.adapters.database import SessionLocal
 from app.adapters.replication_repository import ReplicationRepository
 from app.core.dependencies import get_current_user, require_password_changed
+from app.core.note_rules import nesting_depth_exceeds
 from app.core.errors import (
     CheckpointNotFound, InvalidSyncRequest, PasswordChangeRequired, PayloadTooLarge,
     StorageUnavailable, SyncEndpointNotFound,
@@ -48,6 +49,10 @@ MAX_BODY_BYTES = 4 * 1024 * 1024    # cuerpo de cualquier ruta que no tenga tope
 # 8 MiB por petición (`remote.ts`), así que 16 MiB deja margen.
 MAX_BULK_DOCS_BYTES = 16 * 1024 * 1024
 MAX_LOCAL_BYTES = 64 * 1024         # documento `_local` (checkpoint del replicador)
+# Niveles de anidamiento de cualquier cuerpo JSON del canal (raíz = 1). Muy por debajo del límite de recursión de
+# Python (~1000): `json.dumps` —el de httpx al reenviar a CouchDB, el de las reglas— revienta antes que `json.loads`
+# (Converge 2). Cabe el `frontmatter` de 32 niveles dentro de `{docs:[{…}]}` (3 + 32 = 35).
+MAX_JSON_DEPTH = 64
 
 LOCAL_PATH = "/sync/db/_local/{local_id}"
 BULK_DOCS_PATH = "/sync/db/_bulk_docs"
@@ -92,18 +97,24 @@ class _DeepJsonRequest(Request):
     """`Request` cuyo `json()` trata cualquier fallo del decodificador como JSON inválido.
 
     `json.loads` lanza `RecursionError` con cientos de niveles de anidamiento y `ValueError`
-    (no `JSONDecodeError`) con enteros de más de `int_max_str_digits` dígitos; FastAPI sólo
+    (no `JSONDecodeError`) con enteros de más de `int_max_str_digits` dígitos, y además se rechaza lo que anida más de
+    `MAX_JSON_DEPTH` niveles; FastAPI sólo
     convierte en `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo
     vuelve un 400 que el contrato no declara (VB-3, VB-5).
     """
 
     async def json(self):
         try:
-            return await super().json()
+            parsed = await super().json()
         except json.JSONDecodeError:
             raise  # ya es el caso declarado
         except (RecursionError, ValueError):
             raise json.JSONDecodeError("JSON not decodable", "", 0) from None
+        # Tope general de profundidad, iterativo (no depende de la pila): un cuerpo que `json.loads` admite pero que
+        # `json.dumps` no sabría reenviar sería un 500 sin problem+json (Converge 2). Es el mismo 422 de siempre.
+        if nesting_depth_exceeds(parsed, MAX_JSON_DEPTH):
+            raise json.JSONDecodeError("JSON nested too deeply", "", 0)
+        return parsed
 
 
 class SyncRoute(APIRoute):

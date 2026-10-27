@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 from app.core import note_rules
+from app.routers import sync
 from app.services import sync_push
 
 SCHEMA = json.loads(
@@ -32,6 +33,9 @@ def test_rf_005_the_schema_limits_equal_the_rule_constants():
     assert properties["path"]["maxLength"] == note_rules.PATH_MAX
     assert properties["content"]["x-max-utf8-bytes"] == note_rules.CONTENT_MAX_BYTES
     assert properties["frontmatter"]["x-max-json-utf8-bytes"] == note_rules.FRONTMATTER_MAX_BYTES
+    # SPEC-0010 (Converge 1/2): el tope de profundidad del frontmatter y el general de /sync caben el uno en el otro.
+    assert properties["frontmatter"]["x-max-depth"] == note_rules.FRONTMATTER_MAX_DEPTH
+    assert sync.MAX_JSON_DEPTH >= 3 + note_rules.FRONTMATTER_MAX_DEPTH
 
 
 def test_rf_007_path_pattern_plus_maxlength_match_check_path_over_the_battery():

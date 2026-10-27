@@ -202,7 +202,7 @@ protocolo de replicación de CouchDB servido por el backend (nunca CouchDB direc
 - **Reglas de `path` y `frontmatter` de las notas (SPEC-0010):** el último segmento de `path` no puede ser `.md`
   (comparado por NFKC + casefold, así que `.ｍｄ` en anchos completos también cuenta): `X/.md` y `.md` se rechazan con
   `validation-error:path`; `X/a.md` y `.md/a.md` valen. `frontmatter` admite como máximo **32 niveles** de
-  anidamiento (el raíz es 1) además de los 64 KiB: más es `validation-error:frontmatter`. Es el mismo
+  anidamiento (el raíz es 1) además de los 64 KiB: más es `validation-error:frontmatter`. Todo cuerpo JSON de `/sync/**` admite como máximo 64 niveles (`MAX_JSON_DEPTH`, iterativo, al decodificar): más es el 422 `validation-error` de la petición (con 62 niveles de frontmatter o más es el cuerpo, no el campo, lo que excede). Es el mismo
   `core/note_rules.py` que espeja el cliente (`noteRules.ts`) sobre la batería `note_rules_cases.json`.
 - **Push validado (RF-005…RF-008, RF-011):** `_bulk_docs` exige `new_edits: false` y
   responde 201 con la lista de rechazos (`[]` si se aceptó todo). Cada revisión rechazada

@@ -88,7 +88,7 @@ def check_content(value: object) -> str | None:
     return None
 
 
-def _nesting_depth_exceeds(value: object, limit: int) -> bool:
+def nesting_depth_exceeds(value: object, limit: int) -> bool:
     """¿Algún valor anida más de `limit` niveles (el objeto raíz cuenta como 1)?
 
     Recorrido iterativo: no depende de la pila de Python (ni de capturar `RecursionError`), que además
@@ -117,7 +117,7 @@ def check_frontmatter(value: object) -> str | None:
     Sólo valores del JSON estándar: `NaN`, `Infinity` y `1e999` (que Python lee como infinito)
     no se pueden serializar y CouchDB los rechazaría al reenviar el lote (VB-1).
     """
-    if not isinstance(value, dict) or _nesting_depth_exceeds(value, FRONTMATTER_MAX_DEPTH):
+    if not isinstance(value, dict) or nesting_depth_exceeds(value, FRONTMATTER_MAX_DEPTH):
         return "validation-error:frontmatter"
     try:
         # `allow_nan=False` lanza `ValueError` ante un número no finito.
