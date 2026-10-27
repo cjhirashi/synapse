@@ -50,8 +50,9 @@ tests. Checkpoint a Carlos al cerrar cada slice, no al final del backlog.
 - [x] **Slice 5 — Resaltado de código + Mermaid**: T-084…T-095 + Enmienda 2 (PLAN §11, T-140…T-149). Demoable:
   bloque de código coloreado, diagrama Mermaid renderizado con zoom/pan.
   **CERRADA (2026-10-27).** Resaltado Lezer por tandas en idle, Mermaid estricto (3 capas) dibujado por visibilidad + idle, zoom/pan con svg-pan-zoom diferido. jsdom 1443/1443, typecheck, gate, test:bundle OK (entrada 146 382 B, editor 345 523 B), content-visual 100/100, RNF-001 p95 (20 contextos): 64 KiB 34,8 · 120 KiB 44,0 · 181 KiB 235,7 ms; tarea larga máx 52 ms. Causas raíz: Mermaid medía mal con la regla global de reduced-motion; Mermaid+resaltado en el camino crítico (+80/+60 ms).
-- [ ] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
+- [x] **Slice 6 — Historial de navegación**: T-096…T-101. Demoable: Atrás/Adelante
   entre notas abiertas, migas clicables.
+  **CERRADA (2026-10-27).** `noteHistory` (ids, tope 50, sessionStorage por bóveda), Atrás/Adelante con salto de borradas, aviso de borrador (cancelar conserva nota/borrador/posición y devuelve el foco), Alt+←/→ fuera de editores, migas que revelan carpeta, menú ⋮ con flujos reales (renombrar, borrar con confirmación, copiar ruta con región viva, ver en Código). jsdom 1482/1482, typecheck, gate, bundle OK (entrada 147 156 B), Chromium V-10/V-11/V-12 29/29 + Alt+←/→ sin salir de la bóveda.
 - [ ] **Slice 7 — Perf final + seguridad + UX**: T-102…T-107. Demoable: p95
   real medido, guard de XSS con test mutante, hallazgos de UX corregidos.
 - [ ] **Slice 8 — Docs y cierre**: T-108…T-123. Demoable: spec `implemented`,

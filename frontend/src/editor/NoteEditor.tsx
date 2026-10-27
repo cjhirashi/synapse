@@ -97,6 +97,8 @@ interface NoteEditorProps {
   onForward?: () => void;
   /** Una carpeta de las migas: el árbol debe mostrarla (RF-055). */
   onRevealFolder?: (folderPath: string) => void;
+  /** Borrar la nota abierta con el flujo del árbol (RF-062): papelera, confirmación si hay borrador. */
+  onDelete?: () => void;
   /** Renombrar la nota abierta (RF-008): el editor lo pide cuando su ruta es inválida. */
   onRename?: () => void;
   /**
@@ -117,7 +119,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, parseCache = null },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -127,6 +129,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [note, setNote] = useState<Note | null>(null);
   const [missing, setMissing] = useState(false);
   const [openId, setOpenId] = useState(noteId);
+  /** Resultado de «Copiar ruta» para la región viva. */
+  const [pathNotice, setPathNotice] = useState("");
   /** Nota pedida por el padre a la espera de la respuesta del usuario (cambios sin guardar). */
   const [pendingId, setPendingId] = useState<string | null>(null);
   /** Pregunta de descarte abierta por `confirmDiscard`: quien espera la respuesta. */
@@ -614,6 +618,20 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setView("visual");
   }
 
+  /** «Copiar ruta» del menú: el `path` completo (con `.md`) al portapapeles, anunciado en la región viva (RF-062). */
+  async function copyPath() {
+    if (note === null) return;
+    try {
+      if (!navigator.clipboard) throw new Error("sin API de portapapeles");
+      await navigator.clipboard.writeText(note.path);
+      setPathNotice("Ruta copiada");
+    } catch {
+      // Permiso denegado o contexto no seguro: se avisa; la ruta sigue visible en las migas (con título completo).
+      setPathNotice("No se pudo copiar la ruta.");
+    }
+    setTimeout(() => setPathNotice(""), 4000);
+  }
+
   async function leave() {
     // "Leer" guarda antes: si no se pudo, se queda en edición con el borrador y el aviso.
     if (await save()) setMode("read");
@@ -756,17 +774,22 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               con la lógica de carpetas; «Ver en Código» ya funciona. */}
           <NoteMenu
             inCode={mode === "edit" && view === "code"}
-            onRename={() => undefined}
-            onCopyPath={() => undefined}
+            onRename={() => onRename?.()}
+            onCopyPath={() => void copyPath()}
             onViewInCode={() => {
               setFocusEditor(true);
               setMode("edit");
               setView("code");
             }}
-            onDelete={() => undefined}
+            onDelete={() => onDelete?.()}
           />
+
         </div>
       </header>
+      {/* Región viva del resultado de «Copiar ruta» (RF-062); fuera de la barra para no sumar otro `status` a su orden. */}
+      <span className="note-visually-hidden" aria-live="polite">
+        {pathNotice}
+      </span>
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}

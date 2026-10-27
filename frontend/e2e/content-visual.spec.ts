@@ -964,3 +964,23 @@ test("0010 V-10 L-1 ancestros en negrita atenuada y separador ceñido (P-17)", a
   expect(next.x - (sep.x + sep.width), "aire tras el separador ≤ 8 px").toBeLessThanOrEqual(8);
   await context.close();
 });
+
+// V-11 · historial: Alt+← / Alt+→ y los botones navegan entre las notas abiertas sin salir de la bóveda (RF-056, RF-059)
+test("0010 V-11 Alt+← y Alt+→ recorren el historial sin salir de la bóveda (RF-056, RF-057, RF-059)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspace(browser, content, { theme: "dark", size: SIZES[0] });
+  const url = page.url();
+  await openContentNote(page, note("plain"));
+  await expect(page.getByRole("heading", { level: 2, name: "Sin propiedades" })).toBeVisible();
+  await openContentNote(page, note("code"));
+  const second = await page.getByRole("navigation", { name: "Ruta" }).getByRole("heading", { level: 2 }).innerText();
+  await expect(page.getByRole("button", { name: "Atrás" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Adelante" })).toBeDisabled();
+  // El foco está en el árbol (fuera de un editor): Alt+← va atrás y el navegador NO sale de la bóveda.
+  await page.keyboard.press("Alt+ArrowLeft");
+  await expect(page.getByRole("heading", { level: 2, name: "Sin propiedades" })).toBeVisible();
+  expect(page.url(), "sigue en la bóveda").toBe(url);
+  await expect(page.getByRole("button", { name: "Adelante" })).toBeEnabled();
+  await page.keyboard.press("Alt+ArrowRight");
+  await expect(page.getByRole("navigation", { name: "Ruta" }).getByRole("heading", { level: 2 })).toHaveText(second);
+  await context.close();
+});

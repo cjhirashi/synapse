@@ -472,10 +472,10 @@ actualizado: 2026-10-24
 - [x] T-099 — Historial en `Workspace` (`onOpened`, `onCancelOpen`, atajo) y flechas reales en la cabecera (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src`
   - EXPECT: `passed`, sin regresión de `NoteEditorLeave.test.tsx`.
-- [ ] T-100 [rojo] — Migas y menú reales: clic en carpeta de la miga la revela y la deja activa sin cambiar de nota; "Renombrar/mover" y "Borrar" del ⋮ ejecutan los flujos del árbol con sus mensajes; "Ver en Código" pasa a edición + Código; "Copiar ruta" copia el `path` con `.md` y anuncia "Ruta copiada" (o el fallo); renombrar/mover la nota abierta actualiza las migas sin recargar; el lápiz alterna lectura/edición como el botón de 0008 (cubre RF-055, RF-062, RF-065) [zona: test] [P-17]
+- [x] T-100 [rojo] — Migas y menú reales: clic en carpeta de la miga la revela y la deja activa sin cambiar de nota; "Renombrar/mover" y "Borrar" del ⋮ ejecutan los flujos del árbol con sus mensajes; "Ver en Código" pasa a edición + Código; "Copiar ruta" copia el `path` con `.md` y anuncia "Ruta copiada" (o el fallo); renombrar/mover la nota abierta actualiza las migas sin recargar; el lápiz alterna lectura/edición como el botón de 0008 (cubre RF-055, RF-062, RF-065) [zona: test] [P-17]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx src/editor/NoteMenu.test.tsx -t "RF-0(55|62|65)"`
   - EXPECT: fallan.
-- [ ] T-101 — Cableado de migas (`onRevealFolder` → `revealFolder` + carpeta activa) y del menú ⋮ a los flujos reales (cubre RF-055, RF-062, RF-065) [zona: pantalla]
+- [x] T-101 — Cableado de migas (`onRevealFolder` → `revealFolder` + carpeta activa) y del menú ⋮ a los flujos reales (cubre RF-055, RF-062, RF-065) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src && CV --grep "0010 V-(10|11|12) "`
   - EXPECT: vitest `passed`; V-10/V-11/V-12 en verde con acciones reales (incluido Alt+← en Chromium sin salir de la bóveda).
 

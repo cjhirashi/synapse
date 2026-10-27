@@ -500,9 +500,9 @@ test("historial: se conserva al volver a montar con el mismo sessionStorage y es
 async function deepNote() {
   const { value, vault } = await setup();
   const note = await value.notes.create(vault.id, "Proyectos/Clientes/Plan.md");
-  render(tree(value, `/vaults/${vault.id}`, { noteId: note.id }));
+  const { rerender } = render(tree(value, `/vaults/${vault.id}`, { noteId: note.id }));
   await screen.findByRole("heading", { level: 2, name: "Plan" });
-  return { value, vault, note };
+  return { value, vault, note, rerender };
 }
 
 const menuButton = () => screen.getByRole("button", { name: "Opciones de la nota" });
@@ -569,10 +569,12 @@ test("RF-062: «Ver en Código» pasa la nota a edición en la vista Código", a
 });
 
 test("RF-065: renombrar o mover la nota abierta actualiza las migas sin recargar", async () => {
-  const { value, note } = await deepNote();
+  const { value, vault, note, rerender } = await deepNote();
   const current = await value.notes.get(note.id);
   await act(async () => {
     await value.notes.rename(current.id, "Otra/Nombre nuevo.md", current.rev);
+    // En la app el `SyncProvider` sube `notesVersion` con cada escritura de la réplica.
+    rerender(tree({ ...value, notesVersion: value.notesVersion + 1 }, `/vaults/${vault.id}`));
   });
   const nav = screen.getByRole("navigation", { name: "Ruta" });
   await waitFor(() => expect(within(nav).getByRole("heading", { level: 2 })).toHaveTextContent("Nombre nuevo"));
