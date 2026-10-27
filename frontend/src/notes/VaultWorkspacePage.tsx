@@ -154,6 +154,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const historyRef = useRef(history);
   /** Salto de historial pedido y aún sin confirmar: sólo se mueve la posición cuando el editor abre de verdad la nota. */
   const jump = useRef<{ target: string; history: History; direction: -1 | 1 } | null>(null);
+  /** Cola de saltos: cada uno espera a que el anterior termine (se abrió, se canceló o venció el plazo), L-5. */
+  const navigation = useRef<Promise<void>>(Promise.resolve());
+  /** Resuelve la espera del salto en curso. */
+  const settleJump = useRef<(() => void) | null>(null);
   /** Ids de las notas vivas (las borradas no son destino): se relee con cada versión de las notas. */
   const [liveIds, setLiveIds] = useState<ReadonlySet<string> | null>(null);
   const isLive = (id: string) => liveIds?.has(id) ?? true;
@@ -209,24 +213,43 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     const pending = jump.current;
     jump.current = null;
     commitHistory(pending && pending.target === id ? pending.history : push(historyRef.current, id));
+    settleJump.current?.();
   }
 
   /** El usuario decidió seguir editando: la nota y la posición no cambian y el foco vuelve al botón (RF-060). */
   function onCancelOpen(id: string) {
     const direction = jump.current?.direction;
     jump.current = null;
+    settleJump.current?.();
     setOpenId(id);
     if (direction) setTimeout(() => document.querySelector<HTMLElement>(`.note-editor-header [aria-label="${direction < 0 ? "Atrás" : "Adelante"}"]`)?.focus(), 0);
   }
 
-  /** Atrás/Adelante: la primera nota viva en esa dirección. Se pide abrir con el mismo cambio de `openId` de 0008 (RF-060). */
-  async function go(direction: -1 | 1) {
-    const summaries = await notes.list(vault.id);
-    const live = new Set(summaries.filter((s) => s.deleted_at === null).map((s) => s.id));
-    const result = step(historyRef.current, direction, (id) => live.has(id));
-    if (!result) return;
-    jump.current = { target: result.target, history: result.history, direction };
-    open(result.target);
+  /**
+   * Atrás/Adelante: la primera nota viva en esa dirección. Se pide abrir con el mismo cambio de `openId` de 0008
+   * (RF-060). Los saltos van **en cola**: dos Alt+← seguidos leerían el mismo historial y darían un solo paso dos
+   * veces, así que el segundo espera a que el primero abra la nota (u otra cosa lo cancele).
+   */
+  function go(direction: -1 | 1): Promise<void> {
+    navigation.current = navigation.current.then(async () => {
+      const summaries = await notes.list(vault.id);
+      const live = new Set(summaries.filter((s) => s.deleted_at === null).map((s) => s.id));
+      const result = step(historyRef.current, direction, (id) => live.has(id));
+      if (!result) return;
+      jump.current = { target: result.target, history: result.history, direction };
+      const opened = new Promise<void>((resolve) => {
+        // Plazo de seguridad: si la nota no llega a abrirse, la cola no se queda colgada.
+        const timer = setTimeout(resolve, 5000);
+        settleJump.current = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+      });
+      open(result.target);
+      await opened;
+      settleJump.current = null;
+    });
+    return navigation.current;
   }
 
   /** Alt+← / Alt+→ con el foco en el workspace y fuera de un editor de texto en edición (RF-059). */
