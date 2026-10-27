@@ -132,6 +132,14 @@ describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
     expect(clean.split("\n")).toHaveLength(source.split("\n").length);
   });
 
+  it("una comilla desbalanceada no esconde un `click` posterior de la misma línea (Converge 2, L-D)", () => {
+    const source = 'flowchart TD\n  A["sin cerrar --> B; click A call f(); C --> D\n  E --> F';
+    const clean = sanitizeSource(source);
+    expect(clean).not.toMatch(/click|call f/);
+    expect(clean).toContain("C --> D");
+    expect(clean).toContain("E --> F");
+  });
+
   it("no toca sentencias que sólo contienen la palabra (un nodo llamado click, texto de etiqueta)", () => {
     const source = 'flowchart TD\n  click --> B\n  A["haz click aquí"] --> B';
     expect(sanitizeSource(source)).toBe(source);
@@ -146,6 +154,10 @@ describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
 
 describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
   const wrap = (inner: string, attrs = "") => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"${attrs}>${inner}</svg>`;
+
+  it("acepta url(#id) internos y propiedades cuyo nombre contiene «image» o «src»", () => {
+    expect(() => verifySvg(wrap('<style>.a{fill:url(#grad);background-image:none}.b{src-x:1}</style><g style="filter:url(#f)"/>'))).not.toThrow();
+  });
 
   it("acepta un SVG de dibujo y devuelve un elemento svg del documento", () => {
     const svg = verifySvg(wrap('<defs><marker id="m"><path d="M0 0"/></marker></defs><style>.node{fill:red}</style><g><use href="#m"/><text>hola</text></g>'));
@@ -165,6 +177,13 @@ describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
     ["iframe", wrap("<iframe/>")],
     ["@import en un style con escape CSS", wrap("<style>@im\\70ort url(https://example.com/x.css);</style>")],
     ["url() externo con escape CSS (u\\72l)", wrap('<g style="fill: u\\72l(https://example.com/x)"/>')],
+    ["image-set() que carga un recurso", wrap('<g style="fill: image-set(\'https://example.com/x.png\' 1x)"/>')],
+    ["-webkit-image-set()", wrap('<g style="background: -webkit-image-set(\'https://example.com/x.png\' 1x)"/>')],
+    ["src() de CSS", wrap('<g style="background: src(\'https://example.com/x.png\')"/>')],
+    ["cross-fade()", wrap('<style>.a{background: cross-fade(url(#a), url(#b), 50%)}</style>')],
+    ["element()", wrap('<g style="background: element(#a)"/>')],
+    ["image() de CSS", wrap('<g style="background: image(\'https://example.com/x.png\')"/>')],
+    ["image-set con escape CSS", wrap('<g style="fill: ima\\67e-set(\'https://example.com/x.png\' 1x)"/>')],
     ["@import en un style", wrap("<style>@import url(https://example.com/x.css);</style>")],
     ["raíz que no es svg", '<div xmlns="http://www.w3.org/1999/xhtml">x</div>'],
     ["dos raíces", '<svg xmlns="http://www.w3.org/2000/svg"/><svg xmlns="http://www.w3.org/2000/svg"/>'],
