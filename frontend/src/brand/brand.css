@@ -1,0 +1,16 @@
+/* Logo de marca (SPEC-0011; PLAN-0011 §2.3a). El contexto fija el tamaño con `--brand-logo-size`. */
+.brand-logo {
+  display: inline-block;
+  inline-size: var(--brand-logo-size, 28px);
+  block-size: var(--brand-logo-size, 28px);
+  flex-shrink: 0;
+  /* Variante para fondo oscuro (tema por defecto, SPEC-0009 RF-006a); `contain` respeta la proporción
+     de la silueta, que no es cuadrada (1205×1073). Una imagen que no carga no pinta nada (RF-020). */
+  background: url("/logo-synapse-dark.svg") center / contain no-repeat;
+}
+
+/* El tema lo decide `data-theme`, que fija el script previo al pintado de index.html y `useTheme`:
+   el logo cambia con el tema sin recargar y sin estado de React (RF-016). */
+:root[data-theme="light"] .brand-logo {
+  background-image: url("/logo-synapse-light.svg");
+}

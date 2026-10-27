@@ -29,3 +29,17 @@ test("RF-004: login correcto avisa al llamante", async () => {
   await waitFor(() => expect(onLoggedIn).toHaveBeenCalled());
   expect(spy).toHaveBeenCalledWith("a@b.com", "buena-clave-larga");
 });
+
+// SPEC-0011 RF-017: el login lleva el logo oficial seguido de «Synapse», con las reglas de RF-012.
+test("RF-017: el login muestra el logo oficial antes de «Synapse», decorativo y sin enlace; sin el cuadrado genérico", () => {
+  render(<MemoryRouter><LoginPage onLoggedIn={vi.fn()} /></MemoryRouter>);
+
+  const brand = document.querySelector(".auth-logo")!;
+  expect(brand.firstElementChild).toHaveClass("brand-logo");
+  expect(brand.firstElementChild).toHaveAttribute("aria-hidden", "true");
+  expect(brand.lastElementChild).toHaveTextContent(/^Synapse$/);
+  expect(brand).toHaveTextContent(/^Synapse$/);
+  expect(brand.querySelector("a, button, [tabindex]")).toBeNull();
+  expect(document.querySelector(".auth-logo-mark")).toBeNull();
+  expect(document.querySelectorAll(".brand-logo")).toHaveLength(1);
+});

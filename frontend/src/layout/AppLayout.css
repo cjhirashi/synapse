@@ -32,14 +32,8 @@
   font-weight: 600;
   font-size: 16px;
   margin-right: var(--space-4);
-}
-
-.app-brand-mark {
-  width: 26px;
-  height: 26px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent), #075a6b);
-  flex-shrink: 0;
+  /* Tamaño del logo de marca (SPEC-0011 RF-009: 24–32 px). */
+  --brand-logo-size: 28px;
 }
 
 .app-nav-primary {

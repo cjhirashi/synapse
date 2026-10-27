@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
+import BrandLogo from "../brand/BrandLogo";
 import ThemeToggle from "../theme/ThemeToggle";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
@@ -19,7 +20,8 @@ export default function AppLayout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="app-brand">
-          <span className="app-brand-mark" aria-hidden="true" />
+          {/* Logo oficial y después el nombre (SPEC-0011 RF-008). Sigue siendo un <div> sin enlace (RF-012). */}
+          <BrandLogo />
           Synapse
         </div>
         <nav aria-label="Principal" className="app-nav-primary">

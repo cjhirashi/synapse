@@ -29,14 +29,8 @@
   align-items: center;
   gap: 10px;
   margin-bottom: var(--space-6);
-}
-
-.auth-logo-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(135deg, var(--accent), #075a6b);
-  flex-shrink: 0;
+  /* Tamaño del logo de marca: el .logo-mark del mockup 1.1.4.3 (SPEC-0011 RF-017). */
+  --brand-logo-size: 32px;
 }
 
 .auth-logo-text {

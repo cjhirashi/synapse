@@ -1,5 +1,6 @@
 import { FormEvent, useState } from "react";
 import { ApiError, login } from "../api/auth";
+import BrandLogo from "../brand/BrandLogo";
 import ThemeToggle from "../theme/ThemeToggle";
 import "./AuthShell.css";
 
@@ -28,7 +29,7 @@ export default function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
       <ThemeToggle />
       <form className="auth-card" onSubmit={submit}>
         <div className="auth-logo">
-          <div className="auth-logo-mark" />
+          <BrandLogo />
           <div className="auth-logo-text">Synapse</div>
         </div>
         <h1>Iniciar sesión</h1>
