@@ -480,16 +480,16 @@ actualizado: 2026-10-24
   - EXPECT: vitest `passed`; V-10/V-11/V-12 en verde con acciones reales (incluido Alt+← en Chromium sin salir de la bóveda).
 
 ### G · Requisitos no funcionales
-- [ ] T-102 [rojo] — `e2e/content-perf.spec.ts` prueba `0010 RNF-001`: nota de ~200 KiB con 50 bloques y 5 Mermaid, 30 aperturas en lectura, p95 ≤ 150 ms hasta que el cuerpo es legible y `longtask` ≤ 200 ms por bloque (cubre RNF-001) [zona: sistema]
+- [x] T-102 [rojo] — `e2e/content-perf.spec.ts` prueba `0010 RNF-001`: nota de ~200 KiB con 50 bloques y 5 Mermaid, 30 aperturas en lectura, p95 ≤ 150 ms hasta que el cuerpo es legible y `longtask` ≤ 200 ms por bloque (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --grep "0010 RNF-001"`
   - EXPECT: imprime mediana, p95 y la tarea larga máxima; si falla, falla por la cifra (se corrige en T-103).
-- [ ] T-103 — Corrección de raíz de lo que T-102 mida fuera de umbral (p. ej. render de Mermaid en serie cediendo el hilo, resaltado por lotes), sin cambiar umbrales (cubre RNF-001) [zona: pantalla]
+- [x] T-103 — Corrección de raíz de lo que T-102 mida fuera de umbral (p. ej. render de Mermaid en serie cediendo el hilo, resaltado por lotes), sin cambiar umbrales (cubre RNF-001) [zona: pantalla]
   - CHECK: mismo que T-102 + `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/workspace-perf.spec.ts`
   - EXPECT: `0010 RNF-001` p95 ≤ 150 ms y ninguna `longtask` > 200 ms por bloque; RNF-001 de 0009 p95 ≤ 150 ms. Si T-102 ya pasó, se cierra con "sin cambios".
-- [ ] T-104 — Presupuesto de *bundle* y red (cubre RNF-002) [zona: sistema] [P-9]
+- [x] T-104 — Presupuesto de *bundle* y red (cubre RNF-002) [zona: sistema] [P-9]
   - CHECK: `cd frontend && npm run build && npm run test:bundle && CV --grep "0010 V-15 "`
   - EXPECT: entrada ≤ 157 020 B, editor ≤ 357 388 B, chunks separados presentes y sin importación estática; V-15 en verde. Cifras en `history.md`.
-- [ ] T-105 [rojo→verde] — `editor/securityGuard.test.ts`: ningún `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`dangerouslySetInnerHTML` en `src/`; mutante (no commiteado) con `innerHTML` en `codeBlockView.ts` lo detecta (cubre RNF-003) [zona: test]
+- [x] T-105 [rojo→verde] — `editor/securityGuard.test.ts`: ningún `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`dangerouslySetInnerHTML` en `src/`; mutante (no commiteado) con `innerHTML` en `codeBlockView.ts` lo detecta (cubre RNF-003) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/securityGuard.test.ts src/editor/mermaid src/editor/PropertiesPanel.test.tsx src/editor/MilkdownView.test.tsx`
   - EXPECT: `passed`; con el mutante, 1 failed (salida pegada en `history.md`).
 
