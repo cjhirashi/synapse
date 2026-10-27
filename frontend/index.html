@@ -19,7 +19,9 @@
       // ("dark") es DEFAULT_THEME_MODE de theme/useTheme.ts y la tabla de colores es THEME_COLOR
       // (el --bg-secondary de cada tema): deben coincidir; useTheme.test.tsx lo vigila.
       (function () {
-        var mode = localStorage.getItem("synapse-theme") || "dark";
+        var stored = localStorage.getItem("synapse-theme");
+        // Mismo respaldo que readStored de useTheme: un valor guardado inválido cae al defecto.
+        var mode = stored === "light" || stored === "dark" || stored === "system" ? stored : "dark";
         var resolved = mode === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : mode;
         document.documentElement.setAttribute("data-theme", resolved);
         var themeColor = { dark: "#1a1a24", light: "#f8fafc" };

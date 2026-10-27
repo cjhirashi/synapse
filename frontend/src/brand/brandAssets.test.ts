@@ -3,7 +3,7 @@
 // pestaña) se hacen en Chromium real: `e2e/brand-*.spec.ts`.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { gzipSync } from "node:zlib";
+import { gzipSync, inflateSync } from "node:zlib";
 import { describe, expect, test } from "vitest";
 import { contrast, hexToRgb, hue, token } from "../test-utils/wcag";
 
@@ -124,7 +124,68 @@ const isOpaque = (info: PngInfo) => ![4, 6].includes(info.colorType) && !info.ch
 
 const png = (name: string) => readFileSync(resolve(PUBLIC, name));
 
+/**
+ * Decodifica un PNG de 8 bits sin entrelazado, de paleta (tipo 3) o RGB (tipo 2), a RGB plano.
+ * Lo justo para medir el maskable en vitest sin navegador (la prueba e2e A-2 lo mide además en Chromium).
+ */
+function decodeRgb(buf: Buffer): { width: number; height: number; rgb: number[] } {
+  const { width, height, colorType } = pngInfo(buf);
+  expect(buf[24], "8 bits por canal").toBe(8);
+  expect(buf[28], "sin entrelazado").toBe(0);
+  const idat: Buffer[] = [];
+  let plte = Buffer.alloc(0);
+  for (let at = 8; at < buf.length; ) {
+    const len = buf.readUInt32BE(at);
+    const type = buf.toString("ascii", at + 4, at + 8);
+    if (type === "IDAT") idat.push(buf.subarray(at + 8, at + 8 + len));
+    if (type === "PLTE") plte = buf.subarray(at + 8, at + 8 + len);
+    at += 12 + len;
+  }
+  const bpp = colorType === 3 ? 1 : 3;
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * bpp;
+  const rows: number[][] = [];
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    const line = Array.from(raw.subarray(y * (stride + 1) + 1, (y + 1) * (stride + 1) + 0));
+    const prev = rows[y - 1] ?? new Array(stride).fill(0);
+    for (let i = 0; i < stride; i++) {
+      const a = i >= bpp ? line[i - bpp] : 0;
+      const b = prev[i];
+      const c = i >= bpp ? prev[i - bpp] : 0;
+      const p = a + b - c;
+      const pa = Math.abs(p - a), pb = Math.abs(p - b), pc = Math.abs(p - c);
+      const predictor = [0, a, b, (a + b) >> 1, pa <= pb && pa <= pc ? a : pb <= pc ? b : c][filter];
+      line[i] = (line[i] + predictor) & 255;
+    }
+    rows.push(line);
+  }
+  const rgb = rows.flatMap((line) => (colorType === 3 ? line.flatMap((idx) => [plte[idx * 3], plte[idx * 3 + 1], plte[idx * 3 + 2]]) : line));
+  return { width, height, rgb };
+}
+
 describe("iconos raster", () => {
+  test("RF-006: en el icono maskable toda la silueta cabe en el círculo central del 80 % (radio ≤ 204,8 px sobre 512)", () => {
+    const { width, height, rgb } = decodeRgb(png("icons/icon-maskable-512.png"));
+    expect([width, height]).toEqual([512, 512]);
+    const bg = [rgb[0], rgb[1], rgb[2]]; // esquina: el fondo opaco de D-10 (#12121a, tras la cuantización)
+    expect(bg.map((v, k) => Math.abs(v - [0x12, 0x12, 0x1a][k])).every((d) => d <= 4), "fondo ≈ #12121a").toBe(true);
+    let maxRadius = 0;
+    let painted = 0;
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const i = (y * width + x) * 3;
+        const diff = Math.abs(rgb[i] - bg[0]) + Math.abs(rgb[i + 1] - bg[1]) + Math.abs(rgb[i + 2] - bg[2]);
+        if (diff > 12) {
+          painted++;
+          maxRadius = Math.max(maxRadius, Math.hypot(x + 0.5 - width / 2, y + 0.5 - height / 2));
+        }
+      }
+    }
+    expect(painted, "la silueta existe").toBeGreaterThan(5_000);
+    expect(maxRadius, `radio máximo ${maxRadius.toFixed(1)} px`).toBeLessThanOrEqual(0.4 * width);
+  });
+
   test("RF-003: apple-touch-icon.png es de 180×180, opaco y sin transparencia", () => {
     const info = pngInfo(png("apple-touch-icon.png"));
     expect([info.width, info.height]).toEqual([180, 180]);

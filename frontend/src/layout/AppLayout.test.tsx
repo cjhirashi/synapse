@@ -112,6 +112,12 @@ test("RF-012: el nombre del bloque de marca es exactamente «Synapse» y no es u
   // El logo es decorativo: el lector de pantalla lee «Synapse» una sola vez.
   expect(brand.querySelector(".brand-logo")).toHaveAttribute("aria-hidden", "true");
   expect(screen.getAllByText("Synapse")).toHaveLength(1);
+  // Nombre accesible: el bloque es un <div> (rol genérico) y su nombre es SÓLO su texto, exactamente «Synapse»
+  // (arriba). Cualquier aria-label/aria-labelledby/title/role lo sustituiría o lo convertiría en un control.
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role"]) expect(brand, `${attr} en el bloque`).not.toHaveAttribute(attr);
+  // El logo no aporta nombre propio: oculto a las tecnologías de asistencia y sin etiqueta ni texto.
+  const logo = brand.querySelector(".brand-logo")!;
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role", "alt"]) expect(logo, `${attr} en el logo`).not.toHaveAttribute(attr);
 });
 
 test("RF-018: hay un solo logo por pantalla privada, dentro de la cabecera", () => {

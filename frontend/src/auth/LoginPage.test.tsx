@@ -42,4 +42,8 @@ test("RF-017: el login muestra el logo oficial antes de «Synapse», decorativo 
   expect(brand.querySelector("a, button, [tabindex]")).toBeNull();
   expect(document.querySelector(".auth-logo-mark")).toBeNull();
   expect(document.querySelectorAll(".brand-logo")).toHaveLength(1);
+  // Nombre del bloque sólo por su texto «Synapse»: sin etiqueta propia que lo sustituya.
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role"]) expect(brand, `${attr} en el bloque`).not.toHaveAttribute(attr);
+  const logo = brand.querySelector(".brand-logo")!;
+  for (const attr of ["aria-label", "aria-labelledby", "title", "role", "alt"]) expect(logo, `${attr} en el logo`).not.toHaveAttribute(attr);
 });

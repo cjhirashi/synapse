@@ -52,7 +52,9 @@ test("RF-006a: elegir un tema lo guarda; un valor guardado inválido cae al defe
 
 test("RF-006a: el script previo al pintado de index.html usa el mismo defecto que el hook", () => {
   const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8");
-  expect(html).toContain(`localStorage.getItem("synapse-theme") || "${DEFAULT_THEME_MODE}"`);
+  // SPEC-0011 L-1: el defecto ahora es el respaldo de un valor guardado ausente O inválido.
+  expect(html).toContain(`localStorage.getItem("synapse-theme")`);
+  expect(html).toContain(`? stored : "${DEFAULT_THEME_MODE}"`);
 });
 
 // --- theme-color (SPEC-0011 RF-016; PLAN-0011 §2.2, P-10) -------------------------------------
@@ -118,4 +120,20 @@ test("RF-016: index.html trae el meta estático y su script previo al pintado us
   expect(html).toContain(`<meta name="theme-color" content="${THEME_COLOR.dark}"`);
   expect(html).toContain(`dark: "${THEME_COLOR.dark}"`);
   expect(html).toContain(`light: "${THEME_COLOR.light}"`);
+});
+
+// L-1 (Converge 1): el script previo al pintado debe tener el mismo respaldo que `readStored`: un valor
+// guardado inválido cae al defecto (oscuro) tanto en data-theme como en el theme-color (sin "undefined").
+test.each([["morado"], [""], ["undefined"]])("RF-016: el script de index.html con synapse-theme=%j cae al defecto oscuro (data-theme y theme-color)", (stored) => {
+  const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8");
+  const script = /<script>([\s\S]*?)<\/script>/.exec(html)![1];
+  document.head.insertAdjacentHTML("beforeend", '<meta name="theme-color" content="#000000">');
+  try {
+    localStorage.setItem(STORAGE_KEY, stored);
+    new Function(script)();
+    expect(document.documentElement).toHaveAttribute("data-theme", DEFAULT_THEME_MODE);
+    expect(themeColorMeta()).toHaveAttribute("content", THEME_COLOR[DEFAULT_THEME_MODE as "dark"]);
+  } finally {
+    themeColorMeta().remove();
+  }
 });
