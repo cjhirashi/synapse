@@ -2,7 +2,7 @@
 id: TASKS-0010
 tipo: tasks
 feature: 0010-contenido-markdown-completo
-estado: approved          # la Fase 3 no tiene gate humano propio (method.md §3 Fase 3, §7 Gate 3: chequeo mayormente automático); se aprueba al cerrar el GATE 2
+estado: implemented          # la Fase 3 no tiene gate humano propio (method.md §3 Fase 3, §7 Gate 3: chequeo mayormente automático); se aprueba al cerrar el GATE 2
 actualizado: 2026-10-24
 ---
 

@@ -2,15 +2,15 @@
 id: SPEC-0010
 tipo: spec
 feature: 0010-contenido-markdown-completo
-estado: superseded-por-backlog  # draft | in-review | approved | implemented | verified | deprecated | superseded-por-backlog
+estado: implemented      # 2026-10-27: Fase 4 completa, Converge 3 y 4 limpios (Gate 5). NO verified
 # --- piloto slice-development (2026-10-25) ---
 # Tareas restantes (desde T-050) migradas a `backlog.md` de esta misma carpeta como
 # slices verticales; las tareas ya [x] en tasks.md quedan tal cual, no se re-documentan.
 # Fuente de verdad del trabajo pendiente: backlog.md, no tasks.md. Detalle de la
 # migración y su motivo en synthesis.planes-de-ejecución-pendientes (wiki de AIRA).
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 09bd982   # HEAD de feature/sprint-1-auth al abrir la Fase 1 (2026-10-24)
-anchor_mode: advisory
+anchor_commit: de8d0d7   # cierre de la implementación (2026-10-27)
+anchor_mode: strict
 covers:                  # fijado en PLAN-0010 §9 (archivos con dueño anterior 0007/0008/0009: PLAN-0010 P-15)
   # frontend — editor (sesión de frontmatter, propiedades, node views, resaltado, Mermaid, migas, menú)
   - frontend/src/editor/**

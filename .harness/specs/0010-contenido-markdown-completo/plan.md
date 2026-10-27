@@ -2,7 +2,7 @@
 id: PLAN-0010
 tipo: plan
 feature: 0010-contenido-markdown-completo
-estado: approved
+estado: implemented
 aprobaciones:
   fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-24, nota: "P-1, P-2, P-7 y P-17 aceptados tal cual; resto de P-n con la recomendación del plan; captura de career-admin autorizada sólo lectura sobre :8002" }
 actualizado: 2026-10-24
