@@ -16,6 +16,8 @@
  * árbol (un componente hermano), pasa por `confirmDiscard` del manejador del editor: con el
  * borrador sucio pregunta antes de descartarlo (VF-2).
  */
+import { Notice, noticeText } from "./Notice";
+import { splitLegacyBlock } from "./legacyBlock";
 import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BetweenHorizontalEnd, BetweenVerticalEnd, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
@@ -682,6 +684,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   // RF-008: una nota con ruta inválida (sembrada por una réplica vieja) se abre y se lee, pero no se
   // guarda ni se borra hasta renombrarla; el aviso ofrece «Renombrar» (lo atiende la sidebar).
   const pathInvalid = checkPath(note.path) !== null;
+  /** Lectura: el bloque de YAML heredado al inicio se muestra aparte y literal (P-6). */
+  const legacyRead = mode === "read" ? splitLegacyBlock(draft) : null;
 
   return (
     <section className="note-editor" aria-label="Editor de nota" onKeyDown={onKeyDown}>
@@ -816,21 +820,17 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
             </div>
           )}
-          {mode === "edit" && legacyNotice === "migrate" && (
-            <p className="note-editor-notice" role="status">
-              El inicio de la nota es YAML heredado: sus propiedades se moverán a los metadatos al guardar.
-            </p>
-          )}
+          {mode === "edit" && legacyNotice === "migrate" && <Notice variant="info">{noticeText.legacyBefore}</Notice>}
           {mode === "edit" && legacyNotice === "moved" && (
-            <p className="note-editor-notice" role="status">
-              Las propiedades se movieron fuera del texto.
-            </p>
+            <Notice variant="info" onClose={() => setLegacyNotice(null)}>
+              {noticeText.legacyAfter}
+            </Notice>
           )}
           {mode === "edit" && legacyNotice === "looks-yaml" && (
-            <div className="note-editor-notice" role="status">
-              <p>El inicio de la nota parece YAML, pero no se trata como propiedades (ya hay metadatos o el bloque no es válido).</p>
+            <Notice variant="warning">
+              <p>{noticeText.looksYaml}</p>
               {prefix !== "" && <pre className="note-editor-legacy-block">{prefix}</pre>}
-            </div>
+            </Notice>
           )}
           {error && (
             <p role="alert">
@@ -892,7 +892,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {mode === "edit" && view === "visual" && <PropertiesForm key={`${note.rev}-${formKey}`} frontmatter={props} onChange={onProps} />}
 
           {mode === "read" ? (
-            <Visual value={draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={savedPreparsed} />
+            <>
+              {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
+              {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
+              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} />
+            </>
           ) : view === "visual" ? (
             <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} />
           ) : (
