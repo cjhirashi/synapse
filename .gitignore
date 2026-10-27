@@ -1,6 +1,7 @@
 CLAUDE.md
 .claude/agents/
 .claude/worktrees/
+.claude/settings.local.json
 
 diseño/
 
