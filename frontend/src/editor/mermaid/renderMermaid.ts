@@ -105,15 +105,31 @@ function dropActionStatements(line: string): string {
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
-/** Elementos que no deben estar en un dibujo: ejecutan código, embeben HTML, navegan o animan atributos. */
-const FORBIDDEN_ELEMENTS = new Set(["script", "foreignobject", "iframe", "object", "embed", "a", "animate", "set"]);
+/**
+ * LISTA BLANCA de elementos (todos en el espacio de nombres SVG) que Mermaid emite de verdad, contrastada con el SVG
+ * real de cada tipo de diagrama (flowchart, sequence, class, state, er, gantt, pie, git, mindmap, timeline, quadrant,
+ * xychart, sankey, requirement, block, kanban, C4, architecture, packet, radar, treemap). Cualquier otro elemento —un
+ * hijo HTML/XHTML, `a`, `image`, `foreignObject`, `switch`, `script`, `video`, `form`, `meta`…— rechaza el dibujo: una
+ * lista negra dejaba pasar `<desc><img src=…></desc>` y similares (Converge 3). `title` y `desc` sólo admiten texto.
+ */
+/** Nombres en minúsculas: según el analizador (navegador, jsdom) `feDropShadow` llega con o sin capitalización. */
+const ALLOWED_ELEMENTS = new Set([
+  "svg", "g", "defs", "marker", "path", "rect", "circle", "ellipse", "line", "polygon", "polyline", "text", "tspan",
+  "title", "desc", "style", "symbol", "use", "linearGradient", "radialGradient", "stop", "clipPath", "mask", "pattern",
+  "filter", "feDropShadow", "feGaussianBlur", "feOffset", "feBlend", "feComposite", "feFlood", "feMerge", "feMergeNode",
+].map((name) => name.toLowerCase()));
+
 /**
  * Estilos con carga externa o ejecución: `@import`, `javascript:`, `expression(`, `url()` que no sea un `#id` y
  * TODA función de CSS que pueda cargar un recurso (`image-set`, `src`, `image`, `cross-fade`, `element`, con o sin
  * prefijo `-webkit-`): el dibujo de Mermaid no usa ninguna. El nombre debe ir pegado a `(` y no seguir a una letra o
  * guion (`background-image:` y `src-x:` no son funciones).
  */
-const FORBIDDEN_CSS = /@import|javascript:|expression\(|url\(\s*['"]?\s*(?!#)|(?<![\w-])(?:-webkit-)?(?:image-set|src|image|cross-fade|element)\(/i;
+const FORBIDDEN_CSS = /@import|javascript:|expression\(|url\(\s*['"]?\s*(?!#)|(?<![\w-])(?:-[a-z]+-)?(?:image-set|src|image|cross-fade|element)\(/i;
+
+/** Toda `url(...)` de un valor debe apuntar a `#id` local (marcadores, degradados, recortes de Mermaid); nada externo. */
+const hasExternalUrl = (value: string): boolean =>
+  [...decodeCssEscapes(value).matchAll(/url\(\s*(['"]?)\s*([^)'"]*)/gi)].some((match) => !match[2].startsWith("#"));
 
 /** El CSS con sus escapes resueltos (`u\72l(` = `url(`): la comprobación se hace sobre lo que el navegador entendería. */
 const decodeCssEscapes = (css: string): string =>
@@ -137,14 +153,18 @@ export function verifySvg(markup: string): SVGSVGElement {
     throw unsafe("algo que no es un dibujo SVG");
   }
   for (const element of [root, ...root.querySelectorAll("*")]) {
-    const name = element.localName.toLowerCase();
-    if (FORBIDDEN_ELEMENTS.has(name)) throw unsafe(`el elemento <${name}>`);
-    if (name === "style" && forbiddenCss(element.textContent ?? "")) throw unsafe("estilos con carga externa");
+    // Sólo elementos SVG de la lista blanca: un hijo HTML (cualquier `namespaceURI` distinto) o un nombre desconocido
+    // rechaza el dibujo. El nombre se compara en minúsculas.
+    if (element.namespaceURI !== SVG_NS || !ALLOWED_ELEMENTS.has(element.localName.toLowerCase())) throw unsafe(`el elemento <${element.localName}>`);
+    if (["title", "desc"].includes(element.localName) && element.children.length > 0) throw unsafe(`marcado dentro de <${element.localName}>`);
+    if (element.localName === "style" && forbiddenCss(element.textContent ?? "")) throw unsafe("estilos con carga externa");
     for (const attribute of element.attributes) {
       const attr = attribute.name.toLowerCase();
       if (attr.startsWith("on")) throw unsafe(`el atributo ${attr}`);
       // Sólo referencias internas (`#id`, p. ej. un marcador de flecha): nada que navegue o cargue de fuera.
       if (attr.endsWith("href") && !attribute.value.trim().startsWith("#")) throw unsafe("un enlace");
+      // `url()` puede ir en CUALQUIER atributo de presentación (`fill`, `stroke`, `clip-path`, `filter`…), no sólo en `style`.
+      if (hasExternalUrl(attribute.value)) throw unsafe("una referencia externa (url)");
       if (attr === "style" && forbiddenCss(attribute.value)) throw unsafe("estilos con carga externa");
     }
   }
