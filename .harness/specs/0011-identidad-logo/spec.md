@@ -33,7 +33,7 @@ covers:                  # fijado en PLAN-0011 §9 (archivos con dueño anterior
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-27, nota: "RF-017 = sí (login con logo + «Synapse», reglas de RF-012/RF-014); D-5…D-14 aprobadas tal cual; degradado opción B (lineal continuo userSpaceOnUse por capa, sin cortes) — D-15" }
-  fase_2: pendiente       #                                          (tras Plan)
+  fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-27, nota: "P-1…P-14 aceptados tal cual; ajuste R-2: en el favicon oscuro la capa trasera termina en #0b809f (los SVG de cabecera no cambian)" }
 actualizado: 2026-10-27
 ---
 
@@ -43,7 +43,7 @@ actualizado: 2026-10-27
 > re-preguntan. **GATE 1 aprobado el 2026-10-27** por AIRA en nombre de Carlos (autoridad
 > delegada): RF-017 cerrado con *sí*, D-5…D-14 aprobadas tal cual y degradado "opción B"
 > (D-15). El "cómo" (un SVG o dos variantes, inline o `<img>`, herramienta de optimización)
-> lo fija PLAN-0011.
+> lo fija PLAN-0011. **GATE 2 aprobado el 2026-10-27** (P-1…P-14 y ajuste R-2).
 
 ## 1. Contexto del dominio
 - **Problema:** Synapse no tiene identidad visual propia: no hay favicon (el navegador pide
@@ -157,8 +157,11 @@ actualizado: 2026-10-27
 - **RF-014** — MIENTRAS el tema activo es claro u oscuro, cada extremo del degradado del
   logo de cabecera DEBE tener contraste ≥ 3:1 contra el `--bg-secondary` de ese tema.
 - **RF-015** — La silueta del logo recoloreado DEBE ser la del original. Rasterizados
-  ambos a 256 px tras el recorte de RF-011, sus máscaras de opacidad DEBEN diferir en
-  ≤ 1 % de los píxeles.
+  ambos a 256 px tras el recorte de RF-011, sus máscaras de opacidad (píxel en la máscara
+  si su alfa es **> 0**) DEBEN diferir en ≤ 1 % de los píxeles. *(Enmienda del GATE 2,
+  PLAN-0011 P-1: con alfa ≥ 128 el apilado de capas antialiaseadas del original sube el alfa
+  del borde y hasta la geometría exacta difiere 0,966 %; con alfa > 0, 0,027 % exacta y
+  0,174 % optimizada.)*
 - **RF-016** — CUANDO el usuario cambia de tema con `ThemeToggle`, el logo de cabecera y
   el `<meta name="theme-color">` DEBEN pasar a los valores del tema nuevo sin recargar la
   página. Al cargar la página, `theme-color` DEBE valer el `--bg-secondary` del tema

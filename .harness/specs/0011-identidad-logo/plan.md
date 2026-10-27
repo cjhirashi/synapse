@@ -2,9 +2,9 @@
 id: PLAN-0011
 tipo: plan
 feature: 0011-identidad-logo
-estado: draft
+estado: approved
 aprobaciones:
-  fase_2: pendiente
+  fase_2: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-27, nota: "P-1…P-14 aceptados tal cual; ajuste R-2: en el favicon oscuro la capa trasera termina en #0b809f (los SVG de cabecera no cambian)" }
 actualizado: 2026-10-27
 ---
 
@@ -13,7 +13,9 @@ actualizado: 2026-10-27
 > El *cómo* de SPEC-0011 en el patrón por-capas con puertos (ADR-001). Es una feature **de
 > vestido y de archivos estáticos**: sin núcleo de negocio nuevo, sin API, sin `contracts/`.
 > Las decisiones de producto de spec §6 (D1–D4, D-5…D-16) no se reabren. Lo que este plan
-> decide y necesita el visto bueno del GATE 2 está en §7 (**P-1…P-14**).
+> decide está en §7 (**P-1…P-14**). **GATE 2 aprobado el 2026-10-27** por AIRA en nombre de
+> Carlos: P-1…P-14 tal cual y el ajuste de R-2 (la trasera del favicon oscuro termina en
+> `#0b809f`, 3,53:1 vs `#202124`; los SVG de cabecera no cambian).
 >
 > **Entrada ya producida (commit `6b64875`, no se rehace):** `frontend/public/logo-synapse-dark.svg`
 > y `logo-synapse-light.svg` (opción B, D-15), generados con
@@ -108,7 +110,7 @@ actualizado: 2026-10-27
 | Frontera | Para qué | Implementación concreta |
 |---|---|---|
 | `GET /logo-synapse-dark.svg`, `/logo-synapse-light.svg` | logo de cabecera y login | ya en `public/` (6b64875); `image/svg+xml` |
-| `GET /favicon.svg` | favicon moderno (RF-001, RF-007) | **un** SVG con ambas paletas: por defecto la clara; `@media (prefers-color-scheme: dark)` cambia `stop-color` a la oscura (P-3) |
+| `GET /favicon.svg` | favicon moderno (RF-001, RF-007) | **un** SVG con ambas paletas: por defecto la clara; `@media (prefers-color-scheme: dark)` cambia `stop-color` a `favicon-dark` (P-3, R-2) |
 | `GET /favicon.ico` | respaldo y petición implícita (RF-002, D-12) | ICO con entradas PNG de 16, 32 y 48 px (paleta neutra N, P-4) |
 | `GET /apple-touch-icon.png` | iOS (RF-003) | 180×180 opaco: fondo `#12121a` (D-10), paleta oscura, logo al 72 % del lado (P-9). En la raíz porque iOS también lo pide sin declarar |
 | `GET /icons/icon-192.png`, `/icons/icon-512.png` | manifest `purpose: "any"` (RF-004) | transparentes, paleta N, silueta a lo ancho del lienzo |
@@ -133,7 +135,7 @@ con Pillow.
 | Archivo | Qué hace |
 |---|---|
 | `source/logo-synapse.original.svg` | el original de Carlos, versionado (P-7) |
-| `palettes.json` | las paletas `dark`, `light` y `neutral` (4 paradas cada una): **un canon** que leen el generador y los tests |
+| `palettes.json` | las paletas `dark`, `light`, `favicon-dark` (R-2) y `neutral` (4 paradas cada una): **un canon** que leen el generador y los tests |
 | `build_logo.py` | movido desde `reference/build/` y ampliado: además de `dark`/`light`, emite `favicon` (ambas paletas, por clase de `<stop>` y `@media`) y `neutral` (sólo para rasterizar). Lee `palettes.json` |
 | `svgo.config.mjs` | movido desde `reference/build/`; `floatPrecision: 1`, `preset-default` |
 | `rasterize.mjs` | en el contenedor Playwright (`playwright-core` 1.56.0): pinta cada SVG en Chromium a su tamaño exacto (16/32/48 transparentes; 180 y 512 *maskable* sobre `#12121a` al 72 %; 192/512 *any* transparentes) y guarda PNG sin pérdida en un directorio temporal |
@@ -309,9 +311,10 @@ Medidos sobre `frontend/public/` (Vite lo copia tal cual a `dist/`; un test comp
 - **R-1 · Favicon y cambio de esquema en vivo.** Algunos Chromium no repintan el favicon hasta
   recargar cuando cambia el esquema del SO. RF-007 se cumple en cada esquema; el retraso es del
   navegador. Aceptado.
-- **R-2 · Margen mínimo en el favicon oscuro.** `#0e7490` vs `#202124` = 3,005:1. Pasa, pero un
-  cambio de paleta en el futuro lo rompe; el test lo detecta. Si Carlos quiere margen, la
-  trasera oscura del favicon puede terminar en `#0b809f` (3,53) sin tocar la cabecera.
+- **R-2 · Margen mínimo en el favicon oscuro — resuelto en el GATE 2.** `#0e7490` vs `#202124`
+  daba 3,005:1. La regla oscura del favicon usa una paleta propia `favicon-dark` en
+  `palettes.json`: delantera `#22d3ee` → `#0891b2`, trasera `#0891b2` → **`#0b809f`** (3,53).
+  La paleta `dark` de la cabecera, los PNG opacos y los dos SVG de 6b64875 no cambian.
 - **R-3 · Bandas por cuantización** en el 512 *any*: error medido bajo, pero se valida con las
   capturas, no sólo con números.
 - **R-4 · svgo y la regla `@media`.** `preset-default` (`minifyStyles`/`inlineStyles`) podría

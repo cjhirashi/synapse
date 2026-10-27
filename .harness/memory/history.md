@@ -1,5 +1,11 @@
 # History — Synapse
 
+## [2026-10-27] SPEC-0011 · GATE 2 aprobado y Fase 3 (Tasks)
+- **Fase alcanzada:** GATE 2 aprobado por AIRA en nombre de Carlos (2026-10-27): P-1…P-14 tal cual + ajuste R-2 (paleta `favicon-dark`: la trasera del favicon oscuro termina en `#0b809f`, 3,53:1 vs `#202124`; cabecera sin cambios). RF-015 enmendado a máscara alfa > 0 (P-1). `plan.md` `approved`; `tasks.md` en borrador con T-000…T-045 (46 tareas), cobertura RF-001…RF-020, RNF-001/002 y 5 filas `[doc]`.
+- **Orden:** re-anclaje 0007/0009 + línea base B-0 → `scripts/brand` y SVG → cabecera y login (revisión visual temprana T-023) → `theme-color` → iconos y manifest → `forced-colors`/RF-020 → e2e de fidelidad → regresión → docs. Servicios propios: CouchDB `synapse-0011-couchdb` :15985, backend :8011.
+- **Rebotes:** 0. **Pausa:** no. **Drift:** no. **Gate:** verde (2 avisos de presupuesto). **Docs:** spec/plan/tasks de 0011.
+- **Próximo paso:** Fase 4 desde T-000 (implementador).
+
 ## [2026-10-27] SPEC-0011 · Identidad de marca — GATE 1 aprobado y Fase 2 (Plan) en borrador
 - **Fase alcanzada:** GATE 1 registrado (`estado: approved`, `fase_1` por AIRA en nombre de Carlos, 2026-10-27): RF-017 = sí (login con logo), D-5…D-14 aprobadas, degradado opción B (D-15), login (D-16); marcadores abiertos: 0. `plan.md` en borrador, `fase_2: pendiente`. `covers` fijado (código, tests, scripts de assets y README).
 - **Plan:** logo como `<span aria-hidden>` con `background-image` por `[data-theme]` (las dos variantes de 6b64875); favicon SVG único con `@media (prefers-color-scheme)`; paleta neutra N para rasters transparentes; tubería reproducible en `frontend/scripts/brand/` (Chromium del contenedor Playwright 1.56.0 + Pillow, cuantización a 256 colores); `theme-color` en `applyResolvedTheme` de `useTheme`. Decisiones P-1…P-14 para el GATE 2 (P-1: máscara de RF-015 con alfa > 0).
