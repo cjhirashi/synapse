@@ -60,12 +60,18 @@ def _frontmatter(case: dict):
             target = target[step]
         target[last] = float(case["nonfinite"]["token"])
         return value
+    if "depth" in case:
+        # Anidamiento generado (el JSON de la batería no puede llevar miles de niveles): raíz = nivel 1.
+        value: dict = {}
+        for _ in range(case["depth"] - 1):
+            value = {"k": value}
+        return value
     if "build" not in case:
         return case["input"]
     return {case["build"]["key"]: _built(case)}
 
 
-@pytest.mark.parametrize("case", CASES["frontmatter"], ids=lambda c: json.dumps(c["input"])[:40])
+@pytest.mark.parametrize("case", CASES["frontmatter"], ids=lambda c: json.dumps(c["input"])[:40] + (f"depth{c['depth']}" if "depth" in c else ""))
 def test_rf_005_check_frontmatter_matches_the_battery(case):
     expected = None if case["valid"] else "validation-error:frontmatter"
     assert note_rules.check_frontmatter(_frontmatter(case)) == expected

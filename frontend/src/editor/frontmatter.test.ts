@@ -9,7 +9,7 @@ import { classifyLegacy, composeCode, parseFrontmatterYaml, splitFrontmatter, st
 interface Cases {
   split: Array<{ text: string; yaml: string | null; body: string }>;
   compose: Array<{ frontmatter: Record<string, unknown>; body: string; text: string }>;
-  parse: Array<{ yaml: string; value?: unknown; error?: string; line?: number }>;
+  parse: Array<{ yaml?: string; depth?: number; value?: unknown; error?: string; line?: number }>;
   roundtrip: Array<Record<string, unknown>>;
   legacy: Array<{ frontmatter: Record<string, unknown>; content: string; kind: string }>;
 }
@@ -34,17 +34,38 @@ describe("frontmatter · compose (RF-014)", () => {
 });
 
 describe("frontmatter · parse (RF-016…RF-018)", () => {
+  /** YAML generado: un mapa anidado `depth` niveles (la raíz cuenta como 1). */
+  const nestedYaml = (depth: number) => Array.from({ length: depth - 1 }, (_, i) => `${"  ".repeat(i)}k:\n`).join("") + `${"  ".repeat(depth - 1)}x: 1\n`;
   for (const [i, c] of cases.parse.entries()) {
-    it(`caso ${i}: ${JSON.stringify(c.yaml).slice(0, 40)}`, () => {
-      const result = parseFrontmatterYaml(c.yaml);
+    const source = c.depth !== undefined ? nestedYaml(c.depth) : (c.yaml as string);
+    it(`caso ${i}: ${c.depth !== undefined ? `profundidad ${c.depth}` : JSON.stringify(c.yaml).slice(0, 40)}`, () => {
+      const result = parseFrontmatterYaml(source);
       if (c.error !== undefined) {
         expect(result).toHaveProperty("error", c.error);
         if (c.line !== undefined) expect(result).toHaveProperty("line", c.line);
+      } else if (c.value === "generated") {
+        expect(result).toHaveProperty("value");
       } else {
         expect(result).toEqual({ value: c.value });
+        // Las claves del YAML son propias del objeto, también `__proto__` (nada cambia el prototipo).
+        const value = (result as { value: Record<string, unknown> }).value;
+        for (const key of Object.keys(c.value as object)) expect(Object.hasOwn(value, key), key).toBe(true);
+        expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
       }
     });
   }
+});
+
+describe("frontmatter · claves especiales (Converge 1, M2)", () => {
+  it("una clave `__proto__` sobrevive a la ida y vuelta y no toca el prototipo", () => {
+    const parsed = parseFrontmatterYaml("a: 1\n__proto__:\n  x: 1\n");
+    const value = (parsed as { value: Record<string, unknown> }).value;
+    expect(Object.keys(value)).toEqual(["a", "__proto__"]);
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(({} as Record<string, unknown>).x).toBeUndefined();
+    const again = parseFrontmatterYaml(stringifyFrontmatter(value));
+    expect(JSON.stringify((again as { value: unknown }).value)).toBe('{"a":1,"__proto__":{"x":1}}');
+  });
 });
 
 describe("frontmatter · roundtrip (RF-016)", () => {

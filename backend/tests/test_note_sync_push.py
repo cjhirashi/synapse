@@ -113,6 +113,14 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
 
 # --- Campos (RF-005, RF-016) ---
 
+def _nested(depth: int) -> dict:
+    """Objeto anidado `depth` niveles (el raíz cuenta como 1)."""
+    value: dict = {}
+    for _ in range(depth - 1):
+        value = {"k": value}
+    return value
+
+
 @pytest.mark.parametrize(("change", "reason"), [
     ({"path": ""}, "validation-error:path"),
     ({"path": "a//b.md"}, "validation-error:path"),
@@ -135,6 +143,11 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
     ({"frontmatter": "x"}, "validation-error:frontmatter"),
     ({"frontmatter": None}, "validation-error:frontmatter"),
     ({"frontmatter": {"k": "a" * 65536}}, "validation-error:frontmatter"),
+    # SPEC-0010 (Converge 1, H1): tope de profundidad, también donde `json.dumps` reventaría con RecursionError.
+    ({"frontmatter": _nested(33)}, "validation-error:frontmatter"),
+    ({"frontmatter": _nested(400)}, "validation-error:frontmatter"),
+    ({"frontmatter": _nested(950)}, "validation-error:frontmatter"),
+    ({"path": "X/.\uff4d\uff44"}, "validation-error:path"),  # L4: `.ｍｄ` (anchos completos) = `.md` por NFKC
 ])
 async def test_rf_016_note_fields_follow_the_rules_of_note_rules(push, couch, vault, change, reason):
     doc = _note(**change)
