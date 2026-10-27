@@ -1,5 +1,5 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
@@ -31,6 +31,7 @@ beforeAll(() => import("../editor/NoteEditor"), 30_000);
 
 afterEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   parseFakes.cache.get.mockReturnValue(null);
   parseFakes.cache.pending.mockReturnValue(null);
   parseFakes.scheduler.prioritize.mockClear();
@@ -344,4 +345,148 @@ test("precalc: con el parseo en vuelo, el editor espera esa promesa en vez de re
   await screen.findByRole("heading", { level: 2, name: "Hola" });
   await waitFor(() => expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit));
   mark.mockRestore();
+});
+
+// --- SPEC-0010 RF-056…RF-060: historial de notas abiertas (Atrás/Adelante) -----------------------------------
+
+/** Un espacio de trabajo con tres notas (Alfa, Beta, Gamma) y la bóveda montada. */
+async function historySetup(names = ["Alfa", "Beta", "Gamma"]) {
+  const { value, vault } = await setup();
+  const notes = [];
+  for (const name of names) notes.push(await value.notes.create(vault.id, name));
+  const utils = render(tree(value, `/vaults/${vault.id}`));
+  return { value, vault, notes, ...utils };
+}
+
+/** Abre una nota del árbol (en lectura) y espera a que su encabezado sea el actual. */
+async function openFromTree(name: string) {
+  await userEvent.click(await screen.findByRole("treeitem", { name }));
+  expect(await screen.findByRole("heading", { level: 2, name })).toBeInTheDocument();
+}
+
+const back = () => screen.getByRole("button", { name: "Atrás" });
+const forward = () => screen.getByRole("button", { name: "Adelante" });
+
+test("historial: abrir notas habilita Atrás; Atrás y Adelante navegan y se deshabilitan en los extremos (RF-056, RF-057)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeDisabled();
+  await openFromTree("Beta");
+  expect(back()).toBeEnabled();
+  expect(forward()).toBeDisabled();
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeEnabled();
+  await userEvent.click(forward());
+  expect(await screen.findByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(forward()).toBeDisabled();
+});
+
+test("historial: moverse atrás/adelante no añade entradas y abrir otra nota descarta las de «adelante» (RF-057)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(back());
+  await screen.findByRole("heading", { level: 2, name: "Alfa" });
+  await openFromTree("Gamma");
+  expect(forward()).toBeDisabled();
+  await userEvent.click(back());
+  // La entrada «Beta» se descartó: tras Gamma, atrás va a Alfa.
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+});
+
+test("historial: una nota borrada se salta (RF-058)", async () => {
+  const { value, notes } = await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await openFromTree("Gamma");
+  const beta = await value.notes.get(notes[1].id);
+  await value.notes.softDelete(beta.id, beta.rev);
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+});
+
+test("historial: una nota renombrada sigue siendo navegable por su id (RF-058)", async () => {
+  const { value, notes } = await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  const alfa = await value.notes.get(notes[0].id);
+  await value.notes.rename(alfa.id, "Alfa renombrada.md", alfa.rev);
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa renombrada" })).toBeInTheDocument();
+});
+
+test("historial: con borrador sucio Atrás muestra el aviso y «Seguir editando» conserva nota, borrador y posición (RF-060)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  const view = EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!;
+  act(() => view.dispatch({ changes: { from: 0, insert: "borrador" } }));
+  await screen.findByText("Cambios sin guardar");
+
+  await userEvent.click(back());
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(screen.getByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(view.state.doc.toString()).toContain("borrador");
+  expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+  // La posición no se movió: Atrás sigue disponible, Adelante no, y el foco vuelve al botón.
+  expect(back()).toBeEnabled();
+  expect(forward()).toBeDisabled();
+  await waitFor(() => expect(back()).toHaveFocus());
+  // «Descartar y abrir» sí navega.
+  await userEvent.click(back());
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Descartar y abrir" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(forward()).toBeEnabled();
+});
+
+test("historial: Alt+← y Alt+→ fuera de un editor navegan y evitan la navegación del navegador (RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  const tree = screen.getByRole("tree", { name: "Notas" });
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft", altKey: true })).toBe(false);
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(fireEvent.keyDown(tree, { key: "ArrowRight", altKey: true })).toBe(false);
+  expect(await screen.findByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  // Sin Alt, o con otro modificador, no hace nada.
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft" })).toBe(true);
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft", altKey: true, ctrlKey: true })).toBe(true);
+});
+
+test("historial: Alt+← dentro de un editor en edición no navega (RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  const content = document.querySelector(".cm-content") as HTMLElement;
+  // CodeMirror usa Alt+← para moverse por palabras: el atajo del historial no interviene.
+  fireEvent.keyDown(content, { key: "ArrowLeft", altKey: true });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(back()).toBeEnabled();
+});
+
+test("historial: se conserva al volver a montar con el mismo sessionStorage y es por bóveda (RF-057)", async () => {
+  const { value, vault, unmount } = await historySetup(["Alfa", "Beta"]);
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  unmount();
+  // Misma pestaña (sessionStorage): al reabrir Beta el historial recuerda a Alfa.
+  render(tree(value, `/vaults/${vault.id}`));
+  await openFromTree("Beta");
+  expect(back()).toBeEnabled();
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  // Otra bóveda, otro historial.
+  expect(sessionStorage.getItem(`synapse:note-history:${vault.id}`)).not.toBeNull();
+  expect(Object.keys(sessionStorage).filter((key) => key.startsWith("synapse:note-history:"))).toEqual([`synapse:note-history:${vault.id}`]);
 });
