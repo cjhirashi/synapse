@@ -51,6 +51,12 @@ def test_rf_007_path_pattern_plus_maxlength_match_check_path_over_the_battery():
             normalized.encode("utf-8")
         except UnicodeEncodeError:
             continue  # sustitutos sueltos: `check_path` los rechaza aparte; un patrón regex no lo expresa
+        last = normalized.split("/")[-1]
+        if note_rules.path_key(last) == ".md" and last.casefold() != ".md":
+            # `.ｍｄ`/`．md` (anchos completos): el servidor las equipara a `.md` por NFKC (L4, Converge 1); un patrón
+            # regex no puede expresar NFKC, así que el esquema sólo cubre la forma literal y la regla lo completa.
+            assert note_rules.check_path(normalized) == "validation-error:path"
+            continue
         by_schema = len(normalized) <= max_len and re.match(pattern, normalized) is not None
         by_rule = note_rules.check_path(normalized) is None
         assert by_schema == by_rule, (repr(normalized), by_schema, by_rule)

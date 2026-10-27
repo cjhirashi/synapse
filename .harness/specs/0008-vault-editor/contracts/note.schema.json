@@ -37,7 +37,7 @@
     },
     "path": {
       "type": "string",
-      "description": "Ruta con carpetas separadas por `/` (p. ej. `Carpeta/Nota.md`). 1-300 puntos de código; sin caracteres de control (`Cc`); sin segmentos vacíos (ni `/` inicial o final, ni `//`); el último segmento (el nombre del archivo) no puede ser sólo `.md` (sin mayúsculas: una nota sin nombre, SPEC-0010 RF-007). Normalizada: cada segmento sin espacios a los lados (`White_Space` de Unicode, el mismo `strip` que pydantic-core); si no, `not-normalized:path`. Única entre notas vivas y activas de la bóveda por `NFKC + casefold` (reserva `note-path:{vault_id}:{clave}`, sólo en el servidor); si no, `note-path-taken` (RF-013).",
+      "description": "Ruta con carpetas separadas por `/` (p. ej. `Carpeta/Nota.md`). 1-300 puntos de código; sin caracteres de control (`Cc`); sin segmentos vacíos (ni `/` inicial o final, ni `//`); el último segmento (el nombre del archivo) no puede ser sólo `.md` (sin mayúsculas: una nota sin nombre, SPEC-0010 RF-007; el servidor lo compara por NFKC + casefold, así que `.ｍｄ` en anchos completos también se rechaza; un patrón regex no expresa NFKC y sólo cubre la forma literal). Normalizada: cada segmento sin espacios a los lados (`White_Space` de Unicode, el mismo `strip` que pydantic-core); si no, `not-normalized:path`. Única entre notas vivas y activas de la bóveda por `NFKC + casefold` (reserva `note-path:{vault_id}:{clave}`, sólo en el servidor); si no, `note-path-taken` (RF-013).",
       "minLength": 1,
       "maxLength": 300,
       "pattern": "^(?!/)(?!.*//)(?!.*/$)(?!(?:.*/)?\\.[mM][dD]$)[^\\u0000-\\u001F\\u007F-\\u009F]+$",

@@ -11,6 +11,7 @@ import unicodedata
 PATH_MAX = 300                          # puntos de código, tras normalizar
 CONTENT_MAX_BYTES = 2 * 1024 * 1024     # bytes UTF-8 (RF-016)
 FRONTMATTER_MAX_BYTES = 64 * 1024       # JSON compacto en UTF-8 (PLAN-0008 P-4)
+FRONTMATTER_MAX_DEPTH = 32                # niveles de anidamiento (raíz = 1; SPEC-0010 Converge 1, H1)
 
 # Claves de una revisión viva de nota (contrato `note.schema.json`). `frontmatter` es la
 # única opcional (spec §3).
@@ -59,7 +60,8 @@ def check_path(value: object) -> str | None:
         1 <= len(normalized) <= PATH_MAX
         and all(normalized.split("/"))
         and not any(unicodedata.category(char) == "Cc" for char in normalized)
-        and normalized.split("/")[-1].casefold() != ".md"
+        # Misma equivalencia que `path_key` (NFKC + casefold): `.ｍｄ` (anchos completos) es `.md`.
+        and path_key(normalized.split("/")[-1]) != ".md"
     )
     if not valid:
         return "validation-error:path"
@@ -86,13 +88,36 @@ def check_content(value: object) -> str | None:
     return None
 
 
+def _nesting_depth_exceeds(value: object, limit: int) -> bool:
+    """¿Algún valor anida más de `limit` niveles (el objeto raíz cuenta como 1)?
+
+    Recorrido iterativo: no depende de la pila de Python (ni de capturar `RecursionError`), que además
+    cambia con la versión del intérprete y con la profundidad a la que se llame.
+    """
+    stack = [(value, 1)]
+    while stack:
+        node, depth = stack.pop()
+        children = node.values() if isinstance(node, dict) else node if isinstance(node, list) else ()
+        for child in children:
+            if isinstance(child, (dict, list)):
+                if depth + 1 > limit:
+                    return True
+                stack.append((child, depth + 1))
+    return False
+
+
 def check_frontmatter(value: object) -> str | None:
-    """`frontmatter`: objeto JSON cuya serialización compacta pesa ≤ 64 KiB en UTF-8.
+    """`frontmatter`: objeto JSON de a lo sumo 32 niveles de profundidad cuya serialización compacta
+    pesa ≤ 64 KiB en UTF-8.
+
+    El tope de profundidad (SPEC-0010, Converge 1) se comprueba **antes** de serializar: `json.loads`
+    admite cientos de niveles pero `json.dumps` revienta con `RecursionError` cerca de los 950, y con
+    400–940 se almacenaba sin límite alguno.
 
     Sólo valores del JSON estándar: `NaN`, `Infinity` y `1e999` (que Python lee como infinito)
     no se pueden serializar y CouchDB los rechazaría al reenviar el lote (VB-1).
     """
-    if not isinstance(value, dict):
+    if not isinstance(value, dict) or _nesting_depth_exceeds(value, FRONTMATTER_MAX_DEPTH):
         return "validation-error:frontmatter"
     try:
         # `allow_nan=False` lanza `ValueError` ante un número no finito.
