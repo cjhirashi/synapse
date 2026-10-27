@@ -269,16 +269,29 @@ def test_rf_013_a_path_that_expands_under_nfkc_is_stored_and_stays_unique(vault,
     assert push(ready_admin, [second]).json() == [rejection(second, "note-path-taken")]
 
 
-# --- SPEC-0010 Converge 1 (H1): el tope de profundidad del frontmatter responde con el rechazo del contrato ---
+# --- SPEC-0010 Converge 1/2 (H1): el tope de profundidad del frontmatter responde con el rechazo del contrato ---
 
-@pytest.mark.parametrize("depth", [33, 400, 950])
-def test_rf_005_deeply_nested_frontmatter_is_rejected_not_a_500(vault, ready_admin, depth):
-    # Antes: con ~950 niveles `json.loads` lo aceptaba y `json.dumps` reventaba con RecursionError → 500 sin
-    # problem+json; con 400–940 se almacenaba sin tope. Ahora el rechazo es el de siempre.
-    frontmatter: dict = {}
-    for _ in range(depth - 1):
-        frontmatter = {"k": frontmatter}
-    note = note_doc(vault["id"], frontmatter=frontmatter)
-    res = push(ready_admin, [note])
+def _push_deep(client, note: dict, depth: int):
+    """Empuja `note` con un frontmatter de `depth` niveles, el cuerpo YA serializado (con `json.dumps` un dict de 950
+    niveles lanza `RecursionError` en el propio cliente de pruebas, Python 3.11)."""
+    marker = "__DEEP__"
+    text = json.dumps({"docs": [{**note, "frontmatter": marker}], "new_edits": False})
+    nested = '{"k":' * (depth - 1) + "{}" + "}" * (depth - 1)
+    return bulk_docs_bytes(client, text.replace(f'"{marker}"', nested).encode())
+
+
+@pytest.mark.parametrize("depth", [33, 61])
+def test_rf_005_deeply_nested_frontmatter_is_rejected_by_the_note_rule(vault, ready_admin, depth):
+    # Entre 33 niveles y lo que cabe bajo el tope general (64 − 3 de `{docs:[{…}]}`): el rechazo de siempre.
+    note = note_doc(vault["id"])
+    res = _push_deep(ready_admin, note, depth)
     assert res.status_code == 201
     assert res.json() == [rejection(note, "validation-error:frontmatter")]
+
+
+@pytest.mark.parametrize("depth", [62, 400, 950])
+def test_rf_005_a_frontmatter_over_the_general_cap_is_a_422_of_the_decoder(vault, ready_admin, depth):
+    # Con 62 niveles o más el CUERPO supera el tope general de `/sync` (64): lo rechaza el decodificador con el 422
+    # `validation-error` del contrato, no `validation-error:frontmatter` (es un rechazo de la petición entera).
+    note = note_doc(vault["id"])
+    assert_problem(_push_deep(ready_admin, note, depth), 422, "validation-error")
