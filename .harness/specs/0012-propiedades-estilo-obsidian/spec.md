@@ -2,7 +2,7 @@
 id: SPEC-0012
 tipo: spec
 feature: 0012-propiedades-estilo-obsidian
-estado: draft
+estado: approved
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: df0e255   # feature/sprint-1-auth con 0010 y 0011 fusionadas
 anchor_mode: strict
@@ -16,7 +16,7 @@ covers:                  # provisional; lo fija la Fase 2
   - frontend/e2e/properties*
 # --- aprobaciones humanas ---
 aprobaciones:
-  fase_1: pendiente
+  fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-28, nota: "NC-1 = sí (icono de calendario sólo presentación, sin tipo fecha); D-3 y D-4 aprobadas tal cual" }
   fase_2: pendiente
 actualizado: 2026-10-28
 ---
@@ -89,10 +89,12 @@ SPEC-0010 y `note.schema.json`.
 | D1 *(AIRA/Carlos)*: presentación estilo Obsidian en lectura y edición | Petición explícita con referencia | Mantener el formulario | — |
 | D2 *(AIRA/Carlos)*: mantener funcionalidad (añadir/quitar/tipo) | Petición explícita | Recortar funciones | — |
 | D-3: el tipo se elige desde el icono (menú), como en Obsidian | Quita el selector siempre visible sin perder la función | Selector visible por fila | — |
-| D-4: sin tipo «fecha» nuevo | Cambiaría el modelo de datos y los contratos de 0008/0010 | Añadir tipo fecha | NC-1 |
+| D-4: sin tipo «fecha» nuevo | Cambiaría el modelo de datos y los contratos de 0008/0010 | Añadir tipo fecha | — |
+| D-5 *(AIRA, cierra NC-1)*: textos con forma de fecha ISO (AAAA-MM-DD) se muestran con icono de calendario, sólo presentación; el dato sigue siendo texto y se edita como texto; sin icono de enlace | Parecido a Obsidian sin tocar el modelo | Tipo fecha real; icono de enlace sin equivalente | — |
 
 ## 7. Marcadores abiertos
-- **NC-1** — `[NEEDS CLARIFICATION: ¿los textos con forma de fecha ISO (AAAA-MM-DD) se
-  muestran con icono de calendario?]` *Propuesta:* sí, sólo presentación (el dato sigue
-  siendo texto y se edita como texto); sin el icono de enlace de Obsidian, que no tiene
-  equivalente en Synapse.
+Ninguno (NC-1 cerrado por D-5, GATE 1 2026-10-28).
+
+- **RF-010** — SI el valor de una propiedad de tipo texto tiene forma de fecha ISO
+  (AAAA-MM-DD, fecha válida) ENTONCES el sistema DEBE mostrar icono de calendario en la
+  fila (lectura y edición) sin cambiar el tipo ni el valor guardado (D-5).
