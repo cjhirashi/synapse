@@ -161,11 +161,13 @@ interface MermaidMount {
   renderer?: MermaidRenderer;
   columnWidth?: number;
   panZoom?: CodeBlockDeps["panZoom"];
+  visibility?: CodeBlockDeps["visibility"];
+  idle?: CodeBlockDeps["idle"];
 }
 
-function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600, panZoom }: MermaidMount = {}): NodeView {
+function mountMermaid({ text = "flowchart TD\n  A --> B", editable = false, renderer, columnWidth = 600, panZoom, visibility, idle }: MermaidMount = {}): NodeView {
   const node = schema.nodes.code_block.create({ language: "mermaid" }, text ? schema.text(text) : undefined);
-  const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth, panZoom };
+  const deps: CodeBlockDeps = { mermaid: renderer, columnWidth: () => columnWidth, panZoom, visibility, idle };
   const view = codeBlockViewFactory(deps)(node, { editable } as EditorView, () => 0, [], {} as never);
   // `toBeVisible` exige el nodo dentro del documento.
   document.body.append(view.dom);
@@ -459,6 +461,110 @@ describe("codeBlockView · Mermaid", () => {
       await flush();
       expect(first.destroy).toHaveBeenCalledTimes(1);
       expect(second.destroy).not.toHaveBeenCalled();
+    });
+  });
+
+  // RF-046, RNF-001 (PLAN-0010 §11.2): el diagrama no se dibuja hasta que el bloque está cerca del viewport y hay idle.
+  describe("diferido", () => {
+    /** Visibilidad controlable: `set(true/false)` avisa al bloque; cuenta bajas. */
+    function controlledVisibility() {
+      let notify: (visible: boolean) => void = () => {};
+      const off = vi.fn();
+      const visibility: NonNullable<CodeBlockDeps["visibility"]> = (_el, cb) => {
+        notify = cb;
+        return off;
+      };
+      return { visibility, set: (v: boolean) => notify(v), off };
+    }
+    /** Idle controlable: las tareas esperan a `runIdle()`. */
+    function controlledIdle() {
+      const queue: Array<() => void> = [];
+      const cancel = vi.fn();
+      const idle: NonNullable<CodeBlockDeps["idle"]> = (run) => {
+        queue.push(run);
+        return cancel;
+      };
+      return { idle, runIdle: () => queue.splice(0).forEach((run) => run()), cancel, pending: () => queue.length };
+    }
+
+    it("diferido: fuera de pantalla no pide el renderizador y reserva el área con «Dibujando diagrama…»", async () => {
+      const render = vi.fn(async () => fakeSvg(300));
+      const { visibility } = controlledVisibility();
+      const view = mountMermaid({ renderer: { render }, visibility });
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(render).not.toHaveBeenCalled();
+      expect(area(view)).toHaveAttribute("aria-busy", "true");
+      expect(area(view)).toHaveTextContent("Dibujando diagrama…");
+      expect(area(view)).toHaveAttribute("data-pending");
+    });
+
+    it("diferido: al entrar en pantalla espera al idle y entonces dibuja una sola vez", async () => {
+      const render = vi.fn(async () => fakeSvg(300));
+      const vis = controlledVisibility();
+      const idle = controlledIdle();
+      const view = mountMermaid({ renderer: { render }, visibility: vis.visibility, idle: idle.idle });
+      vis.set(true);
+      await flush();
+      expect(render).not.toHaveBeenCalled();
+      expect(idle.pending()).toBe(1);
+      idle.runIdle();
+      await flush();
+      expect(render).toHaveBeenCalledTimes(1);
+      expect(view.dom.querySelector("svg[data-fake]")).not.toBeNull();
+      expect(area(view)).not.toHaveAttribute("data-pending");
+      // Entrar de nuevo no repite un dibujo que ya está al día.
+      vis.set(false);
+      vis.set(true);
+      idle.runIdle();
+      await flush();
+      expect(render).toHaveBeenCalledTimes(1);
+    });
+
+    it("diferido: un cambio de tema con el bloque fuera de pantalla lo deja pendiente hasta que entra", async () => {
+      let theme: () => void = () => {};
+      const render = vi.fn(async () => fakeSvg(300));
+      const renderer: MermaidRenderer = { render, onThemeChange: (listener) => ((theme = listener), () => {}) };
+      const vis = controlledVisibility();
+      mountMermaid({ renderer, visibility: vis.visibility });
+      vis.set(true);
+      await flush();
+      expect(render).toHaveBeenCalledTimes(1);
+      vis.set(false);
+      theme();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(render).toHaveBeenCalledTimes(1);
+      vis.set(true);
+      await flush();
+      expect(render).toHaveBeenCalledTimes(2);
+    });
+
+    it("diferido: salir de pantalla no cancela un dibujo ya pedido y destruir suelta observador e idle", async () => {
+      const render = vi.fn(() => new Promise<SVGSVGElement>(() => {}));
+      const vis = controlledVisibility();
+      const idle = controlledIdle();
+      const view = mountMermaid({ renderer: { render }, visibility: vis.visibility, idle: idle.idle });
+      vis.set(true);
+      idle.runIdle();
+      await flush();
+      vis.set(false);
+      expect(render).toHaveBeenCalledTimes(1);
+      vis.set(true);
+      expect(idle.pending()).toBe(0);
+      view.destroy!();
+      expect(vis.off).toHaveBeenCalledTimes(1);
+    });
+
+    it("diferido: una edición en Visual con el bloque visible sigue el debounce de 400 ms sin esperar al idle", async () => {
+      const render = vi.fn(async () => fakeSvg(300));
+      const vis = controlledVisibility();
+      const idle = controlledIdle();
+      const view = mountMermaid({ editable: true, renderer: { render }, visibility: vis.visibility, idle: idle.idle });
+      vis.set(true);
+      idle.runIdle();
+      await flush();
+      edit(view, "flowchart TD\n  A --> C");
+      await vi.advanceTimersByTimeAsync(400);
+      expect(render).toHaveBeenCalledTimes(2);
     });
   });
 
