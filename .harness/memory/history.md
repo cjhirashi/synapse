@@ -1453,3 +1453,89 @@
 - **T-104 (RNF-002):** `npm run build && test:bundle` OK (entrada 147 156 B ≤157 020; editor 345 709 B ≤357 388; worker 44 989 B ≤47 104; chunks mermaid, svg-pan-zoom, frontmatter y lang-python/sql/yaml/json/shell separados) y V-15 en verde.
 - **T-105 (RNF-003):** `editor/securityGuard.test.ts` (11 pruebas): 0 usos de innerHTML/outerHTML/insertAdjacentHTML/dangerouslySetInnerHTML/createContextualFragment/srcdoc/document.write en el código de producción de `src/` (comentarios ignorados). Mutante físico (no commiteado) `this.label.innerHTML = …` en `codeBlockView.ts` → `× ningún archivo de producción … expected [ 'editor/codeBlockView.ts:160' ] to deeply equal []` (2 failed); revertido con `git checkout`.
 - **Pendiente:** T-106 (validación UX con `ui-ux-pro-max`, ≥ 8 consultas con salida literal) y T-107 (correcciones) los hace el experto-ux-ui lanzado por el coordinador; luego Slice 8.
+
+## [2026-10-27] SPEC-0010 T-106 — validación UX (ejecutada por el implementador; PENDIENTE DE CONFIRMACIÓN del experto-ux-ui)
+- Comandos (salida literal completa en `/tmp/s10/ux/search-0010.txt`; aquí Issue/Do/Severity de cada resultado):
+```
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "color contrast text accessibility" --domain ux -n 3
+- **Issue:** Color Contrast
+- **Do:** Minimum 4.5:1 ratio for normal text
+- **Severity:** High
+- **Issue:** Contrast Readability
+- **Do:** Use darker text on light backgrounds
+- **Severity:** High
+- **Issue:** Color Only
+- **Do:** Use icons/text in addition to color
+- **Severity:** High
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "focus visible keyboard navigation" --domain ux -n 3
+- **Issue:** Keyboard Navigation
+- **Do:** Keep tab order aligned with visual order and test every action without a pointer
+- **Severity:** High
+- **Issue:** Focus States
+- **Do:** Use a visible focus ring on every interactive control, including modal controls
+- **Severity:** High
+- **Issue:** Focus Not Obscured (Enhanced)
+- **Do:** Keep the entire focused component unobscured by author-created content
+- **Severity:** Medium
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "touch target size mobile" --domain ux -n 3
+- **Issue:** Touch Target Size
+- **Do:** Use 44pt on iOS and 48dp on Android; for web use the separate WCAG Target Size rule
+- **Severity:** High
+- **Issue:** Touch Spacing
+- **Do:** Minimum 8px gap between touch targets
+- **Severity:** Medium
+- **Issue:** Touch Friendly
+- **Do:** Increase touch targets on mobile
+- **Severity:** High
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "reduced motion animation" --domain ux -n 3
+- **Issue:** Reduced Motion
+- **Do:** Check prefers-reduced-motion media query
+- **Severity:** High
+- **Issue:** Excessive Motion
+- **Do:** Animate 1-2 key elements per view maximum
+- **Severity:** High
+- **Issue:** Duration Timing
+- **Do:** Use shared motion tokens and test that feedback stays responsive
+- **Severity:** Medium
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "table horizontal scroll responsive" --domain ux -n 3
+- **Issue:** Horizontal Scroll
+- **Do:** Ensure content fits viewport width
+- **Severity:** High
+- **Issue:** Table Handling
+- **Do:** Use horizontal scroll or card layout
+- **Severity:** Medium
+- **Issue:** Smooth Scroll
+- **Do:** Use scroll-behavior: smooth on html element
+- **Severity:** High
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "breadcrumb navigation" --domain ux -n 3
+- **Issue:** Sticky Navigation
+- **Do:** Add padding-top to body equal to nav height
+- **Severity:** Medium
+- **Issue:** Keyboard Navigation
+- **Do:** Keep tab order aligned with visual order and test every action without a pointer
+- **Severity:** High
+- **Issue:** Breadcrumbs
+- **Do:** Use for sites with 3+ levels of depth
+- **Severity:** Low
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "dropdown menu keyboard aria" --domain ux -n 3
+- **Issue:** ARIA Labels
+- **Do:** Add aria-label for icon-only buttons
+- **Severity:** High
+- **Issue:** Keyboard Navigation
+- **Do:** Keep tab order aligned with visual order and test every action without a pointer
+- **Severity:** High
+- **Issue:** Skip Links
+- **Do:** Provide skip to main content link
+- **Severity:** Medium
+CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation error message" --domain ux -n 3
+- **Issue:** Focusable Error Summary
+- **Do:** Place it at the top of the form; move focus to its heading or container after failed submit; link each item to its invalid field; retain inline errors
+- **Severity:** High
+- **Issue:** Error Messages
+- **Do:** Use aria-live or role=alert for errors
+- **Severity:** High
+- **Issue:** Submit Feedback
+- **Do:** Show loading then success/error state
+- **Severity:** High
+```
+- Informe por componente: `/tmp/s10/ux/validacion-0010.md` (0 Critical, 0 High, 1 Medium —diagrama ancho—, 2 Low). Árbol de accesibilidad: `/tmp/s10/ux/a11y-0010.txt`. T-107: sin Critical/High que corregir; queda abierta hasta que el experto confirme.
