@@ -467,6 +467,8 @@ const MERMAID_AREA = '.code-block[data-language="mermaid"] [role="img"]';
 for (const { theme, size, key } of COMBOS) {
   test(`0010 V-7 diagrama Mermaid, ${key} (RF-046, RF-050, RNF-003)`, async ({ browser, content }) => {
     const { context, page } = await openContent(browser, content, "mermaid", { theme, size });
+    // Los diagramas se dibujan al acercarse al viewport (PLAN-0010 §11): a 390 px el primero queda bajo el árbol apilado.
+    await page.locator('.code-block[data-language="mermaid"]').first().scrollIntoViewIfNeeded();
     const area = page.locator(MERMAID_AREA).first();
     await expect(area.locator("svg").first()).toBeVisible({ timeout: 20_000 });
     await expect(area).toHaveAccessibleName(/\S/);

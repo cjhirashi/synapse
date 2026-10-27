@@ -1045,6 +1045,11 @@
   font-size: 12px;
 }
 
+/* Mientras se espera (o se dibuja) el diagrama se reserva altura para que el dibujo no empuje bruscamente la nota. */
+.mermaid-area[aria-busy="true"] {
+  min-height: 160px;
+}
+
 .mermaid-area svg {
   max-width: 100%;
   /* El tope de 420 px es del área entera: el dibujo cede su padding para no quedar recortado por abajo. */

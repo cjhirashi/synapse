@@ -17,6 +17,7 @@
  */
 import type { Node as PMNode } from "@milkdown/prose/model";
 import type { NodeView, NodeViewConstructor } from "@milkdown/prose/view";
+import { observeVisibility, whenIdle } from "./deferred/idle";
 import { icon } from "./icons";
 import { attachPanZoom, type PanZoomHandle, type ZoomButtons } from "./mermaid/panZoom";
 
@@ -52,6 +53,10 @@ export interface CodeBlockDeps {
   /** Ancho de la columna de lectura, para decidir si el diagrama necesita controles de zoom. */
   columnWidth?: () => number;
   /** Conecta el zoom a un diagrama que excede (por defecto `svg-pan-zoom` en carga diferida). */
+  /** Avisa si el bloque está cerca del viewport (por defecto `IntersectionObserver`); devuelve cómo dejar de observar. */
+  visibility?: (element: Element, onChange: (visible: boolean) => void) => () => void;
+  /** Ejecuta una tarea en idle (por defecto `requestIdleCallback`); devuelve cómo cancelarla. */
+  idle?: (run: () => void) => () => void;
   panZoom?: (area: HTMLElement, svg: SVGSVGElement, buttons: ZoomButtons) => Promise<PanZoomHandle>;
 }
 
@@ -86,6 +91,8 @@ class CodeBlockView implements NodeView {
   private readonly writeText: (text: string) => Promise<void>;
   private readonly renderer: MermaidRenderer;
   private readonly columnWidth: () => number;
+  private readonly observe: NonNullable<CodeBlockDeps["visibility"]>;
+  private readonly whenIdle: NonNullable<CodeBlockDeps["idle"]>;
   private readonly attachZoom: NonNullable<CodeBlockDeps["panZoom"]>;
   /** En lectura (`false`) el código del diagrama va oculto; en Visual siempre se ve. */
   private readonly editable: boolean;
@@ -108,6 +115,11 @@ class CodeBlockView implements NodeView {
   /** Zoom conectado al SVG actual y número de la última conexión pedida (una que llega tarde se suelta). */
   private zoom: PanZoomHandle | null = null;
   private zoomSeq = 0;
+  /** Dibujo diferido (PLAN-0010 §11.2): cerca del viewport, «sucio» (hay algo que dibujar) y la espera de idle en curso. */
+  private visible = false;
+  private dirty = false;
+  private cancelIdle: (() => void) | null = null;
+  private stopObserving: (() => void) | null = null;
 
   constructor(node: PMNode, editable: boolean, deps: CodeBlockDeps) {
     this.node = node;
@@ -116,6 +128,8 @@ class CodeBlockView implements NodeView {
     this.renderer = deps.mermaid ?? NO_RENDERER;
     this.columnWidth = deps.columnWidth ?? (() => this.dom.clientWidth);
     this.attachZoom = deps.panZoom ?? attachPanZoom;
+    this.observe = deps.visibility ?? ((element, onChange) => observeVisibility(element, onChange));
+    this.whenIdle = deps.idle ?? ((run) => whenIdle(run));
 
     this.dom = document.createElement("div");
     this.dom.className = "code-block";
@@ -221,6 +235,12 @@ class CodeBlockView implements NodeView {
     if (this.editable) this.dom.append(this.preview);
     else this.dom.insertBefore(this.preview, this.contentDOM);
     this.unsubscribeTheme = this.renderer.onThemeChange?.(() => this.schedule(true)) ?? null;
+    // El diagrama no compite con «clic → legible» (RNF-001): se dibuja al acercarse al viewport y en idle. Un bloque
+    // vacío no cuesta nada y se resuelve ya.
+    this.stopObserving = this.observe(this.dom, (visible) => {
+      this.visible = visible;
+      if (visible && this.dirty) this.requestDraw();
+    });
     this.schedule(true);
   }
 
@@ -231,15 +251,34 @@ class CodeBlockView implements NodeView {
     this.toggle?.setAttribute("aria-expanded", String(this.codeExpanded));
   }
 
-  /** Pide un dibujo: ya (apertura, reintento) o a los 400 ms de la última edición. */
+  /**
+   * Pide un dibujo: «inmediato» (apertura, reintento, tema) o a los 400 ms de la última edición. El inmediato espera a
+   * que el bloque esté cerca del viewport y a idle; la edición en Visual ya tiene al bloque a la vista.
+   */
   private schedule(immediate: boolean): void {
     if (this.renderTimer) clearTimeout(this.renderTimer);
     this.renderTimer = null;
-    if (immediate) void this.draw();
-    else this.renderTimer = setTimeout(() => void this.draw(), RENDER_DEBOUNCE_MS);
+    if (!immediate) {
+      this.renderTimer = setTimeout(() => void this.draw(), RENDER_DEBOUNCE_MS);
+      return;
+    }
+    this.dirty = true;
+    if (this.node.textContent.trim() === "") void this.draw();
+    else if (this.visible) this.requestDraw();
+    else if (!this.svg && this.state !== "ready") this.setState("loading", true);
+  }
+
+  /** Dibuja en el próximo idle (una sola espera a la vez). */
+  private requestDraw(): void {
+    if (this.cancelIdle) return;
+    this.cancelIdle = this.whenIdle(() => {
+      this.cancelIdle = null;
+      void this.draw();
+    });
   }
 
   private async draw(): Promise<void> {
+    this.dirty = false;
     const source = this.node.textContent;
     const seq = ++this.renderSeq;
     if (source.trim() === "") {
@@ -267,7 +306,8 @@ class CodeBlockView implements NodeView {
     }
   }
 
-  private setState(state: MermaidState): void {
+  /** `pending`: todavía no se ha pedido el dibujo (el bloque espera a estar cerca del viewport). */
+  private setState(state: MermaidState, pending = false): void {
     this.state = state;
     this.releaseZoom();
     this.syncChrome();
@@ -284,6 +324,7 @@ class CodeBlockView implements NodeView {
       case "loading": {
         const area = this.area();
         area.setAttribute("aria-busy", "true");
+        if (pending) area.dataset.pending = "";
         area.removeAttribute("role");
         area.textContent = "Dibujando diagrama…";
         preview.replaceChildren(this.caption(), this.wrap(area));
@@ -456,6 +497,10 @@ class CodeBlockView implements NodeView {
     this.destroyed = true;
     this.unsubscribeTheme?.();
     this.unsubscribeTheme = null;
+    this.stopObserving?.();
+    this.stopObserving = null;
+    this.cancelIdle?.();
+    this.cancelIdle = null;
     this.releaseZoom();
     if (this.timer) clearTimeout(this.timer);
     if (this.renderTimer) clearTimeout(this.renderTimer);

@@ -222,16 +222,27 @@ describe("MilkdownView · apertura precalculada (RNF-001)", () => {
 
   const MD = CONTENT_NOTES.find((n) => n.key === "big")!.content;
 
+  /**
+   * El HTML del documento sin lo que llega después, en idle y según el momento de la prueba (PLAN-0010 §11): las
+   * clases `sx-*` del resaltado y la vista previa de los diagramas. Lo que se compara es el parseo, no esos añadidos.
+   */
+  const stableHtml = (root: Element) => {
+    const copy = root.cloneNode(true) as Element;
+    copy.querySelectorAll(".mermaid-preview").forEach((el) => el.remove());
+    copy.querySelectorAll('span[class*="sx-"]').forEach((el) => el.replaceWith(...el.childNodes));
+    return copy.innerHTML;
+  };
+
   it("abrir precalculada marca cache-hit y da el mismo DOM que en frío", async () => {
     const cold = await renderView({ value: MD });
-    const coldHtml = cold.container.querySelector(".ProseMirror")!.innerHTML;
+    const coldHtml = stableHtml(cold.container.querySelector(".ProseMirror")!);
     cold.unmount();
 
     const mark = vi.spyOn(performance, "mark");
     const warm = await renderView({ value: MD, preparsedMdast: parseMarkdownToJson(MD) });
     expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit);
     expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cold);
-    expect(warm.container.querySelector(".ProseMirror")!.innerHTML).toBe(coldHtml);
+    expect(stableHtml(warm.container.querySelector(".ProseMirror")!)).toBe(coldHtml);
   });
 
   it("sin mdast precalculado marca cold (parseo en el hilo principal)", async () => {

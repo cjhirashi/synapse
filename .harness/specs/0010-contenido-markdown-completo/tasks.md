@@ -438,10 +438,10 @@ actualizado: 2026-10-24
 - [x] T-141 — `editor/deferred/idle.ts` (cubre RNF-001, RF-046) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/deferred`
   - EXPECT: `passed`.
-- [ ] T-142 [rojo] — `codeBlockView.test.ts`: Mermaid diferido (no pide el renderizador hasta ser visible, ni antes del idle; área reservada con «Dibujando diagrama…» mientras; un bloque fuera de pantalla «sucio» por cambio de tema/edición se dibuja al entrar; salir no cancela uno ya pedido; edición en Visual sigue con *debounce* 400 ms) (cubre RF-046, RF-047, RF-050, RNF-001) [zona: test]
+- [x] T-142 [rojo] — `codeBlockView.test.ts`: Mermaid diferido (no pide el renderizador hasta ser visible, ni antes del idle; área reservada con «Dibujando diagrama…» mientras; un bloque fuera de pantalla «sucio» por cambio de tema/edición se dibuja al entrar; salir no cancela uno ya pedido; edición en Visual sigue con *debounce* 400 ms) (cubre RF-046, RF-047, RF-050, RNF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts -t "diferido"`
   - EXPECT: fallan.
-- [ ] T-143 — `codeBlockView.ts`: dibujo por visibilidad + idle, reserva de altura (`editor.css`), dependencia inyectable `visibility` (cubre RF-046, RF-047, RF-050, RNF-001) [zona: pantalla]
+- [x] T-143 — `codeBlockView.ts`: dibujo por visibilidad + idle, reserva de altura (`editor.css`), dependencia inyectable `visibility` (cubre RF-046, RF-047, RF-050, RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(7|8|9) "`
   - EXPECT: `passed`; V-7/V-8/V-9 y la fuente hostil en verde.
 - [ ] T-144 [rojo] — `highlight/highlightScheduler.test.ts` + `proseHighlight.test.ts`: tandas con presupuesto (reloj falso), orden por distancia al viewport, una sola promesa compartida por tanda (⇒ un refresco), bloque cercano con gramática cargada síncrono, resultado relativo reutilizado al mover el bloque, bloque > 100 KiB sin resaltar, sin `console.error` (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: test]
