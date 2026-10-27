@@ -1012,3 +1012,27 @@ test("0010 V-2 migrar YAML heredado y guardar se sincroniza sin rechazos (RF-044
   await expect(page.getByRole("link", { name: /cambios? rechazados?/ })).toHaveCount(0);
   await context.close();
 });
+
+// V-4 · RF-066 (enmienda 3): una tabla con líneas en blanco entre sus filas se ve como TABLA en lectura y en Visual
+// (la nota real «Prueba» de producción), y el YAML heredado sigue en bloque literal en lectura.
+test("0010 V-4 «Prueba»: tabla con filas separadas por líneas en blanco, en lectura y en Visual (RF-066)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "prueba-tabla-suelta", { theme: "dark", size: SIZES[0] });
+  const measureTable = () =>
+    page.locator(".milkdown-view .ProseMirror").evaluate((pm) => ({
+      tables: pm.querySelectorAll("table").length,
+      rows: pm.querySelectorAll("table tr").length,
+      cols: pm.querySelector("table tr")?.querySelectorAll("th, td").length ?? 0,
+      pipes: (pm.textContent ?? "").split("|").length - 1,
+    }));
+  await expect(page.locator(".milkdown-view .ProseMirror table")).toHaveCount(1);
+  expect(await measureTable()).toEqual({ tables: 1, rows: 2, cols: 3, pipes: 0 });
+  // El YAML heredado sigue en bloque literal en lectura (P-6, UX-H4).
+  await expect(page.locator("pre.note-editor-legacy-block")).toContainText("valor1: 1");
+  await shot(page, "tabla-suelta-read-dark-1440");
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await expect(page.locator(".milkdown-view .ProseMirror table")).toHaveCount(1);
+  expect(await measureTable()).toEqual({ tables: 1, rows: 2, cols: 3, pipes: 0 });
+  await shot(page, "tabla-suelta-visual-dark-1440");
+  await context.close();
+});
+

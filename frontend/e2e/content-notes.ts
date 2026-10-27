@@ -282,6 +282,13 @@ export const CONTENT_NOTES: ContentNote[] = [
     content: `# Tipos de diagrama\n\n${DIAGRAM_TYPES.map((source) => fence("mermaid", source)).join("\n\n")}\n`,
   },
   {
+    // RF-066 (enmienda 3): la nota real «Prueba» de producción, con YAML heredado y una tabla de filas sueltas.
+    key: "prueba-tabla-suelta",
+    path: "Heredadas/Prueba.md",
+    frontmatter: {},
+    content: "---\nvalor1: 1\nvalor2: Hola\n---\n\n# Titulo para hoy\n\nHola cómo estás\n\n> Hola amigos\n\n1. Lista\n\n* Hola amicos\n\n*Hola que tal*\n\n**Hola que tal**\n\n***Hola qué tal***\n\n***\n\nEstado bien con todos\n\n|Campo 1|Campo 2|Campo 3|\n\n|---|---|---|\n\n|12|Hola|56|\n",
+  },
+  {
     key: "mermaid-wide",
     path: "Mermaid/Diagrama ancho.md",
     frontmatter: {},

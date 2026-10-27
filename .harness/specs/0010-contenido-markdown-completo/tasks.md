@@ -459,6 +459,15 @@ actualizado: 2026-10-24
 - [x] T-148 — Gap del diagrama muy ancho (14 nodos) diminuto: propuesta documentada en `history.md` (no se implementa si toca decisión de producto) (cubre RF-052) [zona: docs]
 - [x] T-149 — Batería completa de cierre de la Slice 5: vitest, typecheck, gate, `test:bundle`, `content-visual`, perf (cubre RNF-001, RNF-002, RNF-003) [zona: sistema]
 
+**F.9 · Enmienda 3 (PLAN-0010 §12): tablas con líneas en blanco entre filas (RF-066)**
+- [x] T-150 [rojo] — `markdown/looseTables.test.ts` (Prueba exacta, filas sueltas, CRLF, código cercado/indentado, citas, YAML, dos tablas, columnas distintas, párrafo con pipes, idempotencia y fuzz «sin separadora válida ⇒ salida = entrada») (cubre RF-066) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/markdown/looseTables.test.ts`
+  - EXPECT: falla al importar `./looseTables`.
+- [x] T-151 — `markdown/looseTables.ts` (cubre RF-066) [zona: núcleo]
+- [x] T-152 [rojo] — `parseStage.test.ts` y `MilkdownView.test.tsx`: «Prueba» en el Worker, en lectura y Visual (frío y precalculado) (cubre RF-066) [zona: test]
+- [x] T-153 — Normalización en `cachedParser` (único punto de entrada) y `parseStage` (Worker) (cubre RF-066) [zona: pantalla]
+- [ ] T-154 — e2e en Chromium con la nota exacta + captura; presupuestos y batería completa (cubre RF-066, RNF-001, RNF-002) [zona: sistema]
+
 **F.7 · Historial y breadcrumb**
 - [x] T-096 [rojo] — `notes/noteHistory.test.ts`: `push` (descarta adelante, sin duplicar el actual, tope 50), `step` saltando inválidos, renombrada navegable por id, `load`/`save` por bóveda, forma corrupta → vacío (cubre RF-057, RF-058) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteHistory.test.ts`
@@ -620,6 +629,7 @@ actualizado: 2026-10-24
 | RF-062 | T-100, T-101, T-120, T-121 | editor/NoteMenu.test.tsx, notes/VaultWorkspacePage.test.tsx; V-11. | Pass |
 | RF-063 | T-011, T-015, T-036, T-037, T-038, T-039, T-106, T-120, T-121 | editor/breadcrumb.test.ts, editor/NoteBreadcrumb.test.tsx (anchos simulados); V-10 (1440/1024/390). | Pass |
 | RF-064 | T-003, T-015, T-042, T-043, T-047, T-120, T-121 | notes/layoutCss.test.ts; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009). | Pass |
+| RF-066 | T-150, T-151, T-152, T-153, T-154 | editor/markdown/looseTables.test.ts, editor/markdown/parseStage.test.ts, editor/MilkdownView.test.tsx; e2e content-visual (nota «Prueba», captura). | Pass |
 | RF-065 | T-100, T-101, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, notes/VaultWorkspacePage.test.tsx (renombrar desde el menú o el árbol actualiza las migas sin recargar). | Pass |
 | RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pass |
 | RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121, T-129, T-130 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pass |

@@ -1060,3 +1060,26 @@ de «clic → legible». Corrección de raíz: `Workspace` precarga el chunk del
 (`whenIdle(loadEditor)`), sin importarlo estáticamente (sigue siendo un chunk aparte; `/vaults` no lo descarga).
 Medido en 3 corridas de 20 contextos: 181 KiB p95 121,7 / 119,5 / 114,9 ms (antes 235–257), 120 KiB 40–43 ms, 64 KiB 30–35 ms.
 
+## 12. Enmienda 3 (2026-10-28) — tablas con líneas en blanco entre filas (RF-066)
+
+**Estado:** decisión de producto de AIRA (autoridad delegada de Carlos), 2026-10-28; implementada en la rama
+`fix/0010-tablas-tolerantes` (worktree `.claude/worktrees/0010-tablas`) sobre `feature/sprint-1-auth` (0010 ya mergeado).
+
+**Diagnóstico (con evidencia, clon desechable):** con el contenido exacto de «Prueba» (cabecera, separadora y fila de datos
+separadas por líneas en blanco) el DOM de `.ProseMirror` tenía `<table>` = 0 y 12 pipes literales, en lectura y en Visual.
+Las variantes con las filas consecutivas daban `<table>` = 1. La causa es de GFM (`micromark-extension-gfm-table`, sin
+opciones: `gfmTable()` no recibe ninguna; las de `remark-gfm` son sólo de serialización), no de código de 0010.
+
+**Diseño:** `editor/markdown/looseTables.ts` → `joinLooseTableRows(markdown)`, pura, ANTES del parseo, en el ÚNICO punto de
+entrada: `cachedParser` envuelve `parserCtx` (apertura, reemplazo y pegado) y `parseStage.parseMarkdownToJson` la aplica
+dentro del Worker de la caché precalculada, así el hilo principal, el Worker y la lectura ven el mismo árbol. El mdast
+cacheado refiere al texto normalizado, que es el que se pasa a `docFromMdastJson`; las claves `(id, rev)` no cambian.
+Reglas (bajo riesgo): sólo una tabla GFM válida (cabecera con pipes, separadora con el MISMO número de columnas saltando
+SÓLO líneas en blanco, filas de datos con ese número de columnas); para ante cualquier otra línea o separadora; una fila
+seguida de su separadora es la cabecera de otra tabla (no se fusionan); nunca en YAML inicial, código cercado (``` y ~~~),
+código indentado ni citas; el resto queda byte a byte igual (CRLF incluido). Código no cambia el texto; guardar desde
+Visual serializa la tabla compacta (aceptado).
+
+**Riesgos revisados:** un único punto de entrada existe (sin él se habría parado); ids de encabezado y detección de «sucio»
+se calculan sobre el documento ya construido; el cursor no depende de posiciones del texto original en Visual.
+

@@ -6,6 +6,7 @@
 // obtenido DEBE ser `eq` al que da `parserCtx(text)` del editor (parseo caliente de hoy). Además, las
 // extensiones de **parseo** del procesador del editor y las de `parseStage` deben coincidir en número
 // (si una futura versión de Milkdown añade una extensión de parseo, esta prueba lo detecta).
+import { joinLooseTableRows } from "./looseTables";
 import { PRUEBA } from "./looseTables.fixture";
 import { Editor, defaultValueCtx, parserCtx, remarkCtx, rootCtx, schemaCtx } from "@milkdown/core";
 import { commonmark } from "@milkdown/preset-commonmark";
@@ -46,9 +47,12 @@ const CORPUS: Array<{ key: string; md: string }> = [
 
 describe("parseStage · equivalencia con el parser del editor (RNF-001)", () => {
   it.each(CORPUS)("el documento desde la caché es eq al de parserCtx para $key", ({ md }) => {
-    const cold: PMNode = ctx.get(parserCtx)(md);
+    // Con la normalización de RF-066 (tablas con líneas en blanco) en AMBAS rutas: `cachedParser` la aplica al texto y el
+    // Worker dentro de `parseMarkdownToJson`; el `parserCtx` desnudo de esta prueba no, así que se le da el texto ya normalizado.
+    const text = joinLooseTableRows(md);
+    const cold: PMNode = ctx.get(parserCtx)(text);
     const json = parseMarkdownToJson(md);
-    const cached = docFromMdastJson(ctx.get(remarkCtx), ctx.get(schemaCtx), json, md);
+    const cached = docFromMdastJson(ctx.get(remarkCtx), ctx.get(schemaCtx), json, text);
     expect(cached.eq(cold)).toBe(true);
   });
 

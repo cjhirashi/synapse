@@ -288,6 +288,14 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
   fila de encabezado, 2 columnas y 1 fila de cuerpo.
 - **RF-026** — Las filas de tabla en lectura y Visual DEBEN medir ≤ 40 px de alto con una
   sola línea de texto por celda (sin el margen de párrafo dentro de las celdas).
+- **RF-066** *(enmienda 3, decisión de producto de AIRA con autoridad delegada de Carlos, 2026-10-28)* — En lectura y
+  Visual, una tabla Markdown DEBE verse como tabla aunque haya líneas en blanco ENTRE su cabecera, su separadora y sus
+  filas de datos (p. ej. `|a|b|` ⏎⏎ `|---|---|` ⏎⏎ `|1|2|`), como la escribe quien no conoce la sintaxis GFM estricta.
+  Sólo se unen filas de una tabla válida (cabecera con pipes, separadora con el MISMO número de columnas y filas con ese
+  número de columnas); dos tablas separadas por una línea en blanco siguen siendo dos; el código (cercado o indentado),
+  las citas, el bloque YAML y todo lo que no sea esa tabla NO cambian. La vista Código muestra el texto tal cual lo
+  escribió el usuario; si se guarda desde Visual, la tabla se serializa compacta (aceptado). *Motivo:* la nota real
+  «Prueba» (producción, 2026-10-27) se veía con pipes literales: GFM exige filas consecutivas y esa nota no las tenía.
 
 ### Resaltado de sintaxis
 - **RF-027** — CUANDO se muestra en lectura un bloque de código con un lenguaje admitido
