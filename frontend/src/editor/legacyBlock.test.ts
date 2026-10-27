@@ -26,6 +26,8 @@ describe("splitLegacyBlock", () => {
     ["el cerco no está en la línea 1", "# T\n---\na: 1\n---\nB"],
     ["sin cierre", "---\na: 1\nB"],
     ["cerco con más guiones", "----\na: 1\n----\nB"],
+    // Mutante: una clave que EMPIEZA por `#` es un comentario YAML, no una clave.
+    ["`# nota: x` es un comentario, no una clave", "---\n# nota: x\n---\nB"],
     ["los dos puntos pegados a la palabra siguiente (URL, hora)", "---\nhttp://x.y\n12:30h\n---\nB"],
   ])("lo rechaza: %s", (_name, content) => {
     expect(splitLegacyBlock(content)).toBeNull();

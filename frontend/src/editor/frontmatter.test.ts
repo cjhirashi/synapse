@@ -3,7 +3,7 @@
 // composición del texto de la vista Código, parseo (valor o error+línea), ida y vuelta (stringify→parse)
 // y clasificación de notas heredadas. El objeto JSON es la única verdad (D1); el YAML es derivado.
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { classifyLegacy, composeCode, parseFrontmatterYaml, splitFrontmatter, stringifyFrontmatter } from "./frontmatter";
 
 interface Cases {
@@ -64,6 +64,34 @@ describe("frontmatter · anidamiento extremo (Converge 2, L-B)", () => {
     const result = parseFrontmatterYaml(yaml);
     expect(result).toHaveProperty("error");
     expect(["yaml-syntax", "too-deep"]).toContain((result as { error: string }).error);
+  });
+});
+
+describe("frontmatter · captura genérica (Converge 3)", () => {
+  // Mutante: la captura final de `parseFrontmatterYaml` devuelve `yaml-syntax` para lo que no es un error de valor. Un
+  // `ReferenceError` ajeno al alias y no tipado (aquí forzado en `toJS`) debe acabar ahí, sin lanzar.
+  it("un fallo inesperado al convertir el documento da yaml-syntax y no una excepción", async () => {
+    const yaml = await import("yaml");
+    const spy = vi.spyOn(yaml.Document.prototype, "toJS").mockImplementation(() => {
+      throw new TypeError("inesperado");
+    });
+    try {
+      expect(parseFrontmatterYaml("a: 1\n")).toEqual({ error: "yaml-syntax" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("un `ReferenceError` de alias sale como alias-limit y no como yaml-syntax", async () => {
+    const yaml = await import("yaml");
+    const spy = vi.spyOn(yaml.Document.prototype, "toJS").mockImplementation(() => {
+      throw new ReferenceError("Excessive alias count indicated by anchor");
+    });
+    try {
+      expect(parseFrontmatterYaml("a: 1\n")).toEqual({ error: "alias-limit" });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 

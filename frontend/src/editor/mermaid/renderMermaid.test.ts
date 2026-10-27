@@ -155,6 +155,27 @@ describe("renderMermaid · fuentes hostiles (RF-051, RNF-003)", () => {
 describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
   const wrap = (inner: string, attrs = "") => `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 10 10"${attrs}>${inner}</svg>`;
 
+  // Converge 3, mutantes: sin el lookbehind `(?<![\w-])` una PROPIEDAD cuyo nombre acaba en `image`/`src`/`element`
+  // seguida de `(` no es una función de carga y no debe rechazarse; con él sí se distingue de `image(`.
+  it("no confunde una propiedad con una función: `background-image(`, `x-src(` y `my-element(` no son `image(`/`src(`/`element(`", () => {
+    for (const css of ["background-image(x)", "x-src(y)", "my-element(z)", "mask-image(a)"]) {
+      expect(() => verifySvg(wrap(`<g style="${css}"/>`)), css).not.toThrow();
+    }
+    for (const css of ["image(x)", "src(y)", "element(z)", " image(x)", ";src(y)", "(image(x))"]) {
+      expect(() => verifySvg(wrap(`<g style="${css}"/>`)), css).toThrow(MermaidSyntaxError);
+    }
+  });
+
+  it("acepta todos los elementos que Mermaid emite y url(#id) locales en cualquier atributo", () => {
+    const svg = verifySvg(
+      wrap(
+        '<defs><marker id="m"><path d="M0 0"/></marker><linearGradient id="g"><stop offset="0"/></linearGradient><clipPath id="c"><rect/></clipPath><filter id="f"><feDropShadow/></filter></defs>' +
+          '<style>.a{fill:red}</style><g clip-path="url(#c)" filter="url(#f)"><path marker-end="url(#m)" stroke="url(#g)"/><circle/><ellipse/><line/><polygon/><polyline/><symbol id="s"><rect/></symbol><use href="#s"/><text><tspan>x</tspan></text><title>t</title><desc>d</desc></g>',
+      ),
+    );
+    expect(svg.querySelectorAll("*").length).toBeGreaterThan(15);
+  });
+
   it("acepta url(#id) internos y propiedades cuyo nombre contiene «image» o «src»", () => {
     expect(() => verifySvg(wrap('<style>.a{fill:url(#grad);background-image:none}.b{src-x:1}</style><g style="filter:url(#f)"/>'))).not.toThrow();
   });
@@ -177,6 +198,19 @@ describe("renderMermaid · verificación del SVG (RNF-003, Art. 5)", () => {
     ["iframe", wrap("<iframe/>")],
     ["@import en un style con escape CSS", wrap("<style>@im\\70ort url(https://example.com/x.css);</style>")],
     ["url() externo con escape CSS (u\\72l)", wrap('<g style="fill: u\\72l(https://example.com/x)"/>')],
+    // Converge 3 (lista blanca): cada una de estas lograba una petición externa real con la lista negra.
+    ["HTML dentro de <desc>", wrap('<desc><img src="http://evil.test/x.png"></desc>')],
+    ["HTML dentro de <title>", wrap('<title><img src="http://evil.test/x.png"></title>')],
+    ["hijo HTML (div) en el SVG", wrap('<g><div>x</div></g>')],
+    ["url() externo en un atributo de presentación", wrap('<rect fill="url(http://evil.test/f.svg#p)"/>')],
+    ["url() externo con comillas en un atributo", wrap('<rect stroke="url(\'http://evil.test/f.svg#p\')"/>')],
+    ["url() externo en clip-path", wrap('<g clip-path="url(//evil.test/c.svg#c)"/>')],
+    ["<meta> (refresco)", wrap('<meta http-equiv="refresh" content="0;url=http://evil.test">')],
+    ["<video>", wrap('<video src="http://evil.test/v.mp4"></video>')],
+    ["<form>", wrap('<form action="http://evil.test"><input></form>')],
+    ["<image> SVG", wrap('<image href="#a"/>')],
+    ["<switch> con foreignObject anidado", wrap('<switch><foreignObject><div>x</div></foreignObject></switch>')],
+    ["-moz-image-set()", wrap('<g style="background: -moz-image-set(\'https://example.com/x.png\' 1x)"/>')],
     ["image-set() que carga un recurso", wrap('<g style="fill: image-set(\'https://example.com/x.png\' 1x)"/>')],
     ["-webkit-image-set()", wrap('<g style="background: -webkit-image-set(\'https://example.com/x.png\' 1x)"/>')],
     ["src() de CSS", wrap('<g style="background: src(\'https://example.com/x.png\')"/>')],
