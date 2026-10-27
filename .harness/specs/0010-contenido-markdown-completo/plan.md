@@ -1009,3 +1009,46 @@ Archivos nuevos (todos dentro de `covers`: `frontend/src/editor/**`, `frontend/s
 `editor/MilkdownView.tsx`, `editor/editor.css`, `e2e/content-perf.spec.ts`, `e2e/fixtures.ts`,
 `scripts/check-bundle.mjs`. Tareas T-124…T-139 (bloque "E2" de `tasks.md`), que se ejecutan **antes**
 de seguir con F.
+
+## 11. Enmienda 2 (2026-10-27) — Mermaid y resaltado fuera del camino crítico (Directiva de Pausa, RNF-001)
+
+**Estado:** aprobada por AIRA (autoridad delegada) el 2026-10-27. **El umbral de RNF-001 (tier B-1b) NO cambia**
+(≤ 150 ms hasta 120 KiB, ≤ 250 ms ~181–200 KiB); se corrige la causa.
+
+### 11.1 Causa medida (Slice 5, Chromium real, `content-perf` «precalculada», p95 de 10 aperturas `cache-hit`)
+| configuración | 64 KiB | 120 KiB (≤ 150) | 181 KiB (≤ 250) |
+|---|---|---|---|
+| sin resaltado ni Mermaid | 29,8 | 46,5 | 242,9 |
+| sólo Mermaid | 110,0 | 127,5 | 247,7 |
+| resaltado + Mermaid (T-085/T-091) | ~56 (mediana) | **187,3 ✘** | 247,1 |
+Mermaid ≈ +80 ms (import del chunk + 5 dibujos arrancan al abrir) y el resaltado ≈ +60 ms (parseo Lezer de los 50 bloques
+y un refresco por cada gramática que llega) sobre el camino crítico «clic → legible» a 120 KiB.
+
+### 11.2 Decisión
+Nada de lo decorativo corre antes de «legible» (primer `<p>` y último encabezado en el DOM):
+1. **Mermaid por visibilidad.** Cada bloque dibuja sólo al entrar a (o acercarse a) el viewport (`IntersectionObserver`,
+   `rootMargin` 300 px verticales) **y** en idle (`requestIdleCallback`, `timeout` 300 ms, respaldo `setTimeout`),
+   uno a uno (la cola en serie de `renderMermaid` ya existe). `mermaid` se importa en ese momento, no al abrir. Mientras
+   tanto el bloque muestra su chasis y un área reservada (alto mínimo 160 px, «Dibujando diagrama…») para no saltar
+   bruscamente. Sin `IntersectionObserver` (jsdom, navegadores sin él) dibuja sin esperar a la visibilidad. Un bloque
+   fuera de pantalla marcado «sucio» (cambio de tema, edición) se redibuja cuando entra. `strict`, `htmlLabels:false`,
+   `secure`, tema, zoom/pan y la fuente hostil no cambian.
+2. **Resaltado por tandas.** `highlight/highlightScheduler.ts`: los bloques sin resultado se piden a una cola ordenada por
+   **distancia al viewport**; en idle se procesan por **tandas con presupuesto de 10 ms** (≥ 1 bloque) y se entrega **una sola
+   promesa por tanda** compartida por todos los bloques pendientes, de modo que `prosemirror-highlight` hace **un único
+   refresco por tanda** (no uno por bloque ni uno por gramática de cada bloque). Un bloque cercano al viewport y ya con
+   vista se resuelve síncrono (teclear no pierde color). El resultado se guarda **relativo al bloque** (`[from,to,clase]`),
+   clave `lenguaje + texto`, y se vuelve a anclar a la posición actual; caché acotada (200). Bloques > 100 KiB no se
+   resaltan (acota una tarea larga; RF-031 los deja legibles).
+3. **Sin tocar** fixtures, tamaños ni umbrales.
+
+### 11.3 Medición (T-146/T-147)
+`0010 RNF-001 precalculada` sigue midiendo hasta «legible» con ambos activos. Aparte, sonda `0010 RNF-001 diferidos`:
+(a) tareas largas durante el resaltado y los diagramas ≤ 200 ms; (b) tiempo hasta el primer diagrama visible (sólo informe,
+sin umbral).
+
+### 11.4 Archivos y tareas
+Nuevos: `editor/deferred/idle.ts` (`whenIdle`, `observeVisibility`), `editor/highlight/highlightScheduler.ts`; cambios:
+`editor/highlight/proseHighlight.ts`, `editor/MilkdownView.tsx`, `editor/codeBlockView.ts`, `editor/editor.css`,
+`e2e/content-perf.spec.ts`. Tareas T-140…T-149 (bloque «F.6b» de `tasks.md`).
+

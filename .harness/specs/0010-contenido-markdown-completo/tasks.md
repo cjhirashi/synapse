@@ -431,6 +431,34 @@ actualizado: 2026-10-24
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-9 "`
   - EXPECT: vitest `passed`; V-9 en verde; capturas `mermaid-zoom-*` leídas frente a `career-mermaid-zoom-*`.
 
+**F.6b · Enmienda 2 (PLAN-0010 §11): resaltado y Mermaid fuera del camino crítico de RNF-001**
+- [ ] T-140 [rojo] — `editor/deferred/idle.test.ts`: `whenIdle` (usa `requestIdleCallback` con `timeout`; respaldo `setTimeout`; cancelable) y `observeVisibility` (`IntersectionObserver` con `rootMargin` 300 px; sin él avisa «visible» de inmediato; baja = desconecta) (cubre RNF-001, RF-046) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/deferred`
+  - EXPECT: falla al importar `./idle`.
+- [ ] T-141 — `editor/deferred/idle.ts` (cubre RNF-001, RF-046) [zona: núcleo]
+  - CHECK: `cd frontend && npx vitest run src/editor/deferred`
+  - EXPECT: `passed`.
+- [ ] T-142 [rojo] — `codeBlockView.test.ts`: Mermaid diferido (no pide el renderizador hasta ser visible, ni antes del idle; área reservada con «Dibujando diagrama…» mientras; un bloque fuera de pantalla «sucio» por cambio de tema/edición se dibuja al entrar; salir no cancela uno ya pedido; edición en Visual sigue con *debounce* 400 ms) (cubre RF-046, RF-047, RF-050, RNF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/codeBlockView.test.ts -t "diferido"`
+  - EXPECT: fallan.
+- [ ] T-143 — `codeBlockView.ts`: dibujo por visibilidad + idle, reserva de altura (`editor.css`), dependencia inyectable `visibility` (cubre RF-046, RF-047, RF-050, RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(7|8|9) "`
+  - EXPECT: `passed`; V-7/V-8/V-9 y la fuente hostil en verde.
+- [ ] T-144 [rojo] — `highlight/highlightScheduler.test.ts` + `proseHighlight.test.ts`: tandas con presupuesto (reloj falso), orden por distancia al viewport, una sola promesa compartida por tanda (⇒ un refresco), bloque cercano con gramática cargada síncrono, resultado relativo reutilizado al mover el bloque, bloque > 100 KiB sin resaltar, sin `console.error` (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: test]
+  - CHECK: `cd frontend && npx vitest run src/editor/highlight`
+  - EXPECT: fallan.
+- [ ] T-145 — `highlight/highlightScheduler.ts` + `proseHighlight.ts` por tandas; `MilkdownView` le da la distancia al viewport (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: pantalla]
+  - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-5 "`
+  - EXPECT: `passed`; V-5 en verde.
+- [ ] T-146 [rojo] — Sonda `0010 RNF-001 diferidos` en `e2e/content-perf.spec.ts` (tareas largas ≤ 200 ms durante resaltado y diagramas; informe del primer diagrama visible). El rojo de RNF-001 es `0010 RNF-001 precalculada` con ambos activos: p95 187,3 ms > 150 a 120 KiB (cubre RNF-001) [zona: sistema]
+  - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --grep "precalculada"`
+  - EXPECT: contra el código anterior a T-143/T-145, falla (120 KiB > 150 ms).
+- [ ] T-147 — Medir y anotar p95 a 64/120/181 KiB con ambos activos (cubre RNF-001) [zona: sistema]
+  - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts`
+  - EXPECT: `passed`; 64 y 120 KiB ≤ 150 ms, 181 KiB ≤ 250 ms; tareas largas ≤ 200 ms.
+- [ ] T-148 — Gap del diagrama muy ancho (14 nodos) diminuto: propuesta documentada en `history.md` (no se implementa si toca decisión de producto) (cubre RF-052) [zona: docs]
+- [ ] T-149 — Batería completa de cierre de la Slice 5: vitest, typecheck, gate, `test:bundle`, `content-visual`, perf (cubre RNF-001, RNF-002, RNF-003) [zona: sistema]
+
 **F.7 · Historial y breadcrumb**
 - [ ] T-096 [rojo] — `notes/noteHistory.test.ts`: `push` (descarta adelante, sin duplicar el actual, tope 50), `step` saltando inválidos, renombrada navegable por id, `load`/`save` por bóveda, forma corrupta → vacío (cubre RF-057, RF-058) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/noteHistory.test.ts`
@@ -555,7 +583,7 @@ actualizado: 2026-10-24
 | RF-025 | T-080, T-081, T-120, T-121 | editor/MilkdownView.test.tsx, editor/NoteEditor.test.tsx; V-4. | Pendiente |
 | RF-026 | T-008, T-013, T-031, T-032, T-047, T-120, T-121 | notes/layoutCss.test.ts (regla presente); V-4 (≤ 40 px medido). | Pendiente |
 | RF-027 | T-014, T-051, T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts, editor/MilkdownView.test.tsx; V-5. | Pendiente |
-| RF-028 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts (editar actualiza clases); V-5. | Pendiente |
+| RF-028 | T-084, T-085, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/highlight/proseHighlight.test.ts (editar actualiza clases); V-5. | Pendiente |
 | RF-029 | T-009, T-014, T-034, T-035, T-058, T-059, T-086, T-087, T-120, T-121 | editor/CodeView.test.tsx; V-6. | Pendiente |
 | RF-030 | T-084, T-085, T-086, T-087, T-120, T-121 | editor/highlight/languages.test.ts; V-5 (un sx-* por lenguaje). | Pendiente |
 | RF-031 | T-084, T-085, T-120, T-121 | editor/highlight/proseHighlight.test.ts (sin excepción, sin console.error); V-5. | Pendiente |
@@ -573,7 +601,7 @@ actualizado: 2026-10-24
 | RF-043 | T-015, T-044, T-045, T-074, T-075, T-120, T-121 | notes/NoteSidebar.test.tsx; V-12 (R-14). | Pendiente |
 | RF-044 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx. | Pendiente |
 | RF-045 | T-024, T-025, T-052, T-053, T-060, T-061, T-120, T-121 | editor/frontmatter.test.ts (sección legacy), editor/NoteEditorFrontmatter.test.tsx (byte a byte tras editar en Visual; corrompido = punto fijo). | Pendiente |
-| RF-046 | T-008, T-014, T-029, T-030, T-051, T-090, T-091, T-120, T-121 | editor/codeBlockView.test.ts, editor/mermaid/renderMermaid.test.ts; V-7. | Pendiente |
+| RF-046 | T-008, T-014, T-029, T-030, T-051, T-090, T-091, T-120, T-121, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | editor/codeBlockView.test.ts, editor/mermaid/renderMermaid.test.ts; V-7. | Pendiente |
 | RF-047 | T-029, T-030, T-092, T-093, T-120, T-121 | editor/codeBlockView.test.ts (temporizadores falsos: ≤ 500 ms); V-7. | Pendiente |
 | RF-048 | T-092, T-093, T-120, T-121 | editor/CodeView.test.tsx (sin svg ni carga de mermaid). | Pendiente |
 | RF-049 | T-014, T-029, T-030, T-090, T-091, T-120, T-121 | editor/mermaid/renderMermaid.test.ts, editor/codeBlockView.test.ts; V-8. | Pendiente |
@@ -593,7 +621,7 @@ actualizado: 2026-10-24
 | RF-063 | T-011, T-015, T-036, T-037, T-038, T-039, T-106, T-120, T-121 | editor/breadcrumb.test.ts, editor/NoteBreadcrumb.test.tsx (anchos simulados); V-10 (1440/1024/390). | Pendiente |
 | RF-064 | T-003, T-015, T-042, T-043, T-047, T-120, T-121 | notes/layoutCss.test.ts; V-10 (R-1, una línea a 1440/1024/390), V-16 (R-12 de 0009). | Pendiente |
 | RF-065 | T-100, T-101, T-120, T-121 | editor/NoteBreadcrumb.test.tsx, notes/VaultWorkspacePage.test.tsx (renombrar desde el menú o el árbol actualiza las migas sin recargar). | Pendiente |
-| RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pendiente |
+| RNF-001 | T-050, T-102, T-103, T-120, T-121, T-124, T-125, T-126, T-127, T-128, T-129, T-130, T-131, T-132, T-133, T-134, T-135, T-136, T-137, T-138, T-139, T-140, T-141, T-142, T-143, T-144, T-145, T-146, T-147, T-149 | frontend/e2e/content-perf.spec.ts (nota de 200 KiB, 50 bloques, 5 Mermaid; p95 ≤ 150 ms legible; tareas largas ≤ 200 ms por bloque), editor/mermaid/re… | Pendiente |
 | RNF-002 | T-000, T-001, T-016, T-017, T-051, T-104, T-120, T-121, T-129, T-130 | frontend/scripts/check-bundle.mjs (npm run test:bundle, vite.config.ts con build.manifest: true), cargas import() en editor/highlight/languages.ts, ed… | Pendiente |
 | RNF-003 | T-020, T-027, T-078, T-090, T-105, T-120, T-121, T-128, T-131, T-132, T-135 | editor/securityGuard.test.ts, editor/mermaid/renderMermaid.test.ts, editor/MilkdownView.test.tsx, editor/PropertiesPanel.test.tsx (<script> y URLs com… | Pendiente |
 | RNF-004 | T-016, T-018, T-019, T-046, T-106, T-107, T-120, T-121 | Contraste: editor/contrast.test.ts (§5.5); teclado y nombres: tests de componentes con getByRole; diagramas con role="img" + nombre (editor/codeBlockV… | Pendiente |
