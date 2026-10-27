@@ -432,10 +432,10 @@ actualizado: 2026-10-24
   - EXPECT: vitest `passed`; V-9 en verde; capturas `mermaid-zoom-*` leídas frente a `career-mermaid-zoom-*`.
 
 **F.6b · Enmienda 2 (PLAN-0010 §11): resaltado y Mermaid fuera del camino crítico de RNF-001**
-- [ ] T-140 [rojo] — `editor/deferred/idle.test.ts`: `whenIdle` (usa `requestIdleCallback` con `timeout`; respaldo `setTimeout`; cancelable) y `observeVisibility` (`IntersectionObserver` con `rootMargin` 300 px; sin él avisa «visible» de inmediato; baja = desconecta) (cubre RNF-001, RF-046) [zona: test]
+- [x] T-140 [rojo] — `editor/deferred/idle.test.ts`: `whenIdle` (usa `requestIdleCallback` con `timeout`; respaldo `setTimeout`; cancelable) y `observeVisibility` (`IntersectionObserver` con `rootMargin` 300 px; sin él avisa «visible» de inmediato; baja = desconecta) (cubre RNF-001, RF-046) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/deferred`
   - EXPECT: falla al importar `./idle`.
-- [ ] T-141 — `editor/deferred/idle.ts` (cubre RNF-001, RF-046) [zona: núcleo]
+- [x] T-141 — `editor/deferred/idle.ts` (cubre RNF-001, RF-046) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/editor/deferred`
   - EXPECT: `passed`.
 - [ ] T-142 [rojo] — `codeBlockView.test.ts`: Mermaid diferido (no pide el renderizador hasta ser visible, ni antes del idle; área reservada con «Dibujando diagrama…» mientras; un bloque fuera de pantalla «sucio» por cambio de tema/edición se dibuja al entrar; salir no cancela uno ya pedido; edición en Visual sigue con *debounce* 400 ms) (cubre RF-046, RF-047, RF-050, RNF-001) [zona: test]
