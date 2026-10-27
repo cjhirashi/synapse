@@ -4,6 +4,8 @@ import { TextSelection } from "@milkdown/prose/state";
 import { EditorView } from "@milkdown/prose/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
+import { PRUEBA } from "./markdown/looseTables.fixture";
+import { splitLegacyBlock } from "./legacyBlock";
 import { PARSE_MARK } from "./markdown/cachedParser";
 import { parseMarkdownToJson } from "./markdown/parseStage";
 import { MilkdownView } from "./MilkdownView";
@@ -479,5 +481,48 @@ describe("MilkdownView · Mermaid", () => {
     await waitFor(() => expect(mermaid.render.mock.calls.length).toBe(calls + 1), { timeout: 2000 });
     expect(Date.now() - typedAt).toBeLessThan(500);
     await waitFor(() => expect(preview(container)?.textContent).toContain("A  C"));
+  });
+});
+
+// RF-066 (enmienda 3): «Prueba» (producción, 2026-10-28) — una tabla cuyas filas van separadas por líneas en blanco se
+// ve como TABLA en lectura y en Visual, por las dos rutas de parseo (en frío y desde el mdast del Worker).
+describe("MilkdownView · tablas con líneas en blanco (RF-066)", () => {
+  const BODY = splitLegacyBlock(PRUEBA)!.rest;
+
+  const expectOneTable = (container: HTMLElement) => {
+    const tables = container.querySelectorAll(".ProseMirror table");
+    expect(tables).toHaveLength(1);
+    expect(tables[0].querySelectorAll("tr")).toHaveLength(2);
+    expect(tables[0].querySelectorAll("tr")[0].querySelectorAll("th, td")).toHaveLength(3);
+    expect(tables[0].querySelectorAll("tr")[1].querySelectorAll("td")).toHaveLength(3);
+    expect(container.querySelector(".ProseMirror")!.textContent).not.toContain("|");
+  };
+
+  it("lectura, en frío: una tabla de 3 columnas y 1 fila de datos, sin pipes literales", async () => {
+    const { container } = await mount({ value: BODY, readOnly: true });
+    expectOneTable(container);
+  });
+
+  it("Visual, en frío: la misma tabla", async () => {
+    const { container } = await mount({ value: BODY });
+    expectOneTable(container);
+  });
+
+  it("lectura con el mdast precalculado por el Worker: el mismo árbol", async () => {
+    let view: EditorView | null = null;
+    const { container } = render(<MilkdownView value={BODY} readOnly onChange={() => {}} label="Visual" preparsedMdast={parseMarkdownToJson(BODY)} onView={(v) => (view = v)} />);
+    await waitFor(() => expect(view).not.toBeNull());
+    expectOneTable(container);
+  });
+
+  it("montar sin editar no emite cambios y el documento de la tabla es el mismo en frío y precalculado", async () => {
+    const onChange = vi.fn();
+    const cold = await mount({ value: BODY, onChange });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(onChange).not.toHaveBeenCalled();
+    let warmView: EditorView | null = null;
+    render(<MilkdownView value={BODY} readOnly onChange={() => {}} label="Visual" preparsedMdast={parseMarkdownToJson(BODY)} onView={(v) => (warmView = v)} />);
+    await waitFor(() => expect(warmView).not.toBeNull());
+    expect((warmView as unknown as EditorView).state.doc.eq(cold.view.state.doc)).toBe(true);
   });
 });

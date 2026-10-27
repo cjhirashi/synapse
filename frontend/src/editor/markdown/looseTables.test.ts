@@ -3,10 +3,7 @@
 // (cabecera, separadora con el mismo número de columnas y filas de datos) y deja todo lo demás byte a byte igual.
 import { describe, expect, it } from "vitest";
 import { joinLooseTableRows } from "./looseTables";
-
-/** El contenido exacto de «Prueba» (producción, 2026-10-28). */
-export const PRUEBA =
-  "---\nvalor1: 1\nvalor2: Hola\n---\n\n# Titulo para hoy\n\nHola cómo estás\n\n> Hola amigos\n\n1. Lista\n\n* Hola amicos\n\n*Hola que tal*\n\n**Hola que tal**\n\n***Hola qué tal***\n\n***\n\nEstado bien con todos\n\n|Campo 1|Campo 2|Campo 3|\n\n|---|---|---|\n\n|12|Hola|56|\n";
+import { PRUEBA } from "./looseTables.fixture";
 
 describe("joinLooseTableRows · une las filas separadas por líneas en blanco", () => {
   it("«Prueba»: quita las líneas en blanco entre cabecera, separadora y datos, y nada más", () => {

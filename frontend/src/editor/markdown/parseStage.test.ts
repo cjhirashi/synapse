@@ -6,6 +6,7 @@
 // obtenido DEBE ser `eq` al que da `parserCtx(text)` del editor (parseo caliente de hoy). Además, las
 // extensiones de **parseo** del procesador del editor y las de `parseStage` deben coincidir en número
 // (si una futura versión de Milkdown añade una extensión de parseo, esta prueba lo detecta).
+import { PRUEBA } from "./looseTables.fixture";
 import { Editor, defaultValueCtx, parserCtx, remarkCtx, rootCtx, schemaCtx } from "@milkdown/core";
 import { commonmark } from "@milkdown/preset-commonmark";
 import { gfm } from "@milkdown/preset-gfm";
@@ -62,5 +63,24 @@ describe("parseStage · equivalencia con el parser del editor (RNF-001)", () => 
     const editorFromMarkdown = ctx.get(remarkCtx).data("fromMarkdownExtensions") ?? [];
     expect(stage.data("micromarkExtensions")?.length).toBe((editorMicromark as unknown[]).length);
     expect(stage.data("fromMarkdownExtensions")?.length).toBe((editorFromMarkdown as unknown[]).length);
+  });
+});
+
+// RF-066 (enmienda 3): el Worker de la caché normaliza ANTES de parsear, igual que el hilo principal.
+describe("parseMarkdownToJson · tablas con líneas en blanco (RF-066)", () => {
+  type Node = { type: string; children?: Node[] };
+  const tableOf = (md: string): Node | undefined => (JSON.parse(parseMarkdownToJson(md)) as Node).children?.find((node) => node.type === "table");
+
+  it("«Prueba»: las filas separadas por líneas en blanco forman UNA tabla de 3 columnas con cabecera y 1 fila de datos", () => {
+    const table = tableOf(PRUEBA);
+    expect(table, "hay una tabla en el mdast").toBeDefined();
+    expect(table!.children).toHaveLength(2);
+    for (const row of table!.children!) expect(row.children).toHaveLength(3);
+  });
+
+  it("una tabla compacta da el mismo mdast de tabla que la suelta", () => {
+    const compact = "|Campo 1|Campo 2|Campo 3|\n|---|---|---|\n|12|Hola|56|\n";
+    const strip = (node: unknown): unknown => JSON.parse(JSON.stringify(node, (key, value) => (key === "position" ? undefined : value)));
+    expect(strip(tableOf("|Campo 1|Campo 2|Campo 3|\n\n|---|---|---|\n\n|12|Hola|56|\n"))).toEqual(strip(tableOf(compact)));
   });
 });
