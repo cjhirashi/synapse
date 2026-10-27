@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
 from app.adapters.vault_repository import VaultRepository
+from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
     InvalidCursor, PasswordChangeRequired, PreconditionFailed, PreconditionRequired,
@@ -16,6 +17,7 @@ from app.routers.auth import SESSION_ERRORS
 from app.services.vault_service import Versioned, VaultService
 
 router = APIRouter(
+    route_class=DeepJsonRoute,
     prefix="/vaults",
     tags=["vaults"],
     # RF-015: sin sesión 401; con cambio de contraseña pendiente 403, en las 6 rutas.

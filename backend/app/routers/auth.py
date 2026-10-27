@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.adapters.auth_repository import AuthRepository
 from app.adapters.couchdb import CouchDBAdapter
 from app.adapters.database import get_db
+from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_user
 from app.core.errors import (
     InvalidCredentials,
@@ -17,7 +18,7 @@ from app.core.problems import problem_responses
 from app.core.schemas import ChangePasswordRequest, LoginRequest, TokenPayload
 from app.services.auth_service import ACCESS_TOKEN_TTL, REFRESH_TOKEN_TTL, AuthService
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"], route_class=DeepJsonRoute)
 
 REFRESH_COOKIE_PATH = "/auth"
 

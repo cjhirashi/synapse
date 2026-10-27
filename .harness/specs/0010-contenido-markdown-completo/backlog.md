@@ -68,4 +68,13 @@ Orden fijo por dependencia: Slice 1 ya tiene la enmienda del plan aprobada
   heredado de 0008 (`safeUrl` permite `http`/`https` en imágenes); no hay CSP en el backend. Aceptado como riesgo conocido; una
   política (proxy de imágenes o `img-src`) queda para una feature de seguridad aparte.
 - **UX-H1:** diagrama Mermaid muy ancho (escala ≈ 0,15 al ajustar): EN ESPERA de AIRA (enmienda de RF-052; propuesta A en `history.md`).
+- **LOW-1 (backend, Converge 3):** un documento con frontmatter de 62 niveles o más hace 422 al lote ENTERO de `_bulk_docs`
+  (el tope general de 64 niveles es del cuerpo, no del documento). El cliente oficial no puede producirlo (su tope es 32); un
+  agente que escribiera por `/sync` un frontmatter así perdería el lote, no sólo el documento. Aceptado y documentado en el
+  esquema y la spec; no se cambia.
+- **Preexistente — ruido de `localStorage`** en `frontend/src/vault/vaultIcon.integration.test.ts` (o equivalente): no se toca.
+- **M-A (clic en frío):** el clic en la primera nota ANTES de que termine la precarga del chunk del editor sigue en 225–258 ms a
+  181 KiB; lo decide AIRA (no se toca).
+- **`journey`:** el diagrama `journey` de Mermaid emite `foreignObject`/`switch` incluso en modo estricto y RF-051 los prohíbe:
+  se muestra como error del bloque (comportamiento preexistente; todos los demás tipos probados dibujan, e2e V-7).
 
