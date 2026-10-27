@@ -168,7 +168,10 @@ test("RF-015: al volver a montar no hay ninguna nota abierta y nada se guarda en
   await screen.findByRole("tree", { name: "Notas" });
   expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
   expect(localStorage.length).toBe(0);
-  expect(sessionStorage.length).toBe(0);
+  // SPEC-0010 RF-057 (enmienda del RF-015 de 0008): lo único que persiste es el historial de ids de la pestaña, nunca
+  // el contenido ni «la nota abierta».
+  expect(Object.keys(sessionStorage)).toEqual([`synapse:note-history:${vault.id}`]);
+  expect(sessionStorage.getItem(`synapse:note-history:${vault.id}`)).not.toContain("Hola\"");
 });
 
 test("RF-010: borrar la nota abierta cierra el editor; la papelera de la bóveda se abre y se cierra", async () => {

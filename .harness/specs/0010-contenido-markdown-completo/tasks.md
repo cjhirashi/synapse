@@ -466,10 +466,10 @@ actualizado: 2026-10-24
 - [x] T-097 — `notes/noteHistory.ts` (cubre RF-057, RF-058) [zona: núcleo]
   - CHECK: `cd frontend && npx vitest run src/notes/noteHistory.test.ts`
   - EXPECT: `passed`.
-- [ ] T-098 [rojo] — `VaultWorkspacePage.test.tsx`: abrir notas llena el historial; Atrás/Adelante navegan y se deshabilitan en los extremos; nota borrada saltada; con borrador sucio aparece el aviso de 0008 y cancelar conserva nota, borrador y posición (foco al botón); Alt+←/→ fuera de un editor navega con `preventDefault`, dentro de Milkdown/CodeMirror en edición no; recarga (mismo `sessionStorage`) conserva el historial; otra bóveda, otro historial (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: test]
+- [x] T-098 [rojo] — `VaultWorkspacePage.test.tsx`: abrir notas llena el historial; Atrás/Adelante navegan y se deshabilitan en los extremos; nota borrada saltada; con borrador sucio aparece el aviso de 0008 y cancelar conserva nota, borrador y posición (foco al botón); Alt+←/→ fuera de un editor navega con `preventDefault`, dentro de Milkdown/CodeMirror en edición no; recarga (mismo `sessionStorage`) conserva el historial; otra bóveda, otro historial (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/notes/VaultWorkspacePage.test.tsx -t "historial"`
   - EXPECT: fallan.
-- [ ] T-099 — Historial en `Workspace` (`onOpened`, `onCancelOpen`, atajo) y flechas reales en la cabecera (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: pantalla]
+- [x] T-099 — Historial en `Workspace` (`onOpened`, `onCancelOpen`, atajo) y flechas reales en la cabecera (cubre RF-056, RF-057, RF-058, RF-059, RF-060) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src`
   - EXPECT: `passed`, sin regresión de `NoteEditorLeave.test.tsx`.
 - [ ] T-100 [rojo] — Migas y menú reales: clic en carpeta de la miga la revela y la deja activa sin cambiar de nota; "Renombrar/mover" y "Borrar" del ⋮ ejecutan los flujos del árbol con sus mensajes; "Ver en Código" pasa a edición + Código; "Copiar ruta" copia el `path` con `.md` y anuncia "Ruta copiada" (o el fallo); renombrar/mover la nota abierta actualiza las migas sin recargar; el lápiz alterna lectura/edición como el botón de 0008 (cubre RF-055, RF-062, RF-065) [zona: test] [P-17]

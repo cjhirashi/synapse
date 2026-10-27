@@ -10,12 +10,13 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
 import { FileText, FolderOpen } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
+import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import NoteTrash from "./NoteTrash";
@@ -140,13 +141,28 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     notes
       .list(vault.id)
       .then((summaries) => {
-        if (alive) parsing.scheduler.reconcile(summaries.map((s) => ({ id: s.id, rev: s.rev, size: s.size })));
+        if (!alive) return;
+        parsing.scheduler.reconcile(summaries.map((s) => ({ id: s.id, rev: s.rev, size: s.size })));
       })
       .catch(() => undefined);
     return () => {
       alive = false;
     };
   }, [parsing, notes, notesVersion, vault.id]);
+  // Historial de notas abiertas (RF-056…RF-060): por bóveda, en `sessionStorage` (sobrevive a recargar la pestaña).
+  const [history, setHistory] = useState<History>(() => loadHistory(sessionStorage, vault.id));
+  const historyRef = useRef(history);
+  /** Salto de historial pedido y aún sin confirmar: sólo se mueve la posición cuando el editor abre de verdad la nota. */
+  const jump = useRef<{ target: string; history: History; direction: -1 | 1 } | null>(null);
+  /** Ids de las notas vivas (las borradas no son destino): se relee con cada versión de las notas. */
+  const [liveIds, setLiveIds] = useState<ReadonlySet<string> | null>(null);
+  const isLive = (id: string) => liveIds?.has(id) ?? true;
+  function commitHistory(next: History) {
+    historyRef.current = next;
+    setHistory(next);
+    saveHistory(sessionStorage, vault.id, next);
+  }
+
   /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
 
@@ -165,6 +181,18 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     if (openId === null) onDirtyDraft(null);
   }, [openId, onDirtyDraft]);
 
+  // Quiénes están vivos, para habilitar Atrás/Adelante (RF-056, RF-058). Aparte del precálculo: éste puede no existir.
+  useEffect(() => {
+    let alive = true;
+    notes
+      .list(vault.id)
+      .then((summaries) => alive && setLiveIds(new Set(summaries.filter((s) => s.deleted_at === null).map((s) => s.id))))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [notes, notesVersion, vault.id]);
+
   /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
   const editorRef = useRef<NoteEditorHandle>(null);
   /** Acciones de la sidebar que piden el editor y las migas (revelar carpeta, renombrar, borrar). */
@@ -176,8 +204,43 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     setShowTrash(false);
   }
 
+  /** La nota se abrió de verdad: confirma el salto de historial pendiente o añade una entrada (RF-057). */
+  function onOpened(id: string) {
+    const pending = jump.current;
+    jump.current = null;
+    commitHistory(pending && pending.target === id ? pending.history : push(historyRef.current, id));
+  }
+
+  /** El usuario decidió seguir editando: la nota y la posición no cambian y el foco vuelve al botón (RF-060). */
+  function onCancelOpen(id: string) {
+    const direction = jump.current?.direction;
+    jump.current = null;
+    setOpenId(id);
+    if (direction) setTimeout(() => document.querySelector<HTMLElement>(`.note-editor-header [aria-label="${direction < 0 ? "Atrás" : "Adelante"}"]`)?.focus(), 0);
+  }
+
+  /** Atrás/Adelante: la primera nota viva en esa dirección. Se pide abrir con el mismo cambio de `openId` de 0008 (RF-060). */
+  async function go(direction: -1 | 1) {
+    const summaries = await notes.list(vault.id);
+    const live = new Set(summaries.filter((s) => s.deleted_at === null).map((s) => s.id));
+    const result = step(historyRef.current, direction, (id) => live.has(id));
+    if (!result) return;
+    jump.current = { target: result.target, history: result.history, direction };
+    open(result.target);
+  }
+
+  /** Alt+← / Alt+→ con el foco en el workspace y fuera de un editor de texto en edición (RF-059). */
+  function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (!event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    // Dentro de un campo o editor esas teclas tienen su uso (moverse por palabras).
+    if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"], .cm-editor')) return;
+    event.preventDefault();
+    void go(event.key === "ArrowLeft" ? -1 : 1);
+  }
+
   return (
-    <div className="vault-workspace">
+    <div className="vault-workspace" onKeyDown={onKeyDown}>
       <div className="vault-workspace-side">
         {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. */}
         <header className="vault-workspace-header">
@@ -215,7 +278,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={setOpenId} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} />
             </Suspense>
           )}
         </div>

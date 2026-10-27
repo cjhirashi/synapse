@@ -88,6 +88,8 @@ interface NoteEditorProps {
    * bóveda desaparece (papelera por sync) y este editor se desmonta (E-2).
    */
   onDirtyDraft?: (draft: string | null) => void;
+  /** La nota se abrió de verdad (se cargó): el padre actualiza el historial y la carpeta activa (RF-057). */
+  onOpened?: (id: string, path: string) => void;
   /** Historial de notas abiertas (SPEC-0010 RF-056): las flechas de la barra se habilitan según estos datos. */
   canBack?: boolean;
   canForward?: boolean;
@@ -115,7 +117,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onRevealFolder, onRename, parseCache = null },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, parseCache = null },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -190,6 +192,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   }, []);
   const onDirtyDraftRef = useRef(onDirtyDraft);
   onDirtyDraftRef.current = onDirtyDraft;
+  const onOpenedRef = useRef(onOpened);
+  onOpenedRef.current = onOpened;
   const editOnOpenRef = useRef(editOnOpen);
   editOnOpenRef.current = editOnOpen;
   const parseCacheRef = useRef(parseCache);
@@ -323,6 +327,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         setMode(editOnOpenRef.current ? "edit" : "read");
         setFocusEditor(editOnOpenRef.current);
         setView("visual");
+        onOpenedRef.current?.(loaded.id, loaded.path);
       },
       (err) => {
         if (!alive) return;
