@@ -171,3 +171,49 @@ describe("iconos raster", () => {
     expect(png(file).length).toBeLessThanOrEqual(kb * 1024);
   });
 });
+
+// --- Manifest e index.html ------------------------------------------------------------------
+
+/** Atributos de cada `<link>` de index.html como objetos. */
+function links(html: string): Array<Record<string, string>> {
+  return [...html.matchAll(/<link\s+([^>]*?)\/?>/g)].map((m) => Object.fromEntries([...m[1].matchAll(/([\w-]+)="([^"]*)"/g)].map((a) => [a[1], a[2]])));
+}
+
+describe("manifest e index.html", () => {
+  const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8");
+
+  test("RF-004: manifest.webmanifest es el JSON de PLAN-0011 §3, sin start_url, scope ni display (D-11)", () => {
+    expect(JSON.parse(read("manifest.webmanifest"))).toEqual({
+      name: "Synapse",
+      short_name: "Synapse",
+      icons: [
+        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+        { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      ],
+      theme_color: "#12121a",
+      background_color: "#12121a",
+    });
+  });
+
+  test("RF-004: cada icono declarado existe en public/ con las dimensiones que dice el manifest", () => {
+    const manifest = JSON.parse(read("manifest.webmanifest")) as { icons: Array<{ src: string; sizes: string }> };
+    for (const icon of manifest.icons) {
+      const info = pngInfo(png(icon.src.replace(/^\//, "")));
+      expect(`${info.width}x${info.height}`, icon.src).toBe(icon.sizes);
+    }
+  });
+
+  test("RF-001…RF-004: index.html declara el ICO (32x32), el favicon SVG, el apple-touch-icon y el manifest", () => {
+    const all = links(html);
+    expect(all).toContainEqual({ rel: "icon", href: "/favicon.ico", sizes: "32x32" });
+    expect(all).toContainEqual({ rel: "icon", href: "/favicon.svg", type: "image/svg+xml" });
+    expect(all).toContainEqual({ rel: "apple-touch-icon", href: "/apple-touch-icon.png" });
+    expect(all).toContainEqual({ rel: "manifest", href: "/manifest.webmanifest" });
+  });
+
+  test("RNF-001: el conjunto de iconos y manifest pesa ≤ 150 KB en bruto", () => {
+    const files = ["favicon.svg", "favicon.ico", "apple-touch-icon.png", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "manifest.webmanifest"];
+    expect(files.reduce((sum, f) => sum + png(f).length, 0)).toBeLessThanOrEqual(150 * 1024);
+  });
+});

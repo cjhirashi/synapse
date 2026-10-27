@@ -7,6 +7,12 @@
     <!-- Color del chrome del navegador = --bg-secondary del tema resuelto (SPEC-0011 RF-016). El valor
          estático es el del tema por defecto (oscuro); el script de abajo y useTheme lo mantienen. -->
     <meta name="theme-color" content="#1a1a24" />
+    <!-- Iconos de la app (SPEC-0011 RF-001…RF-004; archivos generados por scripts/brand/build.sh).
+         `sizes="32x32"` en el ICO evita que Chromium lo prefiera al SVG (con "any" lo elige). -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <script>
       // Aplica el tema antes del primer paint - evita un parpadeo de tema equivocado
       // mientras React monta (useTheme reacciona después del primer render). El defecto
