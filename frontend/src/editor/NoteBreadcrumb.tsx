@@ -63,7 +63,7 @@ export function NoteBreadcrumb({ path, onRevealFolder }: NoteBreadcrumbProps) {
           <li>
             <button
               type="button"
-              className="note-crumb"
+              className="note-crumb note-crumb-more"
               title={`Mostrar «${folders[folders.length - 1].name}» en el árbol`}
               onClick={() => onRevealFolder(folders[folders.length - 1].path)}
             >

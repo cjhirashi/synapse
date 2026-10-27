@@ -55,6 +55,28 @@
   }
 }
 
+/* Áreas táctiles de 44 px (UX-H6, WCAG 2.5.5) en estrecho (≤ 480 px) o con puntero táctil, sin crecer los controles:
+   un `::after` centrado sobre el botón o la etiqueta (la barra del editor mide 43 px y el bloque no se ensancha). */
+@media (max-width: 480px), (pointer: coarse) {
+  .note-crumb-more,
+  .code-block-copy,
+  .props-form-bool {
+    position: relative;
+  }
+
+  .note-crumb-more::after,
+  .code-block-copy::after,
+  .props-form-bool::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: 44px;
+    transform: translate(-50%, -50%);
+    content: "";
+  }
+}
+
 /* Menú ⋮ (SPEC-0010 RF-061; R-13; P-17): botón de 28 × 28 y menú en un portal sobre el contenido,
    de ≥ 200 px, con ítems de 32 px (40 en táctil), radio de 10 px y la sombra del panel. */
 .note-menu-button {
@@ -192,6 +214,11 @@
   font-weight: 600; /* ancestros en negrita atenuada, como la captura de Obsidian (L-1) */
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* El «…» no recorta: su área táctil ampliada (UX-H6) sale de su caja. */
+.note-crumb-more {
+  overflow: visible;
 }
 
 .note-crumb:hover {
