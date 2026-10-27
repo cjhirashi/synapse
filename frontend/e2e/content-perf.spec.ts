@@ -74,7 +74,8 @@ const PRECALC_THRESHOLD_MS = (kib: number): number => (kib <= 120 ? P95_MS : 250
 
 test("0010 RNF-001 precalculada: abrir las notas grandes precalculadas en p95 por tamaño (cache-hit, Chromium real)", async ({ browser, contentPerf }) => {
   test.setTimeout(600_000);
-  const CONTEXTS = 10;
+  // 20 contextos: con 10 el p95 por rango más cercano ES el máximo (un solo pico del equipo decide); con 20 es la 2.ª muestra más alta.
+  const CONTEXTS = 20;
   const byNote = new Map<string, number[]>(contentPerf.big.map((b) => [b.name, []]));
   let worstLongtask = 0;
   for (let c = 0; c < CONTEXTS; c += 1) {
@@ -101,7 +102,8 @@ test("0010 RNF-001 precalculada: abrir las notas grandes precalculadas en p95 po
       `RNF-001 (0010 precalculada · ${big.name}): mediana ${median.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, máx ${max.toFixed(1)} ms ` +
         `(${samples.length} aperturas cache-hit; umbral ${threshold} ms)`,
     );
-    expect(p95, `RNF-001 precalculada ${big.name}: p95 ${p95.toFixed(1)} ms > ${threshold} ms`).toBeLessThanOrEqual(threshold);
+    // `soft`: se informan los tres tamaños aunque uno falle (la nota queda marcada como fallida igualmente).
+    expect.soft(p95, `RNF-001 precalculada ${big.name}: p95 ${p95.toFixed(1)} ms > ${threshold} ms`).toBeLessThanOrEqual(threshold);
   }
   console.log(`RNF-001 (0010 precalculada): tarea larga máx ${worstLongtask.toFixed(1)} ms (tope 200 ms)`);
   expect(worstLongtask, `tarea larga ${worstLongtask.toFixed(1)} ms > 200 ms`).toBeLessThanOrEqual(200);
@@ -170,4 +172,57 @@ test("0010 RNF-001 con puntero: 150 ms de hover previo antes de abrir (informe d
     `RNF-001 (0010 con puntero · ${target.name}): mediana ${median.toFixed(1)} ms, p95 ${p95.toFixed(1)} ms, máx ${max.toFixed(1)} ms ` +
       `(${samples.length} aperturas tras 150 ms de hover; rutas ${JSON.stringify(routes)}; informe)`,
   );
+});
+
+// (d) PLAN-0010 §11.3 — lo diferido no produce tareas largas y se informa cuánto tarda. Con la nota grande ya
+// abierta (legible), el resaltado (por tandas en idle) y los diagramas (al acercarse al viewport) terminan sin
+// tareas largas > 200 ms; el tiempo hasta el primer diagrama visible y hasta el último tramo `sx-*` sólo se informa.
+test("0010 RNF-001 diferidos: resaltado y diagramas sin tareas largas > 200 ms (informe de tiempos)", async ({ browser, contentPerf }) => {
+  test.setTimeout(300_000);
+  const target = contentPerf.big[0];
+  const { context, page } = await openWorkspace(browser, contentPerf, { theme: "dark", size: SIZES[0] });
+  await page.waitForFunction(() => performance.getEntriesByName("synapse:precompute-idle").length > 0, undefined, { timeout: 5_000 });
+  await page.evaluate(() => {
+    const w = window as unknown as { __long: number[] };
+    w.__long = [];
+    new PerformanceObserver((list) => list.getEntries().forEach((e) => w.__long.push(e.duration))).observe({ type: "longtask", buffered: false });
+  });
+  await measureOpen(page, target.name, target.lastHeading);
+
+  // Resaltado: hasta que el número de tramos `sx-*` deja de crecer durante 1 s (tandas en idle terminadas).
+  const t0 = Date.now();
+  let last = -1;
+  let stableSince = Date.now();
+  let highlightMs = 0;
+  while (Date.now() - t0 < 30_000) {
+    const count = await page.locator('.milkdown-view .code-block span[class*="sx-"]').count();
+    if (count !== last) {
+      last = count;
+      stableSince = Date.now();
+      highlightMs = stableSince - t0;
+    } else if (Date.now() - stableSince > 1000) break;
+    await page.waitForTimeout(100);
+  }
+  expect(last, "el resaltado llegó a pintar bloques").toBeGreaterThan(0);
+
+  // Diagramas: el primero se lleva a la vista y se mide hasta que su SVG existe.
+  const diagram = page.locator('.code-block[data-language="mermaid"]').first();
+  expect(await page.locator('.code-block[data-language="mermaid"] [role="img"] svg').count(), "ningún diagrama dibujado fuera de pantalla").toBe(0);
+  const t1 = Date.now();
+  await diagram.scrollIntoViewIfNeeded();
+  await expect(diagram.locator('[role="img"] svg').first()).toBeVisible({ timeout: 20_000 });
+  const firstDiagramMs = Date.now() - t1;
+  // Los demás se dibujan al acercarse (se recorren los 5, uno a uno).
+  const blocks = page.locator('.code-block[data-language="mermaid"]');
+  for (let i = 1; i < (await blocks.count()); i += 1) {
+    await blocks.nth(i).scrollIntoViewIfNeeded();
+    await expect(blocks.nth(i).locator('[role="img"] svg').first()).toBeVisible({ timeout: 20_000 });
+  }
+  const longest = await page.evaluate(() => Math.max(0, ...(window as unknown as { __long: number[] }).__long));
+  console.log(
+    `RNF-001 (0010 diferidos · ${target.name}): resaltado estable a ${highlightMs} ms de abrir (${last} tramos sx-*), ` +
+      `primer diagrama visible en ${firstDiagramMs} ms (informe), tarea larga máx ${longest.toFixed(0)} ms (tope 200)`,
+  );
+  expect(longest, `tarea larga ${longest.toFixed(0)} ms > 200 ms`).toBeLessThanOrEqual(200);
+  await context.close();
 });

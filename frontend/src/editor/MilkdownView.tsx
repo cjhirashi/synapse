@@ -264,7 +264,18 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
             vscodeMarkdownPaste(ctx),
             // Resaltado de los bloques de código en lectura y Visual (RF-027, RF-028): decoraciones `sx-*`; un
             // *parser* por vista, así reabrir la nota reintenta una gramática que falló (RF-032).
-            createHighlightPlugin({ parser: createHighlightParser() }),
+            createHighlightPlugin({
+              parser: createHighlightParser({
+                // Distancia del bloque al viewport: lo cercano se resalta ya y lo lejano por tandas en idle (RNF-001).
+                distance: (pos) => {
+                  const view = running.current?.editor === editor ? running.current.view : null;
+                  const dom = view?.nodeDOM(pos);
+                  if (!(dom instanceof HTMLElement)) return null;
+                  const box = dom.getBoundingClientRect();
+                  return box.bottom < 0 ? -box.bottom : Math.max(0, box.top - window.innerHeight);
+                },
+              }),
+            }),
             new Plugin({
               view: () => ({
                 update: (view) => {

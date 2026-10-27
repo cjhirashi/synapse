@@ -444,16 +444,16 @@ actualizado: 2026-10-24
 - [x] T-143 — `codeBlockView.ts`: dibujo por visibilidad + idle, reserva de altura (`editor.css`), dependencia inyectable `visibility` (cubre RF-046, RF-047, RF-050, RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-(7|8|9) "`
   - EXPECT: `passed`; V-7/V-8/V-9 y la fuente hostil en verde.
-- [ ] T-144 [rojo] — `highlight/highlightScheduler.test.ts` + `proseHighlight.test.ts`: tandas con presupuesto (reloj falso), orden por distancia al viewport, una sola promesa compartida por tanda (⇒ un refresco), bloque cercano con gramática cargada síncrono, resultado relativo reutilizado al mover el bloque, bloque > 100 KiB sin resaltar, sin `console.error` (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: test]
+- [x] T-144 [rojo] — `highlight/highlightScheduler.test.ts` + `proseHighlight.test.ts`: tandas con presupuesto (reloj falso), orden por distancia al viewport, una sola promesa compartida por tanda (⇒ un refresco), bloque cercano con gramática cargada síncrono, resultado relativo reutilizado al mover el bloque, bloque > 100 KiB sin resaltar, sin `console.error` (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: test]
   - CHECK: `cd frontend && npx vitest run src/editor/highlight`
   - EXPECT: fallan.
-- [ ] T-145 — `highlight/highlightScheduler.ts` + `proseHighlight.ts` por tandas; `MilkdownView` le da la distancia al viewport (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: pantalla]
+- [x] T-145 — `highlight/highlightScheduler.ts` + `proseHighlight.ts` por tandas; `MilkdownView` le da la distancia al viewport (cubre RF-027, RF-028, RF-031, RF-032, RNF-001) [zona: pantalla]
   - CHECK: `cd frontend && npx vitest run src/editor && CV --grep "0010 V-5 "`
   - EXPECT: `passed`; V-5 en verde.
-- [ ] T-146 [rojo] — Sonda `0010 RNF-001 diferidos` en `e2e/content-perf.spec.ts` (tareas largas ≤ 200 ms durante resaltado y diagramas; informe del primer diagrama visible). El rojo de RNF-001 es `0010 RNF-001 precalculada` con ambos activos: p95 187,3 ms > 150 a 120 KiB (cubre RNF-001) [zona: sistema]
+- [x] T-146 [rojo] — Sonda `0010 RNF-001 diferidos` en `e2e/content-perf.spec.ts` (tareas largas ≤ 200 ms durante resaltado y diagramas; informe del primer diagrama visible). El rojo de RNF-001 es `0010 RNF-001 precalculada` con ambos activos: p95 187,3 ms > 150 a 120 KiB (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts --grep "precalculada"`
   - EXPECT: contra el código anterior a T-143/T-145, falla (120 KiB > 150 ms).
-- [ ] T-147 — Medir y anotar p95 a 64/120/181 KiB con ambos activos (cubre RNF-001) [zona: sistema]
+- [x] T-147 — Medir y anotar p95 a 64/120/181 KiB con ambos activos (cubre RNF-001) [zona: sistema]
   - CHECK: `cd frontend && VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts`
   - EXPECT: `passed`; 64 y 120 KiB ≤ 150 ms, 181 KiB ≤ 250 ms; tareas largas ≤ 200 ms.
 - [ ] T-148 — Gap del diagrama muy ancho (14 nodos) diminuto: propuesta documentada en `history.md` (no se implementa si toca decisión de producto) (cubre RF-052) [zona: docs]
