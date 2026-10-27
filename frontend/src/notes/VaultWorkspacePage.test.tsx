@@ -493,3 +493,97 @@ test("historial: se conserva al volver a montar con el mismo sessionStorage y es
   expect(sessionStorage.getItem(`synapse:note-history:${vault.id}`)).not.toBeNull();
   expect(Object.keys(sessionStorage).filter((key) => key.startsWith("synapse:note-history:"))).toEqual([`synapse:note-history:${vault.id}`]);
 });
+
+// --- SPEC-0010 RF-055, RF-062, RF-065: migas y menú ⋮ con los flujos reales ------------------------------------
+
+/** Abre en edición/lectura la nota `Proyectos/Clientes/Plan.md` (por el estado de navegación, con el árbol plegado). */
+async function deepNote() {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Proyectos/Clientes/Plan.md");
+  render(tree(value, `/vaults/${vault.id}`, { noteId: note.id }));
+  await screen.findByRole("heading", { level: 2, name: "Plan" });
+  return { value, vault, note };
+}
+
+const menuButton = () => screen.getByRole("button", { name: "Opciones de la nota" });
+async function pick(item: string) {
+  await userEvent.click(menuButton());
+  await userEvent.click(await screen.findByRole("menuitem", { name: item }));
+}
+
+test("RF-055: pulsar una carpeta de la miga la revela en el árbol y la deja activa sin cambiar de nota", async () => {
+  await deepNote();
+  expect(screen.queryByRole("treeitem", { name: "Plan" })).toBeNull(); // el árbol está plegado
+  await userEvent.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("button", { name: "Clientes" }));
+  expect(await screen.findByRole("treeitem", { name: "Clientes" })).toHaveAttribute("aria-current", "true");
+  expect(screen.getByText(/Crear en:/)).toHaveTextContent("Proyectos/Clientes");
+  expect(screen.getByRole("heading", { level: 2, name: "Plan" })).toBeInTheDocument();
+});
+
+test("RF-062: «Renombrar o mover» del menú abre el mismo flujo de renombrado del árbol", async () => {
+  await deepNote();
+  await pick("Renombrar o mover");
+  expect(await screen.findByRole("textbox", { name: "Ruta de la nota" })).toHaveValue("Proyectos/Clientes/Plan.md");
+});
+
+test("RF-062: «Borrar» del menú manda la nota a la papelera con el flujo del árbol y cierra el editor", async () => {
+  const { value, vault } = await deepNote();
+  await pick("Borrar");
+  expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(await value.notes.list(vault.id, { deleted: true })).toHaveLength(1);
+});
+
+test("RF-062: «Borrar» con cambios sin guardar pide la misma confirmación y «Seguir editando» no borra", async () => {
+  const { value, vault } = await deepNote();
+  await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  act(() => EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!.dispatch({ changes: { from: 0, insert: "x" } }));
+  await screen.findByText("Cambios sin guardar");
+  await pick("Borrar");
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seguir editando" }));
+  expect(await value.notes.list(vault.id, { deleted: true })).toEqual([]);
+});
+
+test("RF-062: «Copiar ruta» copia el path completo con .md y anuncia «Ruta copiada»", async () => {
+  await deepNote();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  await pick("Copiar ruta");
+  expect(writeText).toHaveBeenCalledWith("Proyectos/Clientes/Plan.md");
+  expect(await screen.findByText("Ruta copiada")).toBeInTheDocument();
+  expect(screen.getByText("Ruta copiada").closest("[aria-live]")).not.toBeNull();
+});
+
+test("RF-062: si «Copiar ruta» falla se avisa sin lanzar", async () => {
+  await deepNote();
+  Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("denegado")) }, configurable: true });
+  await pick("Copiar ruta");
+  expect(await screen.findByText(/No se pudo copiar la ruta/)).toBeInTheDocument();
+});
+
+test("RF-062: «Ver en Código» pasa la nota a edición en la vista Código", async () => {
+  await deepNote();
+  await pick("Ver en Código");
+  expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("RF-065: renombrar o mover la nota abierta actualiza las migas sin recargar", async () => {
+  const { value, note } = await deepNote();
+  const current = await value.notes.get(note.id);
+  await act(async () => {
+    await value.notes.rename(current.id, "Otra/Nombre nuevo.md", current.rev);
+  });
+  const nav = screen.getByRole("navigation", { name: "Ruta" });
+  await waitFor(() => expect(within(nav).getByRole("heading", { level: 2 })).toHaveTextContent("Nombre nuevo"));
+  expect(within(nav).getByRole("button", { name: "Otra" })).toBeInTheDocument();
+  expect(within(nav).queryByRole("button", { name: "Clientes" })).toBeNull();
+});
+
+test("RF-065: el lápiz alterna lectura y edición", async () => {
+  await deepNote();
+  await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+  expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Leer" }));
+  expect(await screen.findByRole("button", { name: "Editar" })).toBeInTheDocument();
+});
