@@ -49,7 +49,7 @@ describe("frontmatter · parse (RF-016…RF-018)", () => {
         expect(result).toEqual({ value: c.value });
         // Las claves del YAML son propias del objeto, también `__proto__` (nada cambia el prototipo).
         const value = (result as { value: Record<string, unknown> }).value;
-        for (const key of Object.keys(c.value as object)) expect(Object.hasOwn(value, key), key).toBe(true);
+        for (const key of Object.keys(c.value as object)) expect(Object.prototype.hasOwnProperty.call(value, key), key).toBe(true);
         expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
       }
     });

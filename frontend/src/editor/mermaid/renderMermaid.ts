@@ -59,7 +59,7 @@ const blank = (match: string) => match.replace(/[^\n]/g, "");
 
 /**
  * La fuente sin lo que podría relajar la seguridad, cambiar el tema o ejecutar acciones (RF-051): directivas
- * `%%{…}%%`, líneas `click …` y `link(s) X: …`, y la clave `config:` del frontmatter. Se vacían las líneas
+ * `%%{…}%%`, sentencias `click`/`callback`/`link` (por sentencia, no por línea) y la clave `config:` del frontmatter. Se vacían las líneas
  * en vez de borrarlas, así los errores de Mermaid siguen apuntando a la línea del bloque.
  */
 export function sanitizeSource(source: string): string {
@@ -72,8 +72,33 @@ export function sanitizeSource(source: string): string {
   }
   return text
     .replace(/%%\{[\s\S]*?\}%%/g, blank)
-    .replace(/^[ \t]*click[ \t].*$/gim, blank)
-    .replace(/^[ \t]*links?[ \t]+[^\s:]+[ \t]*:.*$/gim, blank);
+    .split("\n")
+    .map(dropActionStatements)
+    .join("\n");
+}
+
+/**
+ * Sentencias que atan una acción a un nodo: `click ID …`, `callback ID "…"` y `link(s) ID: …` (sequenceDiagram). Una
+ * palabra suelta (un nodo llamado `click`, una etiqueta con «click») no cuenta: `click` exige un identificador que no
+ * sea una flecha, `callback` un texto entre comillas y `link` los dos puntos.
+ */
+const ACTION_STATEMENT = /^\s*(?:click\s+(?!-)\S|callback\s+[\w.-]+\s+["']|links?\s+[^\s:]+\s*:)/i;
+
+/** Quita de una línea las sentencias de acción: separadas por `;` (fuera de comillas dobles) o la línea entera. */
+function dropActionStatements(line: string): string {
+  if (/^\s*%%/.test(line)) return line;
+  const statements: string[] = [];
+  let current = "";
+  let quoted = false;
+  for (const char of line) {
+    if (char === '"') quoted = !quoted;
+    if (char === ";" && !quoted) {
+      statements.push(current);
+      current = "";
+    } else current += char;
+  }
+  statements.push(current);
+  return statements.map((statement) => (ACTION_STATEMENT.test(statement) ? "" : statement)).join(";");
 }
 
 const SVG_NS = "http://www.w3.org/2000/svg";
@@ -81,6 +106,13 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 const FORBIDDEN_ELEMENTS = new Set(["script", "foreignobject", "iframe", "object", "embed", "a", "animate", "set"]);
 /** Estilos con carga externa o ejecución: `@import`, `javascript:`, `expression(` o `url()` que no sea un `#id`. */
 const FORBIDDEN_CSS = /@import|javascript:|expression\(|url\(\s*['"]?\s*(?!#)/i;
+
+/** El CSS con sus escapes resueltos (`u\72l(` = `url(`): la comprobación se hace sobre lo que el navegador entendería. */
+const decodeCssEscapes = (css: string): string =>
+  css.replace(/\\([0-9a-fA-F]{1,6})\s?|\\([\s\S])/g, (_m, hex: string | undefined, char: string | undefined) =>
+    hex ? String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff)) : (char as string),
+  );
+const forbiddenCss = (css: string) => FORBIDDEN_CSS.test(decodeCssEscapes(css));
 
 const unsafe = (what: string) => new MermaidSyntaxError(`El diagrama contiene ${what}, que no está permitido`);
 
@@ -99,13 +131,13 @@ export function verifySvg(markup: string): SVGSVGElement {
   for (const element of [root, ...root.querySelectorAll("*")]) {
     const name = element.localName.toLowerCase();
     if (FORBIDDEN_ELEMENTS.has(name)) throw unsafe(`el elemento <${name}>`);
-    if (name === "style" && FORBIDDEN_CSS.test(element.textContent ?? "")) throw unsafe("estilos con carga externa");
+    if (name === "style" && forbiddenCss(element.textContent ?? "")) throw unsafe("estilos con carga externa");
     for (const attribute of element.attributes) {
       const attr = attribute.name.toLowerCase();
       if (attr.startsWith("on")) throw unsafe(`el atributo ${attr}`);
       // Sólo referencias internas (`#id`, p. ej. un marcador de flecha): nada que navegue o cargue de fuera.
       if (attr.endsWith("href") && !attribute.value.trim().startsWith("#")) throw unsafe("un enlace");
-      if (attr === "style" && FORBIDDEN_CSS.test(attribute.value)) throw unsafe("estilos con carga externa");
+      if (attr === "style" && forbiddenCss(attribute.value)) throw unsafe("estilos con carga externa");
     }
   }
   return document.importNode(root, true) as unknown as SVGSVGElement;
