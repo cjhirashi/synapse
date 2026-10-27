@@ -14,3 +14,17 @@
 :root[data-theme="light"] .brand-logo {
   background-image: url("/logo-synapse-light.svg");
 }
+
+/* Alto contraste forzado (RF-019, D-13): el sistema impone sus colores, así que el degradado no tiene por
+   qué mantenerse; el logo pasa a una silueta monocroma en el color de texto del sistema (`CanvasText`),
+   que contrasta con `Canvas`. `forced-color-adjust: none` evita que el navegador anule el fondo; la
+   máscara usa la silueta (las dos variantes comparten la forma) y, si no carga, no se pinta nada (RF-020).
+   El selector lleva `:root[data-theme]` para igualar la especificidad de la regla del tema claro de arriba
+   (0,3,0); con sólo `.brand-logo` esa regla ganaría y en tema claro el logo conservaría su degradado. */
+@media (forced-colors: active) {
+  :root[data-theme] .brand-logo {
+    forced-color-adjust: none;
+    background: CanvasText;
+    mask: url("/logo-synapse-dark.svg") center / contain no-repeat;
+  }
+}

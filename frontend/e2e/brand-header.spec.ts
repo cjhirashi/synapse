@@ -195,3 +195,57 @@ for (const c of CASES) {
     await context.close();
   });
 }
+
+// B-6 · forced-colors: logo monocromo y visible (RF-019)
+for (const theme of THEMES) {
+  test(`B-6 forced-colors activo, ${theme}: logo monocromo con contraste ≥ 3:1 y «Synapse» visible (RF-019)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme, size: SIZES[0] });
+    await page.emulateMedia({ forcedColors: "active" });
+    await expect(page.locator(".app-brand")).toHaveText("Synapse");
+    await expect(page.locator(".app-brand")).toBeVisible();
+    // La captura va antes de las aserciones: si una falla, hay algo que leer.
+    await shot(page, `forced-${theme}`, { selector: ".app-header" });
+
+    const bg = parseRgb((await measure(page, ".app-header")).bg);
+    const px = await decodePng(page, await page.locator(".app-brand .brand-logo").screenshot());
+    // Píxeles sólidos del logo: los del borde antialiasado se mezclan con el fondo y no son "el color del logo",
+    // así que sólo cuentan los que están a ≥ 90 % de la distancia máxima al fondo.
+    const diffs = Array.from({ length: px.data.length / 4 }, (_, p) => Math.abs(px.data[p * 4] - bg[0]) + Math.abs(px.data[p * 4 + 1] - bg[1]) + Math.abs(px.data[p * 4 + 2] - bg[2]));
+    const farthest = Math.max(...diffs);
+    const solid: Array<[number, number, number]> = [];
+    diffs.forEach((d, p) => d >= 0.9 * farthest && solid.push([px.data[p * 4], px.data[p * 4 + 1], px.data[p * 4 + 2]]));
+    expect(solid.length, "píxeles sólidos del logo").toBeGreaterThan(20);
+    // Monocromo: ningún tono (los canales de cada píxel sólido coinciden) y todos del mismo color.
+    for (const [r, g, b] of solid) expect(Math.max(r, g, b) - Math.min(r, g, b), "sin tono").toBeLessThanOrEqual(8);
+    expectAtLeast(`RF-019 contraste ${theme}`, "contraste del logo forzado vs Canvas", Math.min(...solid.map((c) => contrast(c, bg))), 3);
+    const textColor = parseRgb(await page.locator(".app-brand").evaluate((el) => getComputedStyle(el).color));
+    expectAtLeast(`RF-019 texto ${theme}`, "contraste de «Synapse» vs Canvas", contrast(textColor, bg), 3);
+
+    await context.close();
+  });
+}
+
+// B-7 · el asset del logo no carga: cabecera íntegra y sin icono roto (RF-020)
+for (const theme of THEMES) {
+  test(`B-7 logo que no carga, ${theme}: «Synapse» visible, caja y alto intactos, sin marco de imagen rota (RF-020)`, async ({ browser, seeded }) => {
+    const { context, page } = await openWorkspace(browser, seeded, { theme, size: SIZES[0] });
+    await context.route("**/logo-synapse-*.svg", (route) => route.abort());
+    await page.reload();
+    await expect(page.locator(".app-brand")).toHaveText("Synapse");
+
+    const logo = await measure(page, ".app-brand .brand-logo");
+    expectMeasure(`RF-020 ancho ${theme}`, "caja del logo sin asset", logo.w, 28, 0.5);
+    expectMeasure(`RF-020 alto ${theme}`, "caja del logo sin asset", logo.h, 28, 0.5);
+    expectMeasure(`RF-020 cabecera ${theme}`, "alto de .app-header sin asset", (await measure(page, ".app-header")).h, 70, 1);
+    // Sin alternativa visible y sin <img> roto: el bloque sólo contiene el span y el texto.
+    expect(await page.locator(".app-brand img").count()).toBe(0);
+    expect(await page.locator(".app-brand").innerText()).toBe("Synapse");
+    // Sin marco gris: todos los píxeles de la caja tienen el color del fondo de la cabecera.
+    const bg = parseRgb((await measure(page, ".app-header")).bg);
+    const px = await decodePng(page, await page.locator(".app-brand .brand-logo").screenshot());
+    expect(silhouetteBox(px, bg, 6), "la caja vacía no pinta nada").toBeNull();
+
+    await shot(page, `broken-${theme}`, { selector: ".app-header" });
+    await context.close();
+  });
+}

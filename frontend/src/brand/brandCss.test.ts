@@ -35,6 +35,17 @@ describe("brand.css", () => {
     expect(sizeIn("../auth/AuthShell.css", ".auth-logo")).toBe(32);
   });
 
+  test("RF-019: con forced-colors activo el logo es monocromo (CanvasText) sobre la silueta de la máscara y respeta el modo forzado", () => {
+    const m = /@media\s*\(forced-colors:\s*active\)\s*\{\s*:root\[data-theme\]\s+\.brand-logo\s*\{([^}]*)\}/.exec(css);
+    // `:root[data-theme]` iguala la especificidad de la regla del tema claro: si no, ésta gana y el degradado sobrevive.
+    expect(m, "regla @media (forced-colors: active) :root[data-theme] .brand-logo").not.toBeNull();
+    const body = m![1];
+    expect(body).toMatch(/forced-color-adjust:\s*none/);
+    expect(body).toMatch(/background:\s*CanvasText/);
+    // La máscara usa la silueta (las dos variantes la comparten); si no carga no se pinta nada (RF-020).
+    expect(body).toMatch(/mask:\s*url\("\/logo-synapse-dark\.svg"\)\s*center\s*\/\s*contain\s*no-repeat/);
+  });
+
   test("RF-014: por defecto (tema oscuro) el fondo es la variante oscura del logo", () => {
     expect(rule(".brand-logo")).toMatch(/background:\s*url\("\/logo-synapse-dark\.svg"\)/);
   });
