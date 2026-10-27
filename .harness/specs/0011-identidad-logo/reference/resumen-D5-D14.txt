@@ -1,0 +1,12 @@
+SPEC-0011 - Resumen de decisiones D-5 a D-14 (pendientes de aprobacion de AIRA)
+
+D-5: Orden del bloque de marca: primero el logo y luego el nombre "Synapse", en el borde izquierdo de la cabecera. Descartado: nombre y luego logo.
+D-6: El bloque de marca sigue sin ser enlace, como hoy. Convertirlo en enlace a /vaults seria un cambio de comportamiento no pedido.
+D-7: Se recorta el lienzo (viewBox) a la silueta del cerebro. El original tiene cerca de 20% de margen vacio y a 26 px se veria como un icono de unos 20 px.
+D-8: La forma del logo no cambia, solo el color. Se verifica comparando la silueta (mascara de opacidad) del nuevo contra el original, no a ojo.
+D-9: El contraste se mide contra --bg-secondary, que es el fondo real de la cabecera y de la tarjeta de login. No contra --bg-primary.
+D-10: La barra del navegador (theme-color) toma el color de la cabecera del tema activo y cambia con el tema. En el manifest y en los iconos instalables se usa el fondo oscuro por defecto #12121a, con contraste 5,09:1.
+D-11: El manifest solo declara iconos y colores. La app no se vuelve instalable ni offline (afectaria sincronizacion y sesion; merece spec propia).
+D-12: Se incluye /favicon.ico con 16, 32 y 48 px. Los navegadores lo piden aunque no se declare, y elimina el error 404 actual.
+D-13: En modo de colores forzados del sistema el logo puede quedar de un solo color, pero sigue visible. No se fuerza el degradado contra la preferencia del usuario ni se oculta el logo.
+D-14: Peso maximo del logo de cabecera y del favicon SVG: 10 KB comprimido (gzip -9) y 30 KB sin comprimir. Con 4 KB habria que simplificar el dibujo, lo que choca con D-8.
