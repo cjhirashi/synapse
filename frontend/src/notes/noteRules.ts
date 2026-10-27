@@ -39,6 +39,8 @@ export function parseNoteId(id: string): { vaultId: string; noteUuid: string } |
 export const PATH_MAX = 300;
 export const CONTENT_MAX_BYTES = 2 * 1024 * 1024;
 export const FRONTMATTER_MAX_BYTES = 64 * 1024;
+/** Niveles de anidamiento del frontmatter (raíz = 1): el mismo tope que `core/note_rules.FRONTMATTER_MAX_DEPTH`. */
+export const FRONTMATTER_MAX_DEPTH = 32;
 
 /** Sustituto alto sin bajo detrás, o bajo sin alto delante. */
 const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/;
@@ -73,8 +75,16 @@ export function checkPath(value: unknown): string | null {
   if (typeof value !== "string" || !wellFormed(value)) return "validation-error:path";
   const normalized = normalizePath(value);
   const length = [...normalized].length;
+  const segments = normalized.split("/");
+  // SPEC-0010 RF-007 (espejo de `core/note_rules.check_path`): el último segmento (nombre del
+  // archivo) no puede ser sólo `.md` (sin mayúsculas): sería una nota sin nombre.
   const valid =
-    length >= 1 && length <= PATH_MAX && normalized.split("/").every((segment) => segment !== "") && !CONTROL.test(normalized);
+    length >= 1 &&
+    length <= PATH_MAX &&
+    segments.every((segment) => segment !== "") &&
+    !CONTROL.test(normalized) &&
+    // Misma equivalencia que `pathKey` (NFKC + casefold): `.ｍｄ` (anchos completos) es `.md` (L4, Converge 1).
+    pathKey(segments[segments.length - 1]) !== ".md";
   if (!valid) return "validation-error:path";
   return normalized === value ? null : "not-normalized:path";
 }
@@ -108,9 +118,28 @@ function hasUnwritableValue(json: unknown): boolean {
   return false;
 }
 
-/** `frontmatter`: objeto JSON cuya serialización compacta pesa ≤ 64 KiB en UTF-8. */
+/**
+ * ¿Algún valor anida más de `limit` niveles (el objeto raíz cuenta como 1)? Recorrido iterativo: no depende de la
+ * pila, así que un anidamiento de miles de niveles se rechaza sin `RangeError`.
+ */
+export function exceedsDepth(value: unknown, limit: number = FRONTMATTER_MAX_DEPTH): boolean {
+  const stack: Array<[unknown, number]> = [[value, 1]];
+  while (stack.length > 0) {
+    const [node, depth] = stack.pop() as [unknown, number];
+    const children = Array.isArray(node) ? node : node !== null && typeof node === "object" ? Object.values(node) : [];
+    for (const child of children) {
+      if (child !== null && typeof child === "object") {
+        if (depth + 1 > limit) return true;
+        stack.push([child, depth + 1]);
+      }
+    }
+  }
+  return false;
+}
+
+/** `frontmatter`: objeto JSON de a lo sumo 32 niveles cuya serialización compacta pesa ≤ 64 KiB en UTF-8. */
 export function checkFrontmatter(value: unknown): string | null {
   const invalid = "validation-error:frontmatter";
-  if (value === null || typeof value !== "object" || Array.isArray(value) || hasUnwritableValue(value)) return invalid;
+  if (value === null || typeof value !== "object" || Array.isArray(value) || exceedsDepth(value) || hasUnwritableValue(value)) return invalid;
   return utf8Bytes(JSON.stringify(value)) <= FRONTMATTER_MAX_BYTES ? null : invalid;
 }

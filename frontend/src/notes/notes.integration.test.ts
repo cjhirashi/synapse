@@ -241,4 +241,40 @@ describe("notas (integración)", () => {
       await eventually(async () => expect(await phone.sync.notes.list(vault.id)).toMatchObject([{ path: "carpeta/Nuevo.md", deleted_at: null }]));
     });
   });
+
+  describe("frontmatter (SPEC-0010 RF-022)", () => {
+    it("el frontmatter editado sobrevive al push/pull entre dos réplicas", async () => {
+      const created = await laptop.sync.notes.create(vault.id, "Props");
+      const saved = await laptop.sync.notes.save(created.id, "# Cuerpo", created.rev, { título: "Plan", n: 3, t: ["a", "b"] });
+      await laptop.synced();
+      await arrives(phone, saved);
+      expect(await phone.sync.notes.get(saved.id)).toMatchObject({ content: "# Cuerpo", frontmatter: { título: "Plan", n: 3, t: ["a", "b"] } });
+    });
+
+    it("un choque de frontmatter (mismo cuerpo, propiedades distintas) queda para decisión manual, nunca se fusiona", async () => {
+      const base = await laptop.sync.notes.create(vault.id, "Meta");
+      await laptop.synced();
+      await arrives(phone, base);
+
+      laptop.setNetwork("offline");
+      phone.setNetwork("offline");
+      // Mismo cuerpo en ambos; sólo difiere el frontmatter: aun así es un conflicto manual.
+      await laptop.sync.notes.save(base.id, "cuerpo", base.rev, { origen: "portátil" });
+      await phone.sync.notes.save(base.id, "cuerpo", base.rev, { origen: "móvil" });
+      for (const device of [laptop, phone]) {
+        device.setNetwork("online");
+        await device.synced();
+      }
+
+      for (const device of [laptop, phone]) {
+        await eventually(() => {
+          const [conflict, ...rest] = noteConflicts(device);
+          expect(rest).toEqual([]);
+          expect(conflict).toMatchObject({ id: base.id });
+          const origins = [conflict.winner.doc.frontmatter, conflict.loser.doc.frontmatter].map((f) => (f as { origen?: string }).origen).sort();
+          expect(origins).toEqual(["móvil", "portátil"]);
+        });
+      }
+    });
+  });
 });

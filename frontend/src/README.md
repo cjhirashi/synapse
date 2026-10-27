@@ -129,6 +129,25 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   vacío (`.vault-workspace-empty`) va centrado en el panel.
 - **Verificación visual:** `e2e/` (Playwright 1.56.0; ver `frontend/README.md`, `npm run test:visual`).
 
+## Contenido markdown completo (SPEC-0010)
+
+Módulos nuevos (el detalle de requisitos está en `.harness/specs/0010-contenido-markdown-completo/`):
+
+| Módulo | Qué hace |
+|---|---|
+| `notes/folders.ts`, `notes/untitled.ts` | carpetas (validación, duplicados NFKC+casefold, `joinPath`, `parentFolder`) y nombre libre por carpeta; «Crear en» la carpeta activa |
+| `notes/noteHistory.ts` | historial de notas abiertas por bóveda y pestaña (ids, tope 50, `sessionStorage` `synapse:note-history:{vault}`); `Workspace` lo mueve sólo cuando el editor **abrió** la nota (`onOpened`); Alt+←/→ fuera de los editores |
+| `editor/frontmatter.ts` (chunk diferido, única importación de `yaml`), `editor/properties.ts`, `PropertiesPanel/Form.tsx` | frontmatter editable: sesión de edición `{props, body}` (Visual) o texto compuesto (Código); YAML 1.2 core validado con línea; YAML heredado (migrar / protegido) |
+| `editor/NoteBreadcrumb.tsx`, `breadcrumb.ts`, `NoteMenu.tsx`, `Notice.tsx` | encabezado de 43 px: Atrás/Adelante, migas truncadas por segmento, lápiz Editar/Leer y menú ⋮ (renombrar, borrar, copiar ruta, ver en Código) con los flujos del árbol |
+| `editor/codeBlockView.ts`, `taskItemView.ts`, `tableView.ts` | *node views*: bloque con cabecera (etiqueta + Copiar) y rama Mermaid, casillas alternables, tabla con scroll |
+| `editor/highlight/` | `languages.ts` (registro único de 11 lenguajes con alias), `highlighter.ts` (clases `sx-*` con tokens), `proseHighlight.ts` + `highlightScheduler.ts` (decoraciones por tandas en idle, cercanos al viewport primero), usados también por `CodeView` |
+| `editor/mermaid/` | `renderMermaid.ts` (strict, `htmlLabels:false`, `secure` ampliado, fuente saneada, SVG verificado como DOM antes de insertarlo, dibujos en serie), `themeVariables.ts` (colores de los tokens), `panZoom.ts` (svg-pan-zoom diferido: botones, teclado, rueda con Ctrl/⌘) |
+| `editor/deferred/idle.ts` | `whenIdle` y `observeVisibility`: lo decorativo (resaltado, diagramas) no compite con «clic → legible» |
+| `editor/markdown/` | caché de parseo por `(id, rev)` en memoria, Worker de parseo, programador de precálculo y `cachedParser` (RNF-001). Si algún día hay CSP, el Worker necesita `worker-src 'self'` |
+
+Reglas: sin `innerHTML` y similares (guarda `editor/securityGuard.test.ts`); el único marcado externo es el SVG de Mermaid, ya verificado;
+color de texto sólo con `--*-text`/`--text-*` (ADR-006), nunca `--accent`/`--text-muted`.
+
 ## Notas y editor (SPEC-0008)
 
 **Ruta y marco.** `main.tsx` usa `createBrowserRouter` (una ruta comodín que monta `App`,

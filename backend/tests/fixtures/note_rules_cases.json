@@ -1,5 +1,5 @@
 {
- "_doc": "Bater\u00eda com\u00fan de PLAN-0008 \u00a75: reglas de core/note_rules.py frente a frontend/src/notes/noteRules.ts. La verifican test_note_rules.py y noteRules.test.ts. `input` es el valor tal cual; si el caso trae `build`, el valor es `prefix + repeat*times + suffix` (para los topes de 2 MiB y 64 KiB sin inflar el archivo), y en frontmatter `{key: <valor construido>}`. path: `code` es el rechazo de check_path (null si pasa) y `normalized` la salida de normalize_path. Un caso de frontmatter con `nonfinite` ({at: ruta de claves/\u00edndices, token}) sustituye ese valor por el n\u00famero no finito del token (NaN, Infinity, -Infinity, 1e999) tras leer el JSON: el JSON est\u00e1ndar no puede escribirlos (VB-1).",
+ "_doc": "Bater\u00eda com\u00fan de PLAN-0008 \u00a75: reglas de core/note_rules.py frente a frontend/src/notes/noteRules.ts. La verifican test_note_rules.py y noteRules.test.ts. `input` es el valor tal cual; si el caso trae `build`, el valor es `prefix + repeat*times + suffix` (para los topes de 2 MiB y 64 KiB sin inflar el archivo), y en frontmatter `{key: <valor construido>}`. path: `code` es el rechazo de check_path (null si pasa) y `normalized` la salida de normalize_path. Un caso de frontmatter con `depth` N (SPEC-0010, Converge 1) se genera: un objeto anidado N niveles (el raíz cuenta como 1; tope FRONTMATTER_MAX_DEPTH = 32). Un caso de frontmatter con `nonfinite` ({at: ruta de claves/\u00edndices, token}) sustituye ese valor por el n\u00famero no finito del token (NaN, Infinity, -Infinity, 1e999) tras leer el JSON: el JSON est\u00e1ndar no puede escribirlos (VB-1).",
  "path": [
   {
    "input": "Nota.md",
@@ -176,6 +176,61 @@
    "input": null,
    "code": "validation-error:path",
    "normalized": null
+  },
+  {
+   "input": "X/.md",
+   "code": "validation-error:path",
+   "normalized": "X/.md"
+  },
+  {
+   "input": "X/.MD",
+   "code": "validation-error:path",
+   "normalized": "X/.MD"
+  },
+  {
+   "input": ".md",
+   "code": "validation-error:path",
+   "normalized": ".md"
+  },
+  {
+   "input": "X/ .md",
+   "code": "validation-error:path",
+   "normalized": "X/.md"
+  },
+  {
+   "input": "X/.ｍｄ",
+   "code": "validation-error:path",
+   "normalized": "X/.ｍｄ"
+  },
+  {
+   "input": "X/．md",
+   "code": "validation-error:path",
+   "normalized": "X/．md"
+  },
+  {
+   "input": "X/.Ｍｄ",
+   "code": "validation-error:path",
+   "normalized": "X/.Ｍｄ"
+  },
+  {
+   "input": "ｘ/.md",
+   "code": "validation-error:path",
+   "normalized": "ｘ/.md"
+  },
+  {
+   "input": "X/.ｍｄ.md",
+   "code": null,
+   "normalized": "X/.ｍｄ.md"
+  },
+  {
+   "input": "X/a.md",
+   "code": null,
+   "normalized": "X/a.md"
+  },
+  {
+   "input": ".md/a.md",
+   "code": null,
+   "normalized": ".md/a.md"
   }
  ],
  "content": [
@@ -436,6 +491,48 @@
     ],
     "token": "1e999"
    }
+  },
+  {
+   "input": {},
+   "valid": true,
+   "depth": 1
+  },
+  {
+   "input": {},
+   "valid": true,
+   "depth": 32
+  },
+  {
+   "input": {},
+   "valid": false,
+   "depth": 33
+  },
+  {
+   "input": {},
+   "valid": false,
+   "depth": 400
+  },
+  {
+   "input": {},
+   "valid": false,
+   "depth": 960
+  },
+  {
+   "input": {},
+   "valid": false,
+   "depth": 5000
+  },
+  {
+   "input": {"__proto__": {"x": 1}},
+   "valid": true
+  },
+  {
+   "input": {"constructor": {"x": 1}},
+   "valid": true
+  },
+  {
+   "input": {"prototype": {"x": 1}},
+   "valid": true
   }
  ],
  "path_key": [

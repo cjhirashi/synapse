@@ -1,0 +1,99 @@
+/* Resaltado de sintaxis (SPEC-0010 RF-027…RF-029, RF-040; PLAN-0010 §2.3-e, §2.3-h).
+   Las clases `sx-*` las emite `highlight/highlighter.ts` (`tagHighlighter` de Lezer) y las pintan
+   igual el bloque de código de lectura/Visual (ProseMirror) y la vista Código (CodeMirror).
+   Los `--syntax-*` son alias de tokens (no valores nuevos); cada uno cumple ≥ 4,5:1 sobre
+   `--bg-tertiary` en ambos temas (`contrast.test.ts`). Nada de literales de color. */
+:root {
+  --syntax-keyword: var(--accent-hover);
+  --syntax-string: var(--success-text);
+  --syntax-number: var(--warning-text);
+  --syntax-type: var(--info-text);
+  --syntax-function: var(--text-primary);
+  --syntax-plain: var(--text-secondary);
+  --syntax-comment: var(--text-secondary);
+  --syntax-deletion: var(--danger-text);
+}
+
+.sx-keyword {
+  color: var(--syntax-keyword);
+  font-weight: 600;
+}
+
+.sx-string {
+  color: var(--syntax-string);
+}
+
+.sx-number,
+.sx-atom {
+  color: var(--syntax-number);
+}
+
+.sx-type {
+  color: var(--syntax-type);
+}
+
+.sx-function {
+  color: var(--syntax-function);
+  font-weight: 600;
+}
+
+.sx-plain {
+  color: var(--syntax-plain);
+}
+
+.sx-comment {
+  color: var(--syntax-comment);
+  font-style: italic;
+}
+
+.sx-deletion {
+  color: var(--syntax-deletion);
+  text-decoration: line-through;
+}
+
+/* Markdown en la vista Código (§2.3-h). */
+.sx-heading1 {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.sx-heading {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.sx-meta {
+  color: var(--text-secondary);
+}
+
+.sx-strong {
+  color: var(--accent-hover);
+  font-weight: 600;
+}
+
+.sx-emphasis {
+  color: var(--text-primary);
+  font-style: italic;
+}
+
+.sx-link {
+  color: var(--info-text);
+  text-decoration: underline;
+}
+
+.sx-url {
+  color: var(--text-secondary);
+}
+
+.sx-code {
+  color: var(--warning-text);
+}
+
+.sx-task {
+  color: var(--accent-hover);
+}
+
+.sx-quote {
+  color: var(--text-secondary);
+  font-style: italic;
+}

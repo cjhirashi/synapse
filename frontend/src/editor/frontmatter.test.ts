@@ -1,0 +1,124 @@
+// Recorre TODO el contrato interno `contracts/frontmatter-yaml.cases.json` (SPEC-0010 §3, RF-014…RF-018,
+// RF-044, RF-045; PLAN-0010 §2.1, §4) contra `editor/frontmatter.ts`: separación del bloque YAML,
+// composición del texto de la vista Código, parseo (valor o error+línea), ida y vuelta (stringify→parse)
+// y clasificación de notas heredadas. El objeto JSON es la única verdad (D1); el YAML es derivado.
+import { readFileSync } from "node:fs";
+import { describe, expect, it, vi } from "vitest";
+import { classifyLegacy, composeCode, parseFrontmatterYaml, splitFrontmatter, stringifyFrontmatter } from "./frontmatter";
+
+interface Cases {
+  split: Array<{ text: string; yaml: string | null; body: string }>;
+  compose: Array<{ frontmatter: Record<string, unknown>; body: string; text: string }>;
+  parse: Array<{ yaml?: string; depth?: number; value?: unknown; error?: string; line?: number }>;
+  roundtrip: Array<Record<string, unknown>>;
+  legacy: Array<{ frontmatter: Record<string, unknown>; content: string; kind: string }>;
+}
+
+// La prueba corre con cwd = `frontend/`; el contrato vive un nivel arriba, en `.harness/`.
+const cases = JSON.parse(readFileSync("../.harness/specs/0010-contenido-markdown-completo/contracts/frontmatter-yaml.cases.json", "utf8")) as Cases;
+
+describe("frontmatter · split (RF-015)", () => {
+  for (const [i, c] of cases.split.entries()) {
+    it(`caso ${i}: ${JSON.stringify(c.text).slice(0, 40)}`, () => {
+      expect(splitFrontmatter(c.text)).toEqual({ yaml: c.yaml, body: c.body });
+    });
+  }
+});
+
+describe("frontmatter · compose (RF-014)", () => {
+  for (const [i, c] of cases.compose.entries()) {
+    it(`caso ${i}`, () => {
+      expect(composeCode(c.frontmatter, c.body)).toBe(c.text);
+    });
+  }
+});
+
+describe("frontmatter · parse (RF-016…RF-018)", () => {
+  /** YAML generado: un mapa anidado `depth` niveles (la raíz cuenta como 1). */
+  const nestedYaml = (depth: number) => Array.from({ length: depth - 1 }, (_, i) => `${"  ".repeat(i)}k:\n`).join("") + `${"  ".repeat(depth - 1)}x: 1\n`;
+  for (const [i, c] of cases.parse.entries()) {
+    const source = c.depth !== undefined ? nestedYaml(c.depth) : (c.yaml as string);
+    it(`caso ${i}: ${c.depth !== undefined ? `profundidad ${c.depth}` : JSON.stringify(c.yaml).slice(0, 40)}`, () => {
+      const result = parseFrontmatterYaml(source);
+      if (c.error !== undefined) {
+        expect(result).toHaveProperty("error", c.error);
+        if (c.line !== undefined) expect(result).toHaveProperty("line", c.line);
+      } else if (c.value === "generated") {
+        expect(result).toHaveProperty("value");
+      } else {
+        expect(result).toEqual({ value: c.value });
+        // Las claves del YAML son propias del objeto, también `__proto__` (nada cambia el prototipo).
+        const value = (result as { value: Record<string, unknown> }).value;
+        for (const key of Object.keys(c.value as object)) expect(Object.prototype.hasOwnProperty.call(value, key), key).toBe(true);
+        expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+      }
+    });
+  }
+});
+
+describe("frontmatter · anidamiento extremo (Converge 2, L-B)", () => {
+  // La rama `RangeError → too-deep` era inalcanzable: el analizador responde por sí mismo (error de sintaxis) mucho antes
+  // de agotar la pila, con 200 000 niveles incluidos. Lo que importa es que NUNCA lance.
+  it.each([1000, 200_000])("%i niveles de lista en flujo dan un error, no una excepción", (levels) => {
+    const yaml = `k: ${"[".repeat(levels)}${"]".repeat(levels)}\n`;
+    const result = parseFrontmatterYaml(yaml);
+    expect(result).toHaveProperty("error");
+    expect(["yaml-syntax", "too-deep"]).toContain((result as { error: string }).error);
+  });
+});
+
+describe("frontmatter · captura genérica (Converge 3)", () => {
+  // Mutante: la captura final de `parseFrontmatterYaml` devuelve `yaml-syntax` para lo que no es un error de valor. Un
+  // `ReferenceError` ajeno al alias y no tipado (aquí forzado en `toJS`) debe acabar ahí, sin lanzar.
+  it("un fallo inesperado al convertir el documento da yaml-syntax y no una excepción", async () => {
+    const yaml = await import("yaml");
+    const spy = vi.spyOn(yaml.Document.prototype, "toJS").mockImplementation(() => {
+      throw new TypeError("inesperado");
+    });
+    try {
+      expect(parseFrontmatterYaml("a: 1\n")).toEqual({ error: "yaml-syntax" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("un `ReferenceError` de alias sale como alias-limit y no como yaml-syntax", async () => {
+    const yaml = await import("yaml");
+    const spy = vi.spyOn(yaml.Document.prototype, "toJS").mockImplementation(() => {
+      throw new ReferenceError("Excessive alias count indicated by anchor");
+    });
+    try {
+      expect(parseFrontmatterYaml("a: 1\n")).toEqual({ error: "alias-limit" });
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe("frontmatter · claves especiales (Converge 1, M2)", () => {
+  it("una clave `__proto__` sobrevive a la ida y vuelta y no toca el prototipo", () => {
+    const parsed = parseFrontmatterYaml("a: 1\n__proto__:\n  x: 1\n");
+    const value = (parsed as { value: Record<string, unknown> }).value;
+    expect(Object.keys(value)).toEqual(["a", "__proto__"]);
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype);
+    expect(({} as Record<string, unknown>).x).toBeUndefined();
+    const again = parseFrontmatterYaml(stringifyFrontmatter(value));
+    expect(JSON.stringify((again as { value: unknown }).value)).toBe('{"a":1,"__proto__":{"x":1}}');
+  });
+});
+
+describe("frontmatter · roundtrip (RF-016)", () => {
+  for (const [i, obj] of cases.roundtrip.entries()) {
+    it(`caso ${i}: ${JSON.stringify(obj).slice(0, 40)}`, () => {
+      expect(parseFrontmatterYaml(stringifyFrontmatter(obj))).toEqual({ value: obj });
+    });
+  }
+});
+
+describe("frontmatter · legacy (RF-044, RF-045)", () => {
+  for (const [i, c] of cases.legacy.entries()) {
+    it(`caso ${i}: ${c.kind}`, () => {
+      expect(classifyLegacy(c.frontmatter, c.content)).toBe(c.kind);
+    });
+  }
+});

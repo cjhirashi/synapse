@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, status
 
+from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import require_admin, require_password_changed
 from app.core.errors import AdminRequired, EmailTaken, PasswordChangeRequired, StorageUnavailable
 from app.core.problems import problem_responses
@@ -9,6 +10,7 @@ from app.routers.auth import get_auth_service
 from app.services.auth_service import AuthService
 
 router = APIRouter(
+    route_class=DeepJsonRoute,
     prefix="/admin",
     tags=["admin"],
     dependencies=[Depends(require_admin), Depends(require_password_changed)],

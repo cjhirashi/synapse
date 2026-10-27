@@ -23,7 +23,7 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
 
 - **Notas (SPEC-0008):** `test_note_rules.py` (reglas puras sobre la batería compartida
   `fixtures/note_rules_cases.json`, que el cliente también recorre), `test_note_contract.py`
-  (`note.schema.json` frente a `core/note_rules.py`), `test_reservations.py` y
+  (`note.schema.json` frente a `core/note_rules.py`; SPEC-0010 añade a `note_rules_cases.json` los casos de `path` `X/.md`, `X/.MD`, `.md`, `X/ .md` (inválidos) y `X/a.md`, `.md/a.md` (válidos) y el patrón del esquema), `test_reservations.py` y
   `test_note_service.py` (reservas de ruta), `test_note_sync_push.py` (push de notas: cada
   código de rechazo, bóveda antes que nota, liberar al renombrar o borrar),
   `test_note_sync_filter.py`, `test_note_sync_api.py` (ninguna ruta devuelve `note-path:*`) y

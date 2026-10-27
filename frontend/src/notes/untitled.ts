@@ -6,14 +6,17 @@
  * `nameKey` de las bóvedas), igual que la unicidad que luego exige el servidor (RF-013).
  */
 import { nameKey } from "../sync/vaultRules";
+import { joinPath } from "./folders";
 
 const BASE = "Sin título";
 
 /**
  * @param existingKeys `pathKey` de las rutas ocupadas de la bóveda (notas activas).
+ * @param folder Carpeta destino (`""` = raíz, SPEC-0010 RF-001/RF-003): el nombre libre se busca por carpeta.
  */
-export function nextUntitledPath(existingKeys: ReadonlySet<string>): string {
-  let path = `${BASE}.md`;
-  for (let n = 2; existingKeys.has(nameKey(path)); n++) path = `${BASE} ${n}.md`;
-  return path;
+export function nextUntitledPath(existingKeys: ReadonlySet<string>, folder = ""): string {
+  const name = (n: number) => (n === 1 ? `${BASE}.md` : `${BASE} ${n}.md`);
+  let n = 1;
+  for (; existingKeys.has(nameKey(joinPath(folder, name(n)))); n += 1);
+  return joinPath(folder, name(n));
 }

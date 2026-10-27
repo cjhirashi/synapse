@@ -42,6 +42,20 @@ por la API REST (usuario, bóvedas con `icon`) y por la UI/CouchDB (notas). `reg
 capturas de login, lista, papelera, diálogo y menú de cuenta para comparar antes/después de un cambio
 de estilos globales. `test:perf` sigue midiendo RNF-001 de SPEC-0008 en jsdom (p95 < 300 ms).
 
+## Contenido markdown completo (SPEC-0010)
+
+Dependencias nuevas (versión exacta): `@milkdown/plugin-clipboard` 7.22.3, `prosemirror-highlight` 0.16.0,
+`@codemirror/lang-{javascript,css,html,yaml,python,sql,json}`, `@codemirror/legacy-modes` (sólo `shell`), `yaml` 2.9.1,
+`mermaid` 11.17.2 y `svg-pan-zoom` 3.6.2. Mermaid, svg-pan-zoom, `yaml` y cada gramática extra van en chunks propios
+(`import()`); la entrada y el chunk del editor no los importan.
+
+```bash
+npm run test:bundle   # tras `npm run build`: entrada ≤ 157 020 B y editor ≤ 357 388 B gzip, chunks propios presentes y
+                      # sin importación estática, Worker de parseo ≤ 46 KiB (scripts/check-bundle.mjs, lee dist/.vite/manifest.json)
+VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-visual.spec.ts   # V-0…V-15 de 0010 (capturas en /tmp/s10/e2e)
+VISUAL_OUT_DIR=/tmp/s10/e2e npm run test:visual -- e2e/content-perf.spec.ts     # RNF-001 de 0010 (p95 por tamaño de nota)
+```
+
 ## Editor de notas (SPEC-0008)
 
 El editor usa dependencias fijadas a versión exacta, sin `@milkdown/react` (un envoltorio

@@ -37,17 +37,18 @@
     },
     "path": {
       "type": "string",
-      "description": "Ruta con carpetas separadas por `/` (p. ej. `Carpeta/Nota.md`). 1-300 puntos de código; sin caracteres de control (`Cc`); sin segmentos vacíos (ni `/` inicial o final, ni `//`). Normalizada: cada segmento sin espacios a los lados (`White_Space` de Unicode, el mismo `strip` que pydantic-core); si no, `not-normalized:path`. Única entre notas vivas y activas de la bóveda por `NFKC + casefold` (reserva `note-path:{vault_id}:{clave}`, sólo en el servidor); si no, `note-path-taken` (RF-013).",
+      "description": "Ruta con carpetas separadas por `/` (p. ej. `Carpeta/Nota.md`). 1-300 puntos de código; sin caracteres de control (`Cc`); sin segmentos vacíos (ni `/` inicial o final, ni `//`); el último segmento (el nombre del archivo) no puede ser sólo `.md` (sin mayúsculas: una nota sin nombre, SPEC-0010 RF-007; el servidor lo compara por NFKC + casefold, así que `.ｍｄ` en anchos completos también se rechaza; un patrón regex no expresa NFKC y sólo cubre la forma literal). Normalizada: cada segmento sin espacios a los lados (`White_Space` de Unicode, el mismo `strip` que pydantic-core); si no, `not-normalized:path`. Única entre notas vivas y activas de la bóveda por `NFKC + casefold` (reserva `note-path:{vault_id}:{clave}`, sólo en el servidor); si no, `note-path-taken` (RF-013).",
       "minLength": 1,
       "maxLength": 300,
-      "pattern": "^(?!/)(?!.*//)(?!.*/$)[^\\u0000-\\u001F\\u007F-\\u009F]+$",
+      "pattern": "^(?!/)(?!.*//)(?!.*/$)(?!(?:.*/)?\\.[mM][dD]$)[^\\u0000-\\u001F\\u007F-\\u009F]+$",
       "x-normalization": "strip-each-segment",
       "x-unique-by": "NFKC+casefold per vault"
     },
     "frontmatter": {
       "type": "object",
-      "description": "Opcional (spec §3). Claves libres con valores JSON. Su serialización JSON compacta en UTF-8 no supera 64 KiB (PLAN-0008 P-4); si no, `validation-error:frontmatter`. El cliente oficial siempre lo escribe (`{}` por defecto).",
-      "x-max-json-utf8-bytes": 65536
+      "description": "Opcional (spec §3). Claves libres con valores JSON. Su serialización JSON compacta en UTF-8 no supera 64 KiB (PLAN-0008 P-4); si no, `validation-error:frontmatter`. Anida como máximo 32 niveles (el objeto raíz cuenta como 1; SPEC-0010, Converge 1); más es `validation-error:frontmatter`. Aparte, todo cuerpo JSON de `/sync` admite como máximo 64 niveles (`MAX_JSON_DEPTH`): con 62 niveles de frontmatter o más el CUERPO entero supera ese tope y lo rechaza el decodificador con un 422 `validation-error` de la petición, no `validation-error:frontmatter`. El cliente oficial siempre lo escribe (`{}` por defecto).",
+      "x-max-json-utf8-bytes": 65536,
+      "x-max-depth": 32
     },
     "content": {
       "type": "string",

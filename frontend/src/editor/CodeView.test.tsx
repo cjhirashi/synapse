@@ -1,7 +1,13 @@
 // SPEC-0008 RF-008: vista Código (CodeMirror 6 real en jsdom, con los polyfills de test-setup).
-import { render } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import { describe, expect, it, vi } from "vitest";
+
+const mermaidLoads = vi.hoisted(() => ({ count: 0 }));
+vi.mock("mermaid", () => {
+  mermaidLoads.count += 1;
+  return { default: { initialize: vi.fn(), render: vi.fn() } };
+});
 import { CodeView } from "./CodeView";
 
 /** La instancia de CodeMirror que montó el componente (para despachar transacciones). */
@@ -44,5 +50,99 @@ describe("CodeView", () => {
     rerender(<CodeView value="uno" onChange={onChange} label="Código" />);
     expect(viewOf(container)).toBe(view);
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  // RF-029: números de línea y línea activa (P-11).
+  it("muestra los números de línea y marca la línea activa", () => {
+    const { container } = render(<CodeView value={"uno\ndos\ntres"} onChange={() => {}} label="Código" />);
+    // El primer elemento del margen es un separador invisible con el número más ancho: no es una línea.
+    const numbers = [...container.querySelectorAll<HTMLElement>(".cm-lineNumbers .cm-gutterElement")].filter((el) => el.style.visibility !== "hidden").map((el) => el.textContent);
+    expect(numbers).toEqual(["1", "2", "3"]);
+    expect(container.querySelector(".cm-activeLine")).not.toBeNull();
+  });
+
+  /** Texto de los tramos con una clase `sx-*` en el documento montado. */
+  function spans(container: HTMLElement, className: string): string[] {
+    return [...container.querySelectorAll(`.cm-line .${className}`)].map((el) => el.textContent ?? "");
+  }
+
+  // RF-029, RF-040
+  it("colorea el markdown con clases sx-*: encabezados, negrita, cursiva, enlace, código y marcas", () => {
+    const doc = "# Título\n\n## Sub\n\nUn **fuerte**, *suave*, `código` y [enlace](https://example.com).\n\n> cita\n\n- item";
+    const { container } = render(<CodeView value={doc} onChange={() => {}} label="Código" />);
+    expect(spans(container, "sx-heading1").join("")).toContain("Título");
+    expect(spans(container, "sx-heading").join("")).toContain("Sub");
+    expect(spans(container, "sx-strong").join("")).toContain("fuerte");
+    expect(spans(container, "sx-emphasis").join("")).toContain("suave");
+    expect(spans(container, "sx-code").join("")).toContain("código");
+    expect(spans(container, "sx-link").join("")).toContain("enlace");
+    expect(spans(container, "sx-url").join("")).toContain("https://example.com");
+    expect(spans(container, "sx-quote").join("")).toContain("cita");
+    // Las marcas del markdown (`#`, `**`, `>`, `-`, backticks, corchetes) llevan sx-meta.
+    const marks = spans(container, "sx-meta").join("");
+    for (const mark of ["#", "**", ">", "-", "`"]) expect(marks).toContain(mark);
+  });
+
+  // SPEC-0010 RF-017/RF-029: decoración de la línea de error de YAML.
+  it("resalta la línea de error indicada y la limpia con null", () => {
+    const doc = "---\na: 1\na: 2\n---\n# B";
+    const { container, rerender } = render(<CodeView value={doc} onChange={() => {}} label="Código" errorLine={3} />);
+    const lines = () => [...container.querySelectorAll<HTMLElement>(".cm-line")];
+    expect(lines()[2]).toHaveClass("cm-error-line");
+    expect(lines().filter((l) => l.classList.contains("cm-error-line"))).toHaveLength(1);
+    rerender(<CodeView value={doc} onChange={() => {}} label="Código" errorLine={null} />);
+    expect(container.querySelector(".cm-error-line")).toBeNull();
+  });
+
+  // SPEC-0010 RF-017: «Ir a la línea N» lleva el cursor a esa línea.
+  it("registerReveal expone un salto que mueve el cursor a la línea pedida", () => {
+    let reveal: ((line: number) => void) | null = null;
+    const { container } = render(<CodeView value={"uno\ndos\ntres\ncuatro"} onChange={() => {}} label="Código" registerReveal={(r) => (reveal = r)} />);
+    expect(reveal).toBeTypeOf("function");
+    reveal!(3);
+    const view = viewOf(container);
+    expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(3);
+  });
+
+  // SPEC-0010 RF-029: el bloque inicial `---…---` se trata como YAML (yamlFrontmatter), no como markdown.
+  it("colorea el bloque de frontmatter como YAML (clave de propiedad resaltada)", async () => {
+    const { container } = render(<CodeView value={"---\ntitulo: Plan\n---\n# Cuerpo"} onChange={() => {}} label="Código" />);
+    // La clave YAML recibe una clase de resaltado (sx-*), distinta del texto plano del cuerpo. La gramática
+    // YAML se carga bajo demanda (chunk propio, RNF-002): el color llega en cuanto está lista.
+    await waitFor(() => {
+      const highlighted = [...container.querySelectorAll(".cm-line [class*='sx-']")].map((el) => el.textContent ?? "").join(" ");
+      expect(highlighted).toContain("titulo");
+    });
+  });
+
+  /** Clases `sx-*` de los tramos de una línea del documento montado. */
+  const lineClasses = (container: HTMLElement, text: string) =>
+    [...container.querySelectorAll(".cm-line")].filter((l) => l.textContent === text).flatMap((l) => [...l.querySelectorAll('[class*="sx-"]')].map((s) => s.className));
+
+  // RF-029, RF-030: los bloques cercados con lenguaje admitido se colorean con su gramática (carga diferida).
+  it("cercado: colorea el interior de un bloque con lenguaje admitido y no el de uno desconocido", async () => {
+    const doc = "```ts\nconst a: number = 1\n```\n\n```brainfuck\n+++ const\n```\n\n```\nconst sin lenguaje\n```";
+    const { container } = render(<CodeView value={doc} onChange={() => {}} label="Código" />);
+    await waitFor(() => expect(lineClasses(container, "const a: number = 1").some((c) => c.includes("sx-keyword"))).toBe(true));
+    expect(lineClasses(container, "const a: number = 1").some((c) => c.includes("sx-type") || c.includes("sx-number"))).toBe(true);
+    // Sin gramática, el interior se queda como texto de código (sin keywords ni números).
+    for (const line of ["+++ const", "const sin lenguaje"]) {
+      expect(lineClasses(container, line).some((c) => /sx-(keyword|number|string|type)/.test(c)), line).toBe(false);
+    }
+  });
+
+  it("cercado: un alias en mayúsculas (PY) también resuelve el lenguaje", async () => {
+    const { container } = render(<CodeView value={"```PY\ndef f(x):\n    return 1\n```"} onChange={() => {}} label="Código" />);
+    await waitFor(() => expect(lineClasses(container, "def f(x):").some((c) => c.includes("sx-keyword"))).toBe(true));
+  });
+
+  // RF-048: en Código un bloque `mermaid` es texto: ni diagrama, ni área de vista previa, ni carga de Mermaid.
+  it("un bloque mermaid se muestra como texto, sin svg y sin cargar Mermaid", async () => {
+    const { container } = render(<CodeView value={"```mermaid\nflowchart TD\n  A --> B\n```"} onChange={() => {}} label="Código" />);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(container.querySelector("svg")).toBeNull();
+    expect(container.querySelector(".mermaid-preview, .mermaid-area, .code-block")).toBeNull();
+    expect(container.textContent).toContain("flowchart TD");
+    expect(mermaidLoads.count).toBe(0);
   });
 });

@@ -1,7 +1,7 @@
 // Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
 // Con editores falsos (textareas) para probar el estado del envoltorio; la prueba con los
 // editores reales (RF-008, byte a byte) está al final.
-import { createRef } from "react";
+import { createRef, type ComponentProps } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import type { EditorView as PMView } from "@milkdown/prose/view";
@@ -41,7 +41,7 @@ function fake(kind: string) {
 }
 const views: NoteEditorViews = { Visual: fake("visual"), Code: fake("code") };
 
-async function setup(content = "# Hola\n", extra: Partial<SyncContextValue> = {}) {
+async function setup(content = "# Hola\n", extra: Partial<SyncContextValue> = {}, editorProps: Partial<ComponentProps<typeof NoteEditor>> = {}) {
   const db = memoryDb();
   const { value } = syncValue(extra, db);
   const first = await value.notes.create(VAULT, "Primera");
@@ -52,7 +52,7 @@ async function setup(content = "# Hola\n", extra: Partial<SyncContextValue> = {}
     return (
       <DataMemoryRouter>
         <WithSync value={value}>
-          <NoteEditor noteId={noteId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} views={views} />
+          <NoteEditor noteId={noteId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} views={views} {...editorProps} />
         </WithSync>
       </DataMemoryRouter>
     );
@@ -128,6 +128,149 @@ describe("estructura visual del editor (SPEC-0009 RF-005)", () => {
     expect(within(group).getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Guardar" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Leer" })).toBeInTheDocument();
+  });
+});
+
+// SPEC-0010 RF-054, RF-056, RF-061, RF-064 (P-17): encabezado con migas, flechas, lápiz y menú ⋮.
+describe("encabezado de la nota (SPEC-0010, P-17)", () => {
+  const header = (container: HTMLElement) => container.querySelector<HTMLElement>(".note-editor-header")!;
+  /** Los elementos están en este orden en el DOM (= orden visual = de tabulación). */
+  function expectOrder(elements: HTMLElement[]) {
+    for (let i = 1; i < elements.length; i++) {
+      expect(elements[i - 1].compareDocumentPosition(elements[i]) & Node.DOCUMENT_POSITION_FOLLOWING, `elemento ${i}`).toBeTruthy();
+    }
+  }
+
+  // RF-054
+  it("en lectura: Atrás, Adelante, migas, lápiz «Editar» y menú ⋮, en ese orden", async () => {
+    const { container } = await setup();
+    const bar = within(header(container));
+    expectOrder([
+      bar.getByRole("button", { name: "Atrás" }),
+      bar.getByRole("button", { name: "Adelante" }),
+      bar.getByRole("navigation", { name: "Ruta" }),
+      bar.getByRole("button", { name: "Editar" }),
+      bar.getByRole("button", { name: "Opciones de la nota" }),
+    ]);
+    expect(bar.getByRole("heading", { level: 2, name: "Primera" })).toHaveAttribute("aria-current", "page");
+  });
+
+  // RF-054
+  it("en edición Visual: Visual|Código, Insertar tabla, Guardar, estado, lápiz «Leer» y ⋮", async () => {
+    const { container } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const bar = within(header(container));
+    expectOrder([
+      bar.getByRole("navigation", { name: "Ruta" }),
+      bar.getByRole("group", { name: "Vista del editor" }),
+      bar.getByRole("button", { name: "Insertar tabla" }),
+      bar.getByRole("button", { name: "Guardar" }),
+      bar.getByRole("status"),
+      bar.getByRole("button", { name: "Leer" }),
+      bar.getByRole("button", { name: "Opciones de la nota" }),
+    ]);
+  });
+
+  // RF-041, RF-054
+  it("el lápiz conserva el nombre accesible «Editar»/«Leer» y no tiene texto visible", async () => {
+    await setup();
+    const pencil = screen.getByRole("button", { name: "Editar" });
+    expect(pencil).toHaveAccessibleName("Editar");
+    expect(pencil.textContent).toBe("");
+    expect(pencil.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+    await userEvent.click(pencil);
+    const read = screen.getByRole("button", { name: "Leer" });
+    expect(read.textContent).toBe("");
+    expect(read.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+  });
+
+  // RF-056
+  it("las flechas arrancan deshabilitadas, con atajo anunciado, y se habilitan con canBack/canForward", async () => {
+    const onBack = vi.fn();
+    const onForward = vi.fn();
+    const { container } = await setup("# Hola\n", {}, { canBack: false, canForward: false, onBack, onForward });
+    const back = within(header(container)).getByRole("button", { name: "Atrás" });
+    const forward = within(header(container)).getByRole("button", { name: "Adelante" });
+    expect(back).toBeDisabled();
+    expect(forward).toBeDisabled();
+    expect(back).toHaveAttribute("aria-keyshortcuts", "Alt+ArrowLeft");
+    expect(forward).toHaveAttribute("aria-keyshortcuts", "Alt+ArrowRight");
+    expect(back).toHaveAttribute("title", "Atrás · Alt+←");
+  });
+
+  // RF-056
+  it("con historial las flechas están activas y llaman a sus manejadores", async () => {
+    const onBack = vi.fn();
+    const onForward = vi.fn();
+    const { container } = await setup("# Hola\n", {}, { canBack: true, canForward: true, onBack, onForward });
+    await userEvent.click(within(header(container)).getByRole("button", { name: "Atrás" }));
+    await userEvent.click(within(header(container)).getByRole("button", { name: "Adelante" }));
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(onForward).toHaveBeenCalledTimes(1);
+  });
+
+  // RF-054
+  it("«Insertar tabla» sólo existe en edición Visual (no en lectura ni en Código)", async () => {
+    await setup();
+    expect(screen.queryByRole("button", { name: "Insertar tabla" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(screen.getByRole("button", { name: "Insertar tabla" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    expect(screen.queryByRole("button", { name: "Insertar tabla" })).toBeNull();
+  });
+
+  // RF-064
+  it("Visual, Código, Guardar y Leer llevan icono y su texto en una etiqueta que el CSS oculta ≤ 560 px (mismo nombre accesible)", async () => {
+    await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    for (const name of ["Visual", "Código", "Guardar"]) {
+      const button = screen.getByRole("button", { name });
+      expect(button.querySelector("svg[aria-hidden='true']"), name).not.toBeNull();
+      expect(button.querySelector(".note-btn-label"), name).toHaveTextContent(name);
+    }
+  });
+
+  // RF-061
+  it("el menú ⋮ ofrece «Ver en Código», que pasa a edición en Código", async () => {
+    await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Opciones de la nota" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Ver en Código" }));
+    expect(screen.getByRole("textbox", { name: "Editor de código" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  // RF-055
+  it("pulsar una carpeta de las migas llama a onRevealFolder con su ruta", async () => {
+    const onRevealFolder = vi.fn();
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const note = await value.notes.create(VAULT, "Proyectos/Clientes/Plan");
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}>
+          <NoteEditor noteId={note.id} views={views} onRevealFolder={onRevealFolder} />
+        </WithSync>
+      </DataMemoryRouter>,
+    );
+    await screen.findByRole("heading", { level: 2, name: "Plan" });
+    await userEvent.click(screen.getByRole("button", { name: "Clientes" }));
+    expect(onRevealFolder).toHaveBeenCalledWith("Proyectos/Clientes");
+  });
+
+  // RF-041
+  it("el h2 muestra sólo el nombre de la nota (no la ruta); la ruta completa va en su title", async () => {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const note = await value.notes.create(VAULT, "Carpeta/Nota");
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}>
+          <NoteEditor noteId={note.id} views={views} />
+        </WithSync>
+      </DataMemoryRouter>,
+    );
+    const heading = await screen.findByRole("heading", { level: 2, name: "Nota" });
+    expect(heading).toHaveAttribute("title", "Carpeta/Nota");
   });
 });
 
@@ -554,6 +697,36 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     const dom = document.querySelector(".cm-editor") as HTMLElement;
     return EditorView.findFromDOM(dom)!.state.doc.toString();
   }
+
+  // RF-025 (P-7)
+  it("tabla: «Insertar tabla» inserta cabecera + 1 fila × 2 columnas y, con el cursor en ella, aparecen añadir fila y columna", async () => {
+    await openReal("hola");
+    await waitFor(() => expect(document.querySelector(".ProseMirror")).toHaveTextContent("hola"));
+    expect(screen.queryByRole("button", { name: "Añadir fila debajo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir columna a la derecha" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Insertar tabla" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror table tr")).toHaveLength(2));
+    expect(document.querySelectorAll(".ProseMirror th")).toHaveLength(2);
+    expect(document.querySelectorAll(".ProseMirror td")).toHaveLength(2);
+    await userEvent.click(await screen.findByRole("button", { name: "Añadir fila debajo" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror table tr")).toHaveLength(3));
+    await userEvent.click(screen.getByRole("button", { name: "Añadir columna a la derecha" }));
+    await waitFor(() => expect(document.querySelectorAll(".ProseMirror th")).toHaveLength(3));
+    expect(document.querySelectorAll(".ProseMirror td")).toHaveLength(6);
+    // La tabla marca la nota con cambios.
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+  });
+
+  // RF-025
+  it("tabla: en Código no hay botón de tabla ni de filas/columnas", async () => {
+    await openReal("hola");
+    await userEvent.click(screen.getByRole("button", { name: "Insertar tabla" }));
+    await screen.findByRole("button", { name: "Añadir fila debajo" });
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    expect(screen.queryByRole("button", { name: "Insertar tabla" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir fila debajo" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Añadir columna a la derecha" })).toBeNull();
+  });
 
   // RF-008
   it("Visual → Código → Visual sin editar deja el markdown idéntico byte a byte", async () => {

@@ -9,7 +9,6 @@ Todas las rutas son `async def`: `ReplicationPort` es async (un `longpoll` de `_
 ocupa un hilo del pool), y lo síncrono (`VaultService` en el push) va en un hilo dentro del
 servicio.
 """
-import json
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 
@@ -27,6 +26,7 @@ from app.core.errors import (
     CheckpointNotFound, InvalidSyncRequest, PasswordChangeRequired, PayloadTooLarge,
     StorageUnavailable, SyncEndpointNotFound,
 )
+from app.core.json_body import MAX_JSON_DEPTH, DeepJsonRoute  # noqa: F401  (MAX_JSON_DEPTH: lo importan las pruebas)
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
@@ -88,25 +88,7 @@ def _replay(body: bytes, receive: Receive) -> Receive:
     return replay
 
 
-class _DeepJsonRequest(Request):
-    """`Request` cuyo `json()` trata cualquier fallo del decodificador como JSON inválido.
-
-    `json.loads` lanza `RecursionError` con cientos de niveles de anidamiento y `ValueError`
-    (no `JSONDecodeError`) con enteros de más de `int_max_str_digits` dígitos; FastAPI sólo
-    convierte en `RequestValidationError` (422 declarado) el `JSONDecodeError`, y el resto lo
-    vuelve un 400 que el contrato no declara (VB-3, VB-5).
-    """
-
-    async def json(self):
-        try:
-            return await super().json()
-        except json.JSONDecodeError:
-            raise  # ya es el caso declarado
-        except (RecursionError, ValueError):
-            raise json.JSONDecodeError("JSON not decodable", "", 0) from None
-
-
-class SyncRoute(APIRoute):
+class SyncRoute(DeepJsonRoute):
     """Ruta del canal con tope de cuerpo aplicado **antes** de que FastAPI lo lea.
 
     FastAPI lee y parsea el cuerpo antes de resolver las dependencias, y convierte en 400
@@ -130,7 +112,7 @@ class SyncRoute(APIRoute):
             if declared.isdigit() and int(declared) > limit:
                 raise PayloadTooLarge(f"declared body of {declared} bytes over {limit}")
             body = await _read_capped(request.receive, limit)
-            return await handler(_DeepJsonRequest(request.scope, _replay(body, request.receive)))
+            return await handler(Request(request.scope, _replay(body, request.receive)))
 
         return limited
 

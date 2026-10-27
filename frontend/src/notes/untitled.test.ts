@@ -25,4 +25,12 @@ describe("RF-012: nextUntitledPath", () => {
     expect(nextUntitledPath(keys("SIN TÍTULO.MD"))).toBe("Sin título 2.md");
     expect(nextUntitledPath(keys("Ｓin título.md", "sin título 2.md"))).toBe("Sin título 3.md");
   });
+
+  // SPEC-0010 RF-001/RF-003: el nombre libre se busca POR CARPETA.
+  it("en una carpeta usa «Carpeta/Sin título.md» y cuenta sólo las de esa carpeta", () => {
+    expect(nextUntitledPath(new Set(), "Proyectos")).toBe("Proyectos/Sin título.md");
+    // «Sin título.md» en la raíz no ocupa el de la carpeta.
+    expect(nextUntitledPath(keys("Sin título.md"), "Proyectos")).toBe("Proyectos/Sin título.md");
+    expect(nextUntitledPath(keys("Proyectos/Sin título.md"), "Proyectos")).toBe("Proyectos/Sin título 2.md");
+  });
 });

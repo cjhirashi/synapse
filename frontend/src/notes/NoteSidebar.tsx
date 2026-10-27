@@ -12,6 +12,10 @@
  * panel y la papelera es el pie. Así enfocar una nota no desplaza ninguna fila: antes la barra de
  * acciones aparecía sobre el árbol, la fila se movía bajo el cursor y el clic no llegaba a abrirla.
  *
+ * SPEC-0010 (RF-002, RF-006, RF-042, RF-043): primera fila «Raíz»; **carpeta activa** (`aria-current`), que cambia al
+ * pulsar una carpeta (o «Raíz») y al abrir una nota (pasa a ser la suya) pero no con ←/→; indicador «Crear en»
+ * (región viva), botón y formulario «Nueva carpeta» y la pista de «/» asociada a los tres campos.
+ *
  * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y el árbol
  * sólo contiene `treeitem`s (C-4). "Renombrar"/"Borrar" viven en una barra (`toolbar`) fuera del
  * árbol, siempre visible para la nota seleccionada (C-1, C-2); F2 y Supr las atajan desde el
@@ -20,11 +24,13 @@
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { CSSProperties, FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, FileText, Folder, FolderOpen, Plus, Trash2 } from "lucide-react";
+import { CSSProperties, FormEvent, forwardRef, KeyboardEvent, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
-import { noteErrorMessage } from "./messages";
+import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
+import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 
 interface NoteSidebarProps {
@@ -41,25 +47,25 @@ interface NoteSidebarProps {
    * Sin esta función se borra sin preguntar.
    */
   confirmDelete?: () => Promise<boolean>;
-}
-
-/** Carpetas que contienen a `path`: `a/b/c.md` → `a`, `a/b`. */
-function ancestors(path: string): string[] {
-  const segments = path.split("/").slice(0, -1);
-  return segments.map((_, i) => segments.slice(0, i + 1).join("/"));
+  /**
+   * Puntero o foco sobre la fila de una nota (RNF-001, §10.5): pide su precálculo con prioridad (el
+   * clic suele llegar cientos de ms después, o Enter tras el foco). Sin esta función no hace nada.
+   */
+  onPrefetch?: (id: string) => void;
 }
 
 /** Fila visible del árbol, en orden de pantalla (lo que recorre el teclado). */
 interface Row {
-  /** `f:{ruta}` para carpetas, `n:{id}` para notas. */
+  /** `root` para la fila «Raíz», `f:{ruta}` para carpetas, `n:{id}` para notas. */
   key: string;
-  kind: "folder" | "note";
+  kind: "root" | "folder" | "note";
   /** Ruta de la carpeta (sólo carpetas). */
   path: string;
   /** Clave de la carpeta que la contiene (`null` en la raíz). */
   parent: string | null;
 }
 
+const ROOT_KEY = "root";
 const folderKey = (path: string) => `f:${path}`;
 const noteKey = (id: string) => `n:${id}`;
 /** Destino de foco: el botón «Nueva nota» (cuando no queda ninguna fila). */
@@ -75,11 +81,43 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
   });
 }
 
-export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete }: NoteSidebarProps) {
+/** Acciones que el `Workspace` (y, por él, el editor y el menú ⋮) piden a la sidebar por `ref` (RF-062, RF-055). */
+export interface NoteSidebarHandle {
+  startRename(id: string): void;
+  remove(id: string): Promise<void>;
+  /** Despliega la carpeta (y sus antecesoras), la deja activa y la desplaza a la vista (RF-055). */
+  revealFolder(folderPath: string): void;
+}
+
+const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function NoteSidebar(
+  { vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch },
+  ref,
+) {
   const { notes, notesVersion } = useSync();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [title, setTitle] = useState("");
+  /** Carpeta activa (`""` = raíz): dónde se crea lo nuevo. Estado visual del árbol (RF-043). */
+  const [activeFolder, setActiveFolder] = useState("");
+  /** Formulario «Nueva carpeta» abierto, su texto y su mensaje de error (`null` = sin error). */
+  const [folderForm, setFolderForm] = useState<{ name: string; message: string | null } | null>(null);
+  /** A ≤ 640 px el bloque de creación es un disclosure («Crear…»): la barra lateral no empuja al editor fuera de la pantalla. */
+  const compact = useMediaQuery("(max-width: 640px)");
+  const [createOpen, setCreateOpen] = useState(false);
+  const fieldsId = useId();
+  const uid = useId();
+  const createInId = "note-create-in";
+  const hintId = `${uid}-folder-hint`;
+  const folderErrorId = `${uid}-folder-error`;
+  const newFolderRef = useRef<HTMLButtonElement>(null);
+  /** El formulario se cerró a propósito: el foco vuelve a «Nueva carpeta» cuando el botón se vuelve a ver. */
+  const refocusNewFolder = useRef(false);
+  useEffect(() => {
+    if (folderForm === null && refocusNewFolder.current) {
+      refocusNewFolder.current = false;
+      newFolderRef.current?.focus();
+    }
+  }, [folderForm]);
   /** Renombrado en curso: la nota (con la revisión que se mostraba) y la ruta escrita. */
   const [renaming, setRenaming] = useState<{ note: NoteSummary; path: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -134,8 +172,18 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     if (open) setExpanded((prev) => new Set([...prev, ...ancestors(open.path)]));
   }, [items, openId]);
 
+  // Al abrir una nota (RF-042) la carpeta activa pasa a ser la suya; pulsar otras carpetas después la mueve.
+  const lastOpen = useRef<string | null>(null);
+  useEffect(() => {
+    if (openId === null || lastOpen.current === openId) return;
+    const open = items?.find((item) => item.id === openId);
+    if (!open) return; // aún no llegó la lista: se reintenta con ella
+    lastOpen.current = openId;
+    setActiveFolder(parentFolder(open.path));
+  }, [items, openId]);
+
   const tree = useMemo(() => buildTree(items ?? []), [items]);
-  const rows = useMemo(() => visibleRows(tree, expanded), [tree, expanded]);
+  const rows = useMemo(() => [{ key: ROOT_KEY, kind: "root" as const, path: "", parent: null }, ...visibleRows(tree, expanded)], [tree, expanded]);
 
   /** Fila con el foco del teclado (la única con `tabindex=0`); si desaparece, la primera. */
   const [focusKey, setFocusKey] = useState<string | null>(null);
@@ -238,7 +286,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
   async function create(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const note = await notes.create(vaultId, title);
+      // RF-001/RF-003: la nota nueva nace en la carpeta activa (`""` = raíz). La carpeta se despliega
+      // sola al abrirse la nota (efecto de «nota abierta»); no se toca `expanded` aquí (robaría el foco).
+      const note = await notes.create(vaultId, title, activeFolder);
       setTitle("");
       await reload();
       onOpen(note.id, { edit: true });
@@ -315,7 +365,11 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
               onFocus={() => setFocusKey(folderKey(node.path))}
               className="note-tree-row note-tree-folder"
               style={indent}
-              onClick={() => toggle(node.path)}
+              aria-current={activeFolder === node.path ? "true" : undefined}
+              onClick={() => {
+                toggle(node.path);
+                setActiveFolder(node.path);
+              }}
             >
               {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
               {open ? (
@@ -348,7 +402,9 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
             onFocus={() => {
               setFocusKey(noteKey(note.id));
               setSelectedId(note.id);
+              onPrefetch?.(note.id);
             }}
+            onPointerEnter={() => onPrefetch?.(note.id)}
             className="note-tree-row note-tree-note"
             style={indent}
             onClick={() => onOpen(note.id)}
@@ -363,31 +419,182 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
     });
   }
 
+  /** Fila «Raíz»: primera del árbol, sin chevron; activarla vuelve la carpeta activa a la raíz. */
+  const rootRow = (
+    <li role="none">
+      <button
+        type="button"
+        role="treeitem"
+        data-key={ROOT_KEY}
+        tabIndex={tabbable === ROOT_KEY ? 0 : -1}
+        onFocus={() => setFocusKey(ROOT_KEY)}
+        aria-current={activeFolder === "" ? "true" : undefined}
+        className="note-tree-row note-tree-folder note-tree-root"
+        style={{ "--depth": 0 } as CSSProperties}
+        onClick={() => setActiveFolder("")}
+      >
+        <House size={14} aria-hidden="true" data-icon="house" />
+        <span className="note-tree-name">Raíz</span>
+      </button>
+    </li>
+  );
+
+  function closeFolderForm() {
+    setFolderForm(null);
+    refocusNewFolder.current = true;
+  }
+
+  /**
+   * «Crear carpeta» (RF-004, RF-005, RF-042): valida el nombre (vacío/tramo/control) y que no exista ya
+   * en la carpeta activa; si es válido crea `{activa}/{nombre}/Sin título.md`, despliega la carpeta y
+   * abre la nota en edición. Una carpeta no se guarda por sí sola: existe por tener una nota dentro.
+   */
+  async function submitFolder(event: FormEvent) {
+    event.preventDefault();
+    if (folderForm === null) return;
+    const name = folderForm.name;
+    const invalid = checkFolderName(name);
+    if (invalid !== null) {
+      setFolderForm({ ...folderForm, message: folderNameMessage(invalid) });
+      return;
+    }
+    if (folderExists(items?.filter((item) => item.deleted_at === null) ?? [], activeFolder, name)) {
+      setFolderForm({ ...folderForm, message: folderNameMessage("duplicate", name) });
+      return;
+    }
+    const ok = await run(async () => {
+      const note = await notes.create(vaultId, "", joinPath(activeFolder, name));
+      await reload();
+      // La carpeta nueva queda activa; su despliegue lo hace el efecto de «nota abierta» al abrirla.
+      setActiveFolder(joinPath(activeFolder, name));
+      onOpen(note.id, { edit: true });
+    });
+    if (ok) closeFolderForm();
+  }
+
+  /** Despliega una carpeta y sus antecesoras, la deja activa y la trae a la vista (RF-055). */
+  function revealFolder(folderPath: string) {
+    if (folderPath === "") {
+      setActiveFolder("");
+      return;
+    }
+    const prefixes = ancestors(joinPath(folderPath, "_")); // antecesoras + la propia carpeta
+    setExpanded((prev) => new Set([...prev, ...prefixes]));
+    setActiveFolder(folderPath);
+    // Sólo se desplaza el panel del árbol, no la página (`scrollIntoView` no existe en jsdom: se omite).
+    requestAnimationFrame(() => {
+      const row = treeRef.current?.querySelector<HTMLElement>(`[data-key="${folderKey(folderPath)}"]`);
+      row?.scrollIntoView?.({ block: "nearest" });
+    });
+  }
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      startRename(id) {
+        const note = items?.find((item) => item.id === id);
+        if (note) startRename(note);
+      },
+      remove(id) {
+        const note = items?.find((item) => item.id === id);
+        return note ? remove(note) : Promise.resolve();
+      },
+      revealFolder,
+    }),
+    [items],
+  );
+
   const selected = items?.find((item) => item.id === selectedId) ?? null;
   const selectedName = selected ? displayName(selected.path.split("/").pop() ?? selected.path) : "";
 
   return (
     <aside className="note-sidebar" aria-label="Notas de la bóveda">
       <form className="note-sidebar-new" onSubmit={create}>
+        <p id={createInId} className="note-create-in" aria-live="polite" aria-atomic="true">
+          {activeFolder === "" ? <House size={14} aria-hidden="true" /> : <FolderOpen size={14} aria-hidden="true" />}
+          <span>
+            Crear en: <strong title={activeFolder || "Raíz"}>{activeFolder || "Raíz"}</strong>
+          </span>
+        </p>
+        {compact && (
+          <button type="button" className="note-sidebar-secondary" aria-expanded={createOpen} aria-controls={fieldsId} onClick={() => setCreateOpen((open) => !open)}>
+            <Plus size={14} aria-hidden="true" />
+            Crear…
+          </button>
+        )}
+        <div id={fieldsId} className="note-create-fields" hidden={compact && !createOpen}>
         <label>
           Título de la nota nueva (opcional)
-          <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} aria-describedby={`${createInId} ${hintId}`} />
         </label>
         <button ref={newNoteRef} type="submit" disabled={busy}>
           <Plus size={14} aria-hidden="true" />
           Nueva nota
         </button>
+        <button
+          ref={newFolderRef}
+          type="button"
+          className="note-sidebar-secondary"
+          hidden={folderForm !== null}
+          onClick={() => setFolderForm({ name: "", message: null })}
+        >
+          <FolderPlus size={14} aria-hidden="true" />
+          Nueva carpeta
+        </button>
+        <p id={hintId} className="note-folder-hint">
+          <CornerDownRight size={12} aria-hidden="true" />
+          Usa / para crear subcarpetas (por ejemplo, Proyectos/Ideas)
+        </p>
+        </div>
       </form>
+      {folderForm !== null && (
+          <form
+            className="note-sidebar-new note-sidebar-folder"
+            onSubmit={submitFolder}
+            onKeyDown={(event) => {
+              // Esc cancela y devuelve el foco al botón que lo abrió.
+              if (event.key === "Escape") {
+                event.preventDefault();
+                closeFolderForm();
+              }
+            }}
+          >
+            <label>
+              Nombre de la carpeta
+              <input
+                autoFocus
+                value={folderForm.name}
+                onChange={(event) => setFolderForm({ name: event.target.value, message: null })}
+                aria-invalid={folderForm.message !== null ? true : undefined}
+                aria-describedby={folderForm.message !== null ? `${hintId} ${folderErrorId}` : hintId}
+              />
+            </label>
+            {folderForm.message !== null && (
+              <p id={folderErrorId} role="alert" className="note-sidebar-error">
+                <CircleAlert size={12} aria-hidden="true" />
+                {folderForm.message}
+              </p>
+            )}
+            <div className="note-sidebar-folder-actions">
+              <button type="submit">Crear carpeta</button>
+              <button type="button" onClick={closeFolderForm}>
+                Cancelar
+              </button>
+            </div>
+          </form>
+      )}
       {error && <p role="alert">{error}</p>}
       <div className="note-tree-panel">
         {items === null ? (
           <p>Cargando…</p>
-        ) : items.length === 0 ? (
-          <p>Esta bóveda aún no tiene notas.</p>
         ) : (
-          <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
-            {renderNodes(tree)}
-          </ul>
+          <>
+            <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
+              {rootRow}
+              {renderNodes(tree)}
+            </ul>
+            {items.length === 0 && <p>Esta bóveda aún no tiene notas.</p>}
+          </>
         )}
       </div>
       {selected && (
@@ -417,7 +624,12 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
         >
           <label>
             Ruta de la nota
-            <input value={renaming.path} onChange={(event) => setRenaming({ note: renaming.note, path: event.target.value })} autoFocus />
+            <input
+              value={renaming.path}
+              onChange={(event) => setRenaming({ note: renaming.note, path: event.target.value })}
+              aria-describedby={hintId}
+              autoFocus
+            />
           </label>
           <button type="submit" disabled={busy}>
             Guardar ruta
@@ -435,4 +647,6 @@ export default function NoteSidebar({ vaultId, openId, onOpen, onDeleted, onShow
       </div>
     </aside>
   );
-}
+});
+
+export default NoteSidebar;

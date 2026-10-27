@@ -17,6 +17,8 @@ interface Case {
   normalized?: string;
   valid?: boolean;
   nonfinite?: { at: (string | number)[]; token: string };
+  /** Frontmatter generado: objeto anidado `depth` niveles (el raíz cuenta como 1). */
+  depth?: number;
 }
 
 /** Valor del caso: `prefix + repeat*times + suffix` si trae `build`, si no `input`. */
@@ -26,6 +28,11 @@ function built(c: Case): string {
 const value = (c: Case): unknown => (c.build ? built(c) : c.input);
 /** En frontmatter el texto construido es el valor de una clave. */
 const frontmatter = (c: Case): unknown => {
+  if (c.depth !== undefined) {
+    let nested: Record<string, unknown> = {};
+    for (let i = 1; i < c.depth; i += 1) nested = { k: nested };
+    return nested;
+  }
   if (c.nonfinite) {
     // Un número no finito no cabe en el JSON de la batería: se pone tras leerla (VB-1).
     const value = structuredClone(c.input) as Record<string | number, unknown>;
@@ -73,7 +80,7 @@ describe("RF-016: checkContent respeta el tope de 2 MiB en bytes UTF-8", () => {
 });
 
 describe("RF-005: checkFrontmatter respeta el tope de 64 KiB serializado", () => {
-  it.each((cases.frontmatter as Case[]).map((c) => [String(JSON.stringify(frontmatter(c))).slice(0, 40), c] as const))(
+  it.each((cases.frontmatter as Case[]).map((c) => [c.depth !== undefined ? `profundidad ${c.depth}` : String(JSON.stringify(frontmatter(c))).slice(0, 40), c] as const))(
     "%s",
     (_label, c) => {
       expect(checkFrontmatter(frontmatter(c))).toBe(c.valid ? null : "validation-error:frontmatter");

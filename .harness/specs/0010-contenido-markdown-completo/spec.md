@@ -2,45 +2,59 @@
 id: SPEC-0010
 tipo: spec
 feature: 0010-contenido-markdown-completo
-estado: approved         # draft | in-review | approved | implemented | verified | deprecated
+estado: verified         # 2026-10-27: T-111 aplicado a mano, T-123 aprobado por AIRA (capturas vs mockup/Obsidian). Lista para merge/deploy
+# --- piloto slice-development (2026-10-25) ---
+# Tareas restantes (desde T-050) migradas a `backlog.md` de esta misma carpeta como
+# slices verticales; las tareas ya [x] en tasks.md quedan tal cual, no se re-documentan.
+# Fuente de verdad del trabajo pendiente: backlog.md, no tasks.md. Detalle de la
+# migración y su motivo en synthesis.planes-de-ejecución-pendientes (wiki de AIRA).
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 09bd982   # HEAD de feature/sprint-1-auth al abrir la Fase 1 (2026-10-24)
-anchor_mode: advisory
-covers:                  # BORRADOR: lo fija el PLAN-0010 (archivos con dueño anterior: 0008/0009)
-  # frontend — editor (propiedades, tablas, resaltado, Mermaid, estilos, breadcrumb)
+anchor_commit: de8d0d7   # cierre de la implementación (2026-10-27)
+anchor_mode: strict
+covers:                  # fijado en PLAN-0010 §9 (archivos con dueño anterior 0007/0008/0009: PLAN-0010 P-15)
+  # frontend — editor (sesión de frontmatter, propiedades, node views, resaltado, Mermaid, migas, menú)
   - frontend/src/editor/**
   - frontend/src/styles/tokens.css
-  # frontend — carpetas, carpeta activa, historial de navegación y reglas de ruta
+  # frontend — carpetas, carpeta activa, historial y reglas de ruta
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/noteStore.ts
   - frontend/src/notes/noteRules.ts
-  - frontend/src/notes/noteTree.ts
-  - frontend/src/notes/messages.ts
+  - frontend/src/notes/folders.ts
+  - frontend/src/notes/noteHistory.ts
   - frontend/src/notes/untitled.ts
+  - frontend/src/notes/messages.ts
   - frontend/src/notes/notes.css
   - frontend/src/notes/*.test.ts
   - frontend/src/notes/*.test.tsx
-  # dependencias nuevas (portapapeles de Milkdown, YAML, resaltador, mermaid, svg-pan-zoom)
+  # dependencias y presupuesto de bundle (RNF-002)
   - frontend/package.json
   - frontend/package-lock.json
-  # sistema — fidelidad visual y rendimiento en navegador real
-  - frontend/e2e/**
+  - frontend/scripts/check-bundle.mjs
+  # sistema — fidelidad visual y rendimiento en navegador real (reutiliza la infraestructura de 0009)
+  - frontend/e2e/content-visual.spec.ts
+  - frontend/e2e/content-perf.spec.ts
+  - frontend/e2e/fixtures.ts
   # backend — regla de ruta compartida (RF-007)
   - backend/app/core/note_rules.py
   - backend/tests/test_note_rules.py
+  - backend/tests/test_note_contract.py
+  - backend/tests/test_note_sync_push.py
   - backend/tests/fixtures/note_rules_cases.json
   # contratos
   - .harness/specs/0010-contenido-markdown-completo/contracts/**
   - .harness/specs/0008-vault-editor/contracts/note.schema.json
-  # documentación
+  # decisiones y documentación
+  - .harness/decisions/ADR-006-extension-tokens-contenido.md
   - frontend/README.md
   - frontend/src/README.md
+  - backend/README.md
   - backend/app/core/README.md
+  - backend/tests/README.md
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "AIRA en nombre de Carlos Jiménez (cjhirashi), autoridad delegada", fecha: 2026-10-24, nota: "incluye RF-052 (zoom/pan con svg-pan-zoom en carga diferida) por paridad con career-admin" }
-  fase_2: pendiente
+  fase_2: { por: "AIRA en nombre de Carlos (autoridad delegada)", fecha: 2026-10-24 }
 actualizado: 2026-10-24
 ---
 
@@ -231,6 +245,18 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
 - **RF-019** — SI el `frontmatter` resultante supera 64 KiB (regla actual) ENTONCES el
   sistema DEBE rechazar el guardado con un mensaje, conservar el texto en edición y no
   modificar la versión guardada.
+  > **Aclaración de RF-019 / RF-016 (enmienda menor, Converge 1, 2026-10-27):** además del tamaño, el `frontmatter`
+  > DEBE tener como máximo **32 niveles de anidamiento** (el objeto raíz cuenta como 1; objetos y listas). Es un tope
+  > explícito del servidor (`FRONTMATTER_MAX_DEPTH` en `core/note_rules.py`, `validation-error:frontmatter`), no una
+  > consecuencia de capturar `RecursionError`: sin él, ~950 niveles pasaban `json.loads` y reventaban `json.dumps`
+  > (500 sin problem+json) y entre 400 y 940 se almacenaban sin límite. El cliente usa el mismo tope
+  > (`FRONTMATTER_MAX_DEPTH` en `noteRules.ts`; el YAML que lo supere se rechaza con `too-deep`), para no generar un
+  > documento que el servidor rechace. Además todo cuerpo JSON de `/sync/**` admite como máximo 64 niveles
+  > (`MAX_JSON_DEPTH`, Converge 2): un frontmatter de 33 a 61 niveles se rechaza con `validation-error:frontmatter`
+  > (rechazo del documento); con 62 o más es el CUERPO el que supera el tope y lo rechaza el decodificador con un 422
+  > `validation-error` de la petición entera (la misma vía cubre `_local`, `_bulk_docs`, `_revs_diff`, `_bulk_get` y
+  > `_all_docs`). Las claves `__proto__`, `constructor` y `prototype` son claves ordinarias.
+  > Además (L4) el último segmento `.md` de RF-007 se compara por NFKC + casefold, igual que `path_key`.
 - **RF-020** — Las vistas Visual y lectura NO DEBEN leer, escribir ni serializar el YAML
   dentro de `content`; guardar desde Visual DEBE cambiar `frontmatter` sólo con lo
   editado en el formulario.
@@ -456,11 +482,21 @@ se ven y el encabezado del documento no dice dónde está la nota ni permite vol
 ## 7. Requisitos no funcionales (RNF)
 
 - **RNF-001** — Rendimiento: la feature NO DEBE degradar RNF-001 de 0009 (árbol de 1000
-  notas, p95 ≤ 150 ms en Chromium real). Además, una nota de referencia de ~200 KiB con 50
-  bloques de código y 5 diagramas Mermaid DEBE mostrarse legible en lectura en
-  p95 ≤ 150 ms (el resaltado y los diagramas pueden llegar después), y ni el resaltado ni
-  el render de diagramas DEBEN producir tareas largas > 200 ms en el hilo principal por
-  bloque.
+  notas, p95 ≤ 150 ms en Chromium real). Además, abrir en lectura una nota grande
+  **precalculada** (la ruta normal: el precálculo en Worker ya cacheó su mdast) DEBE ser
+  legible con p95 ≤ 150 ms hasta ~120 KiB; para la nota de referencia extrema de ~181–200 KiB
+  (50 bloques de código + 5 Mermaid) DEBE ser legible con p95 ≤ 250 ms. En ningún caso el
+  resaltado ni el render de diagramas DEBEN producir tareas largas > 200 ms en el hilo
+  principal por bloque. (El resaltado y los diagramas pueden llegar después.)
+  > **Enmienda B-1b (Directiva de Pausa, 2026-10-25; aceptada por AIRA con autoridad delegada el 2026-10-26, sin revisión línea por línea de Carlos).** El plan
+  > §10.7 (B-1) ya tiered la apertura **en frío** por tamaño (≤ 150 ms hasta 64 KiB, ≤ 220 ms a
+  > ~200 KiB). La medición real de T-138 en Chromium mostró que el supuesto del plan para la ruta
+  > precalculada (cache-hit ≈ 90 ms para 181 KiB) no se sostiene: con el micromark ya cacheado, el
+  > residuo `JSON.parse`+`runSync`+`toDoc`+node-views de una nota de ~200 KiB es ~150–240 ms (crece
+  > con el tamaño, no con el parseo). Se extiende el mismo tiering por tamaño a la ruta
+  > precalculada: ≤ 150 ms hasta 120 KiB (medido 64 KiB 29 ms, 120 KiB 52 ms) y ≤ 250 ms para el
+  > extremo ~181–200 KiB (medido 238 ms). Reducirlo más exige render diferido de node-views (trabajo
+  > de resaltado de código, Slice 5). Evidencia en `memory/history.md` 2026-10-25.
 - **RNF-002** — Carga diferida: el resaltador y sus gramáticas, `mermaid` y
   `svg-pan-zoom` DEBEN ir en chunks separados del de entrada; el resaltador sólo se
   descarga al mostrar un bloque con lenguaje admitido y `mermaid`/`svg-pan-zoom` sólo si

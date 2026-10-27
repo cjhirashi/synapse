@@ -7,6 +7,7 @@
 //   comparaciones de color no dependan de una copia de los valores.
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { CONTENT_NOTES, noteName, PERF_BIG_NOTES, perfVaultNotes, type ContentNote, type PerfNote } from "./content-notes";
 import { OUT_DIR } from "./out-dir";
 
 export const THEMES = ["dark", "light"] as const;
@@ -108,6 +109,8 @@ export interface OpenOptions {
   size?: Size;
   /** Preferencia del sistema del navegador (lo que resolvería el modo "sistema"). */
   colorScheme?: "light" | "dark";
+  /** Puntero táctil (`pointer: coarse`): comprueba las áreas de golpe de 44 px (SPEC-0010 T-049). */
+  touch?: boolean;
 }
 
 /**
@@ -115,10 +118,10 @@ export interface OpenOptions {
  * guardado. `theme: null` deja `localStorage` vacío (V-8).
  */
 export async function newSession(browser: Browser, user: { email: string; password: string }, options: OpenOptions = {}): Promise<BrowserContext> {
-  const { theme = "dark", size = SIZES[0], colorScheme } = options;
+  const { theme = "dark", size = SIZES[0], colorScheme, touch = false } = options;
   // `reducedMotion` aquí y no sólo en la config: `browser.newContext` no hereda `use.contextOptions`, y sin él las
   // transiciones de fondo (120 ms en los botones) hacen que una medida justo tras un cambio lea el color a medias.
-  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme, reducedMotion: "reduce" });
+  const context = await browser.newContext({ baseURL: base_url(), viewport: size, colorScheme, reducedMotion: "reduce", hasTouch: touch });
   if (theme !== null) await context.addInitScript((mode) => localStorage.setItem("synapse-theme", mode), theme);
   const login = await context.request.post("/auth/login", { data: { email: user.email, password: user.password } });
   if (!login.ok()) throw new Error(`login → ${login.status()}`);
@@ -145,6 +148,9 @@ export async function openVault(page: Page, vaultId: string): Promise<void> {
 
 /** Crea una nota por la UI y escribe su contenido en la vista de código. */
 async function createNote(page: Page, title: string, content: string): Promise<void> {
+  // SPEC-0010 RF-003/RF-042: «Nueva nota» crea en la carpeta activa (la de la última nota abierta); las semillas son
+  // rutas absolutas, así que se parte siempre de la raíz.
+  await page.getByRole("tree", { name: "Notas" }).getByRole("treeitem", { name: "Raíz", exact: true }).click();
   await page.getByLabel("Título de la nota nueva (opcional)").fill(title);
   await page.getByRole("button", { name: "Nueva nota" }).click();
   await page.getByRole("button", { name: "Código" }).click();
@@ -157,30 +163,24 @@ async function createNote(page: Page, title: string, content: string): Promise<v
 /** ~4 KiB de contenido por nota: el árbol no debe cargarlo (`list` lo omite). */
 const FILLER = "lorem ipsum dolor sit amet ".repeat(150);
 
-/**
- * `count` notas de una bóveda con la misma distribución que `tree.perf.test.tsx` (100 en la raíz, el resto en
- * carpetas de hasta 3 niveles), escritas directamente en la base CouchDB del usuario (admin de pruebas): la
- * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
- * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
- */
-export async function seedNotesBulk(userCookie: string, vaultId: string, count: number): Promise<number> {
-  const me = (await (await api("/auth/me", { cookie: userCookie })).json()) as { user_id: string };
-  const stamp = "2026-10-12T09:00:00.000Z";
-  const paths = Array.from({ length: count }, (_, i) => {
-    const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
-    return `${folder}nota-${i}.md`;
-  });
-  const docs = paths.map((path) => ({
+/** Documento `note:` listo para `_bulk_docs` (misma forma que escribe `noteStore`). */
+function noteDoc(vaultId: string, note: { path: string; frontmatter: Record<string, unknown>; content: string }, stamp: string) {
+  return {
     _id: `note:${vaultId}:${crypto.randomUUID()}`,
     type: "note",
     vault_id: vaultId,
-    path,
-    frontmatter: {},
-    content: FILLER,
+    path: note.path,
+    frontmatter: note.frontmatter,
+    content: note.content,
     created_at: stamp,
     updated_at: stamp,
     deleted_at: null,
-  }));
+  };
+}
+
+/** Escribe documentos directamente en la base CouchDB del usuario (admin de pruebas); la réplica los trae por el pull. */
+async function bulkDocs(userCookie: string, docs: object[]): Promise<void> {
+  const me = (await (await api("/auth/me", { cookie: userCookie })).json()) as { user_id: string };
   const couch = process.env.COUCHDB_URL ?? "http://localhost:15984";
   const auth = `Basic ${Buffer.from(`${process.env.COUCHDB_USER ?? "admin"}:${process.env.COUCHDB_PASSWORD ?? "testpass"}`).toString("base64")}`;
   const res = await fetch(`${couch}/synapse_user_${me.user_id}/_bulk_docs`, {
@@ -189,6 +189,35 @@ export async function seedNotesBulk(userCookie: string, vaultId: string, count: 
     body: JSON.stringify({ docs }),
   });
   if (!res.ok) throw new Error(`_bulk_docs → ${res.status}: ${await res.text()}`);
+}
+
+/**
+ * `count` notas de una bóveda con la misma distribución que `tree.perf.test.tsx` (100 en la raíz, el resto en
+ * carpetas de hasta 3 niveles), escritas directamente en la base CouchDB del usuario (admin de pruebas): la
+ * réplica del navegador las trae por el pull, como si otro dispositivo las hubiera creado. Devuelve cuántos
+ * elementos tiene el primer nivel del árbol (carpetas + notas de la raíz).
+ */
+/** ~40 KiB de contenido: supera el umbral de precálculo de 32 KiB (SPEC-0010 §10.4). */
+const BIG_FILLER = `# Nota grande\n\n${"lorem ipsum dolor sit amet ".repeat(1500)}\n`;
+
+export async function seedNotesBulk(
+  userCookie: string,
+  vaultId: string,
+  count: number,
+  options: { bigEvery?: number } = {},
+): Promise<number> {
+  const stamp = "2026-10-12T09:00:00.000000Z";
+  const { bigEvery } = options;
+  const paths = Array.from({ length: count }, (_, i) => {
+    const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
+    return `${folder}nota-${i}.md`;
+  });
+  // Con `bigEvery` cada enésima nota lleva ~40 KiB (≥ 32 KiB): el precálculo tiene trabajo real
+  // (T-139, no degradación del RNF-001 de 0009 con el programador activo).
+  const docs = paths.map((path, i) =>
+    noteDoc(vaultId, { path, frontmatter: {}, content: bigEvery && i % bigEvery === 0 ? BIG_FILLER : FILLER }, stamp),
+  );
+  await bulkDocs(userCookie, docs);
   const top = new Set(paths.map((path) => (path.includes("/") ? path.split("/")[0] : path)));
   return top.size;
 }
@@ -220,6 +249,71 @@ export async function seedCrowded(): Promise<Seeded> {
     vaults.push({ id: await createVault(user.cookie, name), name, icon: null });
   }
   return { email: user.email, password: user.password, vaults, longNoteName: LONG_NOTE_NAME };
+}
+
+/** Usuario sembrado con las notas de contenido (`content-notes.ts`) en una bóveda única (SPEC-0010 PLAN-0010 §5.2). */
+export interface SeededContent extends Seeded {
+  notes: ContentNote[];
+}
+
+/**
+ * Bóveda «Contenido» con las notas de PLAN-0010 §5.2 escritas en la base CouchDB del usuario
+ * (como las dejaría otro dispositivo): el navegador las trae por el pull, con su `frontmatter`.
+ */
+export async function seedContent(): Promise<SeededContent> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Contenido", "folder-heart:accent");
+  const stamp = "2026-10-24T09:00:00.000000Z";
+  await bulkDocs(user.cookie, CONTENT_NOTES.map((note) => noteDoc(vaultId, note, stamp)));
+  return {
+    email: user.email,
+    password: user.password,
+    vaults: [{ id: vaultId, name: "Contenido", icon: "folder-heart:accent" }],
+    longNoteName: LONG_NOTE_NAME,
+    notes: CONTENT_NOTES,
+  };
+}
+
+/** Usuario sembrado con el banco de 200 notas de rendimiento (§10.8): las 3 grandes + 197 pequeñas. */
+export interface SeededContentPerf extends Seeded {
+  notes: ContentNote[];
+  big: PerfNote[];
+}
+
+/**
+ * Bóveda «Rendimiento» con las 200 notas del banco (`perfVaultNotes`) escritas en la base CouchDB del
+ * usuario (como las dejaría otro dispositivo): el navegador las trae por el pull en cada contexto nuevo.
+ */
+export async function seedContentPerf(): Promise<SeededContentPerf> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Rendimiento", null);
+  const stamp = "2026-10-24T09:00:00.000000Z";
+  const notes = perfVaultNotes();
+  await bulkDocs(user.cookie, notes.map((note) => noteDoc(vaultId, note, stamp)));
+  return {
+    email: user.email,
+    password: user.password,
+    vaults: [{ id: vaultId, name: "Rendimiento", icon: null }],
+    longNoteName: LONG_NOTE_NAME,
+    notes,
+    big: PERF_BIG_NOTES,
+  };
+}
+
+/** Despliega todas las carpetas del árbol y abre la nota `note` (clic en cada tramo de su ruta). */
+export async function openContentNote(page: Page, note: ContentNote): Promise<void> {
+  const tree = page.getByRole("tree", { name: "Notas" });
+  const segments = note.path.split("/");
+  for (const folder of segments.slice(0, -1)) {
+    const row = tree.getByRole("treeitem", { name: folder, exact: true });
+    if ((await row.getAttribute("aria-expanded")) === "false") await row.click();
+  }
+  const row = tree.getByRole("treeitem", { name: noteName(note), exact: true });
+  // Un redibujado del árbol (el pull aún trae notas) puede tragarse el primer clic: se repite hasta que quede abierta.
+  await expect(async () => {
+    await row.click();
+    await expect(row).toHaveAttribute("aria-selected", "true", { timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 }
 
 /**
@@ -279,6 +373,10 @@ export interface Measure {
 /** Caja y estilos computados del primer elemento que casa con `selector`. */
 export async function measure(page: Page, selector: string): Promise<Measure> {
   return page.locator(selector).first().evaluate((el) => {
+    // RNF-001 (PLAN-0010 §10.2): con `content-visibility: auto` en lectura, un bloque fuera de la vista
+    // conserva su tamaño reservado (`contain-intrinsic-size`) hasta que entra en pantalla. Se lleva a la
+    // vista antes de medir para obtener su caja real (Chromium: `scrollIntoViewIfNeeded`).
+    (el as unknown as { scrollIntoViewIfNeeded?: () => void }).scrollIntoViewIfNeeded?.();
     const r = el.getBoundingClientRect();
     const c = getComputedStyle(el);
     return {
@@ -382,7 +480,19 @@ export function expectExact(key: string, label: string, got: string, target: str
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded; crowded: Seeded }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf }>({
+  content: [
+    async ({}, use) => {
+      await use(await seedContent());
+    },
+    { scope: "worker" },
+  ],
+  contentPerf: [
+    async ({}, use) => {
+      await use(await seedContentPerf());
+    },
+    { scope: "worker" },
+  ],
   crowded: [
     async ({}, use) => {
       await use(await seedCrowded());

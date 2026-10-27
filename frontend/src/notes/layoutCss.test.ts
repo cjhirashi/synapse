@@ -76,12 +76,85 @@ test("RF-005: el contenido del editor va en una columna centrada de 780 px sin t
   expect(rule(editor, ".note-editor-body")).not.toMatch(/border|background/);
 });
 
+// SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
+test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
+  const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");
+  expect(quote).toMatch(/border-left: 3px solid var\(--accent\)/);
+  expect(quote).toMatch(/background: var\(--accent-soft\)/);
+  expect(quote).toMatch(/color: var\(--text-secondary\)/);
+  expect(quote).toMatch(/font-style: italic/);
+  expect(quote).toMatch(/border-radius: 0 var\(--radius-sm\) var\(--radius-sm\) 0/);
+  expect(quote).toMatch(/padding: var\(--space-2\) var\(--space-4\)/);
+});
+
+test("RF-038: el código en línea usa --bg-tertiary, --accent-hover y --radius-xs, y no toca el de los bloques", () => {
+  const inline = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror :not(pre) > code");
+  expect(inline).toMatch(/background: var\(--bg-tertiary\)/);
+  expect(inline).toMatch(/color: var\(--accent-hover\)/);
+  expect(inline).toMatch(/border-radius: var\(--radius-xs\)/);
+  expect(inline).toMatch(/padding: 2px 6px/);
+  expect(inline).toMatch(/font-size: 0\.857em/);
+});
+
+test("RF-026: el párrafo de una celda no tiene margen (causa de las filas de ~62 px) y la tabla va en un envoltorio con scroll", () => {
+  const css = read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  expect(css).toMatch(/td > p,\s*[^{}]*th > p\s*\{[^}]*margin: 0/);
+  const table = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror table");
+  expect(table).toMatch(/width: max-content/);
+  expect(table).toMatch(/min-width: 100%/);
+  const scroll = rule(read("../editor/editor.css"), ".note-table-scroll");
+  expect(scroll).toMatch(/overflow-x: auto/);
+  expect(scroll).toMatch(/max-width: 100%/);
+});
+
+test("RF-039: la casilla de tarea mide 16 × 16 con borde de 2 px en --text-secondary y radio --radius-xs", () => {
+  const mark = rule(read("../editor/editor.css"), ".note-task-mark");
+  expect(mark).toMatch(/width: 16px/);
+  expect(mark).toMatch(/height: 16px/);
+  expect(mark).toMatch(/border: 2px solid var\(--text-secondary\)/);
+  expect(mark).toMatch(/border-radius: var\(--radius-xs\)/);
+});
+
+// SPEC-0010 RNF-001 (PLAN-0010 §10.2): `content-visibility: auto` saca del pintado los bloques fuera
+// de pantalla (−56 ms en la nota de 181 KiB). SÓLO en lectura: en Visual el caret, la selección y
+// `coordsAtPos` sobre bloques omitidos serían un riesgo sin beneficio medido.
+test("RNF-001: content-visibility sólo en los bloques del documento en lectura, nunca en Visual", () => {
+  const css = read("../editor/editor.css");
+  const body = rule(css, '.milkdown-view[data-mode="read"] .ProseMirror > *');
+  expect(body).toMatch(/content-visibility: auto/);
+  expect(body).toMatch(/contain-intrinsic-size: /);
+  // La única aparición de `content-visibility` es esa regla (extraída arriba por su selector de
+  // lectura): no hay ninguna versión para Visual (`data-mode="edit"` ni el selector sin `data-mode`).
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, "");
+  expect(clean.match(/content-visibility/g)).toHaveLength(1);
+});
+
 // Los colores salen sólo de tokens (`var(--…)` o `color-mix` de tokens), nunca de literales.
 test.each([
   ["notes/notes.css", "notes.css"],
   ["editor/editor.css", "../editor/editor.css"],
   ["vaults/VaultChip.css", "../vaults/VaultChip.css"],
+  // SPEC-0010 RF-040: el resaltado también sale sólo de tokens (alias `--syntax-*`).
+  ["editor/syntax.css", "../editor/syntax.css"],
 ])("RF-006: %s no tiene literales de color", (_name, path) => {
   const css = read(path).replace(/\/\*[\s\S]*?\*\//g, "");
   expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
+});
+
+// UX-H6 (Converge 1): áreas táctiles de 44 px con un `::after`, sin crecer los controles (la barra mide 43 px).
+test("UX-H6: «…» de las migas, «Copiar código» y la casilla Sí/No amplían su área a 44 px en estrecho o táctil", () => {
+  const css = read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  const block = css.match(/@media \(max-width: 480px\), \(pointer: coarse\) \{([\s\S]*?)\n\}/);
+  expect(block, "bloque @media (max-width: 480px), (pointer: coarse)").not.toBeNull();
+  const body = block![1];
+  for (const selector of [".note-crumb-more", ".code-block-copy", ".props-form-bool"]) {
+    expect(body, `${selector}::after`).toContain(`${selector}::after`);
+  }
+  expect(body).toMatch(/width:\s*max\(100%,\s*44px\)/);
+  expect(body).toMatch(/height:\s*44px/);
+  // El «…» no puede recortar su propia área ampliada.
+  expect(rule(read("../editor/editor.css"), ".note-crumb-more")).toMatch(/overflow:\s*visible/);
+});
+test("UX-H6: el botón «…» de las migas lleva la clase note-crumb-more", () => {
+  expect(read("../editor/NoteBreadcrumb.tsx")).toMatch(/className="note-crumb note-crumb-more"/);
 });

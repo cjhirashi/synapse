@@ -4,7 +4,7 @@ tipo: spec
 feature: 0009-rediseno-visual-workspace
 estado: implemented      # 2026-10-23: Fase 4 completa, Converge 2/2 limpio. NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 42225d0   # cierre de la implementación (2026-10-23)
+anchor_commit: de8d0d7   # re-anclaje de cierre por SPEC-0010 (2026-10-27)
 anchor_mode: strict
 covers:                  # fijado en PLAN-0009 §9 (archivos con dueño anterior: PLAN-0009 P-10)
   # frontend — maquetación (bloque A)
@@ -75,6 +75,12 @@ aprobaciones:
   fase_2: { por: "AIRA en nombre de Carlos (autoridad delegada)", fecha: 2026-10-23 }
 actualizado: 2026-10-23
 ---
+
+> **Re-anclaje 2026-10-24** (T-006 de TASKS-0010, P-15): SPEC-0010 (contenido Markdown completo) toca
+> `tokens.css` (seis tokens nuevos, ADR-006), `notes.css`, `editor.css`, `NoteSidebar`,
+> `VaultWorkspacePage` y `e2e/**` (nuevas specs `content-*`). Sin cambio de los RF de esta spec:
+> la maquetación de 0009 (43 px de barra, columna de 780 px, marco fijo) se conserva y V-1…V-10
+> siguen en verde (RF-041 de SPEC-0010).
 
 # SPEC-0009 · Rediseño visual del workspace de bóvedas y notas
 

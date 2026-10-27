@@ -1,5 +1,5 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
-import { act, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
@@ -9,13 +9,50 @@ import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
+import { parseMarkdownToJson } from "../editor/markdown/parseStage";
+import { PARSE_MARK } from "../editor/markdown/cachedParser";
+
+// RNF-001 (PLAN-0010 §10.4/§10.5): en jsdom no hay `Worker`, así que `createParseWorkspace` devolvería
+// `null`. Se sustituye por una caché y un programador falsos para comprobar el CABLEADO: creación y
+// `dispose` por bóveda, prioridad por puntero/foco, y que el mdast precalculado llega al editor.
+const parseFakes = vi.hoisted(() => {
+  const scheduler = { reconcile: vi.fn(), prioritize: vi.fn(), pause: vi.fn(), resume: vi.fn(), dispose: vi.fn() };
+  const cache = { get: vi.fn((): string | null => null), pending: vi.fn((): Promise<string | null> | null => null) };
+  const dispose = vi.fn();
+  const createParseWorkspace = vi.fn(() => ({ cache, scheduler, dispose }));
+  return { scheduler, cache, dispose, createParseWorkspace };
+});
+vi.mock("./parseWorkspace", () => ({ createParseWorkspace: parseFakes.createParseWorkspace }));
+
+// Converge 1 (M-1): el chunk del editor se precarga en idle al abrir una bóveda; el espía comprueba cuándo se pide.
+const idleSpy = vi.hoisted(() => ({ calls: [] as Array<() => void> }));
+vi.mock("../editor/deferred/idle", () => ({
+  whenIdle: (run: () => void) => {
+    idleSpy.calls.push(run);
+    run();
+    return () => {};
+  },
+  observeVisibility: (_el: Element, onChange: (visible: boolean) => void) => {
+    onChange(true);
+    return () => {};
+  },
+}));
 
 // El editor se carga con `React.lazy`: la primera importación (Milkdown + CodeMirror, transformados
 // por Vite) puede tardar más que el tiempo de espera de `findBy*` si la máquina va cargada. Se
 // paga aquí, una vez, para que las pruebas midan la pantalla y no la carga del módulo.
 beforeAll(() => import("../editor/NoteEditor"), 30_000);
 
-afterEach(() => localStorage.clear());
+afterEach(() => {
+  localStorage.clear();
+  sessionStorage.clear();
+  parseFakes.cache.get.mockReturnValue(null);
+  parseFakes.cache.pending.mockReturnValue(null);
+  parseFakes.scheduler.prioritize.mockClear();
+  parseFakes.scheduler.reconcile.mockClear();
+  parseFakes.dispose.mockClear();
+  parseFakes.createParseWorkspace.mockClear();
+});
 
 /** Estado de navegación actual, para comprobar que el espacio de trabajo lo consume. */
 function NavState() {
@@ -145,7 +182,10 @@ test("RF-015: al volver a montar no hay ninguna nota abierta y nada se guarda en
   await screen.findByRole("tree", { name: "Notas" });
   expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
   expect(localStorage.length).toBe(0);
-  expect(sessionStorage.length).toBe(0);
+  // SPEC-0010 RF-057 (enmienda del RF-015 de 0008): lo único que persiste es el historial de ids de la pestaña, nunca
+  // el contenido ni «la nota abierta».
+  expect(Object.keys(sessionStorage)).toEqual([`synapse:note-history:${vault.id}`]);
+  expect(sessionStorage.getItem(`synapse:note-history:${vault.id}`)).not.toContain("Hola\"");
 });
 
 test("RF-010: borrar la nota abierta cierra el editor; la papelera de la bóveda se abre y se cierra", async () => {
@@ -275,4 +315,318 @@ test("RF-010: el diálogo «Borrar y descartar cambios» enfoca primero «Seguir
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(within(dialog).getByRole("button", { name: "Seguir editando" })).toHaveFocus());
+});
+
+// --- RNF-001: precálculo (PLAN-0010 §10) -------------------------------------------------------
+test("precalc: el workspace crea la caché/programador al montar y los destruye al desmontar", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { unmount } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(parseFakes.createParseWorkspace).toHaveBeenCalled();
+  unmount();
+  expect(parseFakes.dispose).toHaveBeenCalled();
+});
+
+test("precalc: pointerenter en una fila del árbol pide su precálculo con prioridad", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.hover(await screen.findByRole("treeitem", { name: "Hola" }));
+  expect(parseFakes.scheduler.prioritize).toHaveBeenCalledWith(note.id);
+});
+
+test("precalc: abrir una nota precalculada entrega su mdast al editor (marca cache-hit)", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  await value.notes.save(note.id, "# Hola\n\ncuerpo de la nota", note.rev);
+  parseFakes.cache.get.mockReturnValue(parseMarkdownToJson("# Hola\n\ncuerpo de la nota"));
+  const mark = vi.spyOn(performance, "mark");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  await waitFor(() => expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit));
+  expect(mark).not.toHaveBeenCalledWith(PARSE_MARK.cold);
+  mark.mockRestore();
+});
+
+test("precalc: con el parseo en vuelo, el editor espera esa promesa en vez de reparsear", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  await value.notes.save(note.id, "# Hola\n\notro cuerpo", note.rev);
+  parseFakes.cache.get.mockReturnValue(null); // nada cacheado aún…
+  parseFakes.cache.pending.mockReturnValue(Promise.resolve(parseMarkdownToJson("# Hola\n\notro cuerpo"))); // …pero sí en vuelo
+  const mark = vi.spyOn(performance, "mark");
+  render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  await waitFor(() => expect(mark).toHaveBeenCalledWith(PARSE_MARK.cacheHit));
+  mark.mockRestore();
+});
+
+// --- SPEC-0010 RF-056…RF-060: historial de notas abiertas (Atrás/Adelante) -----------------------------------
+
+/** Un espacio de trabajo con tres notas (Alfa, Beta, Gamma) y la bóveda montada. */
+async function historySetup(names = ["Alfa", "Beta", "Gamma"]) {
+  const { value, vault } = await setup();
+  const notes = [];
+  for (const name of names) notes.push(await value.notes.create(vault.id, name));
+  const utils = render(tree(value, `/vaults/${vault.id}`));
+  return { value, vault, notes, ...utils };
+}
+
+/** Abre una nota del árbol (en lectura) y espera a que su encabezado sea el actual. */
+async function openFromTree(name: string) {
+  await userEvent.click(await screen.findByRole("treeitem", { name }));
+  expect(await screen.findByRole("heading", { level: 2, name })).toBeInTheDocument();
+}
+
+const back = () => screen.getByRole("button", { name: "Atrás" });
+const forward = () => screen.getByRole("button", { name: "Adelante" });
+
+test("historial: abrir notas habilita Atrás; Atrás y Adelante navegan y se deshabilitan en los extremos (RF-056, RF-057)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeDisabled();
+  await openFromTree("Beta");
+  expect(back()).toBeEnabled();
+  expect(forward()).toBeDisabled();
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeEnabled();
+  await userEvent.click(forward());
+  expect(await screen.findByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(forward()).toBeDisabled();
+});
+
+test("historial: moverse atrás/adelante no añade entradas y abrir otra nota descarta las de «adelante» (RF-057)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(back());
+  await screen.findByRole("heading", { level: 2, name: "Alfa" });
+  await openFromTree("Gamma");
+  expect(forward()).toBeDisabled();
+  await userEvent.click(back());
+  // La entrada «Beta» se descartó: tras Gamma, atrás va a Alfa.
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+});
+
+test("historial: una nota borrada se salta (RF-058)", async () => {
+  const { value, notes } = await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await openFromTree("Gamma");
+  const beta = await value.notes.get(notes[1].id);
+  await value.notes.softDelete(beta.id, beta.rev);
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+});
+
+test("historial: una nota renombrada sigue siendo navegable por su id (RF-058)", async () => {
+  const { value, notes } = await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  const alfa = await value.notes.get(notes[0].id);
+  await value.notes.rename(alfa.id, "Alfa renombrada.md", alfa.rev);
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa renombrada" })).toBeInTheDocument();
+});
+
+test("historial: con borrador sucio Atrás muestra el aviso y «Seguir editando» conserva nota, borrador y posición (RF-060)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  const view = EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!;
+  act(() => view.dispatch({ changes: { from: 0, insert: "borrador" } }));
+  await screen.findByText("Cambios sin guardar");
+
+  await userEvent.click(back());
+  const dialog = await screen.findByRole("alertdialog");
+  await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(screen.getByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(view.state.doc.toString()).toContain("borrador");
+  expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+  // La posición no se movió: Atrás sigue disponible, Adelante no, y el foco vuelve al botón.
+  expect(back()).toBeEnabled();
+  expect(forward()).toBeDisabled();
+  await waitFor(() => expect(back()).toHaveFocus());
+  // «Descartar y abrir» sí navega.
+  await userEvent.click(back());
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Descartar y abrir" }));
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(forward()).toBeEnabled();
+});
+
+test("historial: Alt+← y Alt+→ fuera de un editor navegan y evitan la navegación del navegador (RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  const tree = screen.getByRole("tree", { name: "Notas" });
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft", altKey: true })).toBe(false);
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(fireEvent.keyDown(tree, { key: "ArrowRight", altKey: true })).toBe(false);
+  expect(await screen.findByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  // Sin Alt, o con otro modificador, no hace nada.
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft" })).toBe(true);
+  expect(fireEvent.keyDown(tree, { key: "ArrowLeft", altKey: true, ctrlKey: true })).toBe(true);
+});
+
+test("historial: Alt+← dentro de un editor en edición no navega (RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await userEvent.click(await screen.findByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  const content = document.querySelector(".cm-content") as HTMLElement;
+  // CodeMirror usa Alt+← para moverse por palabras: el atajo del historial no interviene.
+  fireEvent.keyDown(content, { key: "ArrowLeft", altKey: true });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  expect(screen.getByRole("heading", { level: 2, name: "Beta" })).toBeInTheDocument();
+  expect(back()).toBeEnabled();
+});
+
+test("historial: se conserva al volver a montar con el mismo sessionStorage y es por bóveda (RF-057)", async () => {
+  const { value, vault, unmount } = await historySetup(["Alfa", "Beta"]);
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  unmount();
+  // Misma pestaña (sessionStorage): al reabrir Beta el historial recuerda a Alfa.
+  render(tree(value, `/vaults/${vault.id}`));
+  await openFromTree("Beta");
+  expect(back()).toBeEnabled();
+  await userEvent.click(back());
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  // Otra bóveda, otro historial.
+  expect(sessionStorage.getItem(`synapse:note-history:${vault.id}`)).not.toBeNull();
+  expect(Object.keys(sessionStorage).filter((key) => key.startsWith("synapse:note-history:"))).toEqual([`synapse:note-history:${vault.id}`]);
+});
+
+// --- SPEC-0010 RF-055, RF-062, RF-065: migas y menú ⋮ con los flujos reales ------------------------------------
+
+/** Abre en edición/lectura la nota `Proyectos/Clientes/Plan.md` (por el estado de navegación, con el árbol plegado). */
+async function deepNote() {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Proyectos/Clientes/Plan.md");
+  const { rerender } = render(tree(value, `/vaults/${vault.id}`, { noteId: note.id }));
+  await screen.findByRole("heading", { level: 2, name: "Plan" });
+  return { value, vault, note, rerender };
+}
+
+const menuButton = () => screen.getByRole("button", { name: "Opciones de la nota" });
+async function pick(item: string) {
+  await userEvent.click(menuButton());
+  await userEvent.click(await screen.findByRole("menuitem", { name: item }));
+}
+
+test("RF-055: pulsar una carpeta de la miga la revela en el árbol y la deja activa sin cambiar de nota", async () => {
+  await deepNote();
+  expect(screen.queryByRole("treeitem", { name: "Plan" })).toBeNull(); // el árbol está plegado
+  await userEvent.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("button", { name: "Clientes" }));
+  expect(await screen.findByRole("treeitem", { name: "Clientes" })).toHaveAttribute("aria-current", "true");
+  expect(screen.getByText(/Crear en:/)).toHaveTextContent("Proyectos/Clientes");
+  expect(screen.getByRole("heading", { level: 2, name: "Plan" })).toBeInTheDocument();
+});
+
+test("RF-062: «Renombrar o mover» del menú abre el mismo flujo de renombrado del árbol", async () => {
+  await deepNote();
+  await pick("Renombrar o mover");
+  expect(await screen.findByRole("textbox", { name: "Ruta de la nota" })).toHaveValue("Proyectos/Clientes/Plan.md");
+});
+
+test("RF-062: «Borrar» del menú manda la nota a la papelera con el flujo del árbol y cierra el editor", async () => {
+  const { value, vault } = await deepNote();
+  await pick("Borrar");
+  expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(await value.notes.list(vault.id, { deleted: true })).toHaveLength(1);
+});
+
+test("RF-062: «Borrar» con cambios sin guardar pide la misma confirmación y «Seguir editando» no borra", async () => {
+  const { value, vault } = await deepNote();
+  await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+  await userEvent.click(screen.getByRole("button", { name: "Código" }));
+  act(() => EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!.dispatch({ changes: { from: 0, insert: "x" } }));
+  await screen.findByText("Cambios sin guardar");
+  await pick("Borrar");
+  await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seguir editando" }));
+  expect(await value.notes.list(vault.id, { deleted: true })).toEqual([]);
+});
+
+test("RF-062: «Copiar ruta» copia el path completo con .md y anuncia «Ruta copiada»", async () => {
+  await deepNote();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  await pick("Copiar ruta");
+  expect(writeText).toHaveBeenCalledWith("Proyectos/Clientes/Plan.md");
+  expect(await screen.findByText("Ruta copiada")).toBeInTheDocument();
+  expect(screen.getByText("Ruta copiada").closest("[aria-live]")).not.toBeNull();
+});
+
+test("RF-062: si «Copiar ruta» falla se avisa sin lanzar", async () => {
+  await deepNote();
+  Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn().mockRejectedValue(new Error("denegado")) }, configurable: true });
+  await pick("Copiar ruta");
+  expect(await screen.findByText(/No se pudo copiar la ruta/)).toBeInTheDocument();
+});
+
+test("RF-062: «Ver en Código» pasa la nota a edición en la vista Código", async () => {
+  await deepNote();
+  await pick("Ver en Código");
+  expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Código" })).toHaveAttribute("aria-pressed", "true");
+});
+
+test("RF-065: renombrar o mover la nota abierta actualiza las migas sin recargar", async () => {
+  const { value, vault, note, rerender } = await deepNote();
+  const current = await value.notes.get(note.id);
+  await act(async () => {
+    await value.notes.rename(current.id, "Otra/Nombre nuevo.md", current.rev);
+    // En la app el `SyncProvider` sube `notesVersion` con cada escritura de la réplica.
+    rerender(tree({ ...value, notesVersion: value.notesVersion + 1 }, `/vaults/${vault.id}`));
+  });
+  const nav = screen.getByRole("navigation", { name: "Ruta" });
+  await waitFor(() => expect(within(nav).getByRole("heading", { level: 2 })).toHaveTextContent("Nombre nuevo"));
+  expect(within(nav).getByRole("button", { name: "Otra" })).toBeInTheDocument();
+  expect(within(nav).queryByRole("button", { name: "Clientes" })).toBeNull();
+});
+
+test("RF-065: el lápiz alterna lectura y edición", async () => {
+  await deepNote();
+  await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+  expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Leer" }));
+  expect(await screen.findByRole("button", { name: "Editar" })).toBeInTheDocument();
+});
+
+test("historial: dos Alt+← seguidos (sin esperar) retroceden dos notas, no una dos veces (L-5, RF-059)", async () => {
+  await historySetup();
+  await openFromTree("Alfa");
+  await openFromTree("Beta");
+  await openFromTree("Gamma");
+  const treeEl = screen.getByRole("tree", { name: "Notas" });
+  fireEvent.keyDown(treeEl, { key: "ArrowLeft", altKey: true });
+  fireEvent.keyDown(treeEl, { key: "ArrowLeft", altKey: true });
+  expect(await screen.findByRole("heading", { level: 2, name: "Alfa" })).toBeInTheDocument();
+  expect(back()).toBeDisabled();
+  expect(forward()).toBeEnabled();
+});
+
+
+// M-1 (Converge 1, RNF-001): la primera apertura de una nota en una sesión pagaba la descarga, el análisis y la
+// compilación del chunk del editor (~1 MB) DENTRO de «clic → legible» (+60 ms de parseo en segundo plano medidos con
+// una traza de Chromium; el 181 KiB, siempre el primero, era el único que lo notaba). Se precarga en idle al montar
+// la bóveda: el editor es seguro que se va a necesitar y sigue siendo un chunk aparte (no entra en la entrada).
+test("M-1: abrir una bóveda precarga el chunk del editor en idle, sin abrir ninguna nota", async () => {
+  const { value, vault } = await setup();
+  idleSpy.calls.length = 0;
+  render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(idleSpy.calls.length).toBeGreaterThanOrEqual(1);
+  expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });

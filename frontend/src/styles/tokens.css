@@ -1,7 +1,8 @@
 /*
  * Tokens del sistema de diseño de Synapse — MD3+Cyan, claro/sistema/oscuro.
  * Fuente: diseño/1.1.4 - Diseño UI-UX/1.1.4.1 - Sistema de Diseño.md (aprobado 2026-08-12).
- * No inventar valores nuevos aquí: ese documento es la fuente de verdad del diseño.
+ * No inventar valores nuevos aquí: ese documento es la fuente de verdad del diseño
+ * (los tokens `-text`, `--border-control` y `--radius-xs` los registra ADR-006).
  */
 :root[data-theme="dark"] {
   --bg-primary: #12121a;
@@ -20,6 +21,12 @@
   --danger-bg: rgba(220, 38, 38, 0.1);
   --danger-border: rgba(220, 38, 38, 0.3);
   --info: #38bdf8;
+  /* ADR-006: variantes legibles como texto (≥ 4,5:1) y borde de controles nuevos (≥ 3:1). */
+  --success-text: #4ade80;
+  --warning-text: #fbbf24;
+  --info-text: #38bdf8;
+  --danger-text: #f87171;
+  --border-control: #6b6b7c;
   --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.4);
   --bg-gradient: radial-gradient(circle at 30% 20%, #182229 0%, var(--bg-primary) 60%);
 }
@@ -41,6 +48,12 @@
   --danger-bg: rgba(220, 38, 38, 0.08);
   --danger-border: rgba(220, 38, 38, 0.25);
   --info: #0284c7;
+  /* ADR-006: variantes legibles como texto (≥ 4,5:1) y borde de controles nuevos (≥ 3:1). */
+  --success-text: #15803d;
+  --warning-text: #b45309;
+  --info-text: #0369a1;
+  --danger-text: #b91c1c;
+  --border-control: #64748b;
   --shadow-panel: 0 4px 24px rgba(0, 0, 0, 0.12);
   --bg-gradient: radial-gradient(circle at 30% 20%, #e6f6fa 0%, var(--bg-primary) 60%);
 }
@@ -58,6 +71,7 @@
   --space-12: 48px;
   --space-16: 64px;
 
+  --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;

@@ -11,26 +11,249 @@
 /* Barra superior (SPEC-0009 RF-005, R-12): 43 px, `--bg-secondary`, borde inferior; título a la
    izquierda con elipsis y los controles a la derecha. Queda fija: sólo el cuerpo hace scroll. */
 .note-editor-header {
+  position: relative; /* ancla de lo que sólo se oculta a la vista (etiquetas ≤ 560 px, estado vacío) */
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  gap: var(--space-3);
+  gap: var(--space-2);
   height: 43px;
-  padding: var(--space-2) var(--space-4);
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--bg-secondary);
 }
 
-.note-editor-header h2 {
+/* ≤ 480 px (T-049, H-1): sin flechas (siguen Alt+←/→) y con el nombre de la nota ocupando lo que queda (≥ 96 px);
+   los ancestros ya vienen colapsados a «…» desde `NoteBreadcrumb`. */
+@media (max-width: 480px) {
+  .note-editor-header .note-nav-button[aria-keyshortcuts] {
+    display: none;
+  }
+
+  .note-crumb-name {
+    flex: 1 1 auto;
+    min-width: 96px;
+  }
+
+  .note-breadcrumb li:last-child {
+    flex-shrink: 1;
+    min-width: 96px;
+  }
+}
+
+/* Área de golpe de 44 px con puntero táctil sin crecer la barra de 43 px (T-049, M-5): un `::after` ampliado. */
+@media (pointer: coarse) {
+  .note-editor-header .note-nav-button,
+  .note-editor-header .note-menu-button {
+    position: relative;
+  }
+
+  .note-editor-header .note-nav-button::after,
+  .note-editor-header .note-menu-button::after {
+    position: absolute;
+    inset: -5px; /* 36 px de botón − 2 de borde + 10 = 44 px */
+    content: "";
+  }
+}
+
+/* Áreas táctiles de 44 px (UX-H6, WCAG 2.5.5) en estrecho (≤ 480 px) o con puntero táctil, sin crecer los controles:
+   un `::after` centrado sobre el botón o la etiqueta (la barra del editor mide 43 px y el bloque no se ensancha). */
+@media (max-width: 480px), (pointer: coarse) {
+  .note-crumb-more,
+  .code-block-copy,
+  .props-form-bool {
+    position: relative;
+  }
+
+  .note-crumb-more::after,
+  .code-block-copy::after,
+  .props-form-bool::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: 44px;
+    transform: translate(-50%, -50%);
+    content: "";
+  }
+}
+
+/* Menú ⋮ (SPEC-0010 RF-061; R-13; P-17): botón de 28 × 28 y menú en un portal sobre el contenido,
+   de ≥ 200 px, con ítems de 32 px (40 en táctil), radio de 10 px y la sombra del panel. */
+.note-menu-button {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.note-menu-button:hover,
+.note-menu-button[aria-expanded="true"] {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-menu {
+  position: fixed;
+  z-index: 50;
+  box-sizing: border-box;
+  min-width: 200px;
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-panel);
+  animation: note-menu-in var(--dur-fast) var(--ease-out);
+}
+
+@keyframes note-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.note-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+}
+
+.note-menu-item:hover,
+.note-menu-item:focus {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-menu-item:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-menu-item[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.note-menu-item-danger,
+.note-menu-item-danger:hover,
+.note-menu-item-danger:focus {
+  color: var(--danger-text);
+}
+
+.note-menu-separator {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--border);
+}
+
+@media (pointer: coarse) {
+  .note-menu-item {
+    height: 40px;
+  }
+
+  .note-menu-button {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* Migas (SPEC-0010 RF-054, RF-063; P-17; R-12): ocupan el hueco de la barra y cada segmento se trunca por
+   sí mismo con «…» (el ancho máximo lo pone `NoteBreadcrumb`); el separador «/» es tenue y decorativo. */
+.note-breadcrumb {
   flex: 1;
   min-width: 0;
-  margin: 0;
   overflow: hidden;
+}
+
+.note-breadcrumb ol {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: nowrap;
+}
+
+.note-breadcrumb li {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* sin encoger: lo que no cabe lo ocultan `fit` y el recorte del nav */
+}
+
+.note-breadcrumb li[hidden] {
+  display: none;
+}
+
+.note-crumb {
+  box-sizing: border-box;
+  max-width: 24ch;
+  height: 28px;
+  padding: 0 var(--space-1);
+  overflow: hidden;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600; /* ancestros en negrita atenuada, como la captura de Obsidian (L-1) */
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  font-weight: 500;
+}
+
+/* El «…» no recorta: su área táctil ampliada (UX-H6) sale de su caja. */
+.note-crumb-more {
+  overflow: visible;
+}
+
+.note-crumb:hover {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-crumb:active {
+  background: var(--accent-soft);
+}
+
+/* El anillo de foco queda dentro del botón: el contenedor recorta lo que sobresale. */
+.note-crumb:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-crumb-sep {
+  flex-shrink: 0;
+  margin: 0 var(--space-1);
   color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.note-crumb-name {
+  box-sizing: border-box;
+  min-width: 6ch;
+  margin: 0;
+  padding: 0 var(--space-1);
+  overflow: hidden;
+  color: var(--text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .note-editor-toolbar {
@@ -41,8 +264,85 @@
 }
 
 .note-editor-toolbar button {
-  padding: var(--space-1) var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  height: 28px;
+  padding: 0 var(--space-2);
   font-size: 12px;
+}
+
+/* Flechas, tabla y lápiz (SPEC-0010 R-2; P-17): botones de icono de 28 × 28 (36 con puntero táctil) con el
+   nombre en `aria-label`; sin historial las flechas se ven atenuadas, como «Adelante» en la captura. */
+.note-editor-header .note-nav-button {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.note-editor-header .note-nav-button:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-editor-header .note-nav-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (pointer: coarse) {
+  .note-editor-header .note-nav-button,
+  .note-editor-header .note-menu-button,
+  .note-editor-toolbar button {
+    width: auto;
+    min-width: 36px;
+    height: 36px;
+  }
+}
+
+/* ≤ 560 px (R-1): Visual, Código y Guardar quedan en sólo icono —la etiqueta sigue en el árbol de
+   accesibilidad— y el estado se oculta a la vista; la barra siempre cabe en una línea. */
+@media (max-width: 560px) {
+  .note-editor-header {
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+  }
+
+  .note-crumb,
+  .note-crumb-name {
+    padding: 0 var(--space-1);
+  }
+
+  .note-btn-label,
+  .note-editor-state {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .note-editor-toolbar {
+    gap: var(--space-1);
+  }
+
+  .note-editor-toolbar button {
+    justify-content: center;
+    min-width: 28px;
+    padding: 0 var(--space-1);
+  }
 }
 
 .note-editor-views {
@@ -94,9 +394,71 @@
   font-size: 14px;
 }
 
+/* SPEC-0010 RF-045, P-6: el bloque heredado protegido mostrado literal dentro del aviso. */
+.note-editor-legacy-block {
+  flex-basis: 100%;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
 .note-editor-confirm p {
   margin: 0;
   flex: 1 1 100%;
+}
+
+/* Variantes del aviso (SPEC-0010 §2.3-d): borde izquierdo de 3 px del color del tipo, icono y texto primario. */
+.note-notice-info {
+  border-left: 3px solid var(--info-text);
+}
+
+.note-notice-warning {
+  border-left: 3px solid var(--warning-text);
+}
+
+.note-notice-error {
+  border-color: var(--danger-border);
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+}
+
+.note-notice-info .note-notice-icon {
+  color: var(--info-text);
+}
+
+.note-notice-warning .note-notice-icon {
+  color: var(--warning-text);
+}
+
+.note-notice-error .note-notice-icon {
+  color: var(--danger-text);
+}
+
+.note-notice-icon {
+  flex-shrink: 0;
+}
+
+.note-notice-body {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--text-primary);
+}
+
+.note-notice-close {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
 }
 
 /* Cuerpo sin tarjeta: el área de scroll ocupa el resto del panel y el contenido va en una columna
@@ -122,6 +484,414 @@
   }
 }
 
+/* Botón fantasma compartido (SPEC-0010 §2.3-b/c): «Mostrar n más», «Añadir propiedad». */
+.note-ghost-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.note-ghost-button:hover {
+  border-color: transparent;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.note-ghost-button:active {
+  background: var(--accent-soft);
+}
+
+/* Panel de propiedades en lectura (SPEC-0010 RF-009; R-3, R-4): la caja del mockup `.frontmatter`,
+   con clave mono 12 px `--text-secondary` y valor 13 px `--text-primary` (el mockup usa
+   `--text-muted`, que no llega a 4,5:1: P-2). El margen inferior más el `gap` de la columna dan 24 px. */
+.note-properties {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.note-properties dl {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.note-property {
+  display: grid;
+  grid-template-columns: minmax(80px, 160px) 1fr;
+  column-gap: var(--space-4);
+  align-items: baseline;
+}
+
+.note-properties dt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.note-properties dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note-prop-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.note-prop-empty {
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.note-prop-bool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.note-prop-bool svg {
+  color: var(--text-secondary);
+}
+
+.note-prop-bool .note-prop-bool-on {
+  color: var(--accent-hover);
+}
+
+/* Lista de strings: un chip por elemento. */
+.note-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Valor complejo: JSON de sólo lectura en una caja con scroll propio. */
+.note-prop-complex {
+  display: block;
+  max-height: 96px;
+  overflow: auto;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-xs);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.note-prop-readonly {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* 390 px: clave sobre valor y menos relleno. */
+@media (max-width: 560px) {
+  .note-properties {
+    padding: var(--space-3);
+  }
+
+  .note-property {
+    grid-template-columns: 1fr;
+  }
+}
+
+.note-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Formulario de propiedades en Visual (SPEC-0010 RF-011; R-16): la misma caja que el panel, con
+   cabecera de columnas y filas de 160 / 96 / 1fr / 28 px, controles de 28 px y 8 px entre ellos.
+   Los bordes de los controles son `--border-control` (≥ 3:1, ADR-006). */
+.props-form-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+  /* Sombras de desbordamiento (T-049, M-2): las capas `local` tapan la sombra cuando el contenido está en el borde. */
+  background:
+    linear-gradient(var(--bg-tertiary) 30%, transparent) 0 0 / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--bg-tertiary) 70%) 0 100% / 100% 24px no-repeat local,
+    linear-gradient(color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 0 0 / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, color-mix(in srgb, var(--text-secondary) 35%, transparent)) 0 100% / 100% 10px no-repeat scroll;
+}
+
+.props-form-head,
+.props-form-row {
+  display: grid;
+  grid-template-columns: 160px 96px 1fr 28px;
+  align-items: start;
+  gap: var(--space-2);
+}
+
+/* Cabecera de columnas pegada arriba mientras la lista hace scroll. */
+.props-form-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.props-form-row {
+  animation: props-form-in var(--dur-fast) var(--ease-out);
+}
+
+@keyframes props-form-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.props-form-cell {
+  min-width: 0;
+}
+
+.props-form-cell::before {
+  display: none;
+  content: attr(data-label);
+  margin-bottom: var(--space-1);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.props-form input:not([type="checkbox"]),
+.props-form select,
+.props-form textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 28px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.props-form textarea {
+  padding: var(--space-1) var(--space-2);
+}
+
+.props-form .props-form-key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.props-form .props-form-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.props-form input:not([type="checkbox"]):hover,
+.props-form select:hover,
+.props-form textarea:hover {
+  border-color: var(--text-secondary);
+}
+
+.props-form input:not([type="checkbox"]):focus,
+.props-form select:focus,
+.props-form textarea:focus {
+  border-color: var(--accent);
+}
+
+.props-form input:focus-visible,
+.props-form select:focus-visible,
+.props-form textarea:focus-visible,
+.props-form-bool input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.props-form [aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.props-form-bool {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 28px;
+  margin: 0; /* el `label` global trae margen inferior de 16 px */
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.props-form-bool input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.props-form-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.props-form-complex {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.note-chip-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin-left: var(--space-1);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.note-chip-remove:hover {
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.props-form-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.props-form-remove:hover {
+  border-color: transparent;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.props-form-error {
+  display: flex;
+  align-items: center;
+  grid-column: 1 / -1;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.props-form-error svg,
+.props-form-summary svg {
+  flex-shrink: 0;
+  color: var(--danger-text);
+}
+
+.props-form-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--danger-border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.props-form-summary ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 390 px: cada fila es una tarjeta apilada con sus etiquetas visibles y la cabecera de columnas sobra. */
+@media (max-width: 560px) {
+  .props-form-head {
+    display: none;
+  }
+
+  .props-form-row {
+    grid-template-columns: 1fr 28px;
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .props-form-cell::before {
+    display: block;
+  }
+
+  .props-form-cell:nth-child(2),
+  .props-form-cell:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .props-form-remove {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+}
+
+/* Controles táctiles de 36 px. */
+@media (pointer: coarse) {
+  .props-form input:not([type="checkbox"]),
+  .props-form select,
+  .props-form-remove {
+    min-height: 36px;
+  }
+
+  .props-form-remove {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /* Milkdown: el contenido es ProseMirror; se hereda la tipografía de la app. */
 .milkdown-view .ProseMirror {
   outline: none;
@@ -131,9 +901,27 @@
   overflow-wrap: anywhere;
 }
 
-.milkdown-view .ProseMirror:focus-visible {
+/* RNF-001 (PLAN-0010 §10.2): en LECTURA, cada bloque de primer nivel del documento usa
+   `content-visibility: auto` para saltarse el pintado/layout mientras está fuera de la vista
+   (−56 ms en la nota de 181 KiB). `contain-intrinsic-size` le da un tamaño reservado estable para
+   que la barra de scroll no salte. Nunca en Visual: ahí el caret, la selección y `coordsAtPos`
+   sobre bloques omitidos serían un riesgo sin beneficio medido. */
+.milkdown-view[data-mode="read"] .ProseMirror > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3em;
+}
+
+/* Foco del editor (T-049, M-1): el contorno va en el contenedor, que tiene aire (padding compensado con margen
+   negativo para no mover el texto), y no pegado al texto del `.ProseMirror`. */
+.milkdown-view {
+  margin: calc(-1 * var(--space-3));
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+}
+
+.milkdown-view:has(.ProseMirror:focus-visible) {
   outline: 2px solid var(--accent);
-  outline-offset: 4px;
+  outline-offset: 0;
 }
 
 .milkdown-view .ProseMirror h1,
@@ -165,44 +953,459 @@
   margin: 0;
 }
 
-.milkdown-view .ProseMirror pre,
-.milkdown-view .ProseMirror code {
+.milkdown-view .ProseMirror pre {
+  padding: var(--space-3);
+  overflow-x: auto;
   font-family: var(--font-mono);
   background: var(--bg-tertiary);
   border-radius: var(--radius-sm);
 }
 
-.milkdown-view .ProseMirror pre {
-  padding: var(--space-3);
-  overflow-x: auto;
+/* Código en línea (SPEC-0010 RF-038; R-6): el del mockup, con `--accent-hover` (el texto de acento) y
+   12 px sobre el cuerpo de 14 (.857em). No toca el `pre` de los bloques. */
+.milkdown-view .ProseMirror :not(pre) > code {
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  background: var(--bg-tertiary);
+  color: var(--accent-hover);
+  font-family: var(--font-mono);
+  font-size: 0.857em;
 }
 
-.milkdown-view .ProseMirror code {
-  padding: 1px 4px;
-}
-
-.milkdown-view .ProseMirror blockquote {
+/* Bloque de código (SPEC-0010 RF-033…RF-036; R-8): caja con cabecera propia de 36 px (la etiqueta ya no
+   se superpone al código como en career-admin, C-5) y `pre` de 12/16 en mono 13/1,6. Sin `overflow:hidden`
+   en la caja para no recortar el anillo de foco; el scroll horizontal es del `pre`. */
+.milkdown-view .ProseMirror .code-block {
   margin: var(--space-3) 0;
-  padding-left: var(--space-4);
-  border-left: 3px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  height: 36px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.code-block-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
   color: var(--text-secondary);
 }
 
+.code-block-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.code-block-copy,
+.code-block-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  min-width: 84px;
+  height: 28px;
+  padding: 0 var(--space-2);
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.code-block-copy:hover,
+.code-block-toggle:hover {
+  border-color: var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.code-block-copy:active,
+.code-block-toggle:active {
+  background: var(--accent-soft);
+  transform: scale(0.97);
+}
+
+.code-block-copy[data-state="copied"] svg {
+  color: var(--success-text);
+}
+
+.code-block-copy[data-state="failed"] svg {
+  color: var(--danger-text);
+}
+
+/* Mermaid (SPEC-0010 RF-046…RF-053; R-11): el área va bajo la cabecera (lectura) o bajo el código (Visual),
+   de 96 a 420 px de alto y con el SVG dentro de la columna; los controles de zoom flotan abajo a la derecha. */
+.mermaid-caption {
+  margin: 0;
+  padding: var(--space-1) var(--space-4);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.mermaid-frame {
+  position: relative;
+}
+
+.mermaid-area {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-height: 96px;
+  max-height: 420px;
+  padding: var(--space-3);
+  overflow: hidden;
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+/* Mientras se espera (o se dibuja) el diagrama se reserva altura para que el dibujo no empuje bruscamente la nota. */
+.mermaid-area[aria-busy="true"] {
+  min-height: 160px;
+}
+
+.mermaid-area svg {
+  max-width: 100%;
+  /* El tope de 420 px es del área entera: el dibujo cede su padding para no quedar recortado por abajo. */
+  max-height: calc(420px - 2 * var(--space-3));
+  height: auto;
+}
+
+/* Contenedor temporal donde Mermaid mide el diagrama (RF-046): fuera de pantalla y SIN transiciones ni animaciones.
+   La regla global de `prefers-reduced-motion` pone `transition-duration: .01ms` a todo (`*`); con ella, Mermaid
+   mide posiciones a medio transitar y el `viewBox` sale desplazado (diagrama recortado). */
+.mermaid-measure {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  width: 1200px;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.mermaid-measure,
+.mermaid-measure * {
+  transition: none !important;
+  animation: none !important;
+}
+
+/* Diagrama con zoom (RF-052): el área toma el alto del diagrama ajustado (`--mermaid-height`, 96–420 px) y el SVG
+   llena el área, que es donde `svg-pan-zoom` lo ajusta, lo mueve y lo escala. El recorte lo hace el propio área. */
+.mermaid-area[data-zoom] {
+  display: block;
+  height: var(--mermaid-height);
+  max-height: none;
+  padding: 0;
+  cursor: grab;
+}
+
+.mermaid-area[data-zoom]:active {
+  cursor: grabbing;
+}
+
+.mermaid-area[data-zoom] svg {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+}
+
+.mermaid-empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.mermaid-controls {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: flex;
+  gap: var(--space-1);
+}
+
+.mermaid-controls button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-panel);
+}
+
+.mermaid-controls button:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
+.mermaid-controls button:disabled {
+  opacity: 0.5;
+}
+
+/* Error de diagrama (RF-049) y fallo de carga (RF-053): el resto de la nota no se ve afectado. */
+.mermaid-error,
+.mermaid-loadfail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--danger-border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--danger-bg);
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.mermaid-loadfail {
+  border-color: var(--border);
+  border-left-color: var(--warning-text);
+  background: var(--bg-secondary);
+}
+
+.mermaid-error-title,
+.mermaid-loadfail-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-weight: 600;
+}
+
+.mermaid-error-title svg {
+  color: var(--danger-text);
+}
+
+.mermaid-loadfail-title svg {
+  color: var(--warning-text);
+}
+
+.mermaid-error-detail {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.mermaid-error-guide {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.milkdown-view .ProseMirror .code-block pre {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+  font-variant-ligatures: none;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-wrap: normal;
+}
+
+/* Cita (SPEC-0010 RF-037; R-5): barra de acento, relleno `--accent-soft` y cursiva; el texto es
+   `--text-secondary` (el `--text-dim` del mockup) con ≥ 4,5:1 sobre el relleno. */
+.milkdown-view .ProseMirror blockquote {
+  margin: var(--space-4) 0;
+  padding: var(--space-2) var(--space-4);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  background: var(--accent-soft);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Una cita dentro de otra no repite el relleno. */
+.milkdown-view .ProseMirror blockquote blockquote {
+  background: transparent;
+}
+
+@media (max-width: 560px) {
+  .milkdown-view .ProseMirror blockquote {
+    padding: var(--space-2) var(--space-3);
+  }
+}
+
+/* Tablas (SPEC-0010 RF-026; R-7): ancho del contenido con mínimo del 100 %, celdas de 4/12 y sin margen
+   en el párrafo de la celda (esa era la causa de las filas de ~62 px). El scroll horizontal es del
+   envoltorio `.note-table-scroll` (tableView.ts), no del documento. */
+.note-table-scroll {
+  max-width: 100%;
+  margin: var(--space-3) 0;
+  overflow-x: auto;
+  /* Sombras laterales de desbordamiento (T-049, M-3), como el formulario de propiedades. */
+  background:
+    linear-gradient(to right, var(--bg-primary) 30%, transparent) 0 0 / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--bg-primary) 30%, transparent) 100% 0 / 24px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 0 0 / 10px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--text-secondary) 35%, transparent), transparent) 100% 0 / 10px 100% no-repeat scroll;
+}
+
+.note-table-scroll:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 .milkdown-view .ProseMirror table {
+  width: max-content;
+  min-width: 100%;
   border-collapse: collapse;
+  border-color: var(--border); /* el navegador pone un gris propio a table/tr/tbody aunque no pinten borde */
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.milkdown-view .ProseMirror tbody,
+.milkdown-view .ProseMirror tr {
+  border-color: inherit;
 }
 
 .milkdown-view .ProseMirror th,
 .milkdown-view .ProseMirror td {
+  min-width: 80px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--border);
+  text-align: left;
+}
+
+.milkdown-view .ProseMirror td > p,
+.milkdown-view .ProseMirror th > p {
+  margin: 0;
+}
+
+.milkdown-view .ProseMirror th {
+  background: var(--bg-tertiary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.milkdown-view .ProseMirror .selectedCell {
+  background: var(--accent-soft);
+}
+
+/* Tareas (SPEC-0010 RF-039; R-10): casilla de 16 × 16, borde de 2 px, marcada con el acento. En lectura es una
+   imagen sin foco; en Visual, un `input` con una zona de clic de ≥ 24 × 24. */
+.milkdown-view .ProseMirror li.note-task {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-left: calc(-1 * var(--space-6));
+  list-style: none;
+}
+
+.note-task-slot {
+  position: relative;
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+
+.note-task-mark {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  border: 2px solid var(--text-secondary);
+  border-radius: var(--radius-xs);
+  background: transparent;
+  appearance: none;
+}
+
+.note-task-mark::after {
+  position: absolute;
+  top: 0;
+  left: 3px;
+  width: 4px;
+  height: 8px;
+  border: solid var(--bg-primary);
+  border-width: 0 2px 2px 0;
+  content: "";
+  opacity: 0;
+  transform: rotate(45deg);
+}
+
+input.note-task-mark {
+  cursor: pointer;
+}
+
+input.note-task-mark:hover {
+  border-color: var(--accent);
+}
+
+input.note-task-mark:active {
+  transform: scale(0.92);
+}
+
+/* Zona de clic ampliada a ≥ 24 × 24 (WCAG 2.2). */
+input.note-task-mark::before {
+  position: absolute;
+  inset: -4px;
+  content: "";
+}
+
+li.note-task[data-checked="true"] .note-task-mark {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+li.note-task[data-checked="true"] .note-task-mark::after {
+  opacity: 1;
+}
+
+li.note-task[data-checked="true"] .note-task-body {
+  color: var(--text-secondary);
+  text-decoration: line-through;
+}
+
+.note-task-body {
+  min-width: 0;
+  flex: 1;
+}
+
+/* El párrafo de la tarea no lleva margen (como el `li > p` de las listas normales). */
+.note-task-body > p {
+  margin: 0;
 }
 
 .milkdown-view .ProseMirror img {
   max-width: 100%;
 }
 
-/* CodeMirror: monoespaciado, sin fondo propio, en la misma columna que la vista visual. */
+/* Vista Código (SPEC-0010 RF-029, RF-040; R-9): mono 13 px con interlineado 1,8 como el mockup
+   (`.edit-view-code`), números de línea en `--text-secondary` (el `--text-muted` del mockup no llega a
+   4,5:1, P-2), línea activa en `--bg-secondary` (no el literal del mockup, C-3) y cursor de 2 px en
+   `--accent`. Los colores del markdown vienen de las clases `sx-*` (`syntax.css`). */
 .code-view .cm-editor {
   min-height: 280px;
   background: transparent;
@@ -211,16 +1414,58 @@
   font-size: 13px;
 }
 
+/* En Código el foco no enmarca toda la columna: un borde de 2 px en `--accent` a la izquierda (el mockup no tiene marco). */
 .code-view .cm-editor.cm-focused {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
+  outline: none;
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.code-view .cm-scroller {
+  font-family: var(--font-mono);
+  line-height: 1.8;
 }
 
 .code-view .cm-content {
   caret-color: var(--accent);
 }
 
+.code-view .cm-cursor {
+  border-left: 2px solid var(--accent);
+}
+
+.code-view .cm-editor .cm-selectionBackground,
+.code-view .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+.code-view .cm-editor .cm-activeLine {
+  background: var(--bg-secondary);
+}
+
+/* SPEC-0010 RF-017: la línea con el error de YAML del frontmatter, resaltada hasta que el usuario edita. */
+.code-view .cm-editor .cm-error-line {
+  background: var(--danger-bg);
+  box-shadow: inset 2px 0 0 var(--danger);
+}
+
 .code-view .cm-gutters {
-  background: transparent;
   border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.code-view .cm-lineNumbers .cm-gutterElement {
+  min-width: 28px;
+  padding: 0 var(--space-2) 0 var(--space-4);
+}
+
+.code-view .cm-editor .cm-activeLineGutter {
+  background: transparent;
+  color: var(--text-primary);
+}
+
+/* El énfasis de los marcadores dentro de una negrita sigue el color de la negrita (como el mockup). */
+.code-view .sx-strong .sx-meta {
+  color: inherit;
 }

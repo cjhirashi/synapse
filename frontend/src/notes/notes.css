@@ -102,6 +102,95 @@
   background: var(--bg-tertiary);
 }
 
+/* «Crear en», «Nueva carpeta» y la pista de «/» (SPEC-0010 RF-002, RF-004, RF-006; R-14): 12 px, texto
+   secundario (nada de `--text-muted` como texto) y el nombre de la carpeta activa en primario/600. */
+.note-create-in {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.note-create-in svg {
+  flex-shrink: 0;
+}
+
+.note-create-in > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-create-in strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.note-folder-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.note-folder-hint svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.note-sidebar-new .note-sidebar-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+
+.note-sidebar-new .note-sidebar-secondary[hidden] {
+  display: none;
+}
+
+.note-sidebar-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.note-sidebar-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--danger-text);
+}
+
+.note-sidebar-folder-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.note-sidebar-folder-actions button {
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
+}
+
+/* Carpeta activa (y «Raíz» activa): fondo, peso 600 y barra interior de 3 px en `--text-secondary`; se distingue de
+   la nota seleccionada (`--accent-soft` + barra de acento) y pueden coexistir. */
+.note-tree-row[aria-current="true"] {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--text-secondary);
+}
+
 .note-sidebar-new label {
   margin: 0;
 }
@@ -206,6 +295,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* El foco queda dentro de la fila: el árbol recorta lo que sobresale (T-049, M-4). */
+.note-tree-row:focus-visible {
+  outline-offset: -2px;
+}
+
+.note-create-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.note-create-fields[hidden] {
+  display: none;
 }
 
 .note-tree-row:not([type="submit"]):hover {
@@ -424,4 +528,11 @@
   background: var(--bg-tertiary);
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+/* ≤ 640 px (T-049, H-2): el árbol apilado cede altura para que el editor quede a la vista. */
+@media (max-width: 640px) {
+  .note-tree {
+    max-height: 24vh;
+  }
 }

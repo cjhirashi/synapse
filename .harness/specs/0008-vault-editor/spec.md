@@ -4,7 +4,7 @@ tipo: spec
 feature: 0008-vault-editor
 estado: implemented      # 2026-10-23: Fase 4 completa, Gate 4 en verde; Converge 1/2 (cortado por AIRA). NO verified
 # --- anclaje (fusionado; ver method.md §9) ---
-anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
+anchor_commit: de8d0d7   # re-anclaje de cierre por SPEC-0010 (2026-10-27)
 anchor_mode: strict
 covers:                  # fijado en PLAN-0008 §9 (pendiente del GATE 2); compartidos sin reclamar: ver PLAN-0008 §9
   - backend/app/core/note_rules.py
@@ -22,6 +22,11 @@ aprobaciones:
   fase_1: { por: "Carlos Jiménez (cjhirashi), vía AIRA (delegación explícita 2026-10-22: \"Tú dirige a Claude Code\")", fecha: 2026-10-22 }
 actualizado: 2026-10-22
 ---
+
+> **Re-anclaje 2026-10-24** (T-005 de TASKS-0010, P-15): SPEC-0010 (contenido Markdown completo) toca
+> `frontend/src/notes/**`, `frontend/src/editor/**`, `note.schema.json` (patrón de `path`) y la
+> batería `note_rules_cases.json`. Sin cambio de los RF de esta spec: roles, nombres accesibles y
+> rutas se conservan; los únicos tests de 0008 que cambian están listados en PLAN-0010 §9 RF-041.
 
 # SPEC-0008 · Editor de documentos dentro de una bóveda
 

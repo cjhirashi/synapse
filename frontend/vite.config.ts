@@ -1,4 +1,5 @@
 /// <reference types="vitest" />
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
 import react from "@vitejs/plugin-react";
@@ -7,8 +8,46 @@ import react from "@vitejs/plugin-react";
 // lo nombra BACKEND_URL. Fuera de Docker vale el valor por defecto.
 const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 
+// RNF-001/RNF-003 (SPEC-0010 §10.5): el Worker de parseo corre `micromark`, que decodifica entidades
+// con nombre vía `decode-named-character-reference`. Su build "browser" (`index.dom.js`) usa
+// `document.createElement` en el nivel de módulo y REVIENTA al cargar en un Worker (sin DOM). Vite
+// resuelve el Worker con condiciones de navegador, así que forzamos SÓLO en el bundle del Worker el
+// build node (`index.js`, basado en el mapa `character-entities`): mismo resultado de decodificación,
+// sin tocar el DOM. El hilo principal (editor) conserva el build "browser", pequeño, para no engordar
+// su chunk. Sin esto, `cache.request` nunca resuelve y `synapse:precompute-idle` jamás se emite.
+const DNCR_NODE_BUILD = fileURLToPath(new URL("./node_modules/decode-named-character-reference/index.js", import.meta.url));
+
 export default defineConfig({
   plugins: [react()],
+  // `dist/.vite/manifest.json` lo lee `scripts/check-bundle.mjs` (presupuesto de bundle, SPEC-0010 RNF-002).
+  build: {
+    manifest: true,
+    rollupOptions: {
+      output: {
+        // Cada gramática extra del resaltado (SPEC-0010 RF-030, RNF-002) sale en un chunk con su nombre —se pide sólo
+        // cuando un bloque la usa y V-15/`test:bundle` la reconocen por él—; sin esto Rollup los llama `index-<hash>`.
+        // Sólo cambia el NOMBRE del archivo: la partición en chunks sigue siendo la de los `import()` (no `manualChunks`,
+        // que arrastraría módulos compartidos de CodeMirror al chunk de la gramática).
+        chunkFileNames: (chunk) => {
+          const match = chunk.facadeModuleId?.match(/@codemirror\/(?:lang-(python|sql|yaml|json)\/|legacy-modes\/mode\/(shell)\.)/);
+          return match ? `assets/lang-${match[1] ?? match[2]}-[hash].js` : "assets/[name]-[hash].js";
+        },
+      },
+    },
+  },
+  worker: {
+    format: "es",
+    // Sólo el bundle del Worker usa el build node de `decode-named-character-reference` (sin DOM).
+    plugins: () => [
+      {
+        name: "synapse:dncr-node-in-worker",
+        enforce: "pre",
+        resolveId(id: string) {
+          return id === "decode-named-character-reference" ? DNCR_NODE_BUILD : null;
+        },
+      },
+    ],
+  },
   server: {
     proxy: {
       "/auth": BACKEND,

@@ -9,7 +9,7 @@ estado: implemented      # draft | in-review | approved | implemented | verified
 > `frontend/README.md` (secciones de notas, sync y pruebas) y corrigió `test_spa.py` (elige el
 > asset JS explícitamente; la aserción dejó de depender del orden alfabético). Sin cambio de
 > requisitos.
-anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
+anchor_commit: de8d0d7   # re-anclaje de cierre por SPEC-0010 (2026-10-27)
 anchor_mode: strict      # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # globs de archivos que ESTA feature posee: código, tests y doc
   - backend/app/spa.py
@@ -33,6 +33,10 @@ aprobaciones:
   fase_2: { por: "Carlos (vía AIRA, revisión intermedia saltada por decisión del usuario)", fecha: 2026-10-17 }
 actualizado: 2026-10-17
 ---
+
+> **Re-anclaje 2026-10-24** (T-007 de TASKS-0010, P-15): SPEC-0010 actualiza `backend/README.md` y
+> `frontend/README.md` (contenido Markdown, carpetas, pruebas visuales y de *bundle*). Sin cambio
+> de requisitos de esta spec.
 
 # SPEC-0007 · FastAPI sirve la SPA
 

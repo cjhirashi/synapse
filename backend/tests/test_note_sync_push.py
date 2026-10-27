@@ -113,6 +113,14 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
 
 # --- Campos (RF-005, RF-016) ---
 
+def _nested(depth: int) -> dict:
+    """Objeto anidado `depth` niveles (el raíz cuenta como 1)."""
+    value: dict = {}
+    for _ in range(depth - 1):
+        value = {"k": value}
+    return value
+
+
 @pytest.mark.parametrize(("change", "reason"), [
     ({"path": ""}, "validation-error:path"),
     ({"path": "a//b.md"}, "validation-error:path"),
@@ -124,6 +132,8 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
     ({"path": None}, "validation-error:path"),
     ({"path": " Nota.md"}, "not-normalized:path"),
     ({"path": "Carpeta / Nota.md"}, "not-normalized:path"),
+    ({"path": "X/.md"}, "validation-error:path"),  # SPEC-0010 RF-007: nombre de archivo vacío
+    ({"path": ".md"}, "validation-error:path"),
     ({"content": 5}, "validation-error:content"),
     ({"content": None}, "validation-error:content"),
     ({"content": "a\ud800b"}, "validation-error:content"),
@@ -133,11 +143,23 @@ async def test_rf_005_note_shape_valid_revision_is_saved_with_its_history(push, 
     ({"frontmatter": "x"}, "validation-error:frontmatter"),
     ({"frontmatter": None}, "validation-error:frontmatter"),
     ({"frontmatter": {"k": "a" * 65536}}, "validation-error:frontmatter"),
+    # SPEC-0010 (Converge 1, H1): tope de profundidad, también donde `json.dumps` reventaría con RecursionError.
+    ({"frontmatter": _nested(33)}, "validation-error:frontmatter"),
+    ({"frontmatter": _nested(400)}, "validation-error:frontmatter"),
+    ({"frontmatter": _nested(950)}, "validation-error:frontmatter"),
+    ({"path": "X/.\uff4d\uff44"}, "validation-error:path"),  # L4: `.ｍｄ` (anchos completos) = `.md` por NFKC
 ])
 async def test_rf_016_note_fields_follow_the_rules_of_note_rules(push, couch, vault, change, reason):
     doc = _note(**change)
     assert await push.push([doc]) == [_rejected(doc, reason)]
     assert not _stored(couch, doc)
+
+
+async def test_rf_007_note_in_a_folder_with_a_real_name_is_accepted(push, couch, vault):
+    # SPEC-0010 RF-007: el último segmento con nombre (`X/a.md`) sí se acepta; sólo `X/.md` se rechaza.
+    doc = _note(path="X/a.md")
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
 
 
 async def test_rf_016_note_field_content_of_exactly_two_mib_is_saved(push, couch, vault):
