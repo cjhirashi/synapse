@@ -206,7 +206,7 @@ export async function seedNotesBulk(
   count: number,
   options: { bigEvery?: number } = {},
 ): Promise<number> {
-  const stamp = "2026-10-12T09:00:00.000Z";
+  const stamp = "2026-10-12T09:00:00.000000Z";
   const { bigEvery } = options;
   const paths = Array.from({ length: count }, (_, i) => {
     const folder = i % 10 === 0 ? "" : `carpeta-${i % 40}/${i % 3 === 0 ? `sub-${i % 7}/` : ""}${i % 5 === 0 ? "hondo/" : ""}`;
@@ -263,7 +263,7 @@ export interface SeededContent extends Seeded {
 export async function seedContent(): Promise<SeededContent> {
   const user = await createUser();
   const vaultId = await createVault(user.cookie, "Contenido", "folder-heart:accent");
-  const stamp = "2026-10-24T09:00:00.000Z";
+  const stamp = "2026-10-24T09:00:00.000000Z";
   await bulkDocs(user.cookie, CONTENT_NOTES.map((note) => noteDoc(vaultId, note, stamp)));
   return {
     email: user.email,
@@ -287,7 +287,7 @@ export interface SeededContentPerf extends Seeded {
 export async function seedContentPerf(): Promise<SeededContentPerf> {
   const user = await createUser();
   const vaultId = await createVault(user.cookie, "Rendimiento", null);
-  const stamp = "2026-10-24T09:00:00.000Z";
+  const stamp = "2026-10-24T09:00:00.000000Z";
   const notes = perfVaultNotes();
   await bulkDocs(user.cookie, notes.map((note) => noteDoc(vaultId, note, stamp)));
   return {

@@ -984,3 +984,17 @@ test("0010 V-11 Alt+← y Alt+→ recorren el historial sin salir de la bóveda 
   await expect(page.getByRole("navigation", { name: "Ruta" }).getByRole("heading", { level: 2 })).toHaveText(second);
   await context.close();
 });
+
+// V-2 · migración real de YAML heredado (RF-044, UX-H5): guardar mueve el bloque a las propiedades y el servidor
+// ACEPTA el cambio (la fixture sembraba `created_at` con 3 decimales y el push se rechazaba, sin que nada lo viera).
+test("0010 V-2 migrar YAML heredado y guardar se sincroniza sin rechazos (RF-044)", async ({ browser, content }) => {
+  const { context, page } = await openContent(browser, content, "legacy-valid", { theme: "dark", size: SIZES[0], edit: true });
+  await expect(page.getByText(/Se moverán al panel de propiedades cuando guardes/)).toBeVisible();
+  await page.getByRole("button", { name: "Guardar" }).click();
+  await expect(page.getByText(/Ahora están en el panel de propiedades/)).toBeVisible();
+  // El push llega al servidor: la barra vuelve a «Sincronizado» y no aparece ningún cambio rechazado.
+  await expect(page.getByRole("status").filter({ hasText: "Sincronizado" }).first()).toBeVisible({ timeout: 20_000 });
+  await page.waitForTimeout(1500);
+  await expect(page.getByRole("link", { name: /cambios? rechazados?/ })).toHaveCount(0);
+  await context.close();
+});
