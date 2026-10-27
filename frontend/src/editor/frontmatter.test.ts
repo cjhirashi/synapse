@@ -56,6 +56,17 @@ describe("frontmatter · parse (RF-016…RF-018)", () => {
   }
 });
 
+describe("frontmatter · anidamiento extremo (Converge 2, L-B)", () => {
+  // La rama `RangeError → too-deep` era inalcanzable: el analizador responde por sí mismo (error de sintaxis) mucho antes
+  // de agotar la pila, con 200 000 niveles incluidos. Lo que importa es que NUNCA lance.
+  it.each([1000, 200_000])("%i niveles de lista en flujo dan un error, no una excepción", (levels) => {
+    const yaml = `k: ${"[".repeat(levels)}${"]".repeat(levels)}\n`;
+    const result = parseFrontmatterYaml(yaml);
+    expect(result).toHaveProperty("error");
+    expect(["yaml-syntax", "too-deep"]).toContain((result as { error: string }).error);
+  });
+});
+
 describe("frontmatter · claves especiales (Converge 1, M2)", () => {
   it("una clave `__proto__` sobrevive a la ida y vuelta y no toca el prototipo", () => {
     const parsed = parseFrontmatterYaml("a: 1\n__proto__:\n  x: 1\n");

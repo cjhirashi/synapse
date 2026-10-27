@@ -32,7 +32,7 @@ export type ParseError =
   | "non-finite"
   | "unsafe-integer"
   | "unsupported-tag"
-  /** Más de `FRONTMATTER_MAX_DEPTH` niveles (o tantos que agotan la pila del analizador). */
+  /** Más de `FRONTMATTER_MAX_DEPTH` niveles. */
   | "too-deep"
   /** Expansión de alias YAML por encima del límite del analizador (`maxAliasCount`). */
   | "alias-limit";
@@ -113,8 +113,6 @@ export function parseFrontmatterYaml(src: string): ParseResult {
     return { value: normalize(js) as Record<string, unknown> };
   } catch (e) {
     if (e instanceof ValueError) return { error: e.code };
-    // Anidamiento tan profundo que agota la pila del analizador.
-    if (e instanceof RangeError) return { error: "too-deep" };
     // El analizador corta la expansión de alias (`maxAliasCount`) lanzando un `ReferenceError`.
     if (/alias/i.test((e as Error).message)) return { error: "alias-limit" };
     return { error: "yaml-syntax" };
