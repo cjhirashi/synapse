@@ -2,22 +2,27 @@
 id: SPEC-0013
 tipo: spec
 feature: 0013-acceso-agentes-api
-estado: draft            # draft | in-review | approved | implemented | verified | deprecated
+estado: approved         # draft | in-review | approved | implemented | verified | deprecated
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 6a9f6c7
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:
   - backend/app/routers/auth.py
   - backend/app/routers/vaults.py
+  - backend/app/routers/sync.py
+  - backend/app/routers/agent_keys.py
   - backend/app/core/dependencies.py
   - backend/app/core/models/agent_api_key.py
+  - backend/app/core/ports/agent_key_port.py
+  - backend/app/adapters/agent_key_repository.py
   - backend/app/services/auth_service.py
+  - backend/app/services/agent_key_service.py
   - backend/tests/test_agent_api_key*.py
   - docs/API.md
 # --- aprobaciones humanas ---
 aprobaciones:
   fase_1: { por: "Carlos (Telegram, cjhirashi)", fecha: 2026-10-28 }
-  fase_2: pendiente
+  fase_2: { por: "Carlos Jiménez (cjhirashi, Telegram)", fecha: 2026-10-28, nota: "PLAN-0013 P-1…P-9 tal cual; P-10 ajustado a label único por dueño entre keys vigentes (RF-010, nuevo); covers ampliado con sync.py/agent_keys.py/agent_key_port.py/agent_key_repository.py/agent_key_service.py (PLAN-0013 §8)." }
 actualizado: 2026-10-28
 ---
 
@@ -88,6 +93,11 @@ no interactiva, para llamar `/vaults` y las notas sin abrir una sesión web.
   `owner_id` distinto de quien la creó (P2/P3 de `AGENTS.md`, aislamiento por
   usuario — no se crea un segundo usuario con acceso cruzado, se autentica
   *como* el mismo usuario).
+- **RF-010** — (Gate 2, 2026-10-28) SI un usuario crea una key con un `label`
+  que ya usa **otra key vigente suya** (no revocada), ENTONCES el sistema
+  DEBE responder 409 sin crearla; el mismo `label` SÍ se puede reutilizar tras
+  revocar la key que lo tenía (rotación). La unicidad es por dueño, nunca
+  global entre usuarios.
 
 ## 5. Casos límite y manejo de errores
 - **RF-007** — SI se usa una key revocada ENTONCES 401, no 403 (no revelar que
