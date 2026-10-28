@@ -30,6 +30,7 @@ const URN = "urn:synapse:problem:";
 export const PROBLEM = {
   wrongCurrentPassword: `${URN}wrong-current-password`,
   validationError: `${URN}validation-error`,
+  agentKeyLabelTaken: `${URN}agent-key-label-taken`,
 } as const;
 
 export class ApiError extends Error {

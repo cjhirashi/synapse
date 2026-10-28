@@ -304,6 +304,44 @@ button:focus-visible {
   border-radius: 999px;
 }
 
+/* --- API keys de agente (SPEC-0013 / H-002.5): reusa .page-header/.card-form/.card-list --- */
+.api-keys-page .card-form,
+.api-keys-page .card-list {
+  margin-top: var(--space-4);
+}
+
+/* La tarjeta del secreto recién creado resalta: hay que copiarlo antes de cerrarla (RF-001). */
+.api-key-created {
+  border-color: var(--accent);
+}
+
+.api-key-secret {
+  display: block;
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  word-break: break-all;
+  user-select: all;
+}
+
+.api-key-created-actions,
+.api-key-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.api-key-active {
+  color: var(--text-secondary);
+}
+
+.api-key-revoked {
+  color: var(--danger);
+}
+
 /* El movimiento comunica, no decora (1.1.4.1) - respeta a quien pide menos animación. */
 @media (prefers-reduced-motion: reduce) {
   *,
