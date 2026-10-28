@@ -1695,3 +1695,11 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 
 ## [2026-10-27] Merge SPEC-0010 + SPEC-0011 a `feature/sprint-1-auth` (AIRA)
 - AIRA mergeó ambas ramas a la rama de despliegue: SPEC-0010 (`verified`, T-111 aplicado a mano y T-123 aprobado por AIRA) y SPEC-0011 (`implemented`, pendiente de que Carlos confirme visualmente el logo ya en producción). Conflictos resueltos en `history.md`/`state.md` (ambos relatos conservados) y `frontend/README.md` (ambas secciones conservadas). Próximo paso: rebuild y redeploy de `synapse-backend`.
+
+## [2026-10-28] H-002.5 — UI de gestión de API keys: implemented
+- **Claim:** H-002.5 implementada en `feature/0013-ui-gestion-api-keys` (worktree `0013-ui-api-keys`): los 4 pasos TDD de `historia.md §6` en verde y commiteados por separado citando H-002.5. `estado: implemented`; falta el checkpoint demostrable de Carlos para `verified`. Backend intacto.
+- **Evidencia:** paso 1 `apiKeys.ts(+test)` 4/4 (`f452c87`); paso 2 `ApiKeysPage.tsx(+test)` 8/8 + `PROBLEM.agentKeyLabelTaken` + CSS (`aa57762`); paso 3 enlace en `AccountMenu.tsx` + `API_KEYS_PATH` en `RequireAuth.tsx` + test 2/2 (`6242614`); paso 4 ruta en `App.tsx` + test 19/19 + `README` (`cd246f6`). `npm run build` exit 0; `npm run test:cov` → **88 archivos, 1654 tests, 0 fallos**.
+- **Línea base:** cobertura de `covers`: `apiKeys.ts`/`problems.ts` 100 %, `App.tsx`/`RequireAuth.tsx` 100 % líneas, `AccountMenu.tsx` 96.4 %, `ApiKeysPage.tsx` 91.6 % stmts.
+- **Gaps:** ramas de error de `ApiKeysPage.tsx` sin test propio (catch de copiar sin clipboard, aviso de error de revocación, `navigate('/login')` por 401); C-1…C-6 cubiertos. No bloquea.
+- **Nota de entorno:** el worktree no traía `frontend/node_modules`; se enlazó por symlink a las deps del repo principal (vite 5.4.8 / vitest 2.1.2, idénticas). Reversible, no versionado.
+- **Próximo paso:** checkpoint demostrable (Carlos abre `/settings/api-keys`, crea y revoca una key) → `verified`, ancla y merge (AIRA). Sin push ni merge desde esta sesión.

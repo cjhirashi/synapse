@@ -1,7 +1,7 @@
 ---
 id: H-002.5
 titulo: Ventana de configuración para gestionar API keys de agente
-estado: refinando # Gate 1 pasado (Carlos dijo "así es" 2026-10-28); falta implementar.
+estado: implemented # 4 pasos TDD en verde + build + test:cov (2026-10-28). Falta checkpoint demostrable de Carlos para 'verified'.
 covers:
   - frontend/src/settings/ApiKeysPage.tsx
   - frontend/src/settings/ApiKeysPage.test.tsx
@@ -98,25 +98,51 @@ Ninguno — Carlos aprobó la propuesta tal cual ("así es", 2026-10-28).
 
 ## 7. Tabla de cobertura
 
+Estado: `Green` = test ejecutado y en verde (suite `test:cov` 2026-10-28: 88 archivos,
+1654 tests, 0 fallos; build exit 0). Cobertura de los archivos `covers`: `apiKeys.ts`
+100 %, `ApiKeysPage.tsx` 91.6 % stmts, `AccountMenu.tsx` 96.4 %, `App.tsx`/`RequireAuth.tsx`
+100 % líneas, `problems.ts` 100 %.
+
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 2 | `ApiKeysPage.test.tsx` (lista) | Pending |
-| C-2 | 1, 2 | `apiKeys.test.ts`, `ApiKeysPage.test.tsx` (crear+secreto) | Pending |
-| C-3 | 2 | `ApiKeysPage.test.tsx` (409) | Pending |
-| C-4 | 1, 2 | `apiKeys.test.ts`, `ApiKeysPage.test.tsx` (revocar) | Pending |
-| C-5 | 3 | `AccountMenu.test.tsx` | Pending |
-| C-6 | 2 | `ApiKeysPage.test.tsx` (teclado/foco) | Pending |
+| C-1 | 2, 4 | `ApiKeysPage.test.tsx` (lista, vacía, error de carga), `App.test.tsx` (ruta) | Green |
+| C-2 | 1, 2 | `apiKeys.test.ts` (POST), `ApiKeysPage.test.tsx` (crear+secreto una vez+copiar) | Green |
+| C-3 | 1, 2 | `apiKeys.test.ts` (409), `ApiKeysPage.test.tsx` (error sin cerrar el form) | Green |
+| C-4 | 1, 2 | `apiKeys.test.ts` (DELETE), `ApiKeysPage.test.tsx` (revocar + confirmar + cancelar) | Green |
+| C-5 | 3 | `AccountMenu.test.tsx` (enlace nuevo, cierre del menú) | Green |
+| C-6 | 2 | `ApiKeysPage.test.tsx` (foco al abrir, Escape cierra la confirmación) | Green |
 
 ## 8. Checkpoint demostrable
 
 Pendiente — Carlos debe abrir `/settings/api-keys` en su propia sesión y
 crear/revocar una key él mismo antes de marcar `verified`.
 
-## 9. Session-End (al cerrar)
+## 9. Session-End (2026-10-28, Driver)
 
-- **Claim:** pendiente.
-- **Evidencia:** pendiente.
-- **Línea base:** pendiente.
-- **Gaps:** ninguno todavía.
-- **Riesgo residual:** ninguno todavía.
-- **Próximo paso:** tomar la historia, ciclo driver/navigator §4.
+- **Claim:** H-002.5 implementada. Los 4 pasos de §6 corrieron en TDD (verde) y están
+  commiteados por separado citando H-002.5; `estado: implemented`. Falta sólo el
+  **checkpoint demostrable** de Carlos para `verified`. Backend intacto.
+- **Evidencia (ejecutada):**
+  - Paso 1 — `frontend/src/settings/apiKeys.ts` + `apiKeys.test.ts` → 4/4. Commit `f452c87`.
+  - Paso 2 — `frontend/src/settings/ApiKeysPage.tsx` + `ApiKeysPage.test.tsx` → 8/8
+    (C-1…C-4, C-6); `PROBLEM.agentKeyLabelTaken` en `api/problems.ts`; bloque CSS en
+    `styles/global.css`. Commit `aa57762`.
+  - Paso 3 — enlace «API keys» en `layout/AccountMenu.tsx` (const `API_KEYS_PATH` en
+    `auth/RequireAuth.tsx`) + `AccountMenu.test.tsx` → 2/2 (C-5). Commit `6242614`.
+  - Paso 4 — ruta `/settings/api-keys` en `App.tsx` + test de ruta en `App.test.tsx` → 19/19
+    (nuevo + regresión); línea en `frontend/src/README.md`. Commit `cd246f6`.
+  - Build: `npm run build` exit 0 (typecheck + `✓ built in 34.44s`).
+  - Suite: `npm run test:cov` → **88 archivos, 1654 tests, 0 fallos**.
+- **Línea base:** 1654 tests en verde (incluye los 14 nuevos de la historia). Cobertura de
+  los `covers`: `apiKeys.ts` 100 %, `problems.ts` 100 %, `App.tsx`/`RequireAuth.tsx` 100 %
+  líneas, `AccountMenu.tsx` 96.4 %, `ApiKeysPage.tsx` 91.6 % stmts.
+- **Gaps:** cobertura de ramas de `ApiKeysPage.tsx` por debajo del 100 % (líneas 97-98,
+  110, 165-168): el `catch` de copiar sin `navigator.clipboard`, el aviso de error de
+  revocación y los `navigate("/login")` por 401 no tienen test propio (son caminos de error
+  defensivos; los criterios C-1…C-6 sí están cubiertos). No bloquea.
+- **Nota de entorno:** el worktree no traía `frontend/node_modules`; se enlazó por symlink a
+  las deps ya instaladas del repo principal (mismas versiones: vite 5.4.8, vitest 2.1.2).
+  Convención de git worktrees, reversible, no versionado.
+- **Riesgo residual:** ninguno de código. Falta la verificación en runtime del usuario.
+- **Próximo paso:** checkpoint demostrable — Carlos abre `/settings/api-keys`, crea y revoca
+  una key; luego `verified`, ancla y merge (lo hace AIRA; no hice push ni merge).
