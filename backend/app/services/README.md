@@ -2,6 +2,13 @@
 
 Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` directamente.
 
+- `agent_key_service.py` (`AgentKeyService`, SPEC-0013): dominio de las API keys de agente
+  tras `core/ports/agent_key_port.py` (adaptador `adapters/agent_key_repository.py`). `create`
+  genera/hashea/persiste y devuelve el plano una sola vez (label único vigente por dueño →
+  `AgentKeyLabelTaken`); `resolve` valida forma → hash → key vigente → dueño activo (si no,
+  `None` → 401, nunca 403) y actualiza `last_used_at` best-effort en commit propio (si falla no
+  tumba la petición); `list`/`revoke` scoped por `owner_id` (ajena → `AgentKeyNotFound`). Sin
+  dependencia de CouchDB: sólo identidad en el control plane.
 - `vault_service.py` (`VaultService`, SPEC-0003): reglas de las bóvedas y reservas de nombre.
   Desde SPEC-0005 una reserva sigue siendo de su bóveda mientras **alguna** hoja viva activa
   use el nombre (`_holder` mira todas las hojas, no sólo la ganadora).

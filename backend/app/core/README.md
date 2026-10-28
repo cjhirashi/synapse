@@ -45,6 +45,26 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   ella sin `slug` ni `detail` propios (y se lanza sin `detail=`) y el traductor la usa
   para los 422 de pydantic (RF-005).
 
+## Autenticación y principal (SPEC-0002, SPEC-0013)
+
+- `dependencies.py` — resolución del `current_user`/principal. `get_current_user` es **sólo
+  cookie** (JWT `access_token`) e intacta; `get_current_principal` (SPEC-0013) intenta la
+  cookie primero y, si no hay, un `Authorization: Bearer <key>` que resuelve vía
+  `AgentKeyService` al **mismo** `TokenPayload` del dueño (`sub`/`role`/`ver`, `exp` sintético:
+  la caducidad real de una key es su revocación). Ambas comparten `_principal_from_cookie` (no
+  se duplica la validación JWT). La superficie de datos (`require_password_changed`, `/vaults`,
+  `/sync`) usa el principal; la de cuenta/gestión y admin sigue cookie-only (contención
+  estructural, P-4). El camino `Bearer` traduce `OperationalError` del control plane a
+  `StorageUnavailable` (503), sólo en esa rama.
+- `security.py` — además del hash de contraseñas (Argon2id), el de secretos de alta entropía
+  (`_sha256_hex`, compartido por refresh tokens y API keys) y el formato de las API keys de
+  agente: `API_KEY_PREFIX` (`syn_ak_`), `generate_api_key`, `hash_api_key`,
+  `is_well_formed_api_key` (rechazo barato por forma antes de la BD).
+- `models/agent_api_key.py` — `AgentApiKey`, tabla del control plane (migración 005): sólo el
+  `key_hash` en reposo, FK a `users`, índice parcial único `(owner_id, label) WHERE revoked_at
+  IS NULL` (label único por dueño entre keys vigentes). Esquemas de E/S en `schemas.py`
+  (`AgentKeyCreate`/`AgentKeyCreated`/`AgentKeyOut`; `AgentKeyOut` nunca lleva `key`/`key_hash`).
+
 ## Notas y tiempo (SPEC-0008)
 
 - `note_rules.py` — reglas puras de las notas, sin E/S: claves del documento
@@ -61,3 +81,4 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 ## Subdirectorios
 
 - `ports/` — Protocols de Python que definen las interfaces que `services/` consume
+  (`agent_key_port.py` es el de las API keys de agente, SPEC-0013)

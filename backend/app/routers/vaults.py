@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
 from app.adapters.vault_repository import VaultRepository
 from app.core.json_body import DeepJsonRoute
-from app.core.dependencies import get_current_user, require_password_changed
+from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
     InvalidCursor, PasswordChangeRequired, PreconditionFailed, PreconditionRequired,
     StorageUnavailable, VaultNameTaken, VaultNotFound,
@@ -36,10 +36,11 @@ def get_vault_port() -> VaultPort:
 
 
 def get_vault_service(
-    current_user: TokenPayload = Depends(get_current_user),
+    current_user: TokenPayload = Depends(get_current_principal),
     port: VaultPort = Depends(get_vault_port),
 ) -> VaultService:
-    # La base sale sólo del token (RF-014): ningún dato de la petición la elige.
+    # La base sale sólo del principal resuelto (cookie o Bearer key), nunca de la petición
+    # (RF-014 de 0003; RF-002/RF-006 de 0013): una key ve exactamente la base de su dueño.
     return VaultService(port, f"synapse_user_{current_user.sub}")
 
 
@@ -73,7 +74,7 @@ def list_vaults(
 def create_vault(
     body: VaultCreate,
     response: Response,
-    current_user: TokenPayload = Depends(get_current_user),
+    current_user: TokenPayload = Depends(get_current_principal),
     service: VaultService = Depends(get_vault_service),
 ):
     return _respond(service.create(body, owner_id=current_user.sub), response)

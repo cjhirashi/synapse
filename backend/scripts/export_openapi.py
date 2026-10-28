@@ -20,13 +20,24 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0003-vault-crud": {"paths": ("/vaults",), "schemas": ()},
     "0004-api-problem-details": {"paths": (), "schemas": ("Problem",)},
     "0005-sync": {"paths": ("/sync",), "schemas": ()},
+    "0013-acceso-agentes-api": {"paths": ("/auth/agent-keys",), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"
 
 
 def owns_path(feature: str, path: str) -> bool:
-    return any(path == p or path.startswith(p + "/") for p in FEATURES[feature]["paths"])
+    """Una ruta pertenece a la feature con el prefijo **más específico** (más largo) que la
+    cubre. Así `/auth/agent-keys` es de 0013 y `/auth/login` de 0002, y cada ruta sigue
+    teniendo un único dueño (lo exige test_contract.py). Dos prefijos distintos no pueden
+    empatar en longitud siendo ambos prefijo de la misma ruta."""
+    candidates = [
+        (len(p), f)
+        for f in FEATURES
+        for p in FEATURES[f]["paths"]
+        if path == p or path.startswith(p + "/")
+    ]
+    return bool(candidates) and max(candidates)[1] == feature
 
 
 def _refs(node) -> set[str]:

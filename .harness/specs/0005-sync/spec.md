@@ -21,6 +21,12 @@ estado: verified      # draft | in-review | approved | implemented | verified | 
 > `validation-error:icon`) y en el cliente (`vaultRules.checkIcon` con la batería común,
 > `vaultStore`, `merge`/`conflicts` con `icon` fusionado sin resolución manual — P-6 de 0009 —,
 > `ConflictView`/`RejectionsPage`). Contrato de 0005 sin cambios. Sin cambio de requisitos.
+
+> **Re-anclaje 2026-10-28 (advisory)** (PLAN-0013 §2.4/§8, SPEC-0013): `routers/sync.py`
+> repunta `get_sync_user` de `get_current_user` a `get_current_principal` (cookie→`Bearer`
+> API key de agente), para que un agente OpenClaw acceda al canal con su key. La base sigue
+> saliendo **sólo** del principal (`synapse_user_{sub}`, RF-001); ningún dato de la petición la
+> elige. Sin cambio de requisitos ni del contrato de 0005.
 anchor_commit: 42225d0   # re-anclaje por SPEC-0009 (T-063 de TASKS-0009)
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
 covers:                  # fijado en PLAN-0005 (GATE 2, 2026-10-13)

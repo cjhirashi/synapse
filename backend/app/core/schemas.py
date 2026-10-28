@@ -1,4 +1,5 @@
 import unicodedata
+from datetime import datetime
 from typing import Annotated
 
 from pydantic import (
@@ -144,3 +145,39 @@ class VaultListItem(VaultOut):
 class VaultPage(BaseModel):
     items: list[VaultListItem]
     next_cursor: str | None
+
+
+# --- API keys de agente (SPEC-0013) ---
+
+AgentKeyLabel = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)
+]
+
+
+class AgentKeyCreate(BaseModel):
+    """Cuerpo de `POST /auth/agent-keys`; cualquier otro campo → 422."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    label: AgentKeyLabel
+
+
+class AgentKeyCreated(BaseModel):
+    """Respuesta de la creación: el valor plano (`key`) viaja **sólo aquí** (RF-001)."""
+
+    id: str
+    label: str
+    key: str
+    created_at: datetime
+
+
+class AgentKeyOut(BaseModel):
+    """Elemento del listado: sin `key` ni `key_hash` (RF-004/RNF-002)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    label: str
+    created_at: datetime
+    last_used_at: datetime | None
+    revoked_at: datetime | None
