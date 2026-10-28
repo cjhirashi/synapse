@@ -1,0 +1,35 @@
+{
+  "formato": 1,
+  "_lee": "Contrato con cjhirashi-srv (proxy Caddy + Cloudflare Tunnel). cjhirashi-srv escribe 'cjhirashi_srv' (NO editar). Tu proyecto rellena 'servicios'. 'mensajes' con bin/caddy-msg. Validar: python3 bin/caddy-sync /mnt/disco2/cjhirashi-data/proyectos/synapse/caddy.json",
+  "proyecto": "synapse",
+  "cjhirashi_srv": {
+    "red": "net-synapse",
+    "conecta_tus_contenedores_a_esta_red": true,
+    "declarala_external_en_tu_compose": true,
+    "hosts": {
+      "web": "synapse.cjhirashi.com"
+    },
+    "estado": "validado",
+    "ultima_sync": "2026-10-22"
+  },
+  "servicios": [
+    {
+      "nombre": "web",
+      "tipo": "docker",
+      "contenedor": "synapse-backend",
+      "puerto": 8000,
+      "protocolo": "http",
+      "sse": false,
+      "healthcheck": "/health",
+      "headers_up": [
+        "X-Forwarded-Proto https"
+      ],
+      "rutas": [
+        {
+          "prefijo": "/"
+        }
+      ]
+    }
+  ],
+  "mensajes": []
+}

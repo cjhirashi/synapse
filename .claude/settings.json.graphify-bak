@@ -1,0 +1,71 @@
+{
+  "readFiles": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".harness/constitution.md",
+    ".harness/method.md",
+    ".harness/memory/state.md",
+    ".harness/specs/",
+    "backend/",
+    "frontend/"
+  ],
+  "ignorePatterns": [
+    "node_modules/",
+    "venv/",
+    "dist/",
+    ".git/",
+    ".env",
+    "__pycache__/",
+    "*.pyc",
+    "build/",
+    ".vite/"
+  ],
+  "tools": {
+    "allowed": ["Bash", "Read", "Edit", "Write", "Agent"],
+    "restrictions": {
+      "Bash": "Sin --no-verify ni --force-push. Tests con BD real (P5). Datos aislados por user_id (P2)."
+    }
+  },
+  "skills": {
+    "archify": {
+      "enabled": true,
+      "use_cases": [
+        "Flujo sincronización PouchDB ↔ CouchDB (SPEC-0005)",
+        "Arquitectura monolito por capas (ADR-001)",
+        "Flujo JWT + autorización",
+        "Modelo datos vault+documents"
+      ],
+      "output_path": ".harness/diagrams/",
+      "format": "json"
+    },
+    "security-review": {
+      "enabled": true,
+      "use_cases": [
+        "Diffs que tocan auth, JWT, cookies o permisos (P2/P3)",
+        "Cambios en vault_service.py, auth_service.py o el canal /sync/db",
+        "Nuevos endpoints o adaptadores con acceso a datos de usuario"
+      ],
+      "when": "antes de entregar al `revisor` en Fase 4, si la tarea toca auth/permisos/datos de otro usuario"
+    },
+    "verify": {
+      "enabled": true,
+      "use_cases": [
+        "Confirmar en runtime una feature antes de marcarla `implemented` en state.md",
+        "Reproducir un flujo completo (login -> CRUD de bóveda -> sync) con la app corriendo, no sólo pytest/vitest"
+      ],
+      "when": "cierre de Fase 4, antes de pedir la verificación adversarial del usuario"
+    }
+  },
+  "context_gates": {
+    "before_touching_code": [
+      "Lee .harness/memory/state.md (correcciones del usuario)",
+      "Aplica rúbrica de method.md §2",
+      "¿Hay spec.md que lo cubra? Si no → carril SDD Specify"
+    ],
+    "after_each_session": [
+      "Actualiza .harness/memory/history.md con Session-End",
+      "Gate: check.sh debe pasar",
+      "Registra rebotes, decisiones, próximo paso"
+    ]
+  }
+}
