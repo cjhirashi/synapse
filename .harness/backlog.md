@@ -5,16 +5,19 @@
 > Reordenar o descartar una entrada de aquí es gratis; no requiere aprobación
 > salvo la que el proyecto ya exija para fijar prioridades.
 
-## Por tomar (orden = prioridad — PROPUESTO 2026-10-28, pendiente de validación de Carlos)
+## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
-- [ ] H-002.1 — Crear, listar y revocar API keys de agente (solo con cookie propia; el secreto se ve una sola vez) · `specs/0013-acceso-agentes-api/`
-- [ ] H-002.2 — Un agente usa su API key para leer bóvedas/notas igual que el dueño logueado (aislamiento entre usuarios probado) · `specs/0013-acceso-agentes-api/`
-- [ ] H-002.3 — Revocar una key la invalida de inmediato en la siguiente petición · `specs/0013-acceso-agentes-api/`
-- [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian`
+- [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
-- [ ] H-002.4 — Resiliencia de API keys (503 si cae el control plane, `last_used_at` no bloquea) + documentación de cierre · `specs/0013-acceso-agentes-api/`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
 - [ ] H-003 — Drag & drop de notas/carpetas en la sidebar (pedido directo de Carlos, 2026-10-27; aún sin refinar)
+
+## Implementadas, pendientes de checkpoint de Carlos
+
+- [~] H-002.1 — Crear, listar y revocar API keys de agente → desplegado, ver `historias/0013-acceso-agentes-api/historia.md`
+- [~] H-002.2 — Un agente usa su API key para leer bóvedas/notas → desplegado, mismo detalle
+- [~] H-002.3 — Revocar una key la invalida de inmediato → desplegado, mismo detalle
+- [~] H-002.4 — Resiliencia de API keys + documentación de cierre → desplegado, mismo detalle
 
 ## Cerradas
 
