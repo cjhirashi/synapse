@@ -4,6 +4,12 @@ Adaptadores primarios — reciben HTTP requests y delegan a `services/`.
 
 Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
 
+- `agent_keys.py` (SPEC-0013): gestión `/auth/agent-keys` de las API keys de agente (crear,
+  listar, revocar). Router propio (no dentro de `auth.py`, P-9) y **sólo cookie** por
+  construcción (`dependencies=[Depends(get_current_user)]`): una `Bearer` key no acuña ni
+  revoca keys (P-4). `vaults.py` y `sync.py` aceptan además la `Bearer` key porque usan
+  `get_current_principal` (cookie→Bearer) en vez de `get_current_user`; la base sigue saliendo
+  sólo del principal.
 - `sync.py` (SPEC-0005): canal `/sync` para PouchDB. La base sale del token
   (`get_sync_db`); sólo existe el subconjunto del protocolo que usa el replicador y una ruta
   comodín final responde `SyncEndpointNotFound` a todo lo demás (también a métodos no

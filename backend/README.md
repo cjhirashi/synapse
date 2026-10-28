@@ -15,9 +15,9 @@ backend/
 ├── app/
 │   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores, reglas de nota, marcas de tiempo
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
-│   ├── services/     # Lógica de negocio (auth_service.py, vault_service.py, note_service.py, reservations.py, sync_*.py)
-│   ├── adapters/     # Implementaciones concretas (PostgreSQL, CouchDB: vault_repository.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, vaults.py, sync.py)
+│   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, reservations.py, sync_*.py)
+│   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py; CouchDB: vault_repository.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, vaults.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
@@ -122,6 +122,47 @@ o un `transport http` con `read_timeout`, deben ser de 90 s o más.
 | `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
 
 Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`.
+
+## API keys de agente (SPEC-0013)
+
+Los agentes OpenClaw (AIRA, Liza, main…) no son un navegador: necesitan una credencial de
+larga vida, no interactiva. Una **API key de agente** autentica *como el mismo usuario* que la
+creó (mismo `owner_id`, misma base `synapse_user_{id}`): **no** es un segundo usuario con
+acceso cruzado — el aislamiento por usuario (P2/P3) no se rompe.
+
+- **Dos dependencias, dos superficies** (`core/dependencies.py`):
+  - `get_current_user` — **sólo cookie**, intacta: cuenta/gestión (`/auth/me`,
+    `/auth/change-password`, `require_admin`, y la gestión de keys de abajo). Una key **no**
+    puede acuñar más keys ni cambiar la contraseña del humano (contención estructural, P-4).
+  - `get_current_principal` — cookie **primero**, si no hay → `Authorization: Bearer <key>`:
+    superficie de **datos** (`/vaults`, `/sync`). Resuelve al mismo `current_user` que la
+    cookie del dueño; la base sigue saliendo sólo del principal, nunca de la petición (RF-002).
+- **Formato y reposo:** la key es `syn_ak_` + 256 bits (`secrets.token_urlsafe(32)`); el
+  prefijo la hace reconocible en logs sin exponer el secreto y permite rechazar lo mal formado
+  antes de tocar la BD. En reposo sólo se guarda su **hash SHA-256** (mismo primitivo que los
+  refresh tokens, `core/security.py`); el valor plano se devuelve **una única vez** en la
+  creación y nunca se vuelve a poder consultar.
+- **Tabla** `agent_api_keys` en el control plane PostgreSQL (migración 005), junto a
+  `users`/`refresh_tokens`: `id`, `owner_id` (FK), `label`, `key_hash` (único), `created_at`,
+  `last_used_at` (best-effort), `revoked_at`. El `label` es único **por dueño** pero sólo entre
+  keys vigentes (índice parcial `WHERE revoked_at IS NULL`): revocar libera el nombre para
+  rotar. Caducidad = revocación explícita (no hay TTL).
+- **Gestión (sólo cookie):** `POST /auth/agent-keys {label}` → 201 con el plano una vez;
+  `GET /auth/agent-keys` → lista sin `key` ni `key_hash`; `DELETE /auth/agent-keys/{id}` → 204
+  (ajena o inexistente → 404, no revela existencia).
+- **Uso (datos):** `Authorization: Bearer syn_ak_…` en cualquier ruta de `/vaults` o `/sync`.
+  Una key inválida, mal formada o revocada → **401** (nunca 403, no revela que existió); una
+  revocada falla en la **siguiente** petición (sin caché de validez). Si el control plane no
+  responde, el camino de la key da **503** (como `/vaults` ante CouchDB).
+
+| Endpoint | Respuesta |
+|---|---|
+| `POST /auth/agent-keys` `{label}` (cookie) | 201 `{id,label,key,created_at}` (plano sólo aquí) · 401 · 409 · 422 |
+| `GET /auth/agent-keys` (cookie) | 200 `[{id,label,created_at,last_used_at,revoked_at}]` · 401 |
+| `DELETE /auth/agent-keys/{id}` (cookie) | 204 · 401 · 404 |
+
+Contrato completo: `.harness/specs/0013-acceso-agentes-api/contracts/openapi.yaml`.
+Detalle para consumidores: `docs/API.md`.
 
 ## Bóvedas (SPEC-0003)
 
@@ -358,6 +399,8 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `sync-endpoint-not-found` | 404 | ruta o método bajo `/sync` fuera del subconjunto del canal |
 | `checkpoint-not-found` | 404 | `GET /sync/db/_local/{id}` sin checkpoint guardado |
 | `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite (16 MiB en `_bulk_docs`) |
+| `agent-key-not-found` | 404 | `DELETE /auth/agent-keys/{id}` de una key ajena o inexistente (mismo cuerpo) |
+| `agent-key-label-taken` | 409 | `POST /auth/agent-keys` con un `label` que ya usa otra key vigente del mismo dueño |
 
 **Añadir un error de dominio:**
 1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y
@@ -402,9 +445,12 @@ lo variable va en `errors`.
 `python scripts/export_openapi.py` escribe un contrato por feature (`FEATURES` en el script):
 `0002-auth` (rutas `/auth`, `/admin`, `/health`), `0003-vault-crud` (rutas `/vaults`),
 `0005-sync` (rutas `/sync`, sin la comodín; también describe los rechazos de nota de
-SPEC-0008, cuyo esquema vive en `0008-vault-editor/contracts/note.schema.json`) y
+SPEC-0008, cuyo esquema vive en `0008-vault-editor/contracts/note.schema.json`),
+`0013-acceso-agentes-api` (rutas `/auth/agent-keys`) y
 `0004-api-problem-details` (sólo los
-esquemas `Problem`/`ProblemError`, el canon). Cada contrato lleva una copia de `Problem` para
+esquemas `Problem`/`ProblemError`, el canon). Cada ruta pertenece a la feature con el prefijo
+**más específico** que la cubre (así `/auth/agent-keys` es de 0013 y `/auth/login` de 0002).
+Cada contrato lleva una copia de `Problem` para
 ser autocontenido; `tests/test_contract.py` falla si un contrato difiere de la app, si una
 ruta no tiene exactamente una feature dueña o si una copia de `Problem` difiere del canon.
 Si cambias la API, re-exporta.
