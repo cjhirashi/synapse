@@ -5,14 +5,16 @@
 > Reordenar o descartar una entrada de aquí es gratis; no requiere aprobación
 > salvo la que el proyecto ya exija para fijar prioridades.
 
-## Por tomar (orden = prioridad)
+## Por tomar (orden = prioridad — PROPUESTO 2026-10-28, pendiente de validación de Carlos)
 
+- [ ] H-002.1 — Crear, listar y revocar API keys de agente (solo con cookie propia; el secreto se ve una sola vez) · `specs/0013-acceso-agentes-api/`
+- [ ] H-002.2 — Un agente usa su API key para leer bóvedas/notas igual que el dueño logueado (aislamiento entre usuarios probado) · `specs/0013-acceso-agentes-api/`
+- [ ] H-002.3 — Revocar una key la invalida de inmediato en la siguiente petición · `specs/0013-acceso-agentes-api/`
+- [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian`
+- [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
+- [ ] H-002.4 — Resiliencia de API keys (503 si cae el control plane, `last_used_at` no bloquea) + documentación de cierre · `specs/0013-acceso-agentes-api/`
+- [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
 - [ ] H-003 — Drag & drop de notas/carpetas en la sidebar (pedido directo de Carlos, 2026-10-27; aún sin refinar)
-
-## En curso
-
-- [~] H-001 — Panel de propiedades estilo Obsidian → `historias/0012-propiedades-estilo-obsidian/` (Gate 1 ya aprobado bajo SDD Anchored, migrado)
-- [~] H-002 — Acceso de agentes OpenClaw a bóvedas vía API key → `historias/0013-acceso-agentes-api/` (Gate 2 ya aprobado por Carlos bajo SDD Anchored, migrado)
 
 ## Cerradas
 
@@ -26,9 +28,9 @@
 > así que ambas se siguieron elicitando como spec completa en vez de historia.
 > Ningún código fue escrito para ninguna de las dos (solo `spec.md`/`plan.md`/
 > `tasks.md`) — se preserva el contenido original íntegro ahí mismo (no se
-> transcribe, para no perder fidelidad de lo ya aprobado); `historias/NNN-slug/`
-> es el puntero formal que exige esta sección. No se migran SPEC-0010 (enmienda
-> 3 / RF-066, en vuelo con código real y commits) ni SPEC-0011 (ya mergeada).
-
-- [~] H-001 — restante de `specs/0012-propiedades-estilo-obsidian/` (Gate 1, sin implementar)
-- [~] H-002 — restante de `specs/0013-acceso-agentes-api/` (Gate 2 / PLAN-0013, sin implementar)
+> transcribe, para no perder fidelidad de lo ya aprobado). El 2026-10-28 se
+> partió cada spec en slices demostrables (arriba) a pedido de Carlos — ver
+> `historias/0013-acceso-agentes-api/historia.md` (H-002.x) y, en la rama
+> `feature/0012-propiedades-obsidian`, `historias/0012-propiedades-estilo-obsidian/
+> historia.md` (H-001.x). No se migran SPEC-0010 (enmienda 3 / RF-066, en vuelo
+> con código real y commits) ni SPEC-0011 (ya mergeada).
