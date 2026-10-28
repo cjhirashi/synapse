@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
-import { useMe, CHANGE_PASSWORD_PATH } from "../auth/RequireAuth";
+import { useMe, API_KEYS_PATH, CHANGE_PASSWORD_PATH } from "../auth/RequireAuth";
 import { useSync } from "../sync/useSync";
 import "./AccountMenu.css";
 
@@ -50,6 +50,9 @@ export default function AccountMenu() {
           <div className="account-menu-header">{email}</div>
           <Link to={CHANGE_PASSWORD_PATH} onClick={() => setOpen(false)}>
             Cambiar contraseña
+          </Link>
+          <Link to={API_KEYS_PATH} onClick={() => setOpen(false)}>
+            API keys
           </Link>
           <button
             type="button"

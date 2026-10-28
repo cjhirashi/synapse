@@ -3,6 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { ApiError, getMe, Me } from "../api/auth";
 
 export const CHANGE_PASSWORD_PATH = "/settings/password";
+export const API_KEYS_PATH = "/settings/api-keys";
 
 type State = { status: "loading" } | { status: "anon" } | { status: "ok"; me: Me } | { status: "error" };
 
