@@ -10,7 +10,7 @@ src/
 ├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
 ├── brand/      # logo oficial (BrandLogo + brand.css) y sus pruebas de assets (SPEC-0011)
 ├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
-├── settings/   # ajustes de cuenta (cambiar contraseña)
+├── settings/   # ajustes de cuenta (cambiar contraseña; API keys de agente, SPEC-0013)
 ├── sync/       # réplica local PouchDB, replicación con el servidor y su UI (SPEC-0005)
 ├── vaults/     # bóvedas sobre la réplica local: lista, formulario crear/editar, papelera (SPEC-0003)
 ├── test-utils/ # utilidades de prueba (réplica en memoria, contexto de sync, dispositivos simulados)

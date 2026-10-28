@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import App from "./App";
 import * as api from "./api/auth";
+import * as apiKeys from "./settings/apiKeys";
 import * as localDb from "./sync/localDb";
 import { memoryDb, memoryEnv } from "./test-utils/sync";
 import { createVaultStore } from "./sync/vaultStore";
@@ -108,6 +109,14 @@ test("RF-019: una bóveda creada en el formulario se lista y se edita desde la r
   await user.click(within(item).getByRole("link", { name: "Editar" }));
   expect(await screen.findByRole("heading", { name: "Editar bóveda" })).toBeInTheDocument();
   expect(screen.getByLabelText("Nombre")).toHaveValue("Notas");
+});
+
+test("H-002.5: /settings/api-keys monta la gestión de API keys de agente", async () => {
+  const { env } = signedIn();
+  vi.spyOn(apiKeys, "listAgentKeys").mockResolvedValue([]);
+  renderAt("/settings/api-keys", env);
+  expect(await screen.findByRole("heading", { name: "API keys" })).toBeInTheDocument();
+  expect(await screen.findByText("Aún no tienes API keys.")).toBeInTheDocument();
 });
 
 test("RF-017: «Cerrar sesión» sin cambios pendientes cierra la sesión y lleva a /login", async () => {

@@ -4,6 +4,7 @@ import LoginPage from "./auth/LoginPage";
 import RequireAuth, { useMe, useRefreshMe } from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
 import VaultWorkspacePage from "./notes/VaultWorkspacePage";
+import ApiKeysPage from "./settings/ApiKeysPage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
@@ -75,6 +76,8 @@ export default function App({ syncEnv }: Props) {
         }
       >
         <Route path="/settings/password" element={<ChangePasswordRoute />} />
+        {/* Gestión de API keys de agente (SPEC-0013 / H-002.5): sólo la UI sobre `/auth/agent-keys`. */}
+        <Route path="/settings/api-keys" element={<ApiKeysPage />} />
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}
         <Route path="/vaults" element={<VaultListPage />} />
         <Route path="/vaults/new" element={<VaultForm />} />
