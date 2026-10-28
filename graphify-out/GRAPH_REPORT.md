@@ -1,51 +1,51 @@
 # Graph Report - synapse  (2026-10-28)
 
 ## Corpus Check
-- 535 files · ~920,794 words
+- 539 files · ~927,849 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 77 file(s) not represented in the graph (top: .csv 53, .css 10, (none) 8)
 
 ## Summary
-- 6851 nodes · 14743 edges · 304 communities (263 shown, 41 thin omitted)
-- Extraction: 84% EXTRACTED · 16% INFERRED · 0% AMBIGUOUS · INFERRED: 2335 edges (avg confidence: 0.93)
+- 6908 nodes · 14856 edges · 309 communities (275 shown, 34 thin omitted)
+- Extraction: 84% EXTRACTED · 16% INFERRED · 0% AMBIGUOUS · INFERRED: 2395 edges (avg confidence: 0.93)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a95b44f5`
+- Built from commit: `8b36c976`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - resources.ts
-- vaultStore.ts
+- vaultRules.ts
 - ShadcnInstaller
-- User
+- NoteEditor.tsx
 - conflicts.ts
 - MilkdownView
 - test_problem_catalog.py
-- ValidationFailed
+- DomainError
 - test_sync_repository.py
 - devDependencies
-- vaultStore.ts
+- useSync.ts
 - 9. Implementación por requisito
 - ParseCache
-- auth.py
+- User
 - test_vaults_api.py
 - conftest.py
 - DesignSystemGenerator
 - device.ts
 - .push
-- problems.py
+- SPEC-0003 · CRUD de bóvedas
 - noteStore.ts
 - test_sync_push.py
 - test_problem_validation.py
-- UntouchablePort
+- test_sync_api.py
 - test_contract.py
-- brandAssets.test.ts
+- check-bundle.mjs
 - test_problem_contract_guard.py
 - brand-header.spec.ts
 - sync_filter.py
-- ProvisioningError
+- test_problem_handlers.py
 - vitest
 - InMemoryCouch
 - History — Synapse
@@ -54,29 +54,29 @@
 - pytest
 - vault_service.py
 - 9. Implementación por requisito
-- test_problem_handlers.py
+- @milkdown/prose
 - validate_data.py
 - test_reservations.py
-- test_problem_auth.py
+- login
 - Método del arnés — `.harness/` (Slice Development)
 - Archify — Generación de Diagramas para Synapse
 - gray
-- SpaResourceNotFound
-- test_sync_api.py
+- spa.py
+- merge.ts
 - ADR-005 · Reinstalar la skill `ui-ux-pro-max`
 - test_vault_service.py
 - PropertiesForm.tsx
-- push
+- VaultUpdate
 - CodeView.tsx
 - sync.py
 - test_note_sync_api.py
 - test_problem_contract.py
 - package.json
 - conflicts.test.ts
-- NoteMenu
-- test_refresh.py
-- SPEC-0008 · Editor de documentos dentro de una bóveda
-- 9. Implementación por requisito
+- workspace-visual.spec.ts
+- SpaResourceNotFound
+- prefers_html
+- PLAN-0008 · Editor de documentos dentro de una bóveda
 - 9. Implementación por requisito
 - PLAN-NNN · ‹Nombre›
 - test_note_service.py
@@ -84,46 +84,46 @@
 - RevisionConflict
 - Constitución — ‹nombre del proyecto›
 - useSync
-- StorageUnavailable
-- noteRules.test.ts
+- IconPicker.tsx
+- 9. Implementación por requisito
 - sync-integration.sh
 - auth.ts
 - AGENTS.md — Synapse
-- MilkdownView.tsx
+- safeUrl.ts
 - compilerOptions
-- main.py
+- logo/core.py
 - scripts
-- csv
+- cip/core.py
 - proseHighlight.ts
 - SyncPushService
 - SPEC-NNN · ‹Nombre de la funcionalidad›
-- Rejected
+- SyncPushService
 - panZoom.test.ts
 - compilerOptions
 - check.sh
 - dependencies
 - SPEC-0006 · Tests de integración contra backends reales
-- test_note_rules.py
+- check_path
 - SPEC-0007 · FastAPI sirve la SPA
 - design_system.py
 - slide_search_core.py
 - AGENTS.md — mapa de ‹nombre del proyecto›
-- create_vault
+- VaultService
 - Synapse — Almacén de Bóvedas
 - ADR-000 · ‹Título de la decisión›
 - ADR-001 · Adopción del arnés y patrón interno por-capas con puertos
 - ADR-003 · Resolución de conflictos: automática por campo, con caída al usuario
 - ADR-004 · Realineación del binding de agentes de Claude Code y de las skills activas
 - Estado del arnés — ‹nombre del proyecto›
-- get_current_user
+- AuthService
 - frontend/
-- SPEC-0002 · Autenticación y aislamiento por usuario
+- name_key
 - accentContrast.test.ts
 - 9. Implementación por requisito
 - implementador.md
 - orquestador.md
 - TASKS-NNN · ‹Nombre›
-- main.py
+- brand-header.spec.ts
 - content-visual.spec.ts
 - stored_docs
 - arquitecto.md
@@ -141,14 +141,15 @@
 - specs/README.md
 - knowledge/README.md
 - system/README.md
+- vault_service.py
 - frontmatter.ts
 - Workspace
 - RevisionConflict
 - Brand Guidelines v1.0
 - Tareas
-- NoteEditor.tsx
-- .claude/agents/ — binding de Claude Code
 - parseStage.test.ts
+- SPEC-0002 · Autenticación y aislamiento por usuario
+- generate-slide.py
 - vault
 - Sprint 2 — Autenticación y Gestión de Bóvedas (2026-10-11 a 2026-10-25)
 - Design
@@ -156,15 +157,16 @@
 - Canvas Design System
 - re
 - ThemeToggle
-- path_key
+- .delete
 - argparse
 - visual.sh
 - brand/package.json
 - Tareas
 - compilerOptions
 - codeBlockView.test.ts
-- remote.ts
-- json
+- NoteMenu
+- csv
+- TestDomainDetection
 - SPEC-0009 · Rediseño visual del workspace de bóvedas y notas
 - fixtures.ts
 - contrast.test.ts
@@ -175,33 +177,33 @@
 - 9. Implementación por requisito
 - Tareas
 - Tailwind CSS Responsive Design
-- IconPicker.tsx
+- VaultForm
 - Typography Specifications
-- whenIdle
-- SPEC-0003 · CRUD de bóvedas
+- export_openapi.py
+- test_contract.py
 - Logo Usage Rules
-- @milkdown/prose
+- test_spa.py
 - themeVariables.ts
 - Component Specifications
 - BrandLogo
-- httpx
+- content-notes.ts
 - useTheme.test.tsx
 - SPEC-0011 · Identidad de marca: logo oficial de Synapse
 - html-token-validator.py
 - build_logo.py
 - test_json_depth.py
 - ADR-006 · Extensión de tokens para el contenido Markdown
-- Settings
+- security.py
 - shadcn/ui Accessibility Patterns
 - _nested
 - Asset Approval Checklist
 - Logo AI Prompt Engineering
 - test_tailwind_config_gen.py
-- pathlib
-- push
-- securityGuard.test.ts
+- logo/search.py
+- PLAN-0009 · Rediseño visual del workspace de bóvedas y notas
+- ref_node_fs
 - Color Palette Management
-- 2.1 Núcleo
+- experto-ux-ui.md
 - build.sh
 - CIP Deliverable Guide
 - States and Variants
@@ -209,12 +211,12 @@
 - Workflow
 - Design System
 - Tailwind CSS Customization
-- generate-slide.py
+- push
 - spacing
 - TestTailwindConfigGenerator
 - Routing by Task Type
 - shadcn/ui Theming & Customization
-- bulk_get
+- _changes
 - Asset Organization Guide
 - Primary Color Meanings
 - Core Logo Types
@@ -226,7 +228,7 @@
 - Design Principles
 - Design Principles
 - fontSize
-- TailwindConfigGenerator
+- test_vaults_concurrency.py
 - extract-colors.cjs
 - CIP Design Reference
 - Icon Design Reference
@@ -241,14 +243,14 @@
 - Tailwind Integration
 - radius
 - Layout Patterns
-- TestWebStackFreshness
-- test_style_taxonomy.py
+- SPEC-0008 · Editor de documentos dentro de una bóveda
+- CodeView
 - update.md
 - Logo Design Reference
 - Token Architecture
 - design-tokens-starter.json
-- TestDomainDetection
-- TestSearchDomains
+- test_core.py
+- Settings
 - Primitive Tokens
 - embed-tokens.cjs
 - validate-tokens.cjs
@@ -258,7 +260,7 @@
 - CIP Design Style Guide
 - TestNativeDesktopStackFreshness
 - Quick Reference
-- noteTree.ts
+- Estado de las features
 - sync-brand-to-tokens.cjs
 - Brand
 - Slide Strategies
@@ -267,19 +269,19 @@
 - button
 - duration
 - Slide Strategies
-- SPEC-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)
+- ._base_config
 - input
 - UI/UX Pro Max - Design Intelligence
 - Slides Reference
 - HTML Slide Template
 - HTML Slide Template
 - Query Contract
-- ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push
+- content-perf.spec.ts
 - Slides
-- TestTokenizer
+- ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push
 - Pre-Delivery Checklist
 - Prerequisites
-- NoteTableView
+- Backlog — Synapse
 - Brand Guidelines Template
 - $type
 - radius
@@ -303,14 +305,19 @@
 - secondary-foreground
 - slides-create.md
 - create.md
+- .__call__
+- _asgi_post
+- icons.ts
+- H-002 — Acceso de agentes OpenClaw a bóvedas vía API key
+- TASKS-0002 · Autenticación y aislamiento por usuario
 
 ## God Nodes (most connected - your core abstractions)
 1. `History — Synapse` - 86 edges
 2. `vitest` - 85 edges
 3. `User` - 77 edges
 4. `9. Implementación por requisito` - 71 edges
-5. `VaultService` - 65 edges
-6. `StorageUnavailable` - 63 edges
+5. `StorageUnavailable` - 69 edges
+6. `VaultService` - 65 edges
 7. `DomainError` - 59 edges
 8. `TailwindConfigGenerator` - 58 edges
 9. `_create()` - 58 edges
@@ -319,183 +326,187 @@
 ## Surprising Connections (you probably didn't know these)
 - `3. Modelo de datos` --references--> `Vault`  [INFERRED]
   .harness/specs/0009-rediseno-visual-workspace/plan.md → frontend/src/sync/vaultStore.ts
-- `2.5 Frontend (`frontend/src/sync/`)` --references--> `RemoteOptions`  [INFERRED]
-  .harness/specs/0005-sync/plan.md → frontend/src/sync/remote.ts
-- `Implementación de RF-005` --references--> `SyncPushService`  [INFERRED]
-  .harness/specs/0005-sync/plan.md → backend/app/services/sync_push.py
-- `Implementación de RF-013` --references--> `NotePathTakenError`  [INFERRED]
-  .harness/specs/0008-vault-editor/plan.md → frontend/src/notes/errors.ts
 - `1. Contexto del dominio` --references--> `ProvisioningError`  [INFERRED]
   .harness/specs/0004-api-problem-details/spec.md → backend/app/core/errors.py
+- `Implementación de RF-003` --references--> `InvalidCursor`  [INFERRED]
+  .harness/specs/0003-vault-crud/plan.md → backend/app/core/errors.py
+- `Implementación de RF-026` --references--> `VaultNotFound`  [INFERRED]
+  .harness/specs/0003-vault-crud/plan.md → backend/app/core/errors.py
+- `Implementación de RF-013` --references--> `NotePathTakenError`  [INFERRED]
+  .harness/specs/0008-vault-editor/plan.md → frontend/src/notes/errors.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (304 total, 41 thin omitted)
+## Communities (309 total, 34 thin omitted)
 
 ### Community 0 - "resources.ts"
 Cohesion: 0.03
-Nodes (94): Props, live(), parseNoteId(), Repush, RepushDeps, startRepush(), enqueue(), enqueueAll() (+86 more)
+Nodes (89): Props, renderAt(), signedIn(), live(), Repush, RepushDeps, startRepush(), enqueue() (+81 more)
 
-### Community 1 - "vaultStore.ts"
-Cohesion: 0.07
-Nodes (43): backend/app/core/, Esquemas de bóveda (SPEC-0003, SPEC-0009), Subdirectorios, nextUntitledPath(), editedContent(), mergeDeletedAt(), mergeTags(), mergeVault() (+35 more)
+### Community 1 - "vaultRules.ts"
+Cohesion: 0.13
+Nodes (25): Esquemas de bóveda (SPEC-0003, SPEC-0009), nextUntitledPath(), CASE_FOLD, checkDescription(), checkIcon(), checkName(), checkTags(), codePoints() (+17 more)
 
 ### Community 2 - "ShadcnInstaller"
 Cohesion: 0.05
 Nodes (3): main(), ShadcnInstaller, TestShadcnInstaller
 
-### Community 3 - "User"
+### Community 3 - "NoteEditor.tsx"
 Cohesion: 0.08
-Nodes (22): AuthRepository, User, _create(), test_rf_012_admin_creates_guest_with_real_couchdb(), test_rf_012_invalid_email_format_is_422(), test_rf_013_created_email_is_stored_normalized(), test_rf_013_db_rejects_case_duplicates(), test_rf_013_duplicate_email_is_409() (+14 more)
+Nodes (22): ConfirmDialog(), ConfirmDialogProps, splitLegacyBlock(), TableCommands, Mode, NoteEditorHandle, REAL_VIEWS, View (+14 more)
 
 ### Community 4 - "conflicts.ts"
 Cohesion: 0.03
-Nodes (97): NoteChangedError, NoteField, NoteNotFoundError, NotePathTakenError, NoteValidationError, NoteBody, NoteMergeResult, base (+89 more)
+Nodes (111): NoteChangedError, NoteField, NoteNotFoundError, NotePathTakenError, NoteValidationError, mergeNote(), NoteBody, NoteMergeResult (+103 more)
 
 ### Community 5 - "MilkdownView"
 Cohesion: 0.16
-Nodes (13): createHighlightParser(), MilkdownView(), flushRunning(), report(), reportTable(), settle(), stop(), Commands (+5 more)
+Nodes (13): MilkdownView(), flushRunning(), report(), reportTable(), settle(), stop(), Commands, mermaid (+5 more)
 
 ### Community 6 - "test_problem_catalog.py"
-Cohesion: 0.12
-Nodes (15): _all_subclasses(), _called_name(), _catalog_entries(), test_every_422_is_a_validation_failed(), test_every_domain_error_declares_slug_title_status_and_detail(), test_initial_catalog_entry_exists(), test_internal_message_is_separate_from_public_detail(), test_only_the_catalog_and_translator_build_validation_errors() (+7 more)
+Cohesion: 0.11
+Nodes (16): _all_subclasses(), _called_name(), _catalog_entries(), test_every_422_is_a_validation_failed(), test_every_domain_error_declares_slug_title_status_and_detail(), test_initial_catalog_entry_exists(), test_internal_message_is_separate_from_public_detail(), test_only_the_catalog_and_translator_build_validation_errors() (+8 more)
 
-### Community 7 - "ValidationFailed"
-Cohesion: 0.07
-Nodes (35): field_error(), ValidationFailed, Errores (SPEC-0004), Errores (SPEC-0004), test_field_error_catalog_is_well_formed(), ValueError, status(), input() (+27 more)
+### Community 7 - "DomainError"
+Cohesion: 0.03
+Nodes (103): DomainError, field_error(), PasswordPolicyViolation, ValidationFailed, _any_real_route_matches(), _domain_error(), _escape_pointer_segment(), _field_detail() (+95 more)
 
 ### Community 8 - "test_sync_repository.py"
 Cohesion: 0.07
-Nodes (25): _read_timeout(), ReplicationRepository, _stream(), _BrokenStream, db(), _failing(), _put(), _read_all() (+17 more)
+Nodes (24): _read_timeout(), _stream(), _BrokenStream, db(), _failing(), _put(), _read_all(), repo() (+16 more)
 
 ### Community 9 - "devDependencies"
 Cohesion: 0.12
 Nodes (17): devDependencies, jsdom, @playwright/test, pouchdb-adapter-memory, @testing-library/jest-dom, @testing-library/react, @testing-library/user-event, @types/node (+9 more)
 
-### Community 10 - "vaultStore.ts"
-Cohesion: 0.06
-Nodes (52): noteReasonText(), ConflictForm(), submit(), toggleTrash(), use(), versions(), noteVaultId(), REASONS (+44 more)
+### Community 10 - "useSync.ts"
+Cohesion: 0.05
+Nodes (87): getMe(), App(), ChangePasswordRoute(), SyncScope(), CHANGE_PASSWORD_PATH, MeContext, RefreshMeContext, RequireAuth() (+79 more)
 
 ### Community 11 - "9. Implementación por requisito"
 Cohesion: 0.04
-Nodes (46): 9. Implementación por requisito, Implementación de RF-002, Implementación de RF-003, Implementación de RF-006, Implementación de RF-009, Implementación de RF-010, Implementación de RF-013, Implementación de RF-019 (+38 more)
+Nodes (53): commitHistory(), onCancelOpen(), onOpened(), [2026-10-27] SPEC-0010 Slice 5 (resaltado + Mermaid, T-084…T-095 + Enmienda 2 T-140…T-149) — Session-End CERRADA, 9. Implementación por requisito, Implementación de RF-002, Implementación de RF-003, Implementación de RF-004 (+45 more)
 
 ### Community 12 - "ParseCache"
 Cohesion: 0.06
-Nodes (13): Entry, idOf(), ParseCache, ParseCacheOptions, ParseWorkerLike, ParseWorkerResponse, FakeWorker, key() (+5 more)
+Nodes (12): Entry, idOf(), ParseCache, ParseCacheOptions, ParseWorkerLike, ParseWorkerResponse, FakeWorker, PrecomputeCandidate (+4 more)
 
-### Community 13 - "auth.py"
-Cohesion: 0.10
-Nodes (28): AdminRequired, EmailTaken, InvalidCredentials, InvalidRefreshToken, NotAuthenticated, PasswordPolicyViolation, WrongCurrentPassword, ChangePasswordRequest (+20 more)
+### Community 13 - "User"
+Cohesion: 0.04
+Nodes (55): AuthRepository, CouchDBAdapter, run_bootstrap(), ProvisioningError, User, CouchDBPort, verify_password(), _create() (+47 more)
 
 ### Community 14 - "test_vaults_api.py"
-Cohesion: 0.11
-Nodes (38): test_rf_004_continuous_feed_is_a_validation_error(), assert_problem(), create(), etag_in_trash(), stored_vaults(), test_rf_001_list_returns_active_vaults_newest_first(), test_rf_002_pagination_walks_every_vault_once(), test_rf_003_garbage_or_foreign_cursor_is_422() (+30 more)
+Cohesion: 0.16
+Nodes (33): assert_problem(), create(), etag_in_trash(), stored_docs(), stored_vaults(), test_rf_001_list_returns_active_vaults_newest_first(), test_rf_002_pagination_walks_every_vault_once(), test_rf_003_garbage_or_foreign_cursor_is_422() (+25 more)
 
 ### Community 15 - "conftest.py"
-Cohesion: 0.06
-Nodes (14): run_migrations_offline(), run_migrations_online(), upgrade(), upgrade(), upgrade(), upgrade(), Base, RefreshToken (+6 more)
+Cohesion: 0.05
+Nodes (24): run_migrations_offline(), run_migrations_online(), upgrade(), upgrade(), upgrade(), upgrade(), Base, RefreshToken (+16 more)
 
 ### Community 16 - "DesignSystemGenerator"
-Cohesion: 0.06
-Nodes (14): DesignSystemGenerator, apply_decision_rules(), _object_without_duplicates(), parse_decision_rules(), _validate_action(), TestReasoningMatch, read_rows(), split_values() (+6 more)
+Cohesion: 0.07
+Nodes (12): DesignSystemGenerator, apply_decision_rules(), _object_without_duplicates(), parse_decision_rules(), _validate_action(), TestReasoningMatch, read_rows(), split_values() (+4 more)
 
 ### Community 17 - "device.ts"
-Cohesion: 0.08
-Nodes (16): editApart(), Fetch, SyncResources, serverNames(), VaultStore, Browser, CookieJar, createUser() (+8 more)
+Cohesion: 0.09
+Nodes (16): setup(), editApart(), OWNER_DOC_ID, BATCH_SIZE, SyncResources, serverNames(), Browser, CookieJar (+8 more)
 
 ### Community 18 - ".push"
-Cohesion: 0.14
+Cohesion: 0.12
 Nodes (51): _rejection(), _new_vault_id(), _note(), _note_id(), _rejected(), _reservation(), _stored(), test_rf_004_note_of_a_deleted_vault_is_rejected() (+43 more)
 
-### Community 19 - "problems.py"
-Cohesion: 0.09
-Nodes (26): _any_real_route_matches(), _domain_error(), _escape_pointer_segment(), _field_detail(), _framework_error(), build(), install_problem_handlers(), install_problem_openapi() (+18 more)
+### Community 19 - "SPEC-0003 · CRUD de bóvedas"
+Cohesion: 0.17
+Nodes (11): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance (+3 more)
 
 ### Community 20 - "noteStore.ts"
-Cohesion: 0.12
-Nodes (35): ancestors(), checkFolderName(), folderExists(), joinPath(), parentFolder(), folderNameMessage(), checkPath(), normalizePath() (+27 more)
+Cohesion: 0.10
+Nodes (37): ancestors(), checkFolderName(), folderExists(), joinPath(), parentFolder(), folderNameMessage(), normalizePath(), pathKey() (+29 more)
 
 ### Community 21 - "test_sync_push.py"
-Cohesion: 0.10
-Nodes (45): _conflicted(), _new_id(), _rejected(), _reservation(), _stored(), test_rf_001_owner_must_be_the_session_user(), test_rf_005_already_stored_revision_is_accepted_without_writing_or_reserving(), test_rf_005_bad_shape_is_rejected() (+37 more)
+Cohesion: 0.12
+Nodes (42): _conflicted(), _new_id(), _rejected(), _reservation(), _stored(), test_rf_001_owner_must_be_the_session_user(), test_rf_005_already_stored_revision_is_accepted_without_writing_or_reserving(), test_rf_005_bad_shape_is_rejected() (+34 more)
 
 ### Community 22 - "test_problem_validation.py"
 Cohesion: 0.08
 Nodes (21): client(), Coded, _errors(), Item, _make_app(), test_body_field_uses_json_pointer(), test_cataloged_code_publishes_the_catalog_text_not_the_raised_message(), test_collection_limits_are_kept_without_the_items() (+13 more)
 
-### Community 23 - "UntouchablePort"
-Cohesion: 0.15
-Nodes (4): RecordingPort, test_rf_010_changes_releases_the_sql_session_before_streaming(), recording_session_local(), UntouchablePort
+### Community 23 - "test_sync_api.py"
+Cohesion: 0.06
+Nodes (39): test_rf_016_bulk_docs_body_of_exactly_16_mib_passes_the_cap(), test_rf_016_bulk_docs_body_over_16_mib_is_413(), test_rf_016_other_routes_keep_the_4_mib_cap(), bulk_docs_bytes(), change_ids(), couch_override(), json_of_size(), put_checkpoint_bytes() (+31 more)
 
 ### Community 24 - "test_contract.py"
-Cohesion: 0.07
-Nodes (13): _app_spec(), _committed(), test_contract_documents_every_endpoint_of_the_auth_spec(), test_contract_documents_every_endpoint_of_the_vault_spec(), test_contract_documents_exactly_the_sync_channel_of_plan_0005(), test_contract_is_committed_and_matches_the_running_app(), test_every_app_path_belongs_to_exactly_one_feature(), test_problem_contract_holds_only_the_problem_schema() (+5 more)
+Cohesion: 0.11
+Nodes (3): TestFixtureValidation, TestMetricMath, TestThresholdGate
 
-### Community 25 - "brandAssets.test.ts"
-Cohesion: 0.08
-Nodes (16): chunks, DIST, editor, entry, failures, manifest, SEPARATE, workerFiles (+8 more)
+### Community 25 - "check-bundle.mjs"
+Cohesion: 0.17
+Nodes (8): chunks, DIST, editor, entry, failures, manifest, SEPARATE, workerFiles
 
 ### Community 26 - "test_problem_contract_guard.py"
-Cohesion: 0.06
-Nodes (21): problem_responses(), ContractGuard, checked_send(), undeclared_error(), _overlapping_app(), schema(), test_declared_error_passes(), test_guard_checks_the_operation_that_served_the_request() (+13 more)
+Cohesion: 0.15
+Nodes (9): undeclared_error(), _overlapping_app(), test_declared_error_passes(), test_guard_checks_the_operation_that_served_the_request(), test_guard_wraps_the_real_app(), test_routing_errors_are_excluded(), test_success_statuses_are_not_checked(), test_undeclared_error_fails_the_request_end_to_end() (+1 more)
 
 ### Community 27 - "brand-header.spec.ts"
-Cohesion: 0.07
-Nodes (31): BG, FILES, HEIGHT, ORIGINAL, PUBLIC, SHAPES, TABS, CASES (+23 more)
+Cohesion: 0.08
+Nodes (25): BG, FILES, HEIGHT, ORIGINAL, PUBLIC, SHAPES, TABS, hexColors() (+17 more)
 
 ### Community 28 - "sync_filter.py"
-Cohesion: 0.04
-Nodes (65): InvalidSyncRequest, SyncEndpointNotFound, get_checkpoint_id(), sync_endpoint_not_found(), backend/app/services/, all_docs_query(), _boolean(), bulk_get_query() (+57 more)
+Cohesion: 0.05
+Nodes (64): InvalidSyncRequest, get_checkpoint_id(), all_docs_query(), _boolean(), bulk_get_query(), BulkGetPlan, changes_query(), check_checkpoint_doc() (+56 more)
 
-### Community 29 - "ProvisioningError"
+### Community 29 - "test_problem_handlers.py"
 Cohesion: 0.10
-Nodes (24): CouchDBAdapter, run_bootstrap(), ProvisioningError, CouchDBPort, verify_password(), test_rf_015_couchdb_failure_returns_503_and_leaves_no_user(), boom(), test_rf_001_application_startup_runs_bootstrap_with_real_couchdb() (+16 more)
+Nodes (16): _assert_problem(), client(), _make_app(), domain(), domain_with_errors(), storage_down(), test_domain_error_becomes_problem_with_catalog_type(), test_domain_error_carries_errors_when_present() (+8 more)
 
 ### Community 30 - "vitest"
-Cohesion: 0.04
-Nodes (92): signedIn(), NoteEditor, NoteEditorViews, dirtyThenRequestSecond(), openQuick(), openReal(), openRealRead(), openTrashable() (+84 more)
+Cohesion: 0.05
+Nodes (68): NoteEditor, NoteEditorViews, dirtyThenRequestSecond(), openQuick(), openReal(), openRealRead(), openTrashable(), setup() (+60 more)
+
+### Community 31 - "InMemoryCouch"
+Cohesion: 0.11
+Nodes (9): test_rf_005_note_shape_valid_revision_is_saved_with_its_history(), InMemoryCouch, _revisions(), _split(), test_rf_005_valid_revision_is_saved_with_its_rev_and_history(), test_rf_008_rest_and_sync_never_leave_two_active_vaults_with_one_name(), [2026-10-13] 0005-sync — Fase 4: T-018…T-023 (push validado, bloque E), 2.6 Algoritmo de combinación (`merge.ts`, ADR-003) (+1 more)
 
 ### Community 32 - "History — Synapse"
 Cohesion: 0.04
-Nodes (46): [2026-10-11] 0002-auth — enmienda tras verificación adversarial, [2026-10-11] 0002-auth — implementada (pendiente de verificación), [2026-10-11] Sprint 1 (0002-auth) — COMPLETADO Y VERIFICADO, [2026-10-13] 0005-integration-real-db — Fase 1 abierta (borrador), [2026-10-13] 0005-sync — aclaraciones C-1…C-4 aprobadas, [2026-10-13] 0005-sync — decisiones D-1…D-6 aprobadas, [2026-10-13] 0005-sync — Fase 4: T-067…T-068 (mismo origen, bloque J), [2026-10-13] 0005-sync — GATE 1 aprobado (+38 more)
+Nodes (47): state(), [2026-10-11] 0002-auth — enmienda tras verificación adversarial, [2026-10-11] 0002-auth — implementada (pendiente de verificación), [2026-10-11] Sprint 1 (0002-auth) — COMPLETADO Y VERIFICADO, [2026-10-13] 0005-integration-real-db — Fase 1 abierta (borrador), [2026-10-13] 0005-sync — aclaraciones C-1…C-4 aprobadas, [2026-10-13] 0005-sync — decisiones D-1…D-6 aprobadas, [2026-10-13] 0005-sync — Fase 4: T-067…T-068 (mismo origen, bloque J) (+39 more)
 
 ### Community 33 - "renderMermaid.ts"
-Cohesion: 0.09
-Nodes (27): MermaidLoadError, MermaidSyntaxError, ALLOWED_ELEMENTS, blank(), createMermaidRenderer(), draw(), decodeCssEscapes(), dropActionStatements() (+19 more)
+Cohesion: 0.08
+Nodes (29): MermaidLoadError, MermaidSyntaxError, ALLOWED_ELEMENTS, blank(), createMermaidRenderer(), draw(), decodeCssEscapes(), dropActionStatements() (+21 more)
 
 ### Community 34 - "scripts/core.py"
 Cohesion: 0.06
 Nodes (31): BM25, _contains_phrase(), detect_domain(), _domain_keywords(), _exact_match_diagnostic(), _exact_row_identity(), _exact_stack_identifier(), _file_signature() (+23 more)
 
 ### Community 35 - "pytest"
-Cohesion: 0.14
+Cohesion: 0.12
 Nodes (24): VaultCreate, _error_types(), test_rf_005_at_most_20_tags(), test_rf_005_description_up_to_2000_characters(), test_rf_005_each_tag_has_1_to_32_characters(), test_rf_005_name_is_required(), test_rf_005_name_out_of_limits_after_strip_is_rejected(), test_rf_005_name_with_control_characters_is_rejected() (+16 more)
 
 ### Community 36 - "vault_service.py"
-Cohesion: 0.06
-Nodes (44): InvalidCursor, PreconditionRequired, VaultNotFound, VaultListItem, VaultOut, _vault_use(), _check_precondition(), decode_cursor() (+36 more)
+Cohesion: 0.07
+Nodes (36): InvalidCursor, PreconditionFailed, PreconditionRequired, RevisionConflict, VaultNotFound, VaultPage, _vault_use(), decode_cursor() (+28 more)
 
 ### Community 37 - "9. Implementación por requisito"
-Cohesion: 0.05
-Nodes (39): 0. Gates de simplicidad, 11. Ajustes de la Fase 4 (implementación), 13. Hallazgo de la Fase 4: los listados no dan el `ETag` (APROBADO el 2026-10-12), 14. Notas del cierre de la Fase 4 (T-051; informativas, ninguna decisión cambia), 3. Modelo de datos (CouchDB, base del usuario), 4. Contratos, 7. Seguimiento de complejidad / riesgos, 8. Impacto en documentación (Art. 11) (+31 more)
+Cohesion: 0.06
+Nodes (33): 0. Gates de simplicidad, 13. Hallazgo de la Fase 4: los listados no dan el `ETag` (APROBADO el 2026-10-12), 14. Notas del cierre de la Fase 4 (T-051; informativas, ninguna decisión cambia), 1. Cumplimiento constitucional, 3. Modelo de datos (CouchDB, base del usuario), 4. Contratos, 6. Secuenciación, 7. Seguimiento de complejidad / riesgos (+25 more)
 
-### Community 38 - "test_problem_handlers.py"
-Cohesion: 0.11
-Nodes (15): InvalidToken, test_problem_responses_maps_each_error_class_to_its_status(), _assert_problem(), client(), _make_app(), domain(), domain_with_errors(), storage_down() (+7 more)
+### Community 38 - "@milkdown/prose"
+Cohesion: 0.10
+Nodes (19): cachedParser(), CachedParserReady, docFromMdastJson(), mark(), PARSE_MARK, preparsedMdastCtx, applyHeadingIds(), rewrite() (+11 more)
 
 ### Community 39 - "validate_data.py"
-Cohesion: 0.07
-Nodes (42): read_rows(), TestAccessibilityGuidance, TestChartsTypographyAndIcons, TestCurrentReactGuidance, TestSemanticColors, _catalog_date(), _check_app_interface_contract(), _check_catalog_contract() (+34 more)
+Cohesion: 0.06
+Nodes (44): read_rows(), TestAccessibilityGuidance, TestChartsTypographyAndIcons, TestCurrentReactGuidance, TestSemanticColors, TestGeneratedCatalogContract, _catalog_date(), _check_app_interface_contract() (+36 more)
 
 ### Community 40 - "test_reservations.py"
-Cohesion: 0.11
-Nodes (23): Reservations, ReservationTaken, _always(), clock(), _expired_orphan(), _never(), port(), reservations() (+15 more)
+Cohesion: 0.13
+Nodes (21): ReservationTaken, _always(), clock(), _expired_orphan(), _never(), port(), reservations(), test_rf_011_a_late_release_does_not_delete_a_rewritten_reservation() (+13 more)
 
-### Community 41 - "test_problem_auth.py"
-Cohesion: 0.05
-Nodes (48): admin_user(), auth_cookies(), clean_test_couchdb(), client(), db(), login(), override_get_db(), ready_admin() (+40 more)
+### Community 41 - "login"
+Cohesion: 0.06
+Nodes (50): hash_refresh_token(), login(), test_rf_004_access_token_payload_has_only_sub_role_exp_ver(), test_rf_004_login_sets_access_and_refresh_cookies(), test_rf_005_login_runs_argon2_even_for_unknown_or_inactive_user(), test_rf_005_wrong_password_and_unknown_email_look_identical(), test_rf_008_authorization_header_is_ignored(), test_rf_013_login_is_case_insensitive() (+42 more)
 
 ### Community 42 - "Método del arnés — `.harness/` (Slice Development)"
 Cohesion: 0.11
@@ -509,89 +520,89 @@ Nodes (21): 1. **Arquitectura General** (Prioritario — Sprint 2), 2. **Flujo d
 Cohesion: 0.05
 Nodes (53): $type, $value, $type, $value, $type, $value, $type, $value (+45 more)
 
-### Community 45 - "SpaResourceNotFound"
-Cohesion: 0.04
-Nodes (52): SpaResourceNotFound, install_spa(), serve_spa(), _is_api_path(), prefers_html(), _safe_file(), VaultsSpaNegotiation, test_rf_001_public_register_endpoint_no_longer_exists() (+44 more)
+### Community 45 - "spa.py"
+Cohesion: 0.13
+Nodes (11): install_spa(), serve_spa(), _is_api_path(), _safe_file(), test_install_spa_sin_dist_es_api_pura(), 9. Implementación por requisito, Implementación de RF-001, Implementación de RF-002 (+3 more)
 
-### Community 46 - "test_sync_api.py"
-Cohesion: 0.08
-Nodes (31): get_replication_port(), test_rf_016_other_routes_keep_the_4_mib_cap(), change_ids(), couch_override(), json_of_size(), put_checkpoint_bytes(), reservation_id(), revs_diff_bytes() (+23 more)
+### Community 46 - "merge.ts"
+Cohesion: 0.10
+Nodes (19): ManualChoice, editedContent(), mergeDeletedAt(), mergeTags(), mergeVault(), sameExceptUpdatedAt(), sameTags(), SCALAR_FIELDS (+11 more)
 
 ### Community 47 - "ADR-005 · Reinstalar la skill `ui-ux-pro-max`"
 Cohesion: 0.29
 Nodes (6): ADR-005 · Reinstalar la skill `ui-ux-pro-max`, Consecuencias, Contexto y planteamiento del problema, Decisión, Enlaces, Opciones consideradas
 
 ### Community 48 - "test_vault_service.py"
-Cohesion: 0.06
-Nodes (80): PreconditionFailed, VaultNameTaken, VaultUpdate, list_vaults(), _name_key(), _vault_id(), VaultService, clock() (+72 more)
+Cohesion: 0.09
+Nodes (53): VaultNameTaken, encode_cursor(), clock(), _create(), _current_etag(), _expired_orphan(), _past_the_lease(), port() (+45 more)
 
 ### Community 49 - "PropertiesForm.tsx"
-Cohesion: 0.11
-Nodes (31): convert(), emptyOf(), fromRows(), hasContent(), inferType(), parseNumberInput(), PropRow, PropType (+23 more)
+Cohesion: 0.12
+Nodes (30): convert(), emptyOf(), fromRows(), hasContent(), inferType(), parseNumberInput(), PropRow, PropType (+22 more)
 
-### Community 50 - "push"
-Cohesion: 0.22
-Nodes (15): vault(), test_rf_006_a_note_path_reservation_cannot_be_pushed(), child_of(), owner_of(), push(), test_rf_005_exactly_200_documents_are_stored(), test_rf_005_more_than_200_documents_is_413(), test_rf_005_valid_push_is_stored_with_its_rev_and_reserves_the_name() (+7 more)
+### Community 50 - "VaultUpdate"
+Cohesion: 0.13
+Nodes (18): VaultUpdate, test_rf_007_changing_only_the_case_does_not_clash_with_itself(), test_rf_007_rename_to_a_taken_name_is_409_without_changes(), test_rf_008_get_returns_the_vault_and_its_etag(), test_rf_009_update_changes_only_sent_fields_and_renews_updated_at(), test_rf_009_update_null_description_clears_it(), test_rf_010_update_without_if_match_is_428(), test_rf_010_write_between_read_and_put_is_412() (+10 more)
 
 ### Community 51 - "CodeView.tsx"
-Cohesion: 0.07
-Nodes (16): CodeViewProps, errorLineField, external, markdownSupport(), setErrorLineEffect, mermaidLoads, taskMarkerTag, findLanguage() (+8 more)
+Cohesion: 0.08
+Nodes (19): CodeViewProps, errorLineField, external, markdownSupport(), setErrorLineEffect, synapseHighlighter, taskMarkerTag, HighlightScheduler (+11 more)
 
 ### Community 52 - "sync.py"
-Cohesion: 0.03
-Nodes (50): get_db(), backend/app/adapters/, VaultRepository, require_password_changed(), CheckpointNotFound, PasswordChangeRequired, PayloadTooLarge, RevisionConflict (+42 more)
+Cohesion: 0.05
+Nodes (55): get_db(), get_current_user(), require_admin(), require_password_changed(), AdminRequired, CheckpointNotFound, NotAuthenticated, PasswordChangeRequired (+47 more)
 
 ### Community 53 - "test_note_sync_api.py"
-Cohesion: 0.12
-Nodes (24): _asgi_post(), receive(), note_doc(), _push_deep(), rejection(), test_rf_005_a_5000_digit_integer_is_answered_like_any_invalid_json(), test_rf_005_a_frontmatter_over_the_general_cap_is_a_422_of_the_decoder(), test_rf_005_deeply_nested_frontmatter_is_rejected_by_the_note_rule() (+16 more)
+Cohesion: 0.11
+Nodes (35): note_doc(), _push_deep(), rejection(), test_rf_005_a_5000_digit_integer_is_answered_like_any_invalid_json(), test_rf_005_a_frontmatter_over_the_general_cap_is_a_422_of_the_decoder(), test_rf_005_deeply_nested_frontmatter_is_rejected_by_the_note_rule(), test_rf_005_extremely_nested_json_is_answered_like_any_invalid_json(), test_rf_005_frontmatter_with_a_non_finite_number_is_rejected_not_a_500() (+27 more)
 
 ### Community 54 - "test_problem_contract.py"
-Cohesion: 0.09
-Nodes (20): Problem, ProblemError, Contratos OpenAPI por feature, _error_responses(), mini_app(), x(), _operations(), _spec() (+12 more)
+Cohesion: 0.13
+Nodes (14): Problem, ProblemError, Contratos OpenAPI por feature, _error_responses(), mini_app(), x(), _operations(), _spec() (+6 more)
 
 ### Community 55 - "package.json"
-Cohesion: 0.08
-Nodes (23): name, private, type, version, DNCR_NODE_BUILD, @codemirror/lang-css, @codemirror/lang-html, @codemirror/lang-json (+15 more)
+Cohesion: 0.07
+Nodes (26): name, private, type, version, DNCR_NODE_BUILD, @codemirror/lang-css, @codemirror/lang-html, @codemirror/lang-json (+18 more)
 
 ### Community 56 - "conflicts.test.ts"
-Cohesion: 0.09
-Nodes (27): history(), isStatus(), kindOf(), noteBody(), openConflicts(), conflictedIds(), decideNote(), decideVault() (+19 more)
+Cohesion: 0.07
+Nodes (33): settle(), history(), isStatus(), kindOf(), noteBody(), openConflicts(), conflictedIds(), decideNote() (+25 more)
 
-### Community 57 - "NoteMenu"
-Cohesion: 0.10
-Nodes (23): EditorView, NoteMenu(), activate(), close(), onMenuKeyDown(), onTriggerKeyDown(), openAt(), setup() (+15 more)
+### Community 57 - "workspace-visual.spec.ts"
+Cohesion: 0.18
+Nodes (16): block(), expectExact(), expectMeasure(), measure, MOBILE, normalizeColor(), openNote(), record() (+8 more)
 
-### Community 58 - "test_refresh.py"
-Cohesion: 0.11
-Nodes (19): hash_password(), hash_refresh_token(), validate_new_password(), _replay(), test_rf_009_logout_clears_cookies_and_revokes_refresh(), test_rf_010_refresh_issues_new_access_token(), test_rf_010_refresh_rotates_the_refresh_token(), test_rf_010_refresh_token_is_stored_hashed() (+11 more)
+### Community 58 - "SpaResourceNotFound"
+Cohesion: 0.14
+Nodes (16): SpaResourceNotFound, test_rf_001_public_register_endpoint_no_longer_exists(), test_only_the_problem_translator_imports_http_exception(), 0. Gates de simplicidad, 1. Cumplimiento constitucional, 2. Arquitectura de la feature  *(hexagonal)*, 3. Modelo de datos, 4. Contratos (+8 more)
 
-### Community 59 - "SPEC-0008 · Editor de documentos dentro de una bóveda"
-Cohesion: 0.22
-Nodes (8): 2. Alcance, 3. Modelo de datos y contratos de E/S, 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), Fuera de alcance, Marcadores abiertos, SPEC-0008 · Editor de documentos dentro de una bóveda
+### Community 59 - "prefers_html"
+Cohesion: 0.13
+Nodes (8): prefers_html(), VaultsSpaNegotiation, test_prefers_html_detecta_navegacion(), Implementación de RF-003, Re-anchor (2026-10-17) — corrección de la regresión 405/404 y del guardia RF-008, Reglas, Tareas, TASKS-0007 · FastAPI sirve la SPA
 
-### Community 60 - "9. Implementación por requisito"
-Cohesion: 0.10
-Nodes (18): 9. Implementación por requisito, Implementación de RF-001, Implementación de RF-002, Implementación de RF-003, Implementación de RF-004, Implementación de RF-005, Implementación de RF-007, Implementación de RF-008 (+10 more)
+### Community 60 - "PLAN-0008 · Editor de documentos dentro de una bóveda"
+Cohesion: 0.04
+Nodes (40): note(), 0. Gates de simplicidad, 14. Enmienda 5 (2026-10-23) — Converge, corrida 1 (accesibilidad del árbol), 15. Enmienda 6 (2026-10-23) — Converge corrida 1 bis, 16. Enmienda 7 (2026-10-23) — Converge corrida 1 ter, 19. Enmienda 10 (2026-10-23) — Converge tras la enmienda 9, 20. Enmienda 11 (2026-10-23) — Converge sobre 9204b88, 21. Enmienda 12 (2026-10-23) — Converge sobre 9dd03fc (+32 more)
 
 ### Community 61 - "9. Implementación por requisito"
 Cohesion: 0.10
-Nodes (21): 9. Implementación por requisito, Implementación de RF-001, Implementación de RF-002, Implementación de RF-003, Implementación de RF-005, Implementación de RF-006, Implementación de RF-007, Implementación de RF-008 (+13 more)
+Nodes (20): 9. Implementación por requisito, Implementación de RF-001, Implementación de RF-002, Implementación de RF-003, Implementación de RF-005, Implementación de RF-006, Implementación de RF-007, Implementación de RF-008 (+12 more)
 
 ### Community 62 - "PLAN-NNN · ‹Nombre›"
 Cohesion: 0.12
 Nodes (16): 0. Gates de simplicidad, 1. Cumplimiento constitucional, 2. Arquitectura de la feature  *(según el patrón elegido)*, 3. Modelo de datos, 4. Contratos, 5. Estrategia de pruebas (por zona del patrón), 6. Secuenciación de archivos, 7. Seguimiento de complejidad  *(opcional)* (+8 more)
 
 ### Community 63 - "test_note_service.py"
-Cohesion: 0.13
-Nodes (20): path_key(), NotePathTaken, _reservation_id(), _note_use(), _bulk_branch(), _note(), _note_id(), _reservation_id() (+12 more)
+Cohesion: 0.11
+Nodes (26): path_key(), NotePathTaken, _reservation_id(), _note_use(), _bulk_branch(), clock(), db(), _note() (+18 more)
 
 ### Community 64 - "test_design_system_mode.py"
 Cohesion: 0.07
 Nodes (14): _contrast_ratio(), _derive_dark_palette(), _filter_anti_patterns_for_mode(), _palette_is_dark(), _query_wants_dark(), _relative_luminance(), _resolve_color_mode(), _select_palette_for_mode() (+6 more)
 
 ### Community 65 - "RevisionConflict"
-Cohesion: 0.23
-Nodes (3): InMemoryVaultPort, RecordingPort, test_rf_010_double_rejects_stale_rev_and_bumps_generation()
+Cohesion: 0.19
+Nodes (4): InMemoryVaultPort, RecordingPort, test_rf_002_list_asks_one_more_and_sets_next_cursor_only_if_there_is_more(), test_rf_010_double_rejects_stale_rev_and_bumps_generation()
 
 ### Community 66 - "Constitución — ‹nombre del proyecto›"
 Cohesion: 0.12
@@ -599,63 +610,63 @@ Nodes (15): Artículo 10 · Regla de raíz (prohibido el parche), Artículo 11 �
 
 ### Community 67 - "useSync"
 Cohesion: 0.05
-Nodes (83): _check_status(), Me, App(), ChangePasswordRoute(), SyncScope(), renderAt(), CHANGE_PASSWORD_PATH, MeContext (+75 more)
+Nodes (62): _check_status(), frontend/src/, canonical(), LocalCopyNotice(), LocalCopyState, CurrentState(), renderWith(), clearDiscarded() (+54 more)
 
-### Community 68 - "StorageUnavailable"
-Cohesion: 0.08
-Nodes (23): DomainError, test_rf_003_sync_catalog_entry_exists(), test_rf_004_invalid_sync_request_is_a_validation_failed_without_own_slug_or_detail(), test_rf_014_vault_catalog_entry_exists(), 0. Gates de simplicidad, 1. Cumplimiento constitucional, 3. Modelo de datos, 4. Contratos (+15 more)
+### Community 68 - "IconPicker.tsx"
+Cohesion: 0.11
+Nodes (33): accessibleName(), RailTooltip(), Rediseño visual del workspace (SPEC-0009), COLOR_OPTIONS, ICON_OPTIONS, IconPickerProps, Option, RadioGroupProps (+25 more)
 
-### Community 69 - "noteRules.test.ts"
-Cohesion: 0.17
-Nodes (10): Built, Case, label(), value(), Arranque, Cuándo intervienes, Entrega, Estándar que aplicas (checklist) (+2 more)
+### Community 69 - "9. Implementación por requisito"
+Cohesion: 0.07
+Nodes (31): key(), label(), 2.1 Núcleo (dominio), 2.2 Servicio y puerto, 2.5 Router de gestión de keys (`routers/agent_keys.py`, nuevo), 2.6 Esquemas (`core/schemas.py`), 2. Arquitectura de la feature (hexagonal por-capas), 9. Implementación por requisito (+23 more)
 
 ### Community 70 - "sync-integration.sh"
 Cohesion: 0.17
 Nodes (14): ADMIN_EMAIL, ADMIN_PASSWORD, cleanup(), couch(), COUCHDB_PASSWORD, COUCHDB_URL, COUCHDB_USER, DATABASE_URL (+6 more)
 
 ### Community 71 - "auth.ts"
-Cohesion: 0.10
-Nodes (30): RFC-9457, callRefresh(), changePassword(), getMe(), login(), logout(), NO_REFRESH, refreshSession() (+22 more)
+Cohesion: 0.06
+Nodes (37): RFC-9457, callRefresh(), changePassword(), login(), logout(), Me, NO_REFRESH, refreshSession() (+29 more)
 
 ### Community 72 - "AGENTS.md — Synapse"
 Cohesion: 0.15
 Nodes (12): AGENTS.md — Synapse, Antes de empezar (en orden), Convenciones, Mapa de documentación (producto), Qué es Synapse, 🔴 Regla Crítica — Código Ordenado y Profesional, 🔴 Regla Crítica — History Actualizado, 🔴 Regla Crítica — Resolver Desde la Raíz (+4 more)
 
-### Community 73 - "MilkdownView.tsx"
-Cohesion: 0.14
-Nodes (17): vscodeMarkdownPaste(), vscodeMode(), MilkdownViewProps, Running, safeImage, safeLink, TableCommands, IMAGE_SCHEMES (+9 more)
+### Community 73 - "safeUrl.ts"
+Cohesion: 0.33
+Nodes (7): safeImage, safeLink, IMAGE_SCHEMES, LINK_SCHEMES, safeImageUrl(), safeLinkUrl(), schemeOf()
 
 ### Community 74 - "compilerOptions"
 Cohesion: 0.15
 Nodes (12): compilerOptions, jsx, lib, module, moduleResolution, noEmit, resolveJsonModule, skipLibCheck (+4 more)
 
-### Community 75 - "main.py"
-Cohesion: 0.18
-Nodes (9): 0. Gates de simplicidad, 1. Cumplimiento constitucional, 3. Modelo de datos, 4. Contratos, 5. Estrategia de pruebas (TDD), 6. Secuenciación, 7. Seguimiento de complejidad / riesgos, 8. Impacto en documentación (Art. 11) (+1 more)
+### Community 75 - "logo/core.py"
+Cohesion: 0.12
+Nodes (6): BM25, detect_domain(), _load_csv(), search(), search_all(), _search_csv()
 
 ### Community 76 - "scripts"
 Cohesion: 0.18
 Nodes (11): scripts, build, dev, test, test:bundle, test:cov, test:perf, test:sync (+3 more)
 
-### Community 77 - "csv"
-Cohesion: 0.06
-Nodes (13): BM25, detect_domain(), get_cip_brief(), _load_csv(), search(), search_all(), _search_csv(), BM25 (+5 more)
+### Community 77 - "cip/core.py"
+Cohesion: 0.12
+Nodes (7): BM25, detect_domain(), get_cip_brief(), _load_csv(), search(), search_all(), _search_csv()
 
 ### Community 78 - "proseHighlight.ts"
 Cohesion: 0.13
-Nodes (15): synapseHighlighter, createHighlightScheduler(), runTanda(), schedule(), HighlightScheduler, Job, SchedulerOptions, setup() (+7 more)
+Nodes (16): observeVisibility(), whenIdle(), createHighlightScheduler(), runTanda(), schedule(), Job, SchedulerOptions, setup() (+8 more)
 
 ### Community 79 - "SyncPushService"
-Cohesion: 0.03
-Nodes (57): ReplicationPort, utc_now(), _all_docs(), _changes(), get_push_service(), NoteService, SyncPushService, _doc_id() (+49 more)
+Cohesion: 0.05
+Nodes (32): backend/app/adapters/, ReplicationRepository, backend/app/core/ports/, ReplicationPort, get_replication_port(), Autenticación (SPEC-0002), backend/, Bóvedas (SPEC-0003) (+24 more)
 
 ### Community 80 - "SPEC-NNN · ‹Nombre de la funcionalidad›"
 Cohesion: 0.17
 Nodes (11): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S  ← INVENTARIO DE FRONTERAS, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF)  *(opcional)*, En alcance (+3 more)
 
-### Community 81 - "Rejected"
-Cohesion: 0.05
-Nodes (12): is_timestamp(), parse_timestamp(), _active_uses(), _check_timestamps(), _check_vault_fields(), _history(), _Kind, _kind_of() (+4 more)
+### Community 81 - "SyncPushService"
+Cohesion: 0.04
+Nodes (26): VaultPort, is_timestamp(), parse_timestamp(), utc_now(), bulk_docs(), get_push_service(), NoteService, backend/app/services/ (+18 more)
 
 ### Community 82 - "panZoom.test.ts"
 Cohesion: 0.16
@@ -677,9 +688,9 @@ Nodes (34): dependencies, @codemirror/commands, @codemirror/lang-css, @codemirro
 Cohesion: 0.18
 Nodes (10): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, En alcance (propuesta), Fuera de alcance (propuesta) (+2 more)
 
-### Community 87 - "test_note_rules.py"
-Cohesion: 0.25
-Nodes (10): _built(), _frontmatter(), _id(), test_rf_005_a_normalized_path_is_a_fixed_point(), test_rf_005_check_frontmatter_matches_the_battery(), test_rf_005_check_path_matches_the_battery(), test_rf_005_normalize_path_matches_the_battery(), test_rf_013_path_key_matches_the_battery() (+2 more)
+### Community 87 - "check_path"
+Cohesion: 0.09
+Nodes (24): check_content(), check_frontmatter(), check_path(), nesting_depth_exceeds(), normalize_path(), _well_formed(), backend/app/core/, Notas y tiempo (SPEC-0008) (+16 more)
 
 ### Community 88 - "SPEC-0007 · FastAPI sirve la SPA"
 Cohesion: 0.20
@@ -697,9 +708,9 @@ Nodes (17): format_context(), format_result(), main(), BM25, calculate_pattern_b
 Cohesion: 0.25
 Nodes (7): AGENTS.md — mapa de ‹nombre del proyecto›, Antes de empezar (en orden), Bindings de herramienta, Convenciones, Mapa de documentación (producto), Qué es el sistema, Servicios / módulos y comandos
 
-### Community 93 - "create_vault"
-Cohesion: 0.31
-Nodes (6): create_vault(), delete_vault(), get_vault(), _respond(), restore_vault(), update_vault()
+### Community 93 - "VaultService"
+Cohesion: 0.13
+Nodes (12): create_vault(), delete_vault(), get_vault(), list_vaults(), _respond(), restore_vault(), update_vault(), _doc_id() (+4 more)
 
 ### Community 94 - "Synapse — Almacén de Bóvedas"
 Cohesion: 0.29
@@ -725,17 +736,17 @@ Nodes (6): ADR-004 · Realineación del binding de agentes de Claude Code y de l
 Cohesion: 0.29
 Nodes (6): ⚠️ Correcciones del usuario (leer SIEMPRE — no borrar), Decisiones tomadas (esta sesión), Estado del arnés — ‹nombre del proyecto›, Estado del backlog, Obstáculos y resolución, Próximo paso concreto
 
-### Community 100 - "get_current_user"
-Cohesion: 0.07
-Nodes (26): get_current_user(), require_admin(), test_rf_007_require_admin_rejects_guest(), 2. Arquitectura de la feature (por-capas con puertos), Fronteras de salida, Núcleo (`core/`), 2. Alcance, En alcance (+18 more)
+### Community 100 - "AuthService"
+Cohesion: 0.06
+Nodes (47): EmailTaken, InvalidCredentials, InvalidRefreshToken, InvalidToken, WrongCurrentPassword, ChangePasswordRequest, CreateUserRequest, LoginRequest (+39 more)
 
 ### Community 101 - "frontend/"
 Cohesion: 0.20
 Nodes (9): Autenticación (SPEC-0002, RF-020), Comandos, Contenido markdown completo (SPEC-0010), Convenciones, Despliegue, Editor de notas (SPEC-0008), frontend/, Identidad de marca (SPEC-0011) (+1 more)
 
-### Community 102 - "SPEC-0002 · Autenticación y aislamiento por usuario"
-Cohesion: 0.22
-Nodes (8): 1. Contexto del dominio, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales, Marcadores abiertos, SPEC-0002 · Autenticación y aislamiento por usuario
+### Community 102 - "name_key"
+Cohesion: 0.25
+Nodes (4): _id(), test_rf_005_each_field_case_matches_the_server_rules(), test_rf_012_icon_cases_are_in_the_common_battery(), test_rf_015_each_name_key_matches_the_server_key()
 
 ### Community 103 - "accentContrast.test.ts"
 Cohesion: 0.20
@@ -757,17 +768,17 @@ Nodes (4): Arranque (en orden), Ciclo, Cierre de sesión, Reglas duras
 Cohesion: 0.40
 Nodes (4): Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), Reglas, Tareas, TASKS-NNN · ‹Nombre›
 
-### Community 108 - "main.py"
-Cohesion: 0.33
-Nodes (3): health(), lifespan(), D · Bootstrap
+### Community 108 - "brand-header.spec.ts"
+Cohesion: 0.16
+Nodes (12): CASES, HEADER_BASELINE, WIDTHS, decodePng(), expectAtLeast(), parseRgb(), Pixels, silhouetteBox() (+4 more)
 
 ### Community 109 - "content-visual.spec.ts"
-Cohesion: 0.09
-Nodes (28): bigNote(), byteLen(), CODE_SAMPLES, CONTENT_NOTES, ContentNote, DEEP_PATH, DIAGRAM_TYPES, fence() (+20 more)
+Cohesion: 0.13
+Nodes (17): noteName(), channels(), COLOR_SCOPES, COMBOS, contrast(), DESKTOP_THEMES, luminance(), note() (+9 more)
 
 ### Community 110 - "stored_docs"
-Cohesion: 0.16
-Nodes (12): _snapshot(), test_rf_004_another_users_notes_and_reservations_are_invisible_and_untouchable(), ensure_design(), _all_docs_with_local(), test_rnf_003_another_users_data_is_invisible_and_untouchable(), stored_docs(), _guest(), _six_requests() (+4 more)
+Cohesion: 0.17
+Nodes (10): db_name(), ensure_design(), _all_docs_with_local(), test_rnf_003_another_users_data_is_invisible_and_untouchable(), _guest(), _six_requests(), test_rf_014_another_users_vault_is_invisible_and_untouchable(), test_rf_015_every_vault_endpoint_requires_a_session() (+2 more)
 
 ### Community 111 - "arquitecto.md"
 Cohesion: 0.50
@@ -778,8 +789,8 @@ Cohesion: 0.50
 Nodes (3): Arranque, El bucle (hasta converger), Reglas duras
 
 ### Community 113 - "frontmatter"
-Cohesion: 0.06
-Nodes (42): check_content(), check_frontmatter(), check_path(), nesting_depth_exceeds(), normalize_path(), _well_formed(), Notas y tiempo (SPEC-0008), _no_control_characters() (+34 more)
+Cohesion: 0.07
+Nodes (41): heading(), NoteMenu(), activate(), close(), onMenuKeyDown(), onTriggerKeyDown(), openAt(), setup() (+33 more)
 
 ### Community 114 - "reference/ — arnés SDD Anchored listo para implantar"
 Cohesion: 0.50
@@ -794,56 +805,60 @@ Cohesion: 0.05
 Nodes (43): Arbitrary Values, Aspect Ratio, Background Colors, Border Color, Border Radius, Border Style, Border Width, Borders (+35 more)
 
 ### Community 121 - "CodeBlockView"
-Cohesion: 0.17
+Cohesion: 0.16
 Nodes (4): backend/tests/, CodeBlockView, icon(), copy()
 
+### Community 130 - "vault_service.py"
+Cohesion: 0.21
+Nodes (11): VaultListItem, VaultOut, _check_precondition(), _etag(), _to_list_item(), _to_out(), _vault_id(), Versioned (+3 more)
+
 ### Community 131 - "frontmatter.ts"
-Cohesion: 0.18
+Cohesion: 0.17
 Nodes (17): classifyLegacy(), composeCode(), CORE_TAGS, looksCorrupted(), normalize(), ParseError, parseFrontmatterYaml(), ParseResult (+9 more)
 
 ### Community 132 - "Workspace"
-Cohesion: 0.10
-Nodes (29): canStep(), Direction, EMPTY_HISTORY, History, HISTORY_MAX, historyKey(), load(), push() (+21 more)
+Cohesion: 0.07
+Nodes (38): EditorView, canStep(), Direction, EMPTY_HISTORY, History, HISTORY_MAX, historyKey(), load() (+30 more)
 
 ### Community 133 - "RevisionConflict"
-Cohesion: 0.14
-Nodes (23): _json_param(), _ids(), test_rf_001_design_doc_is_created_idempotently(), test_rf_001_list_page_returns_full_docs(), test_rf_001_list_page_returns_only_vaults_of_the_requested_list(), test_rf_002_limit_caps_the_page(), test_rf_002_pages_cover_everything_once_with_created_at_ties(), test_rf_004_get_missing_doc_returns_none() (+15 more)
+Cohesion: 0.08
+Nodes (34): _json_param(), VaultRepository, test_rnf_002_couchdb_credentials_are_valid(), test_rnf_002_couchdb_under_test_is_a_real_server(), db(), _ids(), _replicate(), repo() (+26 more)
 
 ### Community 134 - "Brand Guidelines v1.0"
 Cohesion: 0.05
 Nodes (37): 1. Color Palette, 2. Typography, 3. Logo Usage, 4. Voice & Tone, 5. Imagery Guidelines, 6. Design Components, Accessibility, AI Image Generation (+29 more)
 
 ### Community 135 - "Tareas"
-Cohesion: 0.07
-Nodes (27): 0 · Línea base, AA · Enmienda 18 (PLAN-0008 §27) — E-8, D-1, AB · Enmienda 19 (PLAN-0008 §28) — U-6, AD · Enmienda 21 (PLAN-0008 §30) — U-7, AE · Enmienda 22 (PLAN-0008 §31) — B-1, U-8, D-2, AF · Enmienda 23 (PLAN-0008 §32) — U-9, F-5, Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), H · Integración real y RNF-001 (PLAN-0008 §5) (+19 more)
+Cohesion: 0.06
+Nodes (30): Built, Case, value(), 0 · Línea base, AA · Enmienda 18 (PLAN-0008 §27) — E-8, D-1, AB · Enmienda 19 (PLAN-0008 §28) — U-6, AD · Enmienda 21 (PLAN-0008 §30) — U-7, AE · Enmienda 22 (PLAN-0008 §31) — B-1, U-8, D-2 (+22 more)
 
-### Community 136 - "NoteEditor.tsx"
-Cohesion: 0.04
-Nodes (48): CodeView(), ConfirmDialog(), ConfirmDialogProps, splitLegacyBlock(), Mode, NoteEditorHandle, REAL_VIEWS, View (+40 more)
-
-### Community 137 - ".claude/agents/ — binding de Claude Code"
-Cohesion: 0.50
-Nodes (3): .claude/agents/ — binding de Claude Code, Conjunto base (mapea 1:1 a `method.md §8`), Especialistas de dominio (opcionales, por proyecto)
-
-### Community 138 - "parseStage.test.ts"
+### Community 136 - "parseStage.test.ts"
 Cohesion: 0.19
-Nodes (8): HEADING_CASES, createParseProcessor(), parseMarkdownToJson(), CORPUS, ParseRequest, worker, @milkdown/preset-commonmark, @milkdown/preset-gfm
+Nodes (8): CONTENT_NOTES, createParseProcessor(), parseMarkdownToJson(), CORPUS, ParseRequest, worker, @milkdown/preset-commonmark, @milkdown/preset-gfm
+
+### Community 137 - "SPEC-0002 · Autenticación y aislamiento por usuario"
+Cohesion: 0.18
+Nodes (10): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales, Fuera de alcance (+2 more)
+
+### Community 138 - "generate-slide.py"
+Cohesion: 0.13
+Nodes (10): _e(), generate_chart_slide(), generate_cta_slide(), generate_deck(), generate_metrics_slide(), generate_problem_slide(), generate_solution_slide(), generate_testimonial_slide() (+2 more)
 
 ### Community 139 - "vault"
 Cohesion: 0.40
 Nodes (3): clock(), couch(), vault()
 
 ### Community 140 - "Sprint 2 — Autenticación y Gestión de Bóvedas (2026-10-11 a 2026-10-25)"
-Cohesion: 0.20
-Nodes (9): 🚀 Cómo Ejecutar Este Sprint, 📊 Estado General, Sprint 2 — Autenticación y Gestión de Bóvedas (2026-10-11 a 2026-10-25), [T-001] Setup de autenticación con JWT y Argon2id, [T-003] Diagrama de Arquitectura General (Archify), [T-004] Diagrama de Flujo de Autenticación (Archify), [T-005] Diagrama de Aislamiento de Datos (Archify), [T-006] Tests de integración (Real DB) (+1 more)
+Cohesion: 0.18
+Nodes (10): 🚀 Cómo Ejecutar Este Sprint, 📊 Estado General, Sprint 2 — Autenticación y Gestión de Bóvedas (2026-10-11 a 2026-10-25), [T-001] Setup de autenticación con JWT y Argon2id, [T-002] CRUD de bóvedas (Get/Create/Update/Delete), [T-003] Diagrama de Arquitectura General (Archify), [T-004] Diagrama de Flujo de Autenticación (Archify), [T-005] Diagrama de Aislamiento de Datos (Archify) (+2 more)
 
 ### Community 141 - "Design"
 Cohesion: 0.06
 Nodes (35): Banner Design (Built-in), Banner: Design Rules, Banner: Quick Size Reference, Banner: Top Art Styles, Banner: Workflow, CIP Design (Built-in), CIP: Generate Brief, CIP: Generate Mockups (+27 more)
 
 ### Community 142 - "4. Criterios de aceptación (EARS)"
-Cohesion: 0.17
-Nodes (11): Implementación de RF-018, 4. Criterios de aceptación (EARS), Bloques de código: etiqueta y copiar, Carpetas, Diagramas Mermaid, Encabezado del documento (breadcrumb), Estilos del mockup y temas, No regresión (+3 more)
+Cohesion: 0.22
+Nodes (9): 4. Criterios de aceptación (EARS), Bloques de código: etiqueta y copiar, Carpetas, Diagramas Mermaid, Encabezado del documento (breadcrumb), Estilos del mockup y temas, No regresión, Resaltado de sintaxis (+1 more)
 
 ### Community 143 - "Canvas Design System"
 Cohesion: 0.06
@@ -854,16 +869,16 @@ Cohesion: 0.07
 Nodes (17): test_rf_006_the_rev_pattern_bounds_the_generation_like_the_push(), test_rf_007_path_pattern_plus_maxlength_match_check_path_over_the_battery(), _seed(), test_rnf_001_first_page_p95_under_300_ms_with_1000_vaults(), apply_color(), apply_viewbox_size(), extract_svgs(), generate_batch() (+9 more)
 
 ### Community 146 - "ThemeToggle"
-Cohesion: 0.22
-Nodes (9): Range, fill(), 5.1 Tabla por zona, 5.2 `brandAssets.test.ts` (vitest, sin navegador), 5.3 E2E en Chromium real (`brand*.spec.ts`), 5.4 Evidencia medida para este plan (2026-10-27), 5.5 Presupuestos RNF-001 (medibles), 5. Estrategia de pruebas (por zona del patrón) (+1 more)
+Cohesion: 0.17
+Nodes (13): Range, fill(), ThemeToggle(), setMode(), 10. Enmienda 1 (2026-10-23) — revisión de A–C y T-032, 5.1 Tabla por zona, 5.2 `brandAssets.test.ts` (vitest, sin navegador), 5.3 E2E en Chromium real (`brand*.spec.ts`) (+5 more)
 
-### Community 147 - "path_key"
-Cohesion: 0.20
-Nodes (9): Autenticación (SPEC-0002), backend/, Comandos, Despliegue: proxy inverso externo, Entorno, Estructura, Notas (SPEC-0008), Regla de oro (+1 more)
+### Community 147 - ".delete"
+Cohesion: 0.13
+Nodes (11): _non_canonical_forms(), test_rf_002_exact_fit_has_no_next_cursor(), test_rf_003_trash_cursor_on_the_normal_list_is_invalid(), test_rf_011_delete_sets_deleted_at_and_keeps_the_data(), test_rf_011_deleted_vault_is_not_found(), test_rf_012_a_document_without_the_icon_key_reads_as_null(), test_rf_012_list_items_carry_their_current_etag(), test_rf_012_list_of_the_trash_passes_deleted_and_returns_deleted_vaults() (+3 more)
 
 ### Community 148 - "argparse"
-Cohesion: 0.08
-Nodes (13): build_cip_prompt(), check_logo_required(), generate_cip_set(), generate_with_nano_banana(), load_env(), load_logo_image(), main(), generate_html() (+5 more)
+Cohesion: 0.05
+Nodes (21): test_sync_parses_bundled_starter_template(), build_cip_prompt(), check_logo_required(), generate_cip_set(), generate_with_nano_banana(), load_env(), load_logo_image(), main() (+13 more)
 
 ### Community 149 - "visual.sh"
 Cohesion: 0.21
@@ -874,44 +889,44 @@ Cohesion: 0.14
 Nodes (12): dependencies, playwright-core, svgo, description, name, private, type, version (+4 more)
 
 ### Community 151 - "Tareas"
-Cohesion: 0.17
-Nodes (11): 0 · Línea base, A · Re-anclajes previos (PLAN-0009 P-10), B · Infraestructura de verificación visual (rojo contra la UI actual), Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), D · Revisión visual temprana (antes de cualquier tarea de backend), G · RNF-001 en Chromium real, I · Enmienda 1 (PLAN-0009 §10) — A1-1…A1-5, J · Enmienda 2 (PLAN-0009 §11) — F2-1…F2-4 (+3 more)
+Cohesion: 0.15
+Nodes (12): 0 · Línea base, A · Re-anclajes previos (PLAN-0009 P-10), B · Infraestructura de verificación visual (rojo contra la UI actual), Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), D · Revisión visual temprana (antes de cualquier tarea de backend), G · RNF-001 en Chromium real, H · Documentación (PLAN-0009 §8) y verificación completa, I · Enmienda 1 (PLAN-0009 §10) — A1-1…A1-5 (+4 more)
 
 ### Community 152 - "compilerOptions"
 Cohesion: 0.17
 Nodes (11): compilerOptions, lib, module, moduleResolution, noEmit, resolveJsonModule, skipLibCheck, strict (+3 more)
 
 ### Community 153 - "codeBlockView.test.ts"
-Cohesion: 0.08
-Nodes (16): announce(), CodeBlockDeps, codeBlockViewFactory(), MermaidRenderer, MermaidState, NO_RENDERER, MermaidMount, mount() (+8 more)
+Cohesion: 0.10
+Nodes (13): announce(), CodeBlockDeps, codeBlockViewFactory(), MermaidRenderer, MermaidState, NO_RENDERER, MermaidMount, mount() (+5 more)
 
-### Community 154 - "remote.ts"
-Cohesion: 0.22
-Nodes (11): BULK_CHUNK_BYTES, chunkDocs(), encoder, Refresh, REMOTE_PATH, RemoteOptions, syncFetch(), json() (+3 more)
+### Community 154 - "NoteMenu"
+Cohesion: 0.17
+Nodes (11): 0 · Línea base, A · Re-anclajes al inicio (PLAN-0010 P-15), B · Capturas de referencia, Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), E · Revisión visual temprana (antes de cualquier lógica o backend), G · Requisitos no funcionales, H · Validación del experto-ux-ui con `ui-ux-pro-max`, J · Verificación completa y suites finales (+3 more)
 
-### Community 155 - "json"
-Cohesion: 0.09
-Nodes (16): contract_for(), main(), owns_path(), _refs(), format_brief(), format_results(), main(), generate_css_for_background() (+8 more)
+### Community 155 - "csv"
+Cohesion: 0.06
+Nodes (14): generate_css_for_background(), get_background_image(), get_curated_images(), get_overlay_css(), get_pexels_search_url(), load_backgrounds_config(), load_brand_colors(), main() (+6 more)
 
 ### Community 157 - "SPEC-0009 · Rediseño visual del workspace de bóvedas y notas"
-Cohesion: 0.18
-Nodes (10): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance, Fuera de alcance (+2 more)
+Cohesion: 0.17
+Nodes (11): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance (+3 more)
 
 ### Community 158 - "fixtures.ts"
-Cohesion: 0.06
-Nodes (64): perfVaultNotes(), P95_MS, PARSE_MARKS, shotAt(), api(), base_url(), block(), bulkDocs() (+56 more)
+Cohesion: 0.11
+Nodes (35): perfVaultNotes(), api(), base_url(), bulkDocs(), cookieHeader(), createNote(), createUser(), createVault() (+27 more)
 
 ### Community 159 - "contrast.test.ts"
 Cohesion: 0.14
 Nodes (10): ADR-0006, LEGACY, luminance(), MODES, NEW_TOKENS, ratio(), Rgba, SURFACES (+2 more)
 
 ### Community 160 - "NoteBreadcrumb"
-Cohesion: 0.16
+Cohesion: 0.22
 Nodes (11): Crumb, crumbs(), fit(), FIT_DEFAULTS, FitOptions, waterFill(), OPTIONS(), NoteBreadcrumb() (+3 more)
 
 ### Community 161 - "TaskItemView"
-Cohesion: 0.20
-Nodes (9): isTask(), plainItem(), TaskItemView, taskItemViewFactory(), item(), mount(), schema, state() (+1 more)
+Cohesion: 0.24
+Nodes (7): isTask(), plainItem(), TaskItemView, taskItemViewFactory(), item(), mount(), schema
 
 ### Community 162 - "test_sync_depth.py"
 Cohesion: 0.22
@@ -922,40 +937,40 @@ Cohesion: 0.06
 Nodes (32): Accordion, Alert, Alert Dialog, Avatar, Badge, Button, Card, Checkbox (+24 more)
 
 ### Community 164 - "9. Implementación por requisito"
-Cohesion: 0.08
-Nodes (25): 0. Gates de simplicidad, 1. Cumplimiento constitucional, 3. Modelo de datos, 4. Contratos, 5.2 Cómo se corre la verificación en navegador real, 5.3 Fidelidad visual: capturas y criterio objetivo, 5.4 Medidas de referencia del mockup (congeladas, Chromium 1440 × 900, ambos temas), 5.5 RNF-001 (rendimiento) (+17 more)
+Cohesion: 0.14
+Nodes (14): 9. Implementación por requisito, Implementación de RF-002, Implementación de RF-003, Implementación de RF-004, Implementación de RF-005, Implementación de RF-006, Implementación de RF-006a, Implementación de RF-007 (+6 more)
 
 ### Community 165 - "Tareas"
-Cohesion: 0.15
-Nodes (12): broken(), 0 · Re-anclaje y línea base, A · `scripts/brand` y assets SVG, C · `theme-color`, Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), D · Iconos y manifest, E · `forced-colors` y fallo de carga, F · E2E de fidelidad (+4 more)
+Cohesion: 0.18
+Nodes (10): 0 · Re-anclaje y línea base, A · `scripts/brand` y assets SVG, C · `theme-color`, Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), D · Iconos y manifest, E · `forced-colors` y fallo de carga, G · Regresión, Reglas (+2 more)
 
 ### Community 166 - "Tailwind CSS Responsive Design"
 Cohesion: 0.06
 Nodes (32): 1. Mobile-First Design, 2. Consistent Breakpoint Usage, 3. Test at Breakpoint Boundaries, 4. Use Container for Content Width, 5. Progressive Enhancement, 6. Avoid Too Many Breakpoints, Best Practices, Breakpoint System (+24 more)
 
-### Community 167 - "IconPicker.tsx"
-Cohesion: 0.10
-Nodes (39): accessibleName(), RailTooltip(), Rediseño visual del workspace (SPEC-0009), COLOR_OPTIONS, ICON_OPTIONS, IconPicker(), IconPickerProps, Option (+31 more)
+### Community 167 - "VaultForm"
+Cohesion: 0.21
+Nodes (9): IconPicker(), RadioGroup(), move(), onKeyDown(), setup(), VaultForm(), edit(), showError() (+1 more)
 
 ### Community 168 - "Typography Specifications"
 Cohesion: 0.06
 Nodes (30): Accessibility, Base System, Best Practices, Clean & Modern, Common Font Pairings, Contrast Requirements, CSS Implementation, Editorial (+22 more)
 
-### Community 169 - "whenIdle"
-Cohesion: 0.43
-Nodes (5): observeVisibility(), whenIdle(), Contenido markdown completo (SPEC-0010), [2026-10-26] SPEC-0010 Slice 5 (resaltado + Mermaid, T-084…T-095) — Session-End PARCIAL: DETENIDO por RNF-001 (Directiva de Pausa), 11.4 Archivos y tareas
+### Community 169 - "export_openapi.py"
+Cohesion: 0.33
+Nodes (5): contract_for(), main(), owns_path(), _refs(), target()
 
-### Community 170 - "SPEC-0003 · CRUD de bóvedas"
-Cohesion: 0.17
-Nodes (11): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S, 4. Criterios de aceptación (EARS), 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance (+3 more)
+### Community 170 - "test_contract.py"
+Cohesion: 0.18
+Nodes (10): _app_spec(), _committed(), test_contract_documents_every_endpoint_of_the_auth_spec(), test_contract_documents_every_endpoint_of_the_vault_spec(), test_contract_documents_exactly_the_sync_channel_of_plan_0005(), test_contract_is_committed_and_matches_the_running_app(), test_every_app_path_belongs_to_exactly_one_feature(), test_problem_contract_holds_only_the_problem_schema() (+2 more)
 
 ### Community 171 - "Logo Usage Rules"
 Cohesion: 0.07
 Nodes (28): Absolute Don'ts, Approved Backgrounds, Before Using Logo, Clear Space, Co-branding, Color Rules, Color Usage, Color Variants (+20 more)
 
-### Community 172 - "@milkdown/prose"
-Cohesion: 0.12
-Nodes (16): measure, cachedParser(), CachedParserReady, docFromMdastJson(), mark(), PARSE_MARK, preparsedMdastCtx, applyHeadingIds() (+8 more)
+### Community 172 - "test_spa.py"
+Cohesion: 0.21
+Nodes (15): test_api_desconocida_devuelve_problem_no_html(), test_api_existente_con_html_no_sirve_spa(), test_archivo_raiz_con_extension_inexistente_404(), test_asset_existente_se_sirve(), test_asset_inexistente_404(), test_metodo_no_get_a_ruta_desconocida_da_404_problem_no_405(), test_metodo_no_permitido_en_ruta_real_sigue_dando_405(), test_raiz_sirve_index() (+7 more)
 
 ### Community 173 - "themeVariables.ts"
 Cohesion: 0.31
@@ -966,20 +981,20 @@ Cohesion: 0.07
 Nodes (28): Alert, Anatomy, Anatomy, Anatomy, Anatomy, Anatomy, Badge, Button (+20 more)
 
 ### Community 175 - "BrandLogo"
-Cohesion: 0.13
-Nodes (15): BrandLogo(), 0. Gates de simplicidad, 1. Cumplimiento constitucional, 2.1 Núcleo, 2.2 Coordinación (cliente), 2.3 Componentes de interfaz (zona frontend — bloque de maquetación), 2.4 Fronteras de salida (archivos estáticos del build), 2.5 Generación reproducible de los assets (`frontend/scripts/brand/`, nuevo) (+7 more)
-
-### Community 176 - "httpx"
 Cohesion: 0.12
-Nodes (13): db_name(), clock(), db(), repo(), service(), reserve(), test_rnf_002_couchdb_credentials_are_valid(), test_rnf_002_couchdb_under_test_is_a_real_server() (+5 more)
+Nodes (17): BrandLogo(), 0. Gates de simplicidad, 1. Cumplimiento constitucional, 2.1 Núcleo, 2.2 Coordinación (cliente), 2.3 Componentes de interfaz (zona frontend — bloque de maquetación), 2.4 Fronteras de salida (archivos estáticos del build), 2.5 Generación reproducible de los assets (`frontend/scripts/brand/`, nuevo) (+9 more)
+
+### Community 176 - "content-notes.ts"
+Cohesion: 0.19
+Nodes (14): bigNote(), byteLen(), CODE_SAMPLES, ContentNote, DEEP_PATH, DIAGRAM_TYPES, fence(), HEADING_CASES (+6 more)
 
 ### Community 177 - "useTheme.test.tsx"
 Cohesion: 0.18
 Nodes (14): Identidad de marca (SPEC-0011), OPTIONS, applyResolvedTheme(), DEFAULT_THEME_MODE, readStored(), resolve(), THEME_COLOR, THEME_ORDER (+6 more)
 
 ### Community 178 - "SPEC-0011 · Identidad de marca: logo oficial de Synapse"
-Cohesion: 0.12
-Nodes (17): ThemeToggle(), setMode(), 10. Enmienda 1 (2026-10-23) — revisión de A–C y T-032, 4. Criterios de aceptación (EARS), 7. Decisiones para el GATE 2 y seguimiento de complejidad, Riesgos, 1. Contexto del dominio, 2. Alcance (+9 more)
+Cohesion: 0.18
+Nodes (10): 1. Contexto del dominio, 2. Alcance, 3. Modelo de datos y contratos de E/S  ← INVENTARIO DE FRONTERAS, 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance, Fuera de alcance (+2 more)
 
 ### Community 179 - "html-token-validator.py"
 Cohesion: 0.13
@@ -997,9 +1012,9 @@ Nodes (3): nested(), test_rf_001_a_body_at_the_cap_is_not_rejected_for_depth(), 
 Cohesion: 0.33
 Nodes (5): ADR-006 · Extensión de tokens para el contenido Markdown, Alternativas descartadas, Consecuencias, Contexto y planteamiento del problema, Decisión
 
-### Community 183 - "Settings"
-Cohesion: 0.32
-Nodes (4): Settings, test_rf_002_missing_env_var_prevents_startup(), test_rf_002_no_secret_has_a_default(), A · Núcleo y configuración
+### Community 183 - "security.py"
+Cohesion: 0.29
+Nodes (8): hash_password(), validate_new_password(), test_rf_003_hash_is_argon2id_and_not_plaintext(), test_rf_003_hash_is_salted(), test_rf_003_verify_password(), test_rf_018_policy_accepts_valid_password(), test_rf_018_policy_rejects_same_as_current(), test_rf_018_policy_rejects_short_password()
 
 ### Community 184 - "shadcn/ui Accessibility Patterns"
 Cohesion: 0.07
@@ -1014,28 +1029,24 @@ Cohesion: 0.08
 Nodes (25): Common Pitfalls, Core Prompt Structure, Detailed Brief, Eco/Sustainable, Effective Keywords by Style, Fashion Brand, Healthcare, Industry-Specific Prompts (+17 more)
 
 ### Community 191 - "test_tailwind_config_gen.py"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (4): test_rf_001_005_archivo_de_marca_responde_200_con_su_content_type(), test_rnf_001_lo_servido_son_los_bytes_de_public(), _strip_to_object(), TestGeneratedConfigIsValidJs
 
-### Community 192 - "pathlib"
-Cohesion: 0.05
-Nodes (11): test_sync_parses_bundled_starter_template(), main(), _run(), test_flags_hardcoded_hex_sharing_line_with_token(), test_token_only_line_reports_no_violation(), TestBm25CoreBehavior, TestDiagnosticsContracts, read_rows() (+3 more)
+### Community 193 - "PLAN-0009 · Rediseño visual del workspace de bóvedas y notas"
+Cohesion: 0.13
+Nodes (14): leaf(), 0. Gates de simplicidad, 1. Cumplimiento constitucional, 2.1 Núcleo, 2. Arquitectura de la feature (por-capas con puertos), 3. Modelo de datos, 4. Contratos, 5.2 Cómo se corre la verificación en navegador real (+6 more)
 
-### Community 193 - "push"
-Cohesion: 0.50
-Nodes (4): clock(), couch(), push(), vaults()
-
-### Community 194 - "securityGuard.test.ts"
-Cohesion: 0.50
-Nodes (4): findViolations(), productionFiles(), SRC, stripComments()
+### Community 194 - "ref_node_fs"
+Cohesion: 0.12
+Nodes (9): css, findViolations(), productionFiles(), SRC, stripComments(), css, code(), CONSUMERS (+1 more)
 
 ### Community 195 - "Color Palette Management"
 Cohesion: 0.08
 Nodes (24): Accessibility Requirements, Brand Compliance Validation, Checking Contrast, Color Documentation Format, Color Extraction, Color Palette Examples, Color Palette Management, Color System Structure (+16 more)
 
-### Community 196 - "2.1 Núcleo"
-Cohesion: 0.25
-Nodes (7): target(), leaf(), code(), CONSUMERS, read(), 2.1 Núcleo, 2. Arquitectura de la feature (por-capas con puertos)
+### Community 196 - "experto-ux-ui.md"
+Cohesion: 0.33
+Nodes (5): Arranque, Cuándo intervienes, Entrega, Estándar que aplicas (checklist), Reglas duras
 
 ### Community 198 - "CIP Deliverable Guide"
 Cohesion: 0.08
@@ -1061,9 +1072,9 @@ Nodes (22): Best Practices, Chart.js Integration, Command, Component Spec Patter
 Cohesion: 0.09
 Nodes (22): @apply Directive, Best Practices, Color Customization, Complete Tailwind Config, Configuration Examples, Content Configuration, Custom Color Palette, Custom Font Sizes (+14 more)
 
-### Community 205 - "generate-slide.py"
-Cohesion: 0.13
-Nodes (11): _e(), generate_chart_slide(), generate_cta_slide(), generate_deck(), generate_metrics_slide(), generate_problem_slide(), generate_solution_slide(), generate_testimonial_slide() (+3 more)
+### Community 205 - "push"
+Cohesion: 0.50
+Nodes (4): clock(), couch(), push(), vaults()
 
 ### Community 206 - "spacing"
 Cohesion: 0.09
@@ -1077,9 +1088,9 @@ Nodes (19): Banner Design Tasks, Brand Identity Tasks, Component Creation, Corpo
 Cohesion: 0.10
 Nodes (19): Base Color Presets, Best Practices, Color Customization, Color Format, Component Customization, CSS Variable System, Customize Styles, Customize Variants (+11 more)
 
-### Community 210 - "bulk_get"
-Cohesion: 0.25
-Nodes (10): all_docs(), all_docs_with_keys(), bulk_get(), changes(), changes_post(), db_info(), get_checkpoint(), put_checkpoint() (+2 more)
+### Community 210 - "_changes"
+Cohesion: 0.07
+Nodes (33): all_docs(), _all_docs(), all_docs_with_keys(), bulk_get(), changes(), _changes(), changes_post(), db_info() (+25 more)
 
 ### Community 211 - "Asset Organization Guide"
 Cohesion: 0.11
@@ -1120,6 +1131,10 @@ Nodes (15): 22 Art Direction Styles, Banner Sizes & Art Direction Styles Referen
 ### Community 221 - "fontSize"
 Cohesion: 0.12
 Nodes (16): $type, $value, $type, $value, $type, $value, $type, $value (+8 more)
+
+### Community 222 - "test_vaults_concurrency.py"
+Cohesion: 0.27
+Nodes (5): _simultaneously(), run(), test_rf_021_two_simultaneous_creates_with_the_same_name(), test_rf_021_two_simultaneous_renames_to_the_same_name(), _twin()
 
 ### Community 223 - "extract-colors.cjs"
 Cohesion: 0.20
@@ -1173,6 +1188,14 @@ Nodes (14): $type, $value, $type, $value, $type, $value, primitive, radius (+6 m
 Cohesion: 0.14
 Nodes (13): Card Styles, Component Variants, CSS Structures, Feature Grid (3 columns), Layout Decision Flow, Layout Patterns, Layout Selection by Use Case, Metric Styles (+5 more)
 
+### Community 238 - "SPEC-0008 · Editor de documentos dentro de una bóveda"
+Cohesion: 0.20
+Nodes (9): 2. Alcance, 3. Modelo de datos y contratos de E/S, 5. Casos límite y manejo de errores, 6. Registro de decisiones y descartes, 7. Requisitos no funcionales (RNF), En alcance, Fuera de alcance, Marcadores abiertos (+1 more)
+
+### Community 239 - "CodeView"
+Cohesion: 0.22
+Nodes (6): CodeView(), mermaidLoads, [2026-10-25] SPEC-0010 Slice 2 (frontmatter editable, RF-012/014-022/044/045) — Session-End (slice-development), 29. Enmienda 20 (2026-10-23) — Converge sobre c3e0301, AC · Enmienda 20 (PLAN-0008 §29) — T-2, @codemirror/lang-yaml
+
 ### Community 240 - "update.md"
 Cohesion: 0.15
 Nodes (12): Color Presets, Examples, Files Modified, Important, Overview, Skills Used, Step 1: Gather Brand Input, Step 2: Update Brand Guidelines (+4 more)
@@ -1188,6 +1211,14 @@ Nodes (12): Categories, Dark Mode, File Organization, Layer 1: Primitive Tokens,
 ### Community 243 - "design-tokens-starter.json"
 Cohesion: 0.15
 Nodes (12): component, $type, $value, dark, semantic, $schema, $type, $value (+4 more)
+
+### Community 244 - "test_core.py"
+Cohesion: 0.06
+Nodes (4): TestBm25CoreBehavior, TestDiagnosticsContracts, TestSearchDomains, TestTokenizer
+
+### Community 245 - "Settings"
+Cohesion: 0.32
+Nodes (4): Settings, test_rf_002_missing_env_var_prevents_startup(), test_rf_002_no_secret_has_a_default(), A · Núcleo y configuración
 
 ### Community 246 - "Primitive Tokens"
 Cohesion: 0.17
@@ -1217,13 +1248,17 @@ Nodes (10): extractColorsFromTable(), extractCoreAttributes(), extractHexColors(
 Cohesion: 0.18
 Nodes (10): Bold Dynamic, CIP Design Style Guide, Classic Traditional, Color Psychology, Corporate Minimal, Fresh Modern, Luxury Premium, Modern Tech (+2 more)
 
+### Community 253 - "TestNativeDesktopStackFreshness"
+Cohesion: 0.08
+Nodes (4): _rows(), TestNativeDesktopStackFreshness, _rows(), TestWebStackFreshness
+
 ### Community 254 - "Quick Reference"
 Cohesion: 0.18
 Nodes (11): 10. Charts & Data (LOW), 1. Accessibility (CRITICAL), 2. Touch & Interaction (CRITICAL), 3. Performance (HIGH), 4. Style Selection (HIGH), 5. Layout & Responsive (HIGH), 6. Typography & Color (MEDIUM), 7. Animation (MEDIUM) (+3 more)
 
-### Community 255 - "noteTree.ts"
-Cohesion: 0.22
-Nodes (8): byName(), collator, FolderNode, NoteNode, sortTree(), note(), TreeNode, 0. Gates de simplicidad
+### Community 255 - "Estado de las features"
+Cohesion: 0.29
+Nodes (6): Correcciones del usuario (lo primero), Estado de las features, Hazards conocidos, Próximo paso inmediato, Reglas vigentes (P1–P5), State — Synapse
 
 ### Community 256 - "sync-brand-to-tokens.cjs"
 Cohesion: 0.29
@@ -1257,10 +1292,6 @@ Nodes (10): fast, normal, slow, $type, $value, $type, $value, duration (+2 more)
 Cohesion: 0.20
 Nodes (9): Common Structures, Duarte Sparkline Pattern, Matching Strategy to Context, Product Demo (6 slides), Sales Pitch (9 slides), Search Commands, Slide Strategies, Strategy Selection (+1 more)
 
-### Community 264 - "SPEC-0005 · Sincronización PouchDB ↔ CouchDB (offline-first)"
-Cohesion: 0.20
-Nodes (9): 1. Contexto del dominio, 2. Alcance, 5. Casos límite y manejo de errores, 6. Riesgos identificados, 7. Requisitos no funcionales (RNF), 8. Registro de decisiones y descartes, En alcance, Fuera de alcance (+1 more)
-
 ### Community 266 - "input"
 Cohesion: 0.29
 Nodes (8): padding-x, input, $type, $value, focus-ring, padding-x, $type, $value
@@ -1285,13 +1316,17 @@ Nodes (6): Animation Classes, Background Images, Base Structure, Chart.js Integr
 Cohesion: 0.29
 Nodes (7): Query Contract, Step 1: Analyze User Requirements, Step 2: Generate Design System (new projects/pages), Step 2b: Persist Design System (Master + Overrides Pattern), Step 2c: Design Dials (optional), Step 3: Supplement with Detailed Searches (as needed), Step 4: Stack Guidelines
 
-### Community 275 - "ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push"
+### Community 275 - "content-perf.spec.ts"
 Cohesion: 0.29
-Nodes (6): ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push, Consecuencias, Contexto y planteamiento del problema, Decisión, Enlaces, Opciones consideradas
+Nodes (3): P95_MS, PARSE_MARKS, SIZES
 
 ### Community 276 - "Slides"
 Cohesion: 0.33
 Nodes (5): References (Knowledge Base), Routing, Slides, Subcommands, When to Use
+
+### Community 277 - "ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push"
+Cohesion: 0.29
+Nodes (6): ADR-002 · Canal de sincronización: proxy `/sync` en el backend con validación en el push, Consecuencias, Contexto y planteamiento del problema, Decisión, Enlaces, Opciones consideradas
 
 ### Community 278 - "Pre-Delivery Checklist"
 Cohesion: 0.33
@@ -1300,6 +1335,10 @@ Nodes (6): Accessibility, Interaction, Layout, Light/Dark Mode, Pre-Delivery Che
 ### Community 279 - "Prerequisites"
 Cohesion: 0.33
 Nodes (6): Available Domains, Available Stacks, How to Use This Skill, Output Formats, Prerequisites, Search Reference
+
+### Community 280 - "Backlog — Synapse"
+Cohesion: 0.40
+Nodes (4): Backlog — Synapse, Cerradas, Migradas desde spec en vuelo (2026-10-28), Por tomar (orden = prioridad — PROPUESTO 2026-10-28, pendiente de validación de Carlos)
 
 ### Community 281 - "Brand Guidelines Template"
 Cohesion: 0.40
@@ -1385,25 +1424,41 @@ Nodes (3): ring, $type, $value
 Cohesion: 0.67
 Nodes (3): secondary-foreground, $type, $value
 
+### Community 305 - "_asgi_post"
+Cohesion: 0.40
+Nodes (3): _asgi_post(), receive(), test_rf_006_unauthenticated_sync_request_is_401_without_reading_the_body()
+
+### Community 306 - "icons.ts"
+Cohesion: 0.50
+Nodes (3): GLYPHS, IconName, Shape
+
+### Community 307 - "H-002 — Acceso de agentes OpenClaw a bóvedas vía API key"
+Cohesion: 0.40
+Nodes (4): Checkpoint demostrable, H-002 — Acceso de agentes OpenClaw a bóvedas vía API key, Partida en slices demostrables (2026-10-28, a pedido de Carlos), Session-End
+
+### Community 308 - "TASKS-0002 · Autenticación y aislamiento por usuario"
+Cohesion: 0.50
+Nodes (3): Cobertura (el gate exige 100 %; `Estado` lo rellena el gate), Reglas, TASKS-0002 · Autenticación y aislamiento por usuario
+
 ## Knowledge Gaps
-- **45 isolated node(s):** `ADR-0003`, `ADR-0003`, `ADR-0003`, `ADR-0003`, `ADMIN_EMAIL` (+40 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3057 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **41 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **45 isolated node(s):** `ADR-0003`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `COUCHDB_PASSWORD`, `COUCHDB_URL` (+40 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3086 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **34 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `[2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta` connect `vault_service.py` to `History — Synapse`, `RevisionConflict`, `pytest`, `useSync`, `ValidationFailed`, `vaultStore.ts`, `test_vaults_api.py`, `test_vault_service.py`, `sync.py`, `test_problem_contract_guard.py`, `fixtures.ts`?**
-  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `[2026-10-11] 0003-vault-crud — Fase 1 (Specify) abierta` connect `vault_service.py` to `History — Synapse`, `RevisionConflict`, `vault_service.py`, `pytest`, `RevisionConflict`, `DomainError`, `VaultForm`, `useSync.ts`, `test_vaults_api.py`, `test_vault_service.py`, `SyncPushService`, `VaultUpdate`, `.delete`, `sync.py`, `VaultService`, `fixtures.ts`?**
+  _High betweenness centrality (0.042) - this node is a cross-community bridge._
 - **Are the 38 inferred relationships involving `User` (e.g. with `AuthRepository` and `get_current_user()`) actually correct?**
   _`User` has 38 INFERRED edges - model-reasoned connections that need verification._
-- **What connects `ADR-0003`, `ADR-0003`, `ADR-0003` to the rest of the system?**
+- **What connects `ADR-0003`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` to the rest of the system?**
   _45 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `resources.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.028267477203647418 - nodes in this community are weakly interconnected._
-- **Why does `vitest` connect `vitest` to `resources.ts`, `frontmatter.ts`, `conflicts.ts`, `MilkdownView`, `Workspace`, `NoteEditor.tsx`, `parseStage.test.ts`, `ParseCache`, `device.ts`, `noteStore.ts`, `codeBlockView.test.ts`, `brandAssets.test.ts`, `brand-header.spec.ts`, `contrast.test.ts`, `NoteBreadcrumb`, `renderMermaid.ts`, `TaskItemView`, `IconPicker.tsx`, `whenIdle`, `@milkdown/prose`, `themeVariables.ts`, `PropertiesForm.tsx`, `useTheme.test.tsx`, `CodeView.tsx`, `package.json`, `securityGuard.test.ts`, `useSync`, `2.1 Núcleo`, `auth.ts`, `MilkdownView.tsx`, `proseHighlight.ts`, `panZoom.test.ts`, `accentContrast.test.ts`?**
-  _High betweenness centrality (0.027) - this node is a cross-community bridge._
-- **Should `vaultStore.ts` be split into smaller, more focused modules?**
-  _Cohesion score 0.07164404223227752 - nodes in this community are weakly interconnected._
-- **Why does `2.5 Frontend (`frontend/src/sync/`)` connect `useSync` to `resources.ts`, `vaultStore.ts`, `conflicts.ts`, `auth.ts`, `ValidationFailed`, `vaultStore.ts`, `SyncPushService`, `device.ts`, `remote.ts`, `brand-header.spec.ts`, `sync_filter.py`?**
-  _High betweenness centrality (0.027) - this node is a cross-community bridge._
+  _Cohesion score 0.02769428939458995 - nodes in this community are weakly interconnected._
+- **Why does `vitest` connect `vitest` to `resources.ts`, `frontmatter.ts`, `NoteEditor.tsx`, `MilkdownView`, `conflicts.ts`, `Workspace`, `parseStage.test.ts`, `useSync.ts`, `ParseCache`, `device.ts`, `noteStore.ts`, `codeBlockView.test.ts`, `brand-header.spec.ts`, `contrast.test.ts`, `NoteBreadcrumb`, `renderMermaid.ts`, `TaskItemView`, `@milkdown/prose`, `VaultForm`, `themeVariables.ts`, `PropertiesForm.tsx`, `useTheme.test.tsx`, `CodeView.tsx`, `package.json`, `conflicts.test.ts`, `ref_node_fs`, `useSync`, `IconPicker.tsx`, `auth.ts`, `safeUrl.ts`, `proseHighlight.ts`, `panZoom.test.ts`, `accentContrast.test.ts`, `CodeView`?**
+  _High betweenness centrality (0.039) - this node is a cross-community bridge._
+- **Should `vaultRules.ts` be split into smaller, more focused modules?**
+  _Cohesion score 0.12643678160919541 - nodes in this community are weakly interconnected._
+- **Why does `5. Estrategia de pruebas (TDD)` connect `SyncPushService` to `conflicts.ts`, `MilkdownView`, `useSync.ts`, `PLAN-0008 · Editor de documentos dentro de una bóveda`, `CodeView`, `_changes`, `noteStore.ts`, `sync_filter.py`, `test_note_service.py`?**
+  _High betweenness centrality (0.035) - this node is a cross-community bridge._

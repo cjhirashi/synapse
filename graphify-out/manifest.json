@@ -1140,9 +1140,9 @@
     "semantic_hash": ""
   },
   ".harness/memory/history.md": {
-    "mtime": 1793124864.1538932,
-    "seen": 1793124880.4585018,
-    "ast_hash": "4bc68622fe364be1b31e2df0a1801930",
+    "mtime": 1793200964.1269822,
+    "seen": 1793205622.8273406,
+    "ast_hash": "a74afe43aa52bddfee3184e643e903cd",
     "semantic_hash": ""
   },
   ".harness/memory/state.md": {
@@ -1332,9 +1332,9 @@
     "semantic_hash": ""
   },
   "AGENTS.md": {
-    "mtime": 1792196722.7207904,
-    "seen": 1792431767.7266037,
-    "ast_hash": "6c1cb916e5920c972059ab02f9fd0397",
+    "mtime": 1793209227.795422,
+    "seen": 1793209411.9515684,
+    "ast_hash": "bea70173c83fdab332d15d470fb7aed4",
     "semantic_hash": ""
   },
   "ARCHIFY.md": {
@@ -3441,6 +3441,30 @@
     "mtime": 1793144112.3611808,
     "seen": 1793151856.5271127,
     "ast_hash": "e5363865e9f811d7fa040dbe15d02923",
+    "semantic_hash": ""
+  },
+  ".harness/specs/0013-acceso-agentes-api/spec.md": {
+    "mtime": 1793209311.2101457,
+    "seen": 1793209411.9515498,
+    "ast_hash": "d171d0914292a99db8f00a694aa321ff",
+    "semantic_hash": ""
+  },
+  ".harness/specs/0013-acceso-agentes-api/plan.md": {
+    "mtime": 1793205599.4041076,
+    "seen": 1793205622.8274584,
+    "ast_hash": "3563a6608b4d3644d1993dbe61e6ff76",
+    "semantic_hash": ""
+  },
+  ".harness/backlog.md": {
+    "mtime": 1793209854.4638953,
+    "seen": 1793209914.5385423,
+    "ast_hash": "f911a5fdb954f93018aaf7e9c7fdb1e2",
+    "semantic_hash": ""
+  },
+  ".harness/historias/0013-acceso-agentes-api/historia.md": {
+    "mtime": 1793209874.0660667,
+    "seen": 1793209914.5385761,
+    "ast_hash": "292edb92c914ab82324ab685201ef74b",
     "semantic_hash": ""
   }
 }
