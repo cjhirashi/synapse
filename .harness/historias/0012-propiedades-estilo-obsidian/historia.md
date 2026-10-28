@@ -32,6 +32,33 @@ Ningún código fue escrito todavía; el contenido completo y aprobado
 tomar esta historia: seguir el ciclo driver/navigator de `method.md` §4
 directamente sobre el plan/tasks ya aprobados.
 
+## Partida en slices demostrables (2026-10-28, a pedido de Carlos)
+
+H-001 se parte en 3 historias end-to-end siguiendo la propia secuenciación
+de PLAN-0012 §6 (que ya marcaba dos "checkpoint visual" separados). Orden
+= `backlog.md`.
+
+- **H-001.1 — Panel en LECTURA, estilo Obsidian.** RF-001, RF-002, RF-004,
+  RF-007, RF-010. Núcleo (`isIsoDate`/`displayKind`) + `PropertyRow` +
+  mapa de iconos + `PropertiesPanel` + CSS (plan §6 pasos 1-3).
+  **Demo:** abrir una nota con propiedades, verla en modo lectura con el
+  panel nuevo (iconos, sin cabecera, sin scroll horizontal, icono de
+  calendario en fechas ISO) — es el "checkpoint visual temprano" que el
+  propio plan ya pedía antes de tocar la edición.
+- **H-001.2 — Edición: menú de tipo + pastillas + añadir/quitar.**
+  RF-003, RF-005, RF-006, RF-008. `useMenu`/`PropertyMenu` +
+  `PropertiesForm` + CSS (plan §6 pasos 4-5). Depende de H-001.1 (reusa
+  `PropertyRow`/iconos).
+  **Demo:** editar una nota, abrir el menú de tipo desde el icono, añadir
+  y quitar propiedades y valores de lista como pastillas — el "checkpoint
+  visual de edición" del plan.
+- **H-001.3 — No regresión + fidelidad visual final + docs.** RF-009,
+  RNF-001, RNF-002. Plan §6 pasos 6-8 (P-14 si aplica, regresión de 0010,
+  documentación/re-anclaje). Depende de H-001.1+H-001.2.
+  **Demo:** menos visual nueva — es la comparación final de capturas
+  contra la referencia de Obsidian y la corrida completa de la suite de
+  SPEC-0010 sin romper nada.
+
 ## Checkpoint demostrable
 
 Pendiente — no se ha implementado nada.
