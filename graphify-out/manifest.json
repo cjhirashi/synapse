@@ -3430,5 +3430,17 @@
     "seen": 1793124880.4588604,
     "ast_hash": "bfe6477c690e9a09230808f7f12460f2",
     "semantic_hash": ""
+  },
+  ".harness/specs/0010-contenido-markdown-completo/reference/propiedades-obsidian-referencia.png": {
+    "mtime": 1793144112.3626204,
+    "seen": 1793151856.5271087,
+    "ast_hash": "a850eed908f1c0d60a4ad66fe9307c12",
+    "semantic_hash": ""
+  },
+  ".harness/specs/0010-contenido-markdown-completo/reference/propiedades-synapse-actual.png": {
+    "mtime": 1793144112.3611808,
+    "seen": 1793151856.5271127,
+    "ast_hash": "e5363865e9f811d7fa040dbe15d02923",
+    "semantic_hash": ""
   }
 }
