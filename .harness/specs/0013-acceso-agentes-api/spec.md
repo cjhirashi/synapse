@@ -2,7 +2,7 @@
 id: SPEC-0013
 tipo: spec
 feature: 0013-acceso-agentes-api
-estado: approved         # draft | in-review | approved | implemented | verified | deprecated
+estado: superseded-por-backlog  # migrado a historias/0013-acceso-agentes-api/ (H-002), 2026-10-28 — ver backlog.md
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: 6a9f6c7
 anchor_mode: advisory    # advisory | strict  (pasa a strict en implemented/verified)
