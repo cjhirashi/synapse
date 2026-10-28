@@ -223,6 +223,33 @@ class PayloadTooLarge(DomainError):
     detail = "Payload too large"
 
 
+# --- Keys de agente (SPEC-0013) ---
+
+class AgentKeyNotFound(DomainError):
+    """`DELETE /auth/agent-keys/{id}` de una key ajena o inexistente (RF-005, P3).
+
+    Mismo cuerpo en ambos casos: no revela si la key existe pero es de otro dueño.
+    """
+
+    slug = "agent-key-not-found"
+    title = "Agent key not found"
+    status = 404
+    detail = "Agent key not found"
+
+
+class AgentKeyLabelTaken(DomainError):
+    """Crear una key con un `label` que ya usa **otra key vigente** del mismo dueño (RF-010).
+
+    Sólo bloquea entre keys no revocadas: tras revocar, el label vuelve a estar libre
+    (rotación). La unicidad es por dueño, nunca global entre usuarios.
+    """
+
+    slug = "agent-key-label-taken"
+    title = "Agent key label already in use"
+    status = 409
+    detail = "Agent key label already in use"
+
+
 # --- Almacenamiento ---
 
 class StorageUnavailable(DomainError):
