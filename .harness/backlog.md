@@ -5,6 +5,10 @@
 > Reordenar o descartar una entrada de aquí es gratis; no requiere aprobación
 > salvo la que el proyecto ya exija para fijar prioridades.
 
+## En curso
+
+- [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
+
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
