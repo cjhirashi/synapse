@@ -21,7 +21,7 @@ from starlette.types import Message, Receive
 
 from app.adapters.database import SessionLocal
 from app.adapters.replication_repository import ReplicationRepository
-from app.core.dependencies import get_current_user, require_password_changed
+from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
     CheckpointNotFound, InvalidSyncRequest, PasswordChangeRequired, PayloadTooLarge,
     StorageUnavailable, SyncEndpointNotFound,
@@ -133,7 +133,8 @@ def get_sync_user(request: Request) -> TokenPayload:
         return already_checked
     db = SessionLocal()
     try:
-        return require_password_changed(get_current_user(request, db), db)
+        # Cookie o `Bearer` key (SPEC-0013): la base sigue saliendo sólo del principal (RF-001).
+        return require_password_changed(get_current_principal(request, db), db)
     finally:
         db.close()
 
