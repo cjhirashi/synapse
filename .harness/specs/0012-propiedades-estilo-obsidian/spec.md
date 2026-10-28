@@ -2,7 +2,7 @@
 id: SPEC-0012
 tipo: spec
 feature: 0012-propiedades-estilo-obsidian
-estado: approved
+estado: superseded-por-backlog  # migrado a historias/0012-propiedades-estilo-obsidian/ (H-001), 2026-10-28 — ver backlog.md
 # --- anclaje (fusionado; ver method.md §9) ---
 anchor_commit: df0e255   # feature/sprint-1-auth con 0010 y 0011 fusionadas
 anchor_mode: strict

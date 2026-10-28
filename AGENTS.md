@@ -3,9 +3,11 @@
 > **Punto de entrada** para cualquier agente que trabaje en este repo. Es un **mapa**,
 > no una biblia: lee sólo lo que necesites, cuando lo necesites.
 >
-> **Cómo trabajamos:** este repo usa un arnés **SDD Anchored** (spec viva anclada al
-> código). Empieza por **`.harness/method.md §0`**. Los principios innegociables están
-> en **`.harness/constitution.md`**.
+> **Cómo trabajamos:** este repo usa un arnés **Slice Development** (piloto desde
+> 2026-10-25, reemplaza a SDD Anchored). El trabajo vive en **`.harness/backlog.md`**
+> como historias chicas — NUNCA como spec grande planificada de punta a punta. Empieza
+> por **`.harness/method.md §0`**. Los principios innegociables están en
+> **`.harness/constitution.md`**.
 >
 > **Separación estricta:** `.harness/` = gobernanza · `docs/` = el producto.
 
@@ -13,7 +15,10 @@
 
 1. Ejecuta **`.harness/gate/check.sh`**. Si cierra (exit 1 / ❌), **DETENTE** y reporta.
 2. Lee **`.harness/memory/state.md`** (correcciones del usuario van arriba — se leen SIEMPRE).
-3. Ojea **`.harness/specs/`** — carpetas `NNN-slug` = features; `estado:` en su `spec.md`.
+3. Ojea **`.harness/backlog.md`** — historias `H-NNN` pendientes, sin refinar. Al tomar
+   una, créala en `.harness/historias/NNN-slug/` (`historia.md` + `plan.md`) — método.md §3.
+   `.harness/specs/` es el archivo histórico de SDD Anchored (pre-2026-10-25); no se crean
+   `spec.md` nuevos ahí.
 
 ## Qué es Synapse
 
@@ -135,8 +140,8 @@ Añade entrada Session-End con:
 
 | Doc | Ruta | Se actualiza cuando… |
 |-----|------|---------------------|
-| Especificaciones | `.harness/specs/*/spec.md` | Nueva feature |
-| Planes | `.harness/specs/*/plan.md` | Fase 2 → 3 |
+| Backlog de historias | `.harness/backlog.md` | Nueva historia o reorden |
+| Historia + plan | `.harness/historias/*/{historia.md,plan.md}` | Al tomar una historia (§3) |
 | Decisiones | `.harness/decisions/ADR-*.md` | Cambio arquitectónico |
 | API | `docs/API.md` | Endpoints cambian |
 
@@ -155,4 +160,4 @@ Tabla completa: `.harness/constitution.md` Art. 11.
 
 ---
 
-**Synapse — SDD Anchored — Harness Génesis Completada**
+**Synapse — Slice Development (piloto desde 2026-10-25) — Harness Génesis Completada**
