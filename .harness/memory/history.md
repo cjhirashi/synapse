@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-10-28] SPEC-0013 · Fase 2 (Plan) redactada — pendiente de Gate 2
+- **Fase alcanzada:** Plan. `plan.md` de 0013 escrito (PLAN-0013, `aprobaciones.fase_2: pendiente`), patrón de PLAN-0010/0011. Traduce RF-001…RF-009 + RNF-001/002 al patrón hexagonal (servicio `AgentKeyService` → `core/ports/agent_key_port.py` → adaptador `AgentKeyRepository`).
+- **Decisiones para Gate 2 (P-1…P-9):** P-1 tabla `agent_api_keys` en el control plane Postgres (migración Alembic 005, revisa 004 `c9e3f5a7b2d4`); P-2 key `syn_ak_` + `token_urlsafe(32)`, hash **SHA-256** reutilizando el canon del *refresh token* (no Argon2, no segundo estándar); P-3 **una sola** `get_current_user` extendida (cookie primero, luego `Authorization: Bearer`) — `/vaults` y `/sync` sin tocar; P-4 el bearer sintetiza un `TokenPayload` equivalente; P-5 puerto/repo/servicio propios; P-6 gestión de keys **sólo cookie** (menor privilegio); P-7 `last_used_at` best-effort; P-8 503 reutilizando `StorageUnavailable`; P-9 `revoked_at` timestamp. Cero clases de error y cero entradas de catálogo nuevas (el handler de `DomainError` ya traduce `NotAuthenticated`/`StorageUnavailable`).
+- **P5 sin secretos en fixtures:** el plano se captura de la respuesta de `POST /auth/agent-keys` en una variable local en runtime (nunca constante en el repo); la BD guarda sólo el hash; aislamiento contra CouchDB real.
+- **Rebotes:** 0. **Pausa:** no (sesión no interactiva, sin humano en vivo). **Drift:** no. **Gate:** verde al inicio (37 ok · 1 warn · 0 error; warn preexistente: `history.md` > 600 líneas). **Docs:** sólo `.harness/specs/0013-acceso-agentes-api/plan.md` (spec.md intacto; `covers` ya estaba poblado).
+- **`[NEEDS CLARIFICATION] = 0`:** ninguna ambigüedad de producto abierta; todo lo decidible es decisión de arquitecto (§7). Gate 2 aprobable.
+- **Próximo paso:** **Gate 2 de Carlos** (o AIRA con autoridad delegada) sobre P-1…P-9; luego Fase 3 (tasks.md) con la secuenciación TDD de §6.
+
 ## [2026-10-27] SPEC-0011 · GATE 2 aprobado y Fase 3 (Tasks)
 - **Fase alcanzada:** GATE 2 aprobado por AIRA en nombre de Carlos (2026-10-27): P-1…P-14 tal cual + ajuste R-2 (paleta `favicon-dark`: la trasera del favicon oscuro termina en `#0b809f`, 3,53:1 vs `#202124`; cabecera sin cambios). RF-015 enmendado a máscara alfa > 0 (P-1). `plan.md` `approved`; `tasks.md` en borrador con T-000…T-045 (46 tareas), cobertura RF-001…RF-020, RNF-001/002 y 5 filas `[doc]`.
 - **Orden:** re-anclaje 0007/0009 + línea base B-0 → `scripts/brand` y SVG → cabecera y login (revisión visual temprana T-023) → `theme-color` → iconos y manifest → `forced-colors`/RF-020 → e2e de fidelidad → regresión → docs. Servicios propios: CouchDB `synapse-0011-couchdb` :15985, backend :8011.
@@ -1695,6 +1703,17 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 
 ## [2026-10-27] Merge SPEC-0010 + SPEC-0011 a `feature/sprint-1-auth` (AIRA)
 - AIRA mergeó ambas ramas a la rama de despliegue: SPEC-0010 (`verified`, T-111 aplicado a mano y T-123 aprobado por AIRA) y SPEC-0011 (`implemented`, pendiente de que Carlos confirme visualmente el logo ya en producción). Conflictos resueltos en `history.md`/`state.md` (ambos relatos conservados) y `frontend/README.md` (ambas secciones conservadas). Próximo paso: rebuild y redeploy de `synapse-backend`.
+
+## [2026-10-28] 0013-acceso-agentes-api — Fase 2 (Plan) terminada
+- **Fase alcanzada:** Plan. `plan.md` escrito (PLAN-0013), `aprobaciones.fase_2: pendiente`. tasks.md NO generado; sin tocar código.
+- **Rebotes del verificador:** n/a (no es Fase 4).
+- **Directiva de Pausa:** no.
+- **Drift / re-anchor:** no (sólo lectura del backend).
+- **Gate status:** NO corrido — `.harness/gate/check.sh` requiere aprobación interactiva y esta sesión es no-interactiva (sin humano en vivo); `graphify query` también quedó bloqueado por el mismo motivo. Fallback de la regla graphify aplicado: lectura directa de los archivos exactos que el plan necesita.
+- **Decisiones de diseño (P-1…P-10 para Gate 2):** tabla `agent_api_keys` en el control plane Postgres, migración Alembic 005 sobre el head `c9e3f5a7b2d4`/004 (P-1); formato `syn_ak_` + `token_urlsafe(32)` (P-2); **hash SHA-256 reutilizando el primitivo de `hash_refresh_token`** (NO argon2 — key de alta entropía, permite lookup indexado; no introduce segundo estándar) (P-3); **dos dependencias** — `get_current_user` cookie-only intacta (cuenta/gestión) + nueva `get_current_principal` cookie→Bearer (datos), sin duplicar la validación JWT (P-4); reutilizar `TokenPayload` como principal resuelto (P-5); servicio+puerto+adaptador calcados de auth (P-6); `last_used_at` best-effort en commit propio (P-7); 503 sólo en el camino nuevo ante Postgres caído (P-8); router propio `/auth/agent-keys` cookie-only (P-9); `label` requerido no único (P-10).
+- **Hallazgos de código que fijaron el diseño:** `hash_refresh_token` = SHA-256 (`security.py:36`); `get_current_user` devuelve `TokenPayload` y lo consumen vaults/sync por `.sub`/`.role`; `get_sync_user` (`sync.py:122-138`) llama a `get_current_user` directo; base por token (`vaults.py:43`, `sync.py:148`); tests usan `Base.metadata.create_all` sobre SQLite (excepción P5) + CouchDB real.
+- **Marcador de alcance para Gate 2 (no es NEEDS CLARIFICATION):** repuntar `/sync` a `get_current_principal` toca `routers/sync.py`, que NO está en `covers` de SPEC-0013; añadirlo (+ ports/adapter del servicio de keys) al aprobar y re-anclar 0005 advisory. Ajuste menor abierto: unicidad de `label` (P-10). `[NEEDS CLARIFICATION] = 0`.
+- **Próximo paso:** Gate 2 de Carlos (o AIRA con autoridad delegada) sobre PLAN-0013.
 
 ## [2026-10-28] H-002.5 — UI de gestión de API keys: implemented
 - **Claim:** H-002.5 implementada en `feature/0013-ui-gestion-api-keys` (worktree `0013-ui-api-keys`): los 4 pasos TDD de `historia.md §6` en verde y commiteados por separado citando H-002.5. `estado: implemented`; falta el checkpoint demostrable de Carlos para `verified`. Backend intacto.
