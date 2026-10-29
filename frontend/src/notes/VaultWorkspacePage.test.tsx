@@ -9,6 +9,7 @@ import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
+import { derivedColor } from "../vaults/vaultIcon";
 import { parseMarkdownToJson } from "../editor/markdown/parseStage";
 import { PARSE_MARK } from "../editor/markdown/cachedParser";
 
@@ -629,4 +630,38 @@ test("M-1: abrir una bóveda precarga el chunk del editor en idle, sin abrir nin
   await screen.findByRole("tree", { name: "Notas" });
   expect(idleSpy.calls.length).toBeGreaterThanOrEqual(1);
   expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
+});
+
+// --- H-006: el workspace resuelve el color de la bóveda (como VaultChip) y lo pasa a la sidebar ---
+
+/** Siembra una bóveda con un `icon` dado (`null` = sin color elegido). */
+async function setupVault(icon: string | null) {
+  const { value, db } = syncValue({}, memoryDb());
+  const vault = await seedStore(db).create({ name: "Trabajo", description: null, tags: [], icon });
+  return { value, vault };
+}
+
+/** La variable de color que la sidebar fija en su `<aside>` tras cargar el árbol. */
+async function sidebarColor(value: SyncContextValue, vaultId: string) {
+  const { container } = render(tree(value, `/vaults/${vaultId}`));
+  // `within` acota la espera a ESTE render: C-5 monta dos bóvedas y el `screen` global sería ambiguo.
+  await within(container).findByRole("tree", { name: "Notas" });
+  return container.querySelector<HTMLElement>(".note-sidebar")!.style.getPropertyValue("--vault-icon-color");
+}
+
+test("H-006 C-1: con color elegido en el icono, la sidebar recibe ese color", async () => {
+  const { value, vault } = await setupVault("book:info");
+  expect(await sidebarColor(value, vault.id)).toBe("var(--info)");
+});
+
+test("H-006 C-1: sin color elegido, la sidebar recibe el color derivado del id (como VaultChip)", async () => {
+  const { value, vault } = await setupVault(null);
+  expect(await sidebarColor(value, vault.id)).toBe(`var(--${derivedColor(vault.id)})`);
+});
+
+test("H-006 C-5: cada bóveda lleva su propio color a la sidebar", async () => {
+  const a = await setupVault("book:danger");
+  const b = await setupVault("book:success");
+  expect(await sidebarColor(a.value, a.vault.id)).toBe("var(--danger)");
+  expect(await sidebarColor(b.value, b.vault.id)).toBe("var(--success)");
 });
