@@ -162,13 +162,9 @@
   color: var(--text-muted);
 }
 
-/* Apilado (≤ 800 px): la barra lateral y el editor van uno bajo otro, así que el contenido vuelve a
-   hacer scroll como una página. */
-@media (max-width: 800px) {
-  .app-main:has(.vault-workspace) {
-    overflow-y: auto;
-  }
-}
+/* H-009: el espacio de trabajo ya no se apila en móvil/tableta (la barra pasa a flotante u oculta,
+   no empuja al editor), así que `.app-main` conserva su alto fijo y el scroll propio por columna en
+   los 3 anchos — se retira el override de scroll de página que servía al apilado ≤ 800 px. */
 
 @media (max-width: 640px) {
   .app-header {

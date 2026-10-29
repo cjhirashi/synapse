@@ -479,6 +479,10 @@
   display: flex;
   align-items: stretch;
   height: 100%;
+  /* Base de posicionamiento de la barra flotante en móvil (H-009 C-5): el overlay se ancla a este
+     contenedor, no al viewport, para quedar dentro del área de trabajo sin depender de la altura del
+     header de la app. */
+  position: relative;
 }
 
 /* Barra lateral: 240 px, fondo `--bg-secondary` y borde derecho, pegada al riel (R-6, R-10, R-15). */
@@ -517,6 +521,33 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+/* H-009 C-1/C-8: botón de alternar la barra, en la cabecera. Discreto, con foco visible y activable
+   por teclado (es un <button> nativo). */
+.vault-workspace-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.vault-workspace-toggle:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.vault-workspace-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Panel del editor (R-15: empieza en x = 296 = riel + barra): columna a todo el alto; la barra superior
@@ -566,19 +597,58 @@
   padding: var(--space-8) var(--space-16);
 }
 
-@media (max-width: 800px) {
-  .vault-workspace {
-    flex-direction: column;
-    height: auto;
+/* --- H-009: barra ocultable, fija en tableta/escritorio (> 640 px) y flotante en móvil (≤ 640 px) ---
+   Antes, `@media (max-width: 800px)` apilaba barra y editor en columna (la barra quedaba ARRIBA del
+   editor). Eso se elimina: tableta y escritorio comparten el layout en fila con la barra dockeada; sólo
+   móvil cambia de modo. */
+
+/* Colapsada (en cualquier ancho): el árbol se oculta y la cabecera deja sólo el botón, de modo que el
+   editor recupera el ancho y el botón sigue disponible para reabrir (C-1 pide que exista en los 3
+   anchos, incluso con la barra oculta). */
+.vault-workspace-side:not([data-open]) {
+  width: auto;
+}
+
+.vault-workspace-side:not([data-open]) > .note-sidebar {
+  display: none;
+}
+
+.vault-workspace-side:not([data-open]) .vault-workspace-header > :not(.vault-workspace-toggle) {
+  display: none;
+}
+
+/* Móvil (≤ 640 px): la barra es una VENTANA FLOTANTE sobre el editor, anclada a la izquierda. Se
+   posiciona respecto al propio `.vault-workspace` (no al viewport) y sale del flujo en los dos estados
+   (abierta o colapsada), así `.vault-workspace-main` NUNCA se mueve al abrir/cerrar (H-009 C-5). */
+@media (max-width: 640px) {
+  .vault-workspace-side[data-floating] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    border-right: 1px solid var(--border);
+    border-bottom: none;
   }
-  .vault-workspace-side {
-    width: 100%;
+
+  /* Colapsada en móvil: sólo el botón flotante en la esquina superior izquierda, sin fondo. */
+  .vault-workspace-side[data-floating]:not([data-open]) {
+    bottom: auto;
     border-right: none;
-    border-bottom: 1px solid var(--border);
+    background: transparent;
+    padding: var(--space-2);
   }
-  /* Apilado: el árbol conserva su scroll acotado. */
-  .note-tree {
-    max-height: 50vh;
+
+  /* Abierta en móvil: ventana flotante con sombra; el árbol recupera su scroll a todo el alto. */
+  .vault-workspace-side[data-floating][data-open] {
+    width: min(280px, 85vw);
+    box-shadow: var(--shadow-panel);
+  }
+
+  /* Hueco fijo a la izquierda del editor para el botón flotante (mismo en abierto y cerrado, para que
+     abrir la barra no desplace el contenido del editor). */
+  .vault-workspace-main {
+    padding-left: 44px;
   }
 }
 
