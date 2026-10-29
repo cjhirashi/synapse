@@ -21,6 +21,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0004-api-problem-details": {"paths": (), "schemas": ("Problem",)},
     "0005-sync": {"paths": ("/sync",), "schemas": ()},
     "0013-acceso-agentes-api": {"paths": ("/auth/agent-keys",), "schemas": ()},
+    "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes",), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"

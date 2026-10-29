@@ -16,7 +16,7 @@ alcance de datos (su base `synapse_user_{id}`):
 | Vía | Credencial | Para quién | Superficie |
 |---|---|---|---|
 | Cookie de sesión | JWT `access_token` (24 h), login web | navegador / humano | toda la API |
-| **API key de agente** | `Authorization: Bearer syn_ak_…` | agentes OpenClaw (no interactivos) | **sólo datos**: `/vaults`, `/sync` |
+| **API key de agente** | `Authorization: Bearer syn_ak_…` | agentes OpenClaw (no interactivos) | **sólo datos**: `/vaults`, `/vaults/{id}/notes`, `/sync` |
 
 La API key **no** es un segundo usuario: autentica *como el mismo usuario* que la creó (mismo
 `owner_id`, misma base). Nunca da acceso a los datos de otro usuario (aislamiento por usuario).
@@ -113,3 +113,77 @@ ajena o inexistente → `404` `agent-key-not-found` (mismo cuerpo, no revela exi
 | cualquiera | `/vaults/**`, `/sync/**` | cookie **o** `Bearer syn_ak_…` | según la ruta; `401`/`503` por la key |
 
 Contrato máquina: `.harness/specs/0013-acceso-agentes-api/contracts/openapi.yaml`.
+
+## Notas de una bóveda (historia 0014-acceso-agentes-notas, H-004.1: sólo lectura)
+
+Para que un agente OpenClaw gestione su propia bóveda sin implementar el protocolo de
+replicación CouchDB del lado del cliente (`_bulk_docs`, `_revs_diff`, `_bulk_get`,
+`_changes`): listar y leer notas por REST, igual que ya existe para bóvedas. **H-004.1 es
+de sólo lectura** — crear, actualizar y borrar notas por REST llega con H-004.2; hasta
+entonces la escritura sigue siendo sólo por `/sync` (réplica del cliente).
+
+### 1. Listar las notas de una bóveda
+
+```http
+GET /vaults/{vault_id}/notes
+Authorization: Bearer syn_ak_…
+```
+
+```json
+200 OK
+{
+  "items": [
+    {
+      "id": "3c2f…", "vault_id": "0c1f…", "path": "Carpeta/Nota.md",
+      "created_at": "2026-10-29T00:00:00.000000Z",
+      "updated_at": "2026-10-29T00:00:00.000000Z",
+      "deleted_at": null,
+      "etag": "\"1-abc123\""
+    }
+  ],
+  "next_cursor": null
+}
+```
+
+- Sin `content` ni `frontmatter` (tan ligero como el listado de bóvedas); para leerlos, `GET`
+  por `id`.
+- Paginación por cursor opaco (`cursor`, `limit`, 1–200, 50 por defecto), igual que
+  `GET /vaults`. Un cursor sólo vale para la misma bóveda y la misma lista (vivas ↔ papelera):
+  usarlo en otra → `422` `validation-error`.
+- `?deleted=true` lista la papelera de notas de esa bóveda.
+- `vault_id` inexistente o ajeno → `404` `vault-not-found`. Una bóveda **borrada** no bloquea
+  leer sus notas (se sigue pudiendo listar/leer mientras está en la papelera).
+
+### 2. Leer una nota por id
+
+```http
+GET /vaults/{vault_id}/notes/{note_id}
+Authorization: Bearer syn_ak_…
+```
+
+```json
+200 OK
+{
+  "id": "3c2f…", "vault_id": "0c1f…", "path": "Carpeta/Nota.md",
+  "frontmatter": { "tags": ["trabajo"] },
+  "content": "# Título\n\nTexto…",
+  "created_at": "2026-10-29T00:00:00.000000Z",
+  "updated_at": "2026-10-29T00:00:00.000000Z",
+  "deleted_at": null
+}
+```
+
+- Siempre por `id` (no por `path`): el agente lista primero si no conoce el `id`.
+- `ETag` en la cabecera (el `_rev` entre comillas) — sólo hace falta cuando H-004.2 añada
+  `PATCH`/`DELETE` con `If-Match`; de momento es informativo.
+- `note_id` inexistente, ajeno a `vault_id`, no canónico o en la papelera → `404`
+  `note-not-found`.
+
+### Resumen de endpoints (H-004.1)
+
+| Método | Ruta | Credencial | Respuestas |
+|---|---|---|---|
+| `GET` | `/vaults/{vault_id}/notes` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`) · `422` · `503` |
+| `GET` | `/vaults/{vault_id}/notes/{note_id}` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`/`note-not-found`) · `503` |
+
+Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
