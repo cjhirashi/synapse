@@ -27,6 +27,28 @@ test("RF-011: «Ícono» ofrece Iniciales + los 24 glifos y «Color» Automátic
   expect(colorNames).toEqual(["Automático", ...PALETTE.map((key) => COLOR_LABELS[key])]);
 });
 
+// H-008 C-12: el selector muestra las 17 familias sin tocar su código (ya itera PALETTE); el layout
+// de muestras no se rompe con 17 en vez de 5 (cada opción sigue siendo un círculo con su color).
+test("C-12: «Color» ofrece Automático + los 17 colores, cada muestra con su token de la paleta", () => {
+  const { colors } = setup();
+  const radios = within(colors).getAllByRole("radio");
+  expect(radios).toHaveLength(1 + PALETTE.length);
+  expect(radios).toHaveLength(18);
+  // Las 12 familias nuevas están presentes y seleccionables.
+  for (const label of ["Naranja", "Amarillo", "Lima", "Esmeralda", "Verde azulado", "Azul real", "Índigo", "Violeta", "Púrpura", "Fucsia", "Rosa", "Rosado"]) {
+    expect(within(colors).getByRole("radio", { name: label })).toBeInTheDocument();
+  }
+  // Cada muestra de color (todas menos «Automático») lleva su variable de color en el estilo.
+  const swatches = radios.slice(1).filter((r) => (r.getAttribute("style") ?? "").includes("--swatch: var(--"));
+  expect(swatches).toHaveLength(PALETTE.length);
+});
+
+test("C-12: elegir una familia nueva emite «glifo:color» con su clave", async () => {
+  const { user, onChange, colors } = setup("star");
+  await user.click(within(colors).getByRole("radio", { name: "Rosado" }));
+  expect(onChange).toHaveBeenLastCalledWith("star:rose");
+});
+
 test.each([
   [null, "Iniciales", "Automático"],
   ["star", "Estrella", "Automático"],
