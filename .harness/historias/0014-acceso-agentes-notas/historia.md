@@ -1,21 +1,21 @@
 ---
 id: H-004
 titulo: CRUD de notas vía REST para agentes OpenClaw (sin protocolo CouchDB del lado del cliente)
-estado: en-curso  # Gate 1 pasado ("así es", Carlos 2026-10-29): id-only y sin filtro de carpeta confirmados. H-004.1 (lectura) implemented y desplegado. H-004.2 (escritura) pendiente.
+estado: implemented  # Gate 1 pasado ("así es", Carlos 2026-10-29): id-only y sin filtro de carpeta confirmados. H-004.1 (lectura) y H-004.2 (escritura) implemented, 1464 passed. Pendiente checkpoint demostrable (curl real) para verified.
 covers:
-  - backend/app/routers/notes.py                 # nuevo (H-004.1: GET; H-004.2 añade POST/PATCH/DELETE/restore)
-  - backend/app/services/note_content_service.py # nuevo (H-004.1: get/list; H-004.2 añade create/update/delete/restore)
-  - backend/app/services/note_service.py         # se reutiliza reserve_path/release_path, sin reescribir (H-004.2)
-  - backend/app/core/note_rules.py               # se reutiliza check_path/check_content/check_frontmatter, sin reescribir (H-004.2)
+  - backend/app/routers/notes.py                 # nuevo (H-004.1: GET, hecho; H-004.2: POST/PATCH/DELETE/restore, hecho)
+  - backend/app/services/note_content_service.py # nuevo (H-004.1: get/list, hecho; H-004.2: create/update/delete/restore, hecho)
+  - backend/app/services/note_service.py         # reutilizado reserve_path/release_path, sin reescribir (H-004.2, hecho)
+  - backend/app/core/note_rules.py               # reutilizado check_path/check_content/check_frontmatter, sin reescribir (H-004.2, hecho)
   - backend/app/core/ports/vault_port.py          # + list_notes (H-004.1, hecho)
   - backend/app/adapters/vault_repository.py      # + list_notes (H-004.1, hecho)
-  - backend/app/core/schemas.py                   # + NoteOut/NoteListItem/NotePage (H-004.1, hecho); NoteCreate/NoteUpdate (H-004.2)
-  - backend/app/core/errors.py                    # + NoteNotFound (H-004.1, hecho); mapear NotePathTaken (H-004.2)
+  - backend/app/core/schemas.py                   # + NoteOut/NoteListItem/NotePage (H-004.1, hecho); + NoteCreate/NoteUpdate (H-004.2, hecho)
+  - backend/app/core/errors.py                    # + NoteNotFound (H-004.1, hecho); + NotePathTaken (H-004.2, hecho)
   - backend/app/main.py                           # registra notes_router (H-004.1, hecho)
-  - backend/tests/test_notes_router.py            # nuevo (H-004.1, hecho)
-  - backend/tests/test_note_content_service.py    # nuevo (H-004.1, hecho)
+  - backend/tests/test_notes_router.py            # nuevo (H-004.1, hecho; H-004.2 amplia, hecho)
+  - backend/tests/test_note_content_service.py    # nuevo (H-004.1, hecho; H-004.2 amplia, hecho)
   - docs/API.md
-anchor_commit: 4c7ff0e
+anchor_commit: a2ef69c
 origen: backlog
 ---
 
@@ -278,8 +278,24 @@ Estado: `Green` = test ejecutado y en verde (suite completa del backend 2026-10-
 | Auth: cookie y agent-key resuelven lo mismo | 3 | `test_notes_router.py` (bearer/revoked) | Green |
 | Cursor ligado a bóveda+lista (422 si no) | 2 | `test_note_content_service.py` (decode_cursor) | Green |
 
-C-4…C-10 (escritura: create/update/delete/restore, reservas, 409/412/428) son de
-H-004.2 — no cubiertos aquí a propósito.
+C-4…C-10 (escritura): ver tabla de H-004.2 en §13.1.
+
+## 13.1 Tabla de cobertura (H-004.2)
+
+Estado: `Green` = test ejecutado y en verde (suite completa del backend 2026-10-29, tras
+H-004.2: **1464 passed, 0 fallos**, 1 deselected = marcador `perf`).
+
+| Criterio | Paso(s) | Test | Estado |
+|---|---|---|---|
+| C-4 (POST crea + reserva + 201/ETag) | 5, 6 | `test_note_content_service.py` (create), `test_notes_router.py` (C-4) | Green |
+| C-5 (422 con el mismo código que el push) | 5, 6, 7 | `test_note_content_service.py` (rejects_path/content/frontmatter_exactly_like_the_push, bateria cruzada), `test_notes_router.py` (C-5) | Green |
+| C-6 (409 NotePathTaken) | 5, 6 | `test_note_content_service.py`, `test_notes_router.py` (C-6) | Green |
+| C-7 (428 sin If-Match en PATCH) | 5, 6 | `test_note_content_service.py`, `test_notes_router.py` (C-7) | Green |
+| C-8 (412 con If-Match vencido; libera/reserva path al renombrar) | 5, 6 | `test_note_content_service.py`, `test_notes_router.py` (C-8) | Green |
+| C-9 (DELETE soft-delete + libera path) | 5, 6 | `test_note_content_service.py`, `test_notes_router.py` (C-9) | Green |
+| C-10 (mismo documento, mismo mecanismo _rev; sin atajos nuevos) | 5, 7 | prueba cruzada con `tests/fixtures/note_rules_cases.json`; bóveda activa exigida igual que `sync_push.py` | Green |
+| Auth: cookie y agent-key escriben igual (SPEC-0013) | 6 | `test_notes_router.py` (bearer_key_can_write/revoked_key_cannot_write) | Green |
+| §5 503 StorageUnavailable en escritura | 6 | `test_notes_router.py` (write_endpoints_are_503) | Green |
 
 ## 11. Checkpoint demostrable — resultado
 
@@ -317,3 +333,59 @@ el `curl` real contra una bóveda con notas migradas para pasar de `implemented`
 - **Próximo paso:** H-004.2 (escritura: create/update/delete/restore + reservas de
   `path` + `tests/fixtures/note_rules_cases.json` cruzado) — toma esta misma historia,
   pasos TDD 5→8 de §7.
+
+## 13. Session-End (2026-10-29, continuación de H-004.2)
+
+- **Claim:** H-004.2 (escritura) implementada y probada. `estado: implemented` a nivel de
+  H-004 completo (lectura + escritura); pendiente sólo el checkpoint demostrable (curl real
+  de Carlos/`main`) para `verified`, igual que quedó H-004.1. No se despliega en esta sesión
+  (fuera de alcance del encargo: Docker/docker-compose los toca otro proceso).
+- **Evidencia (ejecutada):**
+  - Paso 5 — `NoteContentService.create`/`.update`/`.delete`/`.restore` + `NoteCreate`/
+    `NoteUpdate` en `core/schemas.py` + `NotePathTaken` en `core/errors.py` (409, mapea la
+    excepción interna ya existente de `note_service.py`). Reutiliza sin reescribir
+    `core/note_rules.py` (`check_path`/`check_content`/`check_frontmatter`) y
+    `services/note_service.py` (`reserve_path`/`release_path`). Exige la bóveda **activa**
+    (no sólo existente) para escribir, igual que `sync_push.py::_check_vault_is_active` — una
+    bóveda borrada congela también la escritura de sus notas por REST (C-10). `frontmatter`
+    ausente o `null` explícito escriben siempre el documento sin la clave (nunca
+    `frontmatter: null`), porque el push distingue clave presente de ausente y rechazaría esa
+    forma. Commit `ccbe849`.
+  - Paso 6 — `POST`/`PATCH`/`DELETE`/`restore` en `routers/notes.py`, mismo esqueleto que las
+    rutas GET y que `routers/vaults.py` para el patrón de escritura condicionada por
+    `If-Match`. Sin tocar `core/dependencies.py`: agent-keys de H-002/SPEC-0013 funcionan sin
+    cambios. Commit `160e8d1`.
+  - Paso 7 — 74 tests nuevos en `test_note_content_service.py` (118 en total: create/update/
+    delete/restore, reserva/liberación de `path`, 409/412/428, `frontmatter` ausente vs.
+    `null`) y 44 tests end-to-end nuevos en `test_notes_router.py` (TestClient + CouchDB
+    real: 201/200/204/404/409/412/422/428/503, cookie y agent-key). Prueba cruzada (C-5/C-10):
+    recorre la misma batería `tests/fixtures/note_rules_cases.json` que ya prueba el push
+    directo contra `core/note_rules.py`, ahora también contra `NoteContentService.create` —
+    cierra con una prueba, no sólo con disciplina, el riesgo que PLAN-0008 P-1 señalaba
+    (duplicar validación entre los dos canales). Commit `b16bcae`.
+  - Paso 8 — `docs/API.md` (sección "Notas de una bóveda" ampliada con los 4 endpoints de
+    escritura) y contrato OpenAPI propio re-exportado (`python scripts/export_openapi.py`,
+    mismo mecanismo que usó AIRA en H-004.1); además `backend/README.md` ganó una sección
+    "Notas vía REST" nueva (antes sólo describía H-004.1 de forma dispersa) y corrigió la
+    afirmación obsoleta "No tiene API REST" de la sección "Notas (SPEC-0008)". Commit
+    `a2ef69c`.
+  - Regresión completa del backend: **1464 passed, 1 deselected (marca `perf`), 0 fallos**
+    (línea base previa de H-004.1: 1342 passed; la diferencia son los 122 tests nuevos de
+    esta sesión).
+- **Desviación del plan:** ninguna en el código o los patrones citados en la historia — todo
+  lo descrito en §7 (reuso de `note_rules.py`/`note_service.py`, patrón de `vaults.py`) existía
+  tal cual y se pudo clonar sin adaptar. La única desviación fue de **entorno de prueba**, no
+  de código: la primera corrida completa de esta sesión se invocó con `ADMIN_EMAIL`/
+  `ADMIN_PASSWORD`/`JWT_SECRET` explícitos en la línea de comandos, que sobreescribieron los
+  valores que `tests/conftest.py` ya fija con `os.environ.setdefault()` (`cjhirashi@gmail.com`/
+  `admin1234`) — eso rompió el login de **toda** la suite (32 failed, 224 errors) sin relación
+  con el código de esta historia. Corregido invocando `pytest` sin variables de entorno
+  adicionales (sólo requiere el CouchDB de pruebas en `localhost:15984`, ya levantado). También
+  fue necesario compilar el frontend (`cd frontend && npm ci && npm run build`) porque
+  `frontend/dist` no existía en este worktree nuevo y `tests/test_spa.py` lo requiere para
+  poder colectarse — no es un cambio de código, es un artefacto de build local (gitignorado).
+- **Gaps:** ninguno de código para el alcance de H-004.2. Falta el checkpoint *demostrable*
+  (Carlos o `main`, vía agent-key: crear una nota, actualizarla con `If-Match`, borrarla, y
+  verla aparecer/cambiar/desaparecer en la UI web sin refrescar el sync a mano, §9) antes de
+  `verified` — no bloquea que `main` empiece a integrar los endpoints de escritura ya. No se
+  desplegó (fuera del encargo de esta sesión).
