@@ -248,6 +248,82 @@ def test_rf_008_leaves_of_a_missing_or_deleted_doc_is_empty(repo, db):
     assert repo.leaves(db, doc["_id"]) == []
 
 
+# --- Historia 0014 (H-004.1): list_notes, clon de list_page con `vault_id` como dimensión extra ---
+
+def _note(created_at: str, *, vault_id: str = "vault-a", deleted: bool = False,
+         note_id: str | None = None) -> dict:
+    return {
+        "_id": f"note:{vault_id}:{note_id or uuid.uuid4()}",
+        "type": "note",
+        "vault_id": vault_id,
+        "path": f"p-{uuid.uuid4().hex[:8]}.md",
+        "content": "",
+        "created_at": created_at,
+        "deleted_at": "2026-10-12T00:00:00Z" if deleted else None,
+    }
+
+
+def test_rf_004_list_notes_returns_only_the_requested_vault_and_list(repo, db):
+    live = _note("2026-10-01T00:00:00Z")
+    trashed = _note("2026-10-02T00:00:00Z", deleted=True)
+    other_vault = _note("2026-10-03T00:00:00Z", vault_id="vault-b")
+    for doc in (live, trashed, other_vault):
+        repo.put(db, doc)
+    assert _ids(repo.list_notes(db, "vault-a", deleted=False, limit=10, after=None)) == [live["_id"]]
+    assert _ids(repo.list_notes(db, "vault-a", deleted=True, limit=10, after=None)) == [trashed["_id"]]
+    assert _ids(repo.list_notes(db, "vault-b", deleted=False, limit=10, after=None)) == [other_vault["_id"]]
+
+
+def test_rf_004_list_notes_returns_full_docs(repo, db):
+    doc = _note("2026-10-01T00:00:00Z")
+    repo.put(db, doc)
+    [listed] = repo.list_notes(db, "vault-a", deleted=False, limit=10, after=None)
+    assert listed["path"] == doc["path"] and "_rev" in listed
+
+
+def test_rf_004_list_notes_order_is_created_at_desc_then_id_desc(repo, db):
+    tie_a = _note("2026-10-02T00:00:00Z", note_id="aaaa")
+    tie_b = _note("2026-10-02T00:00:00Z", note_id="bbbb")
+    newest = _note("2026-10-03T00:00:00Z")
+    oldest = _note("2026-10-01T00:00:00Z")
+    for doc in (tie_a, oldest, newest, tie_b):
+        repo.put(db, doc)
+    listed = repo.list_notes(db, "vault-a", deleted=False, limit=10, after=None)
+    assert _ids(listed) == [newest["_id"], tie_b["_id"], tie_a["_id"], oldest["_id"]]
+
+
+def test_rf_004_list_notes_limit_caps_the_page(repo, db):
+    for day in range(1, 6):
+        repo.put(db, _note(f"2026-10-0{day}T00:00:00Z"))
+    assert len(repo.list_notes(db, "vault-a", deleted=False, limit=3, after=None)) == 3
+
+
+def _walk_notes(repo, db, vault_id, limit):
+    seen, after = [], None
+    while page := repo.list_notes(db, vault_id, deleted=False, limit=limit, after=after):
+        seen += _ids(page)
+        after = (page[-1]["created_at"], page[-1]["_id"])
+    return seen
+
+
+def test_rf_004_list_notes_pages_cover_everything_once_with_ties(repo, db):
+    docs = [_note(f"2026-10-0{1 + i // 3}T00:00:00Z") for i in range(9)]  # tríos empatados
+    for doc in docs:
+        repo.put(db, doc)
+    full = _ids(repo.list_notes(db, "vault-a", deleted=False, limit=100, after=None))
+    for limit in (1, 2, 4):
+        assert _walk_notes(repo, db, "vault-a", limit) == full
+
+
+def test_rf_004_list_notes_design_doc_is_created_idempotently(repo, db):
+    repo.put(db, _note("2026-10-01T00:00:00Z"))
+    repo.list_notes(db, "vault-a", deleted=False, limit=10, after=None)
+    # Otra instancia (otro proceso) no tiene la memoria: el PUT ya existente no debe fallar.
+    assert len(VaultRepository().list_notes(db, "vault-a", deleted=False, limit=10, after=None)) == 1
+    design = httpx.get(f"{settings.COUCHDB_URL}/{db}/_design/notes", auth=AUTH).json()
+    assert "by_created" in design["views"]
+
+
 # --- T-013: almacén inaccesible o 5xx → StorageUnavailable (RF-017) ---
 
 _CALLS = {
@@ -256,6 +332,7 @@ _CALLS = {
     "put": lambda r: r.put("synapse_user_x", {"_id": "vault:a"}),
     "delete": lambda r: r.delete("synapse_user_x", "vault:a", "1-a"),
     "list_page": lambda r: r.list_page("synapse_user_x", deleted=False, limit=10, after=None),
+    "list_notes": lambda r: r.list_notes("synapse_user_x", "vault-a", deleted=False, limit=10, after=None),
 }
 
 

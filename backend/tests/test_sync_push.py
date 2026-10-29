@@ -174,6 +174,20 @@ class InMemoryCouch(VaultPort, ReplicationPort):
             if not tree[rev][1].get("_deleted")
         ]
 
+    def list_notes(self, db, vault_id, deleted, limit, after):
+        # Historia 0014 (H-004.1): sin uso en esta suite (es de `NoteContentService`, no del
+        # push), pero `VaultPort` la exige para poder instanciar el doble.
+        self._enter("list_notes", "")
+        notes = [
+            doc for doc_id in self.trees.get(db, {})
+            if (doc := self.get(db, doc_id)) and doc.get("type") == "note"
+            and doc.get("vault_id") == vault_id and bool(doc.get("deleted_at")) is deleted
+        ]
+        notes.sort(key=lambda d: (d["created_at"], d["_id"]), reverse=True)
+        if after is not None:
+            notes = [d for d in notes if (d["created_at"], d["_id"]) < after]
+        return notes[:limit]
+
     # --- ReplicationPort ---
 
     async def revs_diff(self, db, body):

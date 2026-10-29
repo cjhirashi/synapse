@@ -214,6 +214,20 @@ class InMemoryVaultPort(VaultPort):
             vaults = [d for d in vaults if (d["created_at"], d["_id"]) < after]
         return copy.deepcopy(vaults[:limit])
 
+    def list_notes(self, db, vault_id, deleted, limit, after):
+        # Historia 0014 (H-004.1): sin uso en esta suite (es de `VaultService`, no de
+        # `NoteContentService`), pero `VaultPort` la exige para poder instanciar el doble.
+        self._maybe_fail("list_notes", db, vault_id, deleted, limit, after)
+        notes = [
+            d for d in self.docs.get(db, {}).values()
+            if d.get("type") == "note" and d.get("vault_id") == vault_id
+            and bool(d.get("deleted_at")) is deleted
+        ]
+        notes.sort(key=lambda d: (d["created_at"], d["_id"]), reverse=True)
+        if after is not None:
+            notes = [d for d in notes if (d["created_at"], d["_id"]) < after]
+        return copy.deepcopy(notes[:limit])
+
 
 DB = "synapse_user_owner"
 OWNER = "7d1c9a8e-0000-4000-8000-000000000001"

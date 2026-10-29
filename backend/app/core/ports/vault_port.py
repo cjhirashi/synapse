@@ -43,3 +43,14 @@ class VaultPort(ABC):
         clave `(created_at, _id)` de la última bóveda ya vista: la página empieza justo
         después de ella, aunque esa bóveda haya cambiado o desaparecido entre páginas.
         """
+
+    @abstractmethod
+    def list_notes(
+        self, db: str, vault_id: str, deleted: bool, limit: int, after: tuple[str, str] | None
+    ) -> list[dict]:
+        """Hasta `limit` notas (`type: "note"`) de `vault_id`, borradas o no, según `deleted`.
+
+        Mismo orden y mismo contrato de `after` que `list_page` (RF-004 de la historia
+        0014), con `vault_id` como primer componente de la clave: nunca mezcla notas de
+        bóvedas distintas.
+        """

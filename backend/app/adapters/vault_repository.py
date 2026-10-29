@@ -20,6 +20,20 @@ DESIGN_DOC = {
     }
 }
 
+# Índice de notas (historia 0014, H-004.1): clave `[vault_id, borrada?1:0, created_at]`, el
+# mismo esquema que `DESIGN_DOC` con `vault_id` como primer componente — nunca mezcla las
+# notas de dos bóvedas de la misma base.
+DESIGN_DOC_NOTES = {
+    "views": {
+        "by_created": {
+            "map": (
+                'function (doc) { if (doc.type === "note") '
+                "{ emit([doc.vault_id, doc.deleted_at ? 1 : 0, doc.created_at], null); } }"
+            )
+        }
+    }
+}
+
 
 def _json_param(value) -> str:
     return json.dumps(value, separators=(",", ":"))
@@ -44,8 +58,9 @@ class VaultRepository(VaultPort):
             timeout=10,
             transport=transport,
         )
-        # Bases cuyo `_design/vaults` ya se aseguró en este proceso.
+        # Bases cuyo `_design/vaults` (o `_design/notes`) ya se aseguró en este proceso.
         self._indexed: set[str] = set()
+        self._notes_indexed: set[str] = set()
 
     def _request(self, method: str, path: str, expected: tuple[int, ...], **kwargs) -> httpx.Response:
         """Hace la petición; red caída o un estado fuera de `expected` → `StorageUnavailable`.
@@ -128,6 +143,41 @@ class VaultRepository(VaultPort):
                 "limit": limit + 1,
             }
         response = self._request("GET", f"/{db}/_design/vaults/_view/by_created", (200,), params=params)
+        rows = response.json()["rows"]
+        if after is not None:
+            if rows and rows[0]["id"] == after_id:
+                rows = rows[1:]
+            rows = rows[:limit]
+        return [row["doc"] for row in rows]
+
+    # --- Listado de notas (historia 0014, H-004.1) ---
+
+    def _ensure_notes_index(self, db: str) -> None:
+        """`PUT _design/notes` la primera vez que se lista cada base; 409 = ya existía."""
+        if db in self._notes_indexed:
+            return
+        self._request("PUT", f"/{db}/_design/notes", (201, 202, 409), json=DESIGN_DOC_NOTES)
+        self._notes_indexed.add(db)
+
+    def list_notes(
+        self, db: str, vault_id: str, deleted: bool, limit: int, after: tuple[str, str] | None
+    ) -> list[dict]:
+        self._ensure_notes_index(db)
+        d = 1 if deleted else 0
+        params = {
+            "descending": "true", "include_docs": "true",
+            "endkey": _json_param([vault_id, d]),
+        }
+        if after is None:
+            params |= {"startkey": _json_param([vault_id, d, {}]), "limit": limit}
+        else:
+            created_at, after_id = after
+            params |= {
+                "startkey": _json_param([vault_id, d, created_at]),
+                "startkey_docid": after_id,
+                "limit": limit + 1,
+            }
+        response = self._request("GET", f"/{db}/_design/notes/_view/by_created", (200,), params=params)
         rows = response.json()["rows"]
         if after is not None:
             if rows and rows[0]["id"] == after_id:
