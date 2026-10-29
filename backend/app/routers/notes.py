@@ -1,15 +1,16 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Path, Query, Response
+from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
-    InvalidCursor, NoteNotFound, PasswordChangeRequired, StorageUnavailable, VaultNotFound,
+    InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
+    PreconditionRequired, StorageUnavailable, VaultNotFound,
 )
 from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
-from app.core.schemas import NoteOut, NotePage, TokenPayload
+from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.note_content_service import NoteContentService, Versioned
@@ -49,6 +50,10 @@ def _respond(result: Versioned, response: Response) -> NoteOut:
 # id no canónico da 404 (`NoteNotFound`), no un 422 de validación.
 NoteId = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
 
+# Errores de toda escritura condicionada por `If-Match` (C-7/C-8), mismo patrón que
+# `vaults.py::_CONDITIONAL`.
+_CONDITIONAL = (NoteNotFound, PreconditionRequired, PreconditionFailed, StorageUnavailable)
+
 
 @router.get(
     "",
@@ -77,3 +82,64 @@ def get_note(
     service: NoteContentService = Depends(get_note_content_service),
 ):
     return _respond(service.get(vault_id, note_id), response)
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=NoteOut,
+    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, StorageUnavailable),
+)
+def create_note(
+    vault_id: VaultId,
+    body: NoteCreate,
+    response: Response,
+    service: NoteContentService = Depends(get_note_content_service),
+):
+    return _respond(service.create(vault_id, body), response)
+
+
+@router.patch(
+    "/{note_id}",
+    response_model=NoteOut,
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
+)
+def update_note(
+    vault_id: VaultId,
+    note_id: NoteId,
+    body: NoteUpdate,
+    response: Response,
+    if_match: str | None = Header(None),
+    service: NoteContentService = Depends(get_note_content_service),
+):
+    return _respond(service.update(vault_id, note_id, body, if_match), response)
+
+
+@router.delete(
+    "/{note_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    responses=problem_responses(*_CONDITIONAL, VaultNotFound),
+)
+def delete_note(
+    vault_id: VaultId,
+    note_id: NoteId,
+    if_match: str | None = Header(None),
+    service: NoteContentService = Depends(get_note_content_service),
+):
+    service.delete(vault_id, note_id, if_match)
+
+
+@router.post(
+    "/{note_id}/restore",
+    response_model=NoteOut,
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
+)
+def restore_note(
+    vault_id: VaultId,
+    note_id: NoteId,
+    response: Response,
+    if_match: str | None = Header(None),
+    service: NoteContentService = Depends(get_note_content_service),
+):
+    return _respond(service.restore(vault_id, note_id, if_match), response)
