@@ -12,6 +12,8 @@
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
+- [ ] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato) + botones de negritas, cursivas, H1-H4, listas (y candidatos a confirmar: tachado, código en línea, cita, línea horizontal) → `historias/h010-editor-toolbar-filas/historia.md`, criterios redactados por AIRA desde descripción de Carlos (2026-10-29); **falta su "así es" (Gate 1) antes de tomarla** — 2 `[NEEDS CLARIFICATION]` abiertos, ver §3
+
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
