@@ -1,7 +1,7 @@
 ---
 id: H-009
 titulo: Sidebar de notas ocultable con botón, fija en tableta/escritorio y flotante en móvil
-estado: tomada # Gate 1 pasado — Carlos confirmó "así es" sobre los 8 criterios EARS y el plan (2026-10-29). En implementación vía Claude Code (Modo 2).
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada vía Claude Code (Modo 2) 2026-10-29: 8/8 criterios con test verde, build+regresión OK, Converge alcanzado. Pendiente checkpoint visual de Carlos para pasar a verified (§8).
 covers:
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/VaultWorkspacePage.test.tsx
@@ -182,14 +182,14 @@ añadió una directriz permanente que aplica a esta y a toda sidebar futura
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 1 | `VaultWorkspacePage.test.tsx` «H-009 C-1…» | Por implementar |
-| C-2 | 2, 6 | `VaultWorkspacePage.test.tsx` «H-009 C-2…» + verificación visual | Por implementar |
-| C-3 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-3…» | Por implementar |
-| C-4 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-4…» | Por implementar |
-| C-5 | 3, 6 | `VaultWorkspacePage.test.tsx` «H-009 C-5…» + verificación visual | Por implementar |
-| C-6 | 4 | `VaultWorkspacePage.test.tsx` «H-009 C-6…» | Por implementar |
-| C-7 | 5 | `VaultWorkspacePage.test.tsx` «H-009 C-7…» | Por implementar |
-| C-8 | 1, 4 | `VaultWorkspacePage.test.tsx` «H-009 C-8…» (teclado + Escape) | Por implementar |
+| C-1 | 1 | `VaultWorkspacePage.test.tsx` «H-009 C-1…» | ✅ Implementado (test verde) |
+| C-2 | 2, 6 | `VaultWorkspacePage.test.tsx` «H-009 C-2…» (contrato de atributos) + verificación visual | ✅ JS verde · 🖼 visual pendiente (checkpoint) |
+| C-3 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-3…» | ✅ Implementado (test verde) |
+| C-4 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-4…» | ✅ Implementado (test verde) |
+| C-5 | 3, 6 | `VaultWorkspacePage.test.tsx` «H-009 C-5…» (atributos + orden DOM) + verificación visual | ✅ JS verde · 🖼 visual pendiente (checkpoint) |
+| C-6 | 4 | `VaultWorkspacePage.test.tsx` «H-009 C-6…» (×3: click afuera, abrir nota, fija no cierra) | ✅ Implementado (test verde) |
+| C-7 | 5 | `VaultWorkspacePage.test.tsx` «H-009 C-7…» | ✅ Implementado (test verde) |
+| C-8 | 1, 4 | `VaultWorkspacePage.test.tsx` «H-009 C-8…» (teclado Enter+Space + Escape) | ✅ Implementado (test verde) |
 
 ## 8. Checkpoint demostrable
 
@@ -201,4 +201,48 @@ ventana flotante sin mover el editor ni reordenar el layout.
 
 ## 9. Session-End (al cerrar)
 
-Pendiente — se completa al implementar (driver/navigator, `method.md` §4-5).
+Implementación vía Claude Code en modo headless (Modo 2, autoridad delegada por
+Carlos desde Gate 1), 2026-10-29. Ciclo Driver/Navigator de `method.md` §4, 7
+pasos TDD, un commit atómico por paso citando «H-009».
+
+- **Claim:** los 8 criterios EARS (C-1…C-8) quedan implementados en
+  `VaultWorkspacePage.tsx` + `notes.css` + `AppLayout.css`. La barra de notas
+  tiene botón de alternar (en la cabecera, teclado Enter/Space, `aria-expanded`/
+  `aria-controls`), es fija/dockeada y arranca visible en tableta/escritorio
+  (> 640 px) y arranca oculta y flota como overlay en móvil (≤ 640 px) sin
+  mover el editor, se cierra por click-afuera/abrir-nota/`Escape`, y recalcula el
+  modo al cruzar el breakpoint sin perder la nota abierta.
+- **Evidencia:**
+  - Línea base en verde antes de empezar: `npx vitest run` (desde `frontend/`)
+    → `VaultWorkspacePage.test.tsx` 48/48. (La corrida inicial desde la raíz del
+    worktree falló con `document is not defined` por CWD equivocada —la config
+    `jsdom` vive en `frontend/vitest.config.ts`—, no por código.)
+  - 12 tests nuevos «H-009 C-1…C-8» en `VaultWorkspacePage.test.tsx`
+    (matchMedia controlable estilo `useTheme.test.tsx` para forzar el ancho y el
+    cruce de breakpoint). Archivo: 59/59 verde.
+  - `npm run build` (typecheck + vite build) OK.
+  - Regresión completa `npx vitest run`: **88 archivos, 1703 tests, 0 fallos**.
+  - Verificador adversarial (yo mismo, 2 corridas): sin Critical/High.
+    Corrida 1 halló 1 Medium accionable (C-8 sólo probaba Enter, no Space) →
+    corregido con test de Space. Corrida 2 sin hallazgos nuevos → **Converge**.
+- **Gaps:** C-2 y C-5 dependen de CSS no verificable en jsdom (posición/overlay/
+  240 px); los tests fijan el contrato de atributos (`data-open`/`data-floating`)
+  y el orden del DOM (editor no reordenado), pero el pintado real queda para la
+  verificación visual del checkpoint (§8). No hay test E2E/Playwright nuevo.
+- **Riesgo residual:**
+  - **Desviación documentada:** el overlay móvil usa `position: absolute` anclado
+    a `.vault-workspace` en vez del `position: fixed` que menciona el paréntesis de
+    C-5. Razón: con `fixed` al viewport y un `app-header` que hace *wrap* (altura
+    variable) no se puede ubicar el drawer bajo el header sin JS ni número mágico,
+    y anclar al workspace garantiza que el editor **no se desplace** al abrir
+    (requisito observable de C-5). Comportamiento observable intacto; a confirmar
+    visualmente.
+  - Detalles visuales a revisar en el checkpoint: hueco fijo de 44 px a la
+    izquierda del editor en móvil para el botón flotante; aspecto de la barra
+    **colapsada** en escritorio (queda sólo el botón en la cabecera); sombra/ancho
+    (`min(280px, 85vw)`) del drawer.
+  - Sin persistencia de la preferencia abierto/cerrado (Descartes): cada apertura
+    y cada cruce de breakpoint reaplican el default por ancho.
+- **Próximo paso:** checkpoint demostrable de Carlos (§8) — abrir una bóveda en
+  los 3 anchos y validar botón + modos. Si aprueba, pasar `estado:` a `verified`.
+  Revisar/push/merge a cargo de AIRA (no hechos aquí por diseño del encargo).

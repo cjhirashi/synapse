@@ -154,6 +154,15 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   27/25 px, íconos de carpeta/nota, sangría de 24 px), barra de acciones de la nota **bajo** el
   árbol (si fuera sobre él, al enfocar una fila se desplazaría y el clic no la abriría) y pie con la
   papelera de la bóveda.
+- **Barra ocultable + responsiva** (`notes/VaultWorkspacePage.tsx`, H-009): la cabecera lleva un botón
+  (`PanelLeft`/`PanelLeftClose`) que muestra/oculta la barra, visible y operable por teclado en los 3
+  anchos (`aria-expanded`/`aria-controls`). Hay **2 modos** según el ancho (`useMediaQuery`, corte de
+  640 px): en tableta y escritorio (> 640 px) la barra es **fija/dockeada** y arranca visible; en móvil
+  (≤ 640 px) arranca **oculta** y, al abrirla, aparece como **ventana flotante** (overlay anclado a la
+  izquierda, `position: absolute` sobre `.vault-workspace`) que no desplaza el editor y se cierra al
+  hacer click fuera, elegir una nota o pulsar `Escape` (patrón de `AccountMenu`). Al cruzar el
+  breakpoint se recalcula el modo sin perder la nota abierta. Es el primer uso del patrón **sidebar
+  oculta** (vs. **sidebar en riel** de `VaultRail`/H-008).
 - **Editor** (`editor/editor.css`): barra superior fija de 43 px y cuerpo sin tarjeta con una
   columna centrada de 780 px (`.note-editor-column`; avisos y confirmaciones dentro). El estado
   vacío (`.vault-workspace-empty`) va centrado en el panel.

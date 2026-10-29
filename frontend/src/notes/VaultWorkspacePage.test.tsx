@@ -746,6 +746,9 @@ test("H-009 C-8: el botón es operable por teclado (Enter alterna aria-expanded)
   expect(toggle()).toHaveAttribute("aria-expanded", "false");
   await userEvent.keyboard("{Enter}");
   expect(toggle()).toHaveAttribute("aria-expanded", "true");
+  // C-8 pide Enter **y** Space: Space también alterna (es un <button> nativo).
+  await userEvent.keyboard("{ }");
+  expect(toggle()).toHaveAttribute("aria-expanded", "false");
 });
 
 /** El contenedor de la barra, donde viven `data-open`/`data-floating`. */
