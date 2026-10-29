@@ -189,6 +189,16 @@ class NoteNotFound(DomainError):
     detail = "Note not found"
 
 
+class NotePathTaken(DomainError):
+    """`path` ya lo usa otra nota viva de la bóveda (C-6); mapea la excepción interna del
+    mismo nombre de `services/note_service.py` (reuso, sin reescribir)."""
+
+    slug = "note-path-taken"
+    title = "Note path already in use"
+    status = 409
+    detail = "Note path already in use"
+
+
 # --- Sincronización (SPEC-0005) ---
 
 class SyncEndpointNotFound(DomainError):

@@ -179,6 +179,49 @@ class NotePage(BaseModel):
     next_cursor: str | None
 
 
+# --- Notas vía REST (historia 0014-acceso-agentes-notas, H-004.2: escritura) ---
+# `path`/`content`/`frontmatter` no llevan restricciones nativas de pydantic (a diferencia de
+# `VaultName`/`VaultTags`): su forma la decide `core/note_rules.py` (`check_path`,
+# `check_content`, `check_frontmatter`), el mismo código que valida el push de `/sync` (C-5,
+# C-10) — duplicar la regla aquí (p. ej. un `max_length`) daría dos vocabularios de rechazo
+# para el mismo campo. El tipo de pydantic (str/dict) sólo descarta la forma JSON más básica
+# (p. ej. un número donde se espera texto), que las reglas también rechazan igual.
+
+
+class NoteCreate(BaseModel):
+    """Cuerpo de `POST /vaults/{vault_id}/notes`; cualquier otro campo → 422 (C-5, mismo
+    vocabulario `validation-error:<campo>` que `core/schemas.py` ya usa para bóvedas).
+
+    `frontmatter` ausente o `null` son equivalentes (sin frontmatter): el servicio escribe el
+    documento **sin la clave** en los dos casos, nunca con `frontmatter: null` (contrato
+    `note.schema.json` de SPEC-0008, el mismo que valida el push: una clave presente con
+    `null` la rechazaría `check_frontmatter`, C-10). `null` nunca pasa por esa regla porque el
+    documento que persiste el servicio no llega a tener esa forma.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    content: str
+    frontmatter: dict | None = None
+
+
+class NoteUpdate(BaseModel):
+    """Cuerpo de `PATCH /vaults/{vault_id}/notes/{note_id}`: se aplican sólo los campos
+    enviados (`model_dump(exclude_unset=True)`, mismo patrón que `VaultUpdate`).
+
+    `path` y `content` no admiten `null` (su tipo no es anulable): "ausente" se distingue de
+    un `null` explícito, que da 422. `frontmatter: null` sí vale: borra el campo (como
+    `description` en `VaultUpdate`).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = None  # type: ignore[assignment]
+    content: str = None  # type: ignore[assignment]
+    frontmatter: dict | None = None
+
+
 # --- API keys de agente (SPEC-0013) ---
 
 AgentKeyLabel = Annotated[
