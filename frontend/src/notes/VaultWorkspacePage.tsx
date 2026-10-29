@@ -30,6 +30,30 @@ import "./notes.css";
 const loadEditor = () => import("../editor/NoteEditor");
 const NoteEditor = lazy(loadEditor);
 
+/**
+ * Botón de alternar la barra de notas (H-009 C-1/C-8). Un único origen de marcado (icono, etiqueta,
+ * `aria-expanded`/`aria-controls`) usado en dos sitios: la fila de título del editor (`NoteEditor`,
+ * como primer elemento) y, sin nota abierta, flotando sobre el panel vacío. `floating` conmuta el
+ * estilo: el del editor reutiliza `note-nav-button` (editor.css), el flotante se estiliza aparte en
+ * `notes.css` (siempre cargado, aunque el chunk del editor no).
+ */
+function SidebarToggle({ open, controls, onToggle, floating = false }: { open: boolean; controls: string; onToggle: () => void; floating?: boolean }) {
+  const label = open ? "Ocultar la barra de notas" : "Mostrar la barra de notas";
+  return (
+    <button
+      type="button"
+      className={floating ? "vault-sidebar-toggle vault-sidebar-toggle--floating" : "note-nav-button vault-sidebar-toggle"}
+      aria-expanded={open}
+      aria-controls={controls}
+      aria-label={label}
+      title={label}
+      onClick={onToggle}
+    >
+      {open ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
+    </button>
+  );
+}
+
 /** UUID en su forma canónica (minúsculas), la única que forman los ids de bóveda. */
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -138,6 +162,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const sideId = useId();
   /** El contenedor de la barra, para el cierre por click-afuera de la flotante (C-6). */
   const sideRef = useRef<HTMLDivElement>(null);
+  const toggleSidebar = () => setSidebarOpen((v) => !v);
 
   // C-7: al cruzar el breakpoint (resize/rotación) se recalcula la visibilidad según el default del
   // nuevo ancho — a escritorio queda visible y fija; a móvil, oculta. La nota abierta (`openId`) vive
@@ -326,19 +351,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         data-open={sidebarOpen ? "" : undefined}
         data-floating={isMobile ? "" : undefined}
       >
-        {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. */}
+        {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. El
+            botón de alternar ya no vive aquí (H-009 corregido): se movió a la fila de título del editor
+            y al estado vacío, para no reservar una columna que le reste ancho al documento. */}
         <header className="vault-workspace-header">
-          {/* H-009 C-1/C-8: alterna la barra, visible y operable por teclado en los 3 anchos. */}
-          <button
-            type="button"
-            className="vault-workspace-toggle"
-            aria-expanded={sidebarOpen}
-            aria-controls={sideId}
-            aria-label={sidebarOpen ? "Ocultar la barra de notas" : "Mostrar la barra de notas"}
-            onClick={() => setSidebarOpen((v) => !v)}
-          >
-            {sidebarOpen ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
-          </button>
           <FolderOpen size={14} aria-hidden="true" data-icon="folder-open" />
           <h1 title={vault.name}>{vault.name}</h1>
         </header>
@@ -361,11 +377,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
         <div hidden={showTrash} className="vault-workspace-content">
           {openId === null ? (
-            // Estado vacío centrado en el panel (SPEC-0009 RF-008).
-            <div className="vault-workspace-empty">
-              <FileText size={32} aria-hidden="true" data-icon="file-text" />
-              <p>Abre o crea una nota para empezar.</p>
-            </div>
+            // Estado vacío (SPEC-0009 RF-008): texto centrado; el botón de la barra flota en la esquina
+            // superior izquierda, sin reservar columna ni padding (H-009 C-1 corregido).
+            <>
+              <SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} floating />
+              <div className="vault-workspace-empty">
+                <FileText size={32} aria-hidden="true" data-icon="file-text" />
+                <p>Abre o crea una nota para empezar.</p>
+              </div>
+            </>
           ) : (
             <Suspense
               fallback={
@@ -374,7 +394,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
             </Suspense>
           )}
         </div>

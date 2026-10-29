@@ -1,7 +1,7 @@
 ---
 id: H-009
 titulo: Sidebar de notas ocultable con botón, fija en tableta/escritorio y flotante en móvil
-estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada vía Claude Code (Modo 2) 2026-10-29: 8/8 criterios con test verde, build+regresión OK, Converge alcanzado. Pendiente checkpoint visual de Carlos para pasar a verified (§8).
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada, desplegada y checkpoint visual parcial de Carlos (botón visible y funcional). Corrección pedida sobre C-1 (ubicación del botón, ver §3) en curso. Pendiente re-confirmación visual para pasar a verified (§8).
 covers:
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/VaultWorkspacePage.test.tsx
@@ -53,12 +53,19 @@ que es lo que esta historia separa.
 
 ## 3. Criterios de aceptación (EARS booleano)
 
-- **C-1:** El sistema DEBE mostrar un botón para alternar (mostrar/ocultar)
-  la sidebar de archivos/carpetas en `.vault-workspace-header`, visible en
-  los 3 anchos (≤ 640 px, 641–800 px, > 800 px), con icono (p. ej.
-  `PanelLeft`/`PanelLeftClose` de `lucide-react`, mismo set ya usado en el
-  proyecto) y `aria-expanded`/`aria-controls` apuntando al contenedor de la
-  sidebar.
+- **C-1 (corregido 2026-10-29, tras checkpoint visual):** Carlos vio el
+  resultado desplegado y pidió mover el botón: la versión original lo
+  colocaba en `.vault-workspace-header` (cabecera de la propia sidebar), lo
+  que reservaba una columna/gutter fija de 44 px que le restaba ancho al
+  documento incluso con la barra colapsada. Corregido: el botón DEBE vivir
+  en la fila de título del documento (`.note-editor-header` de
+  `NoteEditor.tsx`, la misma fila de Atrás/Adelante/migas/controles de
+  edición/menú ⋮), como primer elemento de esa fila, sin columna propia.
+  Caso sin nota abierta (vacío, sin fila de título): el botón queda flotando
+  sin reservar espacio de layout — mismo criterio de "sin robar ancho al
+  documento". Sigue visible en los 3 anchos, con icono
+  `PanelLeft`/`PanelLeftClose` y `aria-expanded`/`aria-controls` apuntando al
+  contenedor de la sidebar.
 - **C-2:** MIENTRAS el ancho de la ventana sea > 640 px (tableta o
   escritorio), el sistema DEBE presentar la sidebar **fija/dockeada** a la
   izquierda del editor (mismo lugar y ancho de 240 px que hoy) cuando está
@@ -182,7 +189,7 @@ añadió una directriz permanente que aplica a esta y a toda sidebar futura
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 1 | `VaultWorkspacePage.test.tsx` «H-009 C-1…» | ✅ Implementado (test verde) |
+| C-1 | 1, corrección | `VaultWorkspacePage.test.tsx` «H-009 C-1 (corregido)…» | ✅ Reubicado tras checkpoint (test verde): botón en `.note-editor-header` / flotante en vacío |
 | C-2 | 2, 6 | `VaultWorkspacePage.test.tsx` «H-009 C-2…» (contrato de atributos) + verificación visual | ✅ JS verde · 🖼 visual pendiente (checkpoint) |
 | C-3 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-3…» | ✅ Implementado (test verde) |
 | C-4 | 2 | `VaultWorkspacePage.test.tsx` «H-009 C-4…» | ✅ Implementado (test verde) |
@@ -246,3 +253,45 @@ pasos TDD, un commit atómico por paso citando «H-009».
 - **Próximo paso:** checkpoint demostrable de Carlos (§8) — abrir una bóveda en
   los 3 anchos y validar botón + modos. Si aprueba, pasar `estado:` a `verified`.
   Revisar/push/merge a cargo de AIRA (no hechos aquí por diseño del encargo).
+
+### Corrección C-1 (2026-10-29, tras checkpoint visual en producción)
+
+Carlos vio el resultado desplegado y pidió mover el botón: estaba en
+`.vault-workspace-header` (cabecera de la propia barra), lo que obligaba a dejar
+siempre visible esa cabecera-asa y reservaba un gutter fijo de 44 px
+(`padding-left` en `.vault-workspace-main` ≤ 640 px) que le restaba ancho al
+documento incluso con la barra colapsada.
+
+- **Claim:** el botón vive ahora en la **fila de título del editor**
+  (`.note-editor-header`, como **primer elemento**) cuando hay nota abierta, y
+  **flota** sobre la esquina del panel vacío cuando no la hay — sin reservar
+  columna ni gutter. Al cerrar, `.vault-workspace-side` se oculta **entera** (ya
+  no hace falta la cabecera-asa). Los modos fija/flotante y el resto de criterios
+  (C-2…C-8) no cambian.
+- **Arquitectura:** `sidebarOpen`/`isMobile`/toggle siguen en `Workspace`
+  (`VaultWorkspacePage.tsx`). Un único componente `SidebarToggle` arma el botón;
+  `Workspace` lo pasa a `NoteEditor` por la nueva prop opcional `sidebarToggle:
+  ReactNode` (el editor sólo coloca el nodo como primer hijo de su header, no
+  conoce la semántica de la barra) y lo renderiza él mismo, con la variante
+  `--floating`, en el estado vacío. Elegido «pasar el nodo ya armado» sobre
+  «pasar valores+callback» para tener **un solo origen de marcado** del botón
+  (aria/icono/etiqueta), ya que debe aparecer también fuera de `NoteEditor`.
+- **Evidencia:** 2 commits de la corrección (JSX/relocalización con test C-1
+  reescrito; CSS). Test C-1 reescrito fija ambas ubicaciones y que el botón ya
+  **no** está en `.vault-workspace-header`. `npm run build` OK. Regresión
+  completa `npx vitest run` → **88 archivos, 1703 tests, 0 fallos**. Verificador
+  adversarial (2 corridas) sin Critical/High.
+- **CSS retirado:** `padding-left: 44px` de `.vault-workspace-main` (el gutter que
+  motivó la corrección), las reglas de colapso de la cabecera y el estilo del
+  botón viejo `.vault-workspace-toggle`.
+- **Riesgo residual (nuevo, Low):** en estados **sin fila de título** internos de
+  `NoteEditor` (nota cargando, o nota borrada desde otro dispositivo sin borrador
+  → devuelve un `<p>`) no se pinta el toggle; si además la barra está cerrada, no
+  hay botón para reabrirla en ese instante. Es raro y transitorio, y hay salida:
+  el enlace «Bóvedas» del header de la app permite salir y reentrar, lo que
+  reaplica el default por ancho (en escritorio la barra reabre). A validar en el
+  checkpoint; si molesta, es un follow-up (pintar el toggle también en esos
+  estados).
+- **Entorno:** el directorio de trabajo del shell se reinició a la raíz del
+  worktree en esta sesión (tomaba el vitest v5 de la raíz, sin jsdom, → `self is
+  not defined`); se corrige con `cd frontend` antes de correr la suite.
