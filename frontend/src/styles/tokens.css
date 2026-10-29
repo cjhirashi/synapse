@@ -21,6 +21,20 @@
   --danger-bg: rgba(220, 38, 38, 0.1);
   --danger-border: rgba(220, 38, 38, 0.3);
   --info: #38bdf8;
+  /* H-008: 12 familias Tailwind dedicadas a colorear bóvedas (shade 400 en oscuro, igual patrón que
+     success/warning/danger/info). No son semántica general de la app: sólo las usa VaultChip. */
+  --vault-orange: #fb923c;
+  --vault-yellow: #facc15;
+  --vault-lime: #a3e635;
+  --vault-emerald: #34d399;
+  --vault-teal: #2dd4bf;
+  --vault-blue: #60a5fa;
+  --vault-indigo: #818cf8;
+  --vault-violet: #a78bfa;
+  --vault-purple: #c084fc;
+  --vault-fuchsia: #e879f9;
+  --vault-pink: #f472b6;
+  --vault-rose: #fb7185;
   /* ADR-006: variantes legibles como texto (≥ 4,5:1) y borde de controles nuevos (≥ 3:1). */
   --success-text: #4ade80;
   --warning-text: #fbbf24;
@@ -48,6 +62,20 @@
   --danger-bg: rgba(220, 38, 38, 0.08);
   --danger-border: rgba(220, 38, 38, 0.25);
   --info: #0284c7;
+  /* H-008: 12 familias Tailwind dedicadas a colorear bóvedas (shade 600 en claro, igual patrón que
+     success/warning/danger/info). No son semántica general de la app: sólo las usa VaultChip. */
+  --vault-orange: #ea580c;
+  --vault-yellow: #ca8a04;
+  --vault-lime: #65a30d;
+  --vault-emerald: #059669;
+  --vault-teal: #0d9488;
+  --vault-blue: #2563eb;
+  --vault-indigo: #4f46e5;
+  --vault-violet: #7c3aed;
+  --vault-purple: #9333ea;
+  --vault-fuchsia: #c026d3;
+  --vault-pink: #db2777;
+  --vault-rose: #e11d48;
   /* ADR-006: variantes legibles como texto (≥ 4,5:1) y borde de controles nuevos (≥ 3:1). */
   --success-text: #15803d;
   --warning-text: #b45309;

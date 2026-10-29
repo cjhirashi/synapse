@@ -7,6 +7,7 @@ import { expect, test } from "vitest";
 import { initials as initialsFromRail } from "../notes/VaultRail";
 import {
   COLOR_LABELS,
+  colorVar,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -36,7 +37,14 @@ test("RF-011: cada glifo y cada color tiene su nombre accesible en español", ()
   expect(Object.values(ICON_LABELS).every((label) => label.length > 0)).toBe(true);
   expect(new Set(Object.values(ICON_LABELS)).size, "nombres únicos").toBe(GLYPHS.length);
   expect(ICON_LABELS.star).toBe("Estrella");
-  expect(COLOR_LABELS).toEqual({ accent: "Cian", info: "Azul", success: "Verde", warning: "Ámbar", danger: "Rojo" });
+  // H-008 C-11: las 5 claves de siempre más las 12 familias Tailwind nuevas, cada una con su etiqueta única.
+  expect(COLOR_LABELS).toEqual({
+    accent: "Cian", info: "Azul", success: "Verde", warning: "Ámbar", danger: "Rojo",
+    orange: "Naranja", yellow: "Amarillo", lime: "Lima", emerald: "Esmeralda", teal: "Verde azulado",
+    blue: "Azul real", indigo: "Índigo", violet: "Violeta", purple: "Púrpura", fuchsia: "Fucsia",
+    pink: "Rosa", rose: "Rosado",
+  });
+  expect(new Set(Object.values(COLOR_LABELS)).size, "etiquetas de color únicas").toBe(PALETTE.length);
 });
 
 const tokens = readFileSync(resolve(__dirname, "../styles/tokens.css"), "utf8");
@@ -47,10 +55,17 @@ function theme(name: "light" | "dark"): Record<string, string> {
   return Object.fromEntries([...block.matchAll(/--([\w-]+):\s*([^;]+);/g)].map((m) => [m[1], m[2].trim()]));
 }
 
-test("RF-006: PALETTE son 5 claves que existen como tokens en los dos temas", () => {
-  expect([...PALETTE]).toEqual(["accent", "info", "success", "warning", "danger"]);
+/** Token CSS al que apunta `colorVar(key)` (p. ej. `var(--vault-orange)` → `vault-orange`). */
+const tokenOf = (key: (typeof PALETTE)[number]) => colorVar(key).match(/var\((--[\w-]+)\)/)![1].slice(2);
+
+test("RF-006 (H-008 C-10): PALETTE son 17 claves que existen como tokens hex en los dos temas", () => {
+  expect([...PALETTE]).toEqual([
+    "accent", "info", "success", "warning", "danger",
+    "orange", "yellow", "lime", "emerald", "teal",
+    "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose",
+  ]);
   for (const mode of ["light", "dark"] as const) {
-    for (const key of PALETTE) expect(theme(mode)[key], `${mode} --${key}`).toMatch(/^#[0-9a-f]{6}$/i);
+    for (const key of PALETTE) expect(theme(mode)[tokenOf(key)], `${mode} ${key}`).toMatch(/^#[0-9a-f]{6}$/i);
   }
 });
 
@@ -129,7 +144,7 @@ test("RF-006: el glifo --text-primary sobre el tinte del 18 % de cada color da �
     const vars = theme(mode);
     for (const key of PALETTE) {
       // `color-mix(in srgb, var(--key) 18%, var(--bg-tertiary))`: mezcla lineal en sRGB.
-      const tint = parse(vars[key]);
+      const tint = parse(vars[tokenOf(key)]);
       const base = parse(vars["bg-tertiary"]);
       const mixed = [0, 1, 2].map((i) => tint[i] * 0.18 + base[i] * 0.82).concat(1) as Rgba;
       expect(ratio(parse(vars["text-primary"]), mixed), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);

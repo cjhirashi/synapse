@@ -91,17 +91,58 @@ export const ICON_LABELS: Readonly<Record<string, string>> = {
   dumbbell: "Pesa",
 };
 
-/** Claves de tokens de `styles/tokens.css` que pueden colorear una bóveda (sin valores nuevos). */
-export const PALETTE = ["accent", "info", "success", "warning", "danger"] as const;
+/**
+ * Claves de color que pueden colorear una bóveda (H-008 C-10): las 5 semánticas de siempre
+ * (`accent/info/success/warning/danger`, reusan sus tokens) más las 12 familias Tailwind dedicadas
+ * a bóvedas (`--vault-*`, ver `COLOR_TOKEN`). Cada una existe como token en los dos temas.
+ */
+export const PALETTE = [
+  "accent", "info", "success", "warning", "danger",
+  "orange", "yellow", "lime", "emerald", "teal",
+  "blue", "indigo", "violet", "purple", "fuchsia", "pink", "rose",
+] as const;
 export type PaletteKey = (typeof PALETTE)[number];
 
-/** Nombre accesible en español de cada color (selector de RF-011). */
+/** Token CSS de cada color: las 5 de siempre reusan el semántico; las 12 nuevas, su `--vault-*`. */
+const COLOR_TOKEN: Readonly<Record<PaletteKey, string>> = {
+  accent: "--accent",
+  info: "--info",
+  success: "--success",
+  warning: "--warning",
+  danger: "--danger",
+  orange: "--vault-orange",
+  yellow: "--vault-yellow",
+  lime: "--vault-lime",
+  emerald: "--vault-emerald",
+  teal: "--vault-teal",
+  blue: "--vault-blue",
+  indigo: "--vault-indigo",
+  violet: "--vault-violet",
+  purple: "--vault-purple",
+  fuchsia: "--vault-fuchsia",
+  pink: "--vault-pink",
+  rose: "--vault-rose",
+};
+
+/** Nombre accesible en español de cada color (selector de RF-011; H-008 C-11). */
 export const COLOR_LABELS: Readonly<Record<PaletteKey, string>> = {
   accent: "Cian",
   info: "Azul",
   success: "Verde",
   warning: "Ámbar",
   danger: "Rojo",
+  orange: "Naranja",
+  yellow: "Amarillo",
+  lime: "Lima",
+  emerald: "Esmeralda",
+  teal: "Verde azulado",
+  blue: "Azul real",
+  indigo: "Índigo",
+  violet: "Violeta",
+  purple: "Púrpura",
+  fuchsia: "Fucsia",
+  pink: "Rosa",
+  rose: "Rosado",
 };
 
 /** Marcador del glifo que significa «mostrar las iniciales» (con o sin color elegido). */
@@ -109,8 +150,8 @@ const INITIALS = "initials";
 
 const has = (map: object, key: string) => Object.prototype.hasOwnProperty.call(map, key);
 
-/** `var(--clave)` de un color de la paleta: el único valor de color que el chip pone en `style`. */
-export const colorVar = (key: PaletteKey): string => `var(--${key})`;
+/** `var(--token)` de un color de la paleta: el único valor de color que el chip pone en `style`. */
+export const colorVar = (key: PaletteKey): string => `var(${COLOR_TOKEN[key]})`;
 
 export interface ParsedIcon {
   /** Id del glifo del catálogo, o `null` para mostrar las iniciales. */
