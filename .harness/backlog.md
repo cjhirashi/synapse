@@ -7,6 +7,7 @@
 
 ## En curso
 
+- [~] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil (corrige que hoy se apila arriba del editor en móvil) → `historias/h009-sidebar-notas-responsive/historia.md`, Gate 1 pasado ("así es", 2026-10-29); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
