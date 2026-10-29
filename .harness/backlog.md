@@ -8,19 +8,20 @@
 ## En curso
 
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
-- [~] H-006 — Iconos de notas/carpetas en la sidebar con el color de la bóveda, rellenos → `historias/h006-iconos-color-bóveda/`, Gate 1 pasado ("así es" + decisión de relleno con Lucide `fill`, sin librería nueva, 2026-10-29)
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
+- [ ] H-007 — `NoteSidebar.test.tsx` > «RF-042: "Nueva carpeta" crea una nota dentro y la abre en edición» es intermitente (falla ~2 de 3 corridas aisladas, `expect(onOpen).toHaveBeenCalledWith(...)` recibe 0 llamadas — carrera entre `waitForCondition` y el callback de apertura). Confirmado preexistente: falla igual en el commit base antes de H-006 (no es regresión de ese trabajo). Encontrado al verificar independientemente H-006 (la sesión headless reportó "1683 en verde" sin haber corrido la suite completa tras el 429 de rate-limit, 2026-10-29). No bloqueante (pasa casi siempre en la suite completa por el orden/paralelismo de vitest), pero hay que arreglar la carrera en el test, no ignorarla.
 - [ ] H-004.2 — Un agente OpenClaw crea/actualiza/borra notas de su bóveda vía REST (escritura) → Gate 1 pasado ("así es", 2026-10-29); prioridad **máxima**, por encima de todo lo anterior en esta lista; depende de H-004.1 (ya `implemented`/desplegado, ver abajo); mismo borrador en `historias/0014-acceso-agentes-notas/historia.md`
 - [ ] H-005 — Corregir `_check_precondition` para aceptar `ETag` débil (`W/"..."`) en `If-Match`: Cloudflare reescribe el `ETag` fuerte del origen a débil cuando comprime la respuesta con Brotli (confirmado con curl externo: `Accept-Encoding: br` → débil, `identity` → fuerte, directo a `localhost:8000` sin Cloudflare → siempre fuerte — no es bug de origen ni del plugin cliente). La comparación de string exacta actual rechaza con 412 cualquier `update`/`delete`/`restore` cuyo `GET` previo llegó comprimido, aunque la revisión (`_rev`) sí coincida. Repro: nota creada (ETag fuerte, update ok) → ese mismo update ya responde comprimido (ETag débil) → el siguiente `delete` con ese ETag da 412 pese a mismo `_rev`. Afecta `note_content_service.py::_check_precondition` (líneas 291-296) y la copia idéntica en `vault_service.py` (líneas 274-279). Arreglo propuesto: comparar ignorando el prefijo `W/` (comparación débil, RFC 7232 — correcta cuando el cliente solo ve lo que el borde entrega). No bloqueante: `list`/`get`/`create` funcionan siempre; solo falla el segundo write cuando el ETag previo llegó débil. Hallazgo de un subagente verificando el checkpoint demostrable de H-004, 2026-10-29.
 
 ## Implementadas, pendientes de checkpoint de Carlos
 
 - [~] H-003 — Drag & drop de notas/carpetas en la sidebar izquierda (C-1…C-8, incluye placeholder al vaciar una carpeta) → desplegado, ver `historias/h003-drag-drop-sidebar/historia.md`
+- [~] H-006 — Iconos de notas/carpetas en la sidebar con el color de la bóveda, solo contorno (sin relleno — Carlos pidió relleno, lo vio y lo revirtió el mismo día) → desplegado, verificado independientemente por AIRA tras un 429 de rate-limit en la sesión implementadora; ver `historias/h006-iconos-color-bóveda/historia.md`
 - [~] H-002.1 — Crear, listar y revocar API keys de agente → desplegado, ver `historias/0013-acceso-agentes-api/historia.md`
 - [~] H-002.2 — Un agente usa su API key para leer bóvedas/notas → desplegado, mismo detalle
 - [~] H-002.3 — Revocar una key la invalida de inmediato → desplegado, mismo detalle
