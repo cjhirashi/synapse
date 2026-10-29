@@ -17,7 +17,7 @@ import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
-import { joinPath } from "./folders";
+import { joinPath, parentFolder } from "./folders";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
 export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
@@ -288,6 +288,49 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     return write({ ...doc, path: normalized, updated_at: now() });
   }
 
+  /** Crea una nota (la comparten `create` y el placeholder de C-8): sin título usa «Sin título n» de la carpeta. */
+  async function createNote(vaultId: string, title: string | undefined, folder = ""): Promise<Note> {
+    const requested = title?.trim() ?? "";
+    let path: string;
+    if (requested === "") {
+      // RF-012: sin título, el menor «Sin título n» libre entre las activas de ESA carpeta.
+      const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+      path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))), folder);
+    } else {
+      // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
+      path = titleToPath(joinPath(folder, requested));
+    }
+    if (checkPath(path) !== null) throw new NoteValidationError(["path"]);
+    await assertPathFree(vaultId, path, null);
+    const timestamp = now();
+    return write({
+      _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
+      type: "note",
+      vault_id: vaultId,
+      path,
+      frontmatter: {},
+      content: "",
+      created_at: timestamp,
+      updated_at: timestamp,
+      deleted_at: null,
+    });
+  }
+
+  /**
+   * C-8 (H-003): si mover una nota dejó su carpeta de origen `folder` sin ninguna nota activa, crea
+   * ahí un `Sin título.md` para que la carpeta siga existiendo (una carpeta existe por tener una nota
+   * dentro; mismo patrón que «Crear carpeta»). La raíz no es una carpeta derivada y siempre se ve, así
+   * que se omite. Sólo lo llama `rename` (drag de nota y renombrado por teclado), nunca `moveFolder`.
+   */
+  async function keepSourceFolder(vaultId: string, folder: string): Promise<void> {
+    if (folder === "") return;
+    const prefix = `${folder}/`;
+    const stillThere = (await summaries(vaultId)).some(
+      (note) => note.deleted_at === null && note.path.startsWith(prefix),
+    );
+    if (!stillThere) await createNote(vaultId, "", folder);
+  }
+
   return {
     async list(vaultId, { deleted = false } = {}) {
       return (await summaries(vaultId))
@@ -300,34 +343,15 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async create(vaultId, title, folder = "") {
-      const requested = title?.trim() ?? "";
-      let path: string;
-      if (requested === "") {
-        // RF-012: sin título, el menor «Sin título n» libre entre las activas de ESA carpeta.
-        const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
-        path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))), folder);
-      } else {
-        // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
-        path = titleToPath(joinPath(folder, requested));
-      }
-      if (checkPath(path) !== null) throw new NoteValidationError(["path"]);
-      await assertPathFree(vaultId, path, null);
-      const timestamp = now();
-      return write({
-        _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
-        type: "note",
-        vault_id: vaultId,
-        path,
-        frontmatter: {},
-        content: "",
-        created_at: timestamp,
-        updated_at: timestamp,
-        deleted_at: null,
-      });
+      return createNote(vaultId, title, folder);
     },
 
     async rename(id, path, rev) {
-      return renameDoc(id, path, rev);
+      const source = parentFolder((await load(id, false)).path); // carpeta de origen, antes de mover
+      const moved = await renameDoc(id, path, rev);
+      // C-8: si el movimiento vació la carpeta de origen, la sostiene con un «Sin título.md».
+      if (source !== parentFolder(moved.path)) await keepSourceFolder(moved.vault_id, source);
+      return moved;
     },
 
     async moveFolder(vaultId, from, to) {

@@ -454,6 +454,43 @@ describe("H-003: moveFolder (mover una carpeta en lote)", () => {
   });
 });
 
+// H-003 (C-8): mover una nota (vía `rename`, el camino compartido del drag y del renombrado por
+// teclado) que deja su carpeta de origen sin notas activas crea ahí un `Sin título.md` para que la
+// carpeta siga existiendo. NO aplica a `moveFolder` (la carpeta se reubica entera, no se vacía).
+describe("H-003 C-8: placeholder al vaciar la carpeta de origen al mover una nota", () => {
+  it("mover la última nota de una carpeta deja un «Sin título.md» en el origen", async () => {
+    const a = await store.create(VAULT, "Carpeta/Sola.md");
+    await store.rename(a.id, "Sola.md", a.rev); // la saca a la raíz
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]);
+  });
+
+  it("si quedan otras notas en la carpeta de origen no crea placeholder", async () => {
+    const uno = await store.create(VAULT, "Carpeta/Uno.md");
+    await store.create(VAULT, "Carpeta/Dos.md");
+    await store.rename(uno.id, "Uno.md", uno.rev);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Dos.md", "Uno.md"]);
+  });
+
+  it("mover a una subcarpeta del propio origen no lo vacía (la carpeta sigue existiendo por el descendiente)", async () => {
+    const x = await store.create(VAULT, "Carpeta/x.md");
+    await store.rename(x.id, "Carpeta/Sub/x.md", x.rev);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sub/x.md"]);
+  });
+
+  it("mover una nota desde la raíz no crea placeholder (la raíz no es una carpeta derivada)", async () => {
+    const solo = await store.create(VAULT, "Solo.md");
+    await store.rename(solo.id, "Carpeta/Solo.md", solo.rev);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Solo.md"]);
+  });
+
+  it("moveFolder NO deja placeholder en el origen (la carpeta se reubica entera)", async () => {
+    await store.create(VAULT, "Origen/x.md");
+    await store.create(VAULT, "Origen/Sub/y.md");
+    await store.moveFolder(VAULT, "Origen", "Destino");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Destino/Origen/Sub/y.md", "Destino/Origen/x.md"]);
+  });
+});
+
 describe("SPEC-0010 RF-001/RF-003/RF-008: carpetas y puerta de ruta", () => {
   it("RF-003: create con carpeta pone la nota dentro (título relativo)", async () => {
     const note = await store.create(VAULT, "Nota", "Proyectos");
