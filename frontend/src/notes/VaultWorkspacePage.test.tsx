@@ -780,3 +780,25 @@ test("H-009 C-2: en escritorio/tableta (> 640 px) la barra es fija/dockeada, nun
   // Fija = sin el marcador de modo flotante (ese sólo aparece en móvil).
   expect(side).not.toHaveAttribute("data-floating");
 });
+
+test("H-009 C-5: en móvil, abrir con el botón marca el modo flotante sin reordenar el editor", async () => {
+  installViewport(true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await within(container).findByRole("button", { name: /barra de notas/i });
+  const workspace = container.querySelector(".vault-workspace") as HTMLElement;
+  const side = sideEl(container);
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+
+  // En móvil el contenedor lleva el marcador de modo flotante aunque esté cerrado…
+  expect(side).toHaveAttribute("data-floating");
+  expect(side).not.toHaveAttribute("data-open");
+  // …y la barra (.vault-workspace-side) sigue ANTES del editor en el DOM: el editor no se reordena.
+  expect(Array.from(workspace.children)).toEqual([side, main]);
+
+  // Abrir con el botón: pasa a flotante-abierta, el editor NO cambia de lugar en el DOM.
+  await userEvent.click(toggle());
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(sideEl(container)).toHaveAttribute("data-floating");
+  expect(Array.from(workspace.children)).toEqual([side, main]);
+});
