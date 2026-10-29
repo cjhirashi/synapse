@@ -711,25 +711,33 @@ afterEach(() => {
 /** El botón de alternar la barra de notas (C-1): su nombre accesible cambia con el estado. */
 const toggle = () => screen.getByRole("button", { name: /barra de notas/i });
 
-test("H-009 C-1: la cabecera tiene un botón de alternar la barra con aria-expanded y aria-controls a la barra", async () => {
+test("H-009 C-1 (corregido): el botón flota sobre el panel vacío y, con una nota abierta, es el primer elemento de la fila de título del editor", async () => {
   installViewport(false); // escritorio: la barra arranca visible
   const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
   const { container } = render(tree(value, `/vaults/${vault.id}`));
   await screen.findByRole("tree", { name: "Notas" });
 
-  const header = container.querySelector(".vault-workspace-header") as HTMLElement;
-  const button = within(header).getByRole("button", { name: /barra de notas/i });
-  expect(button).toHaveAttribute("type", "button");
-  expect(button).toHaveAttribute("aria-expanded", "true"); // visible por defecto en escritorio (C-4)
-
-  // aria-controls apunta al contenedor real de la barra (.vault-workspace-side).
-  const controlledId = button.getAttribute("aria-controls");
+  // Sin nota abierta: el botón existe pero NO vive en la cabecera de la sidebar (corrección: ya no
+  // reserva columna propia ahí); apunta por aria-controls al contenedor real de la barra.
+  const emptyToggle = toggle();
+  expect(emptyToggle).toHaveAttribute("type", "button");
+  expect(emptyToggle).toHaveAttribute("aria-expanded", "true"); // visible por defecto en escritorio (C-4)
+  expect(emptyToggle.closest(".vault-workspace-header")).toBeNull();
+  const controlledId = emptyToggle.getAttribute("aria-controls");
   expect(controlledId).toBeTruthy();
-  const controlled = document.getElementById(controlledId!);
-  expect(controlled).not.toBeNull();
-  expect(controlled).toHaveClass("vault-workspace-side");
-  // El icono es de lucide (PanelLeft/PanelLeftClose), no texto suelto.
-  expect(button.querySelector("svg")).not.toBeNull();
+  expect(document.getElementById(controlledId!)).toHaveClass("vault-workspace-side");
+  expect(emptyToggle.querySelector("svg")).not.toBeNull(); // icono lucide, no texto
+
+  // Con una nota abierta: el botón es el PRIMER hijo de `.note-editor-header` (fila de Atrás/Adelante/
+  // migas/controles), no una columna aparte.
+  await userEvent.click(screen.getByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  const editorHeader = container.querySelector(".note-editor-header") as HTMLElement;
+  const headerToggle = within(editorHeader).getByRole("button", { name: /barra de notas/i });
+  expect(editorHeader.firstElementChild).toBe(headerToggle);
+  expect(headerToggle.getAttribute("aria-controls")).toBe(controlledId);
+  expect(headerToggle.closest(".vault-workspace-header")).toBeNull();
 });
 
 test("H-009 C-8: el botón es operable por teclado (Enter alterna aria-expanded)", async () => {

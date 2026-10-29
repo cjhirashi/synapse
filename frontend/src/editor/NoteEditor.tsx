@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ComponentType, KeyboardEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ComponentType, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, BetweenHorizontalEnd, BetweenVerticalEnd, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
@@ -104,6 +104,12 @@ interface NoteEditorProps {
   /** Renombrar la nota abierta (RF-008): el editor lo pide cuando su ruta es inválida. */
   onRename?: () => void;
   /**
+   * Botón de alternar la barra de notas (H-009 C-1): lo arma el padre (`Workspace`, dueño del estado
+   * `sidebarOpen`) y el editor lo pinta como **primer elemento** de su fila de título. El editor no
+   * conoce la semántica de la barra; sólo coloca el nodo.
+   */
+  sidebarToggle?: ReactNode;
+  /**
    * Caché de parseo del workspace (RNF-001, §10.3/§10.6): al abrir en lectura (o en Visual el `content`
    * guardado) se consulta por `{id, rev}`; un acierto o una petición en vuelo evitan reparsear con
    * micromark en el hilo principal. Sin caché, el editor parsea en frío como siempre.
@@ -121,7 +127,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -692,6 +698,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       {/* Barra superior (SPEC-0009 R-12, SPEC-0010 P-17, como la captura de Obsidian): Atrás, Adelante, migas,
           controles de edición, estado, lápiz Editar/Leer y menú ⋮. El orden del DOM es el visual y el de tabulación. */}
       <header className="note-editor-header">
+        {/* H-009 C-1: botón de alternar la barra de notas, primer elemento de la fila (lo arma el padre). */}
+        {sidebarToggle}
         <button
           type="button"
           className="note-nav-button"
