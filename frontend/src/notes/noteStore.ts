@@ -73,6 +73,13 @@ export interface NoteStore {
   get(id: string): Promise<Note>;
   create(vaultId: string, title?: string, folder?: string): Promise<Note>;
   rename(id: string, path: string, rev: string): Promise<Note>;
+  /**
+   * Mueve la carpeta `from` bajo `to` (`""` = raíz): reubica todas sus notas activas al nuevo
+   * prefijo conservando la subestructura (H-003 C-2). No hay endpoint de «mover carpeta»: itera
+   * las notas y reusa la misma regla de ruta/unicidad que `rename`. Si alguna ruta de destino ya
+   * está ocupada rechaza con `NotePathTakenError` sin mover ninguna (C-5).
+   */
+  moveFolder(vaultId: string, from: string, to: string): Promise<void>;
   softDelete(id: string, rev: string): Promise<Note>;
   restore(id: string, rev: string): Promise<Note>;
   /**
@@ -271,6 +278,16 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (doc._rev !== rev) throw new NoteChangedError();
   }
 
+  /** Renombra/mueve una nota (la comparte `rename` y `moveFolder`): misma regla de ruta y unicidad. */
+  async function renameDoc(id: string, path: string, rev: string): Promise<Note> {
+    const normalized = titleToPath(path);
+    if (checkPath(normalized) !== null) throw new NoteValidationError(["path"]);
+    const doc = await load(id, false);
+    assertCurrent(doc, rev);
+    await assertPathFree(doc.vault_id, normalized, doc._id);
+    return write({ ...doc, path: normalized, updated_at: now() });
+  }
+
   return {
     async list(vaultId, { deleted = false } = {}) {
       return (await summaries(vaultId))
@@ -310,12 +327,24 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async rename(id, path, rev) {
-      const normalized = titleToPath(path);
-      if (checkPath(normalized) !== null) throw new NoteValidationError(["path"]);
-      const doc = await load(id, false);
-      assertCurrent(doc, rev);
-      await assertPathFree(doc.vault_id, normalized, doc._id);
-      return write({ ...doc, path: normalized, updated_at: now() });
+      return renameDoc(id, path, rev);
+    },
+
+    async moveFolder(vaultId, from, to) {
+      const name = from.split("/").at(-1) ?? from;
+      const dest = joinPath(to, name); // la carpeta movida conserva su nombre, ahora bajo `to`
+      const prefix = `${from}/`;
+      const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+      const moving = active.filter((note) => note.path.startsWith(prefix));
+      const targets = moving.map((note) => ({ note, path: joinPath(dest, note.path.slice(prefix.length)) }));
+      // «sin mover nada» (C-5): si una nota ajena al lote ya ocupa alguna ruta de destino, se rechaza
+      // ANTES de escribir ninguna. El mapeo origen→destino es inyectivo, así que el lote no choca consigo mismo.
+      const movingIds = new Set(moving.map((note) => note.id));
+      for (const { path } of targets) {
+        const key = pathKey(titleToPath(path));
+        if (active.some((note) => !movingIds.has(note.id) && pathKey(note.path) === key)) throw new NotePathTakenError();
+      }
+      for (const { note, path } of targets) await renameDoc(note.id, path, note.rev);
     },
 
     async softDelete(id, rev) {

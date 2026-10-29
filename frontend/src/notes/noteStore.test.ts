@@ -416,6 +416,44 @@ describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
   });
 });
 
+// H-003 (C-2): mover una carpeta reubica todas sus notas al nuevo prefijo, conservando la
+// subestructura relativa; reusa la misma regla de ruta/unicidad que `rename` (no hay endpoint nuevo).
+describe("H-003: moveFolder (mover una carpeta en lote)", () => {
+  it("C-2: mueve todas las notas de la carpeta al nuevo padre conservando la subestructura", async () => {
+    await store.create(VAULT, "Proyectos/Plan.md");
+    await store.create(VAULT, "Proyectos/Sub/Hoja.md");
+    await store.create(VAULT, "Archivo/Viejo.md");
+    await store.moveFolder(VAULT, "Proyectos", "Archivo");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual([
+      "Archivo/Proyectos/Plan.md",
+      "Archivo/Proyectos/Sub/Hoja.md",
+      "Archivo/Viejo.md",
+    ]);
+  });
+
+  it("C-2: mover a la raíz (destino vacío) deja la carpeta como prefijo de primer nivel", async () => {
+    await store.create(VAULT, "A/B/Nota.md");
+    await store.create(VAULT, "A/B/Sub/Otra.md");
+    await store.moveFolder(VAULT, "A/B", "");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["B/Nota.md", "B/Sub/Otra.md"]);
+  });
+
+  it("C-5: una ruta de destino ya ocupada → NotePathTakenError, sin mover ninguna nota", async () => {
+    await store.create(VAULT, "Origen/Nota.md");
+    await store.create(VAULT, "Destino/Origen/Nota.md");
+    await expect(store.moveFolder(VAULT, "Origen", "Destino")).rejects.toBeInstanceOf(NotePathTakenError);
+    // "sin mover nada": las rutas siguen exactamente como estaban.
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Destino/Origen/Nota.md", "Origen/Nota.md"]);
+  });
+
+  it("sólo mueve las notas de ESA carpeta, no las de otra con un nombre que empieza igual", async () => {
+    await store.create(VAULT, "Nota/A.md");
+    await store.create(VAULT, "Notas/B.md"); // «Notas» no es «Nota/…»
+    await store.moveFolder(VAULT, "Nota", "Archivo");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Archivo/Nota/A.md", "Notas/B.md"]);
+  });
+});
+
 describe("SPEC-0010 RF-001/RF-003/RF-008: carpetas y puerta de ruta", () => {
   it("RF-003: create con carpeta pone la nota dentro (título relativo)", async () => {
     const note = await store.create(VAULT, "Nota", "Proyectos");
