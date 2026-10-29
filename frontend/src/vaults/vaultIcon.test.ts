@@ -142,26 +142,24 @@ function ratio(a: Rgba, b: Rgba): number {
 /**
  * H-008 C-8: el chip ya no es tinte del 18 % + glifo en `--text-primary`, sino un relleno con
  * degradado del color de la bóveda y el glifo en `--bg-secondary` (el fondo que comparten las 3
- * superficies que montan VaultChip). El glifo debe mantener ≥ 4,5:1 contra el punto MÁS CLARO del
- * degradado, que es donde el relleno menos contrasta. El degradado (ver VaultChip.css) y su extremo
- * más claro, por tema:
- *   oscuro: linear-gradient(color-mix(--chip-color 85%, white) → --chip-color)  → más claro = 85%+white
- *   claro:  linear-gradient(color-mix(--chip-color 72%, black) → 60%, black)    → más claro = 72%+black
+ * superficies que montan VaultChip). El glifo debe mantener ≥ 4,5:1 contra el extremo MÁS CLARO del
+ * degradado, que es donde el relleno menos contrasta. El degradado mezcla `--chip-color` hacia
+ * `--text-primary` (la «tinta», opuesta al fondo), con el extremo más claro por tema (VaultChip.css):
+ *   oscuro: color-mix(--chip-color 80%, --text-primary)   (tinta clara → aclara el relleno)
+ *   claro:  color-mix(--chip-color 65%, --text-primary)   (tinta oscura → oscurece el relleno)
  */
-const LIGHTEST_STOP = {
-  dark: { toward: [255, 255, 255] as const, pct: 0.85 },
-  light: { toward: [0, 0, 0] as const, pct: 0.72 },
-} as const;
+const LIGHTEST_STOP = { dark: 0.8, light: 0.65 } as const;
 
-test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el punto más claro del degradado da ≥ 4,5:1 para los 17, claro y oscuro", () => {
+test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro del degradado da ≥ 4,5:1 para los 17, claro y oscuro", () => {
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     const glyph = parse(vars["bg-secondary"]);
-    const { toward, pct } = LIGHTEST_STOP[mode];
+    const ink = parse(vars["text-primary"]);
+    const pct = LIGHTEST_STOP[mode];
     for (const key of PALETTE) {
       const color = parse(vars[tokenOf(key)]);
-      // `color-mix(in srgb, var(--chip-color) pct%, <toward>)`: mezcla lineal en sRGB.
-      const lightest = [0, 1, 2].map((i) => color[i] * pct + toward[i] * (1 - pct)).concat(1) as Rgba;
+      // `color-mix(in srgb, var(--chip-color) pct%, var(--text-primary))`: mezcla lineal en sRGB.
+      const lightest = [0, 1, 2].map((i) => color[i] * pct + ink[i] * (1 - pct)).concat(1) as Rgba;
       expect(ratio(glyph, lightest), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);
     }
   }

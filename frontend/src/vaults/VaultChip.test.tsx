@@ -89,7 +89,7 @@ test("H-008 C-7: el glifo/iniciales toman el fondo de la app (--bg-secondary), n
   expect(chipRule(".vault-chip")).not.toMatch(/color:\s*var\(--text-primary\)/);
 });
 
-test("H-008 C-8: el degradado usa los extremos que vaultIcon.test.ts verifica (85% blanco oscuro, 72% negro claro)", () => {
-  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color[^)]*\) 85%, white\)/);
-  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color[^)]*\) 72%, black\)/);
+test("H-008 C-8: el extremo más claro del degradado es el que vaultIcon.test.ts verifica (80% oscuro, 65% claro, mezcla hacia --text-primary)", () => {
+  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color\) 80%, var\(--text-primary\)\)/);
+  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color\) 65%, var\(--text-primary\)\)/);
 });

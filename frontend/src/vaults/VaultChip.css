@@ -21,19 +21,19 @@
   transition: border-radius var(--dur-base) var(--ease-standard);
 }
 
-/* Degradado del relleno por tema: el extremo MÁS CLARO mantiene ≥ 4,5:1 con el glifo (--bg-secondary)
-   en los 17 colores (vaultIcon.test.ts, H-008 C-8). Oscuro: fondo oscuro, se aclara el relleno
-   (85 % color + blanco) para recortar el glifo oscuro. Claro: fondo claro, se oscurece el relleno
-   (72 %→60 % color + negro) para recortar el glifo claro. */
+/* Degradado del relleno por tema (primer tono = el MÁS CLARO): mantiene ≥ 4,5:1 con el glifo
+   (--bg-secondary) en los 17 colores (vaultIcon.test.ts, H-008 C-8). Se mezcla hacia `--text-primary`
+   —la «tinta», opuesta al fondo— para alejar el relleno del glifo y recortarlo: en oscuro esa tinta
+   es clara (aclara el relleno), en claro es oscura (lo oscurece). Sin literales de color (RF-006). */
 :root[data-theme="dark"] .vault-chip {
-  background: linear-gradient(145deg, color-mix(in srgb, var(--chip-color) 85%, white), var(--chip-color));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--chip-color) 80%, var(--text-primary)), var(--chip-color));
 }
 
 :root[data-theme="light"] .vault-chip {
   background: linear-gradient(
     145deg,
-    color-mix(in srgb, var(--chip-color) 72%, black),
-    color-mix(in srgb, var(--chip-color) 60%, black)
+    color-mix(in srgb, var(--chip-color) 65%, var(--text-primary)),
+    color-mix(in srgb, var(--chip-color) 52%, var(--text-primary))
   );
 }
 
