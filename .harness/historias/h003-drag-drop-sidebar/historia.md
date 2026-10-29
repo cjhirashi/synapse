@@ -1,7 +1,7 @@
 ---
 id: H-003
 titulo: Drag & drop de notas/carpetas en la sidebar izquierda
-estado: refinando # Gate 1 pasado (Carlos dijo "así es", 2026-10-29); falta implementar.
+estado: implemented # Gate 1 pasado (Carlos dijo "así es", 2026-10-29); implementado 2026-10-29, falta checkpoint demostrable.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -121,13 +121,13 @@ Ninguno — Carlos aprobó la propuesta tal cual ("así es", 2026-10-29).
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 2 | `NoteSidebar.test.tsx` (drag nota→carpeta) | Pending |
-| C-2 | 1, 3 | `noteStore.test.ts`, `NoteSidebar.test.tsx` (drag carpeta) | Pending |
-| C-3 | 4 | `NoteSidebar.test.tsx` (resaltado) | Pending |
-| C-4 | 2 | `NoteSidebar.test.tsx` (soltar fuera) | Pending |
-| C-5 | 4 | `NoteSidebar.test.tsx` (conflicto de ruta) | Pending |
-| C-6 | 5 | `NoteSidebar.test.tsx` (renombrado por teclado intacto) | Pending |
-| C-7 | 2 | `NoteSidebar.test.tsx` (self-drop sin red) | Pending |
+| C-1 | 2 | `NoteSidebar.test.tsx` («arrastrar una nota … sobre una carpeta»; «… sobre «Raíz»») | Done |
+| C-2 | 1, 3 | `noteStore.test.ts` («moveFolder …»); `NoteSidebar.test.tsx` («arrastrar una carpeta sobre otra»; «… sobre «Raíz»») | Done |
+| C-3 | 4 | `NoteSidebar.test.tsx` («el destino bajo el cursor se resalta»; «un destino no válido … no se resalta») | Done |
+| C-4 | 2 | `NoteSidebar.test.tsx` («soltar una nota sobre otra nota … no mueve nada») | Done |
+| C-5 | 1, 4 | `noteStore.test.ts` («una ruta de destino ya ocupada → NotePathTakenError»); `NoteSidebar.test.tsx` («… ya hay otra con ese nombre»; «… ya existe otra carpeta con ese nombre») | Done |
+| C-6 | 5 | `NoteSidebar.test.tsx` («el drag & drop es aditivo … F2 sigue abriendo el renombrado») + suite de renombrado por teclado ya existente | Done |
+| C-7 | 2, 3 | `NoteSidebar.test.tsx` («soltar una nota en la carpeta donde ya está …»; «arrastrar una carpeta sobre un descendiente …») | Done |
 
 ## 8. Checkpoint demostrable
 
@@ -137,8 +137,21 @@ correctamente, antes de marcar `verified`.
 
 ## 9. Session-End (al cerrar)
 
-- **Claim:** pendiente.
-- **Evidencia:** pendiente.
-- **Gaps:** ninguno todavía.
-- **Riesgo residual:** ninguno todavía.
-- **Próximo paso:** tomar la historia, ciclo driver/navigator §4.
+- **Claim:** implementado el drag & drop de notas/carpetas en la sidebar (C-1…C-7),
+  reusando el PATCH de ruta existente (`notes.rename` por nota, nuevo `notes.moveFolder`
+  en lote para carpetas); sin cambios de backend.
+- **Evidencia:** 5 pasos TDD con commit atómico cada uno citando H-003
+  (`noteStore.moveFolder`; nota→carpeta/Raíz; carpeta→carpeta/Raíz; resaltado+conflicto;
+  C-6 aditivo). `npm run build` verde (typecheck + vite build). `npm run test:cov` verde:
+  **1670 tests / 88 archivos**. Cobertura de lo tocado: `folders.ts` 100 %,
+  `NoteSidebar.tsx` 98,34 % (líneas sin cubrir 571-573/613-616 son preexistentes:
+  `revealFolder` raíz y el disclosure compacto, ajenas a esta historia),
+  `noteStore.ts` 95,96 % (funciones 100 %).
+- **Gaps:** mover una carpeta con muchas notas es secuencial (un `rename` por nota, igual
+  que hoy el renombrado); si el volumen real importa se mide y se abre historia aparte
+  (ya anotado en §4). Sin undo (fuera de alcance).
+- **Riesgo residual:** los `event.dataTransfer` sólo se ejercen en navegador real (en jsdom
+  `fireEvent` no lo puebla), de ahí el guard defensivo y la rama de branch-coverage no
+  cubierta; la lógica de movimiento no depende de `dataTransfer`, usa el estado de React.
+- **Próximo paso:** checkpoint demostrable (§8) — Carlos arrastra una nota y una carpeta en
+  Synapse y confirma; luego `verified`, PR y merge (los hace Carlos; sin push/merge del agente).

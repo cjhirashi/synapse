@@ -693,6 +693,21 @@ test("C-5: soltar una carpeta donde ya existe otra con ese nombre muestra el err
   expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Destino/Origen/Vieja.md", "Origen/Nota.md"]);
 });
 
+test("C-6: el drag & drop es aditivo; la fila es arrastrable y F2 sigue abriendo el renombrado por teclado", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const row = await screen.findByRole("treeitem", { name: "Uno" });
+  // La vía de arrastre con mouse no sustituye al renombrado accesible sin mouse.
+  expect(row).toHaveAttribute("draggable", "true");
+  row.focus();
+  await user.keyboard("{F2}");
+  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  expect(input).toHaveValue("Uno.md");
+  await user.clear(input);
+  await user.type(input, "Carpeta/Dos.md");
+  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Dos.md"]));
+});
+
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
   const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());
