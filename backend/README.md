@@ -220,6 +220,47 @@ Todas pueden responder además 401, 403 y 503 (`storage-unavailable`). Contrato 
 `.harness/specs/0003-vault-crud/contracts/openapi.yaml`. Rendimiento (RNF-001):
 `tests/test_vaults_perf.py`, marca `perf` (ver Comandos).
 
+## Notas vía REST (historia 0014-acceso-agentes-notas)
+
+Para que un agente OpenClaw gestione su propia bóveda sin implementar el protocolo de
+replicación CouchDB del lado del cliente: listar, leer, crear, actualizar, borrar y
+restaurar notas por REST, mismo patrón que bóvedas. Capas: `routers/notes.py` →
+`services/note_content_service.py` (`NoteContentService`) → `core/ports/vault_port.py`
+(mismo `VaultPort` que usan bóvedas y el push).
+
+- **Reuso sin reescribir (riesgo que señalaba PLAN-0008 P-1, cerrado con pruebas):**
+  `core/note_rules.py` (`check_path`, `check_content`, `check_frontmatter`) valida los
+  mismos campos que el push de `/sync`, con el mismo código de rechazo
+  (`validation-error:<campo>`, `not-normalized:path`) publicado en `errors[].detail` del
+  422; y `services/note_service.py` (`NoteService.reserve_path`/`release_path`) reserva
+  `path` con el mismo mecanismo `note-path:*` que ya usa el push — una prueba cruzada
+  (`test_note_content_service.py`, batería `tests/fixtures/note_rules_cases.json`) confirma
+  que los dos canales rechazan idéntico.
+- **Bóveda activa para escribir:** a diferencia de la lectura (una bóveda borrada no bloquea
+  `GET`), `POST`/`PATCH`/`DELETE`/`restore` exigen la bóveda **activa**, igual que
+  `sync_push.py::_check_vault_is_active` — una bóveda en la papelera congela también la
+  escritura de sus notas por REST (ningún atajo nuevo).
+- **`frontmatter` ausente vs. `null`:** el documento CouchDB nunca persiste la clave con
+  valor `null` (contrato `note.schema.json` de SPEC-0008: el push distingue "presente" de
+  "ausente" y rechazaría una clave presente con `null`). `POST` sin `frontmatter` y
+  `PATCH {frontmatter: null}` (borrarlo) ambos escriben el documento **sin la clave**.
+- **`ETag`/`If-Match`:** mismo contrato que bóvedas (el `_rev` entre comillas); `PATCH`,
+  `DELETE` y `restore` exigen `If-Match` (428 sin él, 412 si no coincide). Cambiar `path` en
+  un `PATCH` libera la reserva vieja y reserva la nueva.
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /vaults/{vault_id}/notes?limit=1..200&cursor=&deleted=false` | 200 `{items, next_cursor}` · 404 (`vault-not-found`) · 422 |
+| `POST /vaults/{vault_id}/notes` `{path,content,frontmatter?}` | 201 + `ETag` · 404 (`vault-not-found`) · 409 (`note-path-taken`) · 422 |
+| `GET /vaults/{vault_id}/notes/{note_id}` | 200 + `ETag` · 404 (`vault-not-found`/`note-not-found`) |
+| `PATCH /vaults/{vault_id}/notes/{note_id}` + `If-Match` | 200 + `ETag` · 404 · 409 · 412 · 428 · 422 |
+| `DELETE /vaults/{vault_id}/notes/{note_id}` + `If-Match` | 204 · 404 · 412 · 428 |
+| `POST /vaults/{vault_id}/notes/{note_id}/restore` + `If-Match` | 200 + `ETag` · 404 · 409 · 412 · 428 |
+
+Todas pueden responder además 401, 403 y 503 (`storage-unavailable`). Contrato completo:
+`.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`. Guía de consumidor:
+`docs/API.md`.
+
 ## Sincronización (SPEC-0005)
 
 La SPA replica la base del usuario con PouchDB por el canal `/sync`, un subconjunto del
@@ -312,9 +353,13 @@ Contrato completo: `.harness/specs/0005-sync/contracts/openapi.yaml`.
 ## Notas (SPEC-0008)
 
 Una nota es un documento `type: "note"` con id `note:{vault_id}:{uuid}` en la base del
-usuario. **No tiene API REST**: la SPA la escribe en su réplica local y llega por el push
-validado de `/sync` (los agentes de IA tendrán la suya en otra feature). El backend sólo
-decide qué se acepta:
+usuario. La SPA la escribe en su réplica local y llega por el push validado de `/sync`; desde
+la historia 0014-acceso-agentes-notas también tiene API REST propia
+(`routers/notes.py`/`services/note_content_service.py`, ver "Notas vía REST" más abajo) para
+que los agentes OpenClaw la gestionen sin implementar el protocolo de replicación. Los dos
+canales escriben el mismo documento con el mismo mecanismo de `_rev`/conflicto y las mismas
+reglas (`core/note_rules.py`): ningún atajo nuevo del lado REST. El backend sólo decide qué
+se acepta:
 
 - **Forma cerrada** (`.harness/specs/0008-vault-editor/contracts/note.schema.json`):
   `_id`, `_rev`, `_revisions`, `type`, `vault_id`, `path`, `content`, `created_at`,
@@ -401,6 +446,8 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite (16 MiB en `_bulk_docs`) |
 | `agent-key-not-found` | 404 | `DELETE /auth/agent-keys/{id}` de una key ajena o inexistente (mismo cuerpo) |
 | `agent-key-label-taken` | 409 | `POST /auth/agent-keys` con un `label` que ya usa otra key vigente del mismo dueño |
+| `note-not-found` | 404 | nota inexistente, ajena, borrada o con id no canónico (mismo cuerpo) |
+| `note-path-taken` | 409 | ya hay otra nota activa de la bóveda con un `path` equivalente |
 
 **Añadir un error de dominio:**
 1. Declara una subclase de `DomainError` en `core/errors.py` con `slug`, `title`, `status` y

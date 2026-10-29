@@ -114,13 +114,15 @@ ajena o inexistente → `404` `agent-key-not-found` (mismo cuerpo, no revela exi
 
 Contrato máquina: `.harness/specs/0013-acceso-agentes-api/contracts/openapi.yaml`.
 
-## Notas de una bóveda (historia 0014-acceso-agentes-notas, H-004.1: sólo lectura)
+## Notas de una bóveda (historia 0014-acceso-agentes-notas)
 
 Para que un agente OpenClaw gestione su propia bóveda sin implementar el protocolo de
 replicación CouchDB del lado del cliente (`_bulk_docs`, `_revs_diff`, `_bulk_get`,
-`_changes`): listar y leer notas por REST, igual que ya existe para bóvedas. **H-004.1 es
-de sólo lectura** — crear, actualizar y borrar notas por REST llega con H-004.2; hasta
-entonces la escritura sigue siendo sólo por `/sync` (réplica del cliente).
+`_changes`): listar, leer, crear, actualizar, borrar y restaurar notas por REST, igual que ya
+existe para bóvedas (H-004.1 lectura, H-004.2 escritura). La escritura por REST convive con el
+push de `/sync` (réplica del cliente) sobre el mismo documento: mismo mecanismo de `_rev` y
+las mismas reglas de validación (`core/note_rules.py`) en los dos canales — ningún atajo
+nuevo.
 
 ### 1. Listar las notas de una bóveda
 
@@ -174,16 +176,84 @@ Authorization: Bearer syn_ak_…
 ```
 
 - Siempre por `id` (no por `path`): el agente lista primero si no conoce el `id`.
-- `ETag` en la cabecera (el `_rev` entre comillas) — sólo hace falta cuando H-004.2 añada
-  `PATCH`/`DELETE` con `If-Match`; de momento es informativo.
+- `ETag` en la cabecera (el `_rev` entre comillas): se envía en `If-Match` para `PATCH`,
+  `DELETE` y `restore`.
 - `note_id` inexistente, ajeno a `vault_id`, no canónico o en la papelera → `404`
   `note-not-found`.
 
-### Resumen de endpoints (H-004.1)
+### 3. Crear una nota
+
+```http
+POST /vaults/{vault_id}/notes
+Authorization: Bearer syn_ak_…
+Content-Type: application/json
+
+{ "path": "Carpeta/Nota.md", "content": "# Título\n\nTexto…", "frontmatter": { "tags": ["trabajo"] } }
+```
+
+`201 Created` + cabecera `ETag`, cuerpo igual al de `GET` por `id`. `frontmatter` es opcional
+(ausente o `null` = sin frontmatter).
+
+- `path`/`content`/`frontmatter` pasan por las **mismas reglas** que el push de `/sync`
+  (`core/note_rules.py`): `path` de 1 a 300 puntos de código ya normalizado (sin espacios
+  sobrantes en los segmentos), `content` ≤ 2 MiB UTF-8, `frontmatter` ≤ 64 KiB / 32 niveles.
+  Un valor que no cumple es `422` `validation-error` con `errors[0].detail` igual al código
+  que usaría el rechazo del push (`validation-error:path`, `not-normalized:path`,
+  `validation-error:content`, `validation-error:frontmatter`) — un solo vocabulario de
+  rechazo en los dos canales.
+- `path` ya usado por otra nota viva de la bóveda → `409` `note-path-taken`.
+- `vault_id` inexistente, ajeno **o en la papelera** → `404` `vault-not-found`: a diferencia de
+  la lectura, escribir exige la bóveda activa (igual que el push).
+
+### 4. Actualizar una nota (`PATCH`, campos parciales)
+
+```http
+PATCH /vaults/{vault_id}/notes/{note_id}
+If-Match: "1-abc123"
+Content-Type: application/json
+
+{ "content": "Texto nuevo" }
+```
+
+`200 OK` + `ETag` nuevo, sólo con los campos enviados aplicados (`path`/`content`/
+`frontmatter`; `frontmatter: null` lo borra). Cambiar `path` libera la reserva de la ruta
+vieja y reserva la nueva (si la nueva ya la usa otra nota viva, `409` `note-path-taken` y la
+nota no cambia).
+
+- Sin `If-Match` → `428` `precondition-required`.
+- `If-Match` distinto del `ETag` vigente → `412` `precondition-failed` (otra escritura ganó:
+  relee y repite).
+- Mismas reglas de `core/note_rules.py` que `POST` sobre los campos enviados → `422`.
+
+### 5. Borrar y restaurar una nota
+
+```http
+DELETE /vaults/{vault_id}/notes/{note_id}
+If-Match: "1-abc123"
+```
+
+`204 No Content`: marca `deleted_at` (papelera, nunca borra el documento) y libera la reserva
+de `path` (otra nota puede tomarla). `If-Match` obligatorio, mismos `428`/`412` que `PATCH`.
+
+```http
+POST /vaults/{vault_id}/notes/{note_id}/restore
+If-Match: "<etag de la papelera>"
+```
+
+`200 OK` + `ETag` nuevo: quita `deleted_at` y vuelve a reservar `path` (`409`
+`note-path-taken` si otra nota ya lo tomó mientras estaba borrada; la nota sigue en la
+papelera). El `ETag` de una nota borrada sale del listado (`GET …/notes?deleted=true`): un
+`GET` directo por `id` de una borrada es `404`.
+
+### Resumen de endpoints
 
 | Método | Ruta | Credencial | Respuestas |
 |---|---|---|---|
 | `GET` | `/vaults/{vault_id}/notes` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`) · `422` · `503` |
+| `POST` | `/vaults/{vault_id}/notes` | cookie **o** `Bearer syn_ak_…` | `201` + `ETag` · `401` · `404` (`vault-not-found`) · `409` (`note-path-taken`) · `422` · `503` |
 | `GET` | `/vaults/{vault_id}/notes/{note_id}` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`/`note-not-found`) · `503` |
+| `PATCH` | `/vaults/{vault_id}/notes/{note_id}` | cookie **o** `Bearer syn_ak_…` | `200` + `ETag` · `401` · `404` · `409` · `412` · `422` · `428` · `503` |
+| `DELETE` | `/vaults/{vault_id}/notes/{note_id}` | cookie **o** `Bearer syn_ak_…` | `204` · `401` · `404` · `412` · `428` · `503` |
+| `POST` | `/vaults/{vault_id}/notes/{note_id}/restore` | cookie **o** `Bearer syn_ak_…` | `200` + `ETag` · `401` · `404` · `409` · `412` · `428` · `503` |
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.

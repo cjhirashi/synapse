@@ -1,5 +1,44 @@
 components:
   schemas:
+    NoteCreate:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{vault_id}/notes`; cualquier otro campo
+        → 422 (C-5, mismo
+
+        vocabulario `validation-error:<campo>` que `core/schemas.py` ya usa para bóvedas).
+
+
+        `frontmatter` ausente o `null` son equivalentes (sin frontmatter): el servicio
+        escribe el
+
+        documento **sin la clave** en los dos casos, nunca con `frontmatter: null`
+        (contrato
+
+        `note.schema.json` de SPEC-0008, el mismo que valida el push: una clave presente
+        con
+
+        `null` la rechazaría `check_frontmatter`, C-10). `null` nunca pasa por esa
+        regla porque el
+
+        documento que persiste el servicio no llega a tener esa forma.'
+      properties:
+        content:
+          title: Content
+          type: string
+        frontmatter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Frontmatter
+        path:
+          title: Path
+          type: string
+      required:
+      - path
+      - content
+      title: NoteCreate
+      type: object
     NoteListItem:
       properties:
         created_at:
@@ -93,6 +132,36 @@ components:
       - items
       - next_cursor
       title: NotePage
+      type: object
+    NoteUpdate:
+      additionalProperties: false
+      description: 'Cuerpo de `PATCH /vaults/{vault_id}/notes/{note_id}`: se aplican
+        sólo los campos
+
+        enviados (`model_dump(exclude_unset=True)`, mismo patrón que `VaultUpdate`).
+
+
+        `path` y `content` no admiten `null` (su tipo no es anulable): "ausente" se
+        distingue de
+
+        un `null` explícito, que da 422. `frontmatter: null` sí vale: borra el campo
+        (como
+
+        `description` en `VaultUpdate`).'
+      properties:
+        content:
+          title: Content
+          type: string
+        frontmatter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Frontmatter
+        path:
+          title: Path
+          type: string
+      title: NoteUpdate
       type: object
     Problem:
       additionalProperties: false
@@ -232,7 +301,159 @@ paths:
       summary: List Notes
       tags:
       - notes
+    post:
+      operationId: create_note_vaults__vault_id__notes_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteCreate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la nota; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note path already in use
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Create Note
+      tags:
+      - notes
   /vaults/{vault_id}/notes/{note_id}:
+    delete:
+      operationId: delete_note_vaults__vault_id__notes__note_id__delete
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Delete Note
+      tags:
+      - notes
     get:
       operationId: get_note_vaults__vault_id__notes__note_id__get
       parameters:
@@ -299,5 +520,200 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Get Note
+      tags:
+      - notes
+    patch:
+      operationId: update_note_vaults__vault_id__notes__note_id__patch
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NoteUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la nota; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note path already in use
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Update Note
+      tags:
+      - notes
+  /vaults/{vault_id}/notes/{note_id}/restore:
+    post:
+      operationId: restore_note_vaults__vault_id__notes__note_id__restore_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      - in: header
+        name: if-match
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: If-Match
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NoteOut'
+          description: Successful Response
+          headers:
+            ETag:
+              description: Versión de la nota; se envía en `If-Match`.
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note path already in use
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition failed
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '428':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Precondition required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Restore Note
       tags:
       - notes
