@@ -321,7 +321,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         ref={sideRef}
         id={sideId}
         // La cabecera (con el botón) queda siempre visible; `data-open`/`data-floating` gobiernan el
-        // árbol vía CSS: dockeado en > 640 px, overlay `position: fixed` en móvil (C-2/C-5).
+        // árbol vía CSS: dockeado en > 640 px, overlay `position: absolute` (anclado a
+        // `.vault-workspace`, no al viewport — ver nota en notes.css) en móvil (C-2/C-5).
         data-open={sidebarOpen ? "" : undefined}
         data-floating={isMobile ? "" : undefined}
       >
