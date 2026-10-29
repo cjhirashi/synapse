@@ -7,7 +7,6 @@
 
 ## En curso
 
-- [~] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil (corrige que hoy se apila arriba del editor en móvil) → `historias/h009-sidebar-notas-responsive/historia.md`, Gate 1 pasado ("así es", 2026-10-29); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
@@ -22,6 +21,7 @@
 
 ## Implementadas, pendientes de checkpoint de Carlos
 
+- [~] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil (corrige que hoy se apila arriba del editor en móvil) → `historias/h009-sidebar-notas-responsive/historia.md`, `implemented` (2026-10-29; 8 pasos TDD verdes vía Claude Code Modo 2 + 1 fix de comentario desactualizado por AIRA; independientemente verificado por AIRA: build OK, suite 88 archivos/1703 tests en verde); rama `feature/h009-sidebar-notas-responsive` pusheada, sin merge; falta checkpoint visual de Carlos en los 3 anchos + push/merge para `verified`. Desviación documentada: overlay móvil usa `position: absolute` anclado a `.vault-workspace` (no `fixed` al viewport) para no depender de la altura del header — mismo resultado observable (C-5).
 - [~] H-003 — Drag & drop de notas/carpetas en la sidebar izquierda (C-1…C-8, incluye placeholder al vaciar una carpeta) → desplegado, ver `historias/h003-drag-drop-sidebar/historia.md`
 - [~] H-006 — Iconos de notas/carpetas en la sidebar con el color de la bóveda, solo contorno (sin relleno — Carlos pidió relleno, lo vio y lo revirtió el mismo día) → desplegado, verificado independientemente por AIRA tras un 429 de rate-limit en la sesión implementadora; ver `historias/h006-iconos-color-bóveda/historia.md`
 - [~] H-002.1 — Crear, listar y revocar API keys de agente → desplegado, ver `historias/0013-acceso-agentes-api/historia.md`
