@@ -1,7 +1,7 @@
 ---
 id: H-006
 titulo: Iconos de notas/carpetas en la sidebar con el color de la bóveda, rellenos
-estado: refinando # Gate 1 pasado (Carlos dijo "así es" + decisión de relleno, 2026-10-29); falta implementar.
+estado: implemented # Gate 1 pasado (Carlos dijo "así es" + decisión de relleno, 2026-10-29). Implementado 2026-10-29; pendiente checkpoint demostrable de Carlos para 'verified'.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -115,11 +115,15 @@ mismos iconos con `fill`, sin cambiar de librería de iconos — ver §5).
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 1, 3 | `NoteSidebar.test.tsx`, `VaultWorkspacePage.test.tsx` | Pending |
-| C-2 | 1 | `NoteSidebar.test.tsx` | Pending |
-| C-3 | 2 | `NoteSidebar.test.tsx` | Pending |
+| C-1 | 1, 3 | `NoteSidebar.test.tsx` «H-006 C-1, C-2…» + `VaultWorkspacePage.test.tsx` «H-006 C-1…» (elegido y derivado) | Cubierto ✓ |
+| C-2 | 1 | `NoteSidebar.test.tsx` «H-006 C-1, C-2: … rellenos» (fill en nota/carpeta/raíz) | Cubierto ✓ |
+| C-3 | 2 | `NoteSidebar.test.tsx` «H-006 C-3: los iconos de acción … NO cambian» | Cubierto ✓ |
 | C-4 | 1 | reusa paleta ya validada, sin test nuevo de contraste (no hay valores nuevos) | N/A |
-| C-5 | 3 | `VaultWorkspacePage.test.tsx` | Pending |
+| C-5 | 3 | `VaultWorkspacePage.test.tsx` «H-006 C-5…» + `NoteSidebar.test.tsx` «H-006 C-5…» (rerender) | Cubierto ✓ |
+
+Cobertura de la suite (`npm run test:cov`, 2026-10-29): 88 archivos, **1683 tests en verde**;
+`NoteSidebar.tsx` 98,35 % líneas / 89,7 % ramas, `src/notes` 97,41 %, `vaultIcon.ts` 100 %,
+total 97,61 %. `npm run build` (tsc + vite) en verde.
 
 ## 8. Checkpoint demostrable
 
@@ -129,8 +133,30 @@ cambia el color, antes de marcar `verified`.
 
 ## 9. Session-End (al cerrar)
 
-- **Claim:** pendiente.
-- **Evidencia:** pendiente.
-- **Gaps:** ninguno todavía.
-- **Riesgo residual:** ninguno todavía.
-- **Próximo paso:** tomar la historia, ciclo driver/navigator §4.
+- **Claim:** los iconos de contenido de la sidebar (nota `FileText`, carpeta
+  `Folder`/`FolderOpen`, «Raíz» `House`) toman el color de la bóveda abierta y
+  se pintan rellenos; los controles (`Plus`, `FolderPlus`, `Trash2`, chevrons,
+  `CircleAlert`) siguen neutros de contorno. El color se resuelve en el padre
+  (`VaultWorkspacePage`) con la misma regla que `VaultChip`
+  (`parseIcon(vault.icon).color ?? derivedColor(vault.id)`) y viaja a
+  `NoteSidebar` por la prop `vaultColor`; la sidebar lo publica en la variable
+  CSS `--vault-icon-color` del `<aside>` y los iconos la leen para trazo y
+  `fill` (C-1…C-5).
+- **Evidencia:** 2 commits citando H-006 (`cecafc6` implementación + tests de
+  NoteSidebar; `a086d82` tests de VaultWorkspacePage + doc). `npm run build`
+  (tsc + vite) en verde. `npm run test:cov`: 88 archivos, 1683 tests en verde;
+  `NoteSidebar.tsx` 98,35 % líneas, `src/notes` 97,41 %, total 97,61 %.
+  Tests nuevos: `NoteSidebar.test.tsx` «H-006 C-1, C-2 / C-3 / C-5» y
+  `VaultWorkspacePage.test.tsx` «H-006 C-1 (elegido) / C-1 (derivado) / C-5».
+- **Gaps:** ninguno funcional. Nota de implementación: la wiring del padre
+  (`VaultWorkspacePage`) viajó en el commit 1 (necesaria para que el build
+  compile con la prop requerida) y su test adversarial llegó en el commit 2;
+  el rojo→verde del comportamiento central ocurrió en el paso 1.
+- **Riesgo residual:** un icono relleno con trazo del mismo color pierde el
+  detalle interno del glifo (queda como silueta sólida); es el efecto buscado
+  por la decisión de Carlos (§5, `fill` de Lucide sin librería nueva). Si
+  visualmente no convence, es ajuste de CSS, no de contrato.
+- **Próximo paso:** checkpoint demostrable — Carlos abre una bóveda, ve los
+  iconos de nota/carpeta rellenos con su color y confirma que cambiar de
+  bóveda cambia el color (§8), antes de pasar a `verified`. Merge/push lo hace
+  Carlos.
