@@ -8,13 +8,13 @@
 ## En curso
 
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
+- [~] H-003 — Drag & drop de notas/carpetas en la sidebar izquierda → `historias/h003-drag-drop-sidebar/`, Gate 1 pasado ("así es", 2026-10-29), rama `feature/h003-drag-drop-sidebar`
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
-- [ ] H-003 — Drag & drop de notas/carpetas en la sidebar (pedido directo de Carlos, 2026-10-27; aún sin refinar)
 - [ ] H-004.2 — Un agente OpenClaw crea/actualiza/borra notas de su bóveda vía REST (escritura) → Gate 1 pasado ("así es", 2026-10-29); prioridad **máxima**, por encima de todo lo anterior en esta lista; depende de H-004.1 (ya `implemented`/desplegado, ver abajo); mismo borrador en `historias/0014-acceso-agentes-notas/historia.md`
 
 ## Implementadas, pendientes de checkpoint de Carlos
