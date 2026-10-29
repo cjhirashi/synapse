@@ -24,7 +24,7 @@
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { CSSProperties, FormEvent, forwardRef, KeyboardEvent, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
@@ -81,6 +81,20 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
   });
 }
 
+/** Nodo que se está arrastrando (H-003): una nota (por id y ruta) o una carpeta (por ruta). */
+type DragItem = { kind: "note"; id: string; path: string } | { kind: "folder"; path: string };
+
+/**
+ * ¿Soltar `drag` en la carpeta `dest` (`""` = raíz) movería algo? `false` cubre C-4 (destino no
+ * válido) y C-7 (sin desplazamiento real): una nota ya en esa carpeta, una carpeta sobre sí misma,
+ * sobre un descendiente suyo, o ya directamente dentro del destino.
+ */
+function canDrop(drag: DragItem, dest: string): boolean {
+  if (drag.kind === "note") return parentFolder(drag.path) !== dest;
+  if (drag.path === dest || dest.startsWith(`${drag.path}/`)) return false;
+  return parentFolder(drag.path) !== dest;
+}
+
 /** Acciones que el `Workspace` (y, por él, el editor y el menú ⋮) piden a la sidebar por `ref` (RF-062, RF-055). */
 export interface NoteSidebarHandle {
   startRename(id: string): void;
@@ -133,6 +147,9 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const newNoteRef = useRef<HTMLButtonElement>(null);
   /** Nota a la que se refiere la barra de acciones: la última que tomó el foco, o la abierta. */
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** Nodo que se arrastra ahora mismo (`null` = ninguno) y la fila destino resaltada durante el arrastre (C-3). */
+  const [dragItem, setDragItem] = useState<DragItem | null>(null);
+  const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
 
   /**
    * Relee los resúmenes. `after` decide, SOBRE la lista recién leída, a dónde va el foco (y qué
@@ -348,6 +365,70 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     }
   }
 
+  // --- Drag & drop (H-003): mover notas/carpetas arrastrándolas sobre una carpeta o «Raíz» ---
+
+  /** Empieza a arrastrar una fila (nota o carpeta): guarda el nodo y marca el efecto «mover». */
+  function onRowDragStart(event: DragEvent, item: DragItem) {
+    setDragItem(item);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", item.path);
+    }
+  }
+
+  /** Fila de carpeta/«Raíz» como destino: resalta y habilita el drop sólo si movería algo (C-3, C-4, C-7). */
+  function onTargetDragOver(event: DragEvent, dest: string, key: string) {
+    if (!dragItem || !canDrop(dragItem, dest)) return;
+    event.preventDefault(); // sin `preventDefault` el navegador no admite el drop
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+    if (dropTargetKey !== key) setDropTargetKey(key);
+  }
+
+  function onTargetDragLeave(key: string) {
+    setDropTargetKey((current) => (current === key ? null : current));
+  }
+
+  /** Suelta sobre una carpeta/«Raíz»: mueve si el destino es válido; si no, no hace nada (C-4, C-7). */
+  function onTargetDrop(event: DragEvent, dest: string) {
+    event.preventDefault();
+    const drag = dragItem;
+    setDragItem(null);
+    setDropTargetKey(null);
+    if (drag && canDrop(drag, dest)) void performMove(drag, dest);
+  }
+
+  /** Ejecuta el movimiento reusando el PATCH de ruta: `rename` por nota (C-1) o `moveFolder` en lote (C-2). */
+  async function performMove(drag: DragItem, dest: string) {
+    if (drag.kind === "note") {
+      const note = items?.find((item) => item.id === drag.id);
+      if (!note) return;
+      const target = joinPath(dest, note.path.split("/").pop() ?? note.path);
+      await run(async () => {
+        await notes.rename(note.id, target, note.rev);
+        // La nota pudo caer en una carpeta plegada: se despliega para que su fila exista y reciba el foco.
+        await reload((list) => {
+          const moved = list.find((item) => item.id === note.id);
+          return { focus: moved ? noteKey(note.id) : NEW_NOTE, expand: moved ? ancestors(moved.path) : [] };
+        });
+      });
+      return;
+    }
+    const name = drag.path.split("/").pop() ?? drag.path;
+    // C-5: el destino ya tiene una carpeta con ese nombre → mismo aviso que crear/renombrar carpeta, sin mover.
+    if (folderExists(items?.filter((item) => item.deleted_at === null) ?? [], dest, name)) {
+      setError(folderNameMessage("duplicate", name));
+      return;
+    }
+    const moved = joinPath(dest, name);
+    await run(async () => {
+      await notes.moveFolder(vaultId, drag.path, dest);
+      await reload();
+      // La carpeta movida queda desplegada y activa para verse en su nuevo sitio.
+      setExpanded((prev) => new Set([...prev, ...ancestors(joinPath(moved, "_")), moved]));
+      setActiveFolder(moved);
+    });
+  }
+
   /** `depth`: nivel de carpetas; la sangría de cada fila sale de él (`--depth`, ver notes.css). */
   function renderNodes(nodes: TreeNode<NoteSummary>[], depth = 0) {
     const indent = { "--depth": depth } as CSSProperties;
@@ -366,6 +447,12 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
               className="note-tree-row note-tree-folder"
               style={indent}
               aria-current={activeFolder === node.path ? "true" : undefined}
+              draggable
+              data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
+              onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
+              onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
+              onDragLeave={() => onTargetDragLeave(folderKey(node.path))}
+              onDrop={(event) => onTargetDrop(event, node.path)}
               onClick={() => {
                 toggle(node.path);
                 setActiveFolder(node.path);
@@ -407,6 +494,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             onPointerEnter={() => onPrefetch?.(note.id)}
             className="note-tree-row note-tree-note"
             style={indent}
+            draggable
+            onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
             onClick={() => onOpen(note.id)}
           >
             <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
@@ -431,6 +520,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         aria-current={activeFolder === "" ? "true" : undefined}
         className="note-tree-row note-tree-folder note-tree-root"
         style={{ "--depth": 0 } as CSSProperties}
+        data-drop-target={dropTargetKey === ROOT_KEY ? "true" : undefined}
+        onDragOver={(event) => onTargetDragOver(event, "", ROOT_KEY)}
+        onDragLeave={() => onTargetDragLeave(ROOT_KEY)}
+        onDrop={(event) => onTargetDrop(event, "")}
         onClick={() => setActiveFolder("")}
       >
         <House size={14} aria-hidden="true" data-icon="house" />

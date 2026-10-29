@@ -567,6 +567,53 @@ test("RF-003: «Nueva nota» se crea en la carpeta activa", async () => {
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Idea.md"));
 });
 
+// --- H-003: drag & drop para mover notas/carpetas en el árbol ---------------------------------
+// El PATCH de rutas ya existe (es el renombrado): esto es la interacción de arrastre sobre él.
+
+test("C-1: arrastrar una nota y soltarla sobre una carpeta la mueve ahí (misma ruta que el renombrado)", async () => {
+  const { value } = await setup(["Inicio.md", "Carpeta/Ancla.md"]);
+  const inicio = (await value.notes.list(VAULT)).find((n) => n.path === "Inicio.md")!;
+  const noteRow = await screen.findByRole("treeitem", { name: "Inicio" });
+  const folderRow = screen.getByRole("treeitem", { name: "Carpeta" });
+  fireEvent.dragStart(noteRow);
+  fireEvent.dragOver(folderRow);
+  fireEvent.drop(folderRow);
+  await waitForCondition(async () => expect((await value.notes.get(inicio.id)).path).toBe("Carpeta/Inicio.md"));
+});
+
+test("C-1: arrastrar una nota y soltarla sobre «Raíz» la saca de su carpeta", async () => {
+  const { value } = await setup(["Carpeta/Hoja.md"]);
+  const hoja = (await value.notes.list(VAULT)).find((n) => n.path === "Carpeta/Hoja.md")!;
+  await userEvent.setup().click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Hoja" }));
+  const root = within(screen.getByRole("tree", { name: "Notas" })).getByRole("treeitem", { name: "Raíz" });
+  fireEvent.dragOver(root);
+  fireEvent.drop(root);
+  await waitForCondition(async () => expect((await value.notes.get(hoja.id)).path).toBe("Hoja.md"));
+});
+
+test("C-4: soltar una nota sobre otra nota (no una carpeta) no mueve nada", async () => {
+  const { value } = await setup(["Uno.md", "Dos.md"]);
+  const rename = vi.spyOn(value.notes, "rename");
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Uno" }));
+  const dos = screen.getByRole("treeitem", { name: "Dos" });
+  fireEvent.dragOver(dos);
+  fireEvent.drop(dos);
+  expect(rename).not.toHaveBeenCalled();
+  expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Dos.md", "Uno.md"]);
+});
+
+test("C-7: soltar una nota en la carpeta donde ya está no hace ninguna llamada de red", async () => {
+  const { value } = await setup(["Carpeta/Hoja.md", "Carpeta/Otra.md"]);
+  const rename = vi.spyOn(value.notes, "rename");
+  await userEvent.setup().click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Hoja" }));
+  const folderRow = screen.getByRole("treeitem", { name: "Carpeta" });
+  fireEvent.dragOver(folderRow);
+  fireEvent.drop(folderRow);
+  expect(rename).not.toHaveBeenCalled();
+});
+
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
   const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());
