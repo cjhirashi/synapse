@@ -1,7 +1,7 @@
 ---
 id: H-009
 titulo: Sidebar de notas ocultable con botón, fija en tableta/escritorio y flotante en móvil
-estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada vía Claude Code (Modo 2) 2026-10-29: 8/8 criterios con test verde, build+regresión OK, Converge alcanzado. Pendiente checkpoint visual de Carlos para pasar a verified (§8).
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada, desplegada y checkpoint visual parcial de Carlos (botón visible y funcional). Corrección pedida sobre C-1 (ubicación del botón, ver §3) en curso. Pendiente re-confirmación visual para pasar a verified (§8).
 covers:
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/VaultWorkspacePage.test.tsx
@@ -53,12 +53,19 @@ que es lo que esta historia separa.
 
 ## 3. Criterios de aceptación (EARS booleano)
 
-- **C-1:** El sistema DEBE mostrar un botón para alternar (mostrar/ocultar)
-  la sidebar de archivos/carpetas en `.vault-workspace-header`, visible en
-  los 3 anchos (≤ 640 px, 641–800 px, > 800 px), con icono (p. ej.
-  `PanelLeft`/`PanelLeftClose` de `lucide-react`, mismo set ya usado en el
-  proyecto) y `aria-expanded`/`aria-controls` apuntando al contenedor de la
-  sidebar.
+- **C-1 (corregido 2026-10-29, tras checkpoint visual):** Carlos vio el
+  resultado desplegado y pidió mover el botón: la versión original lo
+  colocaba en `.vault-workspace-header` (cabecera de la propia sidebar), lo
+  que reservaba una columna/gutter fija de 44 px que le restaba ancho al
+  documento incluso con la barra colapsada. Corregido: el botón DEBE vivir
+  en la fila de título del documento (`.note-editor-header` de
+  `NoteEditor.tsx`, la misma fila de Atrás/Adelante/migas/controles de
+  edición/menú ⋮), como primer elemento de esa fila, sin columna propia.
+  Caso sin nota abierta (vacío, sin fila de título): el botón queda flotando
+  sin reservar espacio de layout — mismo criterio de "sin robar ancho al
+  documento". Sigue visible en los 3 anchos, con icono
+  `PanelLeft`/`PanelLeftClose` y `aria-expanded`/`aria-controls` apuntando al
+  contenedor de la sidebar.
 - **C-2:** MIENTRAS el ancho de la ventana sea > 640 px (tableta o
   escritorio), el sistema DEBE presentar la sidebar **fija/dockeada** a la
   izquierda del editor (mismo lugar y ancho de 240 px que hoy) cuando está
