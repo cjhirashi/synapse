@@ -147,6 +147,38 @@ class VaultPage(BaseModel):
     next_cursor: str | None
 
 
+# --- Notas vía REST (historia 0014-acceso-agentes-notas, H-004.1: sólo lectura) ---
+# Mismo patrón que las de bóveda: `NoteOut` lleva el contenido completo (GET por id),
+# `NoteListItem` es la versión ligera del listado (sin `content`/`frontmatter`, con `etag`
+# para que la Papelera pueda restaurar sin otra consulta, PLAN-0003 §13).
+
+
+class NoteOut(BaseModel):
+    id: str
+    vault_id: str
+    path: str
+    frontmatter: dict | None
+    content: str
+    created_at: str
+    updated_at: str
+    deleted_at: str | None
+
+
+class NoteListItem(BaseModel):
+    id: str
+    vault_id: str
+    path: str
+    created_at: str
+    updated_at: str
+    deleted_at: str | None
+    etag: str
+
+
+class NotePage(BaseModel):
+    items: list[NoteListItem]
+    next_cursor: str | None
+
+
 # --- API keys de agente (SPEC-0013) ---
 
 AgentKeyLabel = Annotated[

@@ -178,6 +178,17 @@ class PreconditionFailed(DomainError):
     detail = "Vault has changed"
 
 
+# --- Notas vía REST (historia 0014-acceso-agentes-notas, H-004) ---
+
+class NoteNotFound(DomainError):
+    """Nota inexistente, ajena, borrada o con id no UUID: mismo cuerpo siempre (C-3)."""
+
+    slug = "note-not-found"
+    title = "Note not found"
+    status = 404
+    detail = "Note not found"
+
+
 # --- Sincronización (SPEC-0005) ---
 
 class SyncEndpointNotFound(DomainError):
