@@ -1,5 +1,7 @@
 // Chip de bóveda: ícono del set o iniciales, con color elegido o derivado (SPEC-0009 RF-001;
 // PLAN-0009 §2.3 b, P-1, P-2). Es decorativo: el nombre accesible lo pone quien lo usa.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { render } from "@testing-library/react";
 import { expect, test } from "vitest";
 import VaultChip from "./VaultChip";
@@ -64,4 +66,30 @@ test("RF-001: el color derivado no cambia al renombrar la bóveda", () => {
 
 test("RF-001: el chip es decorativo (aria-hidden): el nombre accesible lo da el enlace que lo contiene", () => {
   expect(chipOf("star").chip).toHaveAttribute("aria-hidden", "true");
+});
+
+// H-008: el chip deja de ser tinte del 18 % + aro; pasa a relleno con degradado del color y glifo
+// recortado en el fondo de la app. (jsdom no resuelve `color-mix`/`linear-gradient`, así que el
+// contrato del estilo se verifica sobre la hoja; el contraste resultante lo prueba vaultIcon.test.ts.)
+const chipCss = readFileSync(resolve(__dirname, "VaultChip.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+const chipRule = (selector: string) =>
+  chipCss.match(new RegExp(`${selector.replace(/[.[\]"=:()-]/g, "\\$&")}\\s*\\{([^}]*)\\}`))?.[1] ?? "";
+
+test("H-008 C-6: el chip se rellena con un degradado de dos tonos del color (color-mix), no el tinte del 18 % ni un aro", () => {
+  // Relleno: un linear-gradient hecho de color-mix sobre --chip-color (sin tokens nuevos por color).
+  expect(chipCss).toMatch(/linear-gradient\(/);
+  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color/);
+  // Ya no queda el tinte del 18 % ni el aro de 2 px del diseño anterior.
+  expect(chipCss).not.toMatch(/18%/);
+  expect(chipRule(".vault-chip")).not.toMatch(/box-shadow:\s*inset[^;]*var\(--chip-color/);
+});
+
+test("H-008 C-7: el glifo/iniciales toman el fondo de la app (--bg-secondary), no --text-primary", () => {
+  expect(chipRule(".vault-chip")).toMatch(/color:\s*var\(--bg-secondary\)/);
+  expect(chipRule(".vault-chip")).not.toMatch(/color:\s*var\(--text-primary\)/);
+});
+
+test("H-008 C-8: el degradado usa los extremos que vaultIcon.test.ts verifica (85% blanco oscuro, 72% negro claro)", () => {
+  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color[^)]*\) 85%, white\)/);
+  expect(chipCss).toMatch(/color-mix\(in srgb, var\(--chip-color[^)]*\) 72%, black\)/);
 });

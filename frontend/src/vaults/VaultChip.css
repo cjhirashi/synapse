@@ -1,7 +1,9 @@
-/* Chip de bóveda (SPEC-0009 RF-001; PLAN-0009 §2.3 b): círculo de 34 px con el color de la bóveda
-   (`--chip-color`, una variable de la paleta que fija VaultChip) como tinte del 18 % y aro de 2 px.
-   El glifo va en `--text-primary` (contraste ≥ 4,5:1 sobre el tinte en ambos temas: vaultIcon.test.ts).
-   La forma cambia a `--radius-md` en el contenedor que lo pide (riel: hover y activa). */
+/* Chip de bóveda (SPEC-0009 RF-001; PLAN-0009 §2.3 b; rediseño H-008 C-6/C-7/C-8): círculo de 34 px
+   RELLENO con el color de la bóveda (`--chip-color`, una variable de la paleta que fija VaultChip),
+   con un degradado sutil de dos tonos del mismo color (`color-mix`, sin tokens nuevos por color). El
+   glifo/iniciales van en `--bg-secondary` —el fondo que comparten las 3 superficies que montan el chip
+   (riel, lista y selector)— y se leen «recortados» sobre el relleno. La forma cambia a `--radius-md` en
+   el contenedor que lo pide (riel: hover y activa). */
 .vault-chip {
   display: grid;
   place-items: center;
@@ -9,13 +11,30 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--chip-color, var(--accent)) 18%, var(--bg-tertiary));
-  box-shadow: inset 0 0 0 2px var(--chip-color, var(--accent));
-  color: var(--text-primary);
+  /* Fallback sólido por si el chip se monta sin `--chip-color` (VaultChip siempre la fija): el
+     degradado concreto lo pone cada tema abajo. */
+  background: var(--chip-color, var(--accent));
+  color: var(--bg-secondary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
   transition: border-radius var(--dur-base) var(--ease-standard);
+}
+
+/* Degradado del relleno por tema: el extremo MÁS CLARO mantiene ≥ 4,5:1 con el glifo (--bg-secondary)
+   en los 17 colores (vaultIcon.test.ts, H-008 C-8). Oscuro: fondo oscuro, se aclara el relleno
+   (85 % color + blanco) para recortar el glifo oscuro. Claro: fondo claro, se oscurece el relleno
+   (72 %→60 % color + negro) para recortar el glifo claro. */
+:root[data-theme="dark"] .vault-chip {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--chip-color) 85%, white), var(--chip-color));
+}
+
+:root[data-theme="light"] .vault-chip {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--chip-color) 72%, black),
+    color-mix(in srgb, var(--chip-color) 60%, black)
+  );
 }
 
 /* Fila de la lista de bóvedas: chip junto al título. */
