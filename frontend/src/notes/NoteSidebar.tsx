@@ -467,9 +467,9 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             >
               {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
               {open ? (
-                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" fill="var(--vault-icon-color)" />
+                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
               ) : (
-                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" fill="var(--vault-icon-color)" />
+                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" />
               )}
               <span className="note-tree-name" title={node.name}>
                 {node.name}
@@ -505,7 +505,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
             onClick={() => onOpen(note.id)}
           >
-            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" fill="var(--vault-icon-color)" />
+            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
             <span className="note-tree-name" title={node.name}>
               {node.name}
             </span>
@@ -533,7 +533,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         onDrop={(event) => onTargetDrop(event, "")}
         onClick={() => setActiveFolder("")}
       >
-        <House size={14} aria-hidden="true" data-icon="house" className="note-tree-icon-root" fill="var(--vault-icon-color)" />
+        <House size={14} aria-hidden="true" data-icon="house" className="note-tree-icon-root" />
         <span className="note-tree-name">Raíz</span>
       </button>
     </li>
@@ -612,7 +612,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       className="note-sidebar"
       aria-label="Notas de la bóveda"
       // H-006: la variable que heredan los iconos de contenido del árbol (mismo patrón que `--chip-color`
-      // de `VaultChip`): su `fill` y su color de trazo la leen; cambiar de bóveda sólo cambia este valor.
+      // de `VaultChip`): el CSS la usa como color de trazo (solo contorno, sin relleno; C-2 corregido);
+      // cambiar de bóveda sólo cambia este valor.
       style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties}
     >
       <form className="note-sidebar-new" onSubmit={create}>

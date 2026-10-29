@@ -281,10 +281,10 @@
   flex-shrink: 0;
 }
 
-/* H-006: los iconos de contenido (nota, carpeta, «Raíz») toman el color de la bóveda abierta
-   (`--vault-icon-color`, la fija NoteSidebar en el `<aside>`, mismo patrón que `--chip-color`).
-   El trazo va en ese color y el relleno lo pone el prop `fill` del propio icono Lucide: salen
-   rellenos, no sólo de contorno. El fallback (`--warning`) cubre un render sin la variable. */
+/* H-006 (C-2 corregido 2026-10-29): los iconos de contenido (nota, carpeta, «Raíz») toman el color
+   de la bóveda abierta (`--vault-icon-color`, la fija NoteSidebar en el `<aside>`, mismo patrón que
+   `--chip-color`) en el trazo. Solo contorno, SIN relleno: se usan como vienen en Lucide (decisión de
+   Carlos). El fallback (`--warning`) cubre un render sin la variable. */
 .note-tree-icon-folder,
 .note-tree-icon-note,
 .note-tree-icon-root {
