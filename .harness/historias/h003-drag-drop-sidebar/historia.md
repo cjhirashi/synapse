@@ -1,7 +1,7 @@
 ---
 id: H-003
 titulo: Drag & drop de notas/carpetas en la sidebar izquierda
-estado: implemented # Gate 1 pasado (Carlos dijo "así es", 2026-10-29); implementado 2026-10-29, falta checkpoint demostrable.
+estado: refinando # C-1...C-7 implementados y desplegados 2026-10-29. Checkpoint de Carlos encontró C-8 (carpeta vacía al mover la última nota) — añadido 2026-10-29, Gate 1 pasado (eligió "placeholder"), falta implementar.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -63,6 +63,18 @@ endpoint nuevo.
 - **C-7:** Arrastrar un nodo sobre sí mismo, sobre su propio descendiente, o
   soltar sin desplazamiento real (mismo origen = mismo destino) NO DEBE hacer
   ninguna llamada de red.
+- **C-8** (añadido 2026-10-29, checkpoint de Carlos): CUANDO mover una nota
+  (por drag o por el renombrado de ruta existente — mismo camino compartido,
+  `notes.rename`) deja su carpeta de origen sin ninguna nota activa, el
+  sistema DEBE crear ahí mismo una nota vacía `Sin título.md` para que la
+  carpeta se siga viendo en el árbol — mismo mecanismo que ya usa «Crear
+  carpeta» hoy (una carpeta existe por tener una nota dentro; C-8 solo evita
+  que ese "tener una nota" llegue a cero). **No aplica** al mover una carpeta
+  completa (C-2): ahí la carpeta se reubica entera, no se vacía dejando un
+  resto — ese caso sigue sin placeholder. Decisión de Carlos entre 3 opciones
+  presentadas (placeholder vs. carpetas como entidad real vs. bloquear el
+  movimiento): eligió placeholder por ser el cambio más chico y reusar el
+  patrón ya existente.
 
 `[NEEDS CLARIFICATION] = 0`.
 
