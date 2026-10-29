@@ -7,12 +7,12 @@
 
 ## En curso
 
+- [~] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato con 12 controles: tabla, negritas, cursivas, tachado, código en línea, H1-H4, cita, línea horizontal, listas) → `historias/h010-editor-toolbar-filas/historia.md`, Gate 1 pasado ("así es", 2026-10-29); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
-- [ ] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato) + botones de negritas, cursivas, H1-H4, listas (y candidatos a confirmar: tachado, código en línea, cita, línea horizontal) → `historias/h010-editor-toolbar-filas/historia.md`, criterios redactados por AIRA desde descripción de Carlos (2026-10-29); **falta su "así es" (Gate 1) antes de tomarla** — 2 `[NEEDS CLARIFICATION]` abiertos, ver §3
 
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`

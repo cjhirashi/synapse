@@ -1,7 +1,7 @@
 ---
 id: H-010
 titulo: Cabecera del editor en 3 filas + barra de formato Markdown (negritas, cursivas, H1-H4, listas)
-estado: pendiente # Gate 1 NO pasado — criterios redactados por AIRA desde la descripción de Carlos (captura + texto, 2026-10-29); falta su "así es" antes de tomarla.
+estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-29) a los criterios y a incluir los 4 controles propuestos (tachado, código en línea, cita, línea horizontal). El criterio de overflow de Fila 3 (scroll horizontal vs. wrap) no lo especificó: AIRA decidió scroll horizontal (ver C-7), a corregir si no le gusta al verlo. En implementación vía Claude Code (Modo 2).
 covers:
   - frontend/src/editor/NoteEditor.tsx
   - frontend/src/editor/NoteEditor.test.tsx
@@ -54,11 +54,9 @@ nueva, son:
 | Tabla (ya existe) | `insertTableCommand`/`addRowAfterCommand`/`addColAfterCommand` |
 
 Carlos pidió explícitamente H1-H4, negritas, cursivas, lista numerada y
-lista con viñetas — eso **entra seguro**. Tachado/código en línea/cita/línea
-horizontal están disponibles con el mismo esfuerzo (mismo patrón, cero
-código de editor nuevo) y caen dentro de "todos los controles de formato que
-podamos utilizar en markdown" — **propuestos, a confirmar con Carlos**, no
-asumidos. **Fuera de esta propuesta:** insertar enlace (`toggleLinkCommand`
+lista con viñetas, y confirmó ("así es", 2026-10-29) los 4 propuestos
+también: tachado, código en línea, cita, línea horizontal — los 9 entran.
+**Fuera de esta historia:** insertar enlace (`toggleLinkCommand`
 pide una URL — necesita un diálogo/input nuevo, no es un botón de un clic
 como el resto) y lista de tareas/checkbox (no hay comando directo expuesto
 por el preset, solo una regla de autoformato al escribir `- [ ]`) — ambos
@@ -90,8 +88,9 @@ quedan para una historia aparte si Carlos los quiere.
   ambas vistas de edición, no sólo en Visual.
 - **C-3:** MIENTRAS `mode === "edit"` Y la vista sea Visual, el sistema DEBE
   mostrar una Fila 3 con: Insertar tabla + Añadir fila + Añadir columna (ya
-  existentes, solo se mueven de fila) y los botones nuevos de la tabla de
-  §1 que Carlos confirme.
+  existentes, solo se mueven de fila) y los 9 botones nuevos confirmados de
+  la tabla de §1 (negritas, cursivas, tachado, código en línea, H1-H4, cita,
+  línea horizontal, lista con viñetas, lista numerada).
 - **C-4:** CUANDO la vista es Código, o el modo es Leer, la Fila 3 NO DEBE
   mostrarse (mismo criterio que ya aplica hoy a la tabla, extendido a los
   botones nuevos).
@@ -102,16 +101,15 @@ quedan para una historia aparte si Carlos los quiere.
 - **C-6:** Cada botón nuevo DEBE tener `aria-label` descriptivo y ser
   operable por teclado (mismo patrón `note-nav-button` que ya usan los
   botones existentes de esa cabecera).
-- **C-7:** La Fila 3 DEBE poder desbordar/envolver en pantallas angostas sin
-  romper el layout (scroll horizontal o wrap, a decidir en el plan) — hoy
-  son ~5 controles, con los nuevos pueden ser 12+.
+- **C-7 (decisión de AIRA, sin especificar por Carlos — corregible al
+  verla):** con tabla + los 9 nuevos, Fila 3 tiene ~12 controles; en
+  pantallas angostas DEBE hacer **scroll horizontal** (no envolver a una
+  fila adicional, para no empujar el contenido del documento hacia abajo)
+  — mismo criterio de "no robar espacio" que ya motivó mover el botón de
+  sidebar en la corrección de H-009.
 
-`[NEEDS CLARIFICATION]`: 2 — (1) ¿cuáles de los 4 controles propuestos
-además de lo pedido explícito (tachado, código en línea, cita, línea
-horizontal) entran en esta historia?; (2) en pantallas angostas, ¿la Fila 3
-hace scroll horizontal o envuelve a una fila adicional? Ambas se resuelven
-con tu "así es" (puedes responder dentro del mismo mensaje, no hace falta
-otra ronda).
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó "así es" (2026-10-29) a los
+9 controles y no objetó la decisión de C-7.
 
 ## 4. Casos límite y errores
 
@@ -123,7 +121,7 @@ otra ronda).
   `wrapInHeadingCommand` cambia el nivel (comportamiento ya definido por
   Milkdown, no hay que reimplementarlo).
 
-## 5. Descartes (a confirmar en el "así es")
+## 5. Descartes
 
 - Insertar enlace (`toggleLinkCommand`): requiere diálogo con input de URL,
   fuera de alcance de esta historia (los demás controles son de un clic).
