@@ -15,6 +15,75 @@
      desplaza solo, sin barra visible (como el del mockup) y sin mover la página. */
   overflow-y: auto;
   scrollbar-width: none;
+  /* H-008 C-3: ensancharse al expandir es barato (una transición de ancho). */
+  transition: width var(--dur-base) var(--ease-standard);
+}
+
+/* H-008 C-3: expandido, el riel se ensancha y sus elementos se alinean a la izquierda como píldoras. */
+.vault-rail.is-expanded {
+  width: 208px;
+  align-items: stretch;
+  padding: var(--space-3) var(--space-2);
+}
+
+/* Botón de expandir/colapsar (H-008 C-1/C-5): al inicio del riel, mismo tamaño que un chip en
+   colapsado; en expandido se alinea a la derecha de la píldora. */
+.vault-rail-toggle,
+.vault-rail-toggle:not([type="submit"]) {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.vault-rail-toggle:not([type="submit"]):hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.vault-rail.is-expanded .vault-rail-toggle {
+  margin-left: auto;
+}
+
+/* H-008 C-3: en expandido cada enlace es una píldora icono+nombre a lo ancho del riel. */
+.vault-rail.is-expanded .vault-rail-icon {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: auto;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+}
+
+.vault-rail.is-expanded .vault-rail-icon:hover {
+  background: var(--bg-tertiary);
+}
+
+/* Bóveda activa en expandido: fondo de acento (como el resto de la app) y la barra pegada al borde
+   izquierdo de la píldora (en colapsado sale a -10px porque el enlace va centrado en los 56 px). */
+.vault-rail.is-expanded .vault-rail-icon[aria-current="page"] {
+  background: var(--accent-soft);
+}
+
+.vault-rail.is-expanded .vault-rail-icon[aria-current="page"]::before {
+  left: 0;
+}
+
+/* El nombre completo, en una línea con elipsis si no cabe. */
+.vault-rail-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: var(--text-primary);
 }
 
 /* El enlace es sólo la caja de 34 px del chip: ancla de la barra de la bóveda activa. */

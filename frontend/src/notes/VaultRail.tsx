@@ -7,6 +7,7 @@
  * El nombre completo sale en un tooltip propio (`RailTooltip`) al pasar el cursor o enfocar con el
  * teclado. Se monta en `document.body`: el riel tiene scroll (`overflow`) y recortaría un hijo.
  */
+import { ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
@@ -49,6 +50,8 @@ export default function VaultRail() {
   const { vaults, dataVersion } = useSync();
   const [items, setItems] = useState<Vault[]>([]);
   const [tip, setTip] = useState<Tip | null>(null);
+  // Estado local, sin persistencia: el riel siempre carga colapsado, en cualquier viewport (C-2).
+  const [expanded, setExpanded] = useState(false);
   const rail = useRef<HTMLElement>(null);
   /** El foco que viene de un clic de ratón no debe mostrar el tooltip (sólo el del teclado). */
   const pointerFocus = useRef(false);
@@ -70,26 +73,49 @@ export default function VaultRail() {
 
   return (
     // Al hacer scroll el enlace se mueve y el tooltip (fijo) quedaría descolocado: se oculta.
-    <nav ref={rail} aria-label="Bóvedas abiertas" className="vault-rail" onScroll={() => setTip(null)}>
+    <nav
+      ref={rail}
+      aria-label="Bóvedas abiertas"
+      className={expanded ? "vault-rail is-expanded" : "vault-rail"}
+      onScroll={() => setTip(null)}
+    >
+      {/* Toggle al inicio del riel: alterna colapsado (botones redondos) y expandido (píldoras). */}
+      <button
+        type="button"
+        className="vault-rail-toggle"
+        aria-expanded={expanded}
+        aria-label={expanded ? "Colapsar riel de bóvedas" : "Expandir riel de bóvedas"}
+        onClick={() => setExpanded((value) => !value)}
+      >
+        {expanded ? <ChevronsLeft size={20} aria-hidden="true" /> : <ChevronsRight size={20} aria-hidden="true" />}
+      </button>
       {items.map((vault) => (
         <NavLink
           key={vault.id}
           to={`/vaults/${encodeURIComponent(vault.id)}`}
-          aria-label={accessibleName(vault)}
+          // Expandido: el nombre ya es texto visible, así que el nombre accesible sale de él (sin
+          // duplicar las iniciales); colapsado: lo da el `aria-label` (C-4).
+          aria-label={expanded ? undefined : accessibleName(vault)}
           className="vault-rail-icon"
-          onMouseEnter={(event) => showTip(event.currentTarget, vault.name)}
-          onMouseLeave={() => setTip(null)}
+          onMouseEnter={expanded ? undefined : (event) => showTip(event.currentTarget, vault.name)}
+          onMouseLeave={expanded ? undefined : () => setTip(null)}
           onMouseDown={() => (pointerFocus.current = true)}
-          onFocus={(event) => {
-            if (!pointerFocus.current) showTip(event.currentTarget, vault.name);
-            pointerFocus.current = false;
-          }}
-          onBlur={() => setTip(null)}
+          onFocus={
+            expanded
+              ? undefined
+              : (event) => {
+                  if (!pointerFocus.current) showTip(event.currentTarget, vault.name);
+                  pointerFocus.current = false;
+                }
+          }
+          onBlur={expanded ? undefined : () => setTip(null)}
         >
           <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
+          {expanded && <span className="vault-rail-name">{vault.name}</span>}
         </NavLink>
       ))}
-      {tip && <RailTooltip tip={tip} />}
+      {/* El tooltip sólo tiene sentido en colapsado (en expandido el nombre ya se ve, C-4). */}
+      {!expanded && tip && <RailTooltip tip={tip} />}
     </nav>
   );
 }

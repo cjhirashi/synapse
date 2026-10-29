@@ -1,5 +1,5 @@
 // Riel de bóvedas (SPEC-0008 RF-001; PLAN-0008 §2.6).
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
@@ -149,6 +149,7 @@ test("RF-002: el tooltip también aparece al enfocar con el teclado y se va al p
 
   // Las dos bóvedas se crean con el mismo `created_at` (cada `seedStore` reinicia su reloj): su orden
   // en el riel depende del id, así que se comprueba el conjunto y no la posición.
+  await user.tab(); // el primer foco es el botón de expandir/colapsar (H-008 C-1), se salta
   const names: string[] = [];
   for (let n = 0; n < 2; n++) {
     await user.tab();
@@ -164,6 +165,75 @@ test("RF-002: el icono ya no lleva el atributo title nativo (evita el doble tool
   await seedWithIcon(db, "Notas", null);
   renderRail(value);
   expect(await screen.findByRole("link", { name: "NO Notas" })).not.toHaveAttribute("title");
+});
+
+// --- H-008: riel expandible (C-1…C-5) ---
+
+test("C-1/C-5: el riel tiene al inicio un botón que alterna expandir/colapsar, con nombre accesible claro", async () => {
+  const { value, db } = syncValue();
+  await seedWithIcon(db, "Notas", "star:success");
+  const user = renderRail(value);
+  const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  const toggle = within(rail).getByRole("button", { name: "Expandir riel de bóvedas" });
+  // Va al inicio del riel (es su primer elemento, antes de la lista de bóvedas).
+  expect(rail.firstElementChild).toBe(toggle);
+  expect(toggle).toHaveAttribute("aria-expanded", "false");
+  // Operable por teclado (es un <button>): al activarlo cambia de estado y de nombre accesible.
+  toggle.focus();
+  expect(toggle).toHaveFocus();
+  await user.keyboard("[Space]");
+  const collapse = within(rail).getByRole("button", { name: "Colapsar riel de bóvedas" });
+  expect(collapse).toHaveAttribute("aria-expanded", "true");
+});
+
+test("C-2: el riel carga colapsado (sin el nombre completo visible) y sigue colapsado en una carga nueva", async () => {
+  const { value, db } = syncValue();
+  await seedWithIcon(db, "Trabajo Personal", null);
+  const first = renderRail(value);
+  const link = await screen.findByRole("link", { name: "TP Trabajo Personal" });
+  // Colapsado: sólo las iniciales como texto, nunca el nombre completo.
+  expect(link).toHaveTextContent("TP");
+  expect(link).not.toHaveTextContent("Trabajo Personal");
+  // Lo expandimos…
+  await first.click(screen.getByRole("button", { name: "Expandir riel de bóvedas" }));
+  expect(screen.getByRole("link", { name: "Trabajo Personal" })).toHaveTextContent("Trabajo Personal");
+  // …y una carga nueva (sin persistencia) vuelve a empezar colapsada.
+  cleanup();
+  renderRail(value);
+  await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  expect(screen.getByRole("button", { name: "Expandir riel de bóvedas" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Colapsar riel de bóvedas" })).toBeNull();
+});
+
+test("C-3: expandido, cada bóveda es una píldora con su nombre completo visible, en el mismo orden", async () => {
+  const { value, db } = syncValue();
+  const store = seedStore(db);
+  await store.create({ name: "Trabajo Personal", description: null, tags: [] });
+  await store.create({ name: "Notas", description: null, tags: [] });
+  const user = renderRail(value);
+  await screen.findByRole("link", { name: / Notas$/ });
+  const order = () => screen.getAllByRole("link").map((l) => l.textContent);
+  const collapsed = order();
+  await user.click(screen.getByRole("button", { name: "Expandir riel de bóvedas" }));
+  // El nombre completo aparece como texto en cada enlace…
+  expect(screen.getByRole("link", { name: "Trabajo Personal" })).toHaveTextContent("Trabajo Personal");
+  expect(screen.getByRole("link", { name: "Notas" })).toHaveTextContent("Notas");
+  // …y el orden de las bóvedas no cambia respecto a colapsado.
+  expect(order().map((t, i) => t!.startsWith(collapsed[i]!.slice(0, 2)))).toEqual([true, true]);
+});
+
+test("C-4: expandido, el nombre accesible del enlace es el nombre (sin duplicar iniciales) y no sale tooltip", async () => {
+  const { value, db } = syncValue();
+  await seedWithIcon(db, "Trabajo Personal", null);
+  const user = renderRail(value);
+  await screen.findByRole("link", { name: "TP Trabajo Personal" });
+  await user.click(screen.getByRole("button", { name: "Expandir riel de bóvedas" }));
+  // Con el nombre ya visible, el enlace no repite las iniciales en su nombre accesible.
+  const link = screen.getByRole("link", { name: "Trabajo Personal" });
+  expect(screen.queryByRole("link", { name: "TP Trabajo Personal" })).toBeNull();
+  // Y el tooltip (que en colapsado muestra el nombre) no hace falta: no aparece al pasar el cursor.
+  await user.hover(link);
+  expect(document.querySelector(".rail-tooltip")).toBeNull();
 });
 
 // RF-012: el cambio de ícono hecho en la réplica llega al riel sin recargar (se relee con `dataVersion`).
