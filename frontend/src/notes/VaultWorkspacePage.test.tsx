@@ -665,3 +665,214 @@ test("H-006 C-5: cada bóveda lleva su propio color a la sidebar", async () => {
   expect(await sidebarColor(a.value, a.vault.id)).toBe("var(--danger)");
   expect(await sidebarColor(b.value, b.vault.id)).toBe("var(--success)");
 });
+
+// --- H-009: sidebar ocultable, fija en tableta/escritorio y flotante en móvil ------------------
+//
+// `useMediaQuery` ("(max-width: 640px)") decide el modo. El matchMedia de jsdom (test-setup) es fijo
+// (`matches:false`); aquí se instala uno CONTROLABLE (mismo patrón que useTheme.test.tsx) que permite
+// fijar el ancho inicial y DISPARAR el cruce de breakpoint (C-7) llamando a los oyentes registrados.
+let currentViewport: { setMobile: (next: boolean) => void; restore: () => void } | null = null;
+
+function installViewport(initialMobile: boolean) {
+  let mobile = initialMobile;
+  const listeners = new Set<() => void>();
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) =>
+    ({
+      // Las queries de la app son "(max-width: 640px)": `matches` = móvil. Cualquier otra → false.
+      get matches() {
+        return query.includes("640") ? mobile : false;
+      },
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: (_: string, fn: () => void) => listeners.add(fn),
+      removeEventListener: (_: string, fn: () => void) => listeners.delete(fn),
+      dispatchEvent: () => false,
+    }) as unknown as MediaQueryList) as typeof window.matchMedia;
+  currentViewport = {
+    setMobile(next: boolean) {
+      mobile = next;
+      act(() => listeners.forEach((fn) => fn()));
+    },
+    restore() {
+      window.matchMedia = original;
+    },
+  };
+  return currentViewport;
+}
+
+afterEach(() => {
+  currentViewport?.restore();
+  currentViewport = null;
+});
+
+/** El botón de alternar la barra de notas (C-1): su nombre accesible cambia con el estado. */
+const toggle = () => screen.getByRole("button", { name: /barra de notas/i });
+
+test("H-009 C-1: la cabecera tiene un botón de alternar la barra con aria-expanded y aria-controls a la barra", async () => {
+  installViewport(false); // escritorio: la barra arranca visible
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  const header = container.querySelector(".vault-workspace-header") as HTMLElement;
+  const button = within(header).getByRole("button", { name: /barra de notas/i });
+  expect(button).toHaveAttribute("type", "button");
+  expect(button).toHaveAttribute("aria-expanded", "true"); // visible por defecto en escritorio (C-4)
+
+  // aria-controls apunta al contenedor real de la barra (.vault-workspace-side).
+  const controlledId = button.getAttribute("aria-controls");
+  expect(controlledId).toBeTruthy();
+  const controlled = document.getElementById(controlledId!);
+  expect(controlled).not.toBeNull();
+  expect(controlled).toHaveClass("vault-workspace-side");
+  // El icono es de lucide (PanelLeft/PanelLeftClose), no texto suelto.
+  expect(button.querySelector("svg")).not.toBeNull();
+});
+
+test("H-009 C-8: el botón es operable por teclado (Enter alterna aria-expanded)", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  const button = toggle();
+  button.focus();
+  expect(button).toHaveFocus();
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  await userEvent.keyboard("{Enter}");
+  expect(toggle()).toHaveAttribute("aria-expanded", "false");
+  await userEvent.keyboard("{Enter}");
+  expect(toggle()).toHaveAttribute("aria-expanded", "true");
+  // C-8 pide Enter **y** Space: Space también alterna (es un <button> nativo).
+  await userEvent.keyboard("{ }");
+  expect(toggle()).toHaveAttribute("aria-expanded", "false");
+});
+
+/** El contenedor de la barra, donde viven `data-open`/`data-floating`. */
+const sideEl = (container: HTMLElement) => container.querySelector(".vault-workspace-side") as HTMLElement;
+
+test("H-009 C-4: en escritorio (> 640 px) la barra arranca visible por defecto", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(toggle()).toHaveAttribute("aria-expanded", "true");
+});
+
+test("H-009 C-3: en móvil (≤ 640 px) la barra arranca oculta por defecto", async () => {
+  installViewport(true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  // El botón existe aunque la barra arranque oculta (su cabecera queda siempre visible).
+  await within(container).findByRole("button", { name: /barra de notas/i });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+  expect(toggle()).toHaveAttribute("aria-expanded", "false");
+});
+
+test("H-009 C-2: en escritorio/tableta (> 640 px) la barra es fija/dockeada, nunca overlay", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  const side = sideEl(container);
+  expect(side).toHaveAttribute("data-open");
+  // Fija = sin el marcador de modo flotante (ese sólo aparece en móvil).
+  expect(side).not.toHaveAttribute("data-floating");
+});
+
+test("H-009 C-5: en móvil, abrir con el botón marca el modo flotante sin reordenar el editor", async () => {
+  installViewport(true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await within(container).findByRole("button", { name: /barra de notas/i });
+  const workspace = container.querySelector(".vault-workspace") as HTMLElement;
+  const side = sideEl(container);
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+
+  // En móvil el contenedor lleva el marcador de modo flotante aunque esté cerrado…
+  expect(side).toHaveAttribute("data-floating");
+  expect(side).not.toHaveAttribute("data-open");
+  // …y la barra (.vault-workspace-side) sigue ANTES del editor en el DOM: el editor no se reordena.
+  expect(Array.from(workspace.children)).toEqual([side, main]);
+
+  // Abrir con el botón: pasa a flotante-abierta, el editor NO cambia de lugar en el DOM.
+  await userEvent.click(toggle());
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(sideEl(container)).toHaveAttribute("data-floating");
+  expect(Array.from(workspace.children)).toEqual([side, main]);
+});
+
+/** Abre la barra flotante en móvil y devuelve utilidades del render. */
+async function openFloating() {
+  installViewport(true);
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const utils = render(tree(value, `/vaults/${vault.id}`));
+  await within(utils.container).findByRole("button", { name: /barra de notas/i });
+  await userEvent.click(toggle());
+  expect(sideEl(utils.container)).toHaveAttribute("data-open");
+  return { value, vault, ...utils };
+}
+
+test("H-009 C-6: la barra flotante se cierra al hacer click fuera de ella", async () => {
+  const { container } = await openFloating();
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+  // Mismo patrón de AccountMenu: un mousedown fuera de la barra la cierra.
+  fireEvent.mouseDown(main);
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});
+
+test("H-009 C-6: la barra flotante se cierra al abrir una nota del árbol", async () => {
+  const { container } = await openFloating();
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});
+
+test("H-009 C-6: un click fuera NO afecta cuando la barra es fija (escritorio)", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+  fireEvent.mouseDown(main);
+  // La barra fija no se cierra por click afuera: sólo el botón la oculta.
+  expect(sideEl(container)).toHaveAttribute("data-open");
+});
+
+test("H-009 C-8: Escape cierra la barra flotante en móvil", async () => {
+  const { container } = await openFloating();
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});
+
+test("H-009 C-7: cruzar el breakpoint recalcula el modo sin cerrar la nota abierta", async () => {
+  const vp = installViewport(true); // móvil
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await within(container).findByRole("button", { name: /barra de notas/i });
+
+  // Abrir una nota en móvil (la barra flotante se cierra sola, C-6).
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  const side = sideEl(container);
+  expect(side).toHaveAttribute("data-floating");
+  expect(side).not.toHaveAttribute("data-open");
+
+  // Pasar a escritorio (> 640 px): la barra queda VISIBLE y FIJA (C-7, caso límite), sin perder la nota.
+  vp.setMobile(false);
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(sideEl(container)).not.toHaveAttribute("data-floating");
+  expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+
+  // Y de vuelta a móvil: recalcula a flotante y aplica el default oculto, la nota sigue abierta.
+  vp.setMobile(true);
+  expect(sideEl(container)).toHaveAttribute("data-floating");
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+  expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+});
