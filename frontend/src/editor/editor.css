@@ -8,18 +8,46 @@
   min-height: 0;
 }
 
-/* Barra superior (SPEC-0009 RF-005, R-12): 43 px, `--bg-secondary`, borde inferior; título a la
-   izquierda con elipsis y los controles a la derecha. Queda fija: sólo el cuerpo hace scroll. */
+/* Barra superior (SPEC-0009 RF-005, R-12; H-010): `--bg-secondary`, borde inferior; título y controles.
+   Queda fija: sólo el cuerpo hace scroll. H-010: hasta 3 filas dentro de la misma sección — la Fila 1
+   (sidebar, Atrás/Adelante, migas, lápiz, ⋮) va como hijos directos y se envuelve con `flex-wrap`; las
+   Filas 2 y 3 ocupan su propia línea completa (`flex: 0 0 100%`), así el botón de sidebar sigue siendo el
+   primer hijo del header (H-009 C-1) sin necesitar un envoltorio de Fila 1. */
 .note-editor-header {
   position: relative; /* ancla de lo que sólo se oculta a la vista (etiquetas ≤ 560 px, estado vacío) */
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   flex-shrink: 0;
-  gap: var(--space-2);
-  height: 43px;
-  padding: 0 var(--space-4);
+  column-gap: var(--space-2);
+  row-gap: var(--space-1);
+  min-height: 43px;
+  padding: var(--space-2) var(--space-4);
   border-bottom: 1px solid var(--border);
   background: var(--bg-secondary);
+}
+
+/* Fila 2 (H-010 C-2) y Fila 3 (C-3): cada una en su propia línea completa de la cabecera. La Fila 2
+   reutiliza el estilo de `.note-editor-toolbar`; sólo se le fija el ancho de línea. */
+.note-editor-row-2 {
+  flex: 0 0 100%;
+}
+
+.note-editor-row-3 {
+  display: flex;
+  align-items: center;
+  flex: 0 0 100%;
+  min-width: 0;
+  gap: var(--space-2);
+  /* C-7 (decisión de AIRA): con la tabla + los 9 controles, en pantallas angostas la fila hace scroll
+     horizontal en lugar de envolver a otra línea, para no empujar el documento hacia abajo (mismo criterio
+     de «no robar espacio» que motivó mover el botón de sidebar en H-009). */
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.note-editor-row-3 > * {
+  flex-shrink: 0;
 }
 
 /* ≤ 480 px (T-049, H-1): sin flechas (siguen Alt+←/→) y con el nombre de la nota ocupando lo que queda (≥ 96 px);
@@ -313,8 +341,8 @@
    accesibilidad— y el estado se oculta a la vista; la barra siempre cabe en una línea. */
 @media (max-width: 560px) {
   .note-editor-header {
-    gap: var(--space-1);
-    padding: 0 var(--space-2);
+    column-gap: var(--space-1);
+    padding-inline: var(--space-2);
   }
 
   .note-crumb,

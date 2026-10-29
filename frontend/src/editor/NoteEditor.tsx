@@ -723,8 +723,42 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           <ArrowRight size={16} aria-hidden="true" />
         </button>
         <NoteBreadcrumb path={note.path} onRevealFolder={(folder) => onRevealFolder?.(folder)} />
-        <div className="note-editor-toolbar">
-          {mode === "edit" && (
+        {/* Fila 1 (H-009 + H-010 C-1): el lápiz Editar/Leer y el menú ⋮ cierran la fila de título, como hijos
+            directos del header (el botón de sidebar sigue siendo el primer hijo, H-009 C-1). */}
+        {mode === "read" ? (
+          <button
+            type="button"
+            className="note-nav-button"
+            aria-label="Editar"
+            title="Editar"
+            onClick={() => {
+              setFocusEditor(true);
+              setMode("edit");
+            }}
+          >
+            <Pencil size={16} aria-hidden="true" />
+          </button>
+        ) : (
+          <button type="button" className="note-nav-button" aria-label="Leer" title="Leer" onClick={() => void leave()} disabled={saving}>
+            <BookOpen size={16} aria-hidden="true" />
+          </button>
+        )}
+        {/* Renombrar, copiar la ruta y borrar reutilizan los flujos del árbol y del portapapeles (RF-062): se cablean
+            con la lógica de carpetas; «Ver en Código» ya funciona. */}
+        <NoteMenu
+          inCode={mode === "edit" && view === "code"}
+          onRename={() => onRename?.()}
+          onCopyPath={() => void copyPath()}
+          onViewInCode={() => {
+            setFocusEditor(true);
+            setMode("edit");
+            setView("code");
+          }}
+          onDelete={() => onDelete?.()}
+        />
+        {/* Fila 2 (H-010 C-2): Visual, Código y Guardar + el estado — visibles en edición en AMBAS vistas. */}
+        {mode === "edit" && (
+          <div className="note-editor-row-2 note-editor-toolbar">
             <div role="group" aria-label="Vista del editor" className="note-editor-views">
               <button type="button" aria-pressed={view === "visual"} onClick={() => switchView("visual")}>
                 <Eye size={14} aria-hidden="true" />
@@ -735,68 +769,35 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
                 <span className="note-btn-label">Código</span>
               </button>
             </div>
-          )}
-          {/* Insertar tabla (RF-025): sólo en Visual. Con el cursor en una tabla se ofrecen además añadir fila y
-              columna (P-7: Tab en la última celda no las crea). */}
-          {mode === "edit" && view === "visual" && (
-            <>
-              <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => tableCommands.current?.insertTable()}>
-                <Table size={16} aria-hidden="true" />
-              </button>
-              {inTable && (
-                <>
-                  <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => tableCommands.current?.addRowAfter()}>
-                    <BetweenHorizontalEnd size={16} aria-hidden="true" />
-                  </button>
-                  <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => tableCommands.current?.addColAfter()}>
-                    <BetweenVerticalEnd size={16} aria-hidden="true" />
-                  </button>
-                </>
-              )}
-            </>
-          )}
-          {mode === "edit" && (
             <button type="button" onClick={() => void save()} disabled={saving || !dirty}>
               <Save size={14} aria-hidden="true" />
               <span className="note-btn-label">Guardar</span>
             </button>
-          )}
-          <span className="note-editor-state" role="status">
-            {dirty ? "Cambios sin guardar" : saved ? "Guardado" : ""}
-          </span>
-          {mode === "read" ? (
-            <button
-              type="button"
-              className="note-nav-button"
-              aria-label="Editar"
-              title="Editar"
-              onClick={() => {
-                setFocusEditor(true);
-                setMode("edit");
-              }}
-            >
-              <Pencil size={16} aria-hidden="true" />
+            <span className="note-editor-state" role="status">
+              {dirty ? "Cambios sin guardar" : saved ? "Guardado" : ""}
+            </span>
+          </div>
+        )}
+        {/* Fila 3 (H-010 C-3/C-4): todos los controles de formato — sólo en edición Visual (mismo gate que la
+            tabla). Insertar tabla (RF-025): con el cursor en una tabla se ofrecen además añadir fila y columna
+            (P-7: Tab en la última celda no las crea). */}
+        {mode === "edit" && view === "visual" && (
+          <div className="note-editor-row-3">
+            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => tableCommands.current?.insertTable()}>
+              <Table size={16} aria-hidden="true" />
             </button>
-          ) : (
-            <button type="button" className="note-nav-button" aria-label="Leer" title="Leer" onClick={() => void leave()} disabled={saving}>
-              <BookOpen size={16} aria-hidden="true" />
-            </button>
-          )}
-          {/* Renombrar, copiar la ruta y borrar reutilizan los flujos del árbol y del portapapeles (RF-062): se cablean
-              con la lógica de carpetas; «Ver en Código» ya funciona. */}
-          <NoteMenu
-            inCode={mode === "edit" && view === "code"}
-            onRename={() => onRename?.()}
-            onCopyPath={() => void copyPath()}
-            onViewInCode={() => {
-              setFocusEditor(true);
-              setMode("edit");
-              setView("code");
-            }}
-            onDelete={() => onDelete?.()}
-          />
-
-        </div>
+            {inTable && (
+              <>
+                <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => tableCommands.current?.addRowAfter()}>
+                  <BetweenHorizontalEnd size={16} aria-hidden="true" />
+                </button>
+                <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => tableCommands.current?.addColAfter()}>
+                  <BetweenVerticalEnd size={16} aria-hidden="true" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </header>
       {/* Región viva del resultado de «Copiar ruta» (RF-062); fuera de la barra para no sumar otro `status` a su orden. */}
       <span className="note-visually-hidden" aria-live="polite">

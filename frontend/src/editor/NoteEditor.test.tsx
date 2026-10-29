@@ -155,20 +155,28 @@ describe("encabezado de la nota (SPEC-0010, P-17)", () => {
     expect(bar.getByRole("heading", { level: 2, name: "Primera" })).toHaveAttribute("aria-current", "page");
   });
 
-  // RF-054
-  it("en edición Visual: Visual|Código, Insertar tabla, Guardar, estado, lápiz «Leer» y ⋮", async () => {
+  // H-010 C-1/C-2/C-3: en edición la cabecera se parte en 3 filas. La Fila 1 conserva migas, lápiz y ⋮
+  // (hijos directos del header, en ese orden); la Fila 2 lleva Visual|Código, Guardar y el estado; la
+  // Fila 3, los controles de formato (la tabla incluida).
+  it("en edición Visual: 3 filas — migas/lápiz/⋮ · Visual|Código/Guardar/estado · formato", async () => {
     const { container } = await setup();
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
-    const bar = within(header(container));
-    expectOrder([
-      bar.getByRole("navigation", { name: "Ruta" }),
-      bar.getByRole("group", { name: "Vista del editor" }),
-      bar.getByRole("button", { name: "Insertar tabla" }),
-      bar.getByRole("button", { name: "Guardar" }),
-      bar.getByRole("status"),
-      bar.getByRole("button", { name: "Leer" }),
-      bar.getByRole("button", { name: "Opciones de la nota" }),
-    ]);
+    const h = header(container);
+    const row2 = h.querySelector<HTMLElement>(".note-editor-row-2")!;
+    const row3 = h.querySelector<HTMLElement>(".note-editor-row-3")!;
+    // Fila 1: migas, lápiz «Leer» y ⋮ son hijos directos del header, en ese orden.
+    const crumbs = within(h).getByRole("navigation", { name: "Ruta" });
+    const read = within(h).getByRole("button", { name: "Leer" });
+    const menu = within(h).getByRole("button", { name: "Opciones de la nota" });
+    expect(read.parentElement).toBe(h);
+    expect(menu.parentElement).toBe(h);
+    expectOrder([crumbs, read, menu]);
+    // Fila 2: Visual|Código, Guardar y el estado.
+    expect(within(row2).getByRole("group", { name: "Vista del editor" })).toBeInTheDocument();
+    expect(within(row2).getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+    expect(within(row2).getByRole("status")).toBeInTheDocument();
+    // Fila 3: Insertar tabla (y aquí viven los demás botones de formato).
+    expect(within(row3).getByRole("button", { name: "Insertar tabla" })).toBeInTheDocument();
   });
 
   // RF-041, RF-054
@@ -271,6 +279,60 @@ describe("encabezado de la nota (SPEC-0010, P-17)", () => {
     );
     const heading = await screen.findByRole("heading", { level: 2, name: "Nota" });
     expect(heading).toHaveAttribute("title", "Carpeta/Nota");
+  });
+});
+
+// H-010: la cabecera del editor se reorganiza en 3 filas dentro de `.note-editor-header`.
+describe("cabecera del editor en 3 filas (H-010)", () => {
+  const header = (c: HTMLElement) => c.querySelector<HTMLElement>(".note-editor-header")!;
+
+  // C-1: en lectura sólo está la Fila 1; no se pintan las filas de edición ni de formato.
+  it("C-1: en lectura no existen Fila 2 ni Fila 3", async () => {
+    const { container } = await setup();
+    expect(header(container).querySelector(".note-editor-row-2")).toBeNull();
+    expect(header(container).querySelector(".note-editor-row-3")).toBeNull();
+  });
+
+  // C-1: ningún control de edición/formato queda en la Fila 1 — el lápiz y el ⋮ son hijos directos del
+  // header, mientras que Visual/Código/Guardar viven en la Fila 2 y la tabla en la Fila 3.
+  it("C-1: lápiz y ⋮ en Fila 1; Visual/Código/Guardar en Fila 2; tabla en Fila 3", async () => {
+    const { container } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const h = header(container);
+    expect(within(h).getByRole("button", { name: "Leer" }).parentElement).toBe(h);
+    expect(within(h).getByRole("button", { name: "Opciones de la nota" }).parentElement).toBe(h);
+    const row2 = h.querySelector<HTMLElement>(".note-editor-row-2")!;
+    const row3 = h.querySelector<HTMLElement>(".note-editor-row-3")!;
+    expect(within(row2).getByRole("button", { name: "Visual" })).toBeInTheDocument();
+    expect(within(row2).getByRole("button", { name: "Código" })).toBeInTheDocument();
+    expect(within(row2).getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+    expect(within(row3).getByRole("button", { name: "Insertar tabla" })).toBeInTheDocument();
+    // Y esos controles NO son hijos directos del header (están anidados en sus filas).
+    expect(within(h).getByRole("button", { name: "Guardar" }).parentElement).toBe(row2);
+    expect(within(h).getByRole("button", { name: "Insertar tabla" }).parentElement).toBe(row3);
+  });
+
+  // C-2: la Fila 2 aparece en edición y persiste en Código (no sólo en Visual).
+  it("C-2: la Fila 2 (Visual/Código/Guardar/estado) aparece en edición y sigue en Código", async () => {
+    const { container } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    let row2 = header(container).querySelector<HTMLElement>(".note-editor-row-2")!;
+    expect(within(row2).getByRole("status")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    row2 = header(container).querySelector<HTMLElement>(".note-editor-row-2")!;
+    expect(row2).not.toBeNull();
+    expect(within(row2).getByRole("button", { name: "Visual" })).toBeInTheDocument();
+    expect(within(row2).getByRole("button", { name: "Guardar" })).toBeInTheDocument();
+  });
+
+  // C-3/C-4: la Fila 3 (formato) sólo en edición + Visual; nunca en lectura ni en Código.
+  it("C-4: la Fila 3 sólo existe en edición Visual (no en lectura ni en Código)", async () => {
+    const { container } = await setup();
+    expect(header(container).querySelector(".note-editor-row-3")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    expect(header(container).querySelector(".note-editor-row-3")).not.toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    expect(header(container).querySelector(".note-editor-row-3")).toBeNull();
   });
 });
 
