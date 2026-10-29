@@ -139,6 +139,13 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   /** El contenedor de la barra, para el cierre por click-afuera de la flotante (C-6). */
   const sideRef = useRef<HTMLDivElement>(null);
 
+  // C-7: al cruzar el breakpoint (resize/rotación) se recalcula la visibilidad según el default del
+  // nuevo ancho — a escritorio queda visible y fija; a móvil, oculta. La nota abierta (`openId`) vive
+  // en otro estado y no se toca, así que no se pierde. Sin persistir la preferencia (Descartes).
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
+
   // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
   // `Escape` la cierran — mismo patrón que `AccountMenu` (mousedown + keydown en `document`). Fija
   // (tableta/escritorio) no se cierra así: sólo el botón la oculta.

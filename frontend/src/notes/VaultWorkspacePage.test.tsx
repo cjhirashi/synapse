@@ -846,3 +846,30 @@ test("H-009 C-8: Escape cierra la barra flotante en móvil", async () => {
   fireEvent.keyDown(document, { key: "Escape" });
   expect(sideEl(container)).not.toHaveAttribute("data-open");
 });
+
+test("H-009 C-7: cruzar el breakpoint recalcula el modo sin cerrar la nota abierta", async () => {
+  const vp = installViewport(true); // móvil
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await within(container).findByRole("button", { name: /barra de notas/i });
+
+  // Abrir una nota en móvil (la barra flotante se cierra sola, C-6).
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  const side = sideEl(container);
+  expect(side).toHaveAttribute("data-floating");
+  expect(side).not.toHaveAttribute("data-open");
+
+  // Pasar a escritorio (> 640 px): la barra queda VISIBLE y FIJA (C-7, caso límite), sin perder la nota.
+  vp.setMobile(false);
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(sideEl(container)).not.toHaveAttribute("data-floating");
+  expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+
+  // Y de vuelta a móvil: recalcula a flotante y aplica el default oculto, la nota sigue abierta.
+  vp.setMobile(true);
+  expect(sideEl(container)).toHaveAttribute("data-floating");
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+  expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+});
