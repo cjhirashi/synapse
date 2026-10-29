@@ -614,6 +614,44 @@ test("C-7: soltar una nota en la carpeta donde ya está no hace ninguna llamada 
   expect(rename).not.toHaveBeenCalled();
 });
 
+test("C-2: arrastrar una carpeta sobre otra mueve todas sus notas hijas conservando la subestructura", async () => {
+  const { value } = await setup(["Proyectos/Plan.md", "Proyectos/Sub/Hoja.md", "Archivo/Viejo.md"]);
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Proyectos" }));
+  const archivo = screen.getByRole("treeitem", { name: "Archivo" });
+  fireEvent.dragOver(archivo);
+  fireEvent.drop(archivo);
+  await waitForCondition(async () =>
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual([
+      "Archivo/Proyectos/Plan.md",
+      "Archivo/Proyectos/Sub/Hoja.md",
+      "Archivo/Viejo.md",
+    ]),
+  );
+});
+
+test("C-2: arrastrar una carpeta sobre «Raíz» la saca al primer nivel con todo su contenido", async () => {
+  const { value } = await setup(["A/B/Nota.md", "A/B/Sub/Otra.md"]);
+  await userEvent.setup().click(await screen.findByRole("treeitem", { name: "A" }));
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "B" }));
+  const root = within(screen.getByRole("tree", { name: "Notas" })).getByRole("treeitem", { name: "Raíz" });
+  fireEvent.dragOver(root);
+  fireEvent.drop(root);
+  await waitForCondition(async () =>
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["B/Nota.md", "B/Sub/Otra.md"]),
+  );
+});
+
+test("C-7: arrastrar una carpeta sobre un descendiente suyo no hace ninguna llamada de red", async () => {
+  const { value } = await setup(["A/B/Nota.md"]);
+  const moveFolder = vi.spyOn(value.notes, "moveFolder");
+  await userEvent.setup().click(await screen.findByRole("treeitem", { name: "A" }));
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "A" }));
+  const sub = screen.getByRole("treeitem", { name: "B" });
+  fireEvent.dragOver(sub);
+  fireEvent.drop(sub);
+  expect(moveFolder).not.toHaveBeenCalled();
+});
+
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
   const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());
