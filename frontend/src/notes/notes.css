@@ -329,6 +329,15 @@
   background: var(--accent-soft);
 }
 
+/* H-003 C-3: carpeta/«Raíz» destino de un arrastre bajo el cursor; recuadro de acento para marcar
+   el sitio donde caería lo que se suelta (gana al hover por ser más específico). */
+.note-tree-row[data-drop-target="true"],
+.note-tree-row[data-drop-target="true"]:not([type="submit"]):hover {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
 /* Acciones de la nota seleccionada y renombrado: bajo el panel del árbol (así no desplazan sus filas) y
    siempre visibles (también en táctil). */
 .note-actions {

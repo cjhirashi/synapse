@@ -652,6 +652,47 @@ test("C-7: arrastrar una carpeta sobre un descendiente suyo no hace ninguna llam
   expect(moveFolder).not.toHaveBeenCalled();
 });
 
+test("C-3: mientras se arrastra, la carpeta destino bajo el cursor se resalta y deja de hacerlo al salir", async () => {
+  await setup(["Inicio.md", "Carpeta/Ancla.md"]);
+  const folderRow = await screen.findByRole("treeitem", { name: "Carpeta" });
+  expect(folderRow).not.toHaveAttribute("data-drop-target");
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Inicio" }));
+  fireEvent.dragOver(folderRow);
+  expect(folderRow).toHaveAttribute("data-drop-target", "true");
+  fireEvent.dragLeave(folderRow);
+  expect(folderRow).not.toHaveAttribute("data-drop-target");
+});
+
+test("C-3: un destino no válido (la carpeta donde la nota ya está) no se resalta", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md"]);
+  const folderRow = await screen.findByRole("treeitem", { name: "Carpeta" });
+  await user.click(folderRow);
+  fireEvent.dragStart(screen.getByRole("treeitem", { name: "Hoja" }));
+  fireEvent.dragOver(folderRow);
+  expect(folderRow).not.toHaveAttribute("data-drop-target");
+});
+
+test("C-5: soltar una nota donde ya hay otra con ese nombre muestra el mismo error que el renombrado, sin mover", async () => {
+  const { value } = await setup(["Inicio.md", "Carpeta/Inicio.md"]);
+  const raiz = (await value.notes.list(VAULT)).find((n) => n.path === "Inicio.md")!;
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Inicio" }));
+  const carpeta = screen.getByRole("treeitem", { name: "Carpeta" });
+  fireEvent.dragOver(carpeta);
+  fireEvent.drop(carpeta);
+  expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
+  expect((await value.notes.get(raiz.id)).path).toBe("Inicio.md"); // no se movió
+});
+
+test("C-5: soltar una carpeta donde ya existe otra con ese nombre muestra el error de carpeta duplicada, sin mover", async () => {
+  const { value } = await setup(["Origen/Nota.md", "Destino/Origen/Vieja.md"]);
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Origen" }));
+  const destino = screen.getByRole("treeitem", { name: "Destino" });
+  fireEvent.dragOver(destino);
+  fireEvent.drop(destino);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe una carpeta con ese nombre («Origen»).");
+  expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Destino/Origen/Vieja.md", "Origen/Nota.md"]);
+});
+
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
   const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());
