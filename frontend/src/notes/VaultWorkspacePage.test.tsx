@@ -747,3 +747,36 @@ test("H-009 C-8: el botón es operable por teclado (Enter alterna aria-expanded)
   await userEvent.keyboard("{Enter}");
   expect(toggle()).toHaveAttribute("aria-expanded", "true");
 });
+
+/** El contenedor de la barra, donde viven `data-open`/`data-floating`. */
+const sideEl = (container: HTMLElement) => container.querySelector(".vault-workspace-side") as HTMLElement;
+
+test("H-009 C-4: en escritorio (> 640 px) la barra arranca visible por defecto", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  expect(toggle()).toHaveAttribute("aria-expanded", "true");
+});
+
+test("H-009 C-3: en móvil (≤ 640 px) la barra arranca oculta por defecto", async () => {
+  installViewport(true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  // El botón existe aunque la barra arranque oculta (su cabecera queda siempre visible).
+  await within(container).findByRole("button", { name: /barra de notas/i });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+  expect(toggle()).toHaveAttribute("aria-expanded", "false");
+});
+
+test("H-009 C-2: en escritorio/tableta (> 640 px) la barra es fija/dockeada, nunca overlay", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  const side = sideEl(container);
+  expect(side).toHaveAttribute("data-open");
+  // Fija = sin el marcador de modo flotante (ese sólo aparece en móvil).
+  expect(side).not.toHaveAttribute("data-floating");
+});
