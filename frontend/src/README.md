@@ -134,8 +134,9 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   Los íconos de **contenido** de la barra lateral (nota/carpeta/«Raíz» en `NoteSidebar.tsx`) reusan
   ese mismo color (H-006): `VaultWorkspacePage` lo resuelve como el chip
   (`parseIcon(icon).color ?? derivedColor(id)`) y lo pasa por prop; la sidebar lo publica en la
-  variable `--vault-icon-color` del `<aside>` y los íconos la leen para el trazo y el relleno (`fill`
-  de Lucide). Los controles (`Plus`, `FolderPlus`, `Trash2`, chevrons) siguen neutros de contorno.
+  variable `--vault-icon-color` del `<aside>` y los íconos la leen como color de **trazo** (solo
+  contorno, se usan como vienen en Lucide, sin `fill`). Los controles (`Plus`, `FolderPlus`,
+  `Trash2`, chevrons) siguen neutros.
 - **Riel con tooltip** (`notes/VaultRail.tsx`): `RailTooltip` se monta en `document.body` (el riel
   hace scroll y recortaría) al pasar el cursor o enfocar con el teclado; sin `title` nativo. El
   nombre accesible es el nombre con ícono y «iniciales nombre» con iniciales.

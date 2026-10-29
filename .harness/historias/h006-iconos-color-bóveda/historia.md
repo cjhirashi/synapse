@@ -1,7 +1,7 @@
 ---
 id: H-006
 titulo: Iconos de notas/carpetas en la sidebar con el color de la bóveda (contorno, sin relleno)
-estado: refinando # Gate 1 pasado ("así es", 2026-10-29). CORREGIDO 2026-10-29: Carlos pidió relleno primero, luego "no rellenes, usa Lucide como vienen" — revertido a solo-contorno. Falta re-implementar C-2.
+estado: implemented # Gate 1 pasado ("así es", 2026-10-29). C-2 corregido e implementado 2026-10-29 (solo-contorno, sin relleno, tras ver Carlos el resultado relleno). Pendiente checkpoint demostrable para 'verified'.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -124,22 +124,46 @@ sin `fill`. No se cambia de librería de iconos.
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1 | 1, 3 | `NoteSidebar.test.tsx`, `VaultWorkspacePage.test.tsx` | Pending |
-| C-2 | 1 | `NoteSidebar.test.tsx` | Pending |
-| C-3 | 2 | `NoteSidebar.test.tsx` | Pending |
+| C-1 | 1, 3 | `NoteSidebar.test.tsx` «H-006 C-1, C-2…» + `VaultWorkspacePage.test.tsx` «H-006 C-1…» (elegido y derivado) | Cubierto ✓ |
+| C-2 | 1 | `NoteSidebar.test.tsx` «H-006 C-1, C-2: … solo contorno (sin fill)» (clase de color + `fill="none"`) | Cubierto ✓ (corregido: contorno) |
+| C-3 | 2 | `NoteSidebar.test.tsx` «H-006 C-3: … NO cambian» (controles sin la clase de color; ningún `fill` de bóveda) | Cubierto ✓ |
 | C-4 | 1 | reusa paleta ya validada, sin test nuevo de contraste (no hay valores nuevos) | N/A |
-| C-5 | 3 | `VaultWorkspacePage.test.tsx` | Pending |
+| C-5 | 3 | `VaultWorkspacePage.test.tsx` «H-006 C-5…» + `NoteSidebar.test.tsx` «H-006 C-5…» (rerender) | Cubierto ✓ |
+
+Cobertura de la suite (`npm run test:cov`, 2026-10-29, tras la corrección de C-2): 88 archivos,
+**1683 tests en verde**; `NoteSidebar.tsx` 98,35 % líneas / 89,7 % ramas, `src/notes` 97,41 %,
+`vaultIcon.ts` 100 %, total 97,61 %. `npm run build` (tsc + vite) en verde.
 
 ## 8. Checkpoint demostrable
 
 Pendiente — Carlos debe abrir una bóveda y ver sus iconos de nota/carpeta
-rellenos con el color de esa bóveda, y confirmar que cambiar de bóveda
-cambia el color, antes de marcar `verified`.
+(solo contorno, como vienen en Lucide) con el color de esa bóveda, y confirmar
+que cambiar de bóveda cambia el color, antes de marcar `verified`.
 
 ## 9. Session-End (al cerrar)
 
-- **Claim:** pendiente.
-- **Evidencia:** pendiente.
-- **Gaps:** ninguno todavía.
-- **Riesgo residual:** ninguno todavía.
-- **Próximo paso:** tomar la historia, ciclo driver/navigator §4.
+- **Claim:** los iconos de contenido de la sidebar (nota `FileText`, carpeta
+  `Folder`/`FolderOpen`, «Raíz» `House`) toman el color de la bóveda abierta en
+  el **trazo** y se ven de **solo contorno** (se usan como vienen en Lucide, sin
+  `fill`; C-2 corregido tras el checkpoint de Carlos). Los controles (`Plus`,
+  `FolderPlus`, `Trash2`, chevrons, `CircleAlert`) siguen neutros. El color se
+  resuelve en `VaultWorkspacePage` como `VaultChip`
+  (`parseIcon(vault.icon).color ?? derivedColor(vault.id)`) y viaja a
+  `NoteSidebar` por la prop `vaultColor`, publicado en la variable CSS
+  `--vault-icon-color` del `<aside>` que leen las clases `note-tree-icon-*`
+  (C-1…C-5).
+- **Evidencia:** 4 commits citando H-006 — (`cecafc6`) implementación inicial
+  + wiring + tests; (`a086d82`) tests del padre + doc; (`1236206`) historia a
+  `implemented`; (`5703f1d`) Session-End en `history.md`. Corrección de C-2:
+  (`d128675`) quita el prop `fill` de los 4 iconos, deja el color solo en el
+  trazo vía clase, y ajusta los 3 tests H-006 de `NoteSidebar.test.tsx` (ya no
+  esperan `fill`; esperan la clase de color + `fill="none"` de Lucide).
+  `npm run build` (tsc + vite) en verde. `npm run test:cov`: 88 archivos,
+  1683 tests en verde; `NoteSidebar.tsx` 98,35 % líneas, `src/notes` 97,41 %,
+  total 97,61 %.
+- **Gaps:** ninguno funcional.
+- **Riesgo residual:** ninguno. (El riesgo anterior —silueta sólida por el
+  relleno— desaparece: se revirtió a solo contorno.)
+- **Próximo paso:** checkpoint demostrable (§8) — Carlos abre una bóveda, ve
+  los iconos de nota/carpeta de contorno con su color y confirma que cambiar de
+  bóveda cambia el color, antes de `verified`. Merge/push lo hace Carlos.
