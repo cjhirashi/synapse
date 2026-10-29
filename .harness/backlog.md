@@ -15,6 +15,7 @@
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
 - [ ] H-003 — Drag & drop de notas/carpetas en la sidebar (pedido directo de Carlos, 2026-10-27; aún sin refinar)
+- [ ] H-004.2 — Un agente OpenClaw crea/actualiza/borra notas de su bóveda vía REST (escritura) → Gate 1 pasado ("así es", 2026-10-29); prioridad **máxima**, por encima de todo lo anterior en esta lista; depende de H-004.1 (ya `implemented`/desplegado, ver abajo); mismo borrador en `historias/0014-acceso-agentes-notas/historia.md`
 
 ## Implementadas, pendientes de checkpoint de Carlos
 
@@ -22,6 +23,7 @@
 - [~] H-002.2 — Un agente usa su API key para leer bóvedas/notas → desplegado, mismo detalle
 - [~] H-002.3 — Revocar una key la invalida de inmediato → desplegado, mismo detalle
 - [~] H-002.4 — Resiliencia de API keys + documentación de cierre → desplegado, mismo detalle
+- [~] H-004.1 — Un agente OpenClaw lista y lee notas de su bóveda vía REST, sin protocolo CouchDB de cliente (lectura) → Gate 1 pasado ("así es", 2026-10-29: id-only, sin filtro de carpeta); implementado, 1342 tests en verde, desplegado y verificado en vivo (`/openapi.json` de `synapse.cjhirashi.com`); ver `historias/0014-acceso-agentes-notas/historia.md`. Falta el checkpoint manual de Carlos/`main`.
 
 ## Cerradas
 
