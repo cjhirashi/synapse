@@ -10,8 +10,8 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { KeyboardEvent, lazy, Suspense, useEffect, useRef, useState } from "react";
-import { FileText, FolderOpen } from "lucide-react";
+import { KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { whenIdle } from "../editor/deferred/idle";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
@@ -20,6 +20,7 @@ import type { Vault } from "../sync/vaultStore";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
@@ -126,6 +127,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-006: color de los iconos de contenido de la sidebar, resuelto igual que `VaultChip`
   // (color elegido en `Vault.icon`, o el derivado del id si no hay uno).
   const vaultColor = parseIcon(vault.icon).color ?? derivedColor(vault.id);
+
+  // H-009: la barra de notas es fija/dockeada en tableta y escritorio (> 640 px) y flotante en móvil
+  // (≤ 640 px). `isMobile` decide el MODO; `sidebarOpen` la visibilidad. Mismo media query que usa
+  // `NoteSidebar` para su bloque de creación compacto (640 px), vía el mismo `useMediaQuery`.
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  // Default por ancho (C-3/C-4): oculta en móvil, visible en tableta/escritorio. Sin persistencia
+  // entre sesiones (Descartes): cada apertura de bóveda usa el default del ancho actual.
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
+  const sideId = useId();
 
   // RNF-001 (PLAN-0010 §10.4/§10.5): caché de parseo + programador de precálculo propios de esta
   // bóveda. El `Workspace` está `key`-ado por bóveda, así que montar/desmontar = cambio de bóveda o
@@ -276,9 +286,27 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
 
   return (
     <div className="vault-workspace" onKeyDown={onKeyDown}>
-      <div className="vault-workspace-side">
+      <div
+        className="vault-workspace-side"
+        id={sideId}
+        // La cabecera (con el botón) queda siempre visible; `data-open`/`data-floating` gobiernan el
+        // árbol vía CSS: dockeado en > 640 px, overlay `position: fixed` en móvil (C-2/C-5).
+        data-open={sidebarOpen ? "" : undefined}
+        data-floating={isMobile ? "" : undefined}
+      >
         {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. */}
         <header className="vault-workspace-header">
+          {/* H-009 C-1/C-8: alterna la barra, visible y operable por teclado en los 3 anchos. */}
+          <button
+            type="button"
+            className="vault-workspace-toggle"
+            aria-expanded={sidebarOpen}
+            aria-controls={sideId}
+            aria-label={sidebarOpen ? "Ocultar la barra de notas" : "Mostrar la barra de notas"}
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            {sidebarOpen ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
+          </button>
           <FolderOpen size={14} aria-hidden="true" data-icon="folder-open" />
           <h1 title={vault.name}>{vault.name}</h1>
         </header>
