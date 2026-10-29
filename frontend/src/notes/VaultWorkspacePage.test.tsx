@@ -802,3 +802,47 @@ test("H-009 C-5: en móvil, abrir con el botón marca el modo flotante sin reord
   expect(sideEl(container)).toHaveAttribute("data-floating");
   expect(Array.from(workspace.children)).toEqual([side, main]);
 });
+
+/** Abre la barra flotante en móvil y devuelve utilidades del render. */
+async function openFloating() {
+  installViewport(true);
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const utils = render(tree(value, `/vaults/${vault.id}`));
+  await within(utils.container).findByRole("button", { name: /barra de notas/i });
+  await userEvent.click(toggle());
+  expect(sideEl(utils.container)).toHaveAttribute("data-open");
+  return { value, vault, ...utils };
+}
+
+test("H-009 C-6: la barra flotante se cierra al hacer click fuera de ella", async () => {
+  const { container } = await openFloating();
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+  // Mismo patrón de AccountMenu: un mousedown fuera de la barra la cierra.
+  fireEvent.mouseDown(main);
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});
+
+test("H-009 C-6: la barra flotante se cierra al abrir una nota del árbol", async () => {
+  const { container } = await openFloating();
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});
+
+test("H-009 C-6: un click fuera NO afecta cuando la barra es fija (escritorio)", async () => {
+  installViewport(false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+  fireEvent.mouseDown(main);
+  // La barra fija no se cierra por click afuera: sólo el botón la oculta.
+  expect(sideEl(container)).toHaveAttribute("data-open");
+});
+
+test("H-009 C-8: Escape cierra la barra flotante en móvil", async () => {
+  const { container } = await openFloating();
+  fireEvent.keyDown(document, { key: "Escape" });
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+});

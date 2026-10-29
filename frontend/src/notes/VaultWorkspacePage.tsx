@@ -136,6 +136,27 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // entre sesiones (Descartes): cada apertura de bóveda usa el default del ancho actual.
   const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
   const sideId = useId();
+  /** El contenedor de la barra, para el cierre por click-afuera de la flotante (C-6). */
+  const sideRef = useRef<HTMLDivElement>(null);
+
+  // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
+  // `Escape` la cierran — mismo patrón que `AccountMenu` (mousedown + keydown en `document`). Fija
+  // (tableta/escritorio) no se cierra así: sólo el botón la oculta.
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const onDown = (e: globalThis.MouseEvent) => {
+      if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isMobile, sidebarOpen]);
 
   // RNF-001 (PLAN-0010 §10.4/§10.5): caché de parseo + programador de precálculo propios de esta
   // bóveda. El `Workspace` está `key`-ado por bóveda, así que montar/desmontar = cambio de bóveda o
@@ -228,6 +249,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     setOpenId(id);
     setEditOnOpen(options?.edit ?? false);
     setShowTrash(false);
+    // C-6: elegir una nota cierra la barra flotante (móvil) para no tapar el editor.
+    if (isMobile) setSidebarOpen(false);
   }
 
   /** La nota se abrió de verdad: confirma el salto de historial pendiente o añade una entrada (RF-057). */
@@ -288,6 +311,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     <div className="vault-workspace" onKeyDown={onKeyDown}>
       <div
         className="vault-workspace-side"
+        ref={sideRef}
         id={sideId}
         // La cabecera (con el botón) queda siempre visible; `data-open`/`data-floating` gobiernan el
         // árbol vía CSS: dockeado en > 640 px, overlay `position: fixed` en móvil (C-2/C-5).
