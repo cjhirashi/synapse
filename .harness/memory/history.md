@@ -1731,3 +1731,11 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Riesgo residual:** `event.dataTransfer` sólo se ejerce en navegador real (jsdom no lo puebla con `fireEvent`); de ahí el guard defensivo y la rama de branch-coverage no cubierta. La lógica de movimiento no depende de `dataTransfer`, usa el estado de React.
 - **Nota de entorno:** worktree con `frontend/node_modules` enlazado por symlink a las deps del repo principal (vitest 2.1.2). `npx vitest` resuelve a un binario global v5.0.5 que ignora la config (jsdom) y rompe con «self is not defined»; se corre con `node_modules/.bin/vitest`.
 - **Próximo paso:** checkpoint demostrable (§8) — Carlos arrastra una nota y una carpeta en Synapse y confirma → `verified`, PR y merge (los hace Carlos; sin push ni merge del agente).
+
+## [2026-10-29] H-003 C-8 — placeholder al vaciar la carpeta de origen: implemented
+- **Claim:** tras el checkpoint de Carlos (encontró el caso y eligió "placeholder" entre 3 opciones), implementado C-8: mover una nota por `notes.rename` (drag o renombrado por teclado) que deja su carpeta de origen sin notas activas crea ahí un `Sin título.md`. No aplica a `moveFolder`. Sin backend. `estado: implemented`; falta re-checkpoint.
+- **Evidencia:** 1 paso TDD, 2 commits citando H-003 C-8 — lógica en `noteStore.ts` (hook en el `rename` público, NO en `renameDoc`, así `moveFolder` queda sin placeholder; `createNote` extraído y compartido con `create`) + 5 tests de store; y 2 tests de componente (drag y teclado) + doc. `npm run build` exit 0. `npm run test:cov` → **88 archivos, 1677 tests, 0 fallos**.
+- **Línea base:** `folders.ts` 100 %, `NoteSidebar.tsx` 98.34 %, `noteStore.ts` 96.2 % (funciones 100 %). Tabla §7 con C-8 en `Done`.
+- **Gaps:** ninguno nuevo.
+- **Riesgo residual:** flake preexistente ajeno a C-8 — `RF-042: «Nueva carpeta» crea una nota dentro` afirma `onOpen` sin `waitFor`; falla ~1 de varias corridas completas bajo CPU saturada y pasa al re-correr.
+- **Próximo paso:** re-checkpoint de Carlos (vaciar una carpeta y ver el `Sin título`) → `verified`, PR y merge (los hace Carlos; sin push/merge del agente).

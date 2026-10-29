@@ -708,6 +708,35 @@ test("C-6: el drag & drop es aditivo; la fila es arrastrable y F2 sigue abriendo
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Dos.md"]));
 });
 
+test("C-8: arrastrar la última nota fuera de su carpeta deja un «Sin título» y la carpeta sigue en el árbol", async () => {
+  const { user, value } = await setup(["Carpeta/Sola.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Carpeta" })); // despliega para ver «Sola»
+  fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Sola" }));
+  const root = within(tree()).getByRole("treeitem", { name: "Raíz" });
+  fireEvent.dragOver(root);
+  fireEvent.drop(root);
+  await waitForCondition(async () =>
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]),
+  );
+  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toBeInTheDocument();
+  expect(within(tree()).getByRole("treeitem", { name: "Sin título" })).toBeInTheDocument();
+});
+
+test("C-8: el renombrado por teclado que vacía la carpeta también deja el «Sin título» (misma implementación compartida)", async () => {
+  const { user, value } = await setup(["Carpeta/Sola.md"]);
+  await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  (await screen.findByRole("treeitem", { name: "Sola" })).focus();
+  await user.keyboard("{F2}");
+  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  await user.clear(input);
+  await user.type(input, "Sola.md");
+  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
+  await waitForCondition(async () =>
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]),
+  );
+  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toBeInTheDocument();
+});
+
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
   const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());

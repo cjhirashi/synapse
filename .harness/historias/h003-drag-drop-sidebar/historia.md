@@ -1,7 +1,7 @@
 ---
 id: H-003
 titulo: Drag & drop de notas/carpetas en la sidebar izquierda
-estado: refinando # C-1...C-7 implementados y desplegados 2026-10-29. Checkpoint de Carlos encontró C-8 (carpeta vacía al mover la última nota) — añadido 2026-10-29, Gate 1 pasado (eligió "placeholder"), falta implementar.
+estado: implemented # C-1...C-7 implementados y desplegados 2026-10-29; C-8 (placeholder al vaciar la carpeta de origen) implementado 2026-10-29, falta re-checkpoint de Carlos.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -140,6 +140,7 @@ Ninguno — Carlos aprobó la propuesta tal cual ("así es", 2026-10-29).
 | C-5 | 1, 4 | `noteStore.test.ts` («una ruta de destino ya ocupada → NotePathTakenError»); `NoteSidebar.test.tsx` («… ya hay otra con ese nombre»; «… ya existe otra carpeta con ese nombre») | Done |
 | C-6 | 5 | `NoteSidebar.test.tsx` («el drag & drop es aditivo … F2 sigue abriendo el renombrado») + suite de renombrado por teclado ya existente | Done |
 | C-7 | 2, 3 | `NoteSidebar.test.tsx` («soltar una nota en la carpeta donde ya está …»; «arrastrar una carpeta sobre un descendiente …») | Done |
+| C-8 | 6 | `noteStore.test.ts` («placeholder al vaciar la carpeta de origen …»: 5 casos, incl. no-aplica-a-moveFolder); `NoteSidebar.test.tsx` («arrastrar la última nota fuera de su carpeta …»; «el renombrado por teclado … también deja el «Sin título»») | Done |
 
 ## 8. Checkpoint demostrable
 
@@ -149,21 +150,28 @@ correctamente, antes de marcar `verified`.
 
 ## 9. Session-End (al cerrar)
 
-- **Claim:** implementado el drag & drop de notas/carpetas en la sidebar (C-1…C-7),
-  reusando el PATCH de ruta existente (`notes.rename` por nota, nuevo `notes.moveFolder`
-  en lote para carpetas); sin cambios de backend.
-- **Evidencia:** 5 pasos TDD con commit atómico cada uno citando H-003
-  (`noteStore.moveFolder`; nota→carpeta/Raíz; carpeta→carpeta/Raíz; resaltado+conflicto;
-  C-6 aditivo). `npm run build` verde (typecheck + vite build). `npm run test:cov` verde:
-  **1670 tests / 88 archivos**. Cobertura de lo tocado: `folders.ts` 100 %,
-  `NoteSidebar.tsx` 98,34 % (líneas sin cubrir 571-573/613-616 son preexistentes:
-  `revealFolder` raíz y el disclosure compacto, ajenas a esta historia),
-  `noteStore.ts` 95,96 % (funciones 100 %).
+- **Claim:** implementado el drag & drop de notas/carpetas en la sidebar (C-1…C-7) y, tras el
+  checkpoint de Carlos, C-8: mover una nota (por drag o por el renombrado por teclado — mismo
+  camino `notes.rename`) que vacía su carpeta de origen crea ahí un `Sin título.md` para que la
+  carpeta siga existiendo; no aplica a `moveFolder` (reubica la carpeta entera). Reusa el PATCH
+  de ruta existente (`notes.rename` por nota, `notes.moveFolder` en lote); sin cambios de backend.
+- **Evidencia:** 6 pasos TDD con commit atómico citando H-003 (C-1…C-7 en 5 pasos; C-8 en el
+  paso 6: lógica en el `rename` compartido de `noteStore.ts` + 5 tests de store y 2 de componente
+  —drag y teclado—). C-8 engancha en el `rename` público (no en `renameDoc`), así el camino
+  compartido cubre drag y teclado con una sola implementación y `moveFolder` queda sin placeholder.
+  `npm run build` verde (typecheck + vite build). `npm run test:cov` verde: **1677 tests / 88
+  archivos**. Cobertura de lo tocado: `folders.ts` 100 %, `NoteSidebar.tsx` 98,34 % (líneas sin
+  cubrir 571-573/613-616 preexistentes: `revealFolder` raíz y el disclosure compacto, ajenas a
+  esta historia), `noteStore.ts` 96,2 % (funciones 100 %).
 - **Gaps:** mover una carpeta con muchas notas es secuencial (un `rename` por nota, igual
   que hoy el renombrado); si el volumen real importa se mide y se abre historia aparte
   (ya anotado en §4). Sin undo (fuera de alcance).
-- **Riesgo residual:** los `event.dataTransfer` sólo se ejercen en navegador real (en jsdom
-  `fireEvent` no lo puebla), de ahí el guard defensivo y la rama de branch-coverage no
-  cubierta; la lógica de movimiento no depende de `dataTransfer`, usa el estado de React.
-- **Próximo paso:** checkpoint demostrable (§8) — Carlos arrastra una nota y una carpeta en
-  Synapse y confirma; luego `verified`, PR y merge (los hace Carlos; sin push/merge del agente).
+- **Riesgo residual:** (1) los `event.dataTransfer` sólo se ejercen en navegador real (en jsdom
+  `fireEvent` no lo puebla), de ahí el guard defensivo y la rama de branch-coverage no cubierta;
+  la lógica de movimiento no depende de `dataTransfer`, usa el estado de React. (2) Flake
+  preexistente ajeno a la historia: `RF-042: «Nueva carpeta» crea una nota dentro` afirma
+  `onOpen` sin `waitFor` tras un `waitForCondition` que sólo espera la lista; falla ~1 de cada
+  varias corridas completas bajo CPU saturada y pasa en la re-corrida (coherente con `waits.ts`).
+- **Próximo paso:** re-checkpoint demostrable (§8) — Carlos arrastra/renombra la última nota de
+  una carpeta y confirma que queda el `Sin título`; luego `verified`, PR y merge (los hace Carlos;
+  sin push/merge del agente).
