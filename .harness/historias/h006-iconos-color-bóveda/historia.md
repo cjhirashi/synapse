@@ -1,7 +1,7 @@
 ---
 id: H-006
-titulo: Iconos de notas/carpetas en la sidebar con el color de la bóveda, rellenos
-estado: refinando # Gate 1 pasado (Carlos dijo "así es" + decisión de relleno, 2026-10-29); falta implementar.
+titulo: Iconos de notas/carpetas en la sidebar con el color de la bóveda (contorno, sin relleno)
+estado: refinando # Gate 1 pasado ("así es", 2026-10-29). CORREGIDO 2026-10-29: Carlos pidió relleno primero, luego "no rellenes, usa Lucide como vienen" — revertido a solo-contorno. Falta re-implementar C-2.
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
@@ -20,16 +20,21 @@ Pedido directo de Carlos (2026-10-29, por capturas): hoy los iconos de
 nota/carpeta en la sidebar izquierda (`NoteSidebar.tsx`) son neutros. Cada
 bóveda ya tiene su propio color (`Vault.icon`, formato `glifo[:color]`,
 `vaultIcon.ts` — es lo que pinta `VaultChip.tsx` hoy). Quiere que ese mismo
-color se use también en los iconos de contenido de la sidebar, y que además
-sean **rellenos** (Lucide es solo contorno; decisión de Carlos: rellenar los
-mismos iconos con `fill`, sin cambiar de librería de iconos — ver §5).
+color se use también en los iconos de contenido de la sidebar.
+
+**Corrección del mismo día:** Carlos pidió primero que se vieran rellenos
+(decisión registrada abajo); al verlo implementado pidió lo contrario —
+"no rellenes los iconos, usalos como vienen en Lucid[e]". Queda **solo
+contorno coloreado** (`stroke`/`color`, como ya pinta Lucide por defecto),
+sin `fill`. No se cambia de librería de iconos.
 
 ## 2. Alcance / fuera de alcance
 
 - Dentro: iconos de **nota** (`FileText`), **carpeta** (`Folder`/`FolderOpen`)
   y **"Raíz"** (`House`) en el árbol de `NoteSidebar.tsx` toman el color de
   la bóveda abierta (mismo color que ya muestra su `VaultChip`, mismo
-  mecanismo: color elegido o `derivedColor(vault.id)`) y se pintan rellenos.
+  mecanismo: color elegido o `derivedColor(vault.id)`), de solo contorno
+  (sin relleno — corrección 2026-10-29, ver §1).
 - Fuera: iconos de botones/acciones (➕ nueva nota `Plus`, nueva carpeta
   `FolderPlus`, papelera `Trash2`, flechas de expandir `ChevronDown`/
   `ChevronRight`, `CircleAlert` de error) — siguen neutros y de solo
@@ -45,10 +50,11 @@ mismos iconos con `fill`, sin cambiar de librería de iconos — ver §5).
   (`parseIcon(vault.icon).color`) o, si no hay uno elegido,
   `derivedColor(vault.id)` — exactamente la misma regla que ya usa
   `VaultChip.tsx` (reusar sus funciones de `vaultIcon.ts`, no reimplementar).
-- **C-2:** Esos mismos iconos (`FileText`, `Folder`, `FolderOpen`, `House`)
-  DEBEN verse rellenos (relleno = color de la bóveda, no solo contorno),
-  usando el propio set de Lucide ya instalado (prop `fill`), sin añadir una
-  librería de iconos nueva.
+- **C-2** (corregido 2026-10-29): Esos mismos iconos (`FileText`, `Folder`,
+  `FolderOpen`, `House`) DEBEN verse de **solo contorno** — el color de la
+  bóveda se aplica al `stroke`/`color` por defecto de Lucide, **sin** el
+  prop `fill`. (Versión anterior pedía relleno; Carlos la revirtió al
+  verla.) Sin añadir ni cambiar librería de iconos.
 - **C-3:** Los iconos de botones/acciones y de disclosure (`Plus`,
   `FolderPlus`, `Trash2`, `ChevronDown`, `ChevronRight`, `CircleAlert`) NO
   DEBEN cambiar — siguen con su color/estilo actual (neutro, contorno).
@@ -74,8 +80,11 @@ mismos iconos con `fill`, sin cambiar de librería de iconos — ver §5).
 - Cambiar a una librería de iconos con variante "solid" nativa (ej. Phosphor,
   Heroicons): descartado por Carlos — abriría la pregunta de si el resto del
   proyecto también debería migrar (identidad visual 1.1.4.1 manda Lucide),
-  fuera de alcance de esta historia. Se usa el prop `fill` de los iconos
-  Lucide ya existentes.
+  fuera de alcance de esta historia.
+- Rellenar los iconos con el prop `fill` de Lucide: era la decisión inicial
+  de Carlos (2026-10-29), **revertida el mismo día** al verla implementada
+  — pidió usar los iconos "como vienen en Lucid[e]" (solo contorno). Queda
+  como C-2.
 
 ## 6. Plan (de ESTA historia solamente)
 
