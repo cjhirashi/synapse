@@ -32,9 +32,16 @@ import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
+import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 
 interface NoteSidebarProps {
   vaultId: string;
+  /**
+   * Color de la bóveda abierta (H-006): el padre lo resuelve igual que `VaultChip`
+   * (`parseIcon(vault.icon).color ?? derivedColor(vault.id)`). Tiñe y rellena los iconos de
+   * contenido del árbol (nota/carpeta/«Raíz»); los controles siguen neutros.
+   */
+  vaultColor: PaletteKey;
   /** Nota abierta en el editor (se marca y se despliega su carpeta). */
   openId: string | null;
   /** Click en una nota: `onOpen(id)` (lectura). Al crear una nota: `onOpen(id, { edit: true })`. */
@@ -104,7 +111,7 @@ export interface NoteSidebarHandle {
 }
 
 const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function NoteSidebar(
-  { vaultId, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch },
+  { vaultId, vaultColor, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch },
   ref,
 ) {
   const { notes, notesVersion } = useSync();
@@ -460,9 +467,9 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             >
               {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
               {open ? (
-                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
+                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" fill="var(--vault-icon-color)" />
               ) : (
-                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" />
+                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" fill="var(--vault-icon-color)" />
               )}
               <span className="note-tree-name" title={node.name}>
                 {node.name}
@@ -498,7 +505,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
             onClick={() => onOpen(note.id)}
           >
-            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
+            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" fill="var(--vault-icon-color)" />
             <span className="note-tree-name" title={node.name}>
               {node.name}
             </span>
@@ -526,7 +533,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         onDrop={(event) => onTargetDrop(event, "")}
         onClick={() => setActiveFolder("")}
       >
-        <House size={14} aria-hidden="true" data-icon="house" />
+        <House size={14} aria-hidden="true" data-icon="house" className="note-tree-icon-root" fill="var(--vault-icon-color)" />
         <span className="note-tree-name">Raíz</span>
       </button>
     </li>
@@ -601,7 +608,13 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const selectedName = selected ? displayName(selected.path.split("/").pop() ?? selected.path) : "";
 
   return (
-    <aside className="note-sidebar" aria-label="Notas de la bóveda">
+    <aside
+      className="note-sidebar"
+      aria-label="Notas de la bóveda"
+      // H-006: la variable que heredan los iconos de contenido del árbol (mismo patrón que `--chip-color`
+      // de `VaultChip`): su `fill` y su color de trazo la leen; cambiar de bóveda sólo cambia este valor.
+      style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties}
+    >
       <form className="note-sidebar-new" onSubmit={create}>
         <p id={createInId} className="note-create-in" aria-live="polite" aria-atomic="true">
           {activeFolder === "" ? <House size={14} aria-hidden="true" /> : <FolderOpen size={14} aria-hidden="true" />}

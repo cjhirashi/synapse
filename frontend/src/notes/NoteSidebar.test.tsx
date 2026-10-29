@@ -7,6 +7,7 @@ import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { SyncContextValue } from "../sync/useSync";
 import { PATH_INVALID, PATH_TAKEN } from "./messages";
 import NoteSidebar from "./NoteSidebar";
+import type { PaletteKey } from "../vaults/vaultIcon";
 import { waitForCondition } from "../test-utils/waits";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
@@ -18,10 +19,10 @@ async function setup(paths: string[] = []) {
   const onOpen = vi.fn();
   const onDeleted = vi.fn();
   const onShowTrash = vi.fn();
-  const ui = (v: SyncContextValue, openId: string | null = null) => (
+  const ui = (v: SyncContextValue, openId: string | null = null, vaultColor: PaletteKey = "accent") => (
     <WithSync value={v}>
       <MemoryRouter>
-        <NoteSidebar vaultId={VAULT} openId={openId} onOpen={onOpen} onDeleted={onDeleted} onShowTrash={onShowTrash} />
+        <NoteSidebar vaultId={VAULT} openId={openId} onOpen={onOpen} onDeleted={onDeleted} onShowTrash={onShowTrash} vaultColor={vaultColor} />
       </MemoryRouter>
     </WithSync>
   );
@@ -745,7 +746,7 @@ test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", asy
   render(
     <WithSync value={value}>
       <MemoryRouter>
-        <NoteSidebar ref={ref} vaultId={VAULT} openId={null} onOpen={vi.fn()} onDeleted={vi.fn()} onShowTrash={vi.fn()} />
+        <NoteSidebar ref={ref} vaultId={VAULT} openId={null} onOpen={vi.fn()} onDeleted={vi.fn()} onShowTrash={vi.fn()} vaultColor="accent" />
       </MemoryRouter>
     </WithSync>,
   );
@@ -755,4 +756,52 @@ test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", asy
   act(() => ref.current!.revealFolder("Proyectos/Sub"));
   expect(await screen.findByRole("treeitem", { name: "Sub" })).toBeInTheDocument();
   expect(screen.getByRole("treeitem", { name: "Sub" })).toHaveAttribute("aria-current", "true");
+});
+
+// --- H-006: iconos de contenido con el color de la bóveda, rellenos ---
+
+/** El `<aside>` de la sidebar: lleva la variable de color de la bóveda que heredan sus iconos. */
+const sidebar = (c: HTMLElement) => c.querySelector<HTMLElement>(".note-sidebar")!;
+
+test("H-006 C-1, C-2: nota, carpeta y «Raíz» toman el color de la bóveda (prop) y van rellenos", async () => {
+  const { container, user } = await setup(["Carpeta/Hoja.md"]);
+  // La sidebar fija la variable de color al color pasado por el padre (misma regla que VaultChip).
+  expect(sidebar(container).style.getPropertyValue("--vault-icon-color")).toBe("var(--accent)");
+
+  const root = screen.getByRole("treeitem", { name: "Raíz" });
+  expect(root.querySelector('svg[data-icon="house"]')!.getAttribute("fill")).toBe("var(--vault-icon-color)");
+
+  const folder = screen.getByRole("treeitem", { name: "Carpeta" });
+  expect(folder.querySelector('svg[data-icon="folder"]')!.getAttribute("fill")).toBe("var(--vault-icon-color)");
+  // Al abrir la carpeta, su icono (FolderOpen) y la nota de dentro también van rellenos.
+  await user.click(folder);
+  expect(folder.querySelector('svg[data-icon="folder-open"]')!.getAttribute("fill")).toBe("var(--vault-icon-color)");
+  const note = screen.getByRole("treeitem", { name: "Hoja" });
+  expect(note.querySelector('svg[data-icon="file-text"]')!.getAttribute("fill")).toBe("var(--vault-icon-color)");
+});
+
+test("H-006 C-3: los iconos de acción y de disclosure NO cambian (sin relleno de bóveda)", async () => {
+  const { container } = await setup(["Carpeta/Hoja.md"]);
+  // Chevron de la carpeta: contorno neutro de Lucide (fill="none"), no el relleno de la bóveda.
+  const folder = screen.getByRole("treeitem", { name: "Carpeta" });
+  const chevron = folder.querySelector("svg")!; // el primero de la fila es el chevron
+  expect(chevron.getAttribute("data-icon")).toBeNull();
+  expect(chevron.getAttribute("fill")).toBe("none");
+  // Botones de acción: «Nueva nota» (Plus) y «Papelera» (Trash2) siguen de contorno.
+  for (const name of ["Nueva nota", "Papelera de la bóveda"]) {
+    const icon = screen.getByRole("button", { name }).querySelector("svg")!;
+    expect(icon.getAttribute("fill")).toBe("none");
+  }
+  // Y nada fuera del árbol hereda el relleno: el único `fill` de bóveda vive en las filas del árbol.
+  const filled = container.querySelectorAll('svg[fill="var(--vault-icon-color)"]');
+  for (const svg of filled) expect(svg.closest('[role="treeitem"]')).not.toBeNull();
+});
+
+test("H-006 C-5: cambiar de bóveda (otra prop de color) actualiza el color de los iconos", async () => {
+  const { container, rerender, ui, value } = await setup(["Hoja.md"]);
+  expect(sidebar(container).style.getPropertyValue("--vault-icon-color")).toBe("var(--accent)");
+  rerender(ui(value, null, "danger"));
+  expect(sidebar(container).style.getPropertyValue("--vault-icon-color")).toBe("var(--danger)");
+  // El icono de la nota sigue leyendo la variable, así que cambia con ella sin remontar.
+  expect(screen.getByRole("treeitem", { name: "Hoja" }).querySelector('svg[data-icon="file-text"]')!.getAttribute("fill")).toBe("var(--vault-icon-color)");
 });

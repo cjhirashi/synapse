@@ -20,6 +20,7 @@ import type { Vault } from "../sync/vaultStore";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
+import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
@@ -122,6 +123,9 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const location = useLocation();
   const navigate = useNavigate();
   const { notes, notesVersion } = useSync();
+  // H-006: color de los iconos de contenido de la sidebar, resuelto igual que `VaultChip`
+  // (color elegido en `Vault.icon`, o el derivado del id si no hay uno).
+  const vaultColor = parseIcon(vault.icon).color ?? derivedColor(vault.id);
 
   // RNF-001 (PLAN-0010 §10.4/§10.5): caché de parseo + programador de precálculo propios de esta
   // bóveda. El `Workspace` está `key`-ado por bóveda, así que montar/desmontar = cambio de bóveda o
@@ -281,6 +285,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         <NoteSidebar
           ref={sidebarRef}
           vaultId={vault.id}
+          vaultColor={vaultColor}
           openId={openId}
           onOpen={open}
           onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
