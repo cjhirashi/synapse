@@ -1,7 +1,7 @@
 ---
 id: H-008
 titulo: Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida
-estado: refinando # Gate 1 pasado ("así es" + confirmación de paleta Tailwind, 2026-10-29); falta implementar.
+estado: implemented # Gate 1 pasado (2026-10-29); 6 pasos TDD en verde, build + suite completa OK. Falta checkpoint demostrable (§8) para verified.
 covers:
   - frontend/src/notes/VaultRail.tsx
   - frontend/src/notes/VaultRail.test.tsx
@@ -196,9 +196,9 @@ resultado para su checkpoint, §8).
 
 | Criterio | Paso(s) | Test | Estado |
 |---|---|---|---|
-| C-1…C-5 (riel) | 5 | `VaultRail.test.tsx` | Pending |
-| C-6…C-9 (chip) | 1, 2, 3 | `vaultIcon.test.ts`, `VaultChip`/consumidores | Pending |
-| C-10…C-12 (paleta) | 1, 4 | `vaultIcon.test.ts`, `IconPicker.test.tsx` | Pending |
+| C-1…C-5 (riel) | 5 | `VaultRail.test.tsx` (C-1/C-5 toggle+a11y, C-2 colapsado por defecto, C-3 píldoras con nombre, C-4 sin duplicar nombre ni tooltip) | Done |
+| C-6, C-7, C-8, C-9 (chip) | 1, 2, 3 | `vaultIcon.test.ts` (C-8 contraste del degradado 17×2 temas), `VaultChip.test.tsx` (C-6 relleno+degradado sin aro, C-7 glifo=`--bg-secondary`); un solo componente en las 3 superficies (C-9) | Done |
+| C-10, C-11, C-12 (paleta) | 1, 4 | `vaultIcon.test.ts` (C-10 17 claves+tokens, C-11 etiquetas únicas), `IconPicker.test.tsx` (C-12 18 radios de color, layout) | Done |
 
 ## 8. Checkpoint demostrable
 
@@ -210,8 +210,35 @@ Antes de marcar `verified`.
 
 ## 9. Session-End (al cerrar)
 
-- **Claim:** pendiente.
-- **Evidencia:** pendiente.
-- **Gaps:** ninguno todavía.
-- **Riesgo residual:** ninguno todavía.
-- **Próximo paso:** tomar la historia, ciclo driver/navigator §4.
+- **Claim:** implementados los 12 criterios (C-1…C-12) en 6 pasos TDD (test rojo →
+  código mínimo → verde → commit atómico citando H-008): paleta de 17 colores con
+  sus tokens `--vault-*`, chip relleno con degradado y glifo recortado, selector con
+  17, riel expandible. `estado: implemented` (falta checkpoint demostrable §8 para
+  `verified`).
+- **Evidencia:**
+  - Suite completa de frontend en verde: `node_modules/.bin/vitest run` → **88
+    archivos, 1692 tests**; `npm run test:cov` igual, sin fallos de umbral.
+  - `npm run build` OK (17,6 s; los avisos de tamaño de chunk son preexistentes).
+  - Cobertura de los archivos tocados: `vaultIcon.ts`, `VaultChip.tsx`,
+    `IconPicker.tsx` 100 %; `VaultRail.tsx` 100 % líneas / 97,4 % ramas.
+  - C-8 verificado numéricamente antes de codificar: los 17 colores con sus shades
+    Tailwind estándar (400 oscuro / 600 claro) superan 4,5:1 contra el glifo
+    (`--bg-secondary`) en el extremo más claro del degradado; **mínimos: claro 5,28 /
+    oscuro 5,83** → §4 (ajuste puntual de shade) **no se activó**.
+  - Commits: paso 1 (paleta 17), paso 2 (contraste C-8), paso 3 (chip C-6/C-7),
+    fix (degradado sin literales, mezcla hacia `--text-primary`), paso 4 (selector
+    C-12), paso 5 (riel C-1…C-5).
+- **Gaps:** checkpoint demostrable (§8) pendiente — lo hace Carlos. No se tocó
+  backend. `git push`/merge los hace Carlos.
+- **Riesgo residual:**
+  - El glifo usa `--bg-secondary` porque **las 3 superficies** (riel, `.card-list`,
+    `.card-form`) comparten ese fondo (verificado en `global.css`); por eso **no hizo
+    falta** la prop de fondo que el plan §6 anticipaba como posible. Si una superficie
+    futura monta `VaultChip` sobre otro fondo, el recorte perdería el efecto (no el
+    contraste) y habría que introducir esa prop.
+  - En tema claro el relleno queda notablemente oscuro (jewel tones): es inherente a
+    un glifo claro recortado sobre color sólido con WCAG 4,5:1; §4 prohíbe bajar el
+    umbral.
+- **Próximo paso:** Carlos abre la app y valida el checkpoint §8 (chips en las 3
+  superficies, expandir/colapsar el riel, 17 colores en el selector); luego
+  `verified`, push y merge.

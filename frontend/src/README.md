@@ -124,11 +124,16 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   `global.css` están en `:where()` (especificidad 0) para que los de componente ganen.
 - **Íconos de bóveda** (`vaults/`): `vaultIcon.ts` (puro) es dueño de la gramática `glifo[:color]`
   (`parseIcon`/`formatIcon`), del set curado de 24 glifos de `lucide-react` (`ICON_SET`), de la
-  paleta de 5 claves de tokens (`PALETTE`) y del color derivado del id (`derivedColor`, nunca
-  `danger`). `VaultChip.tsx` dibuja el chip de 34 px (círculo; `--radius-md` al pasar el cursor,
-  enfocar o estar activo) con el ícono o las iniciales; sólo pinta lo que sale de esas listas
-  cerradas (un glifo o color desconocido cae a iniciales/color derivado), nunca `icon` como
-  URL, marcado o estilo (`iconSafety.test.ts`). `IconPicker.tsx` (dos `radiogroup`, «Ícono» y
+  paleta de 17 claves de tokens (`PALETTE`: las 5 semánticas de siempre más 12 familias Tailwind
+  dedicadas a bóvedas, `--vault-*` en `tokens.css`, shade 400 oscuro / 600 claro; `colorVar` resuelve
+  cada clave a su token vía `COLOR_TOKEN`) y del color derivado del id (`derivedColor`, sólo entre las
+  4 derivables, nunca los 12 nuevos ni `danger` — H-008). `VaultChip.tsx` dibuja el chip de 34 px
+  (círculo; `--radius-md` al pasar el cursor, enfocar o estar activo) **relleno con un degradado del
+  color de la bóveda** (dos tonos vía `color-mix` hacia `--text-primary`) y el glifo/iniciales en
+  `--bg-secondary` —el fondo común de riel, lista y selector—, que se leen «recortados» con contraste
+  ≥ 4,5:1 contra el extremo más claro del degradado en los 17 colores y los 2 temas (H-008 C-8,
+  `vaultIcon.test.ts`); sólo pinta lo que sale de esas listas cerradas (un glifo o color desconocido
+  cae a iniciales/color derivado), nunca `icon` como URL, marcado o estilo (`iconSafety.test.ts`). `IconPicker.tsx` (dos `radiogroup`, «Ícono» y
   «Color») está en `VaultForm`, que guarda `icon` sólo si cambió; `VaultListPage` muestra el chip.
   La regla de `icon` vive una vez en TS (`sync/vaultRules.ts`, `checkIcon`) y una en Python.
   Los íconos de **contenido** de la barra lateral (nota/carpeta/«Raíz» en `NoteSidebar.tsx`) reusan
@@ -139,7 +144,11 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   `Trash2`, chevrons) siguen neutros.
 - **Riel con tooltip** (`notes/VaultRail.tsx`): `RailTooltip` se monta en `document.body` (el riel
   hace scroll y recortaría) al pasar el cursor o enfocar con el teclado; sin `title` nativo. El
-  nombre accesible es el nombre con ícono y «iniciales nombre» con iniciales.
+  nombre accesible es el nombre con ícono y «iniciales nombre» con iniciales. Un botón al inicio del
+  `<nav>` (`aria-expanded`, nombre «Expandir/Colapsar riel de bóvedas») alterna entre **colapsado**
+  (botones redondos) y **expandido** (píldoras icono+nombre, riel de 208 px); el estado es local sin
+  persistencia, así que siempre carga colapsado en cualquier viewport. En expandido el nombre es
+  texto visible, así que el enlace no lleva `aria-label` (sin duplicarlo) ni muestra el tooltip (H-008).
 - **Barra lateral de 240 px** (`notes/notes.css`, `NoteSidebar.tsx`): cabecera con la carpeta abierta y
   el nombre, formulario «Nueva nota» como bloque propio, panel del árbol con scroll propio (filas de
   27/25 px, íconos de carpeta/nota, sangría de 24 px), barra de acciones de la nota **bajo** el
