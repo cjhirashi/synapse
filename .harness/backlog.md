@@ -7,7 +7,7 @@
 
 ## En curso
 
-- [~] H-012 — Wikilinks: navegar al hacer clic, sólo en Lectura (y crear la nota si el destino no existe, estilo Obsidian) → `historias/h012-wikilinks-navegacion/historia.md`, Gate 1 pasado ("así es", 2026-10-30); en implementación vía Claude Code (Modo 2)
+- [~] H-012 — Wikilinks: navegar al hacer clic, sólo en Lectura (y crear la nota si el destino no existe, estilo Obsidian) → `historias/h012-wikilinks-navegacion/historia.md`, Gate 1 pasado ("así es", 2026-10-30); `implemented` (2026-10-30; TDD vía Claude Code Modo 2, 5 commits atómicos, Converge ×2 sin fallos; suite completa 90 archivos/1752 tests en verde, typecheck limpio; C-1..C-5 cubiertos) en worktree `h012-wikilinks-click` / rama `feature/h012-wikilinks-navegacion`, **sin merge ni push**; falta checkpoint demostrable de Carlos (clic en wikilink resuelto abre la nota; en Visual no navega; roto sin extensión crea+abre) para `verified`, y que Carlos revise/mergee/reconstruya/redespliegue/push
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
