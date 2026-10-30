@@ -7,10 +7,11 @@
     "conecta_tus_contenedores_a_esta_red": true,
     "declarala_external_en_tu_compose": true,
     "hosts": {
-      "web": "synapse.cjhirashi.com"
+      "web": "synapse.cjhirashi.com",
+      "files": "files-synapse.cjhirashi.com"
     },
     "estado": "validado",
-    "ultima_sync": "2026-10-22"
+    "ultima_sync": "2026-10-30"
   },
   "servicios": [
     {
@@ -23,6 +24,24 @@
       "healthcheck": "/health",
       "headers_up": [
         "X-Forwarded-Proto https"
+      ],
+      "rutas": [
+        {
+          "prefijo": "/"
+        }
+      ]
+    },
+    {
+      "nombre": "files",
+      "tipo": "docker",
+      "contenedor": "synapse-minio",
+      "puerto": 9000,
+      "protocolo": "http",
+      "sse": false,
+      "healthcheck": "/",
+      "headers_up": [
+        "X-Forwarded-Proto https",
+        "X-Forwarded-Scheme https"
       ],
       "rutas": [
         {
