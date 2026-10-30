@@ -221,8 +221,8 @@ completo** y un `model: sonnet` cuenta como defecto de configuración.
 | Nivel | Id vigente | Para qué |
 |---|---|---|
 | Fuerte | `claude-opus-5` | Solo diseño, arquitectura y alto razonamiento |
-| Default | `claude-sonnet-5-5` | Ejecución sobre plan escrito, revisión, coordinación |
-| Rápido | `claude-haiku-5-5` | Lectura, búsqueda, mapeo, reporte mecánico |
+| Default | `claude-sonnet-5-5` | Razonamiento medio: coordinación, revisión adversarial, decisión |
+| Rápido | `claude-haiku-5-5` | Implementar sobre plan, ejecutar tests, lectura, búsqueda, mapeo, reporte mecánico |
 
 `claude-opus-5-5` todavía **no** se usa: devuelve HTTP 400 con el binario
 `claude` 2.1.197 que gana el PATH del Gateway (Opus 5.5 exige ≥ 2.1.280).
@@ -236,19 +236,34 @@ por autorreporte del modelo.
   historia (§3). Es la fase de mayor juicio y la más cara de deshacer si sale
   mal: una historia mal refinada contamina todo su ciclo driver/navigator.
   Son los dos únicos puntos del ciclo de historia que justifican Opus.
-- **`claude-sonnet-5-5`** — rol Driver del ciclo §4, **declarado en la
+- **`claude-haiku-5-5`** — rol Driver del ciclo §4, **declarado en la
   llamada**. Ejecutar un plan ya escrito en `historia.md §6` con Gate 1
-  superado no es alto razonamiento: es mecánico, acotado a un paso TDD a la
-  vez, y tiene su propio control (test que debe fallar primero, Navigator
-  vigilando).
+  superado no es razonamiento: es mecánico, acotado a un paso TDD a la vez, y
+  tiene su propio control (test que debe fallar primero, Navigator vigilando).
   **El ciclo §4 no se corre dentro de una sesión de operador que esté en
-  Opus.** Se despacha como subagente con `model: claude-sonnet-5-5` explícito,
+  Opus.** Se despacha como subagente con `model: claude-haiku-5-5` explícito,
   porque un subagente sin clave `model` hereda el modelo del padre. Medido
   2026-10-30: nueve worktrees de historia se completaron al 100% en
-  `claude-opus-4-8` contra esta misma regla, con el plan ya escrito y Gate 1
-  superado.
+  `claude-opus-4-8` con el plan ya escrito y Gate 1 superado.
+- **`claude-sonnet-5-5`** — `revisor` (veredicto adversarial: juzgar si la tarea
+  está mal es razonamiento) y `orquestador`. El gate y los tests que el revisor
+  corre son mecánicos; lo que se decide es el veredicto.
 - **Navigator** — rol de vigilancia (humano, o AIRA con autoridad delegada).
   No es una elección de modelo del proyecto.
+
+### Ciclo de escalamiento
+
+Quienes diseñan, especifican y planifican (`autor-de-spec`, `arquitecto`,
+`experto-ux-ui`, `orquestador`) usan modelo de razonamiento. Quienes implementan
+código y quienes ejecutan los tests usan `claude-haiku-5-5`, porque el plan ya trae
+el razonamiento hecho.
+
+Si Haiku no resuelve una falla (reporta `blocked`, o el test no pasa), el trabajo
+**vuelve a los diseñadores**: `arquitecto` (o `autor-de-spec` si el defecto está en
+el requisito) analiza la falla con su modelo de razonamiento y corrige
+`spec.md`/`plan.md`/`tasks.md`. Con el diseño resuelto, la tarea regresa a Haiku.
+`implementador` y los roles que ejecutan tests **nunca suben de modelo por su
+cuenta**.
 
 ### Subagentes ad-hoc — regla dura
 
@@ -263,7 +278,7 @@ ad-hoc no.
 |---|---|
 | Investigación read-only, búsqueda, mapeo de código, inventario de estado | `claude-haiku-5-5` |
 | Correr comandos dados y reportar su salida (diagnóstico, gate, tests, build) | `claude-haiku-5-5` |
-| Edición acotada, refactor mecánico, redacción sobre un plan ya escrito | `claude-sonnet-5-5` |
+| Implementación, edición acotada, refactor mecánico, redacción sobre un plan ya escrito | `claude-haiku-5-5` |
 | Revisión adversarial, causa raíz con hipótesis abiertas | `claude-sonnet-5-5` |
 | Diseño de arquitectura, elección de patrón, trade-offs estructurales | `claude-opus-5` |
 
