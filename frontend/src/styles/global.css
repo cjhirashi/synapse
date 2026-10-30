@@ -384,3 +384,13 @@ button:focus-visible {
 *::-webkit-scrollbar-thumb:active {
   background-color: var(--accent);
 }
+
+/* Firefox no soporta `::-webkit-scrollbar` y sí las propiedades estándar. Van SÓLO aquí: Chromium ≥ 121
+   ignora los pseudoelementos WebKit en cuanto un elemento declara `scrollbar-color`/`scrollbar-width`, y
+   perdería el hover y el arrastre del pulgar. Firefox no tiene esos estados: el pulgar queda en reposo. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-control) transparent;
+  }
+}

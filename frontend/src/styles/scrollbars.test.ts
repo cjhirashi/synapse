@@ -47,3 +47,30 @@ test("C-2: la sección de barras sólo usa tokens (sin literales de color)", () 
   expect(section).toMatch(/--border-control/); // la sección existe: no se valida un vacío
   expect(section).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
 });
+
+const SUPPORTS = "@supports not selector(::-webkit-scrollbar)";
+
+/** Separa `global.css` (sin comentarios) en el cuerpo del `@supports` de barras y el resto. */
+function splitSupports(css: string): { inside: string; outside: string } {
+  const source = strip(css);
+  const start = source.indexOf(SUPPORTS);
+  if (start < 0) throw new Error(`sin ${SUPPORTS}`);
+  const open = source.indexOf("{", start);
+  let depth = 1;
+  let end = open + 1;
+  while (depth > 0 && end < source.length) depth += source[end++] === "{" ? 1 : source[end - 1] === "}" ? -1 : 0;
+  return { inside: source.slice(open + 1, end - 1), outside: source.slice(0, start) + source.slice(end) };
+}
+
+// C-4: Firefox no entiende `::-webkit-scrollbar`; usa las propiedades estándar con los mismos tokens.
+test("C-4: Firefox recibe scrollbar-width y scrollbar-color estándar, con los tokens del tema", () => {
+  const { inside } = splitSupports(globalCss());
+  expect(rule(inside, "*")).toMatch(/scrollbar-width: thin/);
+  expect(rule(inside, "*")).toMatch(/scrollbar-color: var\(--border-control\) transparent/);
+});
+
+// Chromium ≥ 121 ignora `::-webkit-scrollbar` en cuanto un elemento declara las propiedades estándar:
+// declararlas fuera del `@supports` le quitaría el hover y el arrastre del pulgar (C-2).
+test("C-4: las propiedades estándar de barra NO se declaran fuera del @supports de Firefox", () => {
+  expect(splitSupports(globalCss()).outside).not.toMatch(/scrollbar-(?:width|color)/);
+});
