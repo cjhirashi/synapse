@@ -12,6 +12,7 @@
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
+- [ ] H-011 — Wikilinks `[[...]]`: reconocerlos y mostrarlos como enlace en Visual, sin que Milkdown los escape (Fase 1 de la feature completa; navegación por clic y autocompletar quedan como H-012/H-013 propuestas) → `historias/h011-wikilinks-reconocer-mostrar/historia.md`, criterios redactados por AIRA desde directiva de Carlos (2026-10-30); **falta su "así es" (Gate 1)** — 4 preguntas de producto abiertas, ver §3
 
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
