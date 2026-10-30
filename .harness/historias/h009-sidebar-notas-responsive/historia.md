@@ -295,3 +295,18 @@ documento incluso con la barra colapsada.
 - **Entorno:** el directorio de trabajo del shell se reinició a la raíz del
   worktree en esta sesión (tomaba el vitest v5 de la raíz, sin jsdom, → `self is
   not defined`); se corrige con `cd frontend` antes de correr la suite.
+
+## 10. Fix de seguimiento (2026-10-30, AIRA directo — Gate 0, trivial)
+
+Carlos reportó (captura) que el árbol de notas no llenaba la barra flotante
+en móvil, cortado a mitad de espacio. Causa: `notes.css` conservaba un tope
+`.note-tree { max-height: 24vh }` en `@media (max-width: 640px)`, huérfano
+del layout apilado **anterior** a H-009 (cuando la barra compartía scroll de
+página con el editor y necesitaba cederle altura) — nunca se retiró al
+convertir la barra en ventana flotante de alto completo (`top:0;bottom:0`).
+Arreglo de una línea (quitar el tope; `.note-tree` ya tiene `flex: 1 1 auto;
+min-height: 0` y hace su propio scroll) — sin decisión de diseño, Gate 0 de
+`method.md` (trivial, prompt directo, implementado por AIRA sin pasar por
+Claude Code headless). Verificado: 87/88 archivos, 1713/1714 tests (la única
+falla es H-007, intermitente ya documentada, no relacionada). Desplegado
+(`a79f8de`), `/health` 200.
