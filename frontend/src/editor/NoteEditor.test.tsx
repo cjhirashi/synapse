@@ -1152,4 +1152,20 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
     act(() => fire!({ resolvedId: "note:v:1", target: "Nota A" }));
     expect(onOpenWikilink).toHaveBeenCalledWith({ resolvedId: "note:v:1", target: "Nota A" });
   });
+
+  // H-012 C-5: la vista Código nunca recibe el callback de clic — ahí el wikilink ni existe como marca
+  // (es un componente de texto plano aparte), así que jamás puede navegar.
+  it("C-5: la vista Código no recibe `onWikilinkClick` (nunca navega desde Código)", async () => {
+    let codeGotClick: unknown = "no-render";
+    function CapturingCode({ value, onChange, label, readOnly, onWikilinkClick }: ViewProps) {
+      codeGotClick = onWikilinkClick;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    await setup("hola", {}, { views: { Visual: fake("visual"), Code: CapturingCode }, onOpenWikilink: vi.fn() });
+    // Pasa a edición y a la vista Código para que `CapturingCode` se monte.
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    await screen.findByRole("textbox", { name: "Editor de código" });
+    expect(codeGotClick).toBeUndefined();
+  });
 });
