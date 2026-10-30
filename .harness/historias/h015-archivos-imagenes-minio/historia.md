@@ -141,4 +141,25 @@ y en Lectura, y confirma que sigue viéndose tras recargar la página.
 
 ## 9. Session-End (al cerrar)
 
-Pendiente — se completa al implementar.
+- **Claim:** una imagen (png/jpeg/webp/gif/svg, ≤ 5 MB) se sube desde el editor (botón; arrastrar-y-soltar
+  implementado, sin verificar con gesto real), se guarda en MinIO bajo `vaults/<vault_id>/<file_id>`, queda
+  registrada en la tabla `files` como `private` y se inserta como `![nombre](https://synapse.cjhirashi.com/files/<id>)`.
+  `GET /files/<id>`: privado exige sesión o API key del dueño; público abre sin sesión; `PATCH` cambia la
+  visibilidad (sólo el dueño); los SVG se sanean y se sirven con `Content-Security-Policy: sandbox` y `nosniff`.
+- **Evidencia (AIRA, independiente):** backend, 71 pruebas de las suites nuevas verdes; frontend completo
+  91 archivos / 1774 pruebas verdes; migración `006_files` aplicada en Postgres real (`alembic upgrade head`);
+  conexión real a MinIO (put/get). **Verificación en navegador real** con usuario y bóveda desechables (borrados
+  al terminar): subida por el botón; el markdown guardado y sincronizado fue
+  `Antes ![prueba-h015](https://synapse.cjhirashi.com/files/<id>)`; tras recargar la página la imagen carga en
+  Lectura (120×80) con la sesión; sin sesión el archivo privado da 401 y un POST sin sesión 401; al pasarlo a
+  público por `PATCH` abre sin sesión (200 `image/png`); el objeto quedó en MinIO con el prefijo de la bóveda.
+- **Gaps:** arrastrar-y-soltar no se probó con el gesto real (el navegador de pruebas sólo permite el selector
+  de archivos); no hay pantalla de archivos ni confirmación de publicación (H-016); las respuestas de archivos
+  privados no llevan `Cache-Control: private` (hoy Cloudflare no las cachea por no tener extensión, pero conviene
+  declararlo); el suite completa del backend tiene 20 fallos preexistentes en `test_brand_assets`/`test_spa`
+  porque exigen `frontend/dist`, ausente en los worktrees (comprobado en una rama sin H-015).
+- **Riesgo residual:** archivos huérfanos se quedan en MinIO al quitar la imagen o borrar la nota (decisión de
+  Carlos; el indicador de referencias va en H-016); una nota sembrada a mano en CouchDB sin su reserva de ruta
+  la rechaza la sincronización («datos con formato no válido»): no afecta a notas creadas desde la app.
+- **Próximo paso:** checkpoint de Carlos (subir una imagen real, ver Visual/Lectura, recargar). Después H-016
+  (pantalla de archivos con visibilidad, referencias y confirmación al publicar).
