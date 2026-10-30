@@ -8,6 +8,7 @@ import { initials as initialsFromRail } from "../notes/VaultRail";
 import {
   COLOR_LABELS,
   colorVar,
+  COMPLEMENTARY,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -67,6 +68,21 @@ test("RF-006 (H-008 C-10): PALETTE son 17 claves que existen como tokens hex en 
   for (const mode of ["light", "dark"] as const) {
     for (const key of PALETTE) expect(theme(mode)[tokenOf(key)], `${mode} ${key}`).toMatch(/^#[0-9a-f]{6}$/i);
   }
+});
+
+test("H-014 C-5/C-10: COMPLEMENTARY mapea cada color de la paleta a su complementario calculado (§2.1)", () => {
+  // Tabla de §2.1: complementario = el color de la MISMA paleta más cercano al opuesto (+180°) en el
+  // círculo cromático, calculado desde los hex de tokens.css. Nunca inventa un color fuera de la paleta.
+  expect(COMPLEMENTARY).toEqual({
+    danger: "teal", orange: "blue", warning: "blue", yellow: "indigo", lime: "purple",
+    success: "pink", emerald: "pink", teal: "rose", accent: "danger", info: "orange",
+    blue: "orange", indigo: "yellow", violet: "lime", purple: "lime", fuchsia: "lime",
+    pink: "success", rose: "teal",
+  });
+  // Cobertura total y cierre: cada clave de la paleta tiene complementario, y todo complementario es a
+  // su vez una clave válida de la paleta (así `colorVar(COMPLEMENTARY[k])` siempre resuelve a un token).
+  expect(Object.keys(COMPLEMENTARY).sort()).toEqual([...PALETTE].sort());
+  for (const key of PALETTE) expect(PALETTE).toContain(COMPLEMENTARY[key]);
 });
 
 test("RF-001: parseIcon lee «glifo[:color]» y degrada lo desconocido sin lanzar", () => {
