@@ -1608,9 +1608,11 @@ li.note-task[data-checked="true"] .note-task-body {
   overflow: hidden;
 }
 
+/* El desvanecido es una máscara por canal ALFA (mask-mode alfa por defecto en un gradiente): el color del
+   primer tramo es irrelevante —sólo cuenta su opacidad—, así que se usa un token opaco y no un literal. */
 .wikilink-preview-body[data-more] {
-  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
-  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, var(--text-primary) 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, var(--text-primary) 72%, transparent 100%);
 }
 
 /* La vista reutilizada dentro de la tarjeta es compacta: sin el relleno del editor y sin tomar foco. */
