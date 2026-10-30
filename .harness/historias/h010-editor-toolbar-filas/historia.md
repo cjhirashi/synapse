@@ -1,7 +1,7 @@
 ---
 id: H-010
 titulo: Cabecera del editor en 3 filas + barra de formato Markdown (negritas, cursivas, H1-H4, listas)
-estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-29) a los criterios y a incluir los 4 controles propuestos (tachado, código en línea, cita, línea horizontal). El criterio de overflow de Fila 3 (scroll horizontal vs. wrap) no lo especificó: AIRA decidió scroll horizontal (ver C-7), a corregir si no le gusta al verlo. En implementación vía Claude Code (Modo 2).
+estado: implemented # Gate 1 pasado — Carlos confirmó "así es" (2026-10-29) a los criterios y a incluir los 4 controles propuestos (tachado, código en línea, cita, línea horizontal). El criterio de overflow de Fila 3 (scroll horizontal vs. wrap) no lo especificó: AIRA decidió scroll horizontal (ver C-7), a corregir si no le gusta al verlo. Implementada vía Claude Code (Modo 2) el 2026-10-30; falta checkpoint demostrable de Carlos para `verified` (Gate 2), y PR/merge (los hace Carlos).
 covers:
   - frontend/src/editor/NoteEditor.tsx
   - frontend/src/editor/NoteEditor.test.tsx
@@ -170,7 +170,17 @@ quedan para una historia aparte si Carlos los quiere.
 
 ## 7. Tabla de cobertura
 
-(se llena al implementar)
+| Criterio | Pasos (commits) | Pruebas | Estado |
+|---|---|---|---|
+| **C-1** Fila 1 sólo con lo de H-009 | Commit 1 (reestructura; sidebar sigue siendo el 1.er hijo del header con `flex-wrap`, filas 2/3 a ancho completo) | `NoteEditor.test` → «C-1: en lectura no existen Fila 2 ni Fila 3», «C-1: lápiz y ⋮ en Fila 1; Visual/Código/Guardar en Fila 2; tabla en Fila 3», «en edición Visual: 3 filas…» | Cubierto |
+| **C-2** Fila 2 en edición (ambas vistas) | Commit 1 | `NoteEditor.test` → «C-2: la Fila 2 (Visual/Código/Guardar/estado) aparece en edición y sigue en Código» | Cubierto |
+| **C-3** Fila 3 con tabla + 9 botones | Commits 1 y 3 | `NoteEditor.test` → «C-3/C-6: la Fila 3 lleva la tabla y los 9 botones de formato (aria-label + note-nav-button)» | Cubierto |
+| **C-4** Fila 3 oculta en Código/Leer | Commit 1 | `NoteEditor.test` → «C-4: la Fila 3 sólo existe en edición Visual (no en lectura ni en Código)» | Cubierto |
+| **C-5** cada botón ejecuta su comando Milkdown | Commits 2 y 3 | `MilkdownView.test` → «comandos de formato (H-010)» (3 tests contra Milkdown real: marcas, H1-H4, bloques) + `NoteEditor.test` → «C-5: cada botón de formato ejecuta su comando de EditorCommands» | Cubierto |
+| **C-6** aria-label + teclado | Commit 3 | `NoteEditor.test` → «C-3/C-6: … aria-label + note-nav-button», «C-6: los botones de formato son operables por teclado (Enter)» | Cubierto |
+| **C-7** scroll horizontal de Fila 3 | Commits 1 (CSS) y 4 (test) | `NoteEditor.test` → «C-7: la Fila 3 hace scroll horizontal y sus controles no se encogen» (lee `editor.css`) | Cubierto |
+
+Línea base (test:cov, 2026-10-30): `MilkdownView.tsx` 100 % líneas / 94,54 % ramas / 100 % funciones; `NoteEditor.tsx` 98,75 % líneas / 86,94 % ramas; total 97,69 % líneas. Suite completa: **88 archivos, 1714 tests, 0 fallos**; `npm run build` (tsc + vite) exit 0.
 
 ## 8. Checkpoint demostrable
 
@@ -180,4 +190,59 @@ aplica lo que dice sobre el texto seleccionado.
 
 ## 9. Session-End (al cerrar)
 
-Pendiente — se completa al implementar.
+**[2026-10-30] H-010 — Cabecera del editor en 3 filas + barra de formato Markdown: implemented**
+
+- **Claim:** implementados C-1…C-7 en el worktree `h010-editor-toolbar` (rama
+  `feature/h010-editor-toolbar-filas`, **sin merge**): `.note-editor-header` se
+  reorganiza en 3 filas sin cambiar el comportamiento de los botones ya
+  existentes — Fila 1 (sidebar/Atrás/Adelante/migas/lápiz/⋮) como hijos
+  directos del header con `flex-wrap`; Fila 2 (Visual/Código/Guardar/estado) en
+  edición en ambas vistas; Fila 3 (tabla ya existente + 9 botones de formato
+  nuevos) sólo en edición Visual, con scroll horizontal en angosto. La interfaz
+  `TableCommands` se amplió a `EditorCommands` (mismo mecanismo
+  `commandsCtx`/`registerCommands`, no uno paralelo) con los 9 comandos de
+  commonmark/gfm. Sin backend. `estado: implemented`; falta checkpoint
+  demostrable de Carlos para `verified`.
+- **Evidencia:** 4 commits citando H-010, ciclo driver/navigator un paso TDD a
+  la vez (rojo→código mínimo→verde→commit): (1) reestructura en 3 filas +
+  tests estructurales C-1/C-2/C-4 + CSS flex-wrap y scroll de Fila 3; (2)
+  `TableCommands`→`EditorCommands` con los 9 comandos + 3 tests contra Milkdown
+  real (C-5 a nivel comando); (3) los 9 botones en Fila 3 con iconos lucide
+  (`Code2 as InlineCodeIcon` por la colisión con el `Code` de la vista
+  "Código") + tests de invocación/aria-label/teclado (C-3/C-5/C-6); (4) test de
+  C-7 leyendo `editor.css`. `npm run build` (tsc + vite) exit 0. Suite completa
+  `npx vitest run` → **88 archivos, 1714 tests, 0 fallos**; `--coverage` sin
+  fallos de umbral.
+- **Línea base:** `MilkdownView.tsx` 100 % líneas / 94,54 % ramas / 100 %
+  funciones; `NoteEditor.tsx` 98,75 % líneas / 86,94 % ramas; total 97,69 %.
+  Tabla §7 con C-1…C-7 en `Cubierto`.
+- **Decisión de diseño (sin tocar covers externos):** para no romper el test de
+  H-009 que exige que el botón de sidebar sea el **primer hijo** de
+  `.note-editor-header` (`VaultWorkspacePage.test.tsx`, fuera de los `covers` de
+  H-010), la cabecera se hace `flex-wrap` con la Fila 1 como hijos directos y
+  las Filas 2/3 como divis a ancho completo (`flex: 0 0 100%`), en vez de
+  envolver también la Fila 1. Así no se edita ningún archivo fuera de los
+  `covers` de la historia.
+- **Gaps:** C-5 a nivel de botón se prueba con espías de `EditorCommands` (mock),
+  no con Milkdown real; el enlace comando→efecto en el editor real está probado
+  aparte en `MilkdownView.test` (marcas strong/emphasis/strike_through/
+  inlineCode, encabezados H1-H4, nodos blockquote/hr/bullet_list/ordered_list).
+  No se tocó backend. Resaltado de estado activo (botón "encendido" según la
+  selección) sigue fuera de alcance (§5 Descartes), propuesto como historia
+  aparte si Carlos lo quiere.
+- **Riesgo residual (Low):** afecta a las pruebas **e2e** de Playwright (no corren
+  en el gate de vitest, pero conviene saberlo): `workspace-visual.spec.ts` mide
+  `.note-editor-header` como barra de una línea (altura/top); con 3 filas la
+  cabecera es más alta en edición y esas mediciones podrían requerir ajuste al
+  correr la suite visual. La Fila 1 en lectura conserva ~43px. Ninguna
+  aserción de vitest quedó afectada.
+- **Nota de entorno:** worktree con `frontend/node_modules` enlazado; `npx
+  vitest` aquí resuelve al binario local v2.1.2 correcto (RUN v2.1.2), sin el
+  problema del binario global descrito en entradas previas. El hook de
+  `graphify` pedía usarlo antes de leer fuentes, pero `graphify query`/`explain`
+  requieren aprobación interactiva y en headless quedaron denegados; se leyó
+  directamente los archivos exactos del plan.
+- **Próximo paso:** checkpoint demostrable (§8) — Carlos abre una nota en
+  edición, ve la cabecera en 3 filas sin que el título quede tapado y confirma
+  que cada botón de formato aplica lo que dice sobre el texto seleccionado →
+  `verified`, PR y merge (los hace Carlos; sin push ni merge del agente).
