@@ -13,7 +13,7 @@ Estos archivos son el **binding del arnés a Claude Code**: subagentes que el
 | `orquestador` | Coordinador — clasifica, sostiene las puertas humanas, delega, cierre | `claude-sonnet-5-5` |
 | `autor-de-spec` | Fase 1 · elicitación interactiva → `spec.md` | `claude-opus-5` |
 | `arquitecto` | Fase 2 · `plan.md` conforme al patrón + `covers` | `claude-opus-5` |
-| `implementador` | Fase 4 · TDD, una tarea a la vez | `claude-sonnet-5-5` |
+| `implementador` | Fase 4 · TDD, una tarea a la vez | `claude-haiku-5-5` |
 | `revisor` | Verificador adversarial · corre el gate, traza `RF-↔test` | `claude-sonnet-5-5` |
 | `explorador` | Búsqueda read-only acotada antes de speccar | `claude-haiku-5-5` |
 
@@ -24,14 +24,15 @@ CDMX). Un `model: sonnet` en estos stubs cuenta como defecto de configuración.
 `claude-opus-5-5` aún no se usa: HTTP 400 con el `claude` 2.1.197 del PATH del
 Gateway (exige ≥ 2.1.280).
 
-Opus solo en `autor-de-spec` y `arquitecto` — son diseño y arquitectura, las fases
-de mayor juicio y más caras de deshacer. Todo lo demás ejecuta sobre un plan ya
-escrito y se queda en Sonnet.
-
-`revisor` nunca es más débil que `implementador` (lección: implementador en haiku
-fabricó evidencia). Por eso `implementador` **no** baja a Haiku aunque la tarea
-parezca mecánica: el único rol base en Haiku es `explorador`, cuya salida es
-read-only y acotada a una pregunta.
+Reparto de modelos (ids explícitos, `method.md`): quienes diseñan, especifican y
+planifican usan modelo de razonamiento (`autor-de-spec` y `arquitecto` en `claude-opus-5`,
+`orquestador` y `experto-ux-ui` en `claude-sonnet-5-5`); quienes implementan código y ejecutan tests
+(`implementador`) y quienes leen (`explorador`) usan `claude-haiku-5-5`, porque el plan ya trae el
+razonamiento hecho. `revisor` decide un veredicto adversarial y va en `claude-sonnet-5-5`. Si Haiku no
+resuelve una falla, el trabajo vuelve a `arquitecto`/`autor-de-spec`, que corrigen el
+diseño con modelo de razonamiento, y regresa a Haiku; el implementador no sube de
+modelo por su cuenta. Un `model: sonnet|haiku|opus` (alias) cuenta como defecto de
+configuración.
 
 **Subagentes ad-hoc:** una llamada `Task`/Agent que no invoque uno de estos roles
 **debe** declarar `model` explícito — sin la clave hereda el modelo del padre.
