@@ -1,7 +1,7 @@
 ---
 id: H-019
 titulo: HTML subido incrustado en los documentos (iframe aislado) — diagramas Archify
-estado: draft # Carlos pidió (2026-10-30) que se haga YA, junto con H-016, para subir Archify. Falta su visto bueno de C-1..C-9.
+estado: ready # Gate 1 pasado (Carlos, 2026-10-30 21:06 UTC). Se implementa DESPUÉS de mergear H-016 (la CSP del servidor para HTML la entrega H-016).
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/markdown/

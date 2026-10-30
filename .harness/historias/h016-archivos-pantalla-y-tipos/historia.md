@@ -1,7 +1,7 @@
 ---
 id: H-016
 titulo: Archivos en Synapse — pantalla de archivos y subida de documentos de oficina, PDF y HTML
-estado: draft # Decisiones de Carlos (2026-10-30 "así es"); falta su visto bueno de los criterios C-1..C-12 (Gate 1).
+estado: in-progress # Gate 1 pasado (Carlos, 2026-10-30 21:06 UTC, "así es" sobre el paquete H-016+H-019). Implementación en Modo 2.
 covers:
   - backend/app/routers/files.py
   - backend/app/services/file_service.py
@@ -75,7 +75,9 @@ y absorbe lo de H-018 que era PDF (el video sigue aparte).
 - **C-11:** Los límites y tipos DEBEN verificarse en cliente (feedback inmediato) y en backend.
 - **C-12:** La API key de un agente DEBE aplicar la misma regla de dueño en listar, renombrar y borrar.
 
-`[NEEDS CLARIFICATION] = 0` si Carlos confirma las propuestas de §3.
+`[NEEDS CLARIFICATION] = 0`: Carlos confirmó las propuestas de §3 ("así es", 2026-10-30).
+
+**Nota de alcance H-016/H-019:** el servidor de H-016 YA sirve el HTML con la CSP de aislamiento de H-019 §3 (con `https:` para img/style/font, `connect-src 'none'`, sin scripts externos). H-019 añade el iframe en el documento y el saneador del markdown.
 
 ## 5. Plan (borrador)
 
