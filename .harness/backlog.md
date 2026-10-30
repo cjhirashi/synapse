@@ -7,12 +7,12 @@
 
 ## En curso
 
+- [~] H-014 — Rediseño de color tipográfico del markdown: H1-H4 en variantes del color de la bóveda, negrita/cursiva/enlaces en su complementario calculado (tabla de 17 pares), cabecera de tabla con el color de la bóveda, líneas (cita/raya/borde de tabla) delgadas y en gris neutro → `historias/h014-markdown-color-boveda/historia.md`, Gate 1 pasado ("así es", 2026-10-30); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
-- [ ] H-014 — Rediseño de color tipográfico del markdown renderizado: H1-H4 en variantes del color de la bóveda, negritas/cursivas con tratamiento propio, marcadores de lista con tinte, líneas (cita/raya/tabla) delgadas y en gris neutro (quita el cian fijo que hoy tiene la cita) → `historias/h014-markdown-color-boveda/historia.md`, criterios redactados por AIRA desde directiva de Carlos (2026-10-30); **falta su "así es" (Gate 1)** — 4 preguntas de producto abiertas, ver §3
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`

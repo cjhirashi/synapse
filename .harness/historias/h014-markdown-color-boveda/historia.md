@@ -1,7 +1,7 @@
 ---
 id: H-014
 titulo: Rediseño de color tipográfico del markdown renderizado — jerarquía con el color de la bóveda
-estado: pendiente # Gate 1 NO pasado — criterios redactados por AIRA desde la directiva de Carlos (2026-10-30); falta su "así es".
+estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1, P-3, P-4, P-5, P-6 tal como se propusieron, y corrigió P-2 (negrita 100%, cursiva más tenue, mismo color complementario) delegando el resto del detalle fino a criterio de AIRA ("tú decide con lógica... armonía visual"). En implementación vía Claude Code (Modo 2).
 covers:
   - frontend/src/editor/editor.css
   - frontend/src/vaults/vaultIcon.ts
@@ -106,45 +106,35 @@ al texto normal pero sin perderse:
 | H4 | ~30% color de la bóveda + 70% texto normal | apenas un matiz, no apagado ni ilegible |
 
 Negrita en todos los niveles (ya es el peso por defecto de los
-encabezados). ¿Así es, o prefieres otra proporción (p. ej. un salto más
-marcado entre niveles, o que H4 quede prácticamente neutro)?
+encabezados). **Confirmado tal como se propuso.**
 
-**P-2 (negritas y cursivas) — corregido por Carlos:** van con el color
-**complementario** de §2.1, al 100% de intensidad (no mezclado) — negrita
-y cursiva comparten el mismo color complementario; ya se distinguen por el
-peso/estilo, no hace falta un segundo matiz entre ellas. ¿Así es, o
-prefieres negrita más intensa (100%) y cursiva mezclada con el texto
-normal (p. ej. 70%), para que la cursiva lea un poco más discreta?
+**P-2 (negritas y cursivas) — resuelto (Carlos, 2026-10-30):** mismo color
+complementario de §2.1 para ambas, distinguidas por INTENSIDAD, no por
+matiz distinto — negrita al 100% (sin mezclar), cursiva mezclada con
+`--text-secondary` al 70%/30% (mismo criterio de gradiente que ya usa P-1
+para H1-H4, aplicado aquí a solo 2 niveles). Decisión de AIRA dentro del
+margen que Carlos delegó ("tú decide con lógica... armonía visual"): usar
+la MISMA fórmula `color-mix` en todo el documento (encabezados, negrita,
+cursiva) es lo que da la coherencia visual que pidió, en vez de inventar
+un mecanismo de intensidad distinto para cada tipo de texto.
 
-**P-5 (enlaces, nuevo — mencionaste "así como links"):** hoy los enlaces
-normales (`[texto](url)`, estilo global `a { color: var(--accent) }`) y el
-wikilink resuelto (`a.wikilink`, H-011/H-012) usan `--accent-hover` — el
-cian FIJO de la app, no el de la bóveda. ¿Los paso también al color
-complementario de §2.1 (igual que negritas/cursivas, para que todo el
-"texto con énfasis" del documento hable el mismo idioma de color), o
-prefieres que los enlaces se queden con el cian fijo actual (ya sirve hoy
-para distinguir "esto es clickeable" en cualquier bóveda, sin importar su
-color)? El wikilink **roto** no cambia — sigue en `--danger-text`/rojo,
-es un estado de error, no de énfasis.
+**P-5 (enlaces) — resuelto:** también al color complementario, mismo
+tratamiento que la negrita (100%, sin mezclar) — Carlos ya lo había
+agrupado con negritas/cursivas ("así como links") y confirmó el paquete
+completo. El wikilink **roto** no cambia (sigue en `--danger-text`/rojo,
+es un estado de error, no de énfasis).
 
-**P-6 (cabecera de tabla, nuevo):** propongo fondo tenue del color de la
-bóveda (`color-mix` al ~15%, mismo recurso que ya usa `--accent-soft` para
-la cita hoy, pero sin crear 17 tokens `-soft` nuevos) + texto en el color
-de la bóveda al 100% — mismo patrón ya usado en la app para "activo"
-(`.app-nav-primary a.active`: texto `--accent` sobre fondo `--accent-soft`).
-El cuerpo de la tabla NO cambia (sigue con el borde gris de P-4). ¿Así es?
+**P-6 (cabecera de tabla) — resuelto:** fondo tenue del color de la bóveda
+(`color-mix` al ~15%) + texto en el color de la bóveda al 100%, confirmado
+tal como se propuso.
 
-**P-3 (viñetas/números de lista):** propongo el marcador (el punto o el
+**P-3 (viñetas/números de lista) — resuelto:** el marcador (el punto o el
 número, NO el texto de cada ítem) en el color de la bóveda a la intensidad
-de H4 (el tinte más sutil) — un detalle de color sin saturar la lista
-completa. ¿Así es, o lo prefieres más intenso (como H2/H3) o sin color?
+de H4 (el tinte más sutil), confirmado tal como se propuso.
 
-**P-4 (líneas — ya resuelto, confirmo el alcance):** cita, línea horizontal
-y bordes de tabla pasan a `var(--border)` (el gris neutro que ya usa el
-resto de la app, sin inventar un gris nuevo) y a 1px — la cita deja de usar
-el cian fijo de `--accent` que tiene hoy (cambio consciente del diseño de
-SPEC-0010 R-5, a tu pedido explícito). ¿Correcto que la cita también pierda
-su color (hoy cian) y pase a esta misma línea gris?
+**P-4 (líneas) — resuelto:** cita, línea horizontal y bordes de tabla pasan
+a `var(--border)` a 1px — la cita pierde el cian fijo que tiene hoy,
+confirmado tal como se propuso.
 
 ## 4. Criterios de aceptación (EARS booleano) — pendientes de P-1..P-4
 
@@ -157,10 +147,13 @@ su color (hoy cian) y pase a esta misma línea gris?
 - **C-4:** H4 DEBE pintarse con el color de la bóveda mezclado según P-1
   (el más sutil, pero DEBE seguir siendo legible — contraste mínimo 4.5:1
   contra el fondo del editor en ambos temas).
-- **C-5:** Negrita y cursiva DEBEN pintarse con el color complementario de
-  la bóveda (tabla de §2.1), según la intensidad que confirme P-2.
-- **C-6:** El marcador de viñeta/número de lista DEBE llevar el tratamiento
-  de color de P-3; el texto del ítem NO cambia de color.
+- **C-5:** Negrita DEBE pintarse con el color complementario de la bóveda
+  (tabla de §2.1) al 100 %; cursiva DEBE pintarse con el mismo color
+  complementario mezclado al 70 %/30 % con `--text-secondary` (más tenue
+  que la negrita, mismo color, distinta intensidad).
+- **C-6:** El marcador de viñeta/número de lista DEBE llevar el color de
+  la bóveda a la intensidad de H4 (P-3); el texto del ítem NO cambia de
+  color.
 - **C-7:** La barra de cita, el `<hr>` y los bordes de tabla DEBEN usar
   `var(--border)` a 1px — ninguno DEBE usar `--accent` ni el color de la
   bóveda.
@@ -171,14 +164,14 @@ su color (hoy cian) y pase a esta misma línea gris?
 - **C-9:** El tratamiento DEBE funcionar en ambos temas (claro/oscuro) sin
   perder contraste — los 17 colores de la paleta (`vaultIcon.ts`) ya están
   definidos como tokens en los dos temas.
-- **C-10 (según P-5):** los enlaces normales y el wikilink resuelto DEBEN
-  llevar el tratamiento que P-5 defina (complementario, o se quedan en el
-  cian fijo actual). El wikilink roto NO cambia (sigue en rojo de error).
-- **C-11 (según P-6):** la cabecera de tabla (`th`) DEBE tener fondo tenue
-  y texto en el color de la bóveda, según P-6; el cuerpo de la tabla no
-  cambia.
+- **C-10:** Los enlaces normales (`a`) y el wikilink resuelto DEBEN usar el
+  color complementario al 100 % (mismo tratamiento que la negrita). El
+  wikilink roto NO cambia (sigue en `--danger-text`/rojo).
+- **C-11:** La cabecera de tabla (`th`) DEBE tener fondo
+  `color-mix(in srgb, var(--vault-accent) 15%, transparent)` y texto
+  `var(--vault-accent)` al 100 %; el cuerpo de la tabla no cambia.
 
-`[NEEDS CLARIFICATION] = 6` (P-1 a P-6) — se resuelven con tu "así es".
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó "así es" (2026-10-30).
 
 ## 5. Descartes (candidatos, a confirmar)
 
@@ -208,13 +201,14 @@ su color (hoy cian) y pase a esta misma línea gris?
   `.milkdown-view .ProseMirror` usando `color-mix(in srgb, var(--vault-accent)
   X%, var(--text-primary) Y%)` según las proporciones de P-1 (función CSS
   nativa, sin JS de por medio, ya se calcula sola al cambiar el tema o la
-  bóveda); `strong`/`em` en `var(--vault-complement)` según P-2; `th` con
-  fondo `color-mix(in srgb, var(--vault-accent) 15%, transparent)` + texto
-  `var(--vault-accent)` (P-6); marcador de `li`::marker según P-3 (con
-  `color` en el propio selector `li` o `::marker`, sin tocar el texto);
-  `blockquote`/`hr`/`table` borde → `var(--border)` 1px (quita `--accent` de
-  la cita, C-7); `a`/`a.wikilink:not([data-broken])` → `var(--vault-complement)`
-  si P-5 lo confirma (si no, se quedan en `--accent-hover` tal cual están).
+  bóveda); `strong` y `a`/`a.wikilink:not([data-broken])` en
+  `var(--vault-complement)` al 100 % (C-5/C-10); `em` en
+  `color-mix(in srgb, var(--vault-complement) 70%, var(--text-secondary) 30%)`
+  (C-5); `th` con fondo `color-mix(in srgb, var(--vault-accent) 15%,
+  transparent)` + texto `var(--vault-accent)` (C-11); marcador de
+  `li`::marker a la intensidad de H4 (C-6, con `color` en el propio
+  selector `li` o `::marker`, sin tocar el texto); `blockquote`/`hr`/`table`
+  borde → `var(--border)` 1px (quita `--accent` de la cita, C-7).
 - Estrategia de prueba: `layoutCss.test.ts` (o un test nuevo específico) que
   lea las reglas CSS generadas y confirme las fórmulas `color-mix` esperadas
   por nivel, que `blockquote`/`hr`/`table` usan `var(--border)` y no
