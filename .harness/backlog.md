@@ -12,6 +12,7 @@
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
+- [ ] H-012 — Wikilinks: navegar al hacer clic (y crear la nota si el destino no existe, estilo Obsidian) → `historias/h012-wikilinks-navegacion/historia.md`, criterios redactados por AIRA desde directiva de Carlos (2026-10-30); **falta su "así es" (Gate 1)** — 3 preguntas de producto abiertas, ver §3
 - [ ] H-001.1 — Panel de propiedades en LECTURA con presentación estilo Obsidian (iconos, sin cabecera, sin scroll) · rama `feature/0012-propiedades-obsidian` · **bloqueada:** Gate 2 (plan técnico) de SPEC-0012 nunca se presentó a Carlos, sigue `pendiente`
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
