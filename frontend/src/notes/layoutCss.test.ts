@@ -115,15 +115,23 @@ test("H-014 C-6: el marcador de lista va al color de bóveda en la intensidad de
   expect(colorOf(editorCss(), ".milkdown-view .ProseMirror li::marker")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))");
 });
 
-// SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
-test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
-  const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");
-  expect(quote).toMatch(/border-left: 3px solid var\(--accent\)/);
-  expect(quote).toMatch(/background: var\(--accent-soft\)/);
-  expect(quote).toMatch(/color: var\(--text-secondary\)/);
+// SPEC-0010 RF-038, RF-039: código en línea y casillas de tarea (PLAN-0010 §2.3-g; R-6, R-10).
+// RF-037 (la cita en barra --accent + relleno --accent-soft) queda SUPERSEDIDO por H-014 C-7: las
+// líneas divisorias pasan a gris neutro (`--border`) a 1px — contraste entre contenido coloreado y
+// estructura neutra (historia §1). La cita pierde el cian fijo (barra Y relleno); conserva la cursiva.
+test("H-014 C-7: la cita, el <hr> y los bordes de tabla usan var(--border) a 1px, sin --accent ni color de bóveda", () => {
+  const css = read("../editor/editor.css");
+  const quote = rule(css, ".milkdown-view .ProseMirror blockquote");
+  expect(quote).toMatch(/border-left: 1px solid var\(--border\)/);
+  expect(quote).not.toMatch(/--accent/); // perdió el cian fijo: ni la barra ni el relleno --accent-soft
+  expect(quote).not.toMatch(/--vault-accent/); // ni el color de la bóveda
+  expect(quote).toMatch(/color: var\(--text-secondary\)/); // sigue tenue y en cursiva
   expect(quote).toMatch(/font-style: italic/);
-  expect(quote).toMatch(/border-radius: 0 var\(--radius-sm\) var\(--radius-sm\) 0/);
-  expect(quote).toMatch(/padding: var\(--space-2\) var\(--space-4\)/);
+  const hr = rule(css, ".milkdown-view .ProseMirror hr");
+  expect(hr).toMatch(/border-top: 1px solid var\(--border\)/);
+  expect(hr).not.toMatch(/--accent/);
+  // Los bordes de celda (las líneas visibles de la tabla) ya eran 1px var(--border); C-7 lo exige.
+  expect(editorCss()).toMatch(/\.milkdown-view \.ProseMirror th,\s*\.milkdown-view \.ProseMirror td\s*\{[^}]*border: 1px solid var\(--border\)/);
 });
 
 test("RF-038: el código en línea usa --bg-tertiary, --accent-hover y --radius-xs, y no toca el de los bloques", () => {

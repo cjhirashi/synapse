@@ -1301,14 +1301,14 @@
   overflow-wrap: normal;
 }
 
-/* Cita (SPEC-0010 RF-037; R-5): barra de acento, relleno `--accent-soft` y cursiva; el texto es
-   `--text-secondary` (el `--text-dim` del mockup) con ≥ 4,5:1 sobre el relleno. */
+/* Cita (SPEC-0010 RF-037, supersedido por H-014 C-7): la barra pasa a gris neutro (`--border`) a 1px y
+   pierde el cian fijo (la barra `--accent` Y el relleno `--accent-soft`) — contraste entre contenido
+   coloreado y estructura neutra (historia §1). Conserva la cursiva y el texto tenue `--text-secondary`,
+   ahora sobre el fondo del documento (sigue ≥ 4,5:1, ver `contrast.test.ts`). */
 .milkdown-view .ProseMirror blockquote {
   margin: var(--space-4) 0;
   padding: var(--space-2) var(--space-4);
-  border-left: 3px solid var(--accent);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: var(--accent-soft);
+  border-left: 1px solid var(--border);
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -1316,6 +1316,14 @@
 /* Una cita dentro de otra no repite el relleno. */
 .milkdown-view .ProseMirror blockquote blockquote {
   background: transparent;
+}
+
+/* Línea horizontal (H-010, sin regla propia hasta ahora; H-014 C-7): raya fina gris neutra, consistente
+   con la cita y los bordes de tabla — estructura neutra, sin el gris sólido inconsistente del navegador. */
+.milkdown-view .ProseMirror hr {
+  margin: var(--space-4) 0;
+  border: none;
+  border-top: 1px solid var(--border);
 }
 
 @media (max-width: 560px) {
