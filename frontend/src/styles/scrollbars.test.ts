@@ -4,6 +4,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
+import { contrast, token } from "../test-utils/wcag";
 
 const read = (rel: string) => readFileSync(resolve(__dirname, rel), "utf8");
 const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -106,6 +107,26 @@ test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa 
   const chipLeft = gutter + (content - chip) / 2;
   const bar = chipLeft + px(rule(notes, '.vault-rail-icon[aria-current="page"]::before'), "left");
   expect(bar).toBeGreaterThanOrEqual(0); // no la recorta el borde del riel
+});
+
+// C-7 (WCAG 1.4.11): el pulgar es un componente de interfaz y debe distinguirse (≥ 3:1) de la superficie
+// que recorre. La pista es transparente, así que ésta puede ser cualquiera de las tres de la app. Los
+// tokens se leen de la regla real del pulgar, no se repiten aquí. Se mide el reposo y el arrastre; el
+// hover (`--text-muted`, C-2) no entra: sólo refuerza un pulgar que ya cumple, y en claro es más tenue.
+const varOf = (body: string) => body.match(/background-color: var\((--[\w-]+)\)/)?.[1] ?? "";
+
+test.each(["dark", "light"] as const)("C-7: en tema %s el pulgar (reposo y arrastre) contrasta ≥ 3:1 con las 3 superficies", (theme) => {
+  const css = globalCss();
+  const states = {
+    reposo: varOf(rule(css, "*::-webkit-scrollbar-thumb")),
+    arrastre: varOf(rule(css, "*::-webkit-scrollbar-thumb:active")),
+  };
+  for (const [state, thumb] of Object.entries(states)) {
+    for (const surface of ["--bg-primary", "--bg-secondary", "--bg-tertiary"]) {
+      const ratio = contrast(token(theme, thumb), token(theme, surface));
+      expect(ratio, `${theme}: ${state} (${thumb}) sobre ${surface} = ${ratio.toFixed(2)}`).toBeGreaterThanOrEqual(3);
+    }
+  }
 });
 
 // C-3: los controles nativos (barras, inputs, selects) heredan el esquema del tema elegido en la app,
