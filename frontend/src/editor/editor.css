@@ -1498,9 +1498,9 @@ li.note-task[data-checked="true"] .note-task-body {
   color: inherit;
 }
 
-/* Wikilinks `[[...]]` en edición Visual (H-011). Resuelto: color de acento + subrayado, distinguible del
-   texto normal (C-3). Roto (`data-broken`, C-4): color de peligro + subrayado punteado, visible pero
-   marcado como inválido. No son navegables aún (C-5): sin `href` y con cursor de texto, no de puntero. */
+/* Wikilinks `[[...]]` en Lectura y edición Visual (H-011). Resuelto: color de acento + subrayado,
+   distinguible del texto normal (C-3). Roto (`data-broken`, C-4): color de peligro + subrayado punteado,
+   visible pero marcado como inválido. Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
 .milkdown-view .ProseMirror a.wikilink {
   color: var(--accent-hover);
   text-decoration: underline;
@@ -1512,4 +1512,10 @@ li.note-task[data-checked="true"] .note-task-body {
 .milkdown-view .ProseMirror a.wikilink[data-broken] {
   color: var(--danger-text);
   text-decoration-style: dashed;
+}
+
+/* H-012 C-2: SÓLO en Lectura (`data-mode="read"`) el wikilink resuelto navega al hacer clic, así que
+   muestra cursor de puntero para indicar que es clickeable; el roto conserva el cursor de texto. */
+.milkdown-view[data-mode="read"] .ProseMirror a.wikilink:not([data-broken]) {
+  cursor: pointer;
 }

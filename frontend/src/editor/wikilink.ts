@@ -69,6 +69,18 @@ export function resolveWikiLink(target: string, notes: readonly NoteRef[]): stri
 }
 
 /**
+ * ¿El destino de un wikilink roto trae una extensión de archivo que Synapse NO gestiona? (H-012 C-3/P-1).
+ * Al hacer clic en un roto: sin extensión → se crea la nota; con extensión ajena (`.docx`, `.pdf`…) → no
+ * se hace nada. `.md` SÍ lo gestiona, así que no cuenta como ajena (un `[[Nota.md]]` roto se crea igual).
+ * Sólo cuenta como extensión un sufijo `.algo` pegado al final del nombre de archivo, sin espacios ni más
+ * puntos (así «2.1.19 - …» o «v1.2 plan», con puntos internos seguidos de espacio, no se confunden).
+ */
+export function hasUnmanagedExtension(target: string): boolean {
+  const match = /\.([^./\s]+)$/.exec(baseName(target.trim()));
+  return match !== null && match[1].toLowerCase() !== "md";
+}
+
+/**
  * Parte un texto en segmentos de texto plano y wikilinks reconocidos, en orden. Un texto sin `[[...]]`
  * devuelve un único segmento de texto. No resuelve nada (eso es `resolveWikiLink`): sólo reconoce la
  * sintaxis (C-1), para que el transformador remark de `MilkdownView` reconstruya los nodos.

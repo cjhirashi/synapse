@@ -14,6 +14,7 @@ import { KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } fro
 import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { whenIdle } from "../editor/deferred/idle";
+import { hasUnmanagedExtension } from "../editor/wikilink";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
@@ -293,6 +294,24 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     if (isMobile) setSidebarOpen(false);
   }
 
+  /**
+   * Clic en un wikilink en Lectura (H-012 C-1/C-3). Resuelto: abre esa nota con el MISMO `open` del árbol y
+   * del historial (en Lectura, P-3). Roto: si el destino no trae extensión de archivo ajena (P-1) crea una
+   * nota vacía con ese nombre en la raíz (`notes.create` con el nombre como título) y la abre en edición,
+   * como «Nueva carpeta»; con extensión ajena (`.docx`, `.pdf`…) no hace nada.
+   */
+  function openWikilink({ resolvedId, target }: { resolvedId: string | null; target: string }) {
+    if (resolvedId !== null) {
+      open(resolvedId);
+      return;
+    }
+    if (hasUnmanagedExtension(target)) return;
+    void notes
+      .create(vault.id, target)
+      .then((note) => open(note.id, { edit: true }))
+      .catch(() => undefined);
+  }
+
   /** La nota se abrió de verdad: confirma el salto de historial pendiente o añade una entrada (RF-057). */
   function onOpened(id: string) {
     const pending = jump.current;
@@ -402,7 +421,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
             </Suspense>
           )}
         </div>

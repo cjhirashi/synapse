@@ -18,7 +18,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[] }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -29,6 +29,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       label="Visual"
       prefix={props.prefix}
       notes={props.notes}
+      onWikilinkClick={props.onWikilinkClick}
       onView={(v) => {
         view = v;
       }}
@@ -636,5 +637,49 @@ describe("MilkdownView · wikilinks (H-011)", () => {
     expect(link!.hasAttribute("data-broken")).toBe(false);
     const broken = await mount({ value: "[[No existe]]", readOnly: true, notes: NOTES });
     expect(broken.container.querySelector("a.wikilink")!.hasAttribute("data-broken")).toBe(true);
+  });
+});
+
+// H-012: al hacer clic en un wikilink SÓLO en Lectura (C-1/C-3), `MilkdownView` avisa al padre con el
+// `resolvedId` (resuelto) o `null`+`target` (roto) leídos de la marca; en edición Visual el handler ni
+// se registra, así que un clic nunca navega (C-4). En Código no hay marca (otro componente, C-5).
+describe("MilkdownView · clic en wikilink (H-012)", () => {
+  const NOTES = [{ id: "note:v:1", path: "Nota A.md" }];
+
+  /** Invoca el `handleClickOn` registrado (si lo hay) sobre la primera marca `wikilink`, como lo haría ProseMirror. */
+  function clickFirstWikilink(view: EditorView): boolean {
+    let wikiPos = -1;
+    view.state.doc.descendants((node, pos) => {
+      if (wikiPos < 0 && node.isText && node.marks.some((m) => m.type.name === "wikilink")) wikiPos = pos;
+      return wikiPos < 0;
+    });
+    if (wikiPos < 0) return false;
+    const $pos = view.state.doc.resolve(wikiPos);
+    return (
+      view.someProp("handleClickOn", (f) => f(view, wikiPos, $pos.nodeAfter!, $pos.before($pos.depth + 1), new MouseEvent("click"), true)) ?? false
+    );
+  }
+
+  it("C-1: en Lectura, clic en un wikilink resuelto avisa con su `resolvedId`", async () => {
+    const onWikilinkClick = vi.fn();
+    const { view } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES, onWikilinkClick });
+    const consumed = clickFirstWikilink(view);
+    expect(consumed).toBe(true);
+    expect(onWikilinkClick).toHaveBeenCalledTimes(1);
+    expect(onWikilinkClick).toHaveBeenCalledWith({ resolvedId: "note:v:1", target: "Nota A" });
+  });
+
+  it("C-3: en Lectura, clic en un wikilink roto avisa con `resolvedId: null` y el `target`", async () => {
+    const onWikilinkClick = vi.fn();
+    const { view } = await mount({ value: "[[No existe]]", readOnly: true, notes: NOTES, onWikilinkClick });
+    clickFirstWikilink(view);
+    expect(onWikilinkClick).toHaveBeenCalledWith({ resolvedId: null, target: "No existe" });
+  });
+
+  it("C-4: en edición Visual el handler no se registra, así que un clic no avisa nada", async () => {
+    const onWikilinkClick = vi.fn();
+    const { view } = await mount({ value: "ver [[Nota A]] fin", readOnly: false, notes: NOTES, onWikilinkClick });
+    clickFirstWikilink(view);
+    expect(onWikilinkClick).not.toHaveBeenCalled();
   });
 });

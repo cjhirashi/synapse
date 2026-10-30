@@ -1137,4 +1137,35 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
     await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, vaultNotes });
     expect(received).toEqual(vaultNotes);
   });
+
+  // H-012: en Lectura, el editor cablea el clic de wikilink de la vista Visual (`onWikilinkClick`) a su
+  // propio callback `onOpenWikilink`, que el `Workspace` usa para navegar o crear.
+  it("reenvía el clic de wikilink de la vista (Lectura) a `onOpenWikilink`", async () => {
+    let fire: ((link: { resolvedId: string | null; target: string }) => void) | undefined;
+    function CapturingVisual({ value, onChange, label, readOnly, onWikilinkClick }: ViewProps) {
+      fire = onWikilinkClick;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const onOpenWikilink = vi.fn();
+    await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, onOpenWikilink });
+    expect(fire).toBeTypeOf("function");
+    act(() => fire!({ resolvedId: "note:v:1", target: "Nota A" }));
+    expect(onOpenWikilink).toHaveBeenCalledWith({ resolvedId: "note:v:1", target: "Nota A" });
+  });
+
+  // H-012 C-5: la vista Código nunca recibe el callback de clic — ahí el wikilink ni existe como marca
+  // (es un componente de texto plano aparte), así que jamás puede navegar.
+  it("C-5: la vista Código no recibe `onWikilinkClick` (nunca navega desde Código)", async () => {
+    let codeGotClick: unknown = "no-render";
+    function CapturingCode({ value, onChange, label, readOnly, onWikilinkClick }: ViewProps) {
+      codeGotClick = onWikilinkClick;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    await setup("hola", {}, { views: { Visual: fake("visual"), Code: CapturingCode }, onOpenWikilink: vi.fn() });
+    // Pasa a edición y a la vista Código para que `CapturingCode` se monte.
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    await screen.findByRole("textbox", { name: "Editor de código" });
+    expect(codeGotClick).toBeUndefined();
+  });
 });

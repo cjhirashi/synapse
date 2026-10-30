@@ -93,6 +93,8 @@ export interface ViewProps {
   onTableContext?: (inTable: boolean) => void;
   /** Notas vivas de la bóveda para resolver wikilinks (H-011); sólo las usa la vista Visual en edición. */
   notes?: readonly NoteRef[];
+  /** Clic en un wikilink, sólo en Lectura (H-012 C-1/C-3); la vista Visual lo emite leyendo la marca del nodo. */
+  onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
 }
 
 export interface NoteEditorViews {
@@ -130,6 +132,11 @@ interface NoteEditorProps {
   /** Renombrar la nota abierta (RF-008): el editor lo pide cuando su ruta es inválida. */
   onRename?: () => void;
   /**
+   * Clic en un wikilink en Lectura (H-012 C-1/C-3): el padre (`Workspace`) navega al `resolvedId` o, si está
+   * roto y el `target` no trae extensión ajena, crea la nota y la abre. El editor sólo reenvía el evento de la vista.
+   */
+  onOpenWikilink?: (link: { resolvedId: string | null; target: string }) => void;
+  /**
    * Botón de alternar la barra de notas (H-009 C-1): lo arma el padre (`Workspace`, dueño del estado
    * `sidebarOpen`) y el editor lo pinta como **primer elemento** de su fila de título. El editor no
    * conoce la semántica de la barra; sólo coloca el nodo.
@@ -158,7 +165,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -969,7 +976,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <>
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
-              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} />
+              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} />
             </>
           ) : view === "visual" ? (
             <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} />
