@@ -1137,4 +1137,19 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
     await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, vaultNotes });
     expect(received).toEqual(vaultNotes);
   });
+
+  // H-012: en Lectura, el editor cablea el clic de wikilink de la vista Visual (`onWikilinkClick`) a su
+  // propio callback `onOpenWikilink`, que el `Workspace` usa para navegar o crear.
+  it("reenvía el clic de wikilink de la vista (Lectura) a `onOpenWikilink`", async () => {
+    let fire: ((link: { resolvedId: string | null; target: string }) => void) | undefined;
+    function CapturingVisual({ value, onChange, label, readOnly, onWikilinkClick }: ViewProps) {
+      fire = onWikilinkClick;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const onOpenWikilink = vi.fn();
+    await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, onOpenWikilink });
+    expect(fire).toBeTypeOf("function");
+    act(() => fire!({ resolvedId: "note:v:1", target: "Nota A" }));
+    expect(onOpenWikilink).toHaveBeenCalledWith({ resolvedId: "note:v:1", target: "Nota A" });
+  });
 });
