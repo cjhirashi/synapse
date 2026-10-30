@@ -1,7 +1,7 @@
 // Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
 // Con editores falsos (textareas) para probar el estado del envoltorio; la prueba con los
 // editores reales (RF-008, byte a byte) está al final.
-import { createRef, type ComponentProps } from "react";
+import { createRef, useEffect, type ComponentProps } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import type { EditorView as PMView } from "@milkdown/prose/view";
@@ -333,6 +333,106 @@ describe("cabecera del editor en 3 filas (H-010)", () => {
     expect(header(container).querySelector(".note-editor-row-3")).not.toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
     expect(header(container).querySelector(".note-editor-row-3")).toBeNull();
+  });
+});
+
+// H-010 C-3/C-5/C-6: los 9 botones nuevos de formato viven en la Fila 3 y disparan su comando.
+describe("botones de formato de la Fila 3 (H-010)", () => {
+  type Spies = Record<string, ReturnType<typeof vi.fn>>;
+  /** Monta el editor con una vista Visual falsa que registra espías de EditorCommands. */
+  async function setupWithCommands() {
+    const spies: Spies = {};
+    for (const name of [
+      "insertTable",
+      "addRowAfter",
+      "addColAfter",
+      "toggleBold",
+      "toggleItalic",
+      "toggleStrikethrough",
+      "toggleInlineCode",
+      "setHeading",
+      "toggleBlockquote",
+      "insertHr",
+      "wrapBulletList",
+      "wrapOrderedList",
+    ]) {
+      spies[name] = vi.fn();
+    }
+    function VisualWithCommands({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.(spies as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithCommands, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    return { ...utils, spies };
+  }
+
+  const FORMAT_BUTTONS = [
+    "Insertar tabla",
+    "Negritas",
+    "Cursiva",
+    "Tachado",
+    "Código en línea",
+    "Encabezado 1",
+    "Encabezado 2",
+    "Encabezado 3",
+    "Encabezado 4",
+    "Cita",
+    "Línea horizontal",
+    "Lista con viñetas",
+    "Lista numerada",
+  ];
+
+  // C-3/C-6: la tabla y los 9 botones nuevos están en la Fila 3, con aria-label y el patrón note-nav-button.
+  it("C-3/C-6: la Fila 3 lleva la tabla y los 9 botones de formato (aria-label + note-nav-button)", async () => {
+    const { container } = await setupWithCommands();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const row3 = container.querySelector<HTMLElement>(".note-editor-row-3")!;
+    for (const name of FORMAT_BUTTONS) {
+      const button = within(row3).getByRole("button", { name });
+      expect(button, name).toHaveClass("note-nav-button");
+      expect(button.querySelector("svg[aria-hidden='true']"), name).not.toBeNull();
+    }
+  });
+
+  // C-5: cada botón ejecuta el comando Milkdown correspondiente sobre la selección actual.
+  it("C-5: cada botón de formato ejecuta su comando de EditorCommands", async () => {
+    const { spies } = await setupWithCommands();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const click = (name: string) => userEvent.click(screen.getByRole("button", { name }));
+    await click("Negritas");
+    expect(spies.toggleBold).toHaveBeenCalledTimes(1);
+    await click("Cursiva");
+    expect(spies.toggleItalic).toHaveBeenCalledTimes(1);
+    await click("Tachado");
+    expect(spies.toggleStrikethrough).toHaveBeenCalledTimes(1);
+    await click("Código en línea");
+    expect(spies.toggleInlineCode).toHaveBeenCalledTimes(1);
+    await click("Cita");
+    expect(spies.toggleBlockquote).toHaveBeenCalledTimes(1);
+    await click("Línea horizontal");
+    expect(spies.insertHr).toHaveBeenCalledTimes(1);
+    await click("Lista con viñetas");
+    expect(spies.wrapBulletList).toHaveBeenCalledTimes(1);
+    await click("Lista numerada");
+    expect(spies.wrapOrderedList).toHaveBeenCalledTimes(1);
+    for (const level of [1, 2, 3, 4]) {
+      await click(`Encabezado ${level}`);
+      expect(spies.setHeading).toHaveBeenCalledWith(level);
+    }
+  });
+
+  // C-6: operable por teclado — un <button> nativo se activa con Enter/Espacio al tener el foco.
+  it("C-6: los botones de formato son operables por teclado (Enter)", async () => {
+    const { spies } = await setupWithCommands();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const bold = screen.getByRole("button", { name: "Negritas" });
+    bold.focus();
+    await userEvent.keyboard("{Enter}");
+    expect(spies.toggleBold).toHaveBeenCalledTimes(1);
   });
 });
 

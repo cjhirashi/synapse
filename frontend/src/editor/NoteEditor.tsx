@@ -19,7 +19,30 @@
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
 import { ComponentType, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, BetweenHorizontalEnd, BetweenVerticalEnd, BookOpen, Code as CodeIcon, Eye, Pencil, Save, Table } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  BetweenHorizontalEnd,
+  BetweenVerticalEnd,
+  Bold,
+  BookOpen,
+  Code as CodeIcon,
+  Code2 as InlineCodeIcon,
+  Eye,
+  Heading1,
+  Heading2,
+  Heading3,
+  Heading4,
+  Italic,
+  List,
+  ListOrdered,
+  Minus,
+  Pencil,
+  Quote,
+  Save,
+  Strikethrough,
+  Table,
+} from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { canonical } from "../sync/canonical";
@@ -796,6 +819,40 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
                 </button>
               </>
             )}
+            {/* H-010 C-3/C-5/C-6: los 9 controles de formato Markdown, cada uno disparando su comando de
+                `EditorCommands` sobre la selección/posición actual (el foco vuelve al editor en MilkdownView). */}
+            <button type="button" className="note-nav-button" aria-label="Negritas" title="Negritas" onClick={() => editorCommands.current?.toggleBold()}>
+              <Bold size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Cursiva" title="Cursiva" onClick={() => editorCommands.current?.toggleItalic()}>
+              <Italic size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Tachado" title="Tachado" onClick={() => editorCommands.current?.toggleStrikethrough()}>
+              <Strikethrough size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Código en línea" title="Código en línea" onClick={() => editorCommands.current?.toggleInlineCode()}>
+              <InlineCodeIcon size={16} aria-hidden="true" />
+            </button>
+            {([1, 2, 3, 4] as const).map((level) => {
+              const HeadingIcon = { 1: Heading1, 2: Heading2, 3: Heading3, 4: Heading4 }[level];
+              return (
+                <button key={level} type="button" className="note-nav-button" aria-label={`Encabezado ${level}`} title={`Encabezado ${level}`} onClick={() => editorCommands.current?.setHeading(level)}>
+                  <HeadingIcon size={16} aria-hidden="true" />
+                </button>
+              );
+            })}
+            <button type="button" className="note-nav-button" aria-label="Cita" title="Cita" onClick={() => editorCommands.current?.toggleBlockquote()}>
+              <Quote size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Línea horizontal" title="Línea horizontal" onClick={() => editorCommands.current?.insertHr()}>
+              <Minus size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Lista con viñetas" title="Lista con viñetas" onClick={() => editorCommands.current?.wrapBulletList()}>
+              <List size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
+              <ListOrdered size={16} aria-hidden="true" />
+            </button>
           </div>
         )}
       </header>
