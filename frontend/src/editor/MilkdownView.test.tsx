@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
 import { PARSE_MARK } from "./markdown/cachedParser";
 import { parseMarkdownToJson } from "./markdown/parseStage";
-import { MilkdownView } from "./MilkdownView";
+import { MilkdownView, type EditorCommands } from "./MilkdownView";
 
 // `mermaid` simulado: la vista previa de Visual (RF-047) se prueba con el renderizador real de la aplicación y
 // una API que devuelve un SVG mínimo con la fuente que recibió.
@@ -421,6 +421,80 @@ describe("MilkdownView · comandos de tabla", () => {
     expect(shape(view)).toEqual({ rows: 3, cols: [2, 2, 2] });
     act(() => commands.addColAfter());
     expect(shape(view)).toEqual({ rows: 3, cols: [3, 3, 3] });
+  });
+});
+
+// H-010 C-5: los comandos de formato que `MilkdownView` expone al padre (ampliación de `EditorCommands`)
+// ejecutan el comando Milkdown correspondiente sobre la selección/posición actual contra una instancia real.
+describe("MilkdownView · comandos de formato (H-010)", () => {
+  /** Monta la vista y captura los comandos y la vista de ProseMirror. */
+  async function mountCommands(value = "hola") {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    render(
+      <MilkdownView value={value} readOnly={false} onChange={() => {}} label="Visual" registerCommands={(c) => (commands = c)} onView={(v) => (view = v)} />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as EditorCommands, view: view as unknown as EditorView };
+  }
+
+  /** Nombres de las marcas presentes en el documento. */
+  const markNames = (view: EditorView) => {
+    const set = new Set<string>();
+    view.state.doc.descendants((node) => node.marks.forEach((m) => set.add(m.type.name)));
+    return set;
+  };
+  /** Nombres de los nodos del documento (todos los niveles). */
+  const nodeNames = (view: EditorView) => {
+    const set = new Set<string>();
+    view.state.doc.descendants((node) => {
+      set.add(node.type.name);
+    });
+    return set;
+  };
+  /** Selecciona todo el texto del documento (para alternar una marca sobre él). */
+  const selectAll = (view: EditorView) =>
+    act(() => view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, view.state.doc.content.size - 1))));
+
+  it("negritas, cursivas, tachado y código en línea aplican su marca a la selección (C-5)", async () => {
+    const { commands, view } = await mountCommands("hola");
+    selectAll(view);
+    act(() => commands.toggleBold());
+    expect(markNames(view).has("strong")).toBe(true);
+    act(() => commands.toggleItalic());
+    expect(markNames(view).has("emphasis")).toBe(true);
+    act(() => commands.toggleStrikethrough());
+    expect(markNames(view).has("strike_through")).toBe(true);
+    act(() => commands.toggleInlineCode());
+    expect(markNames(view).has("inlineCode")).toBe(true);
+  });
+
+  it("H1-H4 envuelven el párrafo en un encabezado del nivel pedido (C-5)", async () => {
+    const { commands, view } = await mountCommands("título");
+    for (const level of [1, 2, 3, 4]) {
+      act(() => commands.setHeading(level));
+      const levels: number[] = [];
+      view.state.doc.descendants((node) => {
+        if (node.type.name === "heading") levels.push(node.attrs.level as number);
+      });
+      expect(levels, `H${level}`).toEqual([level]);
+    }
+  });
+
+  it("cita, línea horizontal, lista con viñetas y lista numerada insertan su nodo (C-5)", async () => {
+    let ctx = await mountCommands("texto");
+    act(() => ctx.commands.toggleBlockquote());
+    expect(nodeNames(ctx.view).has("blockquote")).toBe(true);
+    ctx = await mountCommands("texto");
+    act(() => ctx.commands.insertHr());
+    expect(nodeNames(ctx.view).has("hr")).toBe(true);
+    ctx = await mountCommands("texto");
+    act(() => ctx.commands.wrapBulletList());
+    expect(nodeNames(ctx.view).has("bullet_list")).toBe(true);
+    ctx = await mountCommands("texto");
+    act(() => ctx.commands.wrapOrderedList());
+    expect(nodeNames(ctx.view).has("ordered_list")).toBe(true);
   });
 });
 

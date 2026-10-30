@@ -31,7 +31,7 @@ import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { MilkdownView, type TableCommands } from "./MilkdownView";
+import { MilkdownView, type EditorCommands } from "./MilkdownView";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
 import { NoteMenu } from "./NoteMenu";
 import { PropertiesForm } from "./PropertiesForm";
@@ -63,8 +63,8 @@ export interface ViewProps {
   registerReveal?: (reveal: ((line: number) => void) | null) => void;
   /** Bloque heredado protegido que no se entrega a la vista y se re-antepone al emitir (P-6); sólo Visual. */
   prefix?: string;
-  /** Entrega los comandos de tabla de la vista Visual (como `registerFlush`); sólo Visual (RF-025, P-7). */
-  registerCommands?: (commands: TableCommands | null) => void;
+  /** Entrega los comandos de formato de la vista Visual (como `registerFlush`); sólo Visual (RF-025, P-7; H-010). */
+  registerCommands?: (commands: EditorCommands | null) => void;
   /** Informa de si el cursor está en una tabla; sólo Visual (RF-025, P-7). */
   onTableContext?: (inTable: boolean) => void;
 }
@@ -215,10 +215,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const registerFlush = useCallback((flush: (() => void) | null) => {
     flushVisual.current = flush;
   }, []);
-  /** Comandos de tabla de la vista Visual (los registra `MilkdownView`) y si el cursor está en una tabla (RF-025, P-7). */
-  const tableCommands = useRef<TableCommands | null>(null);
-  const registerCommands = useCallback((commands: TableCommands | null) => {
-    tableCommands.current = commands;
+  /** Comandos de formato de la vista Visual (los registra `MilkdownView`) y si el cursor está en una tabla (RF-025, P-7; H-010). */
+  const editorCommands = useRef<EditorCommands | null>(null);
+  const registerCommands = useCallback((commands: EditorCommands | null) => {
+    editorCommands.current = commands;
   }, []);
   const [inTable, setInTable] = useState(false);
   /** «Ir a la línea N» de la vista Código (la registra `CodeView`, como `registerFlush`). */
@@ -783,15 +783,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             (P-7: Tab en la última celda no las crea). */}
         {mode === "edit" && view === "visual" && (
           <div className="note-editor-row-3">
-            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => tableCommands.current?.insertTable()}>
+            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => editorCommands.current?.insertTable()}>
               <Table size={16} aria-hidden="true" />
             </button>
             {inTable && (
               <>
-                <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => tableCommands.current?.addRowAfter()}>
+                <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => editorCommands.current?.addRowAfter()}>
                   <BetweenHorizontalEnd size={16} aria-hidden="true" />
                 </button>
-                <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => tableCommands.current?.addColAfter()}>
+                <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => editorCommands.current?.addColAfter()}>
                   <BetweenVerticalEnd size={16} aria-hidden="true" />
                 </button>
               </>

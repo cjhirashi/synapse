@@ -15,12 +15,27 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef } from "react";
-import { Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
+import { type CmdKey, Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
-import { commonmark, headingIdGenerator, imageAttr, imageSchema, linkAttr, linkSchema } from "@milkdown/preset-commonmark";
-import { addColAfterCommand, addRowAfterCommand, gfm, insertTableCommand } from "@milkdown/preset-gfm";
+import {
+  commonmark,
+  headingIdGenerator,
+  imageAttr,
+  imageSchema,
+  insertHrCommand,
+  linkAttr,
+  linkSchema,
+  toggleEmphasisCommand,
+  toggleInlineCodeCommand,
+  toggleStrongCommand,
+  wrapInBlockquoteCommand,
+  wrapInBulletListCommand,
+  wrapInHeadingCommand,
+  wrapInOrderedListCommand,
+} from "@milkdown/preset-commonmark";
+import { addColAfterCommand, addRowAfterCommand, gfm, insertTableCommand, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
@@ -58,14 +73,36 @@ const safeImage = imageSchema.extendSchema((prev) => (ctx) => ({
   ],
 }));
 
-/** Comandos de tabla que `MilkdownView` entrega al padre para su barra (RF-025, P-7). */
-export interface TableCommands {
+/**
+ * Comandos del editor que `MilkdownView` entrega al padre para su barra de formato (RF-025, P-7; H-010).
+ * Cada uno ejecuta el comando Milkdown correspondiente sobre la selección/posición actual y devuelve el
+ * foco al editor; no hay lógica de editor nueva, sólo se exponen comandos ya existentes en los presets.
+ */
+export interface EditorCommands {
   /** Inserta en el cursor una tabla con cabecera, 1 fila de cuerpo y 2 columnas. */
   insertTable: () => void;
   /** Añade una fila bajo la del cursor (sólo con el cursor en una tabla). */
   addRowAfter: () => void;
   /** Añade una columna a la derecha de la del cursor (sólo con el cursor en una tabla). */
   addColAfter: () => void;
+  /** Alterna negritas (`**`) en la selección. */
+  toggleBold: () => void;
+  /** Alterna cursivas (`_`) en la selección. */
+  toggleItalic: () => void;
+  /** Alterna tachado (`~~`, gfm) en la selección. */
+  toggleStrikethrough: () => void;
+  /** Alterna código en línea (`` ` ``) en la selección. */
+  toggleInlineCode: () => void;
+  /** Envuelve el bloque del cursor en un encabezado del nivel dado (1–4); al mismo nivel, lo deshace. */
+  setHeading: (level: number) => void;
+  /** Envuelve el bloque del cursor en una cita (blockquote). */
+  toggleBlockquote: () => void;
+  /** Inserta una línea horizontal en la posición del cursor. */
+  insertHr: () => void;
+  /** Convierte el bloque del cursor en una lista con viñetas. */
+  wrapBulletList: () => void;
+  /** Convierte el bloque del cursor en una lista numerada. */
+  wrapOrderedList: () => void;
 }
 
 interface MilkdownViewProps {
@@ -101,8 +138,8 @@ interface MilkdownViewProps {
    * defecto `""` (sin bloque protegido).
    */
   prefix?: string;
-  /** Entrega los comandos de tabla al estar listo el editor (`null` al destruirlo), como `registerFlush`. */
-  registerCommands?: (commands: TableCommands | null) => void;
+  /** Entrega los comandos del editor al estar listo (`null` al destruirlo), como `registerFlush` (H-010). */
+  registerCommands?: (commands: EditorCommands | null) => void;
   /** Informa de si el cursor está dentro de una tabla; sólo cuando cambia (para mostrar fila/columna, P-7). */
   onTableContext?: (inTable: boolean) => void;
 }
@@ -311,10 +348,10 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       view.dom.setAttribute("role", readOnly ? "document" : "textbox");
       onViewRef.current?.(view);
       if (!readOnly) {
-        // Los comandos de tabla (RF-025, P-7) operan sobre la selección vigente de la vista; el botón de la
+        // Los comandos (RF-025, P-7; H-010) operan sobre la selección vigente de la vista; el botón de la
         // barra ya le quitó el foco, así que se le devuelve tras ejecutarlos para seguir escribiendo.
-        const run = (key: typeof insertTableCommand.key | typeof addRowAfterCommand.key | typeof addColAfterCommand.key, payload?: { row: number; col: number }) => {
-          editor.ctx.get(commandsCtx).call(key as never, payload as never);
+        const run = <T,>(key: CmdKey<T>, payload?: T) => {
+          editor.ctx.get(commandsCtx).call(key, payload);
           view.focus();
         };
         registerCommandsRef.current?.({
@@ -335,6 +372,16 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           },
           addRowAfter: () => run(addRowAfterCommand.key),
           addColAfter: () => run(addColAfterCommand.key),
+          // H-010: controles de formato Markdown — cada uno es el comando ya expuesto por el preset.
+          toggleBold: () => run(toggleStrongCommand.key),
+          toggleItalic: () => run(toggleEmphasisCommand.key),
+          toggleStrikethrough: () => run(toggleStrikethroughCommand.key),
+          toggleInlineCode: () => run(toggleInlineCodeCommand.key),
+          setHeading: (level: number) => run(wrapInHeadingCommand.key, level),
+          toggleBlockquote: () => run(wrapInBlockquoteCommand.key),
+          insertHr: () => run(insertHrCommand.key),
+          wrapBulletList: () => run(wrapInBulletListCommand.key),
+          wrapOrderedList: () => run(wrapInOrderedListCommand.key),
         });
       }
     });
