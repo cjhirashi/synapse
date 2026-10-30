@@ -11,18 +11,46 @@ const strip = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /** Cuerpo de la regla cuyo selector es exactamente `selector` (sin comentarios). */
 function rule(css: string, selector: string): string {
-  const escaped = selector.replace(/[.[\]"=()*]/g, "\\$&");
+  // Los saltos de línea e indentación de un selector múltiple no son parte del contrato.
+  const escaped = selector.replace(/[.[\]"=()*]/g, "\\$&").replace(/\s+/g, "\\s*");
   const match = strip(css).match(new RegExp(`(?:^|\\})\\s*${escaped}\\s*\\{([^}]*)\\}`));
   if (!match) throw new Error(`sin la regla ${selector}`);
   return match[1];
 }
 
+/** Cuerpo del at-rule `header` (llaves balanceadas) y el resto del CSS, ambos sin comentarios. */
+function atRule(css: string, header: string): { inside: string; outside: string } {
+  const source = strip(css);
+  const start = source.indexOf(header);
+  if (start < 0) throw new Error(`sin ${header}`);
+  const open = source.indexOf("{", start);
+  let depth = 0;
+  let end = open;
+  do {
+    if (source[end] === "{") depth++;
+    if (source[end] === "}") depth--;
+    end++;
+  } while (depth > 0);
+  return { inside: source.slice(open + 1, end - 1), outside: source.slice(0, start) + source.slice(end) };
+}
+
+const POINTER_FINE = "@media (hover: hover) and (pointer: fine)";
+const SUPPORTS = "@supports not selector(::-webkit-scrollbar)";
+
 const globalCss = () => read("global.css");
+/** Estilo de barras: lo que `global.css` declara bajo el medio de puntero fino. */
+const scrollbarCss = () => atRule(globalCss(), POINTER_FINE).inside;
+
+// C-6: en táctil Chrome/Android sustituye su barra overlay por una clásica permanente en cuanto se
+// estiliza `::-webkit-scrollbar`; limitar el estilo a puntero fino respeta la barra del sistema.
+test("C-6: el estilo de barras sólo aplica con puntero fino (en táctil queda la barra overlay del sistema)", () => {
+  expect(atRule(globalCss(), POINTER_FINE).outside).not.toMatch(/scrollbar/);
+});
 
 // C-1, C-2: Chromium/Edge/Safari. 8 px, sin flechas, pista transparente, pulgar redondeado con los
 // colores del tema y estados de hover y arrastre.
 test("C-1/C-2: la barra WebKit mide 8 px, sin flechas ni pista de color, con esquina transparente", () => {
-  const css = globalCss();
+  const css = scrollbarCss();
   const bar = rule(css, "*::-webkit-scrollbar");
   expect(bar).toMatch(/width: 8px/);
   expect(bar).toMatch(/height: 8px/); // barra horizontal (tablas, bloques de código)
@@ -32,7 +60,7 @@ test("C-1/C-2: la barra WebKit mide 8 px, sin flechas ni pista de color, con esq
 });
 
 test("C-2: el pulgar es redondeado en --border-control, pasa a --text-muted al hover y a --accent al arrastrar", () => {
-  const css = globalCss();
+  const css = scrollbarCss();
   const thumb = rule(css, "*::-webkit-scrollbar-thumb");
   expect(thumb).toMatch(/background-color: var\(--border-control\)/);
   expect(thumb).toMatch(/border-radius: var\(--radius-xs\)/);
@@ -40,32 +68,15 @@ test("C-2: el pulgar es redondeado en --border-control, pasa a --text-muted al h
   expect(rule(css, "*::-webkit-scrollbar-thumb:active")).toMatch(/background-color: var\(--accent\)/);
 });
 
-/** Sección de barras de `global.css`: va al final del archivo, tras su encabezado. */
-const scrollbarSection = () => strip(globalCss().split("/* --- Barras de desplazamiento")[1] ?? "");
-
-test("C-2: la sección de barras sólo usa tokens (sin literales de color)", () => {
-  const section = scrollbarSection();
-  expect(section).toMatch(/--border-control/); // la sección existe: no se valida un vacío
-  expect(section).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
+test("C-2: el estilo de barras sólo usa tokens (sin literales de color)", () => {
+  const css = scrollbarCss();
+  expect(css).toMatch(/--border-control/); // el bloque existe: no se valida un vacío
+  expect(css).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|hwb\(|(?<![-\w])(?:white|black)(?![-\w])/);
 });
-
-const SUPPORTS = "@supports not selector(::-webkit-scrollbar)";
-
-/** Separa `global.css` (sin comentarios) en el cuerpo del `@supports` de barras y el resto. */
-function splitSupports(css: string): { inside: string; outside: string } {
-  const source = strip(css);
-  const start = source.indexOf(SUPPORTS);
-  if (start < 0) throw new Error(`sin ${SUPPORTS}`);
-  const open = source.indexOf("{", start);
-  let depth = 1;
-  let end = open + 1;
-  while (depth > 0 && end < source.length) depth += source[end++] === "{" ? 1 : source[end - 1] === "}" ? -1 : 0;
-  return { inside: source.slice(open + 1, end - 1), outside: source.slice(0, start) + source.slice(end) };
-}
 
 // C-4: Firefox no entiende `::-webkit-scrollbar`; usa las propiedades estándar con los mismos tokens.
 test("C-4: Firefox recibe scrollbar-width y scrollbar-color estándar, con los tokens del tema", () => {
-  const { inside } = splitSupports(globalCss());
+  const { inside } = atRule(scrollbarCss(), SUPPORTS);
   expect(rule(inside, "*")).toMatch(/scrollbar-width: thin/);
   expect(rule(inside, "*")).toMatch(/scrollbar-color: var\(--border-control\) transparent/);
 });
@@ -73,7 +84,7 @@ test("C-4: Firefox recibe scrollbar-width y scrollbar-color estándar, con los t
 // Chromium ≥ 121 ignora `::-webkit-scrollbar` en cuanto un elemento declara las propiedades estándar:
 // declararlas fuera del `@supports` le quitaría el hover y el arrastre del pulgar (C-2).
 test("C-4: las propiedades estándar de barra NO se declaran fuera del @supports de Firefox", () => {
-  expect(splitSupports(globalCss()).outside).not.toMatch(/scrollbar-(?:width|color)/);
+  expect(atRule(globalCss(), SUPPORTS).outside).not.toMatch(/scrollbar-(?:width|color)/);
 });
 
 // C-1: el estilo es único; ninguna hoja de componente lo redefine ni lo oculta.
@@ -99,7 +110,7 @@ test("C-5: el riel ya no oculta su barra y reserva el gutter a ambos lados", () 
 
 test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa sigue dentro del riel colapsado", () => {
   const notes = read("../notes/notes.css");
-  const gutter = px(rule(globalCss(), "*::-webkit-scrollbar"), "width");
+  const gutter = px(rule(scrollbarCss(), "*::-webkit-scrollbar"), "width");
   const content = px(rule(notes, ".vault-rail"), "width") - 2 * gutter; // 56 − 2 × 8
   const chip = px(rule(notes, ".vault-rail-icon"), "width");
   expect(content).toBeGreaterThanOrEqual(chip);
@@ -116,7 +127,7 @@ test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa 
 const varOf = (body: string) => body.match(/background-color: var\((--[\w-]+)\)/)?.[1] ?? "";
 
 test.each(["dark", "light"] as const)("C-7: en tema %s el pulgar (reposo y arrastre) contrasta ≥ 3:1 con las 3 superficies", (theme) => {
-  const css = globalCss();
+  const css = scrollbarCss();
   const states = {
     reposo: varOf(rule(css, "*::-webkit-scrollbar-thumb")),
     arrastre: varOf(rule(css, "*::-webkit-scrollbar-thumb:active")),

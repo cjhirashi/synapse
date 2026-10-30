@@ -21,6 +21,10 @@ Leídos: `global.css`, `tokens.css`, `notes/notes.css`, `editor/editor.css`, `no
   vía por defecto y las propiedades estándar van bajo `@supports not selector(::-webkit-scrollbar)`
   (Firefox). Cada navegador usa un único mecanismo, sin conflicto. Firefox no ofrece estados
   hover/arrastre: limitación del navegador, no del estilo.
+- **Móvil (C-6), hallado en la revisión del diff (paso 6):** estilizar `::-webkit-scrollbar` en Chrome/
+  Android sustituye la barra overlay del sistema por una clásica permanente. Todo el bloque de barras
+  (WebKit + `@supports`) va dentro de `@media (hover: hover) and (pointer: fine)` (la misma condición que
+  ya usa `NoteEditor` para la vista previa). `color-scheme` queda fuera: es global.
 - **Riel (C-5):** con barra clásica de 8 px el contenido del riel de 56 px pasa de 56 a 48 px: los chips
   (34 px, `align-items: center`) y la marca activa (`left: -10px`, calculada sobre el centrado en 56)
   se correrían 4 px. Raíz: la barra ocupa espacio sólo cuando hay desborde. Solución:
@@ -63,6 +67,8 @@ Sin backend, sin dependencias, sin hex nuevos (`layoutCss.test.ts` RF-006 ya lo 
 5. **C-7:** test con `test-utils/wcag.ts`: `--border-control` y `--accent` (arrastre) ≥ 3:1 contra las
    tres superficies en ambos temas; comentario del POR QUÉ del hover excluido.
 6. **Revisión final del diff:** buscar aserciones débiles / criterios sin cubrir (C-1…C-7), corregir.
+   Resultado: C-6 (móvil) no estaba cubierto → test + bloque dentro de `@media (hover: hover) and
+   (pointer: fine)`; helper `atRule` sustituye al `while` ilegible del test.
 
 ## 4. Verificación
 
