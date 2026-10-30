@@ -1,6 +1,8 @@
 // Editor de la nota abierta (SPEC-0008 RF-007, RF-008, RF-016; PLAN-0008 §2.6, P-5).
 // Con editores falsos (textareas) para probar el estado del envoltorio; la prueba con los
 // editores reales (RF-008, byte a byte) está al final.
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createRef, useEffect, type ComponentProps } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
@@ -333,6 +335,18 @@ describe("cabecera del editor en 3 filas (H-010)", () => {
     expect(header(container).querySelector(".note-editor-row-3")).not.toBeNull();
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
     expect(header(container).querySelector(".note-editor-row-3")).toBeNull();
+  });
+
+  // C-7 (decisión de AIRA): con la tabla + los 9 controles, la Fila 3 hace scroll horizontal en pantallas
+  // angostas en vez de envolver a otra línea (para no empujar el documento hacia abajo); sus controles no
+  // se encogen. Es un criterio de estilo: se verifica leyendo editor.css, como otras reglas del editor.
+  it("C-7: la Fila 3 hace scroll horizontal y sus controles no se encogen", () => {
+    const css = readFileSync(resolve(__dirname, "./editor.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const row3 = css.match(/\.note-editor-row-3\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(row3).toMatch(/overflow-x: auto/);
+    expect(row3).toMatch(/flex-wrap: nowrap/);
+    const children = css.match(/\.note-editor-row-3 > \*\s*\{([^}]*)\}/)?.[1] ?? "";
+    expect(children).toMatch(/flex-shrink: 0/);
   });
 });
 
