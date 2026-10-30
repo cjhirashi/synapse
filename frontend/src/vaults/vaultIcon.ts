@@ -125,31 +125,32 @@ const COLOR_TOKEN: Readonly<Record<PaletteKey, string>> = {
 };
 
 /**
- * Color complementario de cada color de bóveda (H-014 §2.1, C-5/C-10): el de la MISMA paleta más
- * cercano a su opuesto (+180°) en el círculo cromático, calculado desde los hex de `tokens.css` (HSL).
- * Lo usan la negrita, la cursiva y los enlaces del markdown renderizado para destacar sin competir con
- * los encabezados (que llevan el color de la bóveda). No inventa colores: cada valor es un `PaletteKey`,
- * así existe como token en los dos temas igual que su original. (`fuchsia → lime` queda a 29° del opuesto
- * exacto por el hueco de la paleta entre `lime` y `success`; el resto del mapeo cae a menos de 12°.)
+ * Color secundario de cada color de bóveda (H-014, cambio de Carlos 2026-10-30): un color ANÁLOGO, el
+ * vecino de la MISMA paleta a ~20-40° en el círculo cromático, siempre avanzando en el mismo sentido
+ * (de rojo hacia naranja, amarillo, verde, azul, violeta, rosa). Antes era el complementario (+180°), que
+ * se veía demasiado marcado (cian → rojo). Lo usan la negrita, la cursiva y los enlaces del markdown
+ * renderizado: el cambio entre el color de la bóveda (encabezados) y el secundario es sutil. No inventa
+ * colores: cada valor es un `PaletteKey`, así existe como token en los dos temas. (`lime → success` queda
+ * a ~59° por el hueco de la paleta entre ambos; el resto cae entre 21° y 43°.)
  */
-export const COMPLEMENTARY: Readonly<Record<PaletteKey, PaletteKey>> = {
-  danger: "teal",
-  orange: "blue",
-  warning: "blue",
-  yellow: "indigo",
-  lime: "purple",
-  success: "pink",
-  emerald: "pink",
-  teal: "rose",
-  accent: "danger",
-  info: "orange",
-  blue: "orange",
-  indigo: "yellow",
-  violet: "lime",
-  purple: "lime",
-  fuchsia: "lime",
-  pink: "success",
-  rose: "teal",
+export const SECONDARY: Readonly<Record<PaletteKey, PaletteKey>> = {
+  danger: "orange",
+  orange: "yellow",
+  warning: "lime",
+  yellow: "lime",
+  lime: "success",
+  success: "teal",
+  emerald: "accent",
+  teal: "info",
+  accent: "blue",
+  info: "indigo",
+  blue: "indigo",
+  indigo: "violet",
+  violet: "fuchsia",
+  purple: "fuchsia",
+  fuchsia: "pink",
+  pink: "rose",
+  rose: "orange",
 };
 
 /** Nombre accesible en español de cada color (selector de RF-011; H-008 C-11). */

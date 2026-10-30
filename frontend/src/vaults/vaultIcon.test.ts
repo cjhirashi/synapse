@@ -8,7 +8,7 @@ import { initials as initialsFromRail } from "../notes/VaultRail";
 import {
   COLOR_LABELS,
   colorVar,
-  COMPLEMENTARY,
+  SECONDARY,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -70,19 +70,22 @@ test("RF-006 (H-008 C-10): PALETTE son 17 claves que existen como tokens hex en 
   }
 });
 
-test("H-014 C-5/C-10: COMPLEMENTARY mapea cada color de la paleta a su complementario calculado (§2.1)", () => {
-  // Tabla de §2.1: complementario = el color de la MISMA paleta más cercano al opuesto (+180°) en el
-  // círculo cromático, calculado desde los hex de tokens.css. Nunca inventa un color fuera de la paleta.
-  expect(COMPLEMENTARY).toEqual({
-    danger: "teal", orange: "blue", warning: "blue", yellow: "indigo", lime: "purple",
-    success: "pink", emerald: "pink", teal: "rose", accent: "danger", info: "orange",
-    blue: "orange", indigo: "yellow", violet: "lime", purple: "lime", fuchsia: "lime",
-    pink: "success", rose: "teal",
+test("H-014 C-5/C-10: SECONDARY mapea cada color de la paleta a su vecino análogo (cambio 2026-10-30)", () => {
+  // El secundario es el color de la MISMA paleta a ~20-40° (el siguiente en la rueda), no el opuesto:
+  // cambio sutil respecto al color de la bóveda. Nunca inventa un color fuera de la paleta.
+  expect(SECONDARY).toEqual({
+    danger: "orange", orange: "yellow", warning: "lime", yellow: "lime", lime: "success",
+    success: "teal", emerald: "accent", teal: "info", accent: "blue", info: "indigo",
+    blue: "indigo", indigo: "violet", violet: "fuchsia", purple: "fuchsia", fuchsia: "pink",
+    pink: "rose", rose: "orange",
   });
-  // Cobertura total y cierre: cada clave de la paleta tiene complementario, y todo complementario es a
-  // su vez una clave válida de la paleta (así `colorVar(COMPLEMENTARY[k])` siempre resuelve a un token).
-  expect(Object.keys(COMPLEMENTARY).sort()).toEqual([...PALETTE].sort());
-  for (const key of PALETTE) expect(PALETTE).toContain(COMPLEMENTARY[key]);
+  // Cobertura total y cierre: cada clave de la paleta tiene secundario, y todo secundario es a su vez
+  // una clave válida distinta de la propia (así `colorVar(SECONDARY[k])` siempre resuelve a un token).
+  expect(Object.keys(SECONDARY).sort()).toEqual([...PALETTE].sort());
+  for (const key of PALETTE) {
+    expect(PALETTE).toContain(SECONDARY[key]);
+    expect(SECONDARY[key], key).not.toBe(key);
+  }
 });
 
 test("RF-001: parseIcon lee «glifo[:color]» y degrada lo desconocido sin lanzar", () => {

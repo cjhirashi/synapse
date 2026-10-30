@@ -70,14 +70,14 @@ describe("MilkdownView", () => {
   });
 
   // H-014: el contenedor `.milkdown-view` publica el color de la bóveda (`--vault-accent`) y su
-  // complementario (`--vault-complement`, vía `COMPLEMENTARY`) como variables CSS; el `editor.css` las
+  // secundario (`--vault-secondary`, vía `SECONDARY`) como variables CSS; el `editor.css` las
   // lee con `color-mix` para pintar encabezados, negrita, cursiva, enlaces, cabecera de tabla y marcadores.
-  it("H-014 C-11/C-5: publica --vault-accent y --vault-complement en .milkdown-view según la bóveda", async () => {
+  it("H-014 C-11/C-5: publica --vault-accent y --vault-secondary en .milkdown-view según la bóveda", async () => {
     const { container } = await mount({ value: "hola", vaultColor: "blue" });
     const host = container.querySelector<HTMLElement>(".milkdown-view")!;
     expect(host.style.getPropertyValue("--vault-accent")).toBe("var(--vault-blue)");
-    // blue → orange (COMPLEMENTARY), orange → token --vault-orange.
-    expect(host.style.getPropertyValue("--vault-complement")).toBe("var(--vault-orange)");
+    // blue → indigo (SECONDARY), indigo → token --vault-indigo.
+    expect(host.style.getPropertyValue("--vault-secondary")).toBe("var(--vault-indigo)");
   });
 
   // H-014 C-8: cambiar de bóveda (nueva prop `vaultColor`) reasigna ambas variables sin recrear la vista
@@ -86,10 +86,10 @@ describe("MilkdownView", () => {
     const { container, rerender } = await mount({ value: "hola", vaultColor: "accent" });
     const host = () => container.querySelector<HTMLElement>(".milkdown-view")!;
     expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--accent)");
-    expect(host().style.getPropertyValue("--vault-complement")).toBe("var(--danger)"); // accent → danger
+    expect(host().style.getPropertyValue("--vault-secondary")).toBe("var(--vault-blue)"); // accent → blue
     rerender(<MilkdownView value="hola" readOnly={false} onChange={() => {}} label="Visual" vaultColor="rose" />);
     expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--vault-rose)");
-    expect(host().style.getPropertyValue("--vault-complement")).toBe("var(--vault-teal)"); // rose → teal
+    expect(host().style.getPropertyValue("--vault-secondary")).toBe("var(--vault-orange)"); // rose → orange
   });
 
   // RF-008
