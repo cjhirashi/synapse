@@ -309,12 +309,16 @@
   padding: 0;
 }
 
-/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). */
+/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). Una sola columna del
+   ancho de su fila más ancha: cada fila se estira a ella, así su fondo cubre el ancho visible también
+   desplazado (H-023 C-2). */
 .note-tree {
   flex: 1 1 auto;
   min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(100%, max-content);
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .note-tree-item {
@@ -363,11 +367,9 @@
   color: var(--vault-icon-color, var(--warning));
 }
 
-/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`, RF-010). */
+/* Nombre en una línea sin elipsis: el árbol desplaza en horizontal en vez de recortarlo (H-023 C-1). */
 .note-tree-name {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

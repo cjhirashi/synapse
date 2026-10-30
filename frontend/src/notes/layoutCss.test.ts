@@ -25,6 +25,15 @@ test("RNF-001: el árbol de notas tiene scroll vertical propio", () => {
   expect(rule(read("notes.css"), ".note-tree")).toMatch(/overflow-y: auto/);
 });
 
+// H-023 C-1/C-2: una sola columna del ancho de la fila más ancha; cada fila se estira a ella, así su fondo
+// cubre el ancho visible aunque el árbol esté desplazado.
+test("H-023 C-1/C-2: el árbol desplaza en horizontal con una columna del ancho de su fila más ancha", () => {
+  const tree = rule(read("notes.css"), ".note-tree");
+  expect(tree).toMatch(/overflow-x: auto/);
+  expect(tree).toMatch(/display: grid/);
+  expect(tree).toMatch(/grid-template-columns: minmax\(100%, max-content\)/);
+});
+
 test("RF-009: el marco de la app mide el viewport y cada columna hace su propio scroll", () => {
   const layout = read("../layout/AppLayout.css");
   expect(rule(layout, ".app-shell")).toMatch(/height: 100dvh/);
@@ -58,9 +67,10 @@ test("RF-003: el formulario «Nueva nota» y el panel del árbol tienen fondos d
   expect(rule(notes, ".vault-workspace-side")).toMatch(/width: 240px/);
 });
 
-test("RF-010: el nombre de una fila se recorta con elipsis en una sola línea", () => {
+// H-023 C-1 retira el elipsis de RF-010 en el árbol: el nombre completo se lee desplazando.
+test("H-023 C-1: el nombre de una fila va en una sola línea y sin elipsis", () => {
   const name = rule(read("notes.css"), ".note-tree-name");
-  expect(name).toMatch(/text-overflow: ellipsis/);
+  expect(name).not.toMatch(/overflow/);
   expect(name).toMatch(/white-space: nowrap/);
   expect(name).toMatch(/min-width: 0/);
 });
