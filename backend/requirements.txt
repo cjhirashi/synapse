@@ -11,3 +11,5 @@ PyJWT==2.8.0
 pydantic-settings==2.3.4
 python-dotenv==1.0.1
 PyYAML==6.0.3  # export del contrato OpenAPI (scripts/export_openapi.py) y test de deriva
+minio==7.2.20  # H-015: cliente del almacén de objetos (sólo lo importa app/adapters/minio_adapter.py)
+python-multipart==0.0.32  # H-015: FastAPI lo necesita para la subida multipart de POST /files
