@@ -110,8 +110,12 @@ de `@milkdown/preset-commonmark`.
   destinos a archivos no-`.md` (`.docx`, `.pdf`, etc.) — nunca resuelven.
 - **C-5:** El wikilink NO DEBE ser clickeable/navegable todavía (fuera de
   alcance, H-012) — solo visual.
-- **C-6:** En vista Código y en modo Lectura, el contenido DEBE seguir
-  mostrando la sintaxis `[[...]]` tal cual está en el markdown.
+- **C-6 (corregido 2026-10-30, tras checkpoint visual):** la primera versión
+  solo pintaba el wikilink como enlace en edición Visual; Carlos corrigió que
+  **Lectura es donde más se usa** (ahí es donde se navega de verdad), así que
+  el estilo de C-3/C-4 DEBE aplicar también en Lectura. Solo en vista
+  **Código** (`CodeView`, componente de texto plano aparte) el contenido
+  sigue mostrando la sintaxis `[[...]]` literal.
 - **C-7 (id interno, pedido por Carlos):** CUANDO un wikilink resuelve a una
   nota, el nodo/marca DEBE cargar el `id` de esa nota como atributo interno
   (no el nombre) — el texto en pantalla/markdown sigue siendo el nombre
