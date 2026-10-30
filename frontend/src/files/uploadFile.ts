@@ -12,6 +12,14 @@ import { request } from "../api/auth";
 /** Límite por archivo (C-2/C-6); el backend aplica el mismo. */
 export const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
+/** Base de la URL estable y pública de cada archivo (C-1): la sesión de Synapse vive en este dominio. */
+export const FILE_URL_BASE = "https://synapse.cjhirashi.com/files";
+
+/** URL absoluta `https` de un archivo por id; pasa `safeImageUrl` sin cambios (C-4). */
+export function fileUrl(id: string): string {
+  return `${FILE_URL_BASE}/${id}`;
+}
+
 /** Tipos de imagen admitidos (C-1): png, jpeg, webp, gif y svg (saneado en el backend, C-5). */
 export const ALLOWED_IMAGE_TYPES = [
   "image/png",

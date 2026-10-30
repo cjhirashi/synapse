@@ -26,6 +26,7 @@ import {
   imageAttr,
   imageSchema,
   insertHrCommand,
+  insertImageCommand,
   linkAttr,
   linkSchema,
   toggleEmphasisCommand,
@@ -226,6 +227,8 @@ export interface EditorCommands {
   wrapBulletList: () => void;
   /** Convierte el bloque del cursor en una lista numerada. */
   wrapOrderedList: () => void;
+  /** Inserta en el cursor una imagen `![alt](url)` (H-015); la URL se filtra con `safeImageUrl` al pintarla. */
+  insertImage: (url: string, alt: string) => void;
 }
 
 interface MilkdownViewProps {
@@ -574,6 +577,9 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           insertHr: () => run(insertHrCommand.key),
           wrapBulletList: () => run(wrapInBulletListCommand.key),
           wrapOrderedList: () => run(wrapInOrderedListCommand.key),
+          // H-015: inserta la imagen subida en el cursor; el markdown queda `![alt](url)` y la
+          // URL (https absoluta) pasa `safeImageUrl` sin cambiar al pintarla (C-1/C-4).
+          insertImage: (url: string, alt: string) => run(insertImageCommand.key, { src: url, alt }),
         });
       }
     });
