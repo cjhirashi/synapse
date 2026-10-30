@@ -1,14 +1,17 @@
 ---
 id: H-021
 titulo: Vista previa emergente de wikilinks en Lectura (y crear la nota faltante en la carpeta de origen)
-estado: tomada # Gate 1 pasado — Carlos respondió P-1..P-4 (2026-10-30); se implementa DESPUÉS de mergear H-015 (ambas tocan MilkdownView.tsx y NoteEditor.tsx).
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30). Implementado por AIRA en Modo 2 (2026-10-30); pendiente verificación en navegador por AIRA (hover real, CDP) antes de 'verified'.
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/MilkdownView.test.tsx
   - frontend/src/editor/WikilinkPreview.tsx
+  - frontend/src/editor/WikilinkPreview.test.tsx
   - frontend/src/editor/NoteEditor.tsx
+  - frontend/src/editor/NoteEditor.test.tsx
   - frontend/src/editor/editor.css
   - frontend/src/notes/VaultWorkspacePage.tsx
+  - frontend/src/notes/VaultWorkspacePage.wikilink.test.tsx
 origen: backlog
 ---
 
@@ -97,7 +100,17 @@ se lee de la réplica local, sin red.
 
 ## 6. Tabla de cobertura
 
-(se llena al implementar)
+| Criterio | Paso(s) de implementación | Prueba(s) |
+|---|---|---|
+| **C-1** (tarjeta con título + inicio renderizado tras ~400 ms, puntero sobre resuelto en Lectura) | `MilkdownView` plugin hover `onWikilinkHover`; `WikilinkPreview` (retardo, título, cuerpo); `NoteEditor` lo monta en Lectura | `MilkdownView.test.tsx` «hover · C-1»; `WikilinkPreview.test.tsx` «C-1/P-3», «C-1/P-1»; `NoteEditor.test.tsx` «vista previa · C-1» |
+| **C-2** (~320 px, ~12 líneas máx, desvanecido si sigue) | `WikilinkPreview` ancho 320 + `data-more`; `editor.css` `.wikilink-preview*` (max-height 18em, mask) | `WikilinkPreview.test.tsx` «C-1/P-1» (cuerpo truncado); verificación visual AIRA (geometría, jsdom no mide) |
+| **C-3** (se oculta al salir del enlace y de la tarjeta; no bloquea el clic; dentro de la ventana, sin scroll) | `MilkdownView` `mouseout`→null (no consume el evento); `WikilinkPreview` periodo de gracia + `mouseenter/leave`; `position: fixed` con reposición arriba | `MilkdownView.test.tsx` «hover · C-3»; `WikilinkPreview.test.tsx` «C-3» (×2); reposición/scroll: verificación AIRA |
+| **C-4** (RNF-003 sin HTML crudo; wikilinks internos no navegables) | `WikilinkPreview` reusa la vista de sólo lectura SIN `onWikilinkClick`/`onWikilinkHover`; sin `innerHTML` | `WikilinkPreview.test.tsx` «C-4»; `securityGuard.test.ts` (RNF-003, verde) |
+| **C-5** (nada en Visual, Código ni sin puntero) | plugin hover sólo en `readOnly`; `NoteEditor` gatea por `matchMedia("(hover: hover) and (pointer: fine)")` y sólo en `mode==="read"` | `MilkdownView.test.tsx` «hover · C-5»; `NoteEditor.test.tsx` «C-5 edición», «C-5 sin puntero» |
+| **C-6** (roto sin extensión → aviso; con extensión ajena → sin tarjeta) | `WikilinkPreview` rama `resolvedId===null` con `hasUnmanagedExtension` | `MilkdownView.test.tsx` «hover · C-6»; `WikilinkPreview.test.tsx` «C-6» (×2) |
+| **C-7** (crear la nota en la carpeta de origen, o desde raíz si trae `/`, y abrir en edición) | `VaultWorkspacePage.openWikilink` usa `parentFolder(openPathRef)`; `/` → carpeta `""`; `WikilinkPreview.onCreate`→`onOpenWikilink` | `VaultWorkspacePage.wikilink.test.tsx` «C-7 carpeta de origen», «C-7 destino con `/`»; `NoteEditor.test.tsx` «C-7 crear desde la tarjeta» |
+| **C-8** (nota vacía → título + «Nota vacía») | `WikilinkPreview` rama `body.trim()===""` | `WikilinkPreview.test.tsx` «C-8» |
+| **C-9** (contraste mínimo del texto en ambos temas) | `editor.css` usa `--text-primary`/`--text-secondary` sobre `--bg-secondary`; sin `--text-muted`/`--accent` como texto | `contrast.test.ts` (RNF-004: `--text-primary`/`--text-secondary` ≥ 4,5:1 sobre las superficies; P-2 en `editor.css`, verde) |
 
 ## 7. Checkpoint demostrable
 
@@ -107,4 +120,40 @@ clic, la nota se crea en la misma carpeta del documento y se abre en edición.
 
 ## 8. Session-End
 
-Pendiente.
+**Claim.** Implementada la vista previa emergente de wikilinks en Lectura (C-1…C-6,
+C-8, C-9) y el cambio de C-7 (la nota rota se crea en la carpeta de la nota de
+origen, no en la raíz). 9/9 criterios con ≥1 paso y ≥1 prueba (tabla §6).
+
+**Evidencia.** 4 commits atómicos citando H-021 (ciclo Driver/Navigator, un paso TDD
+por commit, test rojo→código→verde):
+- `H-021 C-7: crear la nota rota en la carpeta de la nota de origen` — `VaultWorkspacePage.tsx` + tests.
+- `H-021 C-1/C-5/C-6: detectar hover sobre wikilinks en Lectura` — plugin `MilkdownView.tsx` + tests.
+- `H-021 C-1/C-2/C-3/C-4/C-6/C-8: componente WikilinkPreview` — `WikilinkPreview.tsx` + tests.
+- `H-021 C-2/C-5/C-7/C-9: montar la tarjeta en Lectura + estilos` — `NoteEditor.tsx` + `editor.css` + tests.
+
+Suites tocadas en verde (177/177): `MilkdownView.test.tsx` (56), `NoteEditor.test.tsx`
+(80), `WikilinkPreview.test.tsx` (8), `VaultWorkspacePage.wikilink.test.tsx` (4),
+`contrast.test.ts`, `securityGuard.test.ts`. `npm run typecheck` limpio.
+
+**Línea base.** Antes de empezar: `npx vitest run` → 1773/1774; el único fallo
+(`App.test.tsx` «/vaults/new») es intermitente por timing bajo carga (pasa aislado:
+19/19), NO introducido por H-021. Igual naturaleza que el intermitente de NoteSidebar
+«Nueva carpeta» (H-007) que se indicó ignorar.
+
+**Gaps / verificación pendiente (NO marcar `verified`).** jsdom no ejerce el hover real,
+`posAtCoords`/`posAtDOM` con geometría, ni `getBoundingClientRect` (devuelve ceros): la
+posición de la tarjeta (reposición arriba/lado, «sin provocar scroll», ~320 px/~12 líneas
+con desvanecido) y el hover real con puntero quedan para verificación en navegador por AIRA
+(usuario + bóveda desechables, hover vía CDP) — lección H-012. Los tests simulan lo que
+ProseMirror entrega de verdad (evento DOM real sobre `<a.wikilink>`, marca resuelta por
+posición), no el nodo ideal.
+
+**Riesgo residual.** Bajo. El hover usa `view.posAtDOM(link.firstChild ?? link, 0)` (no
+`posAtCoords`): elegido porque el evento DOM ya trae el elemento del enlace (de ahí sale su
+rectángulo) y porque es ejercitable en jsdom; resuelve la marca POR POSICIÓN como exige la
+lección H-012. Si en navegador `posAtDOM` fallara en algún borde, el síntoma sería una
+tarjeta que no aparece (no un error), fácil de detectar en la verificación.
+
+**Próximo paso.** AIRA: revisar el diff, verificar en navegador real (hover sobre resuelto,
+roto, nota vacía; crear nota rota y comprobar que cae en la carpeta de origen), y si pasa el
+checkpoint demostrable marcar `verified`, mergear, desplegar. No hice push ni merge.
