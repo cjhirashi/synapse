@@ -1138,6 +1138,18 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
     expect(received).toEqual(vaultNotes);
   });
 
+  // H-014 C-8: el `Workspace` pasa el color de la bóveda y el editor lo reenvía a la vista Visual por su
+  // prop `vaultColor`, para que `.milkdown-view` publique las variables de color del documento.
+  it("H-014: reenvía `vaultColor` a la vista Visual", async () => {
+    let received: string | undefined = "no-render";
+    function CapturingVisual({ value, onChange, label, readOnly, vaultColor }: ViewProps) {
+      received = vaultColor;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, vaultColor: "purple" });
+    expect(received).toBe("purple");
+  });
+
   // H-012: en Lectura, el editor cablea el clic de wikilink de la vista Visual (`onWikilinkClick`) a su
   // propio callback `onOpenWikilink`, que el `Workspace` usa para navegar o crear.
   it("reenvía el clic de wikilink de la vista (Lectura) a `onOpenWikilink`", async () => {
