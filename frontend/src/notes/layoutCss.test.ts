@@ -105,6 +105,16 @@ test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del complementario;
   expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
 });
 
+test("H-014 C-11: la cabecera de tabla (th) usa fondo tenue y texto al 100 % del color de la bóveda", () => {
+  const th = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror th");
+  expect(th).toMatch(/background: color-mix\(in srgb, var\(--vault-accent\) 15%, transparent\)/);
+  expect(th).toMatch(/color: var\(--vault-accent\)/);
+});
+
+test("H-014 C-6: el marcador de lista va al color de bóveda en la intensidad de H4 (el texto del ítem no cambia)", () => {
+  expect(colorOf(editorCss(), ".milkdown-view .ProseMirror li::marker")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))");
+});
+
 // SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
 test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
   const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");

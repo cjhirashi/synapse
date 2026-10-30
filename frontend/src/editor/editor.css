@@ -1016,6 +1016,12 @@
   margin: 0;
 }
 
+/* H-014 (C-6): el marcador de la lista (la viñeta o el número, no el texto del ítem) lleva el color de la
+   bóveda a la intensidad de H4 (el tinte más sutil, misma fórmula que P-1) — un acento estructural discreto. */
+.milkdown-view .ProseMirror li::marker {
+  color: color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary));
+}
+
 .milkdown-view .ProseMirror pre {
   padding: var(--space-3);
   overflow-x: auto;
@@ -1365,8 +1371,11 @@
   margin: 0;
 }
 
+/* H-014 (C-11): la cabecera de tabla lleva el color de la bóveda — fondo tenue (`color-mix` al 15 % sobre
+   transparente, antes `--bg-tertiary`) y texto al 100 % (`--vault-accent`). El cuerpo de la tabla no cambia. */
 .milkdown-view .ProseMirror th {
-  background: var(--bg-tertiary);
+  background: color-mix(in srgb, var(--vault-accent) 15%, transparent);
+  color: var(--vault-accent);
   font-size: 13px;
   font-weight: 600;
 }
