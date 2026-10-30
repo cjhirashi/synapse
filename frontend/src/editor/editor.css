@@ -1497,3 +1497,19 @@ li.note-task[data-checked="true"] .note-task-body {
 .code-view .sx-strong .sx-meta {
   color: inherit;
 }
+
+/* Wikilinks `[[...]]` en edición Visual (H-011). Resuelto: color de acento + subrayado, distinguible del
+   texto normal (C-3). Roto (`data-broken`, C-4): color de peligro + subrayado punteado, visible pero
+   marcado como inválido. No son navegables aún (C-5): sin `href` y con cursor de texto, no de puntero. */
+.milkdown-view .ProseMirror a.wikilink {
+  color: var(--accent-hover);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: text;
+}
+
+.milkdown-view .ProseMirror a.wikilink[data-broken] {
+  color: var(--danger-text);
+  text-decoration-style: dashed;
+}

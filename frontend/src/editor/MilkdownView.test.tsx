@@ -18,7 +18,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[] }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -28,6 +28,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       onChange={onChange}
       label="Visual"
       prefix={props.prefix}
+      notes={props.notes}
       onView={(v) => {
         view = v;
       }}
@@ -553,5 +554,83 @@ describe("MilkdownView · Mermaid", () => {
     await waitFor(() => expect(mermaid.render.mock.calls.length).toBe(calls + 1), { timeout: 2000 });
     expect(Date.now() - typedAt).toBeLessThan(500);
     await waitFor(() => expect(preview(container)?.textContent).toContain("A  C"));
+  });
+});
+
+// H-011: wikilinks `[[Destino]]`/`[[Destino|Alias]]`. En edición Visual se reconocen y se pintan como
+// enlace (C-1, C-3); el destino sin nota `.md` se pinta "roto" (C-4); el round-trip conserva `[[...]]`
+// sin escapar (C-2); el `id` resuelto vive en la marca (C-7); no son navegables aún (C-5); en lectura el
+// texto sigue literal (C-6).
+describe("MilkdownView · wikilinks (H-011)", () => {
+  const NOTES = [
+    { id: "note:v:1", path: "Nota A.md" },
+    { id: "note:v:2", path: "carpeta/Destino.md" },
+  ];
+
+  /** Atributos de la primera marca `wikilink` del documento (C-7), o `null` si no hay ninguna. */
+  function wikilinkMark(view: EditorView): { target: string; alias: string | null; resolvedId: string | null } | null {
+    let found: { target: string; alias: string | null; resolvedId: string | null } | null = null;
+    view.state.doc.descendants((node) => {
+      if (found) return false;
+      const mark = node.marks.find((m) => m.type.name === "wikilink");
+      if (mark) found = mark.attrs as { target: string; alias: string | null; resolvedId: string | null };
+      return true;
+    });
+    return found;
+  }
+
+  it("C-1/C-3: `[[Nota A]]` se pinta como enlace con el destino, resuelto (sin data-broken) y sin href (C-5)", async () => {
+    const { container } = await mount({ value: "ver [[Nota A]] fin", notes: NOTES });
+    const link = container.querySelector("a.wikilink");
+    expect(link).not.toBeNull();
+    expect(link).toHaveTextContent("Nota A");
+    expect(link!.hasAttribute("data-broken")).toBe(false);
+    expect(link!.hasAttribute("href")).toBe(false); // C-5: no navegable todavía
+  });
+
+  it("C-3: con alias muestra el alias, no el destino", async () => {
+    const { container } = await mount({ value: "[[Nota A|Mi alias]]", notes: NOTES });
+    const link = container.querySelector("a.wikilink");
+    expect(link).toHaveTextContent("Mi alias");
+    expect(link).not.toHaveTextContent("Nota A");
+  });
+
+  it("C-4: un destino sin nota `.md` se pinta como enlace roto (data-broken), sin ocultarse", async () => {
+    const { container } = await mount({ value: "[[No existe]]", notes: NOTES });
+    const link = container.querySelector("a.wikilink");
+    expect(link).not.toBeNull();
+    expect(link!.hasAttribute("data-broken")).toBe(true);
+    expect(link).toHaveTextContent("No existe");
+  });
+
+  it("C-4: un destino a archivo no-`.md` (.docx) nunca resuelve (roto)", async () => {
+    const { container } = await mount({ value: "[[Nota A.docx]]", notes: NOTES });
+    expect(container.querySelector("a.wikilink")!.hasAttribute("data-broken")).toBe(true);
+  });
+
+  it("C-7: la marca carga el `id` resuelto (resuelto entrega id; roto entrega null)", async () => {
+    const { view } = await mount({ value: "[[Nota A]]", notes: NOTES });
+    expect(wikilinkMark(view)).toMatchObject({ target: "Nota A", alias: null, resolvedId: "note:v:1" });
+    const broken = await mount({ value: "[[No existe]]", notes: NOTES });
+    expect(wikilinkMark(broken.view)).toMatchObject({ target: "No existe", resolvedId: null });
+  });
+
+  it("C-2: el round-trip conserva `[[Destino]]` y `[[Destino|Alias]]` sin escapar", async () => {
+    const onChange = vi.fn();
+    const { view } = await mount({ value: "ver [[Nota A]] y [[Destino|Alias]] fin", onChange, notes: NOTES });
+    act(() => {
+      view.dispatch(view.state.tr.insertText("!", view.state.doc.content.size - 1));
+    });
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    const emitted = onChange.mock.calls.at(-1)?.[0] as string;
+    expect(emitted).toContain("[[Nota A]]");
+    expect(emitted).toContain("[[Destino|Alias]]");
+    expect(emitted).not.toContain("\\["); // no se escapan los corchetes (el bug que cierra H-011)
+  });
+
+  it("C-6: en modo Lectura el contenido sigue mostrando `[[...]]` literal (sin marca de enlace)", async () => {
+    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES });
+    expect(container.querySelector("a.wikilink")).toBeNull();
+    expect(container.querySelector(".ProseMirror")).toHaveTextContent("ver [[Nota A]] fin");
   });
 });

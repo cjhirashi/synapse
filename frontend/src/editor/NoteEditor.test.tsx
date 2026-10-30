@@ -1123,3 +1123,18 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
     });
   });
 });
+
+// H-011: el `Workspace` pasa las notas vivas y el editor las reenvía a la vista Visual para resolver
+// wikilinks. Aquí se verifica sólo el cableado (la resolución y el pintado se prueban en MilkdownView).
+describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
+  it("reenvía `vaultNotes` a la vista Visual por su prop `notes`", async () => {
+    let received: readonly { id: string; path: string }[] | undefined;
+    function CapturingVisual({ value, onChange, label, readOnly, notes }: ViewProps) {
+      received = notes;
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const vaultNotes = [{ id: "note:v:1", path: "Nota A.md" }];
+    await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, vaultNotes });
+    expect(received).toEqual(vaultNotes);
+  });
+});

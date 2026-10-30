@@ -50,6 +50,7 @@ import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { frontmatterTooLargeMessage, frontmatterYamlMessage, noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
+import type { NoteRef } from "./wikilink";
 import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
@@ -90,6 +91,8 @@ export interface ViewProps {
   registerCommands?: (commands: EditorCommands | null) => void;
   /** Informa de si el cursor está en una tabla; sólo Visual (RF-025, P-7). */
   onTableContext?: (inTable: boolean) => void;
+  /** Notas vivas de la bóveda para resolver wikilinks (H-011); sólo las usa la vista Visual en edición. */
+  notes?: readonly NoteRef[];
 }
 
 export interface NoteEditorViews {
@@ -138,6 +141,11 @@ interface NoteEditorProps {
    * micromark en el hilo principal. Sin caché, el editor parsea en frío como siempre.
    */
   parseCache?: Pick<ParseCache, "get" | "pending"> | null;
+  /**
+   * Notas vivas de la bóveda para resolver wikilinks (H-011): el padre (`Workspace`) las pasa igual que
+   * `parseCache`/`vaultColor`. La vista Visual en edición resuelve cada `[[Destino]]` contra esta lista.
+   */
+  vaultNotes?: readonly NoteRef[];
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -150,7 +158,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -961,10 +969,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <>
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
-              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} />
+              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} />
             </>
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}
