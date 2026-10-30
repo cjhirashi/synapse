@@ -270,6 +270,12 @@ interface MilkdownViewProps {
    * su nombre contra estas notas (ver `wikilink.ts`).
    */
   notes?: readonly NoteRef[];
+  /**
+   * Clic sobre un wikilink, SÓLO en Lectura (H-012 C-1/C-3): entrega el `resolvedId` de la nota destino (o
+   * `null` si está roto) y el `target` tal cual, para que el padre navegue o decida crear. En edición (Visual
+   * o Código) el handler ni se registra, así que un clic ahí nunca navega (C-4/C-5).
+   */
+  onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -285,7 +291,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
@@ -306,6 +312,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   registerCommandsRef.current = registerCommands;
   const onTableContextRef = useRef(onTableContext);
   onTableContextRef.current = onTableContext;
+  const onWikilinkClickRef = useRef(onWikilinkClick);
+  onWikilinkClickRef.current = onWikilinkClick;
   /** Último valor informado por `onTableContext` (sólo se informan los cambios). */
   const inTableRef = useRef(false);
   /** Pendiente de enfocar al estar listo el primer editor (se consume una vez: recrearlo por un `value` nuevo no roba el foco). */
@@ -459,6 +467,23 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
                 },
               }),
             }),
+            // H-012 C-1/C-3: clic en un wikilink, SÓLO en Lectura. El handler lee la marca `wikilink` del nodo
+            // clicado (su `resolvedId`/`target`, sin viaje por el DOM) y avisa al padre para navegar o crear. En
+            // edición ni se añade (C-4/C-5): un clic ahí coloca el cursor como siempre.
+            ...(readOnly
+              ? [
+                  new Plugin({
+                    props: {
+                      handleClickOn: (_view, _pos, node) => {
+                        const mark = node.marks.find((m) => m.type.name === "wikilink");
+                        if (!mark) return false;
+                        onWikilinkClickRef.current?.({ resolvedId: (mark.attrs.resolvedId as string | null) ?? null, target: mark.attrs.target as string });
+                        return true; // consume el clic: no coloca selección ni sigue propagando
+                      },
+                    },
+                  }),
+                ]
+              : []),
           ),
         );
       });
