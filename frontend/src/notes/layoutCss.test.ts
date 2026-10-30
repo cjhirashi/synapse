@@ -64,7 +64,31 @@ test("RF-003: el formulario «Nueva nota» y el panel del árbol tienen fondos d
   const notes = read("notes.css");
   expect(rule(notes, ".note-sidebar-new")).toMatch(/background: var\(--bg-tertiary\)/);
   expect(rule(notes, ".note-tree-panel")).toMatch(/background: var\(--bg-secondary\)/);
-  expect(rule(notes, ".vault-workspace-side")).toMatch(/width: 240px/);
+  expect(rule(notes, ".vault-workspace-side")).toMatch(/width: var\(--side-width, 240px\)/);
+});
+
+// H-023 C-4/C-9: el asa va anclada a la orilla de la barra, que toma su ancho de la variable que pone la
+// página en escritorio; el panel del editor se encoge (min-width: 0) y no fuerza scroll horizontal.
+test("H-023 C-9: la barra ancla el asa y el panel del editor absorbe el cambio de ancho", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, ".vault-workspace-side")).toMatch(/position: relative/);
+  expect(rule(notes, ".vault-workspace-main")).toMatch(/min-width: 0/);
+});
+
+test("H-023 C-4: el asa ocupa la orilla derecha de la barra con cursor de redimensión", () => {
+  const notes = read("notes.css");
+  const handle = rule(notes, ".sidebar-resize-handle");
+  expect(handle).toMatch(/position: absolute/);
+  expect(handle).toMatch(/right: 0/);
+  expect(handle).toMatch(/width: 6px/);
+  expect(handle).toMatch(/cursor: col-resize/);
+  expect(handle).toMatch(/touch-action: none/);
+});
+
+test("H-023 C-4: durante el arrastre el cursor es de redimensión y el texto no se selecciona", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, "body.is-resizing")).toMatch(/cursor: col-resize/);
+  expect(rule(notes, "body.is-resizing")).toMatch(/user-select: none/);
 });
 
 // H-023 C-1 retira el elipsis de RF-010 en el árbol: el nombre completo se lee desplazando.

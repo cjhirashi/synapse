@@ -10,7 +10,7 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { whenIdle } from "../editor/deferred/idle";
@@ -22,6 +22,8 @@ import { canStep, type History, load as loadHistory, push, save as saveHistory, 
 import { parentFolder } from "./folders";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
+import SidebarResizeHandle from "./SidebarResizeHandle";
+import { useSidebarWidth } from "./useSidebarWidth";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
@@ -158,6 +160,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // (≤ 640 px). `isMobile` decide el MODO; `sidebarOpen` la visibilidad. Mismo media query que usa
   // `NoteSidebar` para su bloque de creación compacto (640 px), vía el mismo `useMediaQuery`.
   const isMobile = useMediaQuery("(max-width: 640px)");
+  // H-023 C-4/C-6: el ancho es ajustable sólo en escritorio; tableta y móvil quedan en la hoja (240 px).
+  // El estado vive aquí y no en el asa, así sobrevive a ocultar la barra (C-8).
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const { width: sidebarWidth, setWidth: setSidebarWidth, reset: resetSidebarWidth } = useSidebarWidth();
   // Default por ancho (C-3/C-4): oculta en móvil, visible en tableta/escritorio. Sin persistencia
   // entre sesiones (Descartes): cada apertura de bóveda usa el default del ancho actual.
   const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
@@ -387,6 +393,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         // `.vault-workspace`, no al viewport — ver nota en notes.css) en móvil (C-2/C-5).
         data-open={sidebarOpen ? "" : undefined}
         data-floating={isMobile ? "" : undefined}
+        style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
       >
         {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. El
             botón de alternar ya no vive aquí (H-009 corregido): se movió a la fila de título del editor
@@ -406,6 +413,9 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
           onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
         />
+        {isDesktop && sidebarOpen && (
+          <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
+        )}
       </div>
       <div className="vault-workspace-main">
         {showTrash && (

@@ -490,15 +490,44 @@
   position: relative;
 }
 
-/* Barra lateral: 240 px, fondo `--bg-secondary` y borde derecho, pegada al riel (R-6, R-10, R-15). */
+/* Barra lateral: 240 px salvo `--side-width` (H-023: la página la fija en escritorio), fondo `--bg-secondary`
+   y borde derecho, pegada al riel (R-6, R-10, R-15). `relative` ancla el asa de redimensión. */
 .vault-workspace-side {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 240px;
+  width: var(--side-width, 240px);
   min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
+}
+
+/* Asa de la orilla derecha (H-023 C-4): 6 px sobre el borde. `touch-action: none` impide que un arrastre
+   táctil se convierta en desplazamiento de la página. */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--accent-soft);
+}
+
+.sidebar-resize-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Durante el arrastre el cursor no cambia al salir del asa y el texto de debajo no se selecciona (H-023 C-4). */
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* Cabecera de la barra (R-7, 51 px): carpeta abierta en acento + nombre de la bóveda con elipsis. */
