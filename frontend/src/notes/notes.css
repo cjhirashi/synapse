@@ -661,9 +661,9 @@
   font-size: 13px;
 }
 
-/* ≤ 640 px (T-049, H-2): el árbol apilado cede altura para que el editor quede a la vista. */
-@media (max-width: 640px) {
-  .note-tree {
-    max-height: 24vh;
-  }
-}
+/* El tope de 24vh (T-049, H-2) era del layout apilado pre-H-009, donde la barra iba arriba del editor
+   compartiendo el scroll de la página y el árbol tenía que cederle altura. H-009 la convirtió en ventana
+   flotante de alto completo (`top:0;bottom:0` en `.vault-workspace-side[data-floating][data-open]`) y
+   este tope quedó huérfano: cortaba el árbol a ~24% de la pantalla aunque el panel flotante ya tenía todo
+   el alto disponible (Carlos, captura 2026-10-30 — la lista de archivos no llenaba la sidebar). Retirado;
+   `.note-tree` ya hace su propio scroll con `flex: 1 1 auto; min-height: 0` dentro del panel flotante.
