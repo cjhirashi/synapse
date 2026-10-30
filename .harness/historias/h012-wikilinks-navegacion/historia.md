@@ -1,7 +1,7 @@
 ---
 id: H-012
 titulo: Wikilinks — navegar al hacer clic (y crear la nota si el destino no existe)
-estado: pendiente # Gate 1 NO pasado — criterios redactados por AIRA desde la directiva de Carlos (2026-10-30); falta su "así es".
+estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1..P-3: roto sin extensión crea+abre en edición, con extensión no hace nada; el clic SOLO navega en Lectura (en edición Visual nunca navega, sin excepción de modificador); abre en Lectura. En implementación vía Claude Code (Modo 2).
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/MilkdownView.test.tsx
@@ -28,61 +28,55 @@ dato para navegar, sin tener que volver a buscar por nombre.
 
 ## 2. Alcance / fuera de alcance
 
-- Dentro: clic (o Ctrl/Cmd+clic, según P-2) en un wikilink **resuelto**
-  abre esa nota en el workspace; clic en un wikilink **roto** — decisión en
-  P-1; estilo de cursor que indique que el enlace resuelto es clickeable.
-- Fuera: autocompletar al escribir `[[` (H-013); navegar a una sección
-  dentro de la nota (`[[Nota#Sección]]`, no visto en el contenido real);
-  navegación programática por agentes vía API REST (anotado en H-011 como
-  posible seguimiento — ver P-3, probablemente ya cubierto sin código nuevo).
+- Dentro: clic en un wikilink **resuelto**, SÓLO en modo Lectura, abre esa
+  nota en el workspace; clic en un wikilink **roto** en Lectura — crea+abre
+  si el destino no tiene extensión de archivo, no hace nada si la tiene;
+  estilo de cursor que indique que el enlace resuelto es clickeable.
+- Fuera: cualquier navegación por clic en edición Visual o Código (el clic
+  ahí nunca navega, ver P-2 resuelto); autocompletar al escribir `[[`
+  (H-013); navegar a una sección dentro de la nota (`[[Nota#Sección]]`, no
+  visto en el contenido real); navegación programática por agentes vía API
+  REST (ver Descartes — probablemente ya cubierto sin código nuevo).
 
-## 3. Preguntas de producto para Carlos (Gate 1)
+## 3. Decisiones de producto (Gate 1, Carlos, 2026-10-30 — "así es")
 
-**P-1 (clic en wikilink roto):** hoy un wikilink roto (nota inexistente o
-destino no-`.md`) sólo se ve distinto (subrayado punteado, color de
-peligro). Propuesta, estilo Obsidian: si el destino **no tiene extensión**
-(no es claramente un archivo que Synapse no maneja, como `.docx`/`.pdf`) y
-no existe ninguna nota con ese nombre, el clic **crea una nota nueva vacía**
-con ese nombre en la raíz de la bóveda y la abre en edición — como Obsidian.
-Si el destino SÍ tiene una extensión de archivo que Synapse no gestiona
-(`.docx`, `.pdf`, etc.), el clic no hace nada (no hay nota razonable que
-crear con ese nombre). ¿Así es, o prefieres que **ningún** wikilink roto
-haga nada al hacer clic (más simple, sin crear notas por accidente)?
+**P-1 (clic en wikilink roto) — resuelto:** si el destino **no tiene
+extensión** de archivo y no existe ninguna nota con ese nombre, el clic
+**crea una nota nueva vacía** con ese nombre en la raíz de la bóveda y la
+abre en edición — como Obsidian. Si el destino tiene una extensión que
+Synapse no gestiona (`.docx`, `.pdf`, etc.), el clic no hace nada.
 
-**P-2 (clic en modo edición Visual):** en Lectura no hay ambigüedad (clic =
-navegar). En edición Visual, un clic normal dentro de un wikilink hoy sólo
-coloca el cursor para seguir escribiendo/corrigiendo el texto — si el clic
-simple navegara ahí también, sería imposible editar el texto de un wikilink
-sin salir de la nota sin querer. Propuesta (como Obsidian): en edición
-Visual, **Ctrl/Cmd+clic** navega; el clic simple sigue colocando el cursor
-normalmente. En Lectura, clic simple navega (no hay nada que editar). ¿Así
-es, o prefieres que el clic simple navegue también en edición Visual?
+**P-2 (clic en modo edición Visual) — resuelto, más simple que mi
+propuesta:** el wikilink **sólo ejecuta la navegación en modo Lectura**. En
+edición Visual (y en Código, que ni siquiera tiene la marca) el clic
+**nunca navega** — ni con modificador. El clic ahí se comporta como
+siempre: coloca el cursor para editar. No hace falta distinguir Ctrl/Cmd+clic
+de clic simple; basta con que el handler de clic exista sólo cuando
+`readOnly` es `true`.
 
-**P-3 (abre en qué modo):** al navegar, ¿la nota destino abre en **Lectura**
-(igual que el resto de la navegación de la app — clic en el árbol, Atrás/
-Adelante) o en el mismo modo en que estaba la nota de origen? Propuesta:
-Lectura siempre, igual que el resto de la navegación existente, salvo que
-sea una nota recién creada por un wikilink roto (P-1), que abre en edición
-(ahí sí hay algo que escribir).
+**P-3 (abre en qué modo) — resuelto:** la nota destino abre en **Lectura**,
+igual que el resto de la navegación de la app, salvo la nota recién creada
+por un wikilink roto (P-1), que abre en edición.
 
-## 4. Criterios de aceptación (EARS booleano) — pendientes de P-1..P-3
+## 4. Criterios de aceptación (EARS booleano)
 
-- **C-1:** CUANDO el usuario hace clic (o Ctrl/Cmd+clic según el modo, P-2)
-  sobre un wikilink **resuelto**, el sistema DEBE abrir la nota de
-  `resolvedId` en el workspace (misma bóveda), sin perder el estado de la
-  nota de origen si el usuario regresa (Atrás/Adelante ya existente).
+- **C-1:** MIENTRAS la nota esté en modo Lectura, CUANDO el usuario hace
+  clic sobre un wikilink **resuelto**, el sistema DEBE abrir la nota de
+  `resolvedId` en Lectura (misma bóveda), sin perder el estado de la nota
+  de origen si el usuario regresa (Atrás/Adelante ya existente).
 - **C-2:** El wikilink resuelto DEBE mostrar un cursor de puntero (no de
   texto) para indicar que es clickeable, distinto del wikilink roto.
-- **C-3 (según P-1):** el comportamiento del clic sobre un wikilink roto
-  queda definido por P-1 — crear+abrir, o no hacer nada.
-- **C-4 (según P-2):** en Lectura, clic simple navega. En edición Visual, el
-  gesto de navegar es el que P-2 defina (Ctrl/Cmd+clic u otro) — un clic
-  simple sin ese modificador NUNCA debe navegar en edición Visual (rompería
-  poder editar el texto del wikilink).
+- **C-3:** MIENTRAS la nota esté en modo Lectura, CUANDO el usuario hace
+  clic sobre un wikilink **roto** cuyo destino no tiene extensión de
+  archivo, el sistema DEBE crear una nota vacía con ese nombre en la raíz
+  de la bóveda y abrirla en edición. CUANDO el destino SÍ tiene extensión
+  de archivo (`.docx`, `.pdf`, etc.), el clic NO DEBE hacer nada.
+- **C-4:** En edición Visual, el clic sobre un wikilink NUNCA DEBE navegar
+  ni crear nada — se comporta como clic en texto normal (coloca el cursor).
 - **C-5:** El wikilink NUNCA DEBE navegar desde la vista Código (sigue sin
   marca ahí, herencia de H-011 C-6).
 
-`[NEEDS CLARIFICATION] = 3` (P-1 a P-3) — se resuelven con tu "así es".
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó "así es" (2026-10-30).
 
 ## 5. Descartes (candidatos, a confirmar)
 
@@ -99,21 +93,26 @@ sea una nota recién creada por un wikilink roto (P-1), que abre en edición
 ## 6. Plan (de ESTA historia solamente) — borrador, se confirma al tomarla
 
 - `MilkdownView.tsx`: handler de clic a nivel de plugin ProseMirror
-  (`handleClickOn`/`handleDOMEvents.click`), no un atributo DOM nuevo — en
-  esa posición del documento ya se puede leer la marca `wikilink` y su
+  (`handleClickOn`/`handleDOMEvents.click`), registrado **sólo cuando
+  `readOnly` es `true`** (P-2: en edición no existe el handler, así que un
+  clic ahí nunca navega — no hace falta detectar modificadores). En esa
+  posición del documento ya se puede leer la marca `wikilink` y su
   `resolvedId` directo del nodo, sin viaje por el DOM. Expone un callback al
   padre (mismo patrón que `onRevealFolder`/`onRename` ya existentes en
-  `NoteEditor.tsx`) con el `resolvedId` (resuelto) o el `target` (roto, para
-  P-1 si aplica crear).
+  `NoteEditor.tsx`) con el `resolvedId` (resuelto) o el `target`+`broken`
+  (roto, para que el padre decida crear según P-1 si el target no trae
+  extensión de archivo).
   - CSS: `cursor: pointer` sólo en wikilinks resueltos (`a.wikilink:not([data-broken])`).
 - `NoteEditor.tsx` → `VaultWorkspacePage.tsx`: nuevo callback (p. ej.
   `onOpenWikilink`) que reusa la función `open(id)` ya existente para
-  navegar (mismo mecanismo que usa el historial Atrás/Adelante); si P-1
-  pide crear, reusa `notes.create(vaultId, "", target)` (ya usado por
-  `NoteSidebar.tsx`) antes de abrir.
-- Estrategia de prueba: `MilkdownView.test.tsx` (clic en resuelto dispara el
-  callback con el id correcto; en edición Visual, clic simple NO dispara,
-  Ctrl/Cmd+clic sí según P-2; clic en roto según P-1); `NoteEditor.test.tsx`/
+  navegar (mismo mecanismo que usa el historial Atrás/Adelante, abre en
+  Lectura); si el wikilink es roto y el target no tiene extensión (P-1),
+  reusa `notes.create(vaultId, "", target)` (ya usado por
+  `NoteSidebar.tsx`) y abre el resultado en edición.
+- Estrategia de prueba: `MilkdownView.test.tsx` (clic en resuelto, en
+  Lectura, dispara el callback con el id correcto; en edición Visual el
+  handler ni se registra — clic no dispara nada; roto sin extensión pide
+  crear, roto con extensión no hace nada); `NoteEditor.test.tsx`/
   `VaultWorkspacePage.test.tsx` si hace falta probar la navegación real.
 - Pasos TDD: se detallan al tomar la historia (§3 del método).
 
