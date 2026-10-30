@@ -281,6 +281,13 @@ interface MilkdownViewProps {
    */
   onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
   /**
+   * Puntero sobre un wikilink, SÓLO en Lectura (H-021 C-1/C-6): entrega el `resolvedId` (o `null` si está
+   * roto), el `target` y el rectángulo del enlace (`getBoundingClientRect`) para posicionar la tarjeta; al
+   * salir del enlace entrega `null`. Como el clic (H-012), la marca se resuelve POR POSICIÓN, no por el nodo
+   * ancestro de bloque (lección H-012). En edición (Visual o Código) el plugin ni se registra (C-5).
+   */
+  onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
+  /**
    * Color de la bóveda abierta (H-014): el contenedor `.milkdown-view` lo publica como `--vault-accent`
    * y su secundario (vía `SECONDARY`) como `--vault-secondary`, para que `editor.css` pinte con
    * `color-mix` los encabezados, la negrita, la cursiva, los enlaces, la cabecera de tabla y los
@@ -302,7 +309,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, vaultColor = "accent" }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent" }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
@@ -325,6 +332,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   onTableContextRef.current = onTableContext;
   const onWikilinkClickRef = useRef(onWikilinkClick);
   onWikilinkClickRef.current = onWikilinkClick;
+  const onWikilinkHoverRef = useRef(onWikilinkHover);
+  onWikilinkHoverRef.current = onWikilinkHover;
   /** Último valor informado por `onTableContext` (sólo se informan los cambios). */
   const inTableRef = useRef(false);
   /** Pendiente de enfocar al estar listo el primer editor (se consume una vez: recrearlo por un `value` nuevo no roba el foco). */
@@ -508,6 +517,55 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
                       },
                     },
                   }),
+                  // H-021 C-1/C-6: hover sobre un wikilink SÓLO en Lectura. `handleDOMEvents` de ProseMirror
+                  // entrega el evento DOM con su `target` ya resuelto por el navegador: de ahí sale tanto el
+                  // elemento del enlace (para su rectángulo) como —por su POSICIÓN en el documento— la marca
+                  // `wikilink` con `resolvedId`/`target`. Igual que el clic, la marca se resuelve por posición
+                  // (lección H-012: el nodo ancestro de bloque no la carga), no leyendo el DOM. `mouseover`
+                  // sólo avisa al ENTRAR a un enlace nuevo; `mouseout` avisa `null` al salir de él hacia fuera.
+                  // No consume el evento (`return false`): el clic de navegación (H-012) sigue intacto (C-3).
+                  (() => {
+                    let hovered: HTMLElement | null = null;
+                    const linkAt = (event: Event): HTMLElement | null => {
+                      const target = event.target;
+                      return target instanceof Element ? (target.closest("a.wikilink") as HTMLElement | null) : null;
+                    };
+                    const markAt = (view: EditorView, link: HTMLElement) => {
+                      const pos = view.posAtDOM(link.firstChild ?? link, 0);
+                      const $pos = view.state.doc.resolve(pos);
+                      const marks = [...($pos.nodeBefore?.marks ?? []), ...($pos.nodeAfter?.marks ?? [])];
+                      return marks.find((m) => m.type.name === "wikilink") ?? null;
+                    };
+                    return new Plugin({
+                      props: {
+                        handleDOMEvents: {
+                          mouseover: (view, event) => {
+                            const link = linkAt(event);
+                            if (!link || link === hovered) return false;
+                            const mark = markAt(view, link);
+                            if (!mark) return false;
+                            hovered = link;
+                            onWikilinkHoverRef.current?.({
+                              resolvedId: (mark.attrs.resolvedId as string | null) ?? null,
+                              target: mark.attrs.target as string,
+                              rect: link.getBoundingClientRect(),
+                            });
+                            return false;
+                          },
+                          mouseout: (_view, event) => {
+                            const link = linkAt(event);
+                            if (!link || link !== hovered) return false;
+                            // Moverse dentro del propio enlace (p. ej. entre nodos hijos) no cuenta como salir.
+                            const to = event.relatedTarget;
+                            if (to instanceof Node && link.contains(to)) return false;
+                            hovered = null;
+                            onWikilinkHoverRef.current?.(null);
+                            return false;
+                          },
+                        },
+                      },
+                    });
+                  })(),
                 ]
               : []),
           ),
