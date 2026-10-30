@@ -76,8 +76,8 @@ test("RF-005: el contenido del editor va en una columna centrada de 780 px sin t
   expect(rule(editor, ".note-editor-body")).not.toMatch(/border|background/);
 });
 
-// H-014: color tipográfico del markdown con el color de la bóveda (--vault-accent) y su complementario
-// (--vault-complement). Se parsea el CSS real (como el resto del archivo), no un snapshot visual.
+// H-014: color tipográfico del markdown con el color de la bóveda (--vault-accent) y su secundario
+// (--vault-secondary). Se parsea el CSS real (como el resto del archivo), no un snapshot visual.
 const editorCss = () => read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
 /** Valor de `color` de la regla cuyo selector es exactamente `selector` seguido de `{ color: … }`. */
 const colorOf = (css: string, selector: string) =>
@@ -92,16 +92,16 @@ test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto
   expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
 });
 
-test("H-014 C-5: negrita al 100 % del complementario; cursiva más tenue (70 % + --text-secondary)", () => {
+test("H-014 C-5: negrita al 100 % del secundario; cursiva más tenue (70 % + --text-secondary)", () => {
   const css = editorCss();
-  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--vault-complement)");
-  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-complement) 70%, var(--text-secondary))");
+  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--vault-secondary)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-secondary) 70%, var(--text-secondary))");
 });
 
-test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del complementario; el roto sigue en --danger-text", () => {
+test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del secundario; el roto sigue en --danger-text", () => {
   const css = editorCss();
-  expect(colorOf(css, ".milkdown-view .ProseMirror a")).toBe("var(--vault-complement)");
-  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a")).toBe("var(--vault-secondary)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink")).toBe("var(--vault-secondary)");
   expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
 });
 

@@ -310,3 +310,27 @@ neutro, sigue ≥ 4,5:1).
 decidir sobre el riesgo Medium de contraste del tema claro, y mergear +
 reconstruir/redesplegar + push (yo no pusheo ni mergeo). Tras el checkpoint,
 pasar `estado:` a `verified` y registrar en `memory/history.md`.
+
+## 10. Cambio posterior: secundario análogo en vez de complementario (2026-10-30)
+
+Carlos validó el complementario (§2.1) pero al verlo en uso no le gustó: el opuesto
+se veía demasiado marcado (en una bóveda cian, negritas y enlaces salían en rojo).
+Pidió un secundario **cercano** al primario, p. ej. azul → morado, para que el cambio
+sea sutil. §2.1 queda superada por esta tabla (análogo: vecino de la misma paleta a
+~20-40°, siempre en el mismo sentido de la rueda; `lime → success` a ~59° por el hueco
+de la paleta):
+
+danger→orange, orange→yellow, warning→lime, yellow→lime, lime→success, success→teal,
+emerald→accent, teal→info, accent→blue, info→indigo, blue→indigo, indigo→violet,
+violet→fuchsia, purple→fuchsia, fuchsia→pink, pink→rose, rose→orange.
+
+Implementado por AIRA directo (Gate 0, cambio chico): `COMPLEMENTARY` pasó a `SECONDARY` y
+`--vault-complement` a `--vault-secondary` (mismos usos: negrita 100 %, cursiva al 70 %,
+enlaces y wikilink resuelto). Sin cambios en H1-H4, cabecera de tabla, marcadores ni líneas.
+
+**Hallazgo de contraste (no resuelto aquí):** en el tema oscuro todos los pares cumplen
+≥ 4,5:1 sobre el fondo; en el tema claro varios colores de la paleta NO llegan a 4,5:1 como
+texto (amarillo 2,94, lima 3,09, verde 3,30, naranja 3,56, cian 3,68, verde azulado 3,74,
+azul cielo 4,10). Afecta igual al color primario de los encabezados y ya existía con el
+complementario. Pendiente: aclarar el texto de esos colores en tema claro (mezcla con
+`--text-primary`) si Carlos usa o va a usar el tema claro.
