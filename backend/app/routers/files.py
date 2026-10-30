@@ -16,8 +16,9 @@ from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
 from app.adapters.minio_adapter import MinioObjectStorage
 from app.core.dependencies import get_current_principal
-from app.core.errors import FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType
-from app.core.errors import VaultNotFound
+from app.core.errors import (
+    FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType, VaultNotFound,
+)
 from app.core.file_safety import SVG
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.ports.vault_port import VaultPort
