@@ -1572,3 +1572,66 @@ li.note-task[data-checked="true"] .note-task-body {
 .milkdown-view[data-mode="read"] .ProseMirror a.wikilink:not([data-broken]) {
   cursor: pointer;
 }
+
+/* H-021: tarjeta flotante de vista previa de un wikilink (portal a document.body, `position: fixed` en
+   línea). Fondo, borde y sombra del tema (contraste de texto ≥ 4,5:1 con `--text-primary`/`--text-secondary`
+   sobre `--bg-secondary`, C-9); por encima del editor. El ancho (~320 px) lo fija el componente. */
+.wikilink-preview {
+  z-index: 1000;
+  box-sizing: border-box;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-panel);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  animation: note-menu-in var(--dur-fast) var(--ease-out);
+}
+
+.wikilink-preview-title {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wikilink-preview-empty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* P-2 (C-2): ~12 líneas de alto máximo con desvanecido al final si el contenido continúa (`data-more`). */
+.wikilink-preview-body {
+  position: relative;
+  max-height: 18em;
+  overflow: hidden;
+}
+
+.wikilink-preview-body[data-more] {
+  -webkit-mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 72%, transparent 100%);
+}
+
+/* La vista reutilizada dentro de la tarjeta es compacta: sin el relleno del editor y sin tomar foco. */
+.wikilink-preview-body .milkdown-view .ProseMirror {
+  padding: 0;
+}
+
+/* El aviso del enlace roto: botón de texto legible y clickeable (C-6/C-7), sin apariencia de botón. */
+.wikilink-preview-create {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wikilink-preview-create:hover {
+  color: var(--vault-secondary);
+}
