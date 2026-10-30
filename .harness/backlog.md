@@ -7,12 +7,12 @@
 
 ## En curso
 
+- [~] H-015 — Subir imágenes a MinIO con visibilidad privada/pública y referenciarlas con `![]()` (URL estable `synapse.cjhirashi.com/files/<id>`, endpoint autenticado, límite 5 MB, botón + arrastrar-y-soltar; un solo bucket con prefijo por bóveda) → `historias/h015-archivos-imagenes-minio/historia.md`, Gate 1 pasado ("así es", 2026-10-30); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
-- [ ] H-015 — Subir imágenes a MinIO con visibilidad privada/pública y referenciarlas con `![]()` (URL estable `synapse.cjhirashi.com/files/<id>`, endpoint autenticado, límite 5 MB, botón + arrastrar-y-soltar) → `historias/h015-archivos-imagenes-minio/historia.md`, alcance reescrito con las decisiones de Carlos (2026-10-30); **falta su "así es" (Gate 1)** sobre esta versión y sobre la recomendación de un bucket con prefijo por bóveda. Infra ya lista (MinIO propio + bucket privado + `files-synapse.cjhirashi.com`, ésta sin uso hasta H-019).
 - [ ] H-016 — Pantalla de archivos en la app: elegir "bucket" (bóveda), listar, subir, abrir, descargar, renombrar, eliminar, copiar link, cambiar visibilidad, e **indicador de referencias** (si el archivo está usado en algún documento y en cuáles, para detectar basura; nada se borra solo). Sin redactar; depende de H-015.
 - [ ] H-017 — API de Synapse para que los agentes suban recursos y obtengan su link (caso de uso: AIRA carga los diagramas Archify en los documentos de diseño de su bóveda). Misma lógica que H-015/H-016 expuesta con API key. Sin redactar; depende de H-015.
 - [ ] H-018 — PDF y video como archivos adjuntos (visor/`<video>` nativos; contenido pasivo, mismo dominio principal; el video necesita su propio límite de tamaño, pendiente de definir con Carlos). Sin redactar.

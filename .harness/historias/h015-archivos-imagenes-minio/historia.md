@@ -1,7 +1,7 @@
 ---
 id: H-015
 titulo: Subir imágenes a MinIO, con visibilidad privada/pública, y referenciarlas con ![]()
-estado: pendiente # Gate 1 NO pasado — alcance reescrito con las decisiones de Carlos (2026-10-30); falta su "así es" sobre esta versión.
+estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a esta versión y a un solo bucket con prefijo por bóveda. En implementación vía Claude Code (Modo 2).
 covers:
   - backend/app/routers/files.py
   - backend/app/services/file_service.py
@@ -80,10 +80,10 @@ MinIO como almacén. Infraestructura ya lista (fuera de esta historia):
 - **C-8:** `PATCH /files/<id>` con `{"visibility": "public"|"private"}` DEBE
   cambiar la visibilidad sólo si el archivo es del usuario autenticado.
 
-`[NEEDS CLARIFICATION] = 0` salvo la pregunta de almacenamiento por bóveda
-(§5), que no bloquea esta historia si se acepta la recomendación.
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó "así es" (2026-10-30), incluida
+la recomendación de §5.
 
-## 5. Almacenamiento por bóveda (recomendación de AIRA, pendiente de "así es")
+## 5. Almacenamiento por bóveda (recomendación de AIRA, aceptada por Carlos)
 
 Carlos quiere ver una "lista de buckets". Recomendación: **un solo bucket
 físico (`synapse-files`) con un prefijo por bóveda**
