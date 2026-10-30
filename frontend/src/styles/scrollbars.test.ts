@@ -1,7 +1,7 @@
 // H-022: las barras de desplazamiento de toda la app salen de UNA regla global (`global.css`) con los
 // tokens del tema. Se parsea el CSS real (mismo patrón que `notes/layoutCss.test.ts`), no un snapshot
 // visual: jsdom no pinta barras, así que lo comprobable es el contrato de las reglas.
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { expect, test } from "vitest";
 
@@ -73,6 +73,39 @@ test("C-4: Firefox recibe scrollbar-width y scrollbar-color estándar, con los t
 // declararlas fuera del `@supports` le quitaría el hover y el arrastre del pulgar (C-2).
 test("C-4: las propiedades estándar de barra NO se declaran fuera del @supports de Firefox", () => {
   expect(splitSupports(globalCss()).outside).not.toMatch(/scrollbar-(?:width|color)/);
+});
+
+// C-1: el estilo es único; ninguna hoja de componente lo redefine ni lo oculta.
+test("C-1: sólo global.css declara estilo de barra (ninguna otra hoja de src/)", () => {
+  const sheets = (readdirSync(resolve(__dirname, ".."), { recursive: true }) as string[]).filter((f) => f.endsWith(".css"));
+  expect(sheets.length).toBeGreaterThan(5); // el recorrido encuentra las hojas: no se valida un vacío
+  // `scrollbar-gutter` queda fuera: no pinta la barra, sólo reserva su espacio (lo usa el riel, C-5).
+  const styling = /scrollbar-(?:width|color)|::-webkit-scrollbar/;
+  const offenders = sheets.filter((f) => !f.endsWith("styles/global.css") && styling.test(strip(read(`../${f}`))));
+  expect(offenders).toEqual([]);
+});
+
+// C-5: el riel (56 px) muestra su barra sin recortar ni descentrar los chips.
+const px = (css: string, prop: string) => Number(css.match(new RegExp(`(?:^|[\\s;])${prop}:\\s*(-?\\d+)px`))?.[1]);
+
+test("C-5: el riel ya no oculta su barra y reserva el gutter a ambos lados", () => {
+  const rail = rule(read("../notes/notes.css"), ".vault-rail");
+  expect(rail).not.toMatch(/scrollbar-width/);
+  expect(rail).toMatch(/overflow-y: auto/);
+  // Con `both-edges` el contenido queda centrado haya o no desborde; con barras overlay el gutter es 0.
+  expect(rail).toMatch(/scrollbar-gutter: stable both-edges/);
+});
+
+test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa sigue dentro del riel colapsado", () => {
+  const notes = read("../notes/notes.css");
+  const gutter = px(rule(globalCss(), "*::-webkit-scrollbar"), "width");
+  const content = px(rule(notes, ".vault-rail"), "width") - 2 * gutter; // 56 − 2 × 8
+  const chip = px(rule(notes, ".vault-rail-icon"), "width");
+  expect(content).toBeGreaterThanOrEqual(chip);
+  // La marca nace a −10 px del chip (centrado en el contenido, desplazado por el gutter izquierdo).
+  const chipLeft = gutter + (content - chip) / 2;
+  const bar = chipLeft + px(rule(notes, '.vault-rail-icon[aria-current="page"]::before'), "left");
+  expect(bar).toBeGreaterThanOrEqual(0); // no la recorta el borde del riel
 });
 
 // C-3: los controles nativos (barras, inputs, selects) heredan el esquema del tema elegido en la app,
