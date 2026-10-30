@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     ADMIN_EMAIL: str
     ADMIN_PASSWORD: str
 
+    # Almacén de objetos MinIO (H-015). Las credenciales salen del `.env` (sin default, P4);
+    # el endpoint y el bucket, ya acordados con la infraestructura, traen default.
+    MINIO_ENDPOINT: str = "synapse-minio:9000"
+    MINIO_ROOT_USER: str
+    MINIO_ROOT_PASSWORD: str
+    MINIO_BUCKET: str = "synapse-files"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

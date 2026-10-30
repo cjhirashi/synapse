@@ -11,7 +11,18 @@ REQUIRED = [
     "JWT_SECRET",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD",
+    # H-015: las credenciales de MinIO salen del `.env` (sin default); endpoint/bucket sí lo tienen.
+    "MINIO_ROOT_USER",
+    "MINIO_ROOT_PASSWORD",
 ]
+
+
+def test_h015_minio_endpoint_and_bucket_have_defaults():
+    fields = Settings.model_fields
+    assert fields["MINIO_ENDPOINT"].default == "synapse-minio:9000"
+    assert fields["MINIO_BUCKET"].default == "synapse-files"
+    assert not fields["MINIO_ENDPOINT"].is_required()
+    assert not fields["MINIO_BUCKET"].is_required()
 
 
 @pytest.mark.parametrize("missing", REQUIRED)

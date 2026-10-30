@@ -8,6 +8,9 @@ os.environ.setdefault("COUCHDB_PASSWORD", "testpass")
 os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("ADMIN_EMAIL", "cjhirashi@gmail.com")
 os.environ.setdefault("ADMIN_PASSWORD", "admin1234")
+# H-015: credenciales de MinIO de prueba (NO las reales del `.env` del checkout principal).
+os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
+os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 
 import pytest
 from fastapi.testclient import TestClient
