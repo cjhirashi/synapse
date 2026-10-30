@@ -1,11 +1,18 @@
 ---
 id: H-014
 titulo: Rediseño de color tipográfico del markdown renderizado — jerarquía con el color de la bóveda
-estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1, P-3, P-4, P-5, P-6 tal como se propusieron, y corrigió P-2 (negrita 100%, cursiva más tenue, mismo color complementario) delegando el resto del detalle fino a criterio de AIRA ("tú decide con lógica... armonía visual"). En implementación vía Claude Code (Modo 2).
+estado: implemented # Implementada en ciclo Driver/Navigator (Modo 2, 2026-10-30): 6 commits atómicos citando H-014, 11 criterios con test. NO verified: falta el checkpoint visual de Carlos (§8) y el merge. Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1, P-3, P-4, P-5, P-6 y corrigió P-2 (negrita 100%, cursiva más tenue, mismo complementario), delegando el detalle fino a AIRA.
 covers:
   - frontend/src/editor/editor.css
   - frontend/src/vaults/vaultIcon.ts
   - frontend/src/vaults/vaultIcon.test.ts
+  - frontend/src/editor/MilkdownView.tsx
+  - frontend/src/editor/MilkdownView.test.tsx
+  - frontend/src/editor/NoteEditor.tsx
+  - frontend/src/editor/NoteEditor.test.tsx
+  - frontend/src/notes/VaultWorkspacePage.tsx
+  - frontend/src/notes/layoutCss.test.ts
+  - frontend/src/editor/contrast.test.ts
 origen: backlog
 ---
 
@@ -220,7 +227,30 @@ confirmado tal como se propuso.
 
 ## 7. Tabla de cobertura
 
-(se llena al implementar)
+Mecanismo común (C-8/C-9): `MilkdownView` publica en el contenedor `.milkdown-view`
+dos variables CSS — `--vault-accent` (color de la bóveda) y `--vault-complement`
+(resuelta con el mapa `COMPLEMENTARY` de §2.1) — que `VaultWorkspacePage →
+NoteEditor → MilkdownView` cablean desde el color de la bóveda abierta. Todas las
+reglas de `editor.css` las leen con `color-mix(in srgb, …)` nativo: cambiar de
+bóveda o de tema recalcula los colores sin JS ni recarga (el efecto que crea el
+editor no depende de `vaultColor`, así que sólo re-pinta, no recrea el documento).
+
+| Criterio | Paso / código | Test(s) |
+|---|---|---|
+| C-1 (H1 100 %) | `editor.css` `h1` = `var(--vault-accent)` | `layoutCss` «C-1…C-4» |
+| C-2 (H2 85 %) | `editor.css` `h2` color-mix 85/15 | `layoutCss` «C-1…C-4» |
+| C-3 (H3 55 %) | `editor.css` `h3` color-mix 55/45 | `layoutCss` «C-1…C-4» |
+| C-4 (H4 30 %, ≥ 4,5:1) | `editor.css` `h4` color-mix 30/70 | `layoutCss` «C-1…C-4» + `vaultIcon` «C-4/C-9» (contraste real ≥ 4,5:1, 17 colores × 2 temas) |
+| C-5 (negrita/cursiva) | `editor.css` `strong`=complemento 100 %, `em`=70 %+`--text-secondary` | `layoutCss` «C-5» |
+| C-6 (marcador de lista) | `editor.css` `li::marker` = intensidad H4 | `layoutCss` «C-6» |
+| C-7 (cita/hr/tabla neutros) | `editor.css` `blockquote`/`hr` → `--border` 1px (quita `--accent` y relleno); celdas ya 1px `--border` | `layoutCss` «C-7» + `contrast` «cita» |
+| C-8 (cambio de bóveda sin recarga) | `MilkdownView` publica las vars reactivas; threading `vaultColor` | `MilkdownView` «C-8» y «C-11/C-5»; `NoteEditor` «reenvía vaultColor» |
+| C-9 (ambos temas) | `COMPLEMENTARY` + tokens que existen en claro/oscuro; color-mix | `vaultIcon` «C-4/C-9» (ambos temas) + `COMPLEMENTARY` |
+| C-10 (enlaces/wikilink) | `editor.css` `a` y `a.wikilink` (resuelto) = complemento 100 %; roto sigue `--danger-text` | `layoutCss` «C-10» |
+| C-11 (cabecera de tabla) | `editor.css` `th` fondo color-mix 15 % + texto `var(--vault-accent)` | `layoutCss` «C-11» + `MilkdownView` «C-11/C-5» |
+
+Línea base → cierre: `npx vitest run` 1753 → **1763** verde (+10 tests nuevos);
+`npm run typecheck` limpio. Sin regresiones.
 
 ## 8. Checkpoint demostrable
 
@@ -232,6 +262,51 @@ complementario y se distinguen bien de los encabezados; la cabecera de
 tabla se ve con el color de la bóveda; las líneas (cita/raya/borde de
 tabla) se ven delgadas y grises, no coloreadas.
 
-## 9. Session-End (al cerrar)
+## 9. Session-End (2026-10-30, ciclo Driver/Navigator, Modo 2)
 
-Pendiente — se completa al implementar.
+**Claim.** Los 11 criterios EARS (C-1…C-11) quedan implementados: el markdown
+renderizado (Visual y Lectura) jerarquiza H1-H4 con el color de la bóveda,
+negritas/cursivas/enlaces/wikilink resuelto con su complementario calculado,
+cabecera de tabla y marcadores de lista con el color de la bóveda, y las líneas
+divisorias (cita, raya, bordes de tabla) en gris neutro de 1px. Todo con
+`color-mix` nativo, reactivo a la bóveda y al tema sin recarga ni JS.
+
+**Evidencia.** 6 commits atómicos citando H-014 (mapa `COMPLEMENTARY`;
+publicación de las vars + threading; encabezados; negrita/cursiva/enlaces;
+cabecera de tabla + marcador; líneas neutras). Cada criterio con ≥ 1 test que
+parsea el CSS real o computa contraste WCAG real (no snapshots). `npx vitest run`
+= 1763 verde (línea base 1753 + 10); `npm run typecheck` limpio. Autorevisión
+adversarial (Navigator §5): sin hallazgos Critical/High; especificidad de
+selectores verificada (el wikilink roto conserva `--danger-text`; `.selectedCell`
+gana sobre `th` en selección; `a.wikilink` ≥ `a`).
+
+**Línea base.** Verde antes y después; sin regresiones. Se actualizó el test
+`RF-037` de la cita (SPEC-0010 R-5 queda **supersedido** por C-7, documentado) y
+la sub-aserción «cita» de `contrast.test.ts` (el texto va ahora sobre fondo
+neutro, sigue ≥ 4,5:1).
+
+**Gaps / riesgo residual.**
+- **Medium — contraste de negrita/enlaces (C-5/C-10) en tema claro:** el
+  complementario al 100 % cae bajo 4,5:1 como texto de cuerpo en varias
+  combinaciones del tema CLARO (peor caso bóveda `indigo` → `yellow` = 2,94;
+  `violet`/`purple`/`fuchsia` → `lime` = 3,09; `info`/`blue` → `orange` = 3,56).
+  Los EARS mandan el COLOR (Carlos eligió 100 % complementario en P-2), no un
+  ratio, así que se implementó fiel al criterio; en tema oscuro todas ≥ 6,25.
+  Si molesta a la vista, la palanca natural sería mezclar el complementario con
+  `--text-primary` como en los encabezados (decisión de producto, no la tomo en
+  silencio).
+- **Low — H1-H3 y `th` (100 % bóveda) en tema claro:** como encabezados (texto
+  grande, umbral WCAG 3:1) casi todos cumplen; `yellow` (2,94) queda bajo incluso
+  3:1 en claro. `th` es texto de 13px sobre tinte 15 %, rango ~3:1. Los EARS sólo
+  exigen 4,5:1 a H4 — **cumplido con holgura** (mínimo real 11,0 en ambos temas).
+- **Checkpoint demostrable (§8) PENDIENTE:** entorno headless sin navegador; no
+  pude abrir dos bóvedas y mirar. Carlos debe hacer la verificación visual antes
+  de pasar a `verified`.
+- **Gate:** `.harness/gate/check.sh` tiene el bloque node inactivo (`services.txt`
+  vacío) y su trazabilidad es solo-specs; evidencia equivalente = vitest +
+  typecheck corridos a mano (arriba).
+
+**Próximo paso.** Carlos: revisar el diff, hacer el checkpoint visual (§8),
+decidir sobre el riesgo Medium de contraste del tema claro, y mergear +
+reconstruir/redesplegar + push (yo no pusheo ni mergeo). Tras el checkpoint,
+pasar `estado:` a `verified` y registrar en `memory/history.md`.

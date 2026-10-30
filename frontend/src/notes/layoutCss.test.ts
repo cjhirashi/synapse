@@ -76,15 +76,62 @@ test("RF-005: el contenido del editor va en una columna centrada de 780 px sin t
   expect(rule(editor, ".note-editor-body")).not.toMatch(/border|background/);
 });
 
-// SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
-test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
-  const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");
-  expect(quote).toMatch(/border-left: 3px solid var\(--accent\)/);
-  expect(quote).toMatch(/background: var\(--accent-soft\)/);
-  expect(quote).toMatch(/color: var\(--text-secondary\)/);
+// H-014: color tipográfico del markdown con el color de la bóveda (--vault-accent) y su complementario
+// (--vault-complement). Se parsea el CSS real (como el resto del archivo), no un snapshot visual.
+const editorCss = () => read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
+/** Valor de `color` de la regla cuyo selector es exactamente `selector` seguido de `{ color: … }`. */
+const colorOf = (css: string, selector: string) =>
+  css.match(new RegExp(`${selector.replace(/[.[\]"=()*]/g, "\\$&")}\\s*\\{\\s*color:\\s*([^;]+);`))?.[1].trim();
+
+test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto normal según P-1", () => {
+  const css = editorCss();
+  const h = (tag: string) => colorOf(css, `.milkdown-view .ProseMirror ${tag}`);
+  expect(h("h1")).toBe("var(--vault-accent)"); // C-1: 100%, sin mezclar
+  expect(h("h2")).toBe("color-mix(in srgb, var(--vault-accent) 85%, var(--text-primary))"); // C-2
+  expect(h("h3")).toBe("color-mix(in srgb, var(--vault-accent) 55%, var(--text-primary))"); // C-3
+  expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
+});
+
+test("H-014 C-5: negrita al 100 % del complementario; cursiva más tenue (70 % + --text-secondary)", () => {
+  const css = editorCss();
+  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-complement) 70%, var(--text-secondary))");
+});
+
+test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del complementario; el roto sigue en --danger-text", () => {
+  const css = editorCss();
+  expect(colorOf(css, ".milkdown-view .ProseMirror a")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
+});
+
+test("H-014 C-11: la cabecera de tabla (th) usa fondo tenue y texto al 100 % del color de la bóveda", () => {
+  const th = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror th");
+  expect(th).toMatch(/background: color-mix\(in srgb, var\(--vault-accent\) 15%, transparent\)/);
+  expect(th).toMatch(/color: var\(--vault-accent\)/);
+});
+
+test("H-014 C-6: el marcador de lista va al color de bóveda en la intensidad de H4 (el texto del ítem no cambia)", () => {
+  expect(colorOf(editorCss(), ".milkdown-view .ProseMirror li::marker")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))");
+});
+
+// SPEC-0010 RF-038, RF-039: código en línea y casillas de tarea (PLAN-0010 §2.3-g; R-6, R-10).
+// RF-037 (la cita en barra --accent + relleno --accent-soft) queda SUPERSEDIDO por H-014 C-7: las
+// líneas divisorias pasan a gris neutro (`--border`) a 1px — contraste entre contenido coloreado y
+// estructura neutra (historia §1). La cita pierde el cian fijo (barra Y relleno); conserva la cursiva.
+test("H-014 C-7: la cita, el <hr> y los bordes de tabla usan var(--border) a 1px, sin --accent ni color de bóveda", () => {
+  const css = read("../editor/editor.css");
+  const quote = rule(css, ".milkdown-view .ProseMirror blockquote");
+  expect(quote).toMatch(/border-left: 1px solid var\(--border\)/);
+  expect(quote).not.toMatch(/--accent/); // perdió el cian fijo: ni la barra ni el relleno --accent-soft
+  expect(quote).not.toMatch(/--vault-accent/); // ni el color de la bóveda
+  expect(quote).toMatch(/color: var\(--text-secondary\)/); // sigue tenue y en cursiva
   expect(quote).toMatch(/font-style: italic/);
-  expect(quote).toMatch(/border-radius: 0 var\(--radius-sm\) var\(--radius-sm\) 0/);
-  expect(quote).toMatch(/padding: var\(--space-2\) var\(--space-4\)/);
+  const hr = rule(css, ".milkdown-view .ProseMirror hr");
+  expect(hr).toMatch(/border-top: 1px solid var\(--border\)/);
+  expect(hr).not.toMatch(/--accent/);
+  // Los bordes de celda (las líneas visibles de la tabla) ya eran 1px var(--border); C-7 lo exige.
+  expect(editorCss()).toMatch(/\.milkdown-view \.ProseMirror th,\s*\.milkdown-view \.ProseMirror td\s*\{[^}]*border: 1px solid var\(--border\)/);
 });
 
 test("RF-038: el código en línea usa --bg-tertiary, --accent-hover y --radius-xs, y no toca el de los bloques", () => {

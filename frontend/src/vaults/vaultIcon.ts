@@ -124,6 +124,34 @@ const COLOR_TOKEN: Readonly<Record<PaletteKey, string>> = {
   rose: "--vault-rose",
 };
 
+/**
+ * Color complementario de cada color de bóveda (H-014 §2.1, C-5/C-10): el de la MISMA paleta más
+ * cercano a su opuesto (+180°) en el círculo cromático, calculado desde los hex de `tokens.css` (HSL).
+ * Lo usan la negrita, la cursiva y los enlaces del markdown renderizado para destacar sin competir con
+ * los encabezados (que llevan el color de la bóveda). No inventa colores: cada valor es un `PaletteKey`,
+ * así existe como token en los dos temas igual que su original. (`fuchsia → lime` queda a 29° del opuesto
+ * exacto por el hueco de la paleta entre `lime` y `success`; el resto del mapeo cae a menos de 12°.)
+ */
+export const COMPLEMENTARY: Readonly<Record<PaletteKey, PaletteKey>> = {
+  danger: "teal",
+  orange: "blue",
+  warning: "blue",
+  yellow: "indigo",
+  lime: "purple",
+  success: "pink",
+  emerald: "pink",
+  teal: "rose",
+  accent: "danger",
+  info: "orange",
+  blue: "orange",
+  indigo: "yellow",
+  violet: "lime",
+  purple: "lime",
+  fuchsia: "lime",
+  pink: "success",
+  rose: "teal",
+};
+
 /** Nombre accesible en español de cada color (selector de RF-011; H-008 C-11). */
 export const COLOR_LABELS: Readonly<Record<PaletteKey, string>> = {
   accent: "Cian",

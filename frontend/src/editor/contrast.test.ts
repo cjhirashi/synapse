@@ -73,8 +73,9 @@ test("RNF-004: texto sobre fondos translúcidos (chips, cita, errores, nodo de M
     const vars = theme(mode);
     const chip = over(parse(vars["accent-soft"]), parse(vars["bg-tertiary"]));
     expect(ratio(parse(vars["text-primary"]), chip), `${mode}: chip`).toBeGreaterThanOrEqual(4.5);
-    const quote = over(parse(vars["accent-soft"]), parse(vars["bg-primary"]));
-    expect(ratio(parse(vars["text-secondary"]), quote), `${mode}: cita`).toBeGreaterThanOrEqual(4.5);
+    // H-014 C-7: la cita perdió el relleno --accent-soft; su texto --text-secondary (cursiva) va ahora
+    // sobre el fondo neutro del documento (--bg-primary) y debe seguir legible (≥ 4,5:1).
+    expect(ratio(parse(vars["text-secondary"]), parse(vars["bg-primary"])), `${mode}: cita`).toBeGreaterThanOrEqual(4.5);
     const error = over(parse(vars["danger-bg"]), parse(vars["bg-primary"]));
     expect(ratio(parse(vars["text-primary"]), error), `${mode}: aviso de error`).toBeGreaterThanOrEqual(4.5);
     const node = over(parse(vars["accent-soft"]), parse(vars["bg-secondary"]));

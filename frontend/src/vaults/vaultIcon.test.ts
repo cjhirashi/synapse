@@ -8,6 +8,7 @@ import { initials as initialsFromRail } from "../notes/VaultRail";
 import {
   COLOR_LABELS,
   colorVar,
+  COMPLEMENTARY,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -67,6 +68,21 @@ test("RF-006 (H-008 C-10): PALETTE son 17 claves que existen como tokens hex en 
   for (const mode of ["light", "dark"] as const) {
     for (const key of PALETTE) expect(theme(mode)[tokenOf(key)], `${mode} ${key}`).toMatch(/^#[0-9a-f]{6}$/i);
   }
+});
+
+test("H-014 C-5/C-10: COMPLEMENTARY mapea cada color de la paleta a su complementario calculado (§2.1)", () => {
+  // Tabla de §2.1: complementario = el color de la MISMA paleta más cercano al opuesto (+180°) en el
+  // círculo cromático, calculado desde los hex de tokens.css. Nunca inventa un color fuera de la paleta.
+  expect(COMPLEMENTARY).toEqual({
+    danger: "teal", orange: "blue", warning: "blue", yellow: "indigo", lime: "purple",
+    success: "pink", emerald: "pink", teal: "rose", accent: "danger", info: "orange",
+    blue: "orange", indigo: "yellow", violet: "lime", purple: "lime", fuchsia: "lime",
+    pink: "success", rose: "teal",
+  });
+  // Cobertura total y cierre: cada clave de la paleta tiene complementario, y todo complementario es a
+  // su vez una clave válida de la paleta (así `colorVar(COMPLEMENTARY[k])` siempre resuelve a un token).
+  expect(Object.keys(COMPLEMENTARY).sort()).toEqual([...PALETTE].sort());
+  for (const key of PALETTE) expect(PALETTE).toContain(COMPLEMENTARY[key]);
 });
 
 test("RF-001: parseIcon lee «glifo[:color]» y degrada lo desconocido sin lanzar", () => {
@@ -149,6 +165,22 @@ function ratio(a: Rgba, b: Rgba): number {
  *   claro:  color-mix(--chip-color 65%, --text-primary)   (tinta oscura → oscurece el relleno)
  */
 const LIGHTEST_STOP = { dark: 0.8, light: 0.65 } as const;
+
+test("H-014 C-4/C-9: H4 (color-mix bóveda 30% + texto 70%) ≥ 4,5:1 sobre el fondo del editor, los 17, claro y oscuro", () => {
+  // C-4 fija el único piso de contraste de la jerarquía: H4 es el tono más sutil (30% del color de la
+  // bóveda) y aun así debe leerse ≥ 4,5:1 sobre `--bg-primary` (el fondo del documento) en ambos temas.
+  // Mismo cálculo de `color-mix(in srgb, X 30%, --text-primary)` que usa `editor.css` (mezcla lineal sRGB).
+  for (const mode of ["light", "dark"] as const) {
+    const vars = theme(mode);
+    const bg = parse(vars["bg-primary"]);
+    const ink = parse(vars["text-primary"]);
+    for (const key of PALETTE) {
+      const color = parse(vars[tokenOf(key)]);
+      const h4 = [0, 1, 2].map((i) => color[i] * 0.3 + ink[i] * 0.7).concat(1) as Rgba;
+      expect(ratio(h4, bg), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+});
 
 test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro del degradado da ≥ 4,5:1 para los 17, claro y oscuro", () => {
   for (const mode of ["light", "dark"] as const) {

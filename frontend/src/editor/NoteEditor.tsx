@@ -51,6 +51,7 @@ import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { frontmatterTooLargeMessage, frontmatterYamlMessage, noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
 import type { NoteRef } from "./wikilink";
+import type { PaletteKey } from "../vaults/vaultIcon";
 import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
@@ -95,6 +96,8 @@ export interface ViewProps {
   notes?: readonly NoteRef[];
   /** Clic en un wikilink, sólo en Lectura (H-012 C-1/C-3); la vista Visual lo emite leyendo la marca del nodo. */
   onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
+  /** Color de la bóveda abierta (H-014); sólo lo usa la vista Visual para publicar las variables de color del documento. */
+  vaultColor?: PaletteKey;
 }
 
 export interface NoteEditorViews {
@@ -153,6 +156,11 @@ interface NoteEditorProps {
    * `parseCache`/`vaultColor`. La vista Visual en edición resuelve cada `[[Destino]]` contra esta lista.
    */
   vaultNotes?: readonly NoteRef[];
+  /**
+   * Color de la bóveda abierta (H-014): el padre (`Workspace`) lo resuelve igual que para los iconos de la
+   * sidebar y el editor lo reenvía a la vista Visual, que lo publica como variable CSS del documento.
+   */
+  vaultColor?: PaletteKey;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -165,7 +173,7 @@ type Mode = "read" | "edit";
 type View = "visual" | "code";
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent" },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -976,10 +984,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <>
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
-              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} />
+              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} vaultColor={vaultColor} />
             </>
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}

@@ -7,6 +7,7 @@ import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
 import { PARSE_MARK } from "./markdown/cachedParser";
 import { parseMarkdownToJson } from "./markdown/parseStage";
 import { MilkdownView, type EditorCommands } from "./MilkdownView";
+import type { PaletteKey } from "../vaults/vaultIcon";
 
 // `mermaid` simulado: la vista previa de Visual (RF-047) se prueba con el renderizador real de la aplicación y
 // una API que devuelve un SVG mínimo con la fuente que recibió.
@@ -18,7 +19,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void; vaultColor?: PaletteKey }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -30,6 +31,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       prefix={props.prefix}
       notes={props.notes}
       onWikilinkClick={props.onWikilinkClick}
+      vaultColor={props.vaultColor}
       onView={(v) => {
         view = v;
       }}
@@ -65,6 +67,29 @@ describe("MilkdownView", () => {
   it("en edición el área es editable y con nombre accesible", async () => {
     await mount({ value: "hola" });
     expect(screen.getByRole("textbox", { name: "Visual" })).toHaveAttribute("contenteditable", "true");
+  });
+
+  // H-014: el contenedor `.milkdown-view` publica el color de la bóveda (`--vault-accent`) y su
+  // complementario (`--vault-complement`, vía `COMPLEMENTARY`) como variables CSS; el `editor.css` las
+  // lee con `color-mix` para pintar encabezados, negrita, cursiva, enlaces, cabecera de tabla y marcadores.
+  it("H-014 C-11/C-5: publica --vault-accent y --vault-complement en .milkdown-view según la bóveda", async () => {
+    const { container } = await mount({ value: "hola", vaultColor: "blue" });
+    const host = container.querySelector<HTMLElement>(".milkdown-view")!;
+    expect(host.style.getPropertyValue("--vault-accent")).toBe("var(--vault-blue)");
+    // blue → orange (COMPLEMENTARY), orange → token --vault-orange.
+    expect(host.style.getPropertyValue("--vault-complement")).toBe("var(--vault-orange)");
+  });
+
+  // H-014 C-8: cambiar de bóveda (nueva prop `vaultColor`) reasigna ambas variables sin recrear la vista
+  // ni recargar — React actualiza el estilo del mismo contenedor en el re-render.
+  it("H-014 C-8: al cambiar vaultColor actualiza las variables sin recargar", async () => {
+    const { container, rerender } = await mount({ value: "hola", vaultColor: "accent" });
+    const host = () => container.querySelector<HTMLElement>(".milkdown-view")!;
+    expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--accent)");
+    expect(host().style.getPropertyValue("--vault-complement")).toBe("var(--danger)"); // accent → danger
+    rerender(<MilkdownView value="hola" readOnly={false} onChange={() => {}} label="Visual" vaultColor="rose" />);
+    expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--vault-rose)");
+    expect(host().style.getPropertyValue("--vault-complement")).toBe("var(--vault-teal)"); // rose → teal
   });
 
   // RF-008
