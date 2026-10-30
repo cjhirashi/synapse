@@ -352,3 +352,35 @@ button:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- Barras de desplazamiento (H-022): un único estilo para toda la app, con los tokens del tema ---
+   Chromium/Edge/Safari: pseudoelementos WebKit. Es la vía por defecto porque es la única con estados
+   de hover y arrastre; Firefox usa las propiedades estándar (ver más abajo). */
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* Sin flechas ni pista de color: la barra no debe competir con el contenido. */
+*::-webkit-scrollbar-button {
+  display: none;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--border-control);
+  border-radius: var(--radius-xs);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--accent);
+}
