@@ -715,3 +715,42 @@ describe("MilkdownView · clic en wikilink (H-012)", () => {
     expect(onWikilinkClick).not.toHaveBeenCalled();
   });
 });
+
+// H-015: comando `insertImage` que el padre dispara al terminar de subir una imagen.
+describe("MilkdownView · comando de imagen (H-015)", () => {
+  async function mountImg() {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    render(
+      <MilkdownView
+        value=""
+        readOnly={false}
+        onChange={() => {}}
+        label="Visual"
+        registerCommands={(c) => (commands = c)}
+        onView={(v) => (view = v)}
+      />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as EditorCommands, view: view as unknown as EditorView };
+  }
+
+  it("inserta un nodo imagen con src+alt (C-1) y una URL https se pinta (safeImageUrl la deja pasar, C-4)", async () => {
+    const { commands, view } = await mountImg();
+    const url = "https://synapse.cjhirashi.com/files/abc123";
+    act(() => commands.insertImage(url, "foto"));
+
+    let image: { attrs: { src: string; alt: string } } | null = null;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === "image") image = node as never;
+    });
+    expect(image).not.toBeNull();
+    expect(image!.attrs.src).toBe(url);
+    expect(image!.attrs.alt).toBe("foto");
+    // https pasa `safeImageUrl` sin cambios: el `<img>` del DOM lleva el src.
+    await waitFor(() =>
+      expect(view.dom.querySelector("img:not(.ProseMirror-separator)")?.getAttribute("src")).toBe(url),
+    );
+  });
+});

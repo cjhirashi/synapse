@@ -271,6 +271,48 @@ class AgentKeyLabelTaken(DomainError):
     detail = "Agent key label already in use"
 
 
+# --- Archivos (H-015) ---
+
+class FileNotFound(DomainError):
+    """Archivo inexistente o, si es privado, de otro usuario: mismo cuerpo siempre (C-3).
+
+    No distingue «no existe» de «es de otro»: un privado ajeno responde 404, no 403, para no
+    revelar qué ids existen.
+    """
+
+    slug = "file-not-found"
+    title = "File not found"
+    status = 404
+    detail = "File not found"
+
+
+class FileTooLarge(DomainError):
+    """El archivo supera el límite de 5 MB (C-2/C-6)."""
+
+    slug = "file-too-large"
+    title = "File too large"
+    status = 413
+    detail = "File exceeds the 5 MB limit"
+
+
+class UnsupportedFileType(DomainError):
+    """El tipo del archivo (husmeado de los bytes, no del header) no está admitido (C-2/C-6)."""
+
+    slug = "unsupported-file-type"
+    title = "Unsupported file type"
+    status = 415
+    detail = "Only png, jpeg, webp, gif and svg images are allowed"
+
+
+class UnsafeSvg(DomainError):
+    """Un SVG que no pasa el saneo de RNF-003 (script, foreignObject, on*, href navegable, C-5)."""
+
+    slug = "unsafe-svg"
+    title = "Unsafe SVG"
+    status = 400
+    detail = "SVG contains disallowed content"
+
+
 # --- Almacenamiento ---
 
 class StorageUnavailable(DomainError):

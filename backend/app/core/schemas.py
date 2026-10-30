@@ -1,6 +1,6 @@
 import unicodedata
 from datetime import datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, field_validator,
@@ -256,3 +256,28 @@ class AgentKeyOut(BaseModel):
     created_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+
+
+# --- Archivos (H-015) ---
+
+
+class FileMetaOut(BaseModel):
+    """Metadatos de un archivo (respuesta de `POST` y `PATCH /files/{id}`); nunca los bytes."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    vault_id: str
+    name: str
+    content_type: str
+    size: int
+    visibility: str
+    created_at: datetime
+
+
+class FileVisibilityUpdate(BaseModel):
+    """Cuerpo de `PATCH /files/{id}`; cualquier otro campo → 422 (C-8)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    visibility: Literal["private", "public"]

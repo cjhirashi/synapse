@@ -9,7 +9,7 @@ import { EditorView } from "@codemirror/view";
 import type { EditorView as PMView } from "@milkdown/prose/view";
 import userEvent from "@testing-library/user-event";
 import { DataMemoryRouter } from "../test-utils/router";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { NoteConflict } from "../sync/conflicts";
 import type { SyncContextValue } from "../sync/useSync";
@@ -18,6 +18,13 @@ import { CONTENT_MAX_BYTES } from "../notes/noteRules";
 import { CodeView } from "./CodeView";
 import { MilkdownView } from "./MilkdownView";
 import NoteEditor, { type NoteEditorHandle, type NoteEditorViews, type ViewProps } from "./NoteEditor";
+import * as uploadModule from "../files/uploadFile";
+
+// H-015: la subida real se mockea; `fileUrl` y las clases de error se conservan reales.
+vi.mock("../files/uploadFile", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../files/uploadFile")>();
+  return { ...actual, uploadFile: vi.fn() };
+});
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
 
@@ -447,6 +454,89 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
     bold.focus();
     await userEvent.keyboard("{Enter}");
     expect(spies.toggleBold).toHaveBeenCalledTimes(1);
+  });
+});
+
+// H-015: subir imagen (botón + arrastrar/soltar) e insertar `![nombre](url)` en el cursor.
+// jsdom no ejerce el gesto real de arrastrar/soltar ni `posAtCoords`; estos tests son lo más
+// realistas posible dentro de jsdom, pero la verificación REAL en navegador la hace AIRA (H-012).
+describe("subir imagen en la Fila 3 (H-015)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  /** Vista Visual falsa que registra un espía de `insertImage` (y no-ops del resto de comandos). */
+  async function setupUpload() {
+    const insertImage = vi.fn();
+    function VisualWithImage({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithImage, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertImage };
+  }
+
+  function fileInput(container: HTMLElement): HTMLInputElement {
+    return container.querySelector<HTMLInputElement>('input[type="file"]')!;
+  }
+
+  const png = () => new File([new Uint8Array(16)], "foto.png", { type: "image/png" });
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("C-1: el botón «Insertar imagen» vive en la Fila 3 (aria-label + note-nav-button)", async () => {
+    const { container } = await setupUpload();
+    const button = within(container.querySelector<HTMLElement>(".note-editor-row-3")!).getByRole("button", { name: "Insertar imagen" });
+    expect(button).toHaveClass("note-nav-button");
+  });
+
+  it("C-1: elegir un archivo lo sube e inserta `![nombre](https://…/files/<id>)` en el cursor", async () => {
+    mockUpload.mockResolvedValueOnce({ id: "abc", vault_id: VAULT, name: "foto.png", content_type: "image/png", size: 16, visibility: "private", created_at: "2026-10-30T00:00:00Z" });
+    const { container, insertImage } = await setupUpload();
+    const input = fileInput(container);
+    const file = png();
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc", "foto"));
+  });
+
+  it("C-1: soltar una imagen sobre el área de edición la sube e inserta igual", async () => {
+    mockUpload.mockResolvedValueOnce({ id: "xyz", vault_id: VAULT, name: "dibujo.png", content_type: "image/png", size: 16, visibility: "private", created_at: "2026-10-30T00:00:00Z" });
+    const { container, insertImage } = await setupUpload();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(16)], "dibujo.png", { type: "image/png" });
+    fireEvent.drop(body, { dataTransfer: { files: [file] } });
+
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/xyz", "dibujo"));
+  });
+
+  it("C-2: un tipo no admitido muestra un aviso de error y no inserta nada", async () => {
+    mockUpload.mockRejectedValueOnce(new uploadModule.UploadTypeError("no"));
+    const { container, insertImage } = await setupUpload();
+    const input = fileInput(container);
+    const bad = new File([new Uint8Array(8)], "doc.pdf", { type: "application/pdf" });
+    Object.defineProperty(input, "files", { value: [bad], configurable: true });
+    fireEvent.change(input);
+
+    expect(await screen.findByText(/no se admite/i)).toBeInTheDocument();
+    expect(insertImage).not.toHaveBeenCalled();
+  });
+
+  it("C-2: un archivo demasiado grande muestra el aviso de los 5 MB", async () => {
+    mockUpload.mockRejectedValueOnce(new uploadModule.UploadTooLargeError("big"));
+    const { container } = await setupUpload();
+    const input = fileInput(container);
+    const big = png();
+    Object.defineProperty(input, "files", { value: [big], configurable: true });
+    fireEvent.change(input);
+
+    expect(await screen.findByText(/5 MB/i)).toBeInTheDocument();
   });
 });
 

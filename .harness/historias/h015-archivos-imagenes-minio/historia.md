@@ -1,7 +1,7 @@
 ---
 id: H-015
 titulo: Subir imágenes a MinIO, con visibilidad privada/pública, y referenciarlas con ![]()
-estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a esta versión y a un solo bucket con prefijo por bóveda. En implementación vía Claude Code (Modo 2).
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30). Implementado en Modo 2 (Claude Code); NO verified: falta checkpoint demostrable en navegador + migración/deploy reales (AIRA).
 covers:
   - backend/app/routers/files.py
   - backend/app/services/file_service.py
@@ -118,7 +118,21 @@ Renombrar una bóveda no mueve nada porque la clave usa el id.
 
 ## 7. Tabla de cobertura
 
-(se llena al implementar)
+| Criterio | Código (pasos) | Test(s) |
+|---|---|---|
+| **C-1** subida válida → MinIO + registro privado + `![nombre](url)` | `file_service.create`, `routers/files.upload_file`, `uploadFile.ts`, `MilkdownView.insertImage`, `NoteEditor` (botón/drop) | `test_file_service::test_valid_upload_stores_object_and_private_record`, `test_files_api::test_c1_valid_upload_creates_private_record`, `uploadFile.test::C-1`, `MilkdownView.test::comando de imagen`, `NoteEditor.test::subir imagen (botón/drop)` |
+| **C-2** rechazo tamaño/tipo sin crear nada | `file_service.create` (orden de validación), `errors.FileTooLarge/UnsupportedFileType` | `test_file_service::test_too_large_*`, `::test_unsupported_type_*`, `test_files_api::test_c2_*`, `NoteEditor.test::C-2 aviso` |
+| **C-3** `GET` 404/401/404-ajeno/público/Content-Type | `routers/files.get_file`, `file_service.get_record/read` | `test_files_api::test_c3_*`, `test_file_service::test_get_record_*` |
+| **C-4** imagen visible (Visual y Lectura), URL https pasa `safeImageUrl` | `MilkdownView.safeImage`, `insertImage` | `MilkdownView.test::comando de imagen` + `::una imagen data: o relativa…` (https sí llega) |
+| **C-5** SVG saneado (RNF-003) + cabeceras CSP/nosniff | `file_safety.is_safe_svg`, `file_service.create`, `routers/files._SVG_HEADERS` | `test_file_safety::test_safe_svg_*`, `test_file_service::test_*svg*`, `test_files_api::test_c5_*` |
+| **C-6** tipo y 5 MB en cliente y backend | `uploadFile.ts`, `file_safety.sniff_content_type`, `file_service.create` | `uploadFile.test::C-6`, `test_file_safety::test_sniff_*`, `test_files_api::test_c6_*` |
+| **C-7** API key = misma regla de dueño | `dependencies.get_current_principal`, `get_file_service` | `test_files_api::test_c7_*` |
+| **C-8** `PATCH` visibilidad sólo del dueño | `file_repository.set_visibility`, `file_service.set_visibility`, `routers/files.update_visibility` | `test_file_repository::test_set_visibility_*`, `test_file_service::test_*visibility*`, `test_files_api::test_c8_*` |
+
+Migración `006_files` (tabla `files`): `test_file_repository` ejercita el esquema sobre sqlite
+(`create_all`); la migración Alembic real sobre Postgres la corre AIRA al desplegar.
+Contrato OpenAPI del feature: `.harness/specs/h015-archivos-imagenes-minio/contracts/openapi.yaml`
+(verificado por `test_contract`).
 
 ## 8. Checkpoint demostrable
 

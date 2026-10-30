@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ComponentType, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -33,6 +33,7 @@ import {
   Heading2,
   Heading3,
   Heading4,
+  ImagePlus,
   Italic,
   List,
   ListOrdered,
@@ -45,6 +46,7 @@ import {
 } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
+import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError } from "../files/uploadFile";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -172,6 +174,13 @@ export interface NoteEditorHandle {
 type Mode = "read" | "edit";
 type View = "visual" | "code";
 
+/** Mensaje para el aviso de una subida fallida (H-015): tamaño, tipo o red/servidor. */
+function uploadErrorMessage(error: unknown): string {
+  if (error instanceof UploadTooLargeError) return "La imagen supera el límite de 5 MB.";
+  if (error instanceof UploadTypeError) return "Ese tipo de archivo no se admite. Usa una imagen png, jpeg, webp, gif o svg.";
+  return "No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.";
+}
+
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
   { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent" },
   ref,
@@ -267,6 +276,38 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     editorCommands.current = commands;
   }, []);
   const [inTable, setInTable] = useState(false);
+  /** Aviso de una subida de imagen fallida (H-015): tamaño, tipo o red; se limpia al reintentar. */
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Sube una imagen a la bóveda de la nota e inserta `![nombre](url)` en el cursor (H-015 C-1).
+   * La URL es `https://synapse.cjhirashi.com/files/<id>` (pasa `safeImageUrl` sin cambios, C-4).
+   * El tipo y los 5 MB se validan en el cliente (feedback inmediato) y en el backend (C-6).
+   */
+  const insertUploadedImage = useCallback(async (file: File) => {
+    const current = noteRef.current;
+    if (current === null) return;
+    setUploadError(null);
+    try {
+      const uploaded = await uploadFile(file, current.vault_id);
+      const alt = file.name.replace(/\.[^.]+$/, "") || uploaded.name;
+      editorCommands.current?.insertImage(fileUrl(uploaded.id), alt);
+    } catch (err) {
+      setUploadError(uploadErrorMessage(err));
+    }
+  }, []);
+
+  /** El usuario eligió un archivo en el input oculto; se limpia el valor para permitir repetir el mismo. */
+  const onPickImage = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      event.target.value = "";
+      if (file) void insertUploadedImage(file);
+    },
+    [insertUploadedImage],
+  );
   /** «Ir a la línea N» de la vista Código (la registra `CodeView`, como `registerFlush`). */
   const revealLine = useRef<((line: number) => void) | null>(null);
   const registerReveal = useCallback((reveal: ((line: number) => void) | null) => {
@@ -727,6 +768,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     }
   }
 
+  /**
+   * Soltar una imagen sobre el área de edición Visual (H-015): sube el primer archivo e inserta
+   * `![nombre](url)` en el cursor, igual que el botón. jsdom no ejerce el gesto real de
+   * arrastrar/soltar ni `posAtCoords`; la verificación real en navegador la hace AIRA (lección H-012).
+   */
+  function onEditorDrop(event: DragEvent) {
+    if (mode !== "edit" || view !== "visual") return;
+    const file = event.dataTransfer?.files?.[0];
+    if (!file) return;
+    event.preventDefault();
+    void insertUploadedImage(file);
+  }
+  function onEditorDragOver(event: DragEvent) {
+    // Sólo en edición Visual se admite soltar; `preventDefault` habilita el `drop` del navegador.
+    if (mode !== "edit" || view !== "visual") return;
+    event.preventDefault();
+  }
+
   // Sin borrador, una nota que ya no existe no tiene nada que ofrecer; con borrador se conserva
   // el editor y se ofrece restaurarla (VF-4).
   if (missing && !dirty) return <p role="status">{noteErrorMessage(new NoteNotFoundError())}</p>;
@@ -876,6 +935,20 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
               <ListOrdered size={16} aria-hidden="true" />
             </button>
+            {/* H-015 C-1: subir una imagen (botón) e insertarla en el cursor; también se puede
+                arrastrar y soltar sobre el área de edición. El input de archivo va oculto. */}
+            <button type="button" className="note-nav-button" aria-label="Insertar imagen" title="Insertar imagen" onClick={() => imageInputRef.current?.click()}>
+              <ImagePlus size={16} aria-hidden="true" />
+            </button>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+              className="note-visually-hidden"
+              aria-hidden="true"
+              tabIndex={-1}
+              onChange={onPickImage}
+            />
           </div>
         )}
       </header>
@@ -886,7 +959,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
-      <div className="note-editor-body">
+      <div className="note-editor-body" onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
         <div className="note-editor-column">
           {pathInvalid && (
             <div className="note-editor-notice" role="alert">
@@ -933,6 +1006,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
                 </>
               )}
             </p>
+          )}
+          {/* H-015: error de subida de imagen (tamaño/tipo/red), con «Cerrar aviso». */}
+          {uploadError !== null && (
+            <Notice variant="error" onClose={() => setUploadError(null)}>
+              {uploadError}
+            </Notice>
           )}
           {pendingId !== null && (
             <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>

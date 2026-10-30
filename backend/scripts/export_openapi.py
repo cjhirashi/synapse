@@ -22,6 +22,9 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0005-sync": {"paths": ("/sync",), "schemas": ()},
     "0013-acceso-agentes-api": {"paths": ("/auth/agent-keys",), "schemas": ()},
     "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes",), "schemas": ()},
+    # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
+    # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
+    "h015-archivos-imagenes-minio": {"paths": ("/files",), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"
