@@ -1,8 +1,10 @@
-// H-012: navegación y creación al hacer clic en un wikilink (C-1, C-3). El `Workspace` recibe el clic de
-// la vista (vía `NoteEditor.onOpenWikilink`) y decide: resuelto → abre esa nota en Lectura; roto sin
-// extensión → crea la nota en la raíz y la abre en edición; roto con extensión ajena → no hace nada.
-// Se usa un `NoteEditor` FALSO que expone el callback: el cableado real vista→editor→Workspace y la
-// lectura de la marca ya se prueban en MilkdownView.test.tsx y NoteEditor.test.tsx.
+// H-012/H-021: navegación y creación al hacer clic en un wikilink (C-1, C-3; H-021 C-7). El `Workspace`
+// recibe el clic de la vista (vía `NoteEditor.onOpenWikilink`) y decide: resuelto → abre esa nota en
+// Lectura; roto sin extensión → crea la nota EN LA CARPETA DE LA NOTA DE ORIGEN (H-021 C-7, antes en la
+// raíz) y la abre en edición; un destino con `/` cuenta desde la raíz de la bóveda; roto con extensión
+// ajena → no hace nada. Se usa un `NoteEditor` FALSO que expone el callback y reenvía por `onOpened` la
+// ruta real de la nota abierta (de ahí sale la carpeta de origen); el cableado real vista→editor→Workspace
+// y la lectura de la marca ya se prueban en MilkdownView.test.tsx y NoteEditor.test.tsx.
 import { forwardRef, useEffect, useImperativeHandle } from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { Route, Routes } from "react-router-dom";
@@ -32,6 +34,8 @@ const editorSpy = vi.hoisted(() => ({
   onOpenWikilink: null as null | ((link: { resolvedId: string | null; target: string }) => void),
   noteId: null as string | null,
   editOnOpen: false,
+  /** Ruta real por id, para que el editor falso reenvíe por `onOpened` la ruta de la nota abierta (C-7). */
+  pathFor: ((id: string) => id) as (id: string) => string,
 }));
 
 // Editor falso: expone `onOpenWikilink` y pinta el id y el modo con que el `Workspace` lo abrió.
@@ -45,7 +49,8 @@ vi.mock("../editor/NoteEditor", () => ({
     editorSpy.editOnOpen = props.editOnOpen ?? false;
     useImperativeHandle(ref, () => ({ confirmDiscard: () => Promise.resolve(true) }));
     useEffect(() => {
-      props.onOpened?.(props.noteId, props.noteId);
+      // El `NoteEditor` real avisa con `loaded.path`; el falso lo resuelve por id (C-7: la carpeta de origen).
+      props.onOpened?.(props.noteId, editorSpy.pathFor(props.noteId));
     }, [props.noteId]);
     return (
       <div>
@@ -61,6 +66,7 @@ afterEach(() => {
   editorSpy.onOpenWikilink = null;
   editorSpy.noteId = null;
   editorSpy.editOnOpen = false;
+  editorSpy.pathFor = (id) => id;
 });
 
 function tree(value: SyncContextValue, path: string, state?: unknown) {
@@ -76,12 +82,16 @@ function tree(value: SyncContextValue, path: string, state?: unknown) {
   );
 }
 
-/** Crea la bóveda, una nota destino y una nota de origen ya abierta en el workspace. */
+/**
+ * Crea la bóveda, una nota destino y una nota de origen DENTRO de una carpeta, ya abierta en el workspace.
+ * La carpeta de origen es lo que H-021 C-7 usa para decidir dónde se crea una nota rota.
+ */
 async function setup() {
   const { value, db } = syncValue({}, memoryDb());
   const vault = await seedStore(db).create({ name: "Trabajo", description: null, tags: [] });
   const target = await value.notes.create(vault.id, "Nota A");
-  const source = await value.notes.create(vault.id, "Origen");
+  const source = await value.notes.create(vault.id, "Origen", "Proyectos");
+  editorSpy.pathFor = (id) => (id === source.id ? source.path : id === target.id ? target.path : id);
   render(tree(value, `/vaults/${vault.id}`, { noteId: source.id }));
   await waitFor(() => expect(screen.getByTestId("open-id")).toHaveTextContent(source.id));
   return { value, vault, target, source };
@@ -94,16 +104,26 @@ test("C-1: clic en wikilink resuelto abre esa nota en Lectura", async () => {
   expect(screen.getByTestId("open-mode")).toHaveTextContent("read");
 });
 
-test("C-3: clic en wikilink roto sin extensión crea la nota en la raíz y la abre en edición", async () => {
+test("H-021 C-7: clic en wikilink roto sin extensión crea la nota en la CARPETA DE ORIGEN y la abre en edición", async () => {
   const { value, vault, source } = await setup();
   act(() => editorSpy.onOpenWikilink!({ resolvedId: null, target: "Nota Nueva" }));
   // Se abre una nota distinta de la de origen, en edición.
   await waitFor(() => expect(screen.getByTestId("open-id")).not.toHaveTextContent(source.id));
   expect(screen.getByTestId("open-mode")).toHaveTextContent("edit");
-  // Y existe de verdad en la raíz con ese nombre.
-  const created = (await value.notes.list(vault.id)).find((n) => n.path === "Nota Nueva.md");
+  // Y existe de verdad en la misma carpeta que la nota de origen (`Proyectos/`), no en la raíz (C-7).
+  const created = (await value.notes.list(vault.id)).find((n) => n.path === "Proyectos/Nota Nueva.md");
   expect(created).toBeDefined();
+  expect((await value.notes.list(vault.id)).some((n) => n.path === "Nota Nueva.md")).toBe(false);
   expect(screen.getByTestId("open-id")).toHaveTextContent(created!.id);
+});
+
+test("H-021 C-7: un destino con `/` cuenta desde la raíz de la bóveda, no desde la carpeta de origen", async () => {
+  const { value, vault } = await setup();
+  act(() => editorSpy.onOpenWikilink!({ resolvedId: null, target: "Otra/Sub Nota" }));
+  // La ruta con `/` se interpreta desde la raíz: `Otra/Sub Nota.md`, sin anidar bajo `Proyectos/`.
+  await waitFor(async () => expect((await value.notes.list(vault.id)).some((n) => n.path === "Otra/Sub Nota.md")).toBe(true));
+  expect((await value.notes.list(vault.id)).some((n) => n.path === "Proyectos/Otra/Sub Nota.md")).toBe(false);
+  expect(screen.getByTestId("open-mode")).toHaveTextContent("edit");
 });
 
 test("C-3: clic en wikilink roto con extensión ajena (.docx) no hace nada", async () => {

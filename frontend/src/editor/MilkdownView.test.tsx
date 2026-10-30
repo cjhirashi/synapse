@@ -19,7 +19,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void; vaultColor?: PaletteKey }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void; onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void; vaultColor?: PaletteKey }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -31,6 +31,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       prefix={props.prefix}
       notes={props.notes}
       onWikilinkClick={props.onWikilinkClick}
+      onWikilinkHover={props.onWikilinkHover}
       vaultColor={props.vaultColor}
       onView={(v) => {
         view = v;
@@ -713,6 +714,57 @@ describe("MilkdownView · clic en wikilink (H-012)", () => {
     const { view } = await mount({ value: "ver [[Nota A]] fin", readOnly: false, notes: NOTES, onWikilinkClick });
     clickFirstWikilink(view);
     expect(onWikilinkClick).not.toHaveBeenCalled();
+  });
+});
+
+// H-021: al pasar el puntero por un wikilink SÓLO en Lectura (C-1/C-6), `MilkdownView` avisa al padre con
+// el `resolvedId`/`target` leídos POR POSICIÓN (lección H-012: no por el nodo ancestro) y el rectángulo del
+// enlace; al salir avisa con `null`. En edición Visual el plugin ni se registra (C-5). jsdom no ejerce el
+// hover real ni la geometría de `getBoundingClientRect` (devuelve ceros); la verificación en navegador la
+// hace AIRA (lección H-012). El test dispara un `mouseover` real sobre el `<a.wikilink>` montado por
+// Milkdown, que ProseMirror entrega al `handleDOMEvents`, así que SÍ ejercita la resolución por posición.
+describe("MilkdownView · hover en wikilink (H-021)", () => {
+  const NOTES = [{ id: "note:v:1", path: "Nota A.md" }];
+
+  /** Dispara un `mouseover`/`mouseout` que burbujea desde el `<a.wikilink>` hasta la vista de ProseMirror. */
+  function fire(container: HTMLElement, type: "mouseover" | "mouseout", relatedTarget: Node | null = null) {
+    const link = container.querySelector("a.wikilink");
+    if (!link) throw new Error("no hay wikilink montado");
+    link.dispatchEvent(new MouseEvent(type, { bubbles: true, relatedTarget }));
+    return link;
+  }
+
+  it("C-1: en Lectura, el puntero sobre un wikilink resuelto avisa con su `resolvedId`, `target` y un rect", async () => {
+    const onWikilinkHover = vi.fn();
+    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES, onWikilinkHover });
+    fire(container, "mouseover");
+    expect(onWikilinkHover).toHaveBeenCalledTimes(1);
+    const arg = onWikilinkHover.mock.calls[0][0];
+    expect(arg).toMatchObject({ resolvedId: "note:v:1", target: "Nota A" });
+    expect(arg.rect).toBeDefined();
+  });
+
+  it("C-6: en Lectura, el puntero sobre un wikilink roto avisa con `resolvedId: null` y el `target`", async () => {
+    const onWikilinkHover = vi.fn();
+    const { container } = await mount({ value: "[[No existe]]", readOnly: true, notes: NOTES, onWikilinkHover });
+    fire(container, "mouseover");
+    expect(onWikilinkHover).toHaveBeenCalledWith(expect.objectContaining({ resolvedId: null, target: "No existe" }));
+  });
+
+  it("C-3: al salir del wikilink (mouseout hacia fuera) avisa con `null`", async () => {
+    const onWikilinkHover = vi.fn();
+    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES, onWikilinkHover });
+    fire(container, "mouseover");
+    onWikilinkHover.mockClear();
+    fire(container, "mouseout", container); // relatedTarget fuera del enlace
+    expect(onWikilinkHover).toHaveBeenCalledWith(null);
+  });
+
+  it("C-5: en edición Visual el plugin no se registra, así que el hover no avisa nada", async () => {
+    const onWikilinkHover = vi.fn();
+    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: false, notes: NOTES, onWikilinkHover });
+    fire(container, "mouseover");
+    expect(onWikilinkHover).not.toHaveBeenCalled();
   });
 });
 

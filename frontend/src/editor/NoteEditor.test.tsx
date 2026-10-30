@@ -1271,3 +1271,77 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
     expect(codeGotClick).toBeUndefined();
   });
 });
+
+// H-021: la tarjeta de vista previa. El editor sólo la monta en Lectura y sólo si el dispositivo tiene
+// puntero fino (C-5); cablea el hover de la vista de Lectura a la tarjeta y la creación de la nota rota al
+// mismo `onOpenWikilink` (C-7). Se usa `matchMedia` para simular tener o no puntero.
+describe("wikilinks · vista previa en Lectura (H-021)", () => {
+  const RECT = { top: 10, bottom: 30, left: 20, right: 120, width: 100, height: 20, x: 20, y: 10, toJSON: () => ({}) } as DOMRect;
+
+  /** Fuerza el resultado de `matchMedia` para la consulta de puntero fino (`hover: hover`). */
+  function withPointer(fine: boolean, fn: () => Promise<void>): Promise<void> {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) =>
+      ({ matches: /hover:\s*hover/.test(query) ? fine : false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent: () => false }) as unknown as MediaQueryList);
+    return fn().finally(() => {
+      window.matchMedia = original;
+    });
+  }
+
+  it("C-1: en Lectura con puntero fino, un hover resuelto muestra la tarjeta con el título de la nota", async () => {
+    await withPointer(true, async () => {
+      let fireHover: ((h: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void) | undefined;
+      function CapturingVisual({ value, onChange, label, readOnly, onWikilinkHover }: ViewProps) {
+        if (readOnly && onWikilinkHover) fireHover = onWikilinkHover;
+        return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+      }
+      const { second } = await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") } });
+      expect(fireHover).toBeTypeOf("function");
+      act(() => fireHover!({ resolvedId: second.id, target: "Segunda", rect: RECT }));
+      // La tarjeta aparece tras el retardo (~400 ms) con el nombre de la nota destino como título.
+      expect(await screen.findByText("Segunda")).toBeInTheDocument();
+    });
+  });
+
+  it("C-5: en edición Visual la vista no recibe `onWikilinkHover` (ninguna tarjeta en edición)", async () => {
+    await withPointer(true, async () => {
+      let editGotHover: unknown = "no-render";
+      function CapturingVisual({ value, onChange, label, readOnly, onWikilinkHover }: ViewProps) {
+        if (!readOnly) editGotHover = onWikilinkHover;
+        return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+      }
+      await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") } });
+      await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+      await screen.findByRole("textbox", { name: "Editor visual" });
+      expect(editGotHover).toBeUndefined();
+    });
+  });
+
+  it("C-5: sin puntero fino, la vista de Lectura no recibe `onWikilinkHover` (ninguna tarjeta)", async () => {
+    await withPointer(false, async () => {
+      let readGotHover: unknown = "no-render";
+      function CapturingVisual({ value, onChange, label, readOnly, onWikilinkHover }: ViewProps) {
+        if (readOnly) readGotHover = onWikilinkHover;
+        return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+      }
+      await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") } });
+      expect(readGotHover).toBeUndefined();
+    });
+  });
+
+  it("C-7: crear la nota desde la tarjeta de un wikilink roto llama a `onOpenWikilink` con el `target`", async () => {
+    await withPointer(true, async () => {
+      let fireHover: ((h: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void) | undefined;
+      function CapturingVisual({ value, onChange, label, readOnly, onWikilinkHover }: ViewProps) {
+        if (readOnly && onWikilinkHover) fireHover = onWikilinkHover;
+        return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+      }
+      const onOpenWikilink = vi.fn();
+      await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") }, onOpenWikilink });
+      act(() => fireHover!({ resolvedId: null, target: "Nota Nueva", rect: RECT }));
+      const create = await screen.findByText(/esta nota no existe\. clic para crearla/i);
+      act(() => create.click());
+      expect(onOpenWikilink).toHaveBeenCalledWith({ resolvedId: null, target: "Nota Nueva" });
+    });
+  });
+});

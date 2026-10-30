@@ -59,6 +59,8 @@ import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { MilkdownView, type EditorCommands } from "./MilkdownView";
+import { WikilinkPreview, type WikilinkHoverTarget } from "./WikilinkPreview";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
 import { NoteMenu } from "./NoteMenu";
 import { PropertiesForm } from "./PropertiesForm";
@@ -98,6 +100,8 @@ export interface ViewProps {
   notes?: readonly NoteRef[];
   /** Clic en un wikilink, sólo en Lectura (H-012 C-1/C-3); la vista Visual lo emite leyendo la marca del nodo. */
   onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
+  /** Puntero sobre un wikilink, sólo en Lectura (H-021 C-1/C-6); el editor lo usa para la tarjeta de vista previa. */
+  onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
   /** Color de la bóveda abierta (H-014); sólo lo usa la vista Visual para publicar las variables de color del documento. */
   vaultColor?: PaletteKey;
 }
@@ -218,6 +222,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [preparsed, setPreparsed] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("read");
   const [view, setView] = useState<View>("visual");
+  /**
+   * Vista previa de wikilink en Lectura (H-021): el enlace bajo el puntero (`null` = ninguno). Sólo se
+   * activa con puntero fino (C-5: en táctil no hay tarjeta); en edición ni se cablea ni se pinta.
+   */
+  const canHoverPreview = useMediaQuery("(hover: hover) and (pointer: fine)");
+  const [wikilinkHover, setWikilinkHover] = useState<WikilinkHoverTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -504,6 +514,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   useEffect(() => {
     if (mode !== "edit" || view !== "visual") setPending(false);
   }, [mode, view]);
+
+  // La tarjeta de vista previa (H-021) sólo vive en Lectura: al pasar a edición o cambiar de nota se cierra.
+  useEffect(() => {
+    if (mode !== "read") setWikilinkHover(null);
+  }, [mode, openId]);
 
   const onDraft = useCallback((value: string) => {
     // La ref se adelanta al render: un vaciado seguido de un guardado en el mismo turno lee el texto nuevo.
@@ -1063,7 +1078,23 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <>
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
-              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} vaultColor={vaultColor} />
+              <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} onWikilinkHover={canHoverPreview ? setWikilinkHover : undefined} vaultColor={vaultColor} />
+              {/* H-021: tarjeta de vista previa del wikilink bajo el puntero. Sólo con puntero fino (C-5); usa la
+                  MISMA vista de sólo lectura para pintar el cuerpo (inerte, C-4) y el mismo `onOpenWikilink` para
+                  crear la nota rota desde la tarjeta (C-7). */}
+              {canHoverPreview && (
+                <WikilinkPreview
+                  hover={wikilinkHover}
+                  notes={notes}
+                  View={Visual}
+                  vaultNotes={vaultNotes}
+                  vaultColor={vaultColor}
+                  onCreate={(target) => {
+                    setWikilinkHover(null);
+                    onOpenWikilink?.({ resolvedId: null, target });
+                  }}
+                />
+              )}
             </>
           ) : view === "visual" ? (
             <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} />
