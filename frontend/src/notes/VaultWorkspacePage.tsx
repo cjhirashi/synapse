@@ -19,6 +19,7 @@ import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
+import { parentFolder } from "./folders";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import { useMediaQuery } from "../layout/useMediaQuery";
@@ -223,6 +224,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // Historial de notas abiertas (RF-056…RF-060): por bóveda, en `sessionStorage` (sobrevive a recargar la pestaña).
   const [history, setHistory] = useState<History>(() => loadHistory(sessionStorage, vault.id));
   const historyRef = useRef(history);
+  /** Ruta de la nota abierta ahora (la entrega `onOpened`): de ella sale la carpeta de origen de H-021 C-7. */
+  const openPathRef = useRef<string>("");
   /** Salto de historial pedido y aún sin confirmar: sólo se mueve la posición cuando el editor abre de verdad la nota. */
   const jump = useRef<{ target: string; history: History; direction: -1 | 1 } | null>(null);
   /** Cola de saltos: cada uno espera a que el anterior termine (se abrió, se canceló o venció el plazo), L-5. */
@@ -295,10 +298,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   }
 
   /**
-   * Clic en un wikilink en Lectura (H-012 C-1/C-3). Resuelto: abre esa nota con el MISMO `open` del árbol y
-   * del historial (en Lectura, P-3). Roto: si el destino no trae extensión de archivo ajena (P-1) crea una
-   * nota vacía con ese nombre en la raíz (`notes.create` con el nombre como título) y la abre en edición,
-   * como «Nueva carpeta»; con extensión ajena (`.docx`, `.pdf`…) no hace nada.
+   * Clic en un wikilink en Lectura (H-012 C-1/C-3; H-021 C-7). Resuelto: abre esa nota con el MISMO `open`
+   * del árbol y del historial (en Lectura, P-3). Roto: si el destino no trae extensión de archivo ajena
+   * (P-1) crea una nota vacía con ese nombre y la abre en edición, como «Nueva carpeta»; con extensión
+   * ajena (`.docx`, `.pdf`…) no hace nada.
+   *
+   * H-021 C-7 (cambio respecto a H-012, que creaba en la raíz): la nota se crea en la CARPETA DE LA NOTA DE
+   * ORIGEN (la abierta ahora, `openPathRef`). Un destino con `/` (`[[Carpeta/Nota]]`) cuenta desde la raíz
+   * de la bóveda, así que en ese caso no se antepone la carpeta de origen (carpeta `""`); `notes.create`
+   * resuelve el `/` del título contra esa carpeta base (ver `createNote`/`joinPath`).
    */
   function openWikilink({ resolvedId, target }: { resolvedId: string | null; target: string }) {
     if (resolvedId !== null) {
@@ -306,14 +314,16 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       return;
     }
     if (hasUnmanagedExtension(target)) return;
+    const folder = target.includes("/") ? "" : parentFolder(openPathRef.current);
     void notes
-      .create(vault.id, target)
+      .create(vault.id, target, folder)
       .then((note) => open(note.id, { edit: true }))
       .catch(() => undefined);
   }
 
   /** La nota se abrió de verdad: confirma el salto de historial pendiente o añade una entrada (RF-057). */
-  function onOpened(id: string) {
+  function onOpened(id: string, path: string) {
+    openPathRef.current = path;
     const pending = jump.current;
     jump.current = null;
     commitHistory(pending && pending.target === id ? pending.history : push(historyRef.current, id));
