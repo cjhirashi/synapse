@@ -1,130 +1,120 @@
 ---
 id: H-015
-titulo: Subir imágenes a MinIO y referenciarlas con ![]() — Fase 1 de archivos adjuntos
-estado: pendiente # Gate 1 NO pasado — criterios redactados por AIRA; falta el "así es" de Carlos.
+titulo: Subir imágenes a MinIO, con visibilidad privada/pública, y referenciarlas con ![]()
+estado: pendiente # Gate 1 NO pasado — alcance reescrito con las decisiones de Carlos (2026-10-30); falta su "así es" sobre esta versión.
 covers:
   - backend/app/routers/files.py
   - backend/app/services/file_service.py
   - backend/app/adapters/minio_adapter.py
+  - backend/app/adapters/file_repository.py
   - backend/app/core/schemas.py
+  - backend/alembic/versions/
+  - frontend/src/files/uploadFile.ts
   - frontend/src/editor/NoteEditor.tsx
   - frontend/src/editor/MilkdownView.tsx
-  - frontend/src/editor/uploadImage.ts
 origen: backlog
 ---
 
-# H-015 — Subir imágenes a MinIO y referenciarlas con `![]()`
+# H-015 — Subir imágenes a MinIO, con visibilidad privada/pública
 
 ## 1. Intención (lenguaje de usuario)
 
-Primera fase del pedido de Carlos (2026-10-30) de poder cargar archivos a
-Synapse (imágenes, PDF, video, HTML) con MinIO como almacenamiento. La
-infraestructura ya está lista (hecha por AIRA el mismo día, fuera de esta
-historia): instancia MinIO propia de Synapse (`synapse-minio`, NO la de
-cjhirashi-career), bucket `synapse-files` **privado** (sin acceso público
-directo), red `net-synapse` conectada. El subdominio aislado
-`files-synapse.cjhirashi.com` también existe (DNS + Caddy verificados) pero
-**esta historia no lo usa** — es para HTML/iframe (fase 3, historia aparte);
-imágenes y PDF son contenido pasivo, sin riesgo de ejecución, así que se
-sirven por el dominio normal de Synapse.
+Primera fase del pedido de Carlos (2026-10-30): cargar archivos a Synapse con
+MinIO como almacén. Infraestructura ya lista (fuera de esta historia):
+`synapse-minio` (instancia propia, NO la de cjhirashi-career), bucket
+`synapse-files` privado, `files-synapse.cjhirashi.com` creado.
 
-**Decisión técnica de AIRA (a confirmar, P-1):** el bucket es privado y las
-notas son privadas — la URL de una imagen en el markdown **no debe ser** un
-link firmado de MinIO con vencimiento (se rompería la imagen semanas después,
-cuando el link caduque). Se sirve por un endpoint propio del backend
-(`GET /files/{id}`) que verifica la sesión y que el archivo pertenece a una
-bóveda del usuario en cada petición, igual que ya hace `vaults.py`/`notes.py`
-(`get_current_principal` → `synapse_user_{sub}`) — mismo principio que la
-sincronización por proxy (ADR-002): nunca se expone el almacén directo con un
-token de larga duración.
+## 2. Decisiones de producto ya tomadas (Carlos, 2026-10-30)
 
-## 2. Alcance / fuera de alcance
+- **Endpoint autenticado**, no links firmados con vencimiento. Una URL estable
+  por archivo: `https://synapse.cjhirashi.com/files/<id>` (la sesión de
+  Synapse sólo existe en ese dominio).
+- **Visibilidad por archivo: privado (por defecto) o público.** Privado exige
+  sesión (o API key de agente) y que el archivo sea del usuario; público abre
+  sin sesión con la misma URL. Cambiar la visibilidad no cambia el link.
+- **Límite de 5 MB por archivo.**
+- **Subida:** botón en el editor Y arrastrar-y-soltar.
+- **Archivos huérfanos:** si se quita la imagen del texto o se borra la nota,
+  el archivo se queda (no se limpia solo). El indicador de referencias para
+  decidir qué borrar va en H-016.
+- `files-synapse.cjhirashi.com` NO se usa en esta historia: se reserva para
+  contenido activo (HTML/iframe), historia posterior.
 
-- Dentro: subir una imagen (drag&drop o selector de archivo) desde la nota
-  en edición Visual; guardarla en MinIO; insertar `![alt](url)` en el
-  markdown con la URL del endpoint propio; que esa imagen se vea en Visual y
-  en Lectura (ya renderiza `![]()`, sólo cambia de dónde sale la URL);
-  límite de 5 MB por archivo (confirmado por Carlos); tipos admitidos:
-  `image/png`, `image/jpeg`, `image/webp`, `image/gif`, `image/svg+xml` (con
-  el mismo saneo que ya exige cualquier SVG en el proyecto, ver RNF-003 —
-  un SVG subido NO es una excepción al sanitizado).
-- Fuera: PDF, video, HTML/iframe (historias siguientes); arrastrar una
-  imagen pegada directo del portapapeles (sólo selector/drag&drop de archivo
-  en esta fase, pegar imagen es fácil de añadir después); borrado/limpieza
-  de archivos huérfanos en MinIO cuando se borra la nota o se quita la
-  imagen del texto (P-3); recorte/edición de la imagen.
+## 3. Alcance / fuera de alcance
 
-## 3. Preguntas de producto para Carlos (Gate 1)
+- Dentro: tabla de metadatos en Postgres (migración Alembic); subir una
+  imagen desde la nota en edición Visual (botón en la Fila 3 del editor +
+  arrastrar-y-soltar); guardar en MinIO; insertar `![nombre](url)` en el
+  cursor; `GET /files/<id>` con la regla de visibilidad; cambio de visibilidad
+  por API (`PATCH`), SIN pantalla todavía; tipos `png/jpeg/webp/gif` y `svg`
+  (el SVG pasa por el mismo saneo que exige RNF-003).
+- Fuera: pantalla de archivos con lista/renombrar/eliminar/copiar link
+  (H-016); API de agentes para subir/consultar link (H-017); PDF y video
+  (H-018); HTML/iframe (H-019); publicar documento (H-020); pegar imagen del
+  portapapeles; limpieza de huérfanos.
 
-**P-1 (URL estable, no firmada) — ya explicado arriba:** ¿de acuerdo con
-que la imagen se sirva por un endpoint propio autenticado de Synapse
-(`GET /files/{id}`) en vez de un link firmado de MinIO con vencimiento?
-
-**P-2 (cómo se sube):** propongo un botón nuevo en la Fila 3 del editor
-(H-010, junto a los controles de formato, sólo visible en edición Visual) +
-soporte de arrastrar-y-soltar un archivo directo sobre el área de edición.
-¿Así es, o prefieres sólo uno de los dos mecanismos por ahora?
-
-**P-3 (archivos huérfanos):** si borras el texto `![...]()` de una nota, o
-borras la nota entera, el archivo se queda en MinIO (no se borra solo) —
-más simple para esta primera fase, sin riesgo de borrar algo que otra nota
-todavía referencia. ¿Aceptable por ahora, o necesitas que se limpie solo?
-
-## 4. Criterios de aceptación (EARS booleano) — pendientes de P-1..P-3
+## 4. Criterios de aceptación (EARS booleano)
 
 - **C-1:** CUANDO el usuario sube una imagen válida (tipo admitido, ≤ 5 MB)
-  desde una nota en edición Visual, el sistema DEBE guardarla en el bucket
-  MinIO de Synapse, asociada a esa bóveda, e insertar
-  `![nombre-del-archivo](url-del-endpoint)` en la posición del cursor.
-- **C-2:** CUANDO el archivo supera 5 MB o no es un tipo admitido, el
-  sistema DEBE rechazar la subida con un mensaje claro, sin crear nada en
-  MinIO ni en el markdown.
-- **C-3:** `GET /files/{id}` DEBE devolver 401 sin sesión válida, 404 si el
-  archivo no existe o pertenece a una bóveda de otro usuario, y el
-  contenido con el `Content-Type` correcto si todo es válido.
-- **C-4:** La imagen insertada DEBE verse correctamente tanto en modo
-  edición Visual como en Lectura (reusa el `imageSchema`/`safeImageUrl` ya
-  existentes — la URL del endpoint propio es `https://synapse.cjhirashi.com/...`,
-  pasa el filtro `http(s)` actual sin cambiarlo).
-- **C-5:** Un SVG subido DEBE pasar por el mismo saneo que ya exige
-  cualquier SVG del proyecto (RNF-003) antes de aceptarse — nunca se guarda
-  ni se sirve un SVG con `<script>`/`on*`/`foreignObject` sin verificar.
-- **C-6:** El límite de 5 MB y los tipos admitidos DEBEN verificarse tanto
-  en el cliente (antes de subir, para feedback inmediato) como en el
-  backend (nunca confiar sólo en el cliente).
+  desde una nota en edición Visual, el sistema DEBE guardarla en MinIO, crear
+  su registro (dueño, bóveda, nombre, tipo, tamaño, visibilidad `private`) e
+  insertar `![nombre](https://synapse.cjhirashi.com/files/<id>)` en el cursor.
+- **C-2:** CUANDO el archivo supera 5 MB o su tipo no es admitido, el sistema
+  DEBE rechazarlo con un mensaje claro, sin crear nada en MinIO, en Postgres
+  ni en el markdown.
+- **C-3:** `GET /files/<id>` DEBE devolver 404 si el archivo no existe, y:
+  si es `private`, 401 sin sesión/API key válida y 404 si pertenece a otro
+  usuario; si es `public`, el contenido sin exigir sesión. Con acceso válido
+  DEBE devolver el contenido con su `Content-Type` correcto.
+- **C-4:** La imagen insertada DEBE verse en edición Visual y en Lectura (la
+  URL es `https` y pasa el filtro `safeImageUrl` ya existente, sin cambiarlo).
+- **C-5:** Un SVG subido DEBE verificarse con el mismo saneo del proyecto
+  (sin `script`, `foreignObject`, atributos `on*`, `href` navegables) antes de
+  guardarse; si falla, se rechaza. Además `GET /files/<id>` DEBE servir los
+  SVG con `Content-Security-Policy: sandbox` y `X-Content-Type-Options:
+  nosniff`.
+- **C-6:** El límite de 5 MB y los tipos DEBEN verificarse en el cliente
+  (feedback inmediato) y en el backend (nunca sólo en el cliente).
+- **C-7:** CUANDO un agente usa su API key, `GET /files/<id>` DEBE aplicar la
+  misma regla de dueño que para la sesión (la key ve lo de su dueño).
+- **C-8:** `PATCH /files/<id>` con `{"visibility": "public"|"private"}` DEBE
+  cambiar la visibilidad sólo si el archivo es del usuario autenticado.
 
-`[NEEDS CLARIFICATION] = 3` (P-1 a P-3) — se resuelven con tu "así es".
+`[NEEDS CLARIFICATION] = 0` salvo la pregunta de almacenamiento por bóveda
+(§5), que no bloquea esta historia si se acepta la recomendación.
 
-## 5. Descartes
+## 5. Almacenamiento por bóveda (recomendación de AIRA, pendiente de "así es")
 
-- Link firmado de MinIO con vencimiento para la URL de la imagen: se rompe
-  con el tiempo, descartado (P-1).
-- Pegar imagen directo del portapapeles: fuera de esta fase, el mecanismo
-  base (subir + servir) es el mismo, se añade después sin tocar el backend.
-- Limpieza automática de archivos huérfanos: fuera de esta fase (P-3).
+Carlos quiere ver una "lista de buckets". Recomendación: **un solo bucket
+físico (`synapse-files`) con un prefijo por bóveda**
+(`vaults/<vault_id>/<file_id>`), y la app muestra cada bóveda como su
+"bucket". Razones: crear un bucket por bóveda exige nombres válidos de MinIO
+(minúsculas, 3-63 caracteres; los nombres de bóveda con acentos o espacios no
+sirven, habría que usar el id igual), crear y borrar buckets en caliente y
+una política por bucket; el prefijo da el mismo aislamiento lógico sin eso.
+El acceso real lo controla siempre el backend, MinIO nunca se expone directo.
+Renombrar una bóveda no mueve nada porque la clave usa el id.
 
 ## 6. Plan (de ESTA historia solamente) — borrador, se confirma al tomarla
 
-- **Backend:** `minio_adapter.py` (cliente MinIO, `put_object`/`get_object`
-  contra el bucket `synapse-files`, credenciales de `.env` ya configuradas:
-  `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`/`MINIO_BUCKET`); `file_service.py`
-  (valida tipo/tamaño, genera un id, guarda metadata — igual patrón que
-  notas/bóvedas, un doc en CouchDB o una tabla en Postgres, a decidir según
-  qué sea más simple de mantener consistente con el resto del proyecto);
-  `routers/files.py` con `POST /files` (`multipart/form-data`, requiere
-  `vault_id` + sesión) y `GET /files/{id}` (streaming, auth + ownership).
-- **Frontend:** `uploadImage.ts` (llama al endpoint, maneja el límite de
-  5 MB y tipos del lado cliente); botón nuevo en la Fila 3 de
-  `NoteEditor.tsx` (H-010) + `ondrop`/`ondragover` sobre el contenedor de
-  `MilkdownView`; al completar la subida, inserta el nodo de imagen en la
-  posición del cursor (comando de Milkdown, mismo patrón que ya usan los
-  demás botones de formato).
-- Estrategia de prueba: tests de `file_service.py` (tipo/tamaño válido e
-  inválido, ownership); tests de `routers/files.py` (401/404/200,
-  aislamiento entre usuarios — mismo patrón que ya prueba `vaults.py`);
-  `uploadImage.ts` (límite de cliente, llamada correcta); inserción del
-  nodo de imagen en `NoteEditor.test.tsx`/`MilkdownView.test.tsx`.
-- Pasos TDD: se detallan al tomar la historia (§3 del método).
+- Backend: dependencia `minio` (cliente Python); `minio_adapter.py`
+  (`put_object`/`get_object`, bucket y credenciales ya en `.env`);
+  `file_repository.py` + migración Alembic para la tabla `files` (id, owner_id,
+  vault_id, name, content_type, size, visibility, object_key, created_at);
+  `file_service.py` (validación de tipo/tamaño, saneo de SVG, reglas de
+  acceso); `routers/files.py` (`POST /files` multipart con `vault_id`,
+  `GET /files/<id>` en streaming, `PATCH /files/<id>`), mismo patrón de
+  dependencias que `vaults.py` (`get_current_principal`).
+- Frontend: `files/uploadFile.ts` (límite 5 MB y tipos en cliente, llamada al
+  endpoint); botón en la Fila 3 de `NoteEditor.tsx` + `drop`/`dragover` sobre
+  el área de edición; al terminar, inserta el nodo de imagen con el comando de
+  Milkdown que ya usan los demás botones.
+- Pruebas: servicio (tipo/tamaño/saneo SVG/propiedad), router (401/404/200,
+  público sin sesión, aislamiento entre usuarios, API key), migración,
+  `uploadFile.ts`, inserción del nodo en el editor. Además verificación real
+  con usuario y bóveda desechables y un navegador (lección de H-012: los tests
+  con jsdom no ejercen el gesto real de arrastrar/soltar).
+- Pasos TDD: se detallan al tomar la historia.
 
 ## 7. Tabla de cobertura
 
@@ -132,9 +122,8 @@ todavía referencia. ¿Aceptable por ahora, o necesitas que se limpie solo?
 
 ## 8. Checkpoint demostrable
 
-Carlos debe subir una imagen real a una nota (botón o arrastrar), verla en
-Visual y en Lectura, y confirmar que recargar la página / volver más tarde
-no rompe la imagen (URL estable, no firmada).
+Carlos sube una imagen real a una nota (botón y arrastrando), la ve en Visual
+y en Lectura, y confirma que sigue viéndose tras recargar la página.
 
 ## 9. Session-End (al cerrar)
 
