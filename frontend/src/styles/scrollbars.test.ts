@@ -74,3 +74,9 @@ test("C-4: Firefox recibe scrollbar-width y scrollbar-color estándar, con los t
 test("C-4: las propiedades estándar de barra NO se declaran fuera del @supports de Firefox", () => {
   expect(splitSupports(globalCss()).outside).not.toMatch(/scrollbar-(?:width|color)/);
 });
+
+// C-3: los controles nativos (barras, inputs, selects) heredan el esquema del tema elegido en la app,
+// no el del sistema operativo; si no, un SO claro con la app en oscuro dibujaría controles claros.
+test.each(["dark", "light"])("C-3: el tema %s declara su color-scheme en tokens.css", (name) => {
+  expect(rule(read("tokens.css"), `:root[data-theme="${name}"]`)).toMatch(new RegExp(`color-scheme: ${name};`));
+});

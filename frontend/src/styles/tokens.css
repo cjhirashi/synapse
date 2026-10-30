@@ -5,6 +5,8 @@
  * (los tokens `-text`, `--border-control` y `--radius-xs` los registra ADR-006).
  */
 :root[data-theme="dark"] {
+  /* H-022: los controles nativos (barras, inputs, selects) siguen el tema de la app, no el del SO. */
+  color-scheme: dark;
   --bg-primary: #12121a;
   --bg-secondary: #1a1a24;
   --bg-tertiary: #22222e;
@@ -46,6 +48,7 @@
 }
 
 :root[data-theme="light"] {
+  color-scheme: light;
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-tertiary: #f1f5f9;
