@@ -557,10 +557,10 @@ describe("MilkdownView · Mermaid", () => {
   });
 });
 
-// H-011: wikilinks `[[Destino]]`/`[[Destino|Alias]]`. En edición Visual se reconocen y se pintan como
-// enlace (C-1, C-3); el destino sin nota `.md` se pinta "roto" (C-4); el round-trip conserva `[[...]]`
-// sin escapar (C-2); el `id` resuelto vive en la marca (C-7); no son navegables aún (C-5); en lectura el
-// texto sigue literal (C-6).
+// H-011: wikilinks `[[Destino]]`/`[[Destino|Alias]]`. En Lectura y en edición Visual se reconocen y se
+// pintan como enlace (C-1, C-3, C-6 corregido); el destino sin nota `.md` se pinta "roto" (C-4); el
+// round-trip conserva `[[...]]` sin escapar (C-2); el `id` resuelto vive en la marca (C-7); no son
+// navegables aún (C-5). En Código (componente aparte) el texto siempre queda literal.
 describe("MilkdownView · wikilinks (H-011)", () => {
   const NOTES = [
     { id: "note:v:1", path: "Nota A.md" },
@@ -628,9 +628,13 @@ describe("MilkdownView · wikilinks (H-011)", () => {
     expect(emitted).not.toContain("\\["); // no se escapan los corchetes (el bug que cierra H-011)
   });
 
-  it("C-6: en modo Lectura el contenido sigue mostrando `[[...]]` literal (sin marca de enlace)", async () => {
-    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES });
-    expect(container.querySelector("a.wikilink")).toBeNull();
-    expect(container.querySelector(".ProseMirror")).toHaveTextContent("ver [[Nota A]] fin");
+  it("C-6 (corregido): en modo Lectura el wikilink también se pinta como enlace, resuelto o roto", async () => {
+    const resolved = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES });
+    const link = resolved.container.querySelector("a.wikilink");
+    expect(link).not.toBeNull();
+    expect(link).toHaveTextContent("Nota A");
+    expect(link!.hasAttribute("data-broken")).toBe(false);
+    const broken = await mount({ value: "[[No existe]]", readOnly: true, notes: NOTES });
+    expect(broken.container.querySelector("a.wikilink")!.hasAttribute("data-broken")).toBe(true);
   });
 });

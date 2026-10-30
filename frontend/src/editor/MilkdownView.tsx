@@ -265,8 +265,9 @@ interface MilkdownViewProps {
   /** Informa de si el cursor está dentro de una tabla; sólo cuando cambia (para mostrar fila/columna, P-7). */
   onTableContext?: (inTable: boolean) => void;
   /**
-   * Notas vivas de la bóveda para resolver wikilinks (H-011): sólo se usan en edición Visual (no en lectura
-   * ni en Código, C-6). Resolver un `[[Destino]]` compara su nombre contra estas notas (ver `wikilink.ts`).
+   * Notas vivas de la bóveda para resolver wikilinks (H-011): se usan en Lectura y en edición Visual (no en
+   * Código, que es un componente de texto plano aparte, C-6 corregido). Resolver un `[[Destino]]` compara
+   * su nombre contra estas notas (ver `wikilink.ts`).
    */
   notes?: readonly NoteRef[];
 }
@@ -462,18 +463,18 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         );
       });
 
-    // H-011: los wikilinks SÓLO se reconocen en edición Visual. En lectura y en Código el texto queda
-    // literal (`[[...]]`, C-6), así que ahí no se añaden ni la marca ni su transformador ni el resolvedor.
-    if (!readOnly) {
-      editor = editor
-        .use(wikilinkResolverPlugin)
-        .use(wikilinkMark)
-        .use(wikilinkRemark)
-        .config((ctx) => {
-          // El resolvedor lee la lista de notas vigente por ref: así resolver no obliga a recrear el editor.
-          ctx.set(wikilinkResolverCtx, (target: string) => resolveWikiLink(target, notesRef.current));
-        });
-    }
+    // H-011 (corregido): los wikilinks se reconocen tanto en Lectura como en edición Visual — ambas pasan
+    // por este componente (`MilkdownView`/`Visual`, sólo cambia `readOnly`); es justo en Lectura donde más
+    // se usan para navegar (Carlos, 2026-10-30). Sólo Código queda literal, porque usa `CodeView`, un
+    // componente de texto plano aparte que nunca llega a este código (C-6 corregido).
+    editor = editor
+      .use(wikilinkResolverPlugin)
+      .use(wikilinkMark)
+      .use(wikilinkRemark)
+      .config((ctx) => {
+        // El resolvedor lee la lista de notas vigente por ref: así resolver no obliga a recrear el editor.
+        ctx.set(wikilinkResolverCtx, (target: string) => resolveWikiLink(target, notesRef.current));
+      });
 
     const ready = editor.create().then(() => {
       // Si mientras se creaba lo reemplazaron, `stop()` ya lo destruirá: no se anuncia.
