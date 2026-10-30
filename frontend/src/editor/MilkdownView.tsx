@@ -467,15 +467,30 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
                 },
               }),
             }),
-            // H-012 C-1/C-3: clic en un wikilink, SÓLO en Lectura. El handler lee la marca `wikilink` del nodo
-            // clicado (su `resolvedId`/`target`, sin viaje por el DOM) y avisa al padre para navegar o crear. En
-            // edición ni se añade (C-4/C-5): un clic ahí coloca el cursor como siempre.
+            // H-012 C-1/C-3 (corregido — ver nota de bug abajo): clic en un wikilink, SÓLO en Lectura. El
+            // handler lee la marca `wikilink` activa EN LA POSICIÓN exacta del clic (`resolvedId`/`target`,
+            // sin viaje por el DOM) y avisa al padre para navegar o crear. En edición ni se añade (C-4/C-5):
+            // un clic ahí coloca el cursor como siempre.
+            //
+            // BUG real encontrado por Carlos (2026-10-30, el clic no hacía nada) y reproducido por AIRA con
+            // un usuario/bóveda desechables + clic real en navegador (no sólo unit test con jsdom, que nunca
+            // ejerce `posAtCoords`): el 3er argumento de `handleClickOn` (`node`) es el NODO ANCESTRO de
+            // bloque alrededor del clic (la documentación de ProseMirror dice "para cada nodo alrededor del
+            // clic, de adentro hacia afuera") — aquí siempre era el `<p>`, que no carga la marca inline. Un
+            // párrafo nunca tiene `.marks` con el wikilink; `node.marks.find(...)` daba `undefined` siempre,
+            // así que el handler devolvía `false` en silencio, sin error y sin navegar. Arreglo: resolver las
+            // marcas activas EN LA POSICIÓN del clic (`doc.resolve(pos).marks()`), no en el nodo ancestro.
             ...(readOnly
               ? [
                   new Plugin({
                     props: {
-                      handleClickOn: (_view, _pos, node) => {
-                        const mark = node.marks.find((m) => m.type.name === "wikilink");
+                      handleClickOn: (view, pos) => {
+                        // `$pos.marks()` sola no basta: en el límite exacto donde empieza la marca (click en su
+                        // primer carácter) mira el texto ANTERIOR, sin marca, y no la encuentra. Unir las marcas
+                        // de `nodeBefore`/`nodeAfter` cubre el clic en cualquier punto del wikilink, borde incluido.
+                        const $pos = view.state.doc.resolve(pos);
+                        const marks = [...($pos.nodeBefore?.marks ?? []), ...($pos.nodeAfter?.marks ?? [])];
+                        const mark = marks.find((m) => m.type.name === "wikilink");
                         if (!mark) return false;
                         onWikilinkClickRef.current?.({ resolvedId: (mark.attrs.resolvedId as string | null) ?? null, target: mark.attrs.target as string });
                         return true; // consume el clic: no coloca selección ni sigue propagando

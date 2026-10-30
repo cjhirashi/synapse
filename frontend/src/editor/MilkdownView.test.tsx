@@ -646,7 +646,15 @@ describe("MilkdownView · wikilinks (H-011)", () => {
 describe("MilkdownView · clic en wikilink (H-012)", () => {
   const NOTES = [{ id: "note:v:1", path: "Nota A.md" }];
 
-  /** Invoca el `handleClickOn` registrado (si lo hay) sobre la primera marca `wikilink`, como lo haría ProseMirror. */
+  /**
+   * Invoca el `handleClickOn` registrado (si lo hay) sobre la primera marca `wikilink`, pasando como
+   * `node` el PÁRRAFO ancestro (no el nodo de texto con la marca) — es justo lo que ProseMirror pasa de
+   * verdad ("para cada nodo alrededor del clic", prosemirror-view: el ancestro de bloque, nunca el texto
+   * inline). La versión anterior de este test pasaba `$pos.nodeAfter` (el nodo de texto correcto) a mano,
+   * lo que ocultó el bug real de H-012 (2026-10-30, clic no navegaba — la implementación leía
+   * `node.marks`, siempre vacío en un párrafo) hasta que Carlos lo reportó en producción. Pasar el
+   * ancestro real aquí asegura que este test fallaría otra vez si el handler vuelve a depender de `node`.
+   */
   function clickFirstWikilink(view: EditorView): boolean {
     let wikiPos = -1;
     view.state.doc.descendants((node, pos) => {
@@ -655,9 +663,8 @@ describe("MilkdownView · clic en wikilink (H-012)", () => {
     });
     if (wikiPos < 0) return false;
     const $pos = view.state.doc.resolve(wikiPos);
-    return (
-      view.someProp("handleClickOn", (f) => f(view, wikiPos, $pos.nodeAfter!, $pos.before($pos.depth + 1), new MouseEvent("click"), true)) ?? false
-    );
+    const paragraphAncestor = $pos.node($pos.depth);
+    return view.someProp("handleClickOn", (f) => f(view, wikiPos, paragraphAncestor, $pos.before($pos.depth), new MouseEvent("click"), true)) ?? false;
   }
 
   it("C-1: en Lectura, clic en un wikilink resuelto avisa con su `resolvedId`", async () => {
