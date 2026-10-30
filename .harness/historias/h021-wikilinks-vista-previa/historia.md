@@ -1,13 +1,14 @@
 ---
 id: H-021
-titulo: Vista previa emergente al pasar el mouse sobre un wikilink en modo Lectura
-estado: pendiente # Gate 1 NO pasado — borrador de AIRA desde el pedido de Carlos (2026-10-30); falta su "así es".
+titulo: Vista previa emergente de wikilinks en Lectura (y crear la nota faltante en la carpeta de origen)
+estado: tomada # Gate 1 pasado — Carlos respondió P-1..P-4 (2026-10-30); se implementa DESPUÉS de mergear H-015 (ambas tocan MilkdownView.tsx y NoteEditor.tsx).
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/MilkdownView.test.tsx
   - frontend/src/editor/WikilinkPreview.tsx
   - frontend/src/editor/NoteEditor.tsx
   - frontend/src/editor/editor.css
+  - frontend/src/notes/VaultWorkspacePage.tsx
 origen: backlog
 ---
 
@@ -16,103 +17,94 @@ origen: backlog
 ## 1. Intención (lenguaje de usuario)
 
 Pedido de Carlos (2026-10-30): en modo Lectura, al pasar el mouse sobre un
-wikilink, que aparezca una ventana emergente con una vista rápida del inicio
-del documento enlazado, para previsualizarlo sin ir a él (como Obsidian).
-
-Base ya existente: el wikilink resuelto guarda el `resolvedId` de la nota
-destino (H-011 C-7) y en Lectura es clickeable (H-012). La nota se lee de la
-réplica local (PouchDB), así que la vista previa no necesita red.
+wikilink, una ventana emergente con una vista rápida del inicio del documento
+enlazado, sin ir a él (como Obsidian). Base existente: el wikilink resuelto
+guarda el `resolvedId` (H-011 C-7), es clickeable en Lectura (H-012) y la nota
+se lee de la réplica local, sin red.
 
 ## 2. Alcance / fuera de alcance
 
-- Dentro: tarjeta emergente al pasar el mouse sobre un wikilink **resuelto**
-  en Lectura, con el título de la nota y el inicio de su contenido; se oculta
-  al sacar el mouse; no bloquea el clic de navegación de H-012.
-- Fuera: vista previa en edición Visual o Código (ahí el wikilink no navega);
-  wikilinks rotos; vista previa de enlaces normales `[](url)`; editar desde la
-  tarjeta; archivos adjuntos (imágenes/PDF) — historias de archivos.
-- Dependencia de orden: H-015 (en curso) también modifica `MilkdownView.tsx`
-  y `NoteEditor.tsx`; H-021 se toma DESPUÉS de mergear H-015 para evitar
-  conflictos.
+- Dentro: tarjeta emergente sobre wikilinks en Lectura (resueltos y rotos sin
+  extensión); crear la nota faltante, desde el clic (H-012) y desde la
+  tarjeta, en la carpeta de la nota de origen.
+- Fuera: edición Visual y Código; enlaces normales `[](url)`; editar desde la
+  tarjeta; adjuntos (historias de archivos); accesibilidad por teclado.
+- Orden: se toma después de mergear H-015.
 
-## 3. Preguntas de producto para Carlos (Gate 1)
+## 3. Decisiones de producto (Carlos, 2026-10-30)
 
-**P-1 (qué se ve en la tarjeta):** propongo el título de la nota y las
-primeras líneas **renderizadas** (encabezados, negritas, listas, con los
-colores de la bóveda de H-014), saltando el bloque de propiedades YAML del
-inicio (tus notas empiezan con `título/ruta/tags`, que no sirven de vista
-previa). Alternativa más simple: texto plano sin formato. ¿Renderizado o texto
-plano?
+- **P-1:** la tarjeta muestra SOLO el título de la nota y el comienzo de su
+  contenido **renderizado** (encabezados, negritas, listas con los colores de
+  la bóveda). **No se muestran las propiedades/metadatos YAML** del inicio.
+- **P-2:** ~320 px de ancho, ~12 líneas, con desvanecido al final si hay más.
+- **P-3:** retardo de ~400 ms al pasar el mouse; se cierra al salir. En
+  celular NO hay vista previa y el toque sigue navegando como hoy.
+- **P-4:** el wikilink roto muestra una nota del tipo "Esta nota no existe.
+  Clic para crearla". Para un destino con extensión de archivo ajena
+  (`.docx`, `.pdf`…) no se muestra tarjeta (decisión de AIRA, coherente con
+  H-012 donde ese clic no hace nada).
+- **Dónde se crea la nota (pregunta de Carlos, adoptada):** en la **carpeta
+  de la nota donde está el enlace**, no en la raíz. Si el destino trae ruta
+  (`[[Carpeta/Nota]]`) la ruta cuenta desde la raíz de la bóveda. Esto
+  **cambia el comportamiento ya desplegado de H-012** (hoy crea en la raíz).
 
-**P-2 (tamaño):** propongo una tarjeta de ~320 px de ancho y alto máximo
-~240 px con las primeras ~12 líneas y un desvanecido al final si hay más.
-¿Te sirve ese tamaño?
+## 4. Criterios de aceptación (EARS booleano)
 
-**P-3 (cuándo aparece):** propongo un retardo de ~400 ms al pasar el mouse
-(para que no salte al cruzar el texto) y que se cierre al salir. En táctil
-(celular) no hay "pasar el mouse": propongo **no mostrar vista previa en
-celular** y que el toque siga navegando como hoy. ¿De acuerdo, o prefieres
-mantener pulsado para ver la vista previa en celular?
+- **C-1:** MIENTRAS la nota esté en Lectura y el dispositivo tenga puntero
+  (mouse), CUANDO el puntero permanece ~400 ms sobre un wikilink resuelto, el
+  sistema DEBE mostrar una tarjeta junto al enlace con el título de la nota
+  destino y el inicio de su contenido renderizado, sin el bloque de
+  propiedades YAML.
+- **C-2:** La tarjeta DEBE medir ~320 px de ancho y ~12 líneas de alto máximo,
+  con desvanecido si el contenido continúa.
+- **C-3:** La tarjeta DEBE ocultarse al salir el puntero del enlace y de la
+  tarjeta, NO DEBE impedir el clic de navegación de H-012 y DEBE quedar dentro
+  de la ventana (se reposiciona si no cabe) sin provocar scroll.
+- **C-4:** El contenido de la tarjeta DEBE cumplir RNF-003 (sin HTML crudo,
+  enlaces/imágenes por `safeUrl`) y los wikilinks dentro de ella NO DEBEN ser
+  navegables.
+- **C-5:** En edición Visual, en Código y en pantallas sin puntero NO DEBE
+  aparecer ninguna tarjeta.
+- **C-6:** CUANDO el puntero está sobre un wikilink roto sin extensión de
+  archivo, el sistema DEBE mostrar "Esta nota no existe. Clic para crearla";
+  con extensión ajena NO DEBE mostrar tarjeta.
+- **C-7:** CUANDO el usuario crea una nota desde un wikilink roto (clic o
+  tarjeta), el sistema DEBE crearla en la carpeta de la nota de origen (o en
+  la ruta indicada por el destino, desde la raíz) y abrirla en edición.
+- **C-8:** Una nota enlazada vacía (o sin cuerpo tras las propiedades) DEBE
+  mostrar la tarjeta con el título y "Nota vacía", sin errores.
+- **C-9:** La tarjeta DEBE tener el contraste mínimo de texto del proyecto en
+  ambos temas.
 
-**P-4 (wikilink roto):** propongo que NO muestre nada (ya se ve distinto, con
-subrayado punteado). ¿O prefieres un aviso tipo "Esta nota no existe, clic
-para crearla"?
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó P-1..P-4 (2026-10-30).
 
-## 4. Criterios de aceptación (EARS booleano) — pendientes de P-1..P-4
+## 5. Plan (borrador, se confirma al tomarla)
 
-- **C-1:** MIENTRAS la nota esté en Lectura, CUANDO el puntero permanece sobre
-  un wikilink resuelto durante el retardo de P-3, el sistema DEBE mostrar una
-  tarjeta junto al enlace con el título de la nota destino y el inicio de su
-  contenido (sin el bloque de propiedades YAML).
-- **C-2:** La tarjeta DEBE ocultarse al salir el puntero del enlace y de la
-  tarjeta, y NO DEBE impedir que el clic en el enlace abra la nota (H-012).
-- **C-3:** La tarjeta DEBE quedar dentro de la ventana (se reposiciona arriba
-  o a un lado si no cabe debajo) y NO DEBE provocar scroll del documento.
-- **C-4:** El contenido de la tarjeta DEBE seguir las reglas de seguridad del
-  proyecto (RNF-003: sin HTML crudo; enlaces/imágenes por `safeUrl`) y los
-  wikilinks dentro de la tarjeta NO DEBEN ser navegables.
-- **C-5:** En edición Visual y en Código NO DEBE aparecer ninguna tarjeta.
-- **C-6 (según P-4):** el wikilink roto no muestra tarjeta, salvo que P-4
-  defina otra cosa.
-- **C-7:** Una nota enlazada vacía o sin cuerpo tras las propiedades DEBE
-  mostrar la tarjeta con el título y un texto "Nota vacía", sin errores.
-- **C-8:** La tarjeta DEBE verse correcta en ambos temas con el contraste
-  mínimo de texto del proyecto.
+- `MilkdownView.tsx`: en el plugin de Lectura de H-012, `handleDOMEvents`
+  mouseover/mouseout que detectan la marca `wikilink` por POSICIÓN (lección de
+  H-012: no por el nodo ancestro) y avisan al padre con `resolvedId`/`target` y
+  el rectángulo del enlace.
+- `WikilinkPreview.tsx`: tarjeta flotante (portal); carga la nota por
+  `resolvedId` desde la réplica local, quita el frontmatter (utilidades de
+  `frontmatter.ts`/`legacyBlock.ts` existentes), trunca el cuerpo y lo muestra
+  con una instancia de `MilkdownView` de solo lectura (wikilinks inertes).
+- Carpeta de creación: `NoteEditor` conoce `note.path`; se pasa la carpeta de
+  origen a `openWikilink` en `VaultWorkspacePage.tsx` y se resuelve el destino
+  contra ella (hoy `notes.create(vault.id, target)` crea en la raíz).
+- Pruebas: componente (retardo, cierre, reposicionado, nota vacía, solo
+  Lectura/mouse), resolución de ruta de creación, y verificación real en
+  navegador con usuario y bóveda desechables (hover real vía CDP).
 
-`[NEEDS CLARIFICATION] = 4` (P-1 a P-4).
-
-## 5. Descartes (candidatos)
-
-- Vista previa por teclado/foco: los wikilinks en Lectura no son enfocables
-  hoy; se evalúa en una historia de accesibilidad si lo pides.
-
-## 6. Plan (borrador, se confirma al tomarla)
-
-- `MilkdownView.tsx`: en el plugin de Lectura de H-012, añadir
-  `handleDOMEvents.mouseover/mouseout` que detecta la marca `wikilink` en la
-  posición del puntero (misma lección que H-012: resolver por posición, no por
-  el nodo ancestro) y avisa al padre con `resolvedId` y el rectángulo del
-  enlace.
-- `WikilinkPreview.tsx`: tarjeta flotante (portal) posicionada con el
-  rectángulo del enlace; carga la nota por `resolvedId` desde la réplica local
-  (`notes.get`), quita el frontmatter (`splitLegacyBlock`/`frontmatter.ts` ya
-  existentes) y trunca el cuerpo; render según P-1 (una instancia de
-  `MilkdownView` de solo lectura con el texto truncado, o texto plano).
-- Pruebas: componente (retardo, ocultar, reposicionar, nota vacía, solo
-  Lectura), detección por posición como H-012; verificación real con usuario y
-  bóveda desechables en navegador (hover real vía CDP), por la lección de
-  H-012: jsdom no ejercita `posAtCoords`.
-
-## 7. Tabla de cobertura
+## 6. Tabla de cobertura
 
 (se llena al implementar)
 
-## 8. Checkpoint demostrable
+## 7. Checkpoint demostrable
 
-Carlos pasa el mouse sobre un wikilink en Lectura y ve la tarjeta con el
-inicio de la nota destino; sale el mouse y se cierra; el clic sigue abriendo
-la nota.
+Carlos pasa el mouse sobre un wikilink resuelto y ve la tarjeta (título e
+inicio renderizado, sin metadatos); sobre uno roto ve el aviso y, al hacer
+clic, la nota se crea en la misma carpeta del documento y se abre en edición.
 
-## 9. Session-End
+## 8. Session-End
 
 Pendiente.
