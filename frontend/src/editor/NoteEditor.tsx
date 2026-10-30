@@ -226,7 +226,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * Vista previa de wikilink en Lectura (H-021): el enlace bajo el puntero (`null` = ninguno). Sólo se
    * activa con puntero fino (C-5: en táctil no hay tarjeta); en edición ni se cablea ni se pinta.
    */
-  const canHoverPreview = useMediaQuery("(hover: hover) and (pointer: fine)");
+  // `any-*`: un portátil con pantalla táctil puede declarar táctil como puntero primario aunque tenga mouse.
+  const canHoverPreview = useMediaQuery("(any-hover: hover) and (any-pointer: fine)");
   const [wikilinkHover, setWikilinkHover] = useState<WikilinkHoverTarget | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -686,6 +687,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         const text = fmRef.current.composeCode(saved.frontmatter, saved.content);
         codeTextRef.current = text;
         setCodeText(text);
+        // Lectura se pinta desde `draft`/`props`: sin esto «Leer» tras guardar en Código mostraba el texto anterior.
+        draftRef.current = saved.content;
+        propsRef.current = saved.frontmatter;
+        setDraft(saved.content);
+        setProps(saved.frontmatter);
       }
       // NC-2 (RF-044): al guardar una migración, el bloque ya está fuera del texto; avísalo.
       if (legacyNoticeRef.current === "migrate") setLegacyNotice("moved");

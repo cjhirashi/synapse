@@ -557,6 +557,17 @@ describe("alternar Visual/Código (RF-008)", () => {
     expect(save).not.toHaveBeenCalled();
   });
 
+  // Regresión: lo escrito en Código y guardado debe verse en Lectura (antes `draft` quedaba con el texto viejo).
+  it("Código → Guardar → Leer muestra lo escrito en Código, no el contenido anterior", async () => {
+    await setup("uno");
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Editor de código" }), " dos");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Leer" }));
+    expect(await screen.findByRole("textbox", { name: "Contenido de la nota" })).toHaveValue("uno dos");
+  });
+
   // RF-008
   it("marca la vista activa con aria-pressed", async () => {
     await setup();
