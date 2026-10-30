@@ -1,7 +1,7 @@
 // H-011: resolución pura de wikilinks `[[Destino]]`/`[[Destino|Alias]]` contra las notas de la bóveda.
 // Testeable sin Milkdown (C-1 parseo del cuerpo, C-4/P-1/P-2/P-3 resolución, C-7 id resuelto).
 import { describe, expect, it } from "vitest";
-import { parseWikiLinkBody, resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
+import { hasUnmanagedExtension, parseWikiLinkBody, resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
 
 const notes: NoteRef[] = [
   { id: "note:v:1", path: "Nota A.md" },
@@ -62,6 +62,34 @@ describe("resolveWikiLink (C-4, P-1, P-2, P-3, C-7)", () => {
 
   it("destino vacío → null", () => {
     expect(resolveWikiLink("   ", notes)).toBeNull();
+  });
+});
+
+// H-012 C-3/P-1: al hacer clic en un wikilink ROTO, el destino sin extensión de archivo crea la nota;
+// uno con extensión que Synapse no gestiona (.docx, .pdf…) no hace nada. `.md` sí lo gestiona → crea.
+describe("hasUnmanagedExtension (C-3, P-1)", () => {
+  it("un destino sin extensión → false (se puede crear la nota)", () => {
+    expect(hasUnmanagedExtension("Nota Nueva")).toBe(false);
+  });
+
+  it("un destino con extensión de archivo ajena (.docx, .pdf) → true (no se crea nada)", () => {
+    expect(hasUnmanagedExtension("informe.docx")).toBe(true);
+    expect(hasUnmanagedExtension("manual.pdf")).toBe(true);
+    expect(hasUnmanagedExtension("carpeta/hoja.xlsx")).toBe(true);
+  });
+
+  it("la extensión `.md` la gestiona Synapse → false (se crea como nota)", () => {
+    expect(hasUnmanagedExtension("Nota.md")).toBe(false);
+    expect(hasUnmanagedExtension("Nota.MD")).toBe(false);
+  });
+
+  it("puntos internos que no son extensión (espacios tras el último punto) → false", () => {
+    expect(hasUnmanagedExtension("2.1.19 - El Juramento del Aprendiz Masón")).toBe(false);
+    expect(hasUnmanagedExtension("v1.2 plan")).toBe(false);
+  });
+
+  it("destino vacío → false", () => {
+    expect(hasUnmanagedExtension("   ")).toBe(false);
   });
 });
 
