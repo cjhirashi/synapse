@@ -1,7 +1,7 @@
 ---
 id: H-021
 titulo: Vista previa emergente de wikilinks en Lectura (y crear la nota faltante en la carpeta de origen)
-estado: implemented # Gate 1 pasado (Carlos, 2026-10-30). Implementado por AIRA en Modo 2 (2026-10-30); pendiente verificación en navegador por AIRA (hover real, CDP) antes de 'verified'.
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30). Implementado por AIRA en Modo 2 (2026-10-30); desplegada y verificada por AIRA en navegador real (2026-10-30 14:22 CDMX); pendiente checkpoint de Carlos antes de 'verified'.
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/MilkdownView.test.tsx
@@ -157,3 +157,10 @@ tarjeta que no aparece (no un error), fácil de detectar en la verificación.
 **Próximo paso.** AIRA: revisar el diff, verificar en navegador real (hover sobre resuelto,
 roto, nota vacía; crear nota rota y comprobar que cae en la carpeta de origen), y si pasa el
 checkpoint demostrable marcar `verified`, mergear, desplegar. No hice push ni merge.
+
+### Verificación en navegador real (AIRA, 2026-10-30 14:22 CDMX, producción)
+- Tarjeta de nota resuelta: título «Destino» + cuerpo renderizado (H1, negrita/cursiva con colores de la bóveda, lista), sin el bloque YAML (`tags`, `estado`), desvanecido al final; aparece tras ~0,4 s con hover real.
+- Enlace roto: tarjeta «Esta nota no existe. Clic para crearla»; clic crea `Carpeta/Nota faltante` en la carpeta de la nota de origen (C-7) y la abre en edición.
+- Enlace con extensión ajena (`Informe.docx`): no hay tarjeta.
+- Limitación del entorno de prueba: el navegador headless reporta `(hover: hover) and (pointer: fine)` = falso, así que la tarjeta no aparece por el gate C-5 (correcto en táctil). Para probar se sobrescribió `window.matchMedia` en la página. No se verificó con un puntero físico real ni en celular.
+- Observación no reproducida: una vez, Código→Leer mostró la nota en blanco justo tras guardarla; no se repitió en 2 intentos posteriores.
