@@ -13,6 +13,7 @@
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
+- [ ] H-021 — Vista previa emergente al pasar el mouse sobre un wikilink en Lectura (inicio del documento enlazado, estilo Obsidian; sin propiedades YAML) → `historias/h021-wikilinks-vista-previa/historia.md`, borrador de AIRA (2026-10-30); **falta su "así es" (Gate 1)** — 4 preguntas de producto abiertas; se toma después de mergear H-015 (ambas tocan `MilkdownView.tsx`/`NoteEditor.tsx`).
 - [ ] H-016 — Pantalla de archivos en la app: elegir "bucket" (bóveda), listar, subir, abrir, descargar, renombrar, eliminar, copiar link, cambiar visibilidad, e **indicador de referencias** (si el archivo está usado en algún documento y en cuáles, para detectar basura; nada se borra solo). **Misma confirmación obligatoria** al pasar un archivo de privado a público (Carlos pidió validar toda publicación). Sin redactar; depende de H-015.
 - [ ] H-017 — API de Synapse para que los agentes suban recursos y obtengan su link (caso de uso: AIRA carga los diagramas Archify en los documentos de diseño de su bóveda). Misma lógica que H-015/H-016 expuesta con API key. Sin redactar; depende de H-015.
 - [ ] H-018 — PDF y video como archivos adjuntos (visor/`<video>` nativos; contenido pasivo, mismo dominio principal; el video necesita su propio límite de tamaño, pendiente de definir con Carlos). Sin redactar.
