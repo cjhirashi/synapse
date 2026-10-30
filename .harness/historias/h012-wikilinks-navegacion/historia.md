@@ -134,9 +134,36 @@ por un wikilink roto (P-1), que abre en edición.
 
 ## 8. Checkpoint demostrable
 
-Carlos debe hacer clic en un wikilink resuelto en Lectura y confirmar que
-abre la nota correcta; probar el gesto de P-2 en edición Visual; y probar
-un wikilink roto según lo que P-1 defina.
+**Fallido en el primer intento (Carlos, 2026-10-30), corregido el mismo día.**
+Carlos probó en producción y el clic en un wikilink resuelto no abría nada —
+exactamente el gap que predecía el riesgo residual "gesto de clic real no
+probado en jsdom" de §9: el test unitario invocaba `handleClickOn` pasando a
+mano el nodo de texto correcto (`$pos.nodeAfter`), pero ProseMirror en un
+clic real pasa el **nodo ANCESTRO de bloque** (el `<p>`) — un párrafo nunca
+tiene la marca `wikilink` en `.marks`, así que el handler de producción
+devolvía `false` siempre, en silencio, sin error.
+
+AIRA lo reprodujo de forma controlada antes de tocar código: usuario y
+bóveda **desechables** (nunca datos de Carlos), clic real vía navegador
+(Chromium con CDP, no jsdom) en las coordenadas exactas del enlace
+(`getBoundingClientRect`), confirmado que el clic no navegaba. Corrección:
+`handleClickOn` ahora resuelve las marcas por **posición**
+(`doc.resolve(pos)`, uniendo `nodeBefore`/`nodeAfter` para cubrir también el
+borde exacto donde empieza el enlace) en vez de leer `node.marks` del
+ancestro. El test se corrigió para pasar el párrafo ancestro como `node`
+(lo que ProseMirror pasa de verdad) — así, si el handler vuelve a depender
+de ese argumento, el test fallará de nuevo en vez de ocultarlo.
+
+Verificado de nuevo en producción con el mismo método (usuario/bóveda
+desechables, clic real): navega a "Destino" correctamente y "Atrás" regresa
+a "Origen" sin perder el historial. Datos de prueba borrados al terminar
+(nunca tocaron la bóveda real de Carlos). Commit `790bfa6`, mergeado a
+`feature/sprint-1-auth` (`492cbb8`), desplegado, `/health` 200.
+
+**Pendiente real:** el checkpoint demostrable de Carlos en SU bóveda real
+sigue abierto — debe hacer clic en un wikilink resuelto en Lectura y
+confirmar que abre la nota correcta; probar el gesto en edición Visual (no
+navega); y probar un wikilink roto según P-1.
 
 ## 9. Session-End (al cerrar) — 2026-10-30 (Modo 2, Claude Code)
 
