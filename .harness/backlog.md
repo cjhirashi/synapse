@@ -7,7 +7,6 @@
 
 ## En curso
 
-- [~] H-011 — Wikilinks `[[...]]`: reconocerlos y mostrarlos como enlace en Visual (Fase 1; navegación/autocompletar quedan como H-012/H-013) → `historias/h011-wikilinks-reconocer-mostrar/historia.md`, Gate 1 pasado ("así es", 2026-10-30); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
@@ -22,6 +21,7 @@
 
 ## Implementadas, pendientes de checkpoint de Carlos
 
+- [~] H-011 — Wikilinks `[[...]]`: reconocerlos y mostrarlos como enlace en Visual (Fase 1; navegación/autocompletar quedan como H-012/H-013) → `historias/h011-wikilinks-reconocer-mostrar/historia.md`, Gate 1 pasado ("así es", 2026-10-30); `implemented` (2026-10-30; TDD vía Claude Code Modo 2, Converge ×2 sin fallos) → **desplegado** (merge a `feature/sprint-1-auth` `fa8a224`, verificado independientemente por AIRA: diff revisado — `wikilink.ts` con la resolución, marca `$MarkSchema` wikilink en `MilkdownView.tsx` con `parseMarkdown`/`toMarkdown` propios y `resolvedId` que nunca viaja al markdown, estilo de enlace roto en `editor.css` —, suite completa 89 archivos/1740 tests en verde, `npm run build` OK, rebuild+redeploy de `synapse-backend`, `/health` 200); falta checkpoint visual de Carlos (abrir «El Juramento del Aprendiz Masón» y ver el alias sin escapar + el enlace a `.docx` roto) para `verified`.
 - [~] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato con 12 controles: tabla, negritas, cursivas, tachado, código en línea, H1-H4, cita, línea horizontal, listas) → `historias/h010-editor-toolbar-filas/historia.md`, `implemented` (2026-10-30; 5 pasos TDD vía Claude Code Modo 2, Converge sin Critical/High) → **desplegado** (merge a `feature/sprint-1-auth` `c556437`, rebuild+redeploy de `synapse-backend`, `/health` 200); falta checkpoint visual de Carlos (cabecera en 3 filas + los 12 controles de formato) para `verified`.
 - [~] H-003 — Drag & drop de notas/carpetas en la sidebar izquierda (C-1…C-8, incluye placeholder al vaciar una carpeta) → desplegado, ver `historias/h003-drag-drop-sidebar/historia.md`
 - [~] H-006 — Iconos de notas/carpetas en la sidebar con el color de la bóveda, solo contorno (sin relleno — Carlos pidió relleno, lo vio y lo revirtió el mismo día) → desplegado, verificado independientemente por AIRA tras un 429 de rate-limit en la sesión implementadora; ver `historias/h006-iconos-color-bóveda/historia.md`
