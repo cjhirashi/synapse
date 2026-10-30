@@ -231,6 +231,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   /** Ids de las notas vivas (las borradas no son destino): se relee con cada versión de las notas. */
   const [liveIds, setLiveIds] = useState<ReadonlySet<string> | null>(null);
   const isLive = (id: string) => liveIds?.has(id) ?? true;
+  /** Notas vivas `{id, path}` de la bóveda para resolver wikilinks (H-011); se relee con cada versión. */
+  const [noteRefs, setNoteRefs] = useState<{ id: string; path: string }[]>([]);
   function commitHistory(next: History) {
     historyRef.current = next;
     setHistory(next);
@@ -260,12 +262,18 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     if (openId === null) onDirtyDraft(null);
   }, [openId, onDirtyDraft]);
 
-  // Quiénes están vivos, para habilitar Atrás/Adelante (RF-056, RF-058). Aparte del precálculo: éste puede no existir.
+  // Quiénes están vivos, para habilitar Atrás/Adelante (RF-056, RF-058) y para resolver wikilinks (H-011).
+  // Aparte del precálculo: éste puede no existir.
   useEffect(() => {
     let alive = true;
     notes
       .list(vault.id)
-      .then((summaries) => alive && setLiveIds(new Set(summaries.filter((s) => s.deleted_at === null).map((s) => s.id))))
+      .then((summaries) => {
+        if (!alive) return;
+        const live = summaries.filter((s) => s.deleted_at === null);
+        setLiveIds(new Set(live.map((s) => s.id)));
+        setNoteRefs(live.map((s) => ({ id: s.id, path: s.path })));
+      })
       .catch(() => undefined);
     return () => {
       alive = false;
@@ -394,7 +402,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
             </Suspense>
           )}
         </div>

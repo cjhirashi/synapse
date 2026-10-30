@@ -1,7 +1,7 @@
 ---
 id: H-011
 titulo: Wikilinks [[...]] — reconocerlos y mostrarlos como enlace en Visual (sin navegación todavía)
-estado: tomada # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1..P-4: solo resuelven wikilinks a notas .md (lo demás, roto); coincidencia case-insensitive "como Obsidian"; duplicados sin bloquear; sin dependencia nueva. En implementación vía Claude Code (Modo 2).
+estado: implemented # Gate 1 pasado — Carlos confirmó "así es" (2026-10-30) a P-1..P-4: solo resuelven wikilinks a notas .md (lo demás, roto); coincidencia case-insensitive "como Obsidian"; duplicados sin bloquear; sin dependencia nueva. Implementado vía Claude Code (Modo 2) 2026-10-30; falta checkpoint demostrable de Carlos antes de 'verified'.
 covers:
   - frontend/src/editor/MilkdownView.tsx
   - frontend/src/editor/MilkdownView.test.tsx
@@ -160,7 +160,15 @@ de `@milkdown/preset-commonmark`.
 
 ## 7. Tabla de cobertura
 
-(se llena al implementar)
+| Criterio | Paso/implementación | Prueba(s) |
+|---|---|---|
+| **C-1** (reconocer `[[...]]` al parsear) | `wikilink.ts` `splitWikiLinks`/`parseWikiLinkBody`; transformador remark `wikilinkRemark` + `parseMarkdown` del `$MarkSchema` en `MilkdownView.tsx` | `wikilink.test.ts` → "splitWikiLinks …", "parseWikiLinkBody …"; `MilkdownView.test.tsx` → "C-1/C-3: `[[Nota A]]` se pinta como enlace …" |
+| **C-2** (round-trip sin escapar; id nunca en el markdown) | `toMarkdown` del `$MarkSchema` + handler `wikiLink` de `remark-stringify` en `wikilinkRemark` | `MilkdownView.test.tsx` → "C-2: el round-trip conserva `[[Destino]]` y `[[Destino\|Alias]]` sin escapar" |
+| **C-3** (estilo distinguible, alias o destino) | `toDOM` (`a.wikilink`) + `editor.css` (`.wikilink`) | `MilkdownView.test.tsx` → "C-1/C-3 …", "C-3: con alias muestra el alias, no el destino" |
+| **C-4** (destino sin nota `.md` → roto; incluye no-`.md`) | `resolveWikiLink` (`wikilink.ts`) + `data-broken` en `toDOM` + `editor.css` (`.wikilink[data-broken]`) | `wikilink.test.ts` → ".docx nunca resuelve", "inexistente → null"; `MilkdownView.test.tsx` → "C-4: … enlace roto", "C-4: … (.docx) nunca resuelve" |
+| **C-5** (no navegable aún) | `toDOM` sin `href`; `editor.css` `cursor: text` | `MilkdownView.test.tsx` → "C-1/C-3 … y sin href (C-5)" |
+| **C-6** (Código y Lectura: `[[...]]` literal) | En `MilkdownView.tsx` la marca/transformador SÓLO se añaden cuando `!readOnly`; Código es `CodeView` (markdown crudo) | `MilkdownView.test.tsx` → "C-6: en modo Lectura … `[[...]]` literal" |
+| **C-7** (id interno resuelto en la marca) | atributo `resolvedId` del `$MarkSchema`, recalculado por `wikilinkResolverCtx`; cableado `VaultWorkspacePage → NoteEditor(vaultNotes) → MilkdownView(notes)` | `wikilink.test.ts` → "coincidencia exacta → id", "duplicado → primero"; `MilkdownView.test.tsx` → "C-7: la marca carga el `id` resuelto"; `NoteEditor.test.tsx` → "reenvía `vaultNotes` a la vista Visual" |
 
 ## 8. Checkpoint demostrable
 
@@ -169,6 +177,52 @@ del Aprendiz Masón" usada de ejemplo arriba) en modo Visual y confirmar que
 ya no se escapa, se ve como enlace, y el que apunta al `.docx` se ve como
 enlace roto (o lo que P-1 defina).
 
-## 9. Session-End (al cerrar)
+## 9. Session-End (al cerrar) — 2026-10-30 (Modo 2, Claude Code)
 
-Pendiente — se completa al implementar.
+**Claim:** los wikilinks `[[Destino]]`/`[[Destino|Alias]]` dejan de escaparse y, en edición
+Visual, se reconocen y pintan como enlace (resuelto o roto); el round-trip markdown→editor→
+markdown conserva la sintaxis exacta; la nota resuelta queda disponible por `id` en la marca.
+Cubre C-1..C-7. No incluye navegación (C-5, va en H-012) ni autocompletar (H-013).
+
+**Evidencia:**
+- `frontend/src/editor/wikilink.ts` (+ `wikilink.test.ts`, 18 casos): resolución pura —
+  `parseWikiLinkBody`, `resolveWikiLink` (case-insensitive P-2, duplicados→primero P-3, no-`.md`/
+  inexistente→`null` P-1/C-4), `splitWikiLinks` (reconocimiento C-1).
+- `frontend/src/editor/MilkdownView.tsx` (+ 7 casos nuevos en `MilkdownView.test.tsx`): `$MarkSchema`
+  `wikilink` con `parseMarkdown`/`toMarkdown` propios (patrón `linkSchema`), transformador remark
+  `wikilinkRemark` (texto→nodo `wikiLink` + handler de `remark-stringify`, sin dependencia nueva P-4),
+  rebanada `wikilinkResolverCtx`. Marca/transformador SÓLO en `!readOnly` (C-6). `toDOM` sin `href`
+  (C-5) y con `data-broken` (C-4); atributo interno `resolvedId` (C-7).
+- `frontend/src/editor/editor.css`: estilo `.wikilink` (acento + subrayado, C-3) y `.wikilink[data-broken]`
+  (peligro + punteado, C-4).
+- Cableado `frontend/src/notes/VaultWorkspacePage.tsx` → `NoteEditor.tsx` (`vaultNotes`) → `MilkdownView`
+  (`notes`), reutilizando el listado de notas vivas que ya se calcula para Atrás/Adelante (+ 1 caso en
+  `NoteEditor.test.tsx`).
+- Verificación empírica previa del parseo/serializado de `[[...]]` con remark real (texto plano ↔
+  `[[...]]` sin escape) antes de codificar.
+
+**Línea base:** `npx vitest run` (desde `frontend/`) — Converge: 2 corridas consecutivas limpias,
+89 archivos, **1740 tests, 0 fallos** (baseline previa 1714 + 26 nuevos). `tsc --noEmit -p tsconfig.json`
+sin errores. El test intermitente preexistente de `NoteSidebar` «Nueva carpeta» (H-007) pasó en ambas
+corridas; no se tocó.
+
+**Gaps / riesgo residual:**
+- **Interpretación de C-6 a confirmar en el checkpoint (Medium):** se implementó literalmente —en modo
+  **Lectura** y en vista **Código** el wikilink se muestra como texto `[[...]]`; el pintado como enlace
+  ocurre sólo en edición Visual (C-3). Si Carlos esperaba verlo pintado también en Lectura, es un cambio
+  de una línea (añadir la marca/transformador también en `readOnly`); se decidió seguir el texto EARS.
+- **Reconocimiento sólo al parsear (Low):** escribir `[[` nuevo a mano en Visual no lo convierte en vivo
+  (no hay *input rule*); se reconoce al abrir/reparsear la nota. No lo pide ningún criterio de H-011;
+  encaja mejor con H-013 (autocompletar).
+- **Paste interno de un wikilink dentro del editor (Low):** `parseDOM` recupera destino/alias desde los
+  `data-*`, pero `resolvedId` queda `null` hasta el próximo reparse por markdown (no se expone el id al
+  DOM a propósito, C-7 «atributo interno»). Sin impacto en el round-trip markdown.
+- **Resolución por nombre de archivo (Low):** un `[[folder/Nota]]` con ruta no casa con el *basename*
+  `Nota` (el contenido real revisado usa sólo nombres cortos). Documentado; no es criterio.
+- **Commits (proceso):** el entorno headless bloquea todo `git` (requiere aprobación interactiva), así que
+  NO se pudieron hacer los commits atómicos por paso ni dejar la historia commiteada; todos los cambios
+  quedan en el árbol de trabajo para revisión por *git diff* y commit/merge de Carlos.
+
+**Próximo paso:** checkpoint demostrable (Carlos abre una nota con `[[...]]` reales en Visual: ya no se
+escapan, se ven como enlace, el `.docx` como roto) y, con su «ok», marcar `verified` (§5). Luego H-012
+(navegación por clic usando el `resolvedId` ya guardado) y H-013 (autocompletar).

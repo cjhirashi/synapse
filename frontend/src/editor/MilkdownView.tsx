@@ -36,9 +36,13 @@ import {
   wrapInOrderedListCommand,
 } from "@milkdown/preset-commonmark";
 import { addColAfterCommand, addRowAfterCommand, gfm, insertTableCommand, toggleStrikethroughCommand } from "@milkdown/preset-gfm";
+import { $markSchema, $remark } from "@milkdown/utils";
+import { createSlice, type MilkdownPlugin } from "@milkdown/ctx";
+import type { Processor } from "unified";
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
+import { resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
 import { createHighlightPlugin } from "prosemirror-highlight";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { createHighlightParser } from "./highlight/proseHighlight";
@@ -71,6 +75,124 @@ const safeImage = imageSchema.extendSchema((prev) => (ctx) => ({
     "img",
     { ...ctx.get(imageAttr.key)(node), ...node.attrs, src: safeImageUrl(node.attrs.src as string) || undefined },
   ],
+}));
+
+/**
+ * Wikilinks de Obsidian (H-011). Commonmark no define `[[Destino]]`/`[[Destino|Alias]]`, así que la
+ * vista Visual en EDICIÓN añade: (1) un transformador remark que reconoce la sintaxis dentro del texto
+ * (`wikilinkRemark`), (2) una marca `$MarkSchema` propia con su `parseMarkdown`/`toMarkdown` —mismo patrón
+ * que `linkSchema`— que la pinta como enlace y serializa de vuelta sin escapar (`wikilinkMark`), y (3) la
+ * resolución del destino contra las notas de la bóveda (`wikilink.ts`, vía la rebanada `wikilinkResolverCtx`).
+ * En lectura y en Código NO se añaden: el texto sigue literal (`[[...]]`), que es lo que piden C-6.
+ */
+
+/** Resuelve un destino al `id` de su nota (o `null` si está roto). Por defecto, todo roto (sin bóveda). */
+export const wikilinkResolverCtx = createSlice<(target: string) => string | null, "synapseWikilinkResolver">(() => null, "synapseWikilinkResolver");
+
+/** Inyecta la rebanada del resolvedor; `MilkdownView` fija el real con `ctx.set` en un `.config` posterior. */
+const wikilinkResolverPlugin: MilkdownPlugin = (ctx) => {
+  ctx.inject(wikilinkResolverCtx, () => null);
+  return () => {};
+};
+
+/** El tipo de nodo mdast propio que produce el transformador y consume el serializador. */
+const WIKILINK_MDAST = "wikiLink";
+
+interface WikiLinkMdastNode {
+  type: typeof WIKILINK_MDAST;
+  target: string;
+  alias: string | null;
+  children: { type: "text"; value: string }[];
+}
+
+/**
+ * Transformador remark (fase «run», corre igual en frío y en cache-hit vía `remark.runSync`): parte cada
+ * nodo `text` con `[[...]]` en texto + nodos `wikiLink`. Reconoce la sintaxis (C-1); no resuelve (eso es
+ * la marca, que lee la bóveda). Añade además el handler de `remark-stringify` para volver a `[[...]]`.
+ */
+const wikilinkRemark = $remark("synapseWikilink", () =>
+  function wikilinkAttacher(this: Processor) {
+    const data = this.data() as { toMarkdownExtensions?: unknown[] };
+    const extensions = (data.toMarkdownExtensions ??= []);
+    extensions.push({
+      handlers: {
+        [WIKILINK_MDAST]: (node: WikiLinkMdastNode) => (node.alias ? `[[${node.target}|${node.alias}]]` : `[[${node.target}]]`),
+      },
+    });
+    const transform = (tree: { type: string; children?: unknown[]; value?: string }): void => {
+      if (!Array.isArray(tree.children)) return;
+      const next: unknown[] = [];
+      for (const child of tree.children as { type: string; value?: string; children?: unknown[] }[]) {
+        if (child.type === "text" && typeof child.value === "string" && child.value.includes("[[")) {
+          for (const seg of splitWikiLinks(child.value)) {
+            if (seg.type === "text") next.push({ type: "text", value: seg.value });
+            else next.push({ type: WIKILINK_MDAST, target: seg.target, alias: seg.alias, children: [{ type: "text", value: seg.alias ?? seg.target }] } satisfies WikiLinkMdastNode);
+          }
+        } else {
+          transform(child);
+          next.push(child);
+        }
+      }
+      tree.children = next;
+    };
+    return (tree: unknown) => transform(tree as { type: string; children?: unknown[] });
+  },
+);
+
+/**
+ * La marca propia del wikilink. Atributos internos: `target` (lo que viaja en el markdown), `alias`
+ * (si hay `|Alias`) y `resolvedId` (el `id` de la nota resuelta, C-7 — recalculado al parsear, NUNCA
+ * serializado). `toDOM` la pinta como `<a class="wikilink">` SIN `href` (no navegable aún, C-5) y con
+ * `data-broken` cuando no resuelve (C-4); el texto visible es el alias o el destino (C-3).
+ */
+const wikilinkMark = $markSchema("wikilink", (ctx) => ({
+  attrs: {
+    target: {},
+    alias: { default: null },
+    resolvedId: { default: null },
+  },
+  parseDOM: [
+    {
+      tag: "a.wikilink",
+      getAttrs: (dom) => {
+        if (!(dom instanceof HTMLElement)) return false;
+        const target = dom.getAttribute("data-target") ?? dom.textContent ?? "";
+        return { target, alias: dom.getAttribute("data-alias"), resolvedId: ctx.get(wikilinkResolverCtx)(target) };
+      },
+    },
+  ],
+  toDOM: (mark) => {
+    const alias = mark.attrs.alias as string | null;
+    const resolvedId = mark.attrs.resolvedId as string | null;
+    return [
+      "a",
+      {
+        class: "wikilink",
+        "data-target": mark.attrs.target as string,
+        ...(alias ? { "data-alias": alias } : {}),
+        // Enlace roto (C-4): atributo que gobierna el estilo por CSS. No se pone `href` (C-5: sin navegación).
+        ...(resolvedId ? {} : { "data-broken": "" }),
+      },
+    ];
+  },
+  parseMarkdown: {
+    match: (node) => node.type === WIKILINK_MDAST,
+    runner: (state, node, markType) => {
+      const target = (node as unknown as WikiLinkMdastNode).target;
+      const alias = (node as unknown as WikiLinkMdastNode).alias ?? null;
+      state.openMark(markType, { target, alias, resolvedId: ctx.get(wikilinkResolverCtx)(target) });
+      state.addText(alias ?? target);
+      state.closeMark(markType);
+    },
+  },
+  toMarkdown: {
+    match: (mark) => mark.type.name === "wikilink",
+    runner: (state, mark) => {
+      // Un nodo mdast `wikiLink` con los atributos de la marca; `wikilinkRemark` lo vuelve a `[[...]]`.
+      // `resolvedId` NO viaja: el markdown sólo lleva el nombre (C-2).
+      state.withMark(mark, WIKILINK_MDAST, undefined, { target: mark.attrs.target, alias: mark.attrs.alias });
+    },
+  },
 }));
 
 /**
@@ -142,6 +264,11 @@ interface MilkdownViewProps {
   registerCommands?: (commands: EditorCommands | null) => void;
   /** Informa de si el cursor está dentro de una tabla; sólo cuando cambia (para mostrar fila/columna, P-7). */
   onTableContext?: (inTable: boolean) => void;
+  /**
+   * Notas vivas de la bóveda para resolver wikilinks (H-011): sólo se usan en edición Visual (no en lectura
+   * ni en Código, C-6). Resolver un `[[Destino]]` compara su nombre contra estas notas (ver `wikilink.ts`).
+   */
+  notes?: readonly NoteRef[];
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -157,9 +284,12 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
+  /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
+  const notesRef = useRef<readonly NoteRef[]>(notes ?? []);
+  notesRef.current = notes ?? [];
   /** El markdown que tiene el editor ahora (SIN el `prefix`): el último recibido del padre o emitido por él. */
   const current = useRef(value);
   const onChangeRef = useRef(onChange);
@@ -239,7 +369,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
     stop();
     current.current = value;
 
-    const editor = Editor.make()
+    let editor = Editor.make()
       .config((ctx) => {
         ctx.set(rootCtx, host.current as HTMLDivElement);
         ctx.set(defaultValueCtx, value);
@@ -331,6 +461,19 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ),
         );
       });
+
+    // H-011: los wikilinks SÓLO se reconocen en edición Visual. En lectura y en Código el texto queda
+    // literal (`[[...]]`, C-6), así que ahí no se añaden ni la marca ni su transformador ni el resolvedor.
+    if (!readOnly) {
+      editor = editor
+        .use(wikilinkResolverPlugin)
+        .use(wikilinkMark)
+        .use(wikilinkRemark)
+        .config((ctx) => {
+          // El resolvedor lee la lista de notas vigente por ref: así resolver no obliga a recrear el editor.
+          ctx.set(wikilinkResolverCtx, (target: string) => resolveWikiLink(target, notesRef.current));
+        });
+    }
 
     const ready = editor.create().then(() => {
       // Si mientras se creaba lo reemplazaron, `stop()` ya lo destruirá: no se anuncia.
