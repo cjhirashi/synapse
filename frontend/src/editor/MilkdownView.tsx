@@ -526,6 +526,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
                   // No consume el evento (`return false`): el clic de navegación (H-012) sigue intacto (C-3).
                   (() => {
                     let hovered: HTMLElement | null = null;
+                    // C-5: un toque emite `mouseover` emulado; el tipo de puntero lo delata en el `pointer*` previo.
+                    let lastPointerType = "";
                     const linkAt = (event: Event): HTMLElement | null => {
                       const target = event.target;
                       return target instanceof Element ? (target.closest("a.wikilink") as HTMLElement | null) : null;
@@ -539,9 +541,17 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
                     return new Plugin({
                       props: {
                         handleDOMEvents: {
+                          pointerover: (_view, event) => {
+                            lastPointerType = (event as PointerEvent).pointerType ?? "";
+                            return false;
+                          },
+                          pointerdown: (_view, event) => {
+                            lastPointerType = (event as PointerEvent).pointerType ?? "";
+                            return false;
+                          },
                           mouseover: (view, event) => {
                             const link = linkAt(event);
-                            if (!link || link === hovered) return false;
+                            if (!link || link === hovered || lastPointerType === "touch") return false;
                             const mark = markAt(view, link);
                             if (!mark) return false;
                             hovered = link;

@@ -760,6 +760,23 @@ describe("MilkdownView · hover en wikilink (H-021)", () => {
     expect(onWikilinkHover).toHaveBeenCalledWith(null);
   });
 
+  it("C-5: si el puntero previo fue un toque, el `mouseover` emulado no avisa; con mouse sí", async () => {
+    const onWikilinkHover = vi.fn();
+    const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: true, notes: NOTES, onWikilinkHover });
+    const link = container.querySelector("a.wikilink")!;
+    const pointer = (type: string, pointerType: string) => {
+      const event = new Event(type, { bubbles: true });
+      Object.defineProperty(event, "pointerType", { value: pointerType });
+      link.dispatchEvent(event);
+    };
+    pointer("pointerover", "touch");
+    fire(container, "mouseover");
+    expect(onWikilinkHover).not.toHaveBeenCalled();
+    pointer("pointerover", "mouse");
+    fire(container, "mouseover");
+    expect(onWikilinkHover).toHaveBeenCalledTimes(1);
+  });
+
   it("C-5: en edición Visual el plugin no se registra, así que el hover no avisa nada", async () => {
     const onWikilinkHover = vi.fn();
     const { container } = await mount({ value: "ver [[Nota A]] fin", readOnly: false, notes: NOTES, onWikilinkHover });

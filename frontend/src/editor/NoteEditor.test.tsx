@@ -1283,8 +1283,7 @@ describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
   });
 });
 
-// H-021: la tarjeta de vista previa. El editor sólo la monta en Lectura y sólo si el dispositivo tiene
-// puntero fino (C-5); cablea el hover de la vista de Lectura a la tarjeta y la creación de la nota rota al
+// H-021: la tarjeta de vista previa. El editor sólo la monta en Lectura y (en táctil la vista Lectura ignora el hover emulado, C-5); cablea el hover de la vista de Lectura a la tarjeta y la creación de la nota rota al
 // mismo `onOpenWikilink` (C-7). Se usa `matchMedia` para simular tener o no puntero.
 describe("wikilinks · vista previa en Lectura (H-021)", () => {
   const RECT = { top: 10, bottom: 30, left: 20, right: 120, width: 100, height: 20, x: 20, y: 10, toJSON: () => ({}) } as DOMRect;
@@ -1325,18 +1324,6 @@ describe("wikilinks · vista previa en Lectura (H-021)", () => {
       await userEvent.click(screen.getByRole("button", { name: "Editar" }));
       await screen.findByRole("textbox", { name: "Editor visual" });
       expect(editGotHover).toBeUndefined();
-    });
-  });
-
-  it("C-5: sin puntero fino, la vista de Lectura no recibe `onWikilinkHover` (ninguna tarjeta)", async () => {
-    await withPointer(false, async () => {
-      let readGotHover: unknown = "no-render";
-      function CapturingVisual({ value, onChange, label, readOnly, onWikilinkHover }: ViewProps) {
-        if (readOnly) readGotHover = onWikilinkHover;
-        return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
-      }
-      await setup("hola", {}, { views: { Visual: CapturingVisual, Code: fake("code") } });
-      expect(readGotHover).toBeUndefined();
     });
   });
 
