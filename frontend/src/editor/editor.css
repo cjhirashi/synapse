@@ -976,6 +976,23 @@
   color: color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary));
 }
 
+/* H-014 (C-5): negrita y cursiva con el color COMPLEMENTARIO de la bóveda (`--vault-complement`), para
+   destacar sin competir con los encabezados (que llevan el color de la bóveda). Misma lógica de gradiente
+   que P-1: la negrita al 100 % (ancla del énfasis) y la cursiva mezclada con `--text-secondary` (más
+   tenue, mismo color, distinta intensidad). */
+.milkdown-view .ProseMirror strong {
+  color: var(--vault-complement);
+}
+.milkdown-view .ProseMirror em {
+  color: color-mix(in srgb, var(--vault-complement) 70%, var(--text-secondary));
+}
+
+/* H-014 (C-10): los enlaces normales del markdown (`[texto](url)`) van en el complementario al 100 %,
+   mismo tratamiento que la negrita (el wikilink resuelto repite este color más abajo; el roto no cambia). */
+.milkdown-view .ProseMirror a {
+  color: var(--vault-complement);
+}
+
 /* Listas del markdown renderizado: listas de verdad (viñetas/números, sangría y ritmo compactos). */
 .milkdown-view .ProseMirror ul,
 .milkdown-view .ProseMirror ol {
@@ -1516,11 +1533,12 @@ li.note-task[data-checked="true"] .note-task-body {
   color: inherit;
 }
 
-/* Wikilinks `[[...]]` en Lectura y edición Visual (H-011). Resuelto: color de acento + subrayado,
-   distinguible del texto normal (C-3). Roto (`data-broken`, C-4): color de peligro + subrayado punteado,
-   visible pero marcado como inválido. Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
+/* Wikilinks `[[...]]` en Lectura y edición Visual (H-011). Resuelto: color COMPLEMENTARIO de la bóveda
+   (H-014 C-10, antes `--accent-hover`) + subrayado, mismo tratamiento que los enlaces normales y la
+   negrita, distinguible del texto (C-3). Roto (`data-broken`): color de peligro + subrayado punteado,
+   visible pero marcado como inválido (H-014 NO lo cambia). Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
 .milkdown-view .ProseMirror a.wikilink {
-  color: var(--accent-hover);
+  color: var(--vault-complement);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;

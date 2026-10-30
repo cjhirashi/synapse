@@ -92,6 +92,19 @@ test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto
   expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
 });
 
+test("H-014 C-5: negrita al 100 % del complementario; cursiva más tenue (70 % + --text-secondary)", () => {
+  const css = editorCss();
+  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-complement) 70%, var(--text-secondary))");
+});
+
+test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del complementario; el roto sigue en --danger-text", () => {
+  const css = editorCss();
+  expect(colorOf(css, ".milkdown-view .ProseMirror a")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink")).toBe("var(--vault-complement)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
+});
+
 // SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
 test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
   const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");
