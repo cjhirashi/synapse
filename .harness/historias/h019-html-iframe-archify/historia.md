@@ -25,6 +25,7 @@ documento y siga siendo interactivo, sin abrir un hueco de seguridad. Depende de
 - El iframe sólo apunta a archivos HTML de Synapse (nunca a sitios externos).
 - `files-synapse.cjhirashi.com` se usa para HTML público; el privado se sirve desde el dominio principal.
 - No hay publicación sin confirmación (H-016 C-8).
+- **Quién sube HTML (Carlos, 2026-10-30):** sólo el usuario o agentes autorizados con API key. **Quien sube el HTML es responsable de que no traiga vulnerabilidades** (lo mismo para un agente: lo que sube lo revisa su operador). Esto es una política de uso; el sistema NO la da por cumplida y mantiene el aislamiento de §3 como red de seguridad (un agente puede incorporar contenido ajeno por inyección de instrucciones, y el aislamiento no cuesta nada al usuario).
 
 ## 3. Diseño de seguridad (AIRA; sustituye la nota «requiere prueba real» del backlog)
 
@@ -34,8 +35,10 @@ Archify es interactivo, así que el iframe necesita `allow-scripts`. Se hace seg
 - El servidor responde el HTML con `Content-Security-Policy: sandbox allow-scripts; default-src 'none';
   script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'`
   y `X-Content-Type-Options: nosniff`. Así, aunque se abra el link directo, el HTML queda aislado y no puede
-  hacer peticiones de red. Si un Archify necesita recursos externos (fuentes, CDN), falla de forma visible y se
-  decide caso por caso.
+  hacer peticiones de red. **Ajuste por la política de arriba:** como el que sube es de confianza, la CSP admite
+  además `https:` para imágenes, hojas de estilo y fuentes (un Archify con fuentes o iconos externos se ve
+  completo); `connect-src 'none'` y la ausencia de `allow-same-origin` se mantienen. Scripts externos (CDN)
+  quedan fuera por defecto; si el primer Archify real los necesita se decide con Carlos con evidencia.
 - Para HTML público se usa además el dominio `files-synapse.cjhirashi.com` (sin cookies de Synapse).
 - El iframe del documento admite sólo URLs `https://synapse.cjhirashi.com/files/<id>` o
   `https://files-synapse.cjhirashi.com/...`; cualquier otro `src` se descarta.
