@@ -208,21 +208,79 @@ un **requisito** (qué / por qué), **no** pseudocódigo (cómo).
 
 ## §7 · Split de modelo (formalizado)
 
-Heredado de SDD Anchored §8, formalizado explícito para el ciclo de historia:
+Heredado de SDD Anchored §8, formalizado explícito para el ciclo de historia.
 
-- **Modelo fuerte (Opus):** grooming del backlog (si se delega) y
-  refinamiento de historia (§3) — es la fase de mayor juicio y la más cara
-  de deshacer si sale mal (una historia mal refinada contamina todo su
-  ciclo driver/navigator).
-- **Modelo rápido (default del proyecto):** rol Driver del ciclo §4 — es
-  mecánico, acotado a un paso TDD a la vez, y tiene su propio control
-  (test que debe fallar primero, Navigator vigilando).
-- **Navigator:** modelo del operador (humano) o AIRA con autoridad delegada
-  — no es una elección de modelo del proyecto, es un rol de vigilancia.
+### Ids explícitos, nunca alias
 
-Por qué separar: iterar en refinamiento es barato comparado con el costo de
-un ciclo driver/navigator completo construido sobre una historia ambigua —
-mismo argumento que SDD Anchored usaba para Specify/Plan en Opus.
+Los alias cortos resuelven a versiones viejas. Medido con telemetría
+(`modelUsage` de `claude -p --output-format json`, 2026-10-30 CDMX):
+`sonnet` → `claude-sonnet-5`, `haiku` → `claude-haiku-4-5-20251001`,
+`opus` → `claude-opus-4-8`. Por eso **todo `model:` de este arnés lleva el id
+completo** y un `model: sonnet` cuenta como defecto de configuración.
+
+| Nivel | Id vigente | Para qué |
+|---|---|---|
+| Fuerte | `claude-opus-5` | Solo diseño, arquitectura y alto razonamiento |
+| Default | `claude-sonnet-5-5` | Ejecución sobre plan escrito, revisión, coordinación |
+| Rápido | `claude-haiku-5-5` | Lectura, búsqueda, mapeo, reporte mecánico |
+
+`claude-opus-5-5` todavía **no** se usa: devuelve HTTP 400 con el binario
+`claude` 2.1.197 que gana el PATH del Gateway (Opus 5.5 exige ≥ 2.1.280).
+Cuando esa instalación se actualice, sustituir `claude-opus-5` por
+`claude-opus-5-5` aquí y en `.claude/agents/`, y revalidar con telemetría, no
+por autorreporte del modelo.
+
+### Por rol del ciclo de historia
+
+- **`claude-opus-5`** — grooming del backlog (si se delega) y refinamiento de
+  historia (§3). Es la fase de mayor juicio y la más cara de deshacer si sale
+  mal: una historia mal refinada contamina todo su ciclo driver/navigator.
+  Son los dos únicos puntos del ciclo de historia que justifican Opus.
+- **`claude-sonnet-5-5`** — rol Driver del ciclo §4, **declarado en la
+  llamada**. Ejecutar un plan ya escrito en `historia.md §6` con Gate 1
+  superado no es alto razonamiento: es mecánico, acotado a un paso TDD a la
+  vez, y tiene su propio control (test que debe fallar primero, Navigator
+  vigilando).
+  **El ciclo §4 no se corre dentro de una sesión de operador que esté en
+  Opus.** Se despacha como subagente con `model: claude-sonnet-5-5` explícito,
+  porque un subagente sin clave `model` hereda el modelo del padre. Medido
+  2026-10-30: nueve worktrees de historia se completaron al 100% en
+  `claude-opus-4-8` contra esta misma regla, con el plan ya escrito y Gate 1
+  superado.
+- **Navigator** — rol de vigilancia (humano, o AIRA con autoridad delegada).
+  No es una elección de modelo del proyecto.
+
+### Subagentes ad-hoc — regla dura
+
+Toda llamada `Task`/Agent que **no** invoque un rol con nombre de
+`.claude/agents/` **debe** declarar `model` explícito. Sin esa clave el
+subagente hereda el modelo de la sesión padre, y el modelo heredado casi nunca
+es el que la tarea pide. Ésta es la vía de fuga real: una tabla rol→modelo no
+la tapa, porque los roles con nombre sí declaran su modelo y las llamadas
+ad-hoc no.
+
+| Forma de la tarea ad-hoc | `model` obligatorio |
+|---|---|
+| Investigación read-only, búsqueda, mapeo de código, inventario de estado | `claude-haiku-5-5` |
+| Correr comandos dados y reportar su salida (diagnóstico, gate, tests, build) | `claude-haiku-5-5` |
+| Edición acotada, refactor mecánico, redacción sobre un plan ya escrito | `claude-sonnet-5-5` |
+| Revisión adversarial, causa raíz con hipótesis abiertas | `claude-sonnet-5-5` |
+| Diseño de arquitectura, elección de patrón, trade-offs estructurales | `claude-opus-5` |
+
+**Si la tarea cabe en un rol con nombre, usa el rol, no una llamada ad-hoc:**
+`explorador` ya cubre entera la primera fila y corre en `claude-haiku-5-5`.
+Medido en la ventana 2026-10-23 → 2026-10-30: ~$146 de valoración a precio de
+lista de la API (22% del Opus de esa semana) se consumió en tareas de las dos
+primeras filas despachadas ad-hoc sin `model`. Es valoración comparativa entre
+tareas, no gasto facturado — la suscripción es de tarifa plana.
+
+### Por qué separar
+
+Iterar en refinamiento es barato comparado con el costo de un ciclo
+driver/navigator completo construido sobre una historia ambigua — mismo
+argumento que SDD Anchored usaba para Specify/Plan en Opus. La simetría
+importa en los dos sentidos: subir a Opus lo que ya está decidido no compra
+calidad, solo consumo.
 
 ---
 

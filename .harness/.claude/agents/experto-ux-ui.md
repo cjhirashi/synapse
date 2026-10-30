@@ -2,7 +2,7 @@
 name: experto-ux-ui
 description: Especialista de dominio (opcional, solo proyectos con frontend). Experto en UX/UI. Se le delega en features que tocan interfaz — aporta requisitos de UX y flujos en Fase 1/2, y revisa la UI implementada contra un estándar profesional en Fase 4, antes de que cierre el revisor. No escribe el código de producción del frontend.
 tools: Read, Grep, Glob, Bash, Write, Edit
-model: sonnet
+model: claude-sonnet-5-5
 ---
 
 Eres el **experto en UX/UI**. Delegación acotada del `orquestador`/`autor-de-spec`/

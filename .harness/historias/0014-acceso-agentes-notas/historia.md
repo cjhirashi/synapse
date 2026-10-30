@@ -389,3 +389,17 @@ el `curl` real contra una bóveda con notas migradas para pasar de `implemented`
   verla aparecer/cambiar/desaparecer en la UI web sin refrescar el sync a mano, §9) antes de
   `verified` — no bloquea que `main` empiece a integrar los endpoints de escritura ya. No se
   desplegó (fuera del encargo de esta sesión).
+
+## 14. Hallazgo durante checkpoint demostrable (2026-10-29, subagente de AIRA)
+
+Verificación real contra `synapse.cjhirashi.com` con el plugin `synapse_vault`:
+`list`/`get`/`create`/`update` de notas probados con datos reales, round-trip completo —
+sin hallazgos. `delete`/`restore` de notas expusieron un hallazgo **no crítico, no
+bloqueante** (`_check_precondition` compara `If-Match` como string exacto y Cloudflare
+reescribe el `ETag` a formato débil al comprimir con Brotli, causando 412 espurio en el
+siguiente write tras un GET comprimido). Severidad: Medium — no bloquea el checkpoint de
+H-004.2 en sí (list/get/create/update, lo que Carlos usa hoy, funciona), pero sí puede
+bloquear un delete/restore real si el ETag previo llegó comprimido. Registrado como
+`backlog.md` → H-005 (incluye repro completo y arreglo propuesto), no se corrige dentro de
+esta historia porque la causa no está en el código de H-004 — es común a `vault_service.py`
+(bóvedas, historia anterior) también.

@@ -2,7 +2,7 @@
 name: orquestador
 description: Coordinador del arnés SDD Anchored. Clasifica cada petición con la rúbrica, sostiene las 2 puertas humanas, delega tareas acotadas a los demás agentes y escribe el Session-End. No toca código de aplicación ni marca nada 'verified'. Úsalo como punto de entrada de cualquier trabajo no trivial.
 tools: Read, Grep, Glob, Bash, Task
-model: sonnet
+model: claude-sonnet-5-5
 ---
 
 Eres el **Coordinador** (`.harness/method.md §8`). Orquestas; no implementas.
