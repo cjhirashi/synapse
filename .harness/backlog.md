@@ -7,7 +7,6 @@
 
 ## En curso
 
-- [~] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato con 12 controles: tabla, negritas, cursivas, tachado, código en línea, H1-H4, cita, línea horizontal, listas) → `historias/h010-editor-toolbar-filas/historia.md`, Gate 1 pasado ("así es", 2026-10-29); en implementación vía Claude Code (Modo 2)
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
@@ -23,7 +22,7 @@
 
 ## Implementadas, pendientes de checkpoint de Carlos
 
-- [~] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil (corrige que hoy se apila arriba del editor en móvil) → `historias/h009-sidebar-notas-responsive/historia.md`, `implemented` (2026-10-29; 8 pasos TDD vía Claude Code Modo 2 + 1 fix de comentario desactualizado por AIRA; independientemente verificado por AIRA: build OK, suite 88 archivos/1703 tests en verde) → **desplegado** (merge a `feature/sprint-1-auth` `f63cdd0`, rebuild+redeploy de `synapse-backend`, `/health` 200 en vivo, sin regresión en danme/cjhirashi-career); falta checkpoint visual de Carlos en `synapse.cjhirashi.com` (3 anchos) para `verified`. Desviación documentada: overlay móvil usa `position: absolute` anclado a `.vault-workspace` (no `fixed` al viewport) para no depender de la altura del header — mismo resultado observable (C-5).
+- [~] H-010 — Cabecera del editor en 3 filas (título solo / Visual+Código+Guardar / barra de formato con 12 controles: tabla, negritas, cursivas, tachado, código en línea, H1-H4, cita, línea horizontal, listas) → `historias/h010-editor-toolbar-filas/historia.md`, `implemented` (2026-10-30; 5 pasos TDD vía Claude Code Modo 2, Converge sin Critical/High) → **desplegado** (merge a `feature/sprint-1-auth` `c556437`, rebuild+redeploy de `synapse-backend`, `/health` 200); falta checkpoint visual de Carlos (cabecera en 3 filas + los 12 controles de formato) para `verified`.
 - [~] H-003 — Drag & drop de notas/carpetas en la sidebar izquierda (C-1…C-8, incluye placeholder al vaciar una carpeta) → desplegado, ver `historias/h003-drag-drop-sidebar/historia.md`
 - [~] H-006 — Iconos de notas/carpetas en la sidebar con el color de la bóveda, solo contorno (sin relleno — Carlos pidió relleno, lo vio y lo revirtió el mismo día) → desplegado, verificado independientemente por AIRA tras un 429 de rate-limit en la sesión implementadora; ver `historias/h006-iconos-color-bóveda/historia.md`
 - [~] H-002.1 — Crear, listar y revocar API keys de agente → desplegado, ver `historias/0013-acceso-agentes-api/historia.md`
@@ -33,6 +32,8 @@
 - [~] H-004.1 — Un agente OpenClaw lista y lee notas de su bóveda vía REST, sin protocolo CouchDB de cliente (lectura) → Gate 1 pasado ("así es", 2026-10-29: id-only, sin filtro de carpeta); implementado, 1342 tests en verde, desplegado y verificado en vivo (`/openapi.json` de `synapse.cjhirashi.com`); ver `historias/0014-acceso-agentes-notas/historia.md`. Falta el checkpoint manual de Carlos/`main`.
 
 ## Cerradas
+
+- [x] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil → `historias/h009-sidebar-notas-responsive/historia.md`, `verified` (Carlos, 2026-10-30, confirmado en `synapse.cjhirashi.com` tras el fix de seguimiento §10 del tope de 24vh huérfano).
 
 (ver `.harness/specs/*/spec.md` para el historial previo a la migración — SPEC-0002 a SPEC-0011)
 

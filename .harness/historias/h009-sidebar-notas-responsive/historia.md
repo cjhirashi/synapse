@@ -1,7 +1,7 @@
 ---
 id: H-009
 titulo: Sidebar de notas ocultable con botón, fija en tableta/escritorio y flotante en móvil
-estado: implemented # Gate 1 pasado (Carlos, 2026-10-29). Implementada, desplegada y checkpoint visual parcial de Carlos (botón visible y funcional). Corrección pedida sobre C-1 (ubicación del botón, ver §3) en curso. Pendiente re-confirmación visual para pasar a verified (§8).
+estado: verified # Checkpoint demostrable cumplido (Carlos, 2026-10-30, "Listo, valido que ya quedó corregido") — confirmó en synapse.cjhirashi.com tras el fix de seguimiento §10 (tope de 24vh huérfano).
 covers:
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/VaultWorkspacePage.test.tsx
@@ -200,11 +200,10 @@ añadió una directriz permanente que aplica a esta y a toda sidebar futura
 
 ## 8. Checkpoint demostrable
 
-Pendiente — Carlos debe abrir una bóveda en los 3 anchos (móvil, tableta,
-escritorio) y confirmar: el botón existe en los 3; en escritorio/tableta la
-sidebar sigue fija a la izquierda y el botón solo la oculta/muestra sin
-volverse flotante; en móvil arranca oculta y, al abrirla, aparece como
-ventana flotante sin mover el editor ni reordenar el layout.
+**Cumplido (2026-10-30).** Carlos probó en vivo en `synapse.cjhirashi.com`,
+pidió 2 correcciones visuales en el camino (C-1: ubicación del botón; §10:
+tope de 24vh huérfano que cortaba el árbol en móvil) y tras aplicarlas
+confirmó: "Listo, valido que ya quedó corregido el cambio".
 
 ## 9. Session-End (al cerrar)
 
