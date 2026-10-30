@@ -76,6 +76,22 @@ test("RF-005: el contenido del editor va en una columna centrada de 780 px sin t
   expect(rule(editor, ".note-editor-body")).not.toMatch(/border|background/);
 });
 
+// H-014: color tipográfico del markdown con el color de la bóveda (--vault-accent) y su complementario
+// (--vault-complement). Se parsea el CSS real (como el resto del archivo), no un snapshot visual.
+const editorCss = () => read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g, "");
+/** Valor de `color` de la regla cuyo selector es exactamente `selector` seguido de `{ color: … }`. */
+const colorOf = (css: string, selector: string) =>
+  css.match(new RegExp(`${selector.replace(/[.[\]"=()*]/g, "\\$&")}\\s*\\{\\s*color:\\s*([^;]+);`))?.[1].trim();
+
+test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto normal según P-1", () => {
+  const css = editorCss();
+  const h = (tag: string) => colorOf(css, `.milkdown-view .ProseMirror ${tag}`);
+  expect(h("h1")).toBe("var(--vault-accent)"); // C-1: 100%, sin mezclar
+  expect(h("h2")).toBe("color-mix(in srgb, var(--vault-accent) 85%, var(--text-primary))"); // C-2
+  expect(h("h3")).toBe("color-mix(in srgb, var(--vault-accent) 55%, var(--text-primary))"); // C-3
+  expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
+});
+
 // SPEC-0010 RF-037…RF-039: cita, código en línea, tablas y casillas de tarea (PLAN-0010 §2.3-g; R-5, R-6, R-7, R-10).
 test("RF-037: la cita lleva barra de 3 px en --accent, relleno --accent-soft y cursiva --text-secondary", () => {
   const quote = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror blockquote");

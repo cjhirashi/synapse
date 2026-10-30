@@ -166,6 +166,22 @@ function ratio(a: Rgba, b: Rgba): number {
  */
 const LIGHTEST_STOP = { dark: 0.8, light: 0.65 } as const;
 
+test("H-014 C-4/C-9: H4 (color-mix bóveda 30% + texto 70%) ≥ 4,5:1 sobre el fondo del editor, los 17, claro y oscuro", () => {
+  // C-4 fija el único piso de contraste de la jerarquía: H4 es el tono más sutil (30% del color de la
+  // bóveda) y aun así debe leerse ≥ 4,5:1 sobre `--bg-primary` (el fondo del documento) en ambos temas.
+  // Mismo cálculo de `color-mix(in srgb, X 30%, --text-primary)` que usa `editor.css` (mezcla lineal sRGB).
+  for (const mode of ["light", "dark"] as const) {
+    const vars = theme(mode);
+    const bg = parse(vars["bg-primary"]);
+    const ink = parse(vars["text-primary"]);
+    for (const key of PALETTE) {
+      const color = parse(vars[tokenOf(key)]);
+      const h4 = [0, 1, 2].map((i) => color[i] * 0.3 + ink[i] * 0.7).concat(1) as Rgba;
+      expect(ratio(h4, bg), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+});
+
 test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro del degradado da ≥ 4,5:1 para los 17, claro y oscuro", () => {
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);

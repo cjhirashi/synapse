@@ -958,6 +958,24 @@
   margin: var(--space-4) 0 var(--space-2);
 }
 
+/* H-014 (C-1…C-4): jerarquía de color de los encabezados con el color de la bóveda (`--vault-accent`,
+   publicado por `MilkdownView` en `.milkdown-view`). Se jerarquiza con COLOR, no con tamaño (pedido
+   explícito): H1 es el ancla al 100 % y cada nivel se mezcla más con el texto normal (`--text-primary`)
+   al bajar, hasta H4 (30 %), el más sutil pero legible (≥ 4,5:1, ver `vaultIcon.test.ts`). `color-mix`
+   nativo: se recalcula solo al cambiar de tema o de bóveda, sin JS. (El 2.º porcentaje omitido = resto.) */
+.milkdown-view .ProseMirror h1 {
+  color: var(--vault-accent);
+}
+.milkdown-view .ProseMirror h2 {
+  color: color-mix(in srgb, var(--vault-accent) 85%, var(--text-primary));
+}
+.milkdown-view .ProseMirror h3 {
+  color: color-mix(in srgb, var(--vault-accent) 55%, var(--text-primary));
+}
+.milkdown-view .ProseMirror h4 {
+  color: color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary));
+}
+
 /* Listas del markdown renderizado: listas de verdad (viñetas/números, sangría y ritmo compactos). */
 .milkdown-view .ProseMirror ul,
 .milkdown-view .ProseMirror ol {
