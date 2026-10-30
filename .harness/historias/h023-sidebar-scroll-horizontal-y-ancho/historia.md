@@ -1,7 +1,7 @@
 ---
 id: H-023
 titulo: Sidebar de archivos con scroll horizontal y ancho ajustable en escritorio
-estado: draft # pendiente Gate 1 (Carlos); pedido 2026-10-30
+estado: refined # Gate 1 pasado (Carlos, 2026-10-30: «Así es», P-1..P-3 confirmadas); pedido 2026-10-30
 covers:
   - frontend/src/notes/notes.css
   - frontend/src/notes/NoteSidebar.tsx
@@ -30,7 +30,7 @@ ensancharse arrastrando su orilla con el mouse.
 - Fuera: móvil/tableta (la sidebar conserva 240 px / ventana flotante de H-009);
   el riel de bóvedas; el estilo de las barras (H-022).
 
-## 3. Decisiones de producto (propuestas de AIRA, a confirmar por Carlos)
+## 3. Decisiones de producto (propuestas de AIRA, confirmadas por Carlos 2026-10-30)
 
 - **P-1:** «escritorio» = ventana ≥ 1024 px de ancho (por ancho, no por tipo de
   puntero: lección de H-021). Por debajo no hay asa.
@@ -64,7 +64,7 @@ ensancharse arrastrando su orilla con el mouse.
 - **C-9:** El panel del editor DEBE absorber el cambio de ancho sin scroll
   horizontal de la página.
 
-`[NEEDS CLARIFICATION] = 0` si Carlos confirma P-1..P-3.
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó P-1..P-3 (2026-10-30).
 
 ## 5. Plan (borrador, se confirma al tomarla)
 
