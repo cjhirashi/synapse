@@ -487,9 +487,9 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
 
   beforeEach(() => mockUpload.mockReset());
 
-  it("C-1: el botón «Insertar imagen» vive en la Fila 3 (aria-label + note-nav-button)", async () => {
+  it("C-1/C-10: el botón «Adjuntar archivo» vive en la Fila 3 (aria-label + note-nav-button)", async () => {
     const { container } = await setupUpload();
-    const button = within(container.querySelector<HTMLElement>(".note-editor-row-3")!).getByRole("button", { name: "Insertar imagen" });
+    const button = within(container.querySelector<HTMLElement>(".note-editor-row-3")!).getByRole("button", { name: "Adjuntar archivo" });
     expect(button).toHaveClass("note-nav-button");
   });
 
@@ -528,7 +528,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     expect(insertImage).not.toHaveBeenCalled();
   });
 
-  it("C-2: un archivo demasiado grande muestra el aviso de los 5 MB", async () => {
+  it("C-2: un archivo demasiado grande muestra el aviso de límite de tamaño (H-016 C-11)", async () => {
     mockUpload.mockRejectedValueOnce(new uploadModule.UploadTooLargeError("big"));
     const { container } = await setupUpload();
     const input = fileInput(container);
@@ -536,7 +536,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     Object.defineProperty(input, "files", { value: [big], configurable: true });
     fireEvent.change(input);
 
-    expect(await screen.findByText(/5 MB/i)).toBeInTheDocument();
+    expect(await screen.findByText(/límite de tamaño/i)).toBeInTheDocument();
   });
 });
 

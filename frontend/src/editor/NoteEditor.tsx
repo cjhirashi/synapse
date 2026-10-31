@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
-import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError } from "../files/uploadFile";
+import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -177,11 +177,11 @@ export interface NoteEditorHandle {
 type Mode = "read" | "edit";
 type View = "visual" | "code";
 
-/** Mensaje para el aviso de una subida fallida (H-015): tamaño, tipo o red/servidor. */
+/** Mensaje para el aviso de una subida fallida (H-015/H-016): tamaño, tipo o red/servidor. */
 function uploadErrorMessage(error: unknown): string {
-  if (error instanceof UploadTooLargeError) return "La imagen supera el límite de 5 MB.";
-  if (error instanceof UploadTypeError) return "Ese tipo de archivo no se admite. Usa una imagen png, jpeg, webp, gif o svg.";
-  return "No se pudo subir la imagen. Revisa tu conexión e inténtalo de nuevo.";
+  if (error instanceof UploadTooLargeError) return "El archivo supera el límite de tamaño.";
+  if (error instanceof UploadTypeError) return "Ese tipo de archivo no se admite.";
+  return "No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo.";
 }
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
@@ -290,9 +290,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * Sube una imagen a la bóveda de la nota e inserta `![nombre](url)` en el cursor (H-015 C-1).
+   * Sube un archivo a la bóveda de la nota e inserta `![nombre](url)` (imagen) o `[nombre](url)` (documento) (H-015/H-016).
    * La URL es `https://synapse.cjhirashi.com/files/<id>` (pasa `safeImageUrl` sin cambios, C-4).
-   * El tipo y los 5 MB se validan en el cliente (feedback inmediato) y en el backend (C-6).
+   * El tipo y límites se validan en el cliente (feedback inmediato) y en el backend (C-11).
    */
   const insertUploadedImage = useCallback(async (file: File) => {
     const current = noteRef.current;
@@ -301,7 +301,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     try {
       const uploaded = await uploadFile(file, current.vault_id);
       const alt = file.name.replace(/\.[^.]+$/, "") || uploaded.name;
-      editorCommands.current?.insertImage(fileUrl(uploaded.id), alt);
+      const url = fileUrl(uploaded.id);
+      // Si es imagen, inserta como ![alt](url); si es documento, como [nombre](url)
+      if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(uploaded.content_type)) {
+        editorCommands.current?.insertImage(url, alt);
+      } else {
+        // Para documentos: insertar como enlace [nombre](url) (H-016 C-10)
+        editorCommands.current?.insertLink(url, alt);
+      }
     } catch (err) {
       setUploadError(uploadErrorMessage(err));
     }
@@ -953,15 +960,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
               <ListOrdered size={16} aria-hidden="true" />
             </button>
-            {/* H-015 C-1: subir una imagen (botón) e insertarla en el cursor; también se puede
+            {/* H-015/H-016: subir archivo (botón) e insertarlo en el cursor; también se puede
                 arrastrar y soltar sobre el área de edición. El input de archivo va oculto. */}
-            <button type="button" className="note-nav-button" aria-label="Insertar imagen" title="Insertar imagen" onClick={() => imageInputRef.current?.click()}>
+            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => imageInputRef.current?.click()}>
               <ImagePlus size={16} aria-hidden="true" />
             </button>
             <input
               ref={imageInputRef}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+              accept={[...ALLOWED_IMAGE_TYPES, ...ALLOWED_DOCUMENT_TYPES].join(",")}
               className="note-visually-hidden"
               aria-hidden="true"
               tabIndex={-1}

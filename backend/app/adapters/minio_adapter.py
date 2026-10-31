@@ -1,4 +1,4 @@
-"""`ObjectStoragePort` sobre MinIO (H-015).
+"""`ObjectStoragePort` sobre MinIO (H-015/H-016).
 
 `minio` se importa DENTRO del constructor y de los métodos, nunca a nivel de módulo: así los
 tests de servicio y de router usan un FAKE del puerto sin necesitar MinIO real ni el paquete
@@ -53,3 +53,9 @@ class MinioObjectStorage(ObjectStoragePort):
             if response is not None:
                 response.close()
                 response.release_conn()
+
+    def delete_object(self, key: str) -> None:
+        try:
+            self._client.remove_object(self._bucket, key)
+        except Exception as exc:  # noqa: BLE001
+            raise StorageUnavailable(f"MinIO delete_object falló: {exc}") from exc

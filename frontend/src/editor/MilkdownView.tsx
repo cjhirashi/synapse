@@ -229,6 +229,8 @@ export interface EditorCommands {
   wrapOrderedList: () => void;
   /** Inserta en el cursor una imagen `![alt](url)` (H-015); la URL se filtra con `safeImageUrl` al pintarla. */
   insertImage: (url: string, alt: string) => void;
+  /** Inserta en el cursor un enlace `[text](url)` (H-016); la URL se filtra con `safeLinkUrl` al pintarla. */
+  insertLink: (url: string, text: string) => void;
 }
 
 interface MilkdownViewProps {
@@ -648,6 +650,17 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           // H-015: inserta la imagen subida en el cursor; el markdown queda `![alt](url)` y la
           // URL (https absoluta) pasa `safeImageUrl` sin cambiar al pintarla (C-1/C-4).
           insertImage: (url: string, alt: string) => run(insertImageCommand.key, { src: url, alt }),
+          // H-016 C-10: inserta un enlace en el cursor; el markdown queda `[text](url)` y la
+          // URL (https absoluta) pasa `safeLinkUrl` sin cambiar al pintarla.
+          insertLink: (url: string, text: string) => {
+            const { state } = view;
+            const { from, to } = state.selection;
+            const tr = state.tr.insertText(text, from, to);
+            const linkMark = state.schema.marks.link;
+            tr.addMark(from, from + text.length, linkMark.create({ href: url }));
+            view.dispatch(tr);
+            view.focus();
+          },
         });
       }
     });

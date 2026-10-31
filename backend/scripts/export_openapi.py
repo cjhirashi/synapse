@@ -24,7 +24,8 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes",), "schemas": ()},
     # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
-    "h015-archivos-imagenes-minio": {"paths": ("/files",), "schemas": ()},
+    # H-016 absorbe el contrato de H-015 (mismas rutas /files): un canon por hecho. Documentos, tipos y pantalla de archivos (lista, rename, delete por bóveda)
+    "h016-archivos-pantalla-y-tipos": {"paths": ("/files", "/vaults/{vault_id}/files"), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"
@@ -93,7 +94,7 @@ def main() -> None:
 
     # El esquema no depende de los valores: placeholders sólo para poder importar la app.
     for key in ("DATABASE_URL", "COUCHDB_URL", "COUCHDB_USER", "COUCHDB_PASSWORD",
-                "JWT_SECRET", "ADMIN_EMAIL", "ADMIN_PASSWORD"):
+                "JWT_SECRET", "ADMIN_EMAIL", "ADMIN_PASSWORD", "MINIO_ROOT_USER", "MINIO_ROOT_PASSWORD"):
         os.environ.setdefault(key, "sqlite://" if key == "DATABASE_URL" else "export-only")
     sys.path.insert(0, str(ROOT / "backend"))
     from app.main import app

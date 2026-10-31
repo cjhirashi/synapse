@@ -29,6 +29,9 @@ export default function AppLayout() {
           <NavLink to="/vaults" end className={navLinkClass}>
             Bóvedas
           </NavLink>
+          <NavLink to="/files" className={navLinkClass}>
+            Archivos
+          </NavLink>
           <NavLink to="/vaults/trash" className={navLinkClass}>
             Papelera
           </NavLink>

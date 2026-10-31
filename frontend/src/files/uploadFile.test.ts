@@ -48,9 +48,9 @@ test("C-1/C-6: sube con POST /files multipart (vault_id + file) y devuelve el id
 test("C-6: un tipo no admitido se rechaza en el cliente, sin llamar a la red", async () => {
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
-  const pdf = new File([new Uint8Array(16)], "doc.pdf", { type: "application/pdf" });
+  const exe = new File([new Uint8Array(16)], "malware.exe", { type: "application/x-msdownload" });
 
-  await expect(uploadFile(pdf, VAULT)).rejects.toBeInstanceOf(UploadTypeError);
+  await expect(uploadFile(exe, VAULT)).rejects.toBeInstanceOf(UploadTypeError);
   expect(fetchMock).not.toHaveBeenCalled();
 });
 
@@ -77,4 +77,67 @@ test("un error del servidor llega como ApiError (p. ej. 413)", async () => {
   const err = await uploadFile(pngFile(), VAULT).catch((e) => e);
   expect(err).toBeInstanceOf(ApiError);
   expect(err).toMatchObject({ status: 413, type: "urn:synapse:problem:file-too-large" });
+});
+
+test("renameFile: PATCH /files/{id} con {name} y devuelve metadatos", async () => {
+  const updated = { id: "f-1", vault_id: VAULT, name: "nuevo.png", content_type: "image/png", size: 16, visibility: "private", created_at: "2026-10-30T00:00:00Z" };
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, updated));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { renameFile } = await import("./uploadFile");
+  await expect(renameFile("f-1", "nuevo.png")).resolves.toEqual(updated);
+
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/files/f-1");
+  expect(init).toMatchObject({ method: "PATCH", credentials: "include" });
+  expect(JSON.parse(init.body)).toEqual({ name: "nuevo.png" });
+});
+
+test("setFileVisibility: PATCH /files/{id} con {visibility} y devuelve metadatos", async () => {
+  const updated = { id: "f-1", vault_id: VAULT, name: "foto.png", content_type: "image/png", size: 16, visibility: "public", created_at: "2026-10-30T00:00:00Z" };
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, updated));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { setFileVisibility } = await import("./uploadFile");
+  await expect(setFileVisibility("f-1", "public")).resolves.toEqual(updated);
+
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/files/f-1");
+  expect(init).toMatchObject({ method: "PATCH", credentials: "include" });
+  expect(JSON.parse(init.body)).toEqual({ visibility: "public" });
+});
+
+test("deleteFile: DELETE /files/{id} y devuelve void", async () => {
+  const fetchMock = vi.fn().mockResolvedValueOnce({
+    ok: true,
+    status: 204,
+    headers: new Headers({ "Content-Type": "application/json" }),
+    json: async () => undefined,
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { deleteFile } = await import("./uploadFile");
+  await expect(deleteFile("f-1")).resolves.toBeUndefined();
+
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/files/f-1");
+  expect(init).toMatchObject({ method: "DELETE", credentials: "include" });
+});
+
+test("renameFile con nombre inválido (ej: con /) se rechaza en cliente", async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal("fetch", fetchMock);
+
+  const { renameFile } = await import("./uploadFile");
+  await expect(renameFile("f-1", "carpeta/archivo.txt")).rejects.toBeInstanceOf(Error);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("errores del servidor llegan como ApiError para PATCH y DELETE", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(problem(404, "file-not-found", "File not found")));
+
+  const { renameFile } = await import("./uploadFile");
+  const err = await renameFile("f-notexist", "x.txt").catch((e) => e);
+  expect(err).toBeInstanceOf(ApiError);
+  expect(err).toMatchObject({ status: 404 });
 });

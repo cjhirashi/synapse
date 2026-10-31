@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginPage from "./auth/LoginPage";
 import RequireAuth, { useMe, useRefreshMe } from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
+import FilesPage from "./files/FilesPage";
 import VaultWorkspacePage from "./notes/VaultWorkspacePage";
 import ApiKeysPage from "./settings/ApiKeysPage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
@@ -82,6 +83,7 @@ export default function App({ syncEnv }: Props) {
         <Route path="/vaults" element={<VaultListPage />} />
         <Route path="/vaults/new" element={<VaultForm />} />
         <Route path="/vaults/trash" element={<TrashPage />} />
+        <Route path="/files" element={<FilesPage />} />
         <Route path="/vaults/:id/edit" element={<VaultForm />} />
         {/* Bóveda abierta: sidebar de notas + editor (SPEC-0008). `new` y `trash` ganan por ser estáticas. */}
         <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
