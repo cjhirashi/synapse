@@ -36,6 +36,12 @@ describe("TreeRowMenu", () => {
     expect(items.map((item) => item.textContent)).toEqual(["Renombrar", "Borrar"]);
   });
 
+  // C-8b: el árbol conserva una sola parada de Tab; F2 y Supr atajan la misma fila sin ⋮ tabulable.
+  it("el ⋮ queda fuera del orden de Tab", () => {
+    const { trigger } = setup();
+    expect(trigger).toHaveAttribute("tabindex", "-1");
+  });
+
   // C-2
   it("Enter y Espacio abren el menú desde el teclado", async () => {
     const { trigger } = setup();

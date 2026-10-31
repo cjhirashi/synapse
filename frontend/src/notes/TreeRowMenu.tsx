@@ -123,6 +123,8 @@ export function TreeRowMenu({ label, onRename, onDelete }: TreeRowMenuProps) {
         id={triggerId}
         type="button"
         className="note-menu-button"
+        // Fuera del Tab: el árbol tiene una sola parada (roving); F2 y Supr atajan la misma acción.
+        tabIndex={-1}
         aria-label={`Acciones de ${label}`}
         aria-haspopup="menu"
         aria-expanded={open}
