@@ -1,7 +1,7 @@
 ---
 id: H-024
 titulo: Menú de tres puntos en cada fila del árbol para renombrar o borrar notas y carpetas
-estado: refined # Gate 1 pasado (Carlos, 2026-10-30: P-1 y P-2 confirmadas, más confirmación obligatoria en todo borrado); P-4/P-5 por defecto de AIRA sin objeción; pedido 2026-10-30 con captura
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30: P-1 y P-2 confirmadas, más confirmación obligatoria en todo borrado); P-4/P-5 por defecto de AIRA sin objeción; pedido 2026-10-30 con captura
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx

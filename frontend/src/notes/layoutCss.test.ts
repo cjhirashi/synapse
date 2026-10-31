@@ -42,6 +42,24 @@ test("H-023: las filas del árbol no se estiran al alto del contenedor", () => {
   expect(rule(read("notes.css"), ".note-tree")).toMatch(/align-content: start/);
 });
 
+// H-024 C-10: el ⋮ de cada fila va fijo al borde derecho del árbol que se desplaza (H-023), oculto hasta que
+// la fila se señala o tiene foco, siempre visible en táctil y con área de al menos 28 px.
+test("H-024 C-10: el ⋮ de cada línea es sticky al borde derecho y mide al menos 28 px", () => {
+  const menu = rule(read("notes.css"), ".note-tree-line > .note-menu-button");
+  expect(menu).toMatch(/position: sticky/);
+  expect(menu).toMatch(/right: 0/);
+  expect(menu).toMatch(/width: 28px/);
+  expect(menu).toMatch(/height: 28px/);
+});
+
+test("H-024 C-10: el ⋮ sólo se ve al señalar o enfocar su fila, y siempre en táctil", () => {
+  const css = read("notes.css").replace(/\/\*[\s\S]*?\*\//g, "");
+  expect(rule(css, ".note-tree-line > .note-menu-button")).toMatch(/opacity: 0/);
+  expect(rule(css, ".note-tree-line:hover > .note-menu-button")).toMatch(/opacity: 1/);
+  expect(rule(css, ".note-tree-line:focus-within > .note-menu-button")).toMatch(/opacity: 1/);
+  expect(css).toMatch(/@media \(hover: none\), \(pointer: coarse\) \{\s*\.note-tree-line > \.note-menu-button \{\s*opacity: 1;/);
+});
+
 test("RF-009: el marco de la app mide el viewport y cada columna hace su propio scroll", () => {
   const layout = read("../layout/AppLayout.css");
   expect(rule(layout, ".app-shell")).toMatch(/height: 100dvh/);

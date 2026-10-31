@@ -491,6 +491,78 @@ describe("H-003 C-8: placeholder al vaciar la carpeta de origen al mover una not
   });
 });
 
+// H-024 (C-5, C-6): renombrar una carpeta cambia el prefijo de todas sus notas activas conservando la
+// subestructura; reusa la misma regla de unicidad que `moveFolder`.
+describe("H-024 C-5/C-6: renameFolder (renombrar una carpeta en lote)", () => {
+  it("C-5: cambia el nombre de la carpeta conservando la subestructura", async () => {
+    await store.create(VAULT, "Proyectos/Plan.md");
+    await store.create(VAULT, "Proyectos/Sub/Hoja.md");
+    await store.create(VAULT, "Otra/Viejo.md");
+    await store.renameFolder(VAULT, "Proyectos", "Trabajo");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual([
+      "Otra/Viejo.md",
+      "Trabajo/Plan.md",
+      "Trabajo/Sub/Hoja.md",
+    ]);
+  });
+
+  it("C-6: un nombre ya ocupado en la carpeta padre → NotePathTakenError, sin mover ninguna nota", async () => {
+    await store.create(VAULT, "Proyectos/Plan.md");
+    await store.create(VAULT, "Trabajo/Plan.md");
+    await expect(store.renameFolder(VAULT, "Proyectos", "Trabajo")).rejects.toBeInstanceOf(NotePathTakenError);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Proyectos/Plan.md", "Trabajo/Plan.md"]);
+  });
+
+  it("ignora las notas de la papelera: no las mueve", async () => {
+    await store.create(VAULT, "Proyectos/Viva.md");
+    const borrada = await store.create(VAULT, "Proyectos/Borrada.md");
+    await trash(borrada.id);
+    await store.renameFolder(VAULT, "Proyectos", "Trabajo");
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Trabajo/Viva.md"]);
+    expect((await store.list(VAULT, { deleted: true })).map((n) => n.path)).toEqual(["Proyectos/Borrada.md"]);
+  });
+});
+
+// H-024 (C-8): borrar una carpeta manda a la papelera todas sus notas activas (también las de
+// subcarpetas), una a una y recuperables, y devuelve cuántas fueron.
+describe("H-024 C-8: softDeleteFolder (borrar una carpeta en lote)", () => {
+  it("manda a la papelera todas sus notas activas, incluidas las de subcarpetas, y devuelve cuántas", async () => {
+    await store.create(VAULT, "Proyectos/Plan.md");
+    await store.create(VAULT, "Proyectos/Sub/Hoja.md");
+    await store.create(VAULT, "Otra/Viejo.md");
+    expect(await store.softDeleteFolder(VAULT, "Proyectos")).toBe(2);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Otra/Viejo.md"]);
+    expect((await store.list(VAULT, { deleted: true })).map((n) => n.path)).toEqual([
+      "Proyectos/Plan.md",
+      "Proyectos/Sub/Hoja.md",
+    ]);
+  });
+
+  it("no toca una carpeta hermana cuyo nombre empieza igual (A frente a AB)", async () => {
+    await store.create(VAULT, "A/x.md");
+    await store.create(VAULT, "AB/y.md");
+    expect(await store.softDeleteFolder(VAULT, "A")).toBe(1);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["AB/y.md"]);
+  });
+
+  it("no cuenta ni vuelve a borrar las notas que ya estaban en la papelera", async () => {
+    const ya = await store.create(VAULT, "A/ya.md");
+    await store.create(VAULT, "A/nueva.md");
+    await trash(ya.id);
+    expect(await store.softDeleteFolder(VAULT, "A")).toBe(1);
+  });
+
+  it("una nota con ruta inválida dentro impide el borrado y no manda ninguna a la papelera", async () => {
+    await store.create(VAULT, "A/ok.md");
+    await db.put({
+      _id: `note:${VAULT}:invalida`, type: "note", vault_id: VAULT, path: "A/zz/.md", frontmatter: {},
+      content: "", created_at: nextTime(), updated_at: nextTime(), deleted_at: null,
+    });
+    await expect(store.softDeleteFolder(VAULT, "A")).rejects.toBeInstanceOf(NoteValidationError);
+    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["A/ok.md", "A/zz/.md"]);
+  });
+});
+
 describe("SPEC-0010 RF-001/RF-003/RF-008: carpetas y puerta de ruta", () => {
   it("RF-003: create con carpeta pone la nota dentro (título relativo)", async () => {
     const note = await store.create(VAULT, "Nota", "Proyectos");

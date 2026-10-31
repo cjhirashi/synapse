@@ -1,30 +1,28 @@
 /**
- * Sidebar de la bóveda abierta: árbol de notas, "Nueva nota", renombrar/mover, borrar y
- * enlace a la papelera (SPEC-0008 RF-003, RF-010…RF-013, RF-019; PLAN-0008 §2.6).
+ * Sidebar de la bóveda abierta: árbol de notas, "Nueva nota", renombrado en línea, borrado con
+ * confirmación y enlace a la papelera (SPEC-0008 RF-003, RF-010…RF-013, RF-019; PLAN-0008 §2.6).
  *
  * Lee sólo los resúmenes (`noteStore.list`, sin `content`) y los vuelve a leer cuando cambia
  * `notesVersion` (escrituras propias, del pull o de otra pestaña). Las carpetas salen de los
  * prefijos de `path` (`buildTree`) y empiezan plegadas; la que contiene la nota abierta se
- * despliega sola. Un renombrado edita la ruta completa: así también se mueve de carpeta.
+ * despliega sola. Renombrar cambia sólo el nombre dentro de su carpeta; mover es arrastrar (H-003).
  *
  * Estructura visual (SPEC-0009 RF-003, RF-004): el formulario «Nueva nota» es un bloque propio sobre
- * el panel del árbol (`.note-tree-panel`); la barra de acciones y el renombrado van **después** del
- * panel y la papelera es el pie. Así enfocar una nota no desplaza ninguna fila: antes la barra de
- * acciones aparecía sobre el árbol, la fila se movía bajo el cursor y el clic no llegaba a abrirla.
+ * el panel del árbol (`.note-tree-panel`) y la papelera es el pie. El renombrado no añade filas: el
+ * campo ocupa la fila de la nota o carpeta, así que nada se desplaza bajo el cursor.
  *
  * SPEC-0010 (RF-002, RF-006, RF-042, RF-043): primera fila «Raíz»; **carpeta activa** (`aria-current`), que cambia al
  * pulsar una carpeta (o «Raíz») y al abrir una nota (pasa a ser la suya) pero no con ←/→; indicador «Crear en»
  * (región viva), botón y formulario «Nueva carpeta» y la pista de «/» asociada a los tres campos.
  *
  * Accesibilidad: `role="tree"`; cada fila es un botón `treeitem` (Enter/Espacio) y el árbol
- * sólo contiene `treeitem`s (C-4). "Renombrar"/"Borrar" viven en una barra (`toolbar`) fuera del
- * árbol, siempre visible para la nota seleccionada (C-1, C-2); F2 y Supr las atajan desde el
- * `treeitem` enfocado.
+ * sólo contiene `treeitem`s (C-4). Cada fila tiene su ⋮ («Renombrar»/«Borrar», C-1, C-2) fuera del
+ * tabulador; F2 renombra y Supr borra desde el `treeitem` enfocado (C-9).
  * Teclado del patrón WAI-ARIA (VF-9) con *roving tabindex*: un solo `treeitem` tabulable;
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, ReactNode, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
@@ -33,6 +31,8 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
+import { ConfirmDelete } from "./ConfirmDelete";
+import { TreeRowMenu } from "./TreeRowMenu";
 
 interface NoteSidebarProps {
   vaultId: string;
@@ -91,6 +91,22 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
 /** Nodo que se está arrastrando (H-003): una nota (por id y ruta) o una carpeta (por ruta). */
 type DragItem = { kind: "note"; id: string; path: string } | { kind: "folder"; path: string };
 
+/** Borrado esperando confirmación (C-7, C-8): una nota, o una carpeta con sus notas activas. */
+type PendingDelete = { kind: "note"; note: NoteSummary } | { kind: "folder"; path: string; notes: NoteSummary[] };
+
+/**
+ * Renombrado en línea (C-4, C-5): la nota (con la revisión que se mostraba) o la ruta de la carpeta, el
+ * nombre actual y el que se escribe. Sólo cambia el nombre dentro de su carpeta.
+ */
+type InlineRename =
+  | { kind: "note"; note: NoteSummary; current: string; value: string }
+  | { kind: "folder"; path: string; current: string; value: string };
+
+/** Fila que muestra el renombrado en curso: al cancelar o confirmar, el foco vuelve aquí. */
+function inlineRowKey(edit: InlineRename): string {
+  return edit.kind === "note" ? noteKey(edit.note.id) : folderKey(edit.path);
+}
+
 /**
  * ¿Soltar `drag` en la carpeta `dest` (`""` = raíz) movería algo? `false` cubre C-4 (destino no
  * válido) y C-7 (sin desplazamiento real): una nota ya en esa carpeta, una carpeta sobre sí misma,
@@ -105,7 +121,8 @@ function canDrop(drag: DragItem, dest: string): boolean {
 /** Acciones que el `Workspace` (y, por él, el editor y el menú ⋮) piden a la sidebar por `ref` (RF-062, RF-055). */
 export interface NoteSidebarHandle {
   startRename(id: string): void;
-  remove(id: string): Promise<void>;
+  /** Pide borrar la nota: abre la confirmación (C-7). */
+  remove(id: string): void;
   /** Despliega la carpeta (y sus antecesoras), la deja activa y la desplaza a la vista (RF-055). */
   revealFolder(folderPath: string): void;
 }
@@ -139,8 +156,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       newFolderRef.current?.focus();
     }
   }, [folderForm]);
-  /** Renombrado en curso: la nota (con la revisión que se mostraba) y la ruta escrita. */
-  const [renaming, setRenaming] = useState<{ note: NoteSummary; path: string } | null>(null);
+  const [inlineRename, setInlineRename] = useState<InlineRename | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /**
@@ -152,11 +168,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   /** Destino del foco tras desmontarse el elemento enfocado (C-5): una fila (`n:id`/`f:ruta`) o «Nueva nota». */
   const [focusRequest, setFocusRequest] = useState<string | null>(null);
   const newNoteRef = useRef<HTMLButtonElement>(null);
-  /** Nota a la que se refiere la barra de acciones: la última que tomó el foco, o la abierta. */
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   /** Nodo que se arrastra ahora mismo (`null` = ninguno) y la fila destino resaltada durante el arrastre (C-3). */
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
 
   /**
    * Relee los resúmenes. `after` decide, SOBRE la lista recién leída, a dónde va el foco (y qué
@@ -184,11 +199,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       alive = false;
     };
   }, [notes, vaultId, notesVersion]);
-
-  // La nota que se abre (al crearla o desde fuera) pasa a ser la seleccionada.
-  useEffect(() => {
-    if (openId !== null) setSelectedId(openId);
-  }, [openId]);
 
   // La carpeta de la nota abierta se despliega (sin plegar las que el usuario abrió).
   useEffect(() => {
@@ -255,12 +265,17 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       case "F2":
       case "Delete": {
         if (inFlight.current) return; // misma guarda que los botones (`busy`)
+        if (row.kind === "folder") {
+          event.preventDefault();
+          if (event.key === "F2") startFolderRename(row.path);
+          else askDeleteFolder(row.path);
+          return;
+        }
         const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
         if (!note) return;
         event.preventDefault();
-        setSelectedId(note.id);
-        if (event.key === "F2") startRename(note);
-        else void remove(note);
+        if (event.key === "F2") startNoteRename(note);
+        else askDeleteNote(note);
         return;
       }
       case "ArrowRight":
@@ -319,32 +334,94 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     });
   }
 
-  function startRename(note: NoteSummary) {
+  function startNoteRename(note: NoteSummary) {
     setError(null);
-    setRenaming({ note, path: note.path });
+    const current = displayName(note.path.split("/").pop() ?? note.path);
+    setInlineRename({ kind: "note", note, current, value: current });
   }
 
-  async function rename(event: FormEvent) {
-    event.preventDefault();
-    if (renaming === null) return;
-    const id = renaming.note.id;
-    const ok = await run(async () => {
-      await notes.rename(id, renaming.path, renaming.note.rev);
-      // La nota pudo moverse a una carpeta plegada: se despliega para que su fila exista y reciba el foco.
-      await reload((list) => {
-        const moved = list.find((item) => item.id === id);
-        return { focus: moved ? noteKey(id) : NEW_NOTE, expand: moved ? ancestors(moved.path) : [] };
-      });
+  function startFolderRename(path: string) {
+    setError(null);
+    const current = path.split("/").pop() ?? path;
+    setInlineRename({ kind: "folder", path, current, value: current });
+  }
+
+  function cancelInlineRename(edit: InlineRename) {
+    setInlineRename(null);
+    setFocusRequest(inlineRowKey(edit));
+  }
+
+  /**
+   * Confirma el renombrado (C-4, C-5, C-6): sin cambios sólo cierra; `/` y los nombres vacíos o con
+   * caracteres de control avisan; una carpeta duplicada avisa sin mover nada. Si la operación falla, el
+   * campo sigue abierto con el aviso.
+   */
+  async function commitInlineRename() {
+    const edit = inlineRename;
+    if (edit === null) return;
+    const name = edit.value;
+    if (name === edit.current) {
+      cancelInlineRename(edit);
+      return;
+    }
+    setError(null);
+    const invalid = name.includes("/") ? "slash" : checkFolderName(name);
+    if (invalid !== null) {
+      setError(folderNameMessage(invalid));
+      return;
+    }
+    if (edit.kind === "folder" && folderExists(items?.filter((item) => item.deleted_at === null) ?? [], parentFolder(edit.path), name)) {
+      setError(folderNameMessage("duplicate", name));
+      return;
+    }
+    await run(async () => {
+      if (edit.kind === "note") {
+        await notes.rename(edit.note.id, joinPath(parentFolder(edit.note.path), name), edit.note.rev);
+        await reload(() => ({ focus: noteKey(edit.note.id) }));
+        setInlineRename(null);
+        return;
+      }
+      const target = joinPath(parentFolder(edit.path), name);
+      await notes.renameFolder(vaultId, edit.path, name);
+      // La carpeta renombrada queda desplegada y activa para verse en su sitio (C-5).
+      await reload(() => ({ focus: folderKey(target), expand: ancestors(joinPath(target, "_")) }));
+      setActiveFolder(target);
+      setInlineRename(null);
     });
-    if (ok) setRenaming(null);
   }
 
-  function cancelRename() {
-    if (renaming) setFocusRequest(noteKey(renaming.note.id)); // la nota sigue en su sitio: la fila existe
-    setRenaming(null);
+  /** Pide confirmación para borrar una nota (C-7): nada se toca hasta confirmar. */
+  function askDeleteNote(note: NoteSummary) {
+    if (inFlight.current || pendingDelete) return;
+    setPendingDelete({ kind: "note", note });
   }
 
-  async function remove(note: NoteSummary) {
+  /** Pide confirmación para borrar una carpeta con todas sus notas activas, también las de subcarpetas (C-8). */
+  function askDeleteFolder(path: string) {
+    if (inFlight.current || pendingDelete) return;
+    const folderNotes = (items ?? []).filter((item) => item.deleted_at === null && item.path.startsWith(`${path}/`));
+    setPendingDelete({ kind: "folder", path, notes: folderNotes });
+  }
+
+  async function confirmPendingDelete() {
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (pending?.kind === "note") await removeNote(pending.note);
+    else if (pending?.kind === "folder") await removeFolder(pending.path, pending.notes);
+  }
+
+  /**
+   * Fila que recibe el foco al quitar la de índice `index`, calculada sobre el árbol RESULTANTE (H1): la
+   * siguiente que sobreviva, si no la anterior, si no «Nueva nota». Así no cae en una carpeta que desaparece.
+   */
+  function focusAfterRemoval(index: number, list: NoteSummary[]): string {
+    const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
+    const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
+    const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
+    return next?.key ?? previous?.key ?? NEW_NOTE;
+  }
+
+  async function removeNote(note: NoteSummary) {
     if (inFlight.current) return; // ya hay un borrado/renombrado en marcha (auto-repeat de Supr)
     inFlight.current = true;
     try {
@@ -354,18 +431,28 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       inFlight.current = false; // `run` retoma la guarda mientras escribe
       const ok = await run(async () => {
         await notes.softDelete(note.id, note.rev);
-        // Foco a la fila vecina (siguiente; si no, anterior; si no, «Nueva nota») calculada sobre el
-        // árbol RESULTANTE: sin la nota y sin las carpetas que se vacían con ella (H1).
-        await reload((list) => {
-          const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
-          const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
-          const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
-          return { focus: next?.key ?? previous?.key ?? NEW_NOTE };
-        });
+        await reload((list) => ({ focus: focusAfterRemoval(index, list) }));
+      });
+      if (ok) onDeleted(note.id);
+    } finally {
+      inFlight.current = false;
+    }
+  }
+
+  async function removeFolder(path: string, folderNotes: NoteSummary[]) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      if (confirmDelete && folderNotes.some((item) => item.id === openId) && !(await confirmDelete())) return;
+      const index = rows.findIndex((row) => row.key === folderKey(path));
+      inFlight.current = false;
+      const ok = await run(async () => {
+        await notes.softDeleteFolder(vaultId, path);
+        await reload((list) => ({ focus: focusAfterRemoval(index, list) }));
       });
       if (ok) {
-        setSelectedId((current) => (current === note.id ? null : current));
-        onDeleted(note.id);
+        setActiveFolder((current) => (current === path || current.startsWith(`${path}/`) ? parentFolder(path) : current));
+        for (const note of folderNotes) onDeleted(note.id);
       }
     } finally {
       inFlight.current = false;
@@ -436,45 +523,83 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     });
   }
 
+  /** Campo del renombrado en línea: ocupa la fila de la nota o carpeta que se edita (C-4, C-5). */
+  function renameInput(label: "nota" | "carpeta", style: CSSProperties, icon: ReactNode) {
+    return (
+      <div className="note-tree-row note-tree-editing" style={style}>
+        {icon}
+        <input
+          aria-label={`Nuevo nombre de la ${label}`}
+          aria-describedby={hintId}
+          value={inlineRename?.value ?? ""}
+          autoFocus
+          onChange={(event) => setInlineRename((edit) => edit && { ...edit, value: event.target.value })}
+          onKeyDown={onInlineKeyDown}
+          onBlur={() => setInlineRename(null)}
+        />
+      </div>
+    );
+  }
+
+  /** Enter confirma; Escape cancela y devuelve el foco a la fila. Salir del campo cancela sin escribir (C-4). */
+  function onInlineKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void commitInlineRename();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      if (inlineRename) cancelInlineRename(inlineRename);
+    }
+  }
+
   /** `depth`: nivel de carpetas; la sangría de cada fila sale de él (`--depth`, ver notes.css). */
   function renderNodes(nodes: TreeNode<NoteSummary>[], depth = 0) {
     const indent = { "--depth": depth } as CSSProperties;
     return nodes.map((node) => {
       if (node.kind === "folder") {
         const open = expanded.has(node.path);
+        const editing = inlineRename?.kind === "folder" && inlineRename.path === node.path;
+        const icon = open ? (
+          <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
+        ) : (
+          <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" />
+        );
         return (
           <li key={`f:${node.path}`} role="none">
-            <button
-              type="button"
-              role="treeitem"
-              aria-expanded={open}
-              data-key={folderKey(node.path)}
-              tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
-              onFocus={() => setFocusKey(folderKey(node.path))}
-              className="note-tree-row note-tree-folder"
-              style={indent}
-              aria-current={activeFolder === node.path ? "true" : undefined}
-              draggable
-              data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
-              onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
-              onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
-              onDragLeave={() => onTargetDragLeave(folderKey(node.path))}
-              onDrop={(event) => onTargetDrop(event, node.path)}
-              onClick={() => {
-                toggle(node.path);
-                setActiveFolder(node.path);
-              }}
-            >
-              {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
-              {open ? (
-                <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
+            <div className="note-tree-line">
+              {editing ? (
+                renameInput("carpeta", indent, icon)
               ) : (
-                <Folder size={13} aria-hidden="true" data-icon="folder" className="note-tree-icon-folder" />
+                <button
+                  type="button"
+                  role="treeitem"
+                  aria-expanded={open}
+                  data-key={folderKey(node.path)}
+                  tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
+                  onFocus={() => setFocusKey(folderKey(node.path))}
+                  className="note-tree-row note-tree-folder"
+                  style={indent}
+                  aria-current={activeFolder === node.path ? "true" : undefined}
+                  draggable
+                  data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
+                  onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
+                  onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
+                  onDragLeave={() => onTargetDragLeave(folderKey(node.path))}
+                  onDrop={(event) => onTargetDrop(event, node.path)}
+                  onClick={() => {
+                    toggle(node.path);
+                    setActiveFolder(node.path);
+                  }}
+                >
+                  {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+                  {icon}
+                  <span className="note-tree-name" title={node.name}>
+                    {node.name}
+                  </span>
+                </button>
               )}
-              <span className="note-tree-name" title={node.name}>
-                {node.name}
-              </span>
-            </button>
+              {!editing && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+            </div>
             {open && (
               <ul role="group" className="note-tree-group">
                 {renderNodes(node.children, depth + 1)}
@@ -485,31 +610,39 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       }
 
       const note = node.note;
+      const editing = inlineRename?.kind === "note" && inlineRename.note.id === note.id;
+      const icon = <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />;
       return (
-        <li key={note.id} role="none" className="note-tree-item">
-          <button
-            type="button"
-            role="treeitem"
-            aria-selected={note.id === openId}
-            data-key={noteKey(note.id)}
-            tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
-            onFocus={() => {
-              setFocusKey(noteKey(note.id));
-              setSelectedId(note.id);
-              onPrefetch?.(note.id);
-            }}
-            onPointerEnter={() => onPrefetch?.(note.id)}
-            className="note-tree-row note-tree-note"
-            style={indent}
-            draggable
-            onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
-            onClick={() => onOpen(note.id)}
-          >
-            <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
-            <span className="note-tree-name" title={node.name}>
-              {node.name}
-            </span>
-          </button>
+        <li key={note.id} role="none">
+          <div className="note-tree-line">
+            {editing ? (
+              renameInput("nota", indent, icon)
+            ) : (
+              <button
+                type="button"
+                role="treeitem"
+                aria-selected={note.id === openId}
+                data-key={noteKey(note.id)}
+                tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
+                onFocus={() => {
+                  setFocusKey(noteKey(note.id));
+                  onPrefetch?.(note.id);
+                }}
+                onPointerEnter={() => onPrefetch?.(note.id)}
+                className="note-tree-row note-tree-note"
+                style={indent}
+                draggable
+                onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
+                onClick={() => onOpen(note.id)}
+              >
+                {icon}
+                <span className="note-tree-name" title={node.name}>
+                  {node.name}
+                </span>
+              </button>
+            )}
+            {!editing && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+          </div>
         </li>
       );
     });
@@ -593,19 +726,16 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     () => ({
       startRename(id) {
         const note = items?.find((item) => item.id === id);
-        if (note) startRename(note);
+        if (note) startNoteRename(note);
       },
       remove(id) {
         const note = items?.find((item) => item.id === id);
-        return note ? remove(note) : Promise.resolve();
+        if (note) askDeleteNote(note);
       },
       revealFolder,
     }),
     [items],
   );
-
-  const selected = items?.find((item) => item.id === selectedId) ?? null;
-  const selectedName = selected ? displayName(selected.path.split("/").pop() ?? selected.path) : "";
 
   return (
     <aside
@@ -704,47 +834,22 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           </>
         )}
       </div>
-      {selected && (
-        <div role="toolbar" aria-label="Acciones de la nota" className="note-actions">
-          <span className="note-actions-name" title={selected.path}>
-            {selectedName}
-          </span>
-          <button type="button" aria-label={`Renombrar «${selectedName}»`} onClick={() => startRename(selected)}>
-            Renombrar
-          </button>
-          <button type="button" aria-label={`Borrar «${selectedName}»`} onClick={() => void remove(selected)} disabled={busy}>
-            Borrar
-          </button>
-        </div>
+      {pendingDelete?.kind === "note" && (
+        <ConfirmDelete
+          kind="note"
+          name={displayName(pendingDelete.note.path.split("/").pop() ?? pendingDelete.note.path)}
+          onConfirm={() => void confirmPendingDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
-      {renaming && (
-        <form
-          className="note-tree-rename"
-          onSubmit={rename}
-          onKeyDown={(event) => {
-            // Escape cancela el renombrado (U-3).
-            if (event.key === "Escape") {
-              event.preventDefault();
-              cancelRename();
-            }
-          }}
-        >
-          <label>
-            Ruta de la nota
-            <input
-              value={renaming.path}
-              onChange={(event) => setRenaming({ note: renaming.note, path: event.target.value })}
-              aria-describedby={hintId}
-              autoFocus
-            />
-          </label>
-          <button type="submit" disabled={busy}>
-            Guardar ruta
-          </button>
-          <button type="button" onClick={cancelRename}>
-            Cancelar
-          </button>
-        </form>
+      {pendingDelete?.kind === "folder" && (
+        <ConfirmDelete
+          kind="folder"
+          name={pendingDelete.path.split("/").pop() ?? pendingDelete.path}
+          count={pendingDelete.notes.length}
+          onConfirm={() => void confirmPendingDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
       <div className="note-sidebar-footer">
         <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>

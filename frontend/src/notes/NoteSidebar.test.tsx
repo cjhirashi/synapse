@@ -1,19 +1,20 @@
 // Sidebar con el árbol de notas de la bóveda (SPEC-0008 RF-003, RF-010…RF-013, RF-019).
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { createRef, type Ref } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import type { SyncContextValue } from "../sync/useSync";
 import { PATH_INVALID, PATH_TAKEN } from "./messages";
-import NoteSidebar from "./NoteSidebar";
+import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import type { PaletteKey } from "../vaults/vaultIcon";
 import { waitForCondition } from "../test-utils/waits";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 
-async function setup(paths: string[] = []) {
+async function setup(paths: string[] = [], options: { confirmDelete?: () => Promise<boolean>; ref?: Ref<NoteSidebarHandle> } = {}) {
   const { value } = syncValue({}, memoryDb());
   for (const path of paths) await value.notes.create(VAULT, path);
   const onOpen = vi.fn();
@@ -22,7 +23,16 @@ async function setup(paths: string[] = []) {
   const ui = (v: SyncContextValue, openId: string | null = null, vaultColor: PaletteKey = "accent") => (
     <WithSync value={v}>
       <MemoryRouter>
-        <NoteSidebar vaultId={VAULT} openId={openId} onOpen={onOpen} onDeleted={onDeleted} onShowTrash={onShowTrash} vaultColor={vaultColor} />
+        <NoteSidebar
+          ref={options.ref}
+          vaultId={VAULT}
+          openId={openId}
+          onOpen={onOpen}
+          onDeleted={onDeleted}
+          onShowTrash={onShowTrash}
+          vaultColor={vaultColor}
+          confirmDelete={options.confirmDelete}
+        />
       </MemoryRouter>
     </WithSync>
   );
@@ -31,6 +41,13 @@ async function setup(paths: string[] = []) {
   await waitFor(() => expect(screen.queryByText("Cargando…")).toBeNull());
   return { ...utils, ui, value, onOpen, onDeleted, onShowTrash, user: userEvent.setup() };
 }
+
+/** Diálogo de borrado abierto (C-7) y su botón de confirmar, «Borrar» (no el de la barra). */
+const dialog = () => screen.getByRole("alertdialog");
+const confirmButton = () => within(dialog()).getByRole("button", { name: "Borrar" });
+const menuButton = (name: string) => screen.getByRole("button", { name: `Acciones de ${name}` });
+/** Campo de renombrado en línea de la fila (C-4, C-5): sustituye al treeitem mientras se edita. */
+const renameField = (kind: "nota" | "carpeta" = "nota") => screen.getByRole("textbox", { name: `Nuevo nombre de la ${kind}` });
 
 test("RF-019: árbol role=tree con las carpetas plegadas; se despliegan al pulsarlas", async () => {
   const { user } = await setup(["Inicio.md", "Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
@@ -101,51 +118,51 @@ test("RF-003: un título inválido muestra el mensaje de ruta", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_INVALID);
 });
 
-test("RF-011: renombrar/mover edita la ruta completa y el árbol lo refleja, con el mismo id", async () => {
-  const { user, value } = await setup(["Inicio.md"]);
+test("RF-011: renombrar edita el nombre en línea con Enter; la nota conserva su carpeta y su id", async () => {
+  const { user, value } = await setup(["Carpeta/Inicio.md"]);
   const [{ id }] = await value.notes.list(VAULT);
-  await user.click(await screen.findByRole("treeitem", { name: "Inicio" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar «Inicio»" }));
-  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
-  expect(input).toHaveValue("Inicio.md");
+  await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
+  await user.click(menuButton("Inicio"));
+  await user.click(screen.getByRole("menuitem", { name: "Renombrar" }));
+  const input = renameField();
+  expect(input).toHaveValue("Inicio");
   await user.clear(input);
-  await user.click(input);
-  await user.paste("Carpeta/Movida.md"); // un solo evento en vez de 17 pulsaciones (menos trabajo bajo carga)
-  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
-  // La carpeta de destino se despliega sola para que la nota movida reciba el foco (C-5).
-  expect(await screen.findByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-expanded", "true");
-  expect(await screen.findByRole("treeitem", { name: "Movida" })).toBeInTheDocument();
+  await user.type(input, "Hogar{Enter}");
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Hogar" })).toHaveFocus());
   expect(screen.queryByRole("treeitem", { name: "Inicio" })).toBeNull();
-  expect((await value.notes.get(id)).path).toBe("Carpeta/Movida.md");
+  expect((await value.notes.get(id)).path).toBe("Carpeta/Hogar.md");
 });
 
 test("RF-013: renombrar a una ruta ocupada muestra el mensaje y conserva el nombre", async () => {
   const { user, value } = await setup(["Uno.md", "Dos.md"]);
-  await user.click(await screen.findByRole("treeitem", { name: "Dos" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar «Dos»" }));
-  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  (await screen.findByRole("treeitem", { name: "Dos" })).focus();
+  await user.keyboard("{F2}");
+  const input = renameField();
   await user.clear(input);
-  await user.type(input, "uno.MD");
-  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
+  await user.type(input, "uno{Enter}");
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
   expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Dos.md", "Uno.md"]);
 });
 
-test("RF-011: «Cancelar» cierra el renombrado sin escribir", async () => {
+test("C-4: salir del campo sin confirmar cancela el renombrado sin escribir", async () => {
   const { user, value } = await setup(["Uno.md"]);
   const rename = vi.spyOn(value.notes, "rename");
-  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar «Uno»" }));
-  await user.click(screen.getByRole("button", { name: "Cancelar" }));
-  expect(screen.queryByRole("textbox", { name: "Ruta de la nota" })).toBeNull();
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  await user.type(renameField(), "x");
+  await user.click(screen.getByRole("button", { name: "Papelera de la bóveda" }));
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la nota" })).toBeNull();
   expect(rename).not.toHaveBeenCalled();
 });
+
 
 test("RF-010: borrar quita la nota del árbol, avisa al padre y la deja en la papelera", async () => {
   const { user, value, onDeleted } = await setup(["Uno.md", "Dos.md"]);
   const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
   await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  await user.click(screen.getByRole("button", { name: "Borrar «Uno»" }));
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(screen.getByRole("treeitem", { name: "Dos" })).toBeInTheDocument();
   expect(onDeleted).toHaveBeenCalledWith(uno.id);
@@ -238,29 +255,29 @@ test("RF-019: en una nota, → no hace nada, ← sube a su carpeta y Enter la ab
   expect(folder).toHaveAttribute("aria-expanded", "true");
 });
 
-// C-1, C-2, C-4 (PLAN-0008 §14): las acciones salen del árbol; una barra siempre visible las ofrece
-// para la nota seleccionada y F2/Supr las atajan desde el treeitem enfocado.
-test("RF-019: el árbol sólo contiene treeitems (una parada de Tab); sin botones de acción dentro", async () => {
+// C-1, C-8b (H-024): el ⋮ vive dentro del árbol pero fuera del Tab; lo demás del árbol son treeitems.
+test("RF-019: el árbol sólo tiene treeitems tabulables; los ⋮ quedan fuera del Tab", async () => {
   await setup(["Uno.md", "Dos.md"]);
   const tree = await screen.findByRole("tree", { name: "Notas" });
-  expect(tree.querySelectorAll('button:not([role="treeitem"]), input, form')).toHaveLength(0);
+  expect(tree.querySelectorAll('button:not([role="treeitem"]):not([tabindex="-1"]), input, form')).toHaveLength(0);
+  expect(within(tree).getAllByRole("button", { name: /^Acciones de / })).toHaveLength(2);
 });
 
-test("RF-011, RF-010: «Renombrar»/«Borrar» de la nota seleccionada están en una barra fuera del árbol", async () => {
-  const { user } = await setup(["Uno.md", "Dos.md"]);
-  expect(screen.queryByRole("toolbar", { name: "Acciones de la nota" })).toBeNull();
+// C-9 (H-024): la barra inferior de acciones desaparece; «Renombrar» y «Borrar» viven en el ⋮ de cada fila.
+test("C-9: no queda barra de acciones; «Renombrar» y «Borrar» están en el ⋮ de la nota", async () => {
+  const { user, container } = await setup(["Uno.md", "Dos.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  const bar = screen.getByRole("toolbar", { name: "Acciones de la nota" });
-  expect(screen.getByRole("tree", { name: "Notas" })).not.toContainElement(bar);
-  expect(within(bar).getByRole("button", { name: "Renombrar «Uno»" })).toBeInTheDocument();
-  expect(within(bar).getByRole("button", { name: "Borrar «Uno»" })).toBeInTheDocument();
+  expect(container.querySelector(".note-actions")).toBeNull();
+  expect(screen.queryByRole("toolbar", { name: "Acciones de la nota" })).toBeNull();
+  await user.click(menuButton("Uno"));
+  expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Renombrar", "Borrar"]);
 });
 
 test("RF-011: F2 en un treeitem de nota abre el renombrado de esa nota", async () => {
   const { user } = await setup(["Uno.md", "Dos.md"]);
   (await screen.findByRole("treeitem", { name: "Dos" })).focus();
   await user.keyboard("{F2}");
-  expect(screen.getByRole("textbox", { name: "Ruta de la nota" })).toHaveValue("Dos.md");
+  expect(renameField()).toHaveValue("Dos");
 });
 
 test("RF-010: Supr en un treeitem de nota la manda a la papelera y avisa al padre", async () => {
@@ -268,6 +285,7 @@ test("RF-010: Supr en un treeitem de nota la manda a la papelera y avisa al padr
   const uno = (await value.notes.list(VAULT)).find((n) => n.path === "Uno.md")!;
   (await screen.findByRole("treeitem", { name: "Uno" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(onDeleted).toHaveBeenCalledWith(uno.id));
   expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull();
 });
@@ -277,6 +295,7 @@ test("RF-019, RF-010: tras borrar con Supr el foco va a la fila siguiente", asyn
   const { user } = await setup(["A.md", "B.md", "C.md"]);
   (await screen.findByRole("treeitem", { name: "B" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "C" })).toHaveFocus());
 });
 
@@ -284,13 +303,16 @@ test("RF-019, RF-010: si no hay siguiente, el foco va a la fila anterior", async
   const { user } = await setup(["A.md", "B.md"]);
   (await screen.findByRole("treeitem", { name: "B" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "A" })).toHaveFocus());
 });
 
 test("RF-019, RF-010: si no queda ninguna fila, el foco va a «Nueva nota» (botón Borrar)", async () => {
   const { user } = await setup(["Sola.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Sola" }));
-  await user.click(screen.getByRole("button", { name: "Borrar «Sola»" }));
+  await user.click(menuButton("Sola"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
 });
 
@@ -298,23 +320,24 @@ test("RF-019, RF-011: tras guardar o cancelar el renombrado el foco vuelve al tr
   const { user } = await setup(["Uno.md"]);
   (await screen.findByRole("treeitem", { name: "Uno" })).focus();
   await user.keyboard("{F2}");
-  await user.click(screen.getByRole("button", { name: "Cancelar" }));
+  await user.keyboard("{Escape}");
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
   await user.keyboard("{F2}");
-  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  const input = renameField();
   await user.clear(input);
-  await user.type(input, "Dos.md");
-  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
+  await user.type(input, "Dos{Enter}");
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Dos" })).toHaveFocus());
 });
 
-test("RF-010: dos Supr seguidos sobre la misma nota sólo la borran una vez (guarda busy)", async () => {
-  const { value } = await setup(["Uno.md", "Dos.md"]);
+test("RF-010: dos Supr seguidos sobre la misma nota abren una sola confirmación y sólo la borran una vez", async () => {
+  const { user, value } = await setup(["Uno.md", "Dos.md"]);
   const softDelete = vi.spyOn(value.notes, "softDelete");
   const row = await screen.findByRole("treeitem", { name: "Uno" });
   row.focus();
   fireEvent.keyDown(row, { key: "Delete" });
   fireEvent.keyDown(row, { key: "Delete" });
+  expect(screen.getAllByRole("alertdialog")).toHaveLength(1);
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
   expect(softDelete).toHaveBeenCalledTimes(1);
 });
@@ -325,6 +348,7 @@ test("RF-019, RF-010: al borrar la única nota de una carpeta el foco va a la fi
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull());
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
 });
@@ -334,6 +358,7 @@ test("RF-019, RF-010: si la nota borrada era la última fila y su carpeta se vac
   await user.click(await screen.findByRole("treeitem", { name: "Zeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Alfa" })).toHaveFocus());
 });
 
@@ -342,6 +367,7 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
+  await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
   // «Carpeta» sigue siendo la carpeta activa (SPEC-0010 RF-043): basta el título relativo «Nueva».
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Nueva");
@@ -356,9 +382,9 @@ test("RF-011, RF-019: Escape cancela el renombrado sin escribir y devuelve el fo
   const rename = vi.spyOn(value.notes, "rename");
   (await screen.findByRole("treeitem", { name: "Uno" })).focus();
   await user.keyboard("{F2}");
-  expect(screen.getByRole("textbox", { name: "Ruta de la nota" })).toHaveFocus();
+  expect(renameField()).toHaveFocus();
   await user.keyboard("{Escape}");
-  expect(screen.queryByRole("textbox", { name: "Ruta de la nota" })).toBeNull();
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la nota" })).toBeNull();
   expect(rename).not.toHaveBeenCalled();
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
 });
@@ -403,13 +429,10 @@ test("RF-003: «Papelera de la bóveda» es el pie de la barra, después del ár
 // Inicio del defecto real de 0008 que sólo se ve en un navegador: al enfocar una nota aparecía la barra de
 // acciones sobre el árbol, la fila se desplazaba y el clic nunca llegaba a abrirla. La barra va tras el
 // panel del árbol, así que seleccionar no mueve ninguna fila.
-test("RF-003, RF-007: la barra de acciones de la nota seleccionada va después del panel del árbol", async () => {
+test("RF-003, RF-007: seleccionar una nota no añade bloques entre el panel del árbol y el pie", async () => {
   const { container, user } = await setup(["Uno.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  const bar = screen.getByRole("toolbar", { name: "Acciones de la nota" });
-  const panel = container.querySelector(".note-tree-panel")!;
-  expect(panel.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  expect(panel).not.toContainElement(bar);
+  expect(container.querySelector(".note-tree-panel")!.nextElementSibling).toHaveClass("note-sidebar-footer");
 });
 
 test("RF-010: una fila de 120 caracteres conserva el nombre completo en title y el recorte es de CSS", async () => {
@@ -502,8 +525,9 @@ test("RF-006: la pista de «/» está visible y la describen el título, el reno
   expect(title.getAttribute("aria-describedby")).toContain(hint.id);
   expect(title.getAttribute("aria-describedby")).toContain("note-create-in");
   await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  await user.click(screen.getByRole("button", { name: "Renombrar «Uno»" }));
-  expect(screen.getByRole("textbox", { name: "Ruta de la nota" }).getAttribute("aria-describedby")).toContain(hint.id);
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Renombrar" }));
+  expect(renameField().getAttribute("aria-describedby")).toContain(hint.id);
   await user.keyboard("{Escape}");
   await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
   expect(screen.getByRole("textbox", { name: "Nombre de la carpeta" }).getAttribute("aria-describedby")).toContain(hint.id);
@@ -701,12 +725,11 @@ test("C-6: el drag & drop es aditivo; la fila es arrastrable y F2 sigue abriendo
   expect(row).toHaveAttribute("draggable", "true");
   row.focus();
   await user.keyboard("{F2}");
-  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
-  expect(input).toHaveValue("Uno.md");
+  const input = renameField();
+  expect(input).toHaveValue("Uno");
   await user.clear(input);
-  await user.type(input, "Carpeta/Dos.md");
-  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
-  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Dos.md"]));
+  await user.type(input, "Dos{Enter}");
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Dos.md"]));
 });
 
 test("C-8: arrastrar la última nota fuera de su carpeta deja un «Sin título» y la carpeta sigue en el árbol", async () => {
@@ -723,23 +746,19 @@ test("C-8: arrastrar la última nota fuera de su carpeta deja un «Sin título»
   expect(within(tree()).getByRole("treeitem", { name: "Sin título" })).toBeInTheDocument();
 });
 
-test("C-8: el renombrado por teclado que vacía la carpeta también deja el «Sin título» (misma implementación compartida)", async () => {
+test("C-8: renombrar la última nota de una carpeta no la vacía: la carpeta sigue con la nota nueva", async () => {
   const { user, value } = await setup(["Carpeta/Sola.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" }));
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{F2}");
-  const input = screen.getByRole("textbox", { name: "Ruta de la nota" });
+  const input = renameField();
   await user.clear(input);
-  await user.type(input, "Sola.md");
-  await user.click(screen.getByRole("button", { name: "Guardar ruta" }));
-  await waitForCondition(async () =>
-    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]),
-  );
+  await user.type(input, "Sola2{Enter}");
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sola2.md"]));
   expect(screen.getByRole("treeitem", { name: "Carpeta" })).toBeInTheDocument();
 });
 
 test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", async () => {
-  const { createRef } = await import("react");
   const { value } = syncValue({}, memoryDb());
   await value.notes.create(VAULT, "Proyectos/Sub/Hoja.md");
   const ref = createRef<import("./NoteSidebar").NoteSidebarHandle>();
@@ -756,6 +775,215 @@ test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", asy
   act(() => ref.current!.revealFolder("Proyectos/Sub"));
   expect(await screen.findByRole("treeitem", { name: "Sub" })).toBeInTheDocument();
   expect(screen.getByRole("treeitem", { name: "Sub" })).toHaveAttribute("aria-current", "true");
+});
+
+// --- H-024: menú ⋮ por fila y borrado sólo tras confirmar (C-1, C-2, C-7, C-8, C-8b) ---
+
+test("C-1: cada nota y carpeta tiene su ⋮ con el nombre de la fila; «Raíz» no", async () => {
+  const { container } = await setup(["Carpeta/Hoja.md", "Nota.md"]);
+  expect(menuButton("Carpeta")).toHaveAttribute("aria-haspopup", "menu");
+  expect(menuButton("Nota")).toHaveAttribute("aria-haspopup", "menu");
+  expect(screen.queryByRole("button", { name: "Acciones de Raíz" })).toBeNull();
+  // C-10: el ⋮ es hermano del treeitem dentro de su línea; así su `sticky` tiene la línea como referencia.
+  expect(container.querySelectorAll(".note-tree-line > .note-menu-button")).toHaveLength(2);
+});
+
+test("C-2: pulsar el ⋮ de una nota no la abre ni la selecciona", async () => {
+  const { user, onOpen } = await setup(["Uno.md"]);
+  await user.click(menuButton("Uno"));
+  expect(screen.getByRole("menu")).toBeInTheDocument();
+  expect(onOpen).not.toHaveBeenCalled();
+  expect(screen.queryByRole("toolbar", { name: "Acciones de la nota" })).toBeNull();
+});
+
+test("C-2: pulsar el ⋮ de una carpeta no la despliega ni la vuelve activa", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md"]);
+  await user.click(menuButton("Carpeta"));
+  expect(screen.getByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-expanded", "false");
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveAttribute("aria-current", "true");
+});
+
+test("C-2: «Renombrar» del ⋮ de una nota abre el renombrado de esa nota", async () => {
+  const { user } = await setup(["Uno.md"]);
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Renombrar" }));
+  expect(renameField()).toHaveValue("Uno");
+});
+
+test("C-4: «/» en el nombre de una nota muestra el aviso y no renombra", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const rename = vi.spyOn(value.notes, "rename");
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  const input = renameField();
+  await user.clear(input);
+  await user.type(input, "a/b{Enter}");
+  expect(await screen.findByRole("alert")).toHaveTextContent("El nombre no puede contener «/».");
+  expect(rename).not.toHaveBeenCalled();
+});
+
+test("C-4: Enter sin cambios cierra el campo, devuelve el foco y no escribe", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const rename = vi.spyOn(value.notes, "rename");
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  await user.keyboard("{Enter}");
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la nota" })).toBeNull();
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Uno" })).toHaveFocus());
+  expect(rename).not.toHaveBeenCalled();
+});
+
+test("C-5: renombrar una carpeta con F2 conserva sus notas y su subestructura, y la deja desplegada y activa", async () => {
+  const { user, value } = await setup(["Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
+  (await screen.findByRole("treeitem", { name: "Carpeta" })).focus();
+  await user.keyboard("{F2}");
+  const input = renameField("carpeta");
+  expect(input).toHaveValue("Carpeta");
+  await user.clear(input);
+  await user.type(input, "Proyectos{Enter}");
+  const folder = await screen.findByRole("treeitem", { name: "Proyectos" });
+  await waitForCondition(() => expect(folder).toHaveFocus());
+  expect(folder).toHaveAttribute("aria-expanded", "true");
+  expect(folder).toHaveAttribute("aria-current", "true");
+  expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull();
+  expect((await value.notes.list(VAULT)).map((n) => n.path).sort()).toEqual(["Proyectos/Otra.md", "Proyectos/Sub/Hoja.md"]);
+});
+
+test("C-5: «Renombrar» del ⋮ de una carpeta abre el campo con su nombre", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md"]);
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Renombrar" }));
+  expect(renameField("carpeta")).toHaveValue("Carpeta");
+});
+
+test("C-6: un nombre de carpeta que ya existe en su carpeta padre muestra el aviso y no mueve nada", async () => {
+  const { user, value } = await setup(["Uno/Nota.md", "Dos/Nota.md"]);
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{F2}");
+  const input = renameField("carpeta");
+  await user.clear(input);
+  await user.type(input, "Dos{Enter}");
+  expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe una carpeta con ese nombre («Dos»).");
+  expect((await value.notes.list(VAULT)).map((n) => n.path).sort()).toEqual(["Dos/Nota.md", "Uno/Nota.md"]);
+});
+
+test("C-9: Supr en una carpeta pide confirmación con el número de notas y la borra al confirmar", async () => {
+  const { user, value } = await setup(["Carpeta/Hoja.md", "Carpeta/Sub/Otra.md"]);
+  (await screen.findByRole("treeitem", { name: "Carpeta" })).focus();
+  await user.keyboard("{Delete}");
+  expect(dialog()).toHaveAccessibleName("¿Borrar «Carpeta»?");
+  expect(within(dialog()).getByText("Se llevarán a la papelera 2 notas.")).toBeInTheDocument();
+  await user.click(confirmButton());
+  await waitForCondition(async () => expect(await value.notes.list(VAULT)).toEqual([]));
+});
+
+test("C-7: «Borrar» del ⋮ de una nota pide confirmación; hasta confirmar no la toca", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const softDelete = vi.spyOn(value.notes, "softDelete");
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  expect(dialog()).toHaveAccessibleName("¿Borrar «Uno»?");
+  expect(within(dialog()).getByText("Irá a la papelera.")).toBeInTheDocument();
+  expect(softDelete).not.toHaveBeenCalled();
+  expect(screen.getByRole("treeitem", { name: "Uno" })).toBeInTheDocument();
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Uno" })).toBeNull());
+  expect(softDelete).toHaveBeenCalledTimes(1);
+});
+
+test("C-7, C-8b: Cancelar y Esc no borran nada y el foco vuelve al ⋮", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const softDelete = vi.spyOn(value.notes, "softDelete");
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  expect(within(dialog()).getByRole("button", { name: "Cancelar" })).toHaveFocus();
+  await user.click(within(dialog()).getByRole("button", { name: "Cancelar" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(menuButton("Uno")).toHaveFocus();
+  await user.click(menuButton("Uno"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(softDelete).not.toHaveBeenCalled();
+  expect(screen.getByRole("treeitem", { name: "Uno" })).toBeInTheDocument();
+});
+
+test("C-7: Supr sobre una nota sólo abre la confirmación", async () => {
+  const { user, value } = await setup(["Uno.md"]);
+  const softDelete = vi.spyOn(value.notes, "softDelete");
+  (await screen.findByRole("treeitem", { name: "Uno" })).focus();
+  await user.keyboard("{Delete}");
+  expect(dialog()).toHaveAccessibleName("¿Borrar «Uno»?");
+  expect(softDelete).not.toHaveBeenCalled();
+});
+
+test("C-7, C-8b: el ⋮ del editor (handle.remove) pasa por la misma confirmación", async () => {
+  const ref = createRef<NoteSidebarHandle>();
+  const { user, value } = await setup(["Uno.md"], { ref });
+  const softDelete = vi.spyOn(value.notes, "softDelete");
+  const [{ id }] = await value.notes.list(VAULT);
+  act(() => ref.current!.remove(id));
+  expect(dialog()).toHaveAccessibleName("¿Borrar «Uno»?");
+  expect(softDelete).not.toHaveBeenCalled();
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(softDelete).toHaveBeenCalledWith(id, expect.any(String)));
+});
+
+test("C-8: «Borrar» del ⋮ de una carpeta cuenta sus notas, también las de subcarpetas, y las lleva todas al confirmar", async () => {
+  const { user, value, onDeleted } = await setup(["Carpeta/Uno.md", "Carpeta/Sub/Dos.md", "Otra.md"]);
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  expect(dialog()).toHaveAccessibleName("¿Borrar «Carpeta»?");
+  expect(within(dialog()).getByText("Se llevarán a la papelera 2 notas.")).toBeInTheDocument();
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(screen.queryByRole("treeitem", { name: "Carpeta" })).toBeNull());
+  expect((await value.notes.list(VAULT, { deleted: true })).map((n) => n.path).sort()).toEqual(["Carpeta/Sub/Dos.md", "Carpeta/Uno.md"]);
+  expect(screen.getByRole("treeitem", { name: "Otra" })).toBeInTheDocument();
+  expect(onDeleted).toHaveBeenCalledTimes(2);
+});
+
+test("C-8: borrar una carpeta con la nota abierta dentro pregunta por el borrador y avisa para cerrar el editor", async () => {
+  const confirmDelete = vi.fn(async () => true);
+  const { user, value, rerender, ui, onDeleted } = await setup(["Carpeta/Abierta.md"], { confirmDelete });
+  const [{ id }] = await value.notes.list(VAULT);
+  rerender(ui(value, id));
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(onDeleted).toHaveBeenCalledWith(id));
+  expect(confirmDelete).toHaveBeenCalledTimes(1);
+});
+
+test("C-8: si el editor no descarta el borrador de la nota abierta, la carpeta no se borra", async () => {
+  const confirmDelete = vi.fn(async () => false);
+  const { user, value, rerender, ui, onDeleted } = await setup(["Carpeta/Abierta.md"], { confirmDelete });
+  const [{ id }] = await value.notes.list(VAULT);
+  rerender(ui(value, id));
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(confirmDelete).toHaveBeenCalledTimes(1));
+  expect(screen.getByRole("treeitem", { name: "Abierta" })).toBeInTheDocument();
+  expect(await value.notes.list(VAULT, { deleted: true })).toHaveLength(0);
+  expect(onDeleted).not.toHaveBeenCalled();
+});
+
+test("C-8: tras borrar una carpeta el foco va a la fila que sigue", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md", "Otra.md"]);
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
+});
+
+test("C-8: borrar la carpeta activa devuelve «Crear en» a la raíz", async () => {
+  const { user } = await setup(["Carpeta/Hoja.md", "Otra.md"]);
+  await user.click(screen.getByRole("treeitem", { name: "Carpeta" }));
+  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Carpeta");
+  await user.click(menuButton("Carpeta"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
+  await waitForCondition(() => expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Raíz"));
 });
 
 // --- H-006: iconos de contenido con el color de la bóveda, solo contorno (C-2 corregido 2026-10-29) ---

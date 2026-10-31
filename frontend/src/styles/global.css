@@ -156,7 +156,7 @@ button:focus-visible {
 }
 
 /* Los estilos base de botón van en `:where()` (especificidad 0): cualquier regla de componente
-   (`.note-actions button`, `.theme-toggle button`…) gana sin importar el orden de las hojas. */
+   (`.theme-toggle button`…) gana sin importar el orden de las hojas. */
 /* Botones secundarios (Cancelar, Reintentar, Restaurar...): mismo tamaño, sin relleno. */
 :where(button:not([type="submit"])) {
   padding: 9px 16px;
