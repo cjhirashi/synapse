@@ -36,6 +36,12 @@ test("H-023 C-1/C-2: el árbol desplaza en horizontal con una columna del ancho 
   expect(tree).toMatch(/grid-template-columns: minmax\(max-content, 1fr\)/);
 });
 
+// Regresión de H-023: en una grid, `align-content` vale `stretch` y reparte el alto sobrante del contenedor
+// entre las filas (con pocas notas quedaban separadas hasta llenar el panel). Pegadas arriba, a su altura.
+test("H-023: las filas del árbol no se estiran al alto del contenedor", () => {
+  expect(rule(read("notes.css"), ".note-tree")).toMatch(/align-content: start/);
+});
+
 test("RF-009: el marco de la app mide el viewport y cada columna hace su propio scroll", () => {
   const layout = read("../layout/AppLayout.css");
   expect(rule(layout, ".app-shell")).toMatch(/height: 100dvh/);

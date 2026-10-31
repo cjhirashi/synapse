@@ -317,6 +317,8 @@
   min-height: 0;
   display: grid;
   grid-template-columns: minmax(max-content, 1fr);
+  /* Sin esto la grid reparte el alto sobrante entre las filas y las separa hasta llenar el panel. */
+  align-content: start;
   overflow-y: auto;
   overflow-x: auto;
 }
