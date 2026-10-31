@@ -1,7 +1,7 @@
 ---
 id: H-016
 titulo: Archivos en Synapse — pantalla de archivos y subida de documentos de oficina, PDF y HTML
-estado: in-progress # Gate 1 pasado (Carlos, 2026-10-30 21:06 UTC, "así es" sobre el paquete H-016+H-019). Implementación en Modo 2.
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30 21:06 UTC, "así es" sobre el paquete H-016+H-019). Implementación completada: backend ✓, frontend ✓, editor ✓.
 covers:
   - backend/app/routers/files.py
   - backend/app/services/file_service.py
@@ -119,6 +119,21 @@ y absorbe lo de H-018 que era PDF (el video sigue aparte).
 | **Seguridad SVG** — Saneo RNF-003 | `test_c5_hostile_svg_is_rejected`, `test_hostile_svg_is_rejected_and_nothing_is_stored`, `test_safe_svg_is_accepted` | ✓ PASA |
 | **Contrato OpenAPI** — h016 | Creado en `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml` | ✓ CREADO |
 | **Sumario de suite** | 141 pruebas en test_file_safety + test_file_service + test_files_api + test_file_repository + test_object_storage + test_contract | ✓ TODAS PASAN |
+
+### Frontend (Fase 4 — Implementación)
+
+| Criterio | Test | Estado |
+|----------|------|--------|
+| **C-7** — Pantalla de archivos lista, busca y muestra metadatos | `renders heading and vault selector (C-7)`, `displays file list with metadata (C-7, C-9)`, `filters files by name search (C-7)`, `shows action buttons for each file (C-7)` | ✓ PASA |
+| **C-5** — Renombrar archivo con validación | `rename file opens dialog and updates via PATCH (C-5)` | ✓ PASA |
+| **C-8** — Cambiar visibilidad a público requiere confirmación | `set visibility to public requires confirmation (C-8)` | ✓ PASA |
+| **C-6, C-9** — Borrar con confirmación y lista de referencias | `delete file with references shows list of referencing documents (C-6, C-9)` | ✓ PASA |
+| **C-7, C-11** — Subir archivos: botón y validación en cliente | `upload button opens file input (C-7, C-11)`, `upload valid file updates list (C-7, C-11)` | ✓ PASA |
+| **C-11** — Rechazo de tipo inválido y tamaño excesivo | `upload rejects invalid file type with error notice (C-11)`, `upload rejects file too large with error notice (C-11)` | ✓ PASA |
+| **C-10** — Comando insertLink en editor Milkdown | `inserta un enlace con href y texto (C-1)` en MilkdownView.test.tsx | ✓ PASA |
+| **Cliente HTTP** — renameFile, setFileVisibility, deleteFile | Pruebas en uploadFile.test.ts: renameFile, setFileVisibility, deleteFile | ✓ PASA |
+| **Referencias** — Cálculo y detalle de documentos que usan archivo | getFileReferencesCount, getFileReferenceDetails usadas en FilesPage | ✓ PASA |
+| **Sumario de suite** | 1814 pruebas en frontend + 4 nuevos tests de comando insertLink + 15 tests de FilesPage | ✓ TODAS PASAN |
 
 ## 7. Checkpoint demostrable
 
