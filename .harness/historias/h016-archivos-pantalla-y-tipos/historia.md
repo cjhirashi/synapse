@@ -96,17 +96,29 @@ y absorbe lo de H-018 que era PDF (el video sigue aparte).
 
 | Criterio | Test | Estado |
 |----------|------|--------|
-| **C-1** — Subida válida de archivo | `test_valid_upload_stores_object_and_private_record` | ✓ PASA |
-| **C-2** — Rechazo de tipo no permitido | `test_unsupported_type_is_rejected_and_nothing_is_stored`, `test_c2_unsupported_type_is_rejected` | ✓ PASA |
-| **C-2** — Firma ZIP con `PK\x05\x06` (vacío) | `test_resolve_content_type_recognises_documents[zip vacío]` | ✓ PASA |
-| **C-3** — Cabeceras por tipo (inline, attachment, nosniff) | `test_c5_safe_svg_is_served_with_security_headers` (CSP sandbox), todo tipo en router | ✓ PASA |
-| **C-5** — PATCH name y visibility válido | `test_c8_invalid_visibility_is_422` (validación), router implementado | ✓ PASA |
-| **C-5** — Validación de visibilidad | `test_c8_invalid_visibility_is_422` | ✓ PASA |
-| **C-6** — DELETE borra objeto y registro | Ruta DELETE implementada en router | ✓ IMPLEMENTADO |
-| **C-4** — GET `/vaults/{vault_id}/files` lista archivos | Ruta GET implementada en router y contrato | ✓ IMPLEMENTADO |
-| **C-11** — Límites por tipo (5 MB imagen, 25 MB documento) | Validación en `file_service.py` | ✓ IMPLEMENTADO |
-| **SyntaxWarning** — Barra invertida en docstring | Corregida en `file_service.py:35` | ✓ FIJO |
+| **C-1** — Subida válida de archivo | `test_c1_valid_upload_creates_private_record`, `test_valid_upload_stores_object_and_private_record` | ✓ PASA |
+| **C-2** — Rechazo de tipo no permitido | `test_c2_unsupported_type_is_rejected`, `test_c2_unsupported_type_is_rejected_and_nothing_is_stored`, `test_c2_exe_renamed_to_pdf_is_rejected`, `test_c2_script_shebang_renamed_to_txt_is_rejected` | ✓ PASA |
+| **C-2** — Backend ignora Content-Type del cliente | `test_c6_backend_ignores_a_lying_client_content_type` | ✓ PASA |
+| **C-3** — Cabeceras por tipo (inline, attachment, nosniff) | `test_c3_png_has_inline_disposition`, `test_c3_pdf_has_inline_disposition`, `test_c3_html_has_inline_with_csp_sandbox`, `test_c3_txt_has_attachment_disposition`, `test_c5_safe_svg_is_served_with_security_headers` | ✓ PASA |
+| **C-3** — Cache-Control para privados | `test_c3_private_file_has_cache_control`, `test_c3_public_file_no_cache_control` | ✓ PASA |
+| **C-4** — GET `/vaults/{vault_id}/files` lista archivos | `test_c4_list_vault_files_empty`, `test_c4_list_vault_files_in_created_at_desc_order`, `test_c4_list_vault_files_with_pagination`, `test_c4_list_vault_files_offset`, `test_c4_list_vault_files_404_if_not_owned`, `test_c4_list_vault_files_does_not_include_other_users_files` | ✓ PASA |
+| **C-5** — PATCH name renombra archivo | `test_c5_rename_file`, `test_c5_rename_and_visibility_together` | ✓ PASA |
+| **C-5** — PATCH name valida nombre | `test_c5_rename_invalid_name_with_slash`, `test_c5_rename_invalid_name_with_backslash`, `test_c5_rename_invalid_name_with_control_char` | ✓ PASA |
+| **C-5** — PATCH name rechaza extensiones bloqueadas | `test_c5_rename_cannot_change_to_blocked_extension` | ✓ PASA |
+| **C-5** — PATCH name solo del dueño | `test_c5_rename_non_owner_gets_404` | ✓ PASA |
+| **C-6** — DELETE borra objeto y registro | `test_c6_delete_file_removes_object_and_record` | ✓ PASA |
+| **C-6** — DELETE solo del dueño | `test_c6_delete_non_owner_gets_404` | ✓ PASA |
+| **C-6** — DELETE preserva registro si almacén falla | `test_c6_delete_fails_if_storage_fails_but_record_survives` | ✓ PASA |
+| **C-11** — Límites imagen 5 MB | `test_c2_too_large_is_rejected`, `test_too_large_is_rejected_and_nothing_is_stored` | ✓ PASA |
+| **C-11** — Límites documento 25 MB | `test_c11_document_larger_than_25mb_is_rejected`, `test_c11_document_exactly_25mb_is_accepted` | ✓ PASA |
+| **C-12** — API key de agente lista archivos propios | `test_c12_key_can_list_own_vault_files`, `test_c7_owner_key_reads_its_own_file` | ✓ PASA |
+| **C-12** — API key de agente no puede acceder ajenos | `test_c12_key_cannot_list_foreign_vault_files`, `test_c12_key_cannot_rename_foreign_file`, `test_c12_key_cannot_delete_foreign_file`, `test_c7_foreign_key_cannot_read_private_file` | ✓ PASA |
+| **C-12** — API key de agente puede renombrar y borrar propios | `test_c12_key_can_rename_own_file`, `test_c12_key_can_delete_own_file`, `test_c7_key_can_upload_to_its_owner_vault` | ✓ PASA |
+| **Visibilidad** — PATCH visibility solo del dueño | `test_c8_owner_toggles_visibility`, `test_c8_non_owner_cannot_change_visibility`, `test_owner_can_change_visibility`, `test_non_owner_cannot_change_visibility` | ✓ PASA |
+| **Visibilidad** — Rechazo de valores inválidos | `test_c8_invalid_visibility_is_422` | ✓ PASA |
+| **Seguridad SVG** — Saneo RNF-003 | `test_c5_hostile_svg_is_rejected`, `test_hostile_svg_is_rejected_and_nothing_is_stored`, `test_safe_svg_is_accepted` | ✓ PASA |
 | **Contrato OpenAPI** — h016 | Creado en `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml` | ✓ CREADO |
+| **Sumario de suite** | 141 pruebas en test_file_safety + test_file_service + test_files_api + test_file_repository + test_object_storage + test_contract | ✓ TODAS PASAN |
 
 ## 7. Checkpoint demostrable
 
