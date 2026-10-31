@@ -306,9 +306,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(uploaded.content_type)) {
         editorCommands.current?.insertImage(url, alt);
       } else {
-        // Para documentos: insertar como enlace [nombre](url)
-        // TODO: Agregar comando insertLink cuando esté disponible (H-016 C-10)
-        editorCommands.current?.insertImage(url, alt);
+        // Para documentos: insertar como enlace [nombre](url) (H-016 C-10)
+        editorCommands.current?.insertLink(url, alt);
       }
     } catch (err) {
       setUploadError(uploadErrorMessage(err));
