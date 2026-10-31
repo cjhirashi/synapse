@@ -1,12 +1,15 @@
 ---
 id: H-024
 titulo: Menú de tres puntos en cada fila del árbol para renombrar o borrar notas y carpetas
-estado: draft # pendiente Gate 1 (Carlos); pedido 2026-10-30 con captura
+estado: refined # Gate 1 pasado (Carlos, 2026-10-30: P-1 y P-2 confirmadas, más confirmación obligatoria en todo borrado); P-4/P-5 por defecto de AIRA sin objeción; pedido 2026-10-30 con captura
 covers:
   - frontend/src/notes/NoteSidebar.tsx
   - frontend/src/notes/NoteSidebar.test.tsx
   - frontend/src/notes/TreeRowMenu.tsx
   - frontend/src/notes/TreeRowMenu.test.tsx
+  - frontend/src/notes/ConfirmDelete.tsx
+  - frontend/src/notes/ConfirmDelete.test.tsx
+  - frontend/src/notes/folders.ts
   - frontend/src/notes/noteStore.ts
   - frontend/src/notes/noteStore.test.ts
   - frontend/src/notes/notes.css
@@ -31,7 +34,7 @@ puntos que abre un menú emergente con Renombrar y Borrar.
 - Fuera: «Raíz» (no se renombra ni borra); mover por menú (sigue el arrastre,
   H-003); la papelera y su restauración (ya existen); el menú ⋮ del editor.
 
-## 3. Decisiones de producto (propuestas de AIRA, a confirmar por Carlos)
+## 3. Decisiones de producto (P-1 y P-2 confirmadas por Carlos 2026-10-30; P-3..P-5 propuestas de AIRA)
 
 - **P-1 (renombrar carpeta):** cambia el prefijo de ruta de todas las notas
   activas de la carpeta, conservando la subestructura, con la misma regla de
@@ -40,11 +43,19 @@ puntos que abre un menú emergente con Renombrar y Borrar.
 - **P-2 (borrar carpeta):** manda TODAS sus notas a la papelera (recuperables
   una a una desde la papelera), con confirmación que dice cuántas notas se
   borrarán. Una carpeta vacía por derivación no existe, así que no hay caso vacío.
+- **P-2b (confirmación, Carlos 2026-10-30):** TODO borrado desde el árbol (nota
+  o carpeta, por menú, por Supr o desde el ⋮ del editor) pide primero una
+  confirmación explícita, para que nada se borre por error. La respuesta segura
+  (Cancelar) es la enfocada y la de Esc.
 - **P-3 (menú):** el ⋮ es visible en la fila con hover o foco, y siempre visible
   en táctil (sin hover); el menú reutiliza el patrón del ⋮ del editor
   (`NoteMenu`: portal, teclado, Esc, clic fuera).
 - **P-4 (nombre en edición):** renombrar edita el nombre en línea, en la
   misma fila (Enter confirma, Esc cancela), en vez del formulario del panel.
+- **P-5 (alcance del nombre):** el texto editado es el nombre dentro de la
+  misma carpeta; un `/` en él se rechaza como inválido. Mover entre carpetas
+  sigue siendo por arrastre (H-003). Esto reemplaza el formulario actual
+  «Ruta de la nota», que permitía mover escribiendo una ruta.
 
 ## 4. Criterios de aceptación (EARS booleano)
 
@@ -64,13 +75,19 @@ puntos que abre un menú emergente con Renombrar y Borrar.
 - **C-6:** SI el nombre de carpeta nuevo ya existe en su carpeta padre o es
   inválido, ENTONCES el sistema DEBE mostrar el aviso existente de nombre de
   carpeta y NO DEBE mover ninguna nota.
-- **C-7:** CUANDO se elige «Borrar» en una nota, el sistema DEBE llevarla a la
-  papelera con el mismo flujo actual (incluida la confirmación de borrador sin
-  guardar si es la nota abierta).
-- **C-8:** CUANDO se elige «Borrar» en una carpeta, el sistema DEBE pedir
-  confirmación indicando el número de notas y, al confirmar, llevar todas a la
-  papelera; SI la nota abierta está dentro, DEBE aplicarse la misma
-  confirmación de borrador sin guardar y cerrar el editor.
+- **C-7:** CUANDO se elige «Borrar» en una nota, el sistema DEBE mostrar un
+  diálogo de confirmación con el nombre de la nota y la aclaración de que irá a
+  la papelera, y SÓLO al confirmar llevarla a ella; Cancelar o Esc NO DEBEN
+  borrar nada. SI es la nota abierta con borrador sin guardar, DEBE además
+  aplicarse la confirmación de cambios sin guardar ya existente.
+- **C-8:** CUANDO se elige «Borrar» en una carpeta, el sistema DEBE mostrar un
+  diálogo con su nombre y el número de notas (incluidas las de subcarpetas)
+  que irán a la papelera, y SÓLO al confirmar llevarlas todas; SI la nota
+  abierta está dentro, DEBE aplicarse la confirmación de borrador sin guardar
+  y cerrarse el editor.
+- **C-8b:** El diálogo de borrado DEBE enfocar «Cancelar» al abrirse, cerrarse
+  con Esc como Cancelar, devolver el foco a la fila de origen, y TODO camino de
+  borrado desde el árbol (menú ⋮, Supr y el ⋮ del editor) DEBE pasar por él.
 - **C-9:** El panel inferior `.note-actions` y su botón «Renombrar»/«Borrar»
   DEBEN dejar de existir; los atajos F2 y Supr sobre la fila enfocada DEBEN
   seguir funcionando para notas.
@@ -81,4 +98,4 @@ puntos que abre un menú emergente con Renombrar y Borrar.
 - **C-11:** El drag-and-drop (H-003), la selección, el scroll y el renombrado
   existentes NO DEBEN regresionar (suite verde).
 
-`[NEEDS CLARIFICATION] = 3` — P-1, P-2 y P-4 por confirmar (ver mensaje).
+`[NEEDS CLARIFICATION] = 0` — Carlos confirmó P-1, P-2 y la confirmación obligatoria (2026-10-30); P-4/P-5 siguen como propuestas sin objeción.
