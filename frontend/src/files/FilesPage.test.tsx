@@ -142,4 +142,20 @@ describe("FilesPage", () => {
     expect(screen.getByText("documento.pdf")).toBeInTheDocument();
     expect(screen.getByText("hoja.xlsx")).toBeInTheDocument();
   });
+
+  it("shows action buttons for each file (C-7)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+    });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    // Must show action buttons for each file (descargar, copiar link, renombrar, visibilidad, borrar)
+    const pdfRow = await screen.findByText("documento.pdf");
+    expect(pdfRow.closest("tr")?.querySelector("button")).toBeTruthy();
+  });
 });

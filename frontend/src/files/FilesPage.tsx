@@ -110,6 +110,7 @@ export default function FilesPage() {
                 <th>Tamaño</th>
                 <th>Fecha</th>
                 <th>Referencias</th>
+                <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -122,6 +123,26 @@ export default function FilesPage() {
                     <td>{(file.size / 1024).toFixed(1)} KB</td>
                     <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
                     <td>{file.references_count ?? 0}</td>
+                    <td>
+                      <button type="button" aria-label={`Abrir ${file.name}`}>
+                        Abrir
+                      </button>
+                      <button type="button" aria-label={`Descargar ${file.name}`}>
+                        Descargar
+                      </button>
+                      <button type="button" aria-label={`Copiar link de ${file.name}`}>
+                        Link
+                      </button>
+                      <button type="button" aria-label={`Renombrar ${file.name}`}>
+                        Renombrar
+                      </button>
+                      <button type="button" aria-label={`Cambiar visibilidad de ${file.name}`}>
+                        {file.visibility === "private" ? "🔒" : "🌍"}
+                      </button>
+                      <button type="button" aria-label={`Borrar ${file.name}`}>
+                        Borrar
+                      </button>
+                    </td>
                   </tr>
                 ))}
             </tbody>
