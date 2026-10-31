@@ -80,6 +80,14 @@ export interface NoteStore {
    * está ocupada rechaza con `NotePathTakenError` sin mover ninguna (C-5).
    */
   moveFolder(vaultId: string, from: string, to: string): Promise<void>;
+  /** Renombra la carpeta `from` dentro de su padre (H-024 C-5): mismo lote y unicidad que `moveFolder`. */
+  renameFolder(vaultId: string, from: string, newName: string): Promise<void>;
+  /**
+   * Manda a la papelera todas las notas activas de la carpeta `path` (también las de subcarpetas) y
+   * devuelve cuántas (H-024 C-8). Valida el lote entero antes de escribir: una ruta inválida no deja
+   * la carpeta a medias.
+   */
+  softDeleteFolder(vaultId: string, path: string): Promise<number>;
   softDelete(id: string, rev: string): Promise<Note>;
   restore(id: string, rev: string): Promise<Note>;
   /**
@@ -288,6 +296,37 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     return write({ ...doc, path: normalized, updated_at: now() });
   }
 
+  /** Manda una nota a la papelera (la comparten `softDelete` y el borrado de carpeta). */
+  async function trashDoc(id: string, rev: string): Promise<Note> {
+    const doc = await load(id, false);
+    // Puerta RF-008 (P-12): una nota con ruta inválida (sembrada por una réplica vieja) debe
+    // renombrarse antes de borrarla; no se opera sobre ella con la ruta rota.
+    if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
+    assertCurrent(doc, rev);
+    const timestamp = now();
+    return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
+  }
+
+  /**
+   * Reubica la carpeta `from` bajo la ruta `dest` (C-5 de H-003 y H-024): todas sus notas activas
+   * cambian de prefijo conservando la subestructura. Si alguna ruta de destino ya está ocupada por
+   * una nota ajena al lote, rechaza antes de escribir ninguna.
+   */
+  async function relocateFolder(vaultId: string, from: string, dest: string): Promise<void> {
+    const prefix = `${from}/`;
+    const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+    const moving = active.filter((note) => note.path.startsWith(prefix));
+    const targets = moving.map((note) => ({ note, path: joinPath(dest, note.path.slice(prefix.length)) }));
+    // «sin mover nada» (C-5): si una nota ajena al lote ya ocupa alguna ruta de destino, se rechaza
+    // ANTES de escribir ninguna. El mapeo origen→destino es inyectivo, así que el lote no choca consigo mismo.
+    const movingIds = new Set(moving.map((note) => note.id));
+    for (const { path } of targets) {
+      const key = pathKey(titleToPath(path));
+      if (active.some((note) => !movingIds.has(note.id) && pathKey(note.path) === key)) throw new NotePathTakenError();
+    }
+    for (const { note, path } of targets) await renameDoc(note.id, path, note.rev);
+  }
+
   /** Crea una nota (la comparten `create` y el placeholder de C-8): sin título usa «Sin título n» de la carpeta. */
   async function createNote(vaultId: string, title: string | undefined, folder = ""): Promise<Note> {
     const requested = title?.trim() ?? "";
@@ -356,29 +395,23 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
 
     async moveFolder(vaultId, from, to) {
       const name = from.split("/").at(-1) ?? from;
-      const dest = joinPath(to, name); // la carpeta movida conserva su nombre, ahora bajo `to`
-      const prefix = `${from}/`;
-      const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
-      const moving = active.filter((note) => note.path.startsWith(prefix));
-      const targets = moving.map((note) => ({ note, path: joinPath(dest, note.path.slice(prefix.length)) }));
-      // «sin mover nada» (C-5): si una nota ajena al lote ya ocupa alguna ruta de destino, se rechaza
-      // ANTES de escribir ninguna. El mapeo origen→destino es inyectivo, así que el lote no choca consigo mismo.
-      const movingIds = new Set(moving.map((note) => note.id));
-      for (const { path } of targets) {
-        const key = pathKey(titleToPath(path));
-        if (active.some((note) => !movingIds.has(note.id) && pathKey(note.path) === key)) throw new NotePathTakenError();
-      }
-      for (const { note, path } of targets) await renameDoc(note.id, path, note.rev);
+      await relocateFolder(vaultId, from, joinPath(to, name)); // la carpeta movida conserva su nombre, ahora bajo `to`
+    },
+
+    async renameFolder(vaultId, from, newName) {
+      await relocateFolder(vaultId, from, joinPath(parentFolder(from), newName));
+    },
+
+    async softDeleteFolder(vaultId, path) {
+      const prefix = `${path}/`;
+      const moving = (await summaries(vaultId)).filter((note) => note.deleted_at === null && note.path.startsWith(prefix));
+      for (const note of moving) if (checkPath(note.path) !== null) throw new NoteValidationError(["path"]);
+      for (const note of moving) await trashDoc(note.id, note.rev);
+      return moving.length;
     },
 
     async softDelete(id, rev) {
-      const doc = await load(id, false);
-      // Puerta RF-008 (P-12): una nota con ruta inválida (sembrada por una réplica vieja) debe
-      // renombrarse antes de borrarla; no se opera sobre ella con la ruta rota.
-      if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
-      assertCurrent(doc, rev);
-      const timestamp = now();
-      return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
+      return trashDoc(id, rev);
     },
 
     async restore(id, rev) {
