@@ -59,10 +59,10 @@ function getFileTypeName(contentType: string): string {
   if (contentType.includes("word") || contentType.includes("wordprocessingml")) return "Word";
   if (contentType.includes("excel") || contentType.includes("spreadsheet")) return "Excel";
   if (contentType.includes("powerpoint") || contentType.includes("presentation")) return "PowerPoint";
-  if (contentType.includes("text")) return "Texto";
-  if (contentType.includes("zip")) return "ZIP";
   if (contentType.includes("html")) return "HTML";
   if (contentType.includes("csv")) return "CSV";
+  if (contentType.includes("zip")) return "ZIP";
+  if (contentType.includes("text") || contentType.includes("json")) return "Texto";
   if (contentType.startsWith("image/")) return "Imagen";
   return contentType;
 }
@@ -87,8 +87,18 @@ export default function FilesPage() {
   const [refMap, setRefMap] = useState<Map<string, FileRef[]>>(new Map());
   const filesWithReferences = files.map((file) => ({ ...file, references_count: refMap.get(file.id)?.length ?? 0 }));
 
+  function handleOpen(file: VaultFile) {
+    window.open(fileUrl(file.id), "_blank", "noopener");
+  }
+
   function handleDownload(file: VaultFile) {
-    window.open(fileUrl(file.id), "_blank");
+    const link = document.createElement("a");
+    link.href = fileUrl(file.id);
+    link.download = file.name;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
   }
 
   async function handleCopyLink(file: VaultFile) {
@@ -346,7 +356,7 @@ export default function FilesPage() {
                       <button
                         type="button"
                         aria-label={`Abrir ${file.name}`}
-                        onClick={() => handleDownload(file)}
+                        onClick={() => handleOpen(file)}
                       >
                         Abrir
                       </button>

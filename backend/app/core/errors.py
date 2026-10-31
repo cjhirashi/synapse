@@ -301,7 +301,7 @@ class UnsupportedFileType(DomainError):
     slug = "unsupported-file-type"
     title = "Unsupported file type"
     status = 415
-    detail = "Only png, jpeg, webp, gif and svg images are allowed"
+    detail = "File type not allowed: only images (png, jpeg, webp, gif, svg), PDF, Office and OpenDocument files, csv, txt, md, json, zip and html are accepted"
 
 
 class UnsafeSvg(DomainError):
