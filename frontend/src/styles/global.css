@@ -352,3 +352,48 @@ button:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* --- Barras de desplazamiento (H-022): un único estilo para toda la app, con los tokens del tema ---
+   Chromium/Edge/Safari: pseudoelementos WebKit. Es la vía por defecto porque es la única con estados
+   de hover y arrastre; Firefox usa las propiedades estándar (ver más abajo).
+   Sólo con puntero fino: en táctil, estilizar la barra haría que Chrome/Android sustituya su barra overlay
+   del sistema por una clásica permanente de 8 px. */
+@media (hover: hover) and (pointer: fine) {
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  /* Sin flechas ni pista de color: la barra no debe competir con el contenido. */
+  *::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border-control);
+    border-radius: var(--radius-xs);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-muted);
+  }
+
+  *::-webkit-scrollbar-thumb:active {
+    background-color: var(--accent);
+  }
+
+  /* Firefox no soporta `::-webkit-scrollbar` y sí las propiedades estándar. Van SÓLO aquí: Chromium ≥ 121
+     ignora los pseudoelementos WebKit en cuanto un elemento declara `scrollbar-color`/`scrollbar-width`, y
+     perdería el hover y el arrastre del pulgar. Firefox no tiene esos estados: el pulgar queda en reposo. */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-control) transparent;
+    }
+  }
+}

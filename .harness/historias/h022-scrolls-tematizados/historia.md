@@ -1,7 +1,7 @@
 ---
 id: H-022
 titulo: Scrolls con el formato del tema en toda la app
-estado: refined # Gate 1 pasado (Carlos, 2026-10-30: «Así es», incluye el riel); pedido 2026-10-30
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30: «Así es», incluye el riel); pedido 2026-10-30
 covers:
   - frontend/src/styles/global.css
   - frontend/src/styles/tokens.css

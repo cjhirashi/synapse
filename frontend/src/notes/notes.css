@@ -12,9 +12,12 @@
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
   /* Scroll propio dentro del marco de altura fija (AppLayout.css): con decenas de bóvedas el riel se
-     desplaza solo, sin barra visible (como el del mockup) y sin mover la página. */
+     desplaza solo y sin mover la página. La barra ya no se oculta (H-022): usa el estilo global del tema. */
   overflow-y: auto;
-  scrollbar-width: none;
+  /* La barra clásica de 8 px restaría ancho al contenido y descentraría los chips (y la marca de la bóveda
+     activa, calculada sobre los 56 px). Reservar el gutter a ambos lados lo mantiene centrado con o sin
+     desborde; con barras overlay el gutter es 0 y nada cambia. */
+  scrollbar-gutter: stable both-edges;
   /* H-008 C-3: ensancharse al expandir es barato (una transición de ancho). */
   transition: width var(--dur-base) var(--ease-standard);
 }

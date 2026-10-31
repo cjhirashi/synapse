@@ -114,8 +114,9 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
 (PLAN-0009 §5.4) y todo color, radio, sombra y espaciado, de `styles/tokens.css`.
 
 - **Marco de altura fija** (`layout/AppLayout.css`): `.app-shell` mide `100dvh` y no hace scroll;
-  cabecera y barra de sincronización ocupan lo suyo y cada columna tiene el suyo (el riel, sin
-  barra visible; `.app-main` con el contenido centrado a 880 px; el workspace de una bóveda no
+  cabecera y barra de sincronización ocupan lo suyo y cada columna tiene el suyo (el riel, con la
+  barra delgada del tema como el resto de la app — H-022, estilo único en `styles/global.css`;
+  `.app-main` con el contenido centrado a 880 px; el workspace de una bóveda no
   tiene padding ni scroll de página y sus columnas hacen el suyo). Por debajo de 800 px el
   workspace se apila y vuelve a hacer scroll como página. Sustituye al riel `sticky` de U-7.
 - **Tema oscuro por defecto** (`theme/useTheme.ts` y el script de `index.html`): sin preferencia
