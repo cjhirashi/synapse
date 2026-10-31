@@ -2,9 +2,9 @@ from abc import ABC, abstractmethod
 
 
 class ObjectStoragePort(ABC):
-    """Almacén de objetos por clave (H-015). La clave es `vaults/<vault_id>/<file_id>` en un
-    único bucket; el aislamiento lógico lo da el prefijo, el acceso real lo controla siempre el
-    backend (MinIO nunca se expone directo). Un fallo del almacén se eleva como
+    """Almacén de objetos por clave (H-015/H-016). La clave es `vaults/<vault_id>/<file_id>` en
+    un único bucket; el aislamiento lógico lo da el prefijo, el acceso real lo controla siempre
+    el backend (MinIO nunca se expone directo). Un fallo del almacén se eleva como
     `StorageUnavailable` (503), como hace `VaultPort` ante CouchDB."""
 
     @abstractmethod
@@ -14,3 +14,7 @@ class ObjectStoragePort(ABC):
     @abstractmethod
     def get_object(self, key: str) -> bytes:
         """Los bytes guardados bajo `key`. `StorageUnavailable` si el almacén no responde."""
+
+    @abstractmethod
+    def delete_object(self, key: str) -> None:
+        """Borra el objeto bajo `key` (C-6). `StorageUnavailable` si el almacén no responde."""

@@ -2,8 +2,11 @@ from functools import lru_cache
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
+from pydantic import BaseModel
 
+from app.adapters.file_repository import FileRepository
 from app.adapters.vault_repository import VaultRepository
+from app.adapters.database import get_db
 from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
@@ -12,9 +15,10 @@ from app.core.errors import (
 )
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
-from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate
+from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate, FileMetaOut
 from app.routers.auth import SESSION_ERRORS
 from app.services.vault_service import Versioned, VaultService
+from sqlalchemy.orm import Session
 
 router = APIRouter(
     route_class=DeepJsonRoute,
@@ -136,3 +140,43 @@ def restore_vault(
     service: VaultService = Depends(get_vault_service),
 ):
     return _respond(service.restore(vault_id, if_match), response)
+
+
+# --- Archivos de la bóveda (H-016 C-4) ---
+
+class VaultFilesResponse(BaseModel):
+    """GET /vaults/{vault_id}/files: lista paginada de archivos de la bóveda."""
+    files: list[FileMetaOut]
+    total: int
+    limit: int
+    offset: int
+
+
+@router.get(
+    "/{vault_id}/files",
+    response_model=VaultFilesResponse,
+    responses=problem_responses(VaultNotFound),
+)
+def list_vault_files(
+    vault_id: VaultId,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    current_user: TokenPayload = Depends(get_current_principal),
+    db: Session = Depends(get_db),
+):
+    """Lista archivos de la bóveda del usuario (C-4). 404 si la bóveda no es suya.
+    Paginación: limit (1-100, def 50) + offset."""
+    repo = FileRepository(db)
+    files, total = repo.list_by_vault(vault_id, current_user.sub, limit=limit, offset=offset)
+
+    # Validar que la bóveda existe y es del usuario (si no hay archivos, validar contra vault_port)
+    if not files:
+        vault_service = get_vault_service(current_user, get_vault_port())
+        vault_service.get(vault_id)  # Lanza VaultNotFound si no existe o es de otro
+
+    return VaultFilesResponse(
+        files=[FileMetaOut.model_validate(f) for f in files],
+        total=total,
+        limit=limit,
+        offset=offset,
+    )

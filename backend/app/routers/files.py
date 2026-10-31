@@ -1,15 +1,17 @@
-"""Rutas de archivos (H-015): subir, servir con regla de visibilidad y cambiar visibilidad.
+"""Rutas de archivos (H-015/H-016): subir, servir, renombrar, borrar, listar.
 
 Patrón de `vaults.py`: `get_current_principal` (cookie o `Bearer` key) resuelve al dueño en
 las rutas que lo exigen. El `GET` es la excepción: un archivo público se sirve SIN credencial,
 así que su handler resuelve el principal a mano sólo cuando el archivo es privado (C-3). El
-contenido sale en binario con su `Content-Type`; un SVG, además, con `Content-Security-Policy:
-sandbox` y `X-Content-Type-Options: nosniff` (C-5). MinIO nunca se expone directo.
+contenido sale en binario con su `Content-Type` y cabeceras por tipo (C-3/C-5). MinIO nunca
+se expone directo.
 """
 from functools import lru_cache
+from urllib.parse import quote
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
@@ -19,20 +21,65 @@ from app.core.dependencies import get_current_principal
 from app.core.errors import (
     FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType, VaultNotFound,
 )
-from app.core.file_safety import SVG
+from app.core.file_safety import SVG, HTML
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import FileMetaOut, FileVisibilityUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
-from app.services.file_service import MAX_FILE_SIZE, FileService
+from app.services.file_service import MAX_FILE_SIZE, MAX_FILE_SIZE_DOCUMENT, FileService
 from app.services.vault_service import VaultService
 
 router = APIRouter(prefix="/files", tags=["files"])
 
-# Cabeceras de un SVG servido (C-5): aislado del origen y sin re-husmear el tipo.
-_SVG_HEADERS = {"Content-Security-Policy": "sandbox", "X-Content-Type-Options": "nosniff"}
+
+# Esquemas de petición/respuesta
+class FileUpdate(BaseModel):
+    """PATCH /files/{id}: actualizar name y/o visibility (C-5)."""
+    name: str | None = None
+    visibility: str | None = None
+
+
+# Categorías de tipo para decidir cabeceras (C-3)
+_INLINE_TYPES = {
+    "image/png", "image/jpeg", "image/gif", "image/webp", "image/svg+xml",
+    "application/pdf", "text/html",
+}
+
+_HTML_CSP_HEADERS = {
+    "Content-Disposition": "inline",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": (
+        "sandbox allow-scripts; "
+        "default-src 'none'; "
+        "script-src 'unsafe-inline'; "
+        "style-src 'unsafe-inline' https:; "
+        "img-src data: blob: https:; "
+        "font-src data: https:; "
+        "connect-src 'none'"
+    ),
+}
+
+
+def _get_response_headers(record) -> dict[str, str]:
+    """Genera cabeceras por tipo de archivo (C-3). Retorna dict para Response(headers=...)."""
+    headers = {"X-Content-Type-Options": "nosniff"}
+
+    if record.content_type == HTML:
+        headers.update(_HTML_CSP_HEADERS)
+    elif record.content_type in _INLINE_TYPES:
+        headers["Content-Disposition"] = "inline"
+    else:
+        # Resto de documentos: descarga con filename RFC 5987 (C-3)
+        safe_name = quote(record.name, safe="")
+        headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{safe_name}"
+
+    # Archivos privados: no cachear (C-3)
+    if record.visibility == "private":
+        headers["Cache-Control"] = "private, no-store"
+
+    return headers
 
 
 @lru_cache
@@ -71,10 +118,10 @@ def upload_file(
     file: Annotated[UploadFile, File()],
     service: FileService = Depends(get_file_service),
 ):
-    # No se lee el archivo entero sin tope: se corta en 5 MB + 1 byte y el servicio decide el
-    # límite (C-6). El handler es síncrono → corre en el threadpool, así la lectura y la subida
-    # a MinIO (que bloquean) no frenan el bucle de eventos.
-    data = file.file.read(MAX_FILE_SIZE + 1)
+    # Se lee el archivo con tope por tipo (5 MB imágenes, 25 MB resto). El servicio decide el
+    # límite basado en la extensión (C-2/C-11). El handler es síncrono → corre en el threadpool,
+    # así la lectura y la subida a MinIO (que bloquean) no frenan el bucle de eventos.
+    data = file.file.read(MAX_FILE_SIZE_DOCUMENT + 1)
     return service.create(vault_id=vault_id, filename=file.filename or "archivo", data=data)
 
 
@@ -89,27 +136,50 @@ def get_file(
     db: Session = Depends(get_db),
     storage: ObjectStoragePort = Depends(get_object_storage),
 ):
+    """Sirve un archivo (C-3). Regla de acceso: privado exige sesión/key del dueño, público sin credencial.
+    Cabeceras por tipo: imágenes/PDF/HTML inline, resto attachment. HTML con CSP sandbox."""
     record = FileRepository(db).get(file_id)
     if record is None:
         raise FileNotFound()
     if record.visibility != "public":
-        # Privado: exige credencial válida (401 sin ella) y ser el dueño (404 si es de otro, C-3).
+        # Privado: exige credencial válida (401 sin ella) y ser el dueño (404 si es de otro, C-3/C-12).
         principal = get_current_principal(request, db)
         if principal.sub != record.owner_id:
             raise FileNotFound()
     data = storage.get_object(record.object_key)
-    headers = _SVG_HEADERS if record.content_type == SVG else None
+    headers = _get_response_headers(record)
     return Response(content=data, media_type=record.content_type, headers=headers)
 
 
 @router.patch(
     "/{file_id}",
     response_model=FileMetaOut,
-    responses=problem_responses(*SESSION_ERRORS, FileNotFound, StorageUnavailable),
+    responses=problem_responses(*SESSION_ERRORS, FileNotFound, UnsupportedFileType, StorageUnavailable),
 )
-def update_visibility(
+def update_file(
     file_id: str,
-    body: FileVisibilityUpdate,
+    body: FileUpdate,
     service: FileService = Depends(get_file_service),
 ):
-    return service.set_visibility(file_id, body.visibility)
+    """Actualizar name y/o visibility del archivo (C-5). Solo el dueño."""
+    record = service.get_record(file_id)
+
+    if body.name is not None:
+        record = service.set_name(file_id, body.name)
+    if body.visibility is not None:
+        record = service.set_visibility(file_id, body.visibility)
+
+    return record
+
+
+@router.delete(
+    "/{file_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=problem_responses(*SESSION_ERRORS, FileNotFound, StorageUnavailable),
+)
+def delete_file(
+    file_id: str,
+    service: FileService = Depends(get_file_service),
+):
+    """Borra el archivo (objeto + registro) solo si es del dueño (C-6)."""
+    service.delete(file_id)

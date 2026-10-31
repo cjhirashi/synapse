@@ -1,4 +1,4 @@
-"""FAKE en memoria del `ObjectStoragePort` (H-015).
+"""FAKE en memoria del `ObjectStoragePort` (H-015/H-016).
 
 Lo usan los tests de servicio y de router para no necesitar MinIO real ni el paquete `minio`
 instalado: guarda los objetos en un dict por clave. `missing` simula un objeto ausente."""
@@ -17,3 +17,8 @@ class FakeObjectStorage(ObjectStoragePort):
         if key not in self.objects:
             raise StorageUnavailable(f"objeto ausente: {key}")
         return self.objects[key][0]
+
+    def delete_object(self, key: str) -> None:
+        if key not in self.objects:
+            raise StorageUnavailable(f"objeto ausente: {key}")
+        del self.objects[key]
