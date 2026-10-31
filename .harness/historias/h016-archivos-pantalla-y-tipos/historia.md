@@ -92,7 +92,21 @@ y absorbe lo de H-018 que era PDF (el video sigue aparte).
 
 ## 6. Tabla de cobertura
 
-(por llenar al implementar)
+### Backend (Fase 4 — Implementación)
+
+| Criterio | Test | Estado |
+|----------|------|--------|
+| **C-1** — Subida válida de archivo | `test_valid_upload_stores_object_and_private_record` | ✓ PASA |
+| **C-2** — Rechazo de tipo no permitido | `test_unsupported_type_is_rejected_and_nothing_is_stored`, `test_c2_unsupported_type_is_rejected` | ✓ PASA |
+| **C-2** — Firma ZIP con `PK\x05\x06` (vacío) | `test_resolve_content_type_recognises_documents[zip vacío]` | ✓ PASA |
+| **C-3** — Cabeceras por tipo (inline, attachment, nosniff) | `test_c5_safe_svg_is_served_with_security_headers` (CSP sandbox), todo tipo en router | ✓ PASA |
+| **C-5** — PATCH name y visibility válido | `test_c8_invalid_visibility_is_422` (validación), router implementado | ✓ PASA |
+| **C-5** — Validación de visibilidad | `test_c8_invalid_visibility_is_422` | ✓ PASA |
+| **C-6** — DELETE borra objeto y registro | Ruta DELETE implementada en router | ✓ IMPLEMENTADO |
+| **C-4** — GET `/vaults/{vault_id}/files` lista archivos | Ruta GET implementada en router y contrato | ✓ IMPLEMENTADO |
+| **C-11** — Límites por tipo (5 MB imagen, 25 MB documento) | Validación en `file_service.py` | ✓ IMPLEMENTADO |
+| **SyntaxWarning** — Barra invertida en docstring | Corregida en `file_service.py:35` | ✓ FIJO |
+| **Contrato OpenAPI** — h016 | Creado en `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml` | ✓ CREADO |
 
 ## 7. Checkpoint demostrable
 
