@@ -20,7 +20,7 @@ export const VAULT_NOT_FOUND =
 export const GENERIC_FAILURE = "No se pudo completar la operación. Inténtalo de nuevo.";
 
 /** Mensaje del nombre de carpeta inválido o duplicado (RF-004, RF-005). `duplicate` lleva el nombre. */
-export function folderNameMessage(code: "empty" | "empty-segment" | "control" | "duplicate", name = ""): string {
+export function folderNameMessage(code: "empty" | "empty-segment" | "control" | "slash" | "duplicate", name = ""): string {
   switch (code) {
     case "empty":
       return "Escribe un nombre. No puede estar vacío.";
@@ -28,6 +28,8 @@ export function folderNameMessage(code: "empty" | "empty-segment" | "control" | 
       return "El nombre no puede tener tramos vacíos (por ejemplo, a//b).";
     case "control":
       return "El nombre no puede tener caracteres de control.";
+    case "slash":
+      return "El nombre no puede contener «/».";
     case "duplicate":
       return `Ya existe una carpeta con ese nombre («${name}»).`;
   }
