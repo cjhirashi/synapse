@@ -1,83 +1,48 @@
 /**
- * Cálculo de referencias a archivos en el contenido de notas (C-9).
- * Se busca la cadena `/files/<id>` en el contenido de cada nota.
- * Caché por (noteId, rev) para evitar recálculos.
+ * Referencias a archivos desde los documentos (H-016 C-9): se busca `/files/<id>` en el contenido de las
+ * notas de la bóveda, en la réplica local (el servidor no lee las notas). Los contenidos se leen por
+ * lotes y se cachean por (id de nota, rev): sólo se vuelve a leer una nota si cambió.
  */
+import type { NoteStore } from "../notes/noteStore";
 
-interface CacheEntry {
-  rev: string;
-  references: Map<string, boolean>; // fileId → true si está referenciado
+export interface FileRef {
+  id: string;
+  path: string;
 }
 
-const referenceCache = new Map<string, CacheEntry>();
+const BATCH = 25;
+const FILE_URL = /\/files\/([0-9a-fA-F-]{36})/g;
+const cache = new Map<string, { rev: string; fileIds: string[] }>();
 
-/**
- * Calcula cuántos documentos referencian un archivo en la réplica local.
- * Busca la cadena `/files/<id>` en el contenido de todas las notas.
- *
- * @param fileId ID del archivo
- * @param notes Map-like de notas (p. ej. Map, NoteStore) que soporta .values() o es iterable
- * @returns Número de notas que contienen el archivo
- */
-export function getFileReferencesCount(fileId: string, notes: Map<string, any> | { values: () => Iterable<any> }): number {
-  let count = 0;
-  const searchString = `/files/${fileId}`;
-
-  for (const note of notes.values()) {
-    if (!note || typeof note.content !== "string") continue;
-
-    // Verificar caché (note.id y note.rev son esperados)
-    const cacheKey = note.id as string;
-    let cached = referenceCache.get(cacheKey);
-
-    if (!cached || cached.rev !== note.rev) {
-      // Recalcular solo si el documento cambió
-      const references = new Map<string, boolean>();
-      const lines = note.content.split("\n");
-      for (const line of lines) {
-        // Extraer todos los fileIds mencionados en esta nota
-        const filePattern = /\/files\/([a-f0-9-]+)/g;
-        let match;
-        while ((match = filePattern.exec(line)) !== null) {
-          references.set(match[1], true);
+/** Mapa archivo → documentos de la bóveda que lo enlazan (notas en papelera no cuentan). */
+export async function scanFileReferences(
+  notes: Pick<NoteStore, "list" | "get">,
+  vaultId: string,
+): Promise<Map<string, FileRef[]>> {
+  const summaries = await notes.list(vaultId);
+  const result = new Map<string, FileRef[]>();
+  for (let i = 0; i < summaries.length; i += BATCH) {
+    await Promise.all(
+      summaries.slice(i, i + BATCH).map(async (summary) => {
+        let entry = cache.get(summary.id);
+        if (!entry || entry.rev !== summary.rev) {
+          const note = await notes.get(summary.id);
+          const ids = new Set<string>();
+          for (const match of note.content.matchAll(FILE_URL)) ids.add(match[1].toLowerCase());
+          entry = { rev: summary.rev, fileIds: [...ids] };
+          cache.set(summary.id, entry);
         }
-      }
-      cached = { rev: note.rev as string, references };
-      referenceCache.set(cacheKey, cached);
-    }
-
-    if (cached.references.has(fileId)) {
-      count += 1;
-    }
+        for (const fileId of entry.fileIds) {
+          const list = result.get(fileId) ?? [];
+          list.push({ id: summary.id, path: summary.path });
+          result.set(fileId, list);
+        }
+      }),
+    );
   }
-
-  return count;
+  return result;
 }
 
-/**
- * Obtiene los IDs y nombres de las notas que referencian un archivo.
- *
- * @param fileId ID del archivo
- * @param notes Map-like de notas (p. ej. Map, NoteStore)
- * @returns Array de {id, path} de las notas que contienen el archivo
- */
-export function getFileReferenceDetails(fileId: string, notes: Map<string, any> | { values: () => Iterable<any> }): Array<{ id: string; path: string }> {
-  const results: Array<{ id: string; path: string }> = [];
-  const searchString = `/files/${fileId}`;
-
-  for (const note of notes.values()) {
-    if (!note || typeof note.content !== "string") continue;
-    if (note.content.includes(searchString)) {
-      results.push({ id: note.id, path: note.path || "Sin título" });
-    }
-  }
-
-  return results;
-}
-
-/**
- * Limpia el caché de referencias (útil para tests o cuando se refresca toda la réplica).
- */
-export function clearReferenceCache() {
-  referenceCache.clear();
+export function clearReferenceCache(): void {
+  cache.clear();
 }

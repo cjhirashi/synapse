@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import {
@@ -12,8 +12,9 @@ import {
   type VaultFile,
   fileUrl,
 } from "./uploadFile";
-import { getFileReferencesCount, getFileReferenceDetails } from "./fileReferences";
+import { scanFileReferences, type FileRef } from "./fileReferences";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
+import "./files.css";
 
 type Status = "loading" | "ready" | "error";
 
@@ -42,6 +43,12 @@ const DATE_FORMAT = new Intl.DateTimeFormat("es", {
   timeZone: "America/Mexico_City",
 });
 
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getFileTypeName(contentType: string): string {
   if (contentType.includes("pdf")) return "PDF";
   if (contentType.includes("word") || contentType.includes("wordprocessingml")) return "Word";
@@ -61,6 +68,7 @@ export default function FilesPage() {
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<{ kind: "status" | "alert"; text: string } | null>(null);
 
@@ -70,13 +78,9 @@ export default function FilesPage() {
   const [visibilityConfirm, setVisibilityConfirm] = useState<VisibilityConfirm | null>(null);
   const [renameTmp, setRenameTmp] = useState("");
 
-  // Calcula referencias de archivos en la réplica local (C-9)
-  const filesWithReferences = useMemo(() => {
-    return files.map((file) => ({
-      ...file,
- references_count: getFileReferencesCount(file.id, notes as any),
-    }));
-  }, [files, notes]);
+  // Referencias desde los documentos de la bóveda (C-9), calculadas en la réplica local.
+  const [refMap, setRefMap] = useState<Map<string, FileRef[]>>(new Map());
+  const filesWithReferences = files.map((file) => ({ ...file, references_count: refMap.get(file.id)?.length ?? 0 }));
 
   function handleDownload(file: VaultFile) {
     window.open(fileUrl(file.id), "_blank");
@@ -113,9 +117,9 @@ export default function FilesPage() {
     }
   }
 
-  function handleVisibilityClick(file: VaultFile) {
+  async function handleVisibilityClick(file: VaultFile) {
     const newVisibility = file.visibility === "private" ? "public" : "private";
-    const refs = getFileReferenceDetails(file.id, notes as any);
+    const refs = file.vault_id ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? []) : [];
 
     // Si cambiar a público, SIEMPRE pedir confirmación (C-8)
     // Si cambiar a privado y está en uso, pedir confirmación (C-9)
@@ -151,8 +155,8 @@ export default function FilesPage() {
     }
   }
 
-  function handleDeleteClick(file: VaultFile) {
-    const refs = getFileReferenceDetails(file.id, notes as any);
+  async function handleDeleteClick(file: VaultFile) {
+    const refs = file.vault_id ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? []) : [];
     setDeleteConfirm({
       fileId: file.id,
       fileName: file.name,
@@ -174,28 +178,38 @@ export default function FilesPage() {
     }
   }
 
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file || !selectedVaultId) return;
-
-    try {
-      const uploaded = await uploadFile(file, selectedVaultId);
-      setFiles((prev) => [{ ...uploaded, references_count: 0 }, ...prev]);
-      setNotice({ kind: "status", text: `"${file.name}" subido.` });
-      setTimeout(() => setNotice(null), 3000);
-      // Reset input so the same file can be uploaded again
-      e.target.value = "";
-    } catch (err) {
-      let msg = "No se pudo subir el archivo.";
-      if (err instanceof UploadTypeError) {
-        msg = "Tipo de archivo no admitido.";
-      } else if (err instanceof UploadTooLargeError) {
-        msg = "El archivo es demasiado grande.";
-      } else if (err instanceof Error) {
-        msg = err.message;
+  async function uploadMany(list: File[]) {
+    if (!selectedVaultId) return;
+    for (const file of list) {
+      try {
+        const uploaded = await uploadFile(file, selectedVaultId);
+        setFiles((prev) => [uploaded, ...prev]);
+        setNotice({ kind: "status", text: `"${file.name}" subido.` });
+        setTimeout(() => setNotice(null), 3000);
+      } catch (err) {
+        let msg = `No se pudo subir "${file.name}".`;
+        if (err instanceof UploadTypeError) {
+          msg = `"${file.name}": tipo de archivo no admitido.`;
+        } else if (err instanceof UploadTooLargeError) {
+          msg = `"${file.name}": supera el tamaño máximo.`;
+        } else if (err instanceof Error) {
+          msg = err.message;
+        }
+        setNotice({ kind: "alert", text: msg });
       }
-      setNotice({ kind: "alert", text: msg });
     }
+  }
+
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const list = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    await uploadMany(list);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLElement>) {
+    e.preventDefault();
+    setDragging(false);
+    void uploadMany(Array.from(e.dataTransfer.files ?? []));
   }
 
   useEffect(() => {
@@ -222,22 +236,37 @@ export default function FilesPage() {
         const data = await listVaultFiles(selectedVaultId);
         setFiles(data);
         setStatus("ready");
+        void scanFileReferences(notes, selectedVaultId).then(setRefMap, () => setRefMap(new Map()));
       } catch (err) {
         setStatus("error");
       }
     };
 
     void load();
-  }, [selectedVaultId]);
+  }, [selectedVaultId, notes]);
 
   return (
-    <section>
-      <h1>Archivos</h1>
+    <section
+      className={`files-page${dragging ? " files-page--dragging" : ""}`}
+      onDragOver={(e) => {
+        if (e.dataTransfer?.types?.includes("Files")) {
+          e.preventDefault();
+          setDragging(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget === e.target) setDragging(false);
+      }}
+      onDrop={handleDrop}
+    >
+      <header className="page-header">
+        <h1>Archivos</h1>
+      </header>
       {notice && <p role={notice.kind}>{notice.text}</p>}
 
       {allVaults.length > 0 && (
-        <div>
-          <label htmlFor="vault-selector">Bóveda:</label>
+        <div className="files-toolbar">
+          <label htmlFor="vault-selector">Bóveda</label>
           <select
             id="vault-selector"
             value={selectedVaultId || ""}
@@ -251,6 +280,7 @@ export default function FilesPage() {
           </select>
           <button
             type="button"
+            className="btn-primary files-upload"
             onClick={() => {
               const input = document.querySelector<HTMLInputElement>("#file-upload-input");
               input?.click();
@@ -261,7 +291,8 @@ export default function FilesPage() {
           <input
             id="file-upload-input"
             type="file"
-            style={{ display: "none" }}
+            multiple
+            hidden
             onChange={(e) => void handleUpload(e)}
           />
         </div>
@@ -269,12 +300,12 @@ export default function FilesPage() {
 
       {status === "loading" && <p>Cargando…</p>}
       {status === "error" && <div role="alert">No se pudo cargar la lista.</div>}
-      {status === "ready" && files.length === 0 && <p>La lista está vacía.</p>}
+      {status === "ready" && files.length === 0 && <p className="files-empty">Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí.</p>}
 
       {status === "ready" && filesWithReferences.length > 0 && (
         <>
-          <div>
-            <label htmlFor="search-files">Buscar:</label>
+          <div className="files-toolbar">
+            <label htmlFor="search-files">Buscar</label>
             <input
               id="search-files"
               type="search"
@@ -284,7 +315,8 @@ export default function FilesPage() {
             />
           </div>
 
-          <table>
+          <div className="files-table-wrap">
+          <table className="files-table">
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -292,7 +324,7 @@ export default function FilesPage() {
                 <th>Tamaño</th>
                 <th>Fecha</th>
                 <th>Referencias</th>
-                <th>Acciones</th>
+                <th><span className="files-sr">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -300,12 +332,12 @@ export default function FilesPage() {
                 .filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
                 .map((file) => (
                   <tr key={file.id}>
-                    <td>{file.name}</td>
-                    <td>{getFileTypeName(file.content_type)}</td>
-                    <td>{(file.size / 1024).toFixed(1)} KB</td>
-                    <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
-                    <td>{file.references_count ?? 0}</td>
-                    <td>
+                    <td className="files-name" data-label="Nombre">{file.name}</td>
+                    <td data-label="Tipo">{getFileTypeName(file.content_type)}</td>
+                    <td data-label="Tamaño">{formatSize(file.size)}</td>
+                    <td data-label="Fecha">{DATE_FORMAT.format(new Date(file.created_at))}</td>
+                    <td data-label="Usado en">{file.references_count ?? 0}</td>
+                    <td className="files-actions">
                       <button
                         type="button"
                         aria-label={`Abrir ${file.name}`}
@@ -337,14 +369,14 @@ export default function FilesPage() {
                       <button
                         type="button"
                         aria-label={`Cambiar visibilidad de ${file.name}`}
-                        onClick={() => handleVisibilityClick(file)}
+                        onClick={() => void handleVisibilityClick(file)}
                       >
-                        {file.visibility === "private" ? "🔒" : "🌍"}
+                        {file.visibility === "private" ? "Privado" : "Público"}
                       </button>
                       <button
                         type="button"
                         aria-label={`Borrar ${file.name}`}
-                        onClick={() => handleDeleteClick(file)}
+                        onClick={() => void handleDeleteClick(file)}
                       >
                         Borrar
                       </button>
@@ -353,6 +385,7 @@ export default function FilesPage() {
                 ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import FilesPage from "./FilesPage";
@@ -8,11 +8,24 @@ import * as uploadFileModule from "./uploadFile";
 import type { VaultFile } from "./uploadFile";
 import { UploadTypeError, UploadTooLargeError } from "./uploadFile";
 
+/** Almacén de notas real en forma (list/get), no un Map: así el test ejerce la misma API que la app. */
+function emptyNotes() {
+  return { list: vi.fn().mockResolvedValue([]), get: vi.fn() } as any;
+}
+
+function notesWith(items: Array<{ id: string; path: string; rev: string; content: string }>) {
+  return {
+    list: vi.fn().mockResolvedValue(items.map(({ id, path, rev }) => ({ id, path, rev, updated_at: "", deleted_at: null, size: 1 }))),
+    get: vi.fn((id: string) => Promise.resolve(items.find((n) => n.id === id))),
+  } as any;
+}
+
+const FILE1 = "11111111-1111-4111-8111-111111111111";
 const SAMPLE_VAULT = { id: "vault-1", name: "Mi bóveda", icon: "", color: "", deleted_at: null, rev: "1" };
 
 const SAMPLE_FILES: VaultFile[] = [
   {
-    id: "file-1",
+    id: FILE1,
     vault_id: "vault-1",
     name: "documento.pdf",
     content_type: "application/pdf",
@@ -41,7 +54,7 @@ describe("FilesPage", () => {
   it("renders heading and vault selector (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
@@ -58,7 +71,7 @@ describe("FilesPage", () => {
     );
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
@@ -71,21 +84,21 @@ describe("FilesPage", () => {
   it("shows empty state when no files (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
         <FilesPage />
       </WithSync>
     );
-    await screen.findByText(/La lista está vacía/i);
+    await screen.findByText(/Aún no hay archivos/i);
   });
 
   it("shows error state on failure (C-7)", async () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockRejectedValue(new Error("Network error"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
@@ -99,7 +112,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
@@ -125,7 +138,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -154,7 +167,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     render(
       <WithSync value={value}>
@@ -175,7 +188,7 @@ describe("FilesPage", () => {
     });
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -197,7 +210,7 @@ describe("FilesPage", () => {
     await user.click(confirmBtn);
 
     // renameFile should be called
-    expect(uploadFileModule.renameFile).toHaveBeenCalledWith("file-1", "nuevo_nombre.pdf");
+    expect(uploadFileModule.renameFile).toHaveBeenCalledWith(FILE1, "nuevo_nombre.pdf");
   });
 
   it("set visibility to public requires confirmation (C-8)", async () => {
@@ -208,7 +221,7 @@ describe("FilesPage", () => {
     });
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -231,35 +244,19 @@ describe("FilesPage", () => {
     const confirmBtn = Array.from(buttons).find((b) => b.textContent?.includes("Confirmar"));
     await user.click(confirmBtn!);
 
-    expect(uploadFileModule.setFileVisibility).toHaveBeenCalledWith("file-1", "public");
+    expect(uploadFileModule.setFileVisibility).toHaveBeenCalledWith(FILE1, "public");
   });
 
   it("delete file with references shows list of referencing documents (C-6, C-9)", async () => {
-    const notes = new Map([
-      [
-        "note-1",
-        {
-          id: "note-1",
-          path: "Trabajo/Proyecto",
-          rev: "1",
-          content: "Vea el archivo: /files/file-1 aquí.",
-        },
-      ],
-      [
-        "note-2",
-        {
-          id: "note-2",
-          path: "Personal/Recordatorios",
-          rev: "1",
-          content: "Anexo: /files/file-1 para referencia.",
-        },
-      ],
+    const notes = notesWith([
+      { id: "note-1", path: "Trabajo/Proyecto", rev: "1", content: `Vea el archivo: https://synapse.cjhirashi.com/files/${FILE1} aquí.` },
+      { id: "note-2", path: "Personal/Recordatorios", rev: "1", content: `Anexo: https://synapse.cjhirashi.com/files/${FILE1} para referencia.` },
     ]);
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     vi.spyOn(uploadFileModule, "deleteFile").mockResolvedValue(undefined);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: notes as any,
+      notes,
     });
     const user = userEvent.setup();
     render(
@@ -282,7 +279,7 @@ describe("FilesPage", () => {
     const confirmBtn = Array.from(buttons).find((b) => b.textContent?.includes("Borrar"));
     await user.click(confirmBtn!);
 
-    expect(uploadFileModule.deleteFile).toHaveBeenCalledWith("file-1");
+    expect(uploadFileModule.deleteFile).toHaveBeenCalledWith(FILE1);
   });
 
   it("shows error notice on API failure (C-7, C-11)", async () => {
@@ -291,7 +288,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "renameFile").mockRejectedValue(mockError);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -319,7 +316,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -352,7 +349,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockResolvedValue(newFile);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -377,7 +374,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTypeError("Tipo no admitido"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -400,7 +397,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTooLargeError("Archivo muy grande"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map() as any,
+      notes: emptyNotes(),
     });
     const user = userEvent.setup();
     render(
@@ -416,5 +413,22 @@ describe("FilesPage", () => {
 
     // Error notice must appear
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  });
+
+  // jsdom no ejerce el arrastre real del navegador: aquí sólo se comprueba el cableado drop → uploadFile.
+  it("soltar archivos sobre la pantalla los sube a la bóveda seleccionada (C-7)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([]);
+    const upload = vi.spyOn(uploadFileModule, "uploadFile").mockResolvedValue({ ...SAMPLE_FILES[1], id: "nuevo" } as any);
+    const { value } = syncValue({ vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any, notes: emptyNotes() });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>,
+    );
+    await screen.findByText(/Aún no hay archivos/i);
+    const file = new File(["hola"], "nota.txt", { type: "text/plain" });
+    fireEvent.drop(screen.getByRole("heading", { name: /Archivos/i }).closest("section")!, { dataTransfer: { files: [file], types: ["Files"] } });
+    await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1"));
+    expect(await screen.findByText("hoja.xlsx")).toBeInTheDocument();
   });
 });
