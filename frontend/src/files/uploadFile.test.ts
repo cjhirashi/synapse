@@ -48,9 +48,9 @@ test("C-1/C-6: sube con POST /files multipart (vault_id + file) y devuelve el id
 test("C-6: un tipo no admitido se rechaza en el cliente, sin llamar a la red", async () => {
   const fetchMock = vi.fn();
   vi.stubGlobal("fetch", fetchMock);
-  const pdf = new File([new Uint8Array(16)], "doc.pdf", { type: "application/pdf" });
+  const exe = new File([new Uint8Array(16)], "malware.exe", { type: "application/x-msdownload" });
 
-  await expect(uploadFile(pdf, VAULT)).rejects.toBeInstanceOf(UploadTypeError);
+  await expect(uploadFile(exe, VAULT)).rejects.toBeInstanceOf(UploadTypeError);
   expect(fetchMock).not.toHaveBeenCalled();
 });
 

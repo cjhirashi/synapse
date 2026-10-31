@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import FilesPage from "./FilesPage";
 import { WithSync, syncValue } from "../test-utils/sync";
@@ -112,5 +113,33 @@ describe("FilesPage", () => {
     // Must show reference count (C-9)
     const row = pdfRow.closest("tr");
     expect(row?.textContent).toContain("2");
+  });
+
+  it("filters files by name search (C-7)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    // Both files shown initially
+    await screen.findByText("documento.pdf");
+    expect(screen.getByText("hoja.xlsx")).toBeInTheDocument();
+
+    // Filter by "pdf" — only documento.pdf shown
+    const searchInput = await screen.findByRole("searchbox", { name: /Buscar/i });
+    await user.type(searchInput, "pdf");
+    expect(screen.getByText("documento.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("hoja.xlsx")).not.toBeInTheDocument();
+
+    // Clear search — both shown again
+    await user.clear(searchInput);
+    expect(screen.getByText("documento.pdf")).toBeInTheDocument();
+    expect(screen.getByText("hoja.xlsx")).toBeInTheDocument();
   });
 });

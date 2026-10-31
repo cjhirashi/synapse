@@ -29,6 +29,7 @@ export default function FilesPage() {
   const [allVaults, setAllVaults] = useState<Vault[]>([]);
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
@@ -89,28 +90,43 @@ export default function FilesPage() {
       {status === "ready" && files.length === 0 && <p>La lista está vacía.</p>}
 
       {status === "ready" && files.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Tipo</th>
-              <th>Tamaño</th>
-              <th>Fecha</th>
-              <th>Referencias</th>
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((file) => (
-              <tr key={file.id}>
-                <td>{file.name}</td>
-                <td>{getFileTypeName(file.content_type)}</td>
-                <td>{(file.size / 1024).toFixed(1)} KB</td>
-                <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
-                <td>{file.references_count ?? 0}</td>
+        <>
+          <div>
+            <label htmlFor="search-files">Buscar:</label>
+            <input
+              id="search-files"
+              type="search"
+              placeholder="Nombre del archivo…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Tamaño</th>
+                <th>Fecha</th>
+                <th>Referencias</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {files
+                .filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
+                .map((file) => (
+                  <tr key={file.id}>
+                    <td>{file.name}</td>
+                    <td>{getFileTypeName(file.content_type)}</td>
+                    <td>{(file.size / 1024).toFixed(1)} KB</td>
+                    <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
+                    <td>{file.references_count ?? 0}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </>
       )}
     </section>
   );
