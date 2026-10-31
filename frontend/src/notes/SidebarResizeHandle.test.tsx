@@ -6,7 +6,7 @@ import { SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_STEP } from "./useSidebarWidth";
 
 // jsdom no tiene PointerEvent y `fireEvent.pointer*` descarta `clientX`: el arrastre se dispara con un
 // MouseEvent del mismo tipo, que sí lo lleva.
-function pointer(target: EventTarget, type: "pointerdown" | "pointermove" | "pointerup", clientX: number) {
+function pointer(target: Element | Window, type: "pointerdown" | "pointermove" | "pointerup", clientX: number) {
   return fireEvent(target, new MouseEvent(type, { bubbles: true, cancelable: true, clientX }));
 }
 
