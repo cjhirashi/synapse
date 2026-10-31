@@ -139,3 +139,11 @@ y absorbe lo de H-018 que era PDF (el video sigue aparte).
 
 Carlos abre «Archivos», elige una bóveda, sube un PDF y un Excel, los ve en la lista, abre el PDF, descarga el
 Excel, pasa uno a público con la confirmación y borra uno que está en uso viendo el aviso.
+
+## 9. Verificación en navegador real (AIRA, 2026-10-30 21:40 CDMX, producción)
+
+- Pantalla «Archivos»: lista, subida múltiple por botón, tipos PDF/Word/Excel/HTML correctos, `.exe` rechazado con aviso, referencias (1 tras adjuntar desde el editor), confirmación al pasar a público (Confirmar → 200 sin sesión; sin confirmar no cambia), aviso de borrado de archivo en uso con el documento citado.
+- Servidor: PDF inline, docx attachment (RFC 5987), HTML inline con CSP de aislamiento, `nosniff`, privado `Cache-Control: private, no-store`; `.exe` renombrado a `.pdf` → 415; docx sin `word/` → 415; PNG > 5 MB → 413.
+- HTML hostil abierto como página: ejecuta su JS pero `document.cookie`, `localStorage` y `fetch` a la API fallan (aislamiento de la CSP, base de H-019).
+- Hallazgos corregidos tras el despliegue inicial (los tests no los vieron): `listVaultFiles` ignoraba la paginación `{files,...}` del backend (pantalla rota) y las referencias usaban un `Map` falso en vez de la API real del almacén de notas; HTML etiquetado «Texto»; «Descargar» sólo abría la pestaña.
+- NO verificado: arrastrar-y-soltar real (el navegador de pruebas sólo permite el selector), descarga real al disco, vista en celular/tema claro, documentos > 100 archivos por bóveda (la lista carga 100).
