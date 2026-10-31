@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
-import { listVaultFiles, type VaultFile } from "./uploadFile";
+import { listVaultFiles, type VaultFile, fileUrl } from "./uploadFile";
 
 type Status = "loading" | "ready" | "error";
 
@@ -31,6 +31,21 @@ export default function FilesPage() {
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<Status>("loading");
+  const [notice, setNotice] = useState<{ kind: "status" | "alert"; text: string } | null>(null);
+
+  function handleDownload(file: VaultFile) {
+    window.open(fileUrl(file.id), "_blank");
+  }
+
+  async function handleCopyLink(file: VaultFile) {
+    try {
+      await navigator.clipboard.writeText(fileUrl(file.id));
+      setNotice({ kind: "status", text: "Link copiado." });
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      setNotice({ kind: "alert", text: "No se pudo copiar el link." });
+    }
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -67,6 +82,7 @@ export default function FilesPage() {
   return (
     <section>
       <h1>Archivos</h1>
+      {notice && <p role={notice.kind}>{notice.text}</p>}
 
       {allVaults.length > 0 && (
         <div>
@@ -124,13 +140,13 @@ export default function FilesPage() {
                     <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
                     <td>{file.references_count ?? 0}</td>
                     <td>
-                      <button type="button" aria-label={`Abrir ${file.name}`}>
+                      <button type="button" aria-label={`Abrir ${file.name}`} onClick={() => handleDownload(file)}>
                         Abrir
                       </button>
-                      <button type="button" aria-label={`Descargar ${file.name}`}>
+                      <button type="button" aria-label={`Descargar ${file.name}`} onClick={() => handleDownload(file)}>
                         Descargar
                       </button>
-                      <button type="button" aria-label={`Copiar link de ${file.name}`}>
+                      <button type="button" aria-label={`Copiar link de ${file.name}`} onClick={() => void handleCopyLink(file)}>
                         Link
                       </button>
                       <button type="button" aria-label={`Renombrar ${file.name}`}>
