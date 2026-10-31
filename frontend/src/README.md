@@ -150,11 +150,18 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   (botones redondos) y **expandido** (píldoras icono+nombre, riel de 208 px); el estado es local sin
   persistencia, así que siempre carga colapsado en cualquier viewport. En expandido el nombre es
   texto visible, así que el enlace no lleva `aria-label` (sin duplicarlo) ni muestra el tooltip (H-008).
-- **Barra lateral de 240 px** (`notes/notes.css`, `NoteSidebar.tsx`): cabecera con la carpeta abierta y
-  el nombre, formulario «Nueva nota» como bloque propio, panel del árbol con scroll propio (filas de
+- **Barra lateral de 240 a 384 px** (`notes/notes.css`, `NoteSidebar.tsx`): cabecera con la carpeta abierta y
+  el nombre, formulario «Nueva nota» como bloque propio, panel del árbol con scroll propio en ambos ejes (filas de
   27/25 px, íconos de carpeta/nota, sangría de 24 px), barra de acciones de la nota **bajo** el
   árbol (si fuera sobre él, al enfocar una fila se desplazaría y el clic no la abriría) y pie con la
   papelera de la bóveda.
+- **Ancho ajustable en escritorio** (`notes/useSidebarWidth.ts`, `notes/SidebarResizeHandle.tsx`, H-023):
+  sólo con la ventana ≥ 1024 px y la barra visible hay un asa en su orilla derecha que la ensancha de
+  240 a 384 px arrastrando con el mouse o con ←/→ (±16 px); Inicio y doble clic vuelven a 240. La página
+  pasa el ancho como `--side-width` en `.vault-workspace-side` (sin la variable rige el 240 px de la hoja de
+  estilos, p. ej. en tableta y móvil). `useSidebarWidth` valida el valor guardado al leerlo (corrupto o
+  fuera de rango → 240) y no falla si `localStorage` no está disponible. Ocultar y volver a mostrar la
+  barra conserva el ancho.
 - **Barra ocultable + responsiva** (`notes/VaultWorkspacePage.tsx`, H-009): un botón
   (`PanelLeft`/`PanelLeftClose`, `aria-expanded`/`aria-controls`) muestra/oculta la barra, operable por
   teclado en los 3 anchos. El botón vive en la **fila de título del editor** (`.note-editor-header`, como
@@ -212,6 +219,7 @@ Módulos de `notes/`:
 | `NoteSidebar.tsx`, `NoteTrash.tsx` | árbol accesible (`role="tree"` que sólo contiene `treeitem`s: una parada de Tab, teclado WAI-ARIA) y «Nueva nota». **«Renombrar»/«Borrar»** viven en la barra «Acciones de la nota» (`role="toolbar"`, siempre visible, fuera del árbol y bajo él) para la nota seleccionada; **F2** y **Supr** las atajan desde el `treeitem` enfocado (Supr respeta la confirmación de borrador sucio; ambas comparten la guarda de operación en curso). **Foco:** tras borrar va a la fila vecina que sobrevive en el árbol resultante (o a «Nueva nota»); tras guardar o cancelar (también con Escape) el renombrado vuelve al `treeitem`. **Drag & drop** (H-003): arrastrar una nota o carpeta y soltarla sobre una carpeta o «Raíz» la mueve (misma operación de ruta que el renombrado: `notes.rename` por nota, `notes.moveFolder` en lote para una carpeta); el destino válido se resalta (`data-drop-target`), soltar fuera o sin desplazamiento real no hace nada y el conflicto de ruta avisa igual que el renombrado. El renombrado por teclado sigue como vía accesible sin mouse. Papelera **de la bóveda** con «Restaurar» (la ruta ocupada se avisa) |
 | `mergeNote.ts`, `NoteConflictCard.tsx` | conflictos de nota: nunca se elige por fecha; sólo se cierra solo lo que difiere en `updated_at` y lo demás lo decide el usuario en `sync/ConflictView.tsx` |
 | `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
+| `useSidebarWidth.ts`, `SidebarResizeHandle.tsx` | ancho de la barra lateral (H-023): 240–384 px en `--side-width`, persistido en `localStorage` (`synapse.sidebar-width`; valor inválido → 240). Asa en la orilla derecha (`role="separator"`) con arrastre, ←/→ de 16 px, Inicio y doble clic para volver a 240; sólo ≥ 1024 px |
 | `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |
 
 **Estilos de lista:** `styles/global.css` no estiliza `ul`/`li` sueltos; la tarjeta de la lista de
