@@ -180,19 +180,30 @@ export function WikilinkPreview({ hover, notes, View, vaultNotes, vaultColor, on
   );
 
   // Reposiciona la tarjeta junto al enlace: debajo si cabe, si no arriba; y dentro de la ventana (C-3).
+  // La vista reutilizada pinta su contenido de forma asíncrona y la tarjeta crece después del primer
+  // render, así que la posición se recalcula cada vez que cambia su altura (ResizeObserver).
   useLayoutEffect(() => {
     if (!active || !visible) return;
     const el = cardEl.current;
     if (!el) return;
-    const rect = active.rect;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const height = el.offsetHeight;
-    const below = rect.bottom + EDGE_GAP;
-    const fitsBelow = below + height <= vh - EDGE_GAP;
-    const top = fitsBelow ? below : Math.max(EDGE_GAP, rect.top - EDGE_GAP - height);
-    const left = Math.min(Math.max(EDGE_GAP, rect.left), Math.max(EDGE_GAP, vw - CARD_WIDTH - EDGE_GAP));
-    setCoords({ top, left });
+    const place = () => {
+      const rect = active.rect;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const height = el.offsetHeight;
+      const below = rect.bottom + EDGE_GAP;
+      const above = rect.top - EDGE_GAP - height;
+      const fitsBelow = below + height <= vh - EDGE_GAP;
+      // Si no cabe debajo se prueba arriba; si tampoco cabe, se ajusta al borde de la ventana.
+      const top = fitsBelow ? below : above >= EDGE_GAP ? above : Math.max(EDGE_GAP, vh - EDGE_GAP - height);
+      const left = Math.min(Math.max(EDGE_GAP, rect.left), Math.max(EDGE_GAP, vw - CARD_WIDTH - EDGE_GAP));
+      setCoords((prev) => (prev && prev.top === top && prev.left === left ? prev : { top, left }));
+    };
+    place();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(place);
+    observer.observe(el);
+    return () => observer.disconnect();
   }, [active, visible, loaded]);
 
   if (!active || !visible) return null;

@@ -125,4 +125,32 @@ describe("WikilinkPreview (H-021)", () => {
     act(() => void vi.advanceTimersByTime(1000));
     expect(screen.queryByText(/esta nota no existe/i)).toBeNull();
   });
+
+  // Regresión (producción): la vista interna pinta tras el primer render y la tarjeta crecía fuera de la ventana
+  // porque la posición sólo se calculaba una vez. Se recalcula al cambiar su altura (ResizeObserver).
+  it("reposiciona la tarjeta arriba del enlace cuando, al crecer, ya no cabe debajo", async () => {
+    let height = 100;
+    const observers: Array<() => void> = [];
+    vi.stubGlobal("ResizeObserver", class { constructor(cb: () => void) { observers.push(cb); } observe() {} disconnect() {} });
+    vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockImplementation(() => height);
+    const original = window.innerHeight;
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 600 });
+    const lowLink = { ...RECT, top: 400, bottom: 420 } as DOMRect;
+    try {
+      renderPreview({ ...RESOLVED, rect: lowLink });
+      const card = await waitFor(() => {
+        const el = document.querySelector<HTMLElement>("[data-wikilink-preview]");
+        expect(el).not.toBeNull();
+        return el!;
+      });
+      expect(parseFloat(card.style.top)).toBe(428); // 100 px caben debajo del enlace
+      height = 300; // el cuerpo renderizado llegó: ya no cabe debajo (428 + 300 > 592)
+      act(() => observers.forEach((cb) => cb()));
+      expect(parseFloat(card.style.top)).toBe(92); // 400 - 8 - 300: arriba del enlace
+    } finally {
+      Object.defineProperty(window, "innerHeight", { configurable: true, value: original });
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    }
+  });
 });
