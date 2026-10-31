@@ -106,8 +106,10 @@ export async function uploadFile(file: File, vaultId: string): Promise<UploadedF
  * Lista los archivos de una bóveda (GET /vaults/{vaultId}/files, C-4).
  */
 export async function listVaultFiles(vaultId: string): Promise<VaultFile[]> {
-  const res = await request(`/vaults/${vaultId}/files`);
-  return res.json();
+  // La respuesta es paginada `{files, total, limit, offset}` (contrato OpenAPI de H-016); 100 es el tope del backend.
+  const res = await request(`/vaults/${vaultId}/files?limit=100`);
+  const page = (await res.json()) as { files: VaultFile[] };
+  return page.files;
 }
 
 /**

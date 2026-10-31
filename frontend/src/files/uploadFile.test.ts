@@ -4,6 +4,7 @@ import {
   MAX_FILE_SIZE,
   UploadTooLargeError,
   UploadTypeError,
+  listVaultFiles,
   uploadFile,
 } from "./uploadFile";
 import { ApiError } from "../api/problems";
@@ -140,4 +141,16 @@ test("errores del servidor llegan como ApiError para PATCH y DELETE", async () =
   const err = await renameFile("f-notexist", "x.txt").catch((e) => e);
   expect(err).toBeInstanceOf(ApiError);
   expect(err).toMatchObject({ status: 404 });
+});
+
+// Regresión: el backend responde paginado `{files, total, limit, offset}`; el cliente devolvía el objeto entero
+// y la pantalla rompía con «o.map is not a function» (los mocks de FilesPage devolvían arrays).
+test("listVaultFiles lee la forma real del backend (`files` dentro de la página)", async () => {
+  const item = { id: "f1", vault_id: VAULT, name: "a.pdf", content_type: "application/pdf", size: 5, visibility: "private", created_at: "2026-10-30T20:12:08.35" };
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, { files: [item], total: 1, limit: 100, offset: 0 }));
+  vi.stubGlobal("fetch", fetchMock);
+  const list = await listVaultFiles(VAULT);
+  expect(Array.isArray(list)).toBe(true);
+  expect(list).toEqual([item]);
+  expect(String(fetchMock.mock.calls[0][0])).toContain(`/vaults/${VAULT}/files`);
 });

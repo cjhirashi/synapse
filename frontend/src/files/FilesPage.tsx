@@ -43,6 +43,11 @@ const DATE_FORMAT = new Intl.DateTimeFormat("es", {
   timeZone: "America/Mexico_City",
 });
 
+/** El backend devuelve fechas UTC sin zona (`2026-10-30T20:12:08.35`): sin la Z el navegador las leería como locales. */
+function parseUtc(value: string): Date {
+  return new Date(/(Z|[+-]\d\d:?\d\d)$/.test(value) ? value : `${value}Z`);
+}
+
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -335,7 +340,7 @@ export default function FilesPage() {
                     <td className="files-name" data-label="Nombre">{file.name}</td>
                     <td data-label="Tipo">{getFileTypeName(file.content_type)}</td>
                     <td data-label="Tamaño">{formatSize(file.size)}</td>
-                    <td data-label="Fecha">{DATE_FORMAT.format(new Date(file.created_at))}</td>
+                    <td data-label="Fecha">{DATE_FORMAT.format(parseUtc(file.created_at))}</td>
                     <td data-label="Usado en">{file.references_count ?? 0}</td>
                     <td className="files-actions">
                       <button
