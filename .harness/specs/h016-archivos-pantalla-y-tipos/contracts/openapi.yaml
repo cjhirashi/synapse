@@ -52,7 +52,7 @@ components:
       type: object
     FileUpdate:
       additionalProperties: false
-      description: PATCH /files/{id}: actualizar name y/o visibility (C-5).
+      description: 'PATCH /files/{id}: actualizar name y/o visibility (C-5).'
       properties:
         name:
           title: Name
