@@ -55,6 +55,7 @@ test.each([
   ["/vaults", "Bóvedas"],
   ["/vaults/new", "Nueva bóveda"],
   ["/vaults/trash", "Papelera"],
+  ["/files", "Archivos"],
   ["/rejections", "Cambios rechazados"],
   ["/conflicts", "Conflictos"],
 ])("RF-009: %s muestra su pantalla", async (path, heading) => {
