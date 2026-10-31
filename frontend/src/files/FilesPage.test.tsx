@@ -165,4 +165,152 @@ describe("FilesPage", () => {
     const pdfRow = await screen.findByText("documento.pdf");
     expect(pdfRow.closest("tr")?.querySelector("button")).toBeTruthy();
   });
+
+  it("rename file opens dialog and updates via PATCH (C-5)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "renameFile").mockResolvedValue({
+      ...SAMPLE_FILES[0],
+      name: "nuevo_nombre.pdf",
+    });
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const pdfRow = await screen.findByText("documento.pdf");
+    const renameBtn = pdfRow.closest("tr")?.querySelector('button[aria-label*="Renombrar"]');
+    await user.click(renameBtn!);
+
+    // Dialog must have input with current name
+    const input = await screen.findByDisplayValue("documento.pdf");
+    await user.clear(input);
+    await user.type(input, "nuevo_nombre.pdf");
+
+    const confirmBtn = screen.getByRole("button", { name: /Guardar/i });
+    await user.click(confirmBtn);
+
+    // renameFile should be called
+    expect(uploadFileModule.renameFile).toHaveBeenCalledWith("file-1", "nuevo_nombre.pdf");
+  });
+
+  it("set visibility to public requires confirmation (C-8)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "setFileVisibility").mockResolvedValue({
+      ...SAMPLE_FILES[0],
+      visibility: "public",
+    });
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    // File 0 is private (🔒), click visibility button
+    const pdfRow = await screen.findByText("documento.pdf");
+    const visBtn = pdfRow.closest("tr")?.querySelector('button[aria-label*="visibilidad"]');
+    await user.click(visBtn!);
+
+    // Confirmation dialog must appear
+    const confirmMsg = await screen.findByRole("alertdialog");
+    expect(confirmMsg.textContent).toMatch(/público|public/i);
+
+    // Accept confirmation
+    const buttons = confirmMsg.querySelectorAll("button");
+    const confirmBtn = Array.from(buttons).find((b) => b.textContent?.includes("Confirmar"));
+    await user.click(confirmBtn!);
+
+    expect(uploadFileModule.setFileVisibility).toHaveBeenCalledWith("file-1", "public");
+  });
+
+  it("delete file with references shows list of referencing documents (C-6, C-9)", async () => {
+    const notes = new Map([
+      [
+        "note-1",
+        {
+          id: "note-1",
+          path: "Trabajo/Proyecto",
+          rev: "1",
+          content: "Vea el archivo: /files/file-1 aquí.",
+        },
+      ],
+      [
+        "note-2",
+        {
+          id: "note-2",
+          path: "Personal/Recordatorios",
+          rev: "1",
+          content: "Anexo: /files/file-1 para referencia.",
+        },
+      ],
+    ]);
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "deleteFile").mockResolvedValue(undefined);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes,
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const pdfRow = await screen.findByText("documento.pdf");
+    const deleteBtn = pdfRow.closest("tr")?.querySelector('button[aria-label*="Borrar"]');
+    await user.click(deleteBtn!);
+
+    // Dialog must show references
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("Trabajo/Proyecto");
+    expect(dialog.textContent).toContain("Personal/Recordatorios");
+
+    // Accept deletion — find button inside dialog with data-autofocus
+    const buttons = dialog.querySelectorAll("button");
+    const confirmBtn = Array.from(buttons).find((b) => b.textContent?.includes("Borrar"));
+    await user.click(confirmBtn!);
+
+    expect(uploadFileModule.deleteFile).toHaveBeenCalledWith("file-1");
+  });
+
+  it("shows error notice on API failure (C-7, C-11)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    const mockError = new Error("Network error");
+    vi.spyOn(uploadFileModule, "renameFile").mockRejectedValue(mockError);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const pdfRow = await screen.findByText("documento.pdf");
+    const renameBtn = pdfRow.closest("tr")?.querySelector('button[aria-label*="Renombrar"]');
+    await user.click(renameBtn!);
+
+    const input = await screen.findByDisplayValue("documento.pdf");
+    await user.clear(input);
+    await user.type(input, "otro.pdf");
+
+    const confirmBtn = screen.getByRole("button", { name: /Guardar|OK|Aceptar/i });
+    await user.click(confirmBtn);
+
+    // Error notice must appear
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  });
 });

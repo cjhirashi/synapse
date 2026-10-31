@@ -1,10 +1,37 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
-import { listVaultFiles, type VaultFile, fileUrl } from "./uploadFile";
-import { getFileReferencesCount } from "./fileReferences";
+import {
+  listVaultFiles,
+  renameFile,
+  setFileVisibility,
+  deleteFile,
+  type VaultFile,
+  fileUrl,
+} from "./uploadFile";
+import { getFileReferencesCount, getFileReferenceDetails } from "./fileReferences";
+import { ConfirmDialog } from "../editor/ConfirmDialog";
 
 type Status = "loading" | "ready" | "error";
+
+interface RenameDialog {
+  fileId: string;
+  currentName: string;
+}
+
+interface DeleteConfirm {
+  fileId: string;
+  fileName: string;
+  references: Array<{ id: string; path: string }>;
+}
+
+interface VisibilityConfirm {
+  fileId: string;
+  fileName: string;
+  newVisibility: "private" | "public";
+  currentVisibility: "private" | "public";
+  references: Array<{ id: string; path: string }>;
+}
 
 const DATE_FORMAT = new Intl.DateTimeFormat("es", {
   dateStyle: "short",
@@ -34,6 +61,12 @@ export default function FilesPage() {
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<{ kind: "status" | "alert"; text: string } | null>(null);
 
+  // Diálogos
+  const [renameDialog, setRenameDialog] = useState<RenameDialog | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
+  const [visibilityConfirm, setVisibilityConfirm] = useState<VisibilityConfirm | null>(null);
+  const [renameTmp, setRenameTmp] = useState("");
+
   // Calcula referencias de archivos en la réplica local (C-9)
   const filesWithReferences = useMemo(() => {
     return files.map((file) => ({
@@ -56,6 +89,88 @@ export default function FilesPage() {
     }
   }
 
+  function handleRenameClick(file: VaultFile) {
+    setRenameDialog({ fileId: file.id, currentName: file.name });
+    setRenameTmp(file.name);
+  }
+
+  async function handleRenameSave() {
+    if (!renameDialog || !renameTmp.trim()) return;
+    try {
+      const updated = await renameFile(renameDialog.fileId, renameTmp);
+      setFiles((prev) =>
+        prev.map((f) => (f.id === renameDialog.fileId ? { ...f, name: updated.name } : f))
+      );
+      setNotice({ kind: "status", text: `Archivo renombrado a "${updated.name}".` });
+      setRenameDialog(null);
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo renombrar el archivo.";
+      setNotice({ kind: "alert", text: msg });
+    }
+  }
+
+  function handleVisibilityClick(file: VaultFile) {
+    const newVisibility = file.visibility === "private" ? "public" : "private";
+    const refs = getFileReferenceDetails(file.id, notes);
+
+    // Si cambiar a público, SIEMPRE pedir confirmación (C-8)
+    // Si cambiar a privado y está en uso, pedir confirmación (C-9)
+    if (newVisibility === "public" || refs.length > 0) {
+      setVisibilityConfirm({
+        fileId: file.id,
+        fileName: file.name,
+        newVisibility,
+        currentVisibility: file.visibility,
+        references: refs,
+      });
+    } else {
+      // Público → privado sin referencias, directo (sin confirmación)
+      void handleVisibilityConfirm(file.id, newVisibility);
+    }
+  }
+
+  async function handleVisibilityConfirm(fileId: string, newVisibility: "private" | "public") {
+    try {
+      const updated = await setFileVisibility(fileId, newVisibility);
+      setFiles((prev) =>
+        prev.map((f) => (f.id === fileId ? { ...f, visibility: updated.visibility } : f))
+      );
+      setNotice({
+        kind: "status",
+        text: `Visibilidad cambiada a ${newVisibility === "private" ? "privado" : "público"}.`,
+      });
+      setVisibilityConfirm(null);
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo cambiar la visibilidad.";
+      setNotice({ kind: "alert", text: msg });
+    }
+  }
+
+  function handleDeleteClick(file: VaultFile) {
+    const refs = getFileReferenceDetails(file.id, notes);
+    setDeleteConfirm({
+      fileId: file.id,
+      fileName: file.name,
+      references: refs,
+    });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteConfirm) return;
+    try {
+      await deleteFile(deleteConfirm.fileId);
+      setFiles((prev) => prev.filter((f) => f.id !== deleteConfirm.fileId));
+      setNotice({ kind: "status", text: "Archivo borrado." });
+      setDeleteConfirm(null);
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "No se pudo borrar el archivo.";
+      setNotice({ kind: "alert", text: msg });
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -69,7 +184,7 @@ export default function FilesPage() {
       }
     };
     void load();
-  }, [vaults]);
+  }, [vaults, selectedVaultId]);
 
   useEffect(() => {
     if (!selectedVaultId) return;
@@ -149,22 +264,46 @@ export default function FilesPage() {
                     <td>{DATE_FORMAT.format(new Date(file.created_at))}</td>
                     <td>{file.references_count ?? 0}</td>
                     <td>
-                      <button type="button" aria-label={`Abrir ${file.name}`} onClick={() => handleDownload(file)}>
+                      <button
+                        type="button"
+                        aria-label={`Abrir ${file.name}`}
+                        onClick={() => handleDownload(file)}
+                      >
                         Abrir
                       </button>
-                      <button type="button" aria-label={`Descargar ${file.name}`} onClick={() => handleDownload(file)}>
+                      <button
+                        type="button"
+                        aria-label={`Descargar ${file.name}`}
+                        onClick={() => handleDownload(file)}
+                      >
                         Descargar
                       </button>
-                      <button type="button" aria-label={`Copiar link de ${file.name}`} onClick={() => void handleCopyLink(file)}>
+                      <button
+                        type="button"
+                        aria-label={`Copiar link de ${file.name}`}
+                        onClick={() => void handleCopyLink(file)}
+                      >
                         Link
                       </button>
-                      <button type="button" aria-label={`Renombrar ${file.name}`}>
+                      <button
+                        type="button"
+                        aria-label={`Renombrar ${file.name}`}
+                        onClick={() => handleRenameClick(file)}
+                      >
                         Renombrar
                       </button>
-                      <button type="button" aria-label={`Cambiar visibilidad de ${file.name}`}>
+                      <button
+                        type="button"
+                        aria-label={`Cambiar visibilidad de ${file.name}`}
+                        onClick={() => handleVisibilityClick(file)}
+                      >
                         {file.visibility === "private" ? "🔒" : "🌍"}
                       </button>
-                      <button type="button" aria-label={`Borrar ${file.name}`}>
+                      <button
+                        type="button"
+                        aria-label={`Borrar ${file.name}`}
+                        onClick={() => handleDeleteClick(file)}
+                      >
                         Borrar
                       </button>
                     </td>
@@ -173,6 +312,94 @@ export default function FilesPage() {
             </tbody>
           </table>
         </>
+      )}
+
+      {/* Rename Dialog */}
+      {renameDialog && (
+        <ConfirmDialog
+          titleId="rename-dialog-title"
+          title={`Renombrar "${renameDialog.currentName}"`}
+          onCancel={() => setRenameDialog(null)}
+        >
+          <input
+            autoFocus
+            type="text"
+            value={renameTmp}
+            onChange={(e) => setRenameTmp(e.target.value)}
+            placeholder="Nuevo nombre…"
+          />
+          <button type="button" onClick={() => void handleRenameSave()}>
+            Guardar
+          </button>
+          <button type="button" onClick={() => setRenameDialog(null)}>
+            Cancelar
+          </button>
+        </ConfirmDialog>
+      )}
+
+      {/* Delete Confirmation */}
+      {deleteConfirm && (
+        <ConfirmDialog
+          titleId="delete-dialog-title"
+          title={`¿Borrar "${deleteConfirm.fileName}"?`}
+          onCancel={() => setDeleteConfirm(null)}
+        >
+          {deleteConfirm.references.length > 0 && (
+            <div>
+              <p>
+                <strong>Advertencia:</strong> Este archivo está en uso en {deleteConfirm.references.length}{" "}
+                documento(s). Si lo borra, quedarán con enlace roto:
+              </p>
+              <ul>
+                {deleteConfirm.references.map((ref) => (
+                  <li key={ref.id}>{ref.path}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <button type="button" onClick={() => void handleDeleteConfirm()} data-autofocus>
+            Borrar
+          </button>
+          <button type="button" onClick={() => setDeleteConfirm(null)}>
+            Cancelar
+          </button>
+        </ConfirmDialog>
+      )}
+
+      {/* Visibility Confirmation */}
+      {visibilityConfirm && (
+        <ConfirmDialog
+          titleId="visibility-dialog-title"
+          title={`¿Cambiar a ${visibilityConfirm.newVisibility === "public" ? "público" : "privado"}?`}
+          onCancel={() => setVisibilityConfirm(null)}
+        >
+          {visibilityConfirm.newVisibility === "public" && (
+            <p>Este archivo será visible para cualquiera con el enlace.</p>
+          )}
+          {visibilityConfirm.newVisibility === "private" && visibilityConfirm.references.length > 0 && (
+            <div>
+              <p>
+                <strong>Advertencia:</strong> Este archivo está en uso en {visibilityConfirm.references.length}{" "}
+                documento(s). Si lo marca como privado, dejarán de poder acceder:
+              </p>
+              <ul>
+                {visibilityConfirm.references.map((ref) => (
+                  <li key={ref.id}>{ref.path}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => void handleVisibilityConfirm(visibilityConfirm.fileId, visibilityConfirm.newVisibility)}
+            data-autofocus={visibilityConfirm.newVisibility === "public"}
+          >
+            Confirmar
+          </button>
+          <button type="button" onClick={() => setVisibilityConfirm(null)}>
+            Cancelar
+          </button>
+        </ConfirmDialog>
       )}
     </section>
   );
