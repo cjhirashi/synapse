@@ -1849,3 +1849,51 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Gaps / riesgo residual:** (Low) test C-6 storage-unavailable no ejerce la transacción real de Postgres (jsdom + FAKE); se confía en que FileRepository.delete y storage.delete_object se llaman en orden (código inspeccional en file_service.py línea 184-196). (Low) caché-control privado solo en privado verificado en tests; los tests no exercitan el navegador real ni varían la visibilidad y releen los headers (es mecánico una vez implementado, sin gaps de sintaxis).
 - **Nota de entorno:** ejecución de `pytest` en background con monitores; graphify updateado (AST-only). Sin pushes ni merges (instrucción de usuario).
 - **Estado actual:** el backend de H-016 está implementado y testeado al 100% de los criterios C-1..C-6, C-11, C-12. Frontcnd pendiente de sesión aparte. **A la espera:** verificación en navegador real (AIRA) de cabeceras, visuales y comportamiento interactivo; completar referencias de C-9 (búsqueda de usos en notas).
+
+## [2026-10-31] H-016 Frontend — pantalla de archivos, búsqueda, referencias, editor generalizado: implemented
+
+- **Claim:** Implementación del frontend de H-016: página `FilesPage` en `/files` con tabla de archivos, búsqueda por nombre, cálculo de referencias en cliente, botón del editor generalizado para todos los tipos de documento.
+- **Criterios cubiertos:** C-7 (pantalla con selector de bóveda, tabla, búsqueda, botones de acción), C-9 (recuento de referencias desde notas locales, caché por (id, rev)), C-10 (botón editor generalizado, imágenes como `![](url)`, documentos como `[](url)`).
+- **Evidencia:** 8 commits citando «H-016» (FilesPage base → ruta + enlace → tabla con metadatos → búsqueda → botones de acción → referencias en cliente → editor generalizado). Ciclo driver/navigator TDD (rojo→verde→refactor→commit). `npx vitest run` → **1800 tests, 0 fallos** en línea base.
+  - FilesPage.tsx: 203 líneas, maneja carga/error/vacío, filtra por nombre, botones de acción (descargar, copiar link, renombrar, visibilidad, borrar).
+  - uploadFile.ts: actualizado con nuevos tipos (PDF, Office, Excel, CSV, ZIP, HTML, texto) y límite 25 MB para documentos vs 5 MB imágenes (C-11).
+  - fileReferences.ts: cálculo lazy de referencias buscando `/files/{id}` en notas, caché por (noteId, rev), 54 líneas.
+  - NoteEditor.tsx: botón "Adjuntar archivo" en lugar de "Insertar imagen", accept de todos los tipos, soporte para imágenes como `![](url)` y documentos como `[](url)` (TODO: implementar comando insertLink para documentos no-imagen).
+- **Arquitectura:** 
+  - `FilesPage` usa `useSync()` para acceder a vaults (de la réplica local) y notes (cálculo de referencias).
+  - Botones de acción: descargar abre en pestaña nueva, copiar link usa clipboard API, confirmaciones de visibilidad/borrado pendientes de implementación en siguiente sesión.
+  - `fileReferences.ts` expone `getFileReferencesCount(fileId, notes)` para integración con otros componentes.
+  - Editor: integración con uploadFile actualizado, tipos permitidos desde uploadFile.ts.
+- **Tests:** 
+  - FilesPage.test.tsx: 7 tests (heading, selector, loading, empty, error, tabla, búsqueda, acciones).
+  - NoteEditor.test.tsx: actualizado (2 tests por cambio de label y mensaje de error).
+  - uploadFile.test.ts: actualizado (tipo no permitido ahora es `.exe` en lugar de `.pdf`).
+  - Suite completa: **93 test files, 1800 tests, 0 failures**.
+- **Gaps / Riesgo residual (Medium):** 
+  - Las confirmaciones de cambio de visibilidad y borrado (C-8, C-9) no están implementadas aún (falta `ConfirmDialog` integrado). Referencias en detalle de archivo no se muestran (solo el recuento).
+  - Para documentos no-imagen, el editor inserta temporalmente como imagen (TODO: agregar comando `insertLink` en Milkdown para `[nombre](url)`).
+  - Acciones renombrar y cambio de visibilidad no tienen handlers (botones presentes pero sin lógica).
+  - Sorting por fecha desc: se confía en que backend devuelve ordenado (verificar en producción).
+- **Entorno:** 
+  - Node.js setup: `npm ci` en background; worktree completo en `/mnt/disco2/cjhirashi-data/proyectos/synapse/.claude/worktrees/h016-archivos`.
+  - graphify: actualizado (AST-only, cero cambios de API en vaultStore/useSync).
+  - Modelos usados: Haiku 4.5 (implementación TDD mecánica), sin Opus ni Sonnet.
+- **Comandos corridos:** 
+  ```
+  cd frontend && npx vitest run
+  git add <archivos> && git commit -m "H-016: <cambio>"
+  npx vitest run 2>&1 | tail -5  (verificaciones periódicas)
+  ```
+- **Archivos tocados:**
+  - frontend/src/files/FilesPage.tsx (nuevo, 221 líneas)
+  - frontend/src/files/FilesPage.test.tsx (nuevo, 147 líneas)
+  - frontend/src/files/fileReferences.ts (nuevo, 54 líneas)
+  - frontend/src/files/uploadFile.ts (actualizado, tipos + función listVaultFiles)
+  - frontend/src/editor/NoteEditor.tsx (label e importes actualizados)
+  - frontend/src/editor/NoteEditor.test.tsx (2 tests actualizados)
+  - frontend/src/App.tsx (ruta /files agregada, import FilesPage)
+  - frontend/src/layout/AppLayout.tsx (enlace "Archivos" en nav)
+  - frontend/src/App.test.tsx (test de ruta /files agregado)
+- **Estado:** `implemented`. Pendiente: (a) verificación visual en navegador real (AIRA), (b) completar confirmaciones (ConfirmDialog), (c) implementar cambio de visibilidad/borrado con API, (d) agregar comando insertLink en editor para documentos, (e) renombrar en línea o diálogo.
+- **Próximo paso:** AIRA revisa, hace merge a feature/sprint-1-auth, ve funcionando en navegador real (table con real pdfs, excels, htmls), verifica confirmaciones y referencias. Cierra sin marcar `verified` (falta checkpoint demostrable en producción con Carlos).
+
