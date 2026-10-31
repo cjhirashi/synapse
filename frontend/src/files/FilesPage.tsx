@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import { listVaultFiles, type VaultFile, fileUrl } from "./uploadFile";
+import { getFileReferencesCount } from "./fileReferences";
 
 type Status = "loading" | "ready" | "error";
 
@@ -25,13 +26,21 @@ function getFileTypeName(contentType: string): string {
 }
 
 export default function FilesPage() {
-  const { vaults } = useSync();
+  const { vaults, notes } = useSync();
   const [allVaults, setAllVaults] = useState<Vault[]>([]);
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [status, setStatus] = useState<Status>("loading");
   const [notice, setNotice] = useState<{ kind: "status" | "alert"; text: string } | null>(null);
+
+  // Calcula referencias de archivos en la réplica local (C-9)
+  const filesWithReferences = useMemo(() => {
+    return files.map((file) => ({
+      ...file,
+      references_count: getFileReferencesCount(file.id, notes),
+    }));
+  }, [files, notes]);
 
   function handleDownload(file: VaultFile) {
     window.open(fileUrl(file.id), "_blank");
@@ -105,7 +114,7 @@ export default function FilesPage() {
       {status === "error" && <div role="alert">No se pudo cargar la lista.</div>}
       {status === "ready" && files.length === 0 && <p>La lista está vacía.</p>}
 
-      {status === "ready" && files.length > 0 && (
+      {status === "ready" && filesWithReferences.length > 0 && (
         <>
           <div>
             <label htmlFor="search-files">Buscar:</label>
@@ -130,7 +139,7 @@ export default function FilesPage() {
               </tr>
             </thead>
             <tbody>
-              {files
+              {filesWithReferences
                 .filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
                 .map((file) => (
                   <tr key={file.id}>

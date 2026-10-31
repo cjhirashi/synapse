@@ -40,6 +40,7 @@ describe("FilesPage", () => {
   it("renders heading and vault selector (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
@@ -56,6 +57,7 @@ describe("FilesPage", () => {
     );
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
@@ -68,6 +70,7 @@ describe("FilesPage", () => {
   it("shows empty state when no files (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
@@ -81,6 +84,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockRejectedValue(new Error("Network error"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
@@ -94,6 +98,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
@@ -110,15 +115,16 @@ describe("FilesPage", () => {
     expect(screen.getByText("PDF")).toBeInTheDocument();
     expect(screen.getByText("Excel")).toBeInTheDocument();
 
-    // Must show reference count (C-9)
+    // Must show reference count (C-9) — 0 because notes map is empty
     const row = pdfRow.closest("tr");
-    expect(row?.textContent).toContain("2");
+    expect(row?.textContent).toContain("0");
   });
 
   it("filters files by name search (C-7)", async () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     const user = userEvent.setup();
     render(
@@ -147,6 +153,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
     });
     render(
       <WithSync value={value}>
