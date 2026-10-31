@@ -6,6 +6,9 @@ import {
   renameFile,
   setFileVisibility,
   deleteFile,
+  uploadFile,
+  UploadTypeError,
+  UploadTooLargeError,
   type VaultFile,
   fileUrl,
 } from "./uploadFile";
@@ -171,6 +174,30 @@ export default function FilesPage() {
     }
   }
 
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !selectedVaultId) return;
+
+    try {
+      const uploaded = await uploadFile(file, selectedVaultId);
+      setFiles((prev) => [{ ...uploaded, references_count: 0 }, ...prev]);
+      setNotice({ kind: "status", text: `"${file.name}" subido.` });
+      setTimeout(() => setNotice(null), 3000);
+      // Reset input so the same file can be uploaded again
+      e.target.value = "";
+    } catch (err) {
+      let msg = "No se pudo subir el archivo.";
+      if (err instanceof UploadTypeError) {
+        msg = "Tipo de archivo no admitido.";
+      } else if (err instanceof UploadTooLargeError) {
+        msg = "El archivo es demasiado grande.";
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      setNotice({ kind: "alert", text: msg });
+    }
+  }
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -222,6 +249,21 @@ export default function FilesPage() {
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => {
+              const input = document.querySelector<HTMLInputElement>("#file-upload-input");
+              input?.click();
+            }}
+          >
+            Subir archivo
+          </button>
+          <input
+            id="file-upload-input"
+            type="file"
+            style={{ display: "none" }}
+            onChange={(e) => void handleUpload(e)}
+          />
         </div>
       )}
 

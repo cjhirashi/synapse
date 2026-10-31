@@ -6,6 +6,7 @@ import { WithSync, syncValue } from "../test-utils/sync";
 import * as uploadFileModule from "./uploadFile";
 
 import type { VaultFile } from "./uploadFile";
+import { UploadTypeError, UploadTooLargeError } from "./uploadFile";
 
 const SAMPLE_VAULT = { id: "vault-1", name: "Mi bóveda", icon: "", color: "", deleted_at: null, rev: "1" };
 
@@ -309,6 +310,109 @@ describe("FilesPage", () => {
 
     const confirmBtn = screen.getByRole("button", { name: /Guardar|OK|Aceptar/i });
     await user.click(confirmBtn);
+
+    // Error notice must appear
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  });
+
+  it("upload button opens file input (C-7, C-11)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    await screen.findByText("documento.pdf");
+    const uploadBtn = screen.getByRole("button", { name: /Subir archivo/i });
+    expect(uploadBtn).toBeInTheDocument();
+
+    // File input should be hidden but exist
+    const fileInput = document.querySelector<HTMLInputElement>("#file-upload-input");
+    expect(fileInput).toBeTruthy();
+    expect(fileInput?.type).toBe("file");
+  });
+
+  it("upload valid file updates list (C-7, C-11)", async () => {
+    const newFile: VaultFile = {
+      id: "file-3",
+      vault_id: "vault-1",
+      name: "contrato.pdf",
+      content_type: "application/pdf",
+      size: 2048,
+      visibility: "private",
+      created_at: "2026-10-31T12:00:00Z",
+    };
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "uploadFile").mockResolvedValue(newFile);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    await screen.findByText("documento.pdf");
+    const fileInput = document.querySelector<HTMLInputElement>("#file-upload-input");
+    expect(fileInput).toBeTruthy();
+    const pdfFile = new File(["pdf content"], "contrato.pdf", { type: "application/pdf" });
+    await user.upload(fileInput!, pdfFile);
+
+    // New file should appear in list
+    await screen.findByText("contrato.pdf");
+    expect(uploadFileModule.uploadFile).toHaveBeenCalled();
+  });
+
+  it("upload rejects invalid file type with error notice (C-11)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTypeError("Tipo no admitido"));
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    await screen.findByText("documento.pdf");
+    const fileInput = document.querySelector<HTMLInputElement>("#file-upload-input");
+    const exeFile = new File(["exe"], "malware.exe", { type: "application/x-msdownload" });
+    await user.upload(fileInput!, exeFile);
+
+    // Error notice must appear
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  });
+
+  it("upload rejects file too large with error notice (C-11)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTooLargeError("Archivo muy grande"));
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: new Map(),
+    });
+    const user = userEvent.setup();
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    await screen.findByText("documento.pdf");
+    const fileInput = document.querySelector<HTMLInputElement>("#file-upload-input");
+    const bigFile = new File([new Uint8Array(30 * 1024 * 1024)], "grande.pdf", { type: "application/pdf" });
+    await user.upload(fileInput!, bigFile);
 
     // Error notice must appear
     await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
