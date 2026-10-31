@@ -823,3 +823,51 @@ describe("MilkdownView · comando de imagen (H-015)", () => {
     );
   });
 });
+
+// H-016 C-10: comando `insertLink` para insertar un enlace en el cursor.
+describe("MilkdownView · comando de enlace (H-016)", () => {
+  async function mountLink() {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    render(
+      <MilkdownView
+        value=""
+        readOnly={false}
+        onChange={() => {}}
+        label="Visual"
+        registerCommands={(c) => (commands = c)}
+        onView={(v) => (view = v)}
+      />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as EditorCommands, view: view as unknown as EditorView };
+  }
+
+  it("inserta un enlace con href y texto (C-1) y una URL https se pinta (safeLinkUrl la deja pasar, C-4)", async () => {
+    const { commands, view } = await mountLink();
+    const url = "https://synapse.cjhirashi.com/files/abc123";
+    const text = "contrato";
+    act(() => commands.insertLink(url, text));
+
+    // Verifica que el texto contiene el texto insertado
+    expect(view.state.doc.textContent).toContain(text);
+
+    // Verifica que la marca de enlace está aplicada: busca la marca sobre el nodo de texto
+    let hasLinkMark = false;
+    view.state.doc.descendants((node, pos) => {
+      if (node.text === text) {
+        const marks = node.marks;
+        hasLinkMark = marks.some((m) => m.type.name === "link" && m.attrs.href === url);
+      }
+    });
+    expect(hasLinkMark).toBe(true);
+
+    // https pasa `safeLinkUrl` sin cambios: el `<a>` del DOM lleva el href.
+    await waitFor(() =>
+      expect(view.dom.querySelector("a:not(.ProseMirror-separator)")?.getAttribute("href")).toBe(url),
+    );
+    // El texto visible es el pasado
+    expect(view.dom.querySelector("a:not(.ProseMirror-separator)")?.textContent).toBe(text);
+  });
+});
