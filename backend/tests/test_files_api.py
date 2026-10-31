@@ -197,3 +197,371 @@ def test_upload_without_session_is_401(ready_admin, storage):
     anon.headers.pop("Authorization", None)
     res = anon.post("/files", data={"vault_id": vault_id}, files={"file": ("a.png", PNG, "image/png")})
     assert_problem(res, 401, "not-authenticated")
+
+
+# --- C-4: GET /vaults/{vault_id}/files lista archivos de la bóveda ---
+
+def test_c4_list_vault_files_empty(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = ready_admin.get(f"/vaults/{vault_id}/files")
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["files"] == [] and body["total"] == 0
+
+
+def test_c4_list_vault_files_in_created_at_desc_order(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    # Subir 3 archivos, tienen created_at diferentes por el tiempo que pasa
+    ids = []
+    for i in range(3):
+        res = _upload(ready_admin, vault_id, filename=f"file{i}.png")
+        assert res.status_code == 201
+        ids.append(res.json()["id"])
+
+    res = ready_admin.get(f"/vaults/{vault_id}/files")
+    assert res.status_code == 200
+    files = res.json()["files"]
+    assert len(files) == 3
+    # Verificar que están en orden descendente (más reciente primero)
+    returned_ids = [f["id"] for f in files]
+    assert returned_ids == list(reversed(ids))
+
+
+def test_c4_list_vault_files_with_pagination(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    # Subir 5 archivos
+    for i in range(5):
+        _upload(ready_admin, vault_id, filename=f"file{i}.png")
+
+    # Pedir limit=2, offset=0
+    res = ready_admin.get(f"/vaults/{vault_id}/files?limit=2&offset=0")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["total"] == 5 and len(body["files"]) == 2
+    assert body["limit"] == 2 and body["offset"] == 0
+
+
+def test_c4_list_vault_files_offset(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    # Subir 3 archivos
+    ids = []
+    for i in range(3):
+        res = _upload(ready_admin, vault_id, filename=f"file{i}.png")
+        ids.append(res.json()["id"])
+
+    # Pedir offset=1, limit=2
+    res = ready_admin.get(f"/vaults/{vault_id}/files?limit=2&offset=1")
+    body = res.json()
+    assert len(body["files"]) == 2 and body["offset"] == 1
+
+
+def test_c4_list_vault_files_404_if_not_owned(ready_admin, db, storage):
+    guest = _guest(ready_admin, db)
+    guest_vault = _vault(guest)
+    # El admin intenta listar archivos del vault del guest
+    assert_problem(ready_admin.get(f"/vaults/{guest_vault}/files"), 404, "vault-not-found")
+
+
+def test_c4_list_vault_files_does_not_include_other_users_files(ready_admin, db, storage):
+    guest = _guest(ready_admin, db)
+    admin_vault = _vault(ready_admin)
+    guest_vault = _vault(guest)
+
+    # Admin sube archivo a su bóveda
+    _upload(ready_admin, admin_vault, filename="admin.png")
+    # Guest sube archivo a su bóveda
+    _upload(guest, guest_vault, filename="guest.png")
+
+    # Admin lista su bóveda: debe ver solo su archivo
+    res = ready_admin.get(f"/vaults/{admin_vault}/files")
+    files = res.json()["files"]
+    assert len(files) == 1 and files[0]["name"] == "admin.png"
+
+
+# --- C-5: PATCH /files/{id} con name ---
+
+def test_c5_rename_file(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="old.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "new.png"})
+    assert res.status_code == 200
+    assert res.json()["name"] == "new.png"
+
+
+def test_c5_rename_invalid_name_with_slash(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "path/to/file.png"})
+    assert_problem(res, 415, "unsupported-file-type")
+
+
+def test_c5_rename_invalid_name_with_backslash(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "path\\to\\file.png"})
+    assert_problem(res, 415, "unsupported-file-type")
+
+
+def test_c5_rename_invalid_name_with_control_char(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "file\x00.png"})
+    assert_problem(res, 415, "unsupported-file-type")
+
+
+def test_c5_rename_cannot_change_to_blocked_extension(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "file.exe"})
+    assert_problem(res, 415, "unsupported-file-type")
+
+
+def test_c5_rename_non_owner_gets_404(ready_admin, db, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    guest = _guest(ready_admin, db)
+    assert_problem(guest.patch(f"/files/{file_id}", json={"name": "new.png"}), 404, "file-not-found")
+
+
+def test_c5_rename_and_visibility_together(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "new.png", "visibility": "public"})
+    assert res.status_code == 200
+    body = res.json()
+    assert body["name"] == "new.png" and body["visibility"] == "public"
+
+
+# --- C-6: DELETE /files/{id} ---
+
+def test_c6_delete_file_removes_object_and_record(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png")
+    file_id = res.json()["id"]
+
+    # El objeto está en el fake (hay exactamente 1)
+    assert len(storage.objects) == 1
+    object_key = list(storage.objects.keys())[0]
+
+    # Borrar
+    res = ready_admin.delete(f"/files/{file_id}")
+    assert res.status_code == 204
+
+    # El objeto se fue del fake
+    assert object_key not in storage.objects
+    assert len(storage.objects) == 0
+
+    # El registro se fue de la base (GET retorna 404)
+    assert_problem(ready_admin.get(f"/files/{file_id}"), 404, "file-not-found")
+
+
+def test_c6_delete_non_owner_gets_404(ready_admin, db, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png").json()["id"]
+    guest = _guest(ready_admin, db)
+    assert_problem(guest.delete(f"/files/{file_id}"), 404, "file-not-found")
+
+
+def test_c6_delete_fails_if_storage_fails_but_record_survives(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png")
+    file_id = res.json()["id"]
+
+    # Simular que el almacén falla durante DELETE: borrar el objeto del fake
+    object_key = list(storage.objects.keys())[0]
+    del storage.objects[object_key]
+
+    # Intentar borrar el archivo
+    res = ready_admin.delete(f"/files/{file_id}")
+    # Debe retornar error (storage unavailable)
+    assert res.status_code == 503, res.text
+
+    # El registro debe seguir existiendo (según spec C-6: "Si MinIO falla, el registro se conserva")
+    # Pero GET también falla porque el objeto no está en el almacén
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 503  # StorageUnavailable
+
+
+# --- C-3: Cabeceras de GET /files/{id} por tipo ---
+
+PDF = b"%PDF-1.4" + b"\x00" * 32
+DOCX = b"PK\x03\x04" + b"\x00" * 100  # ZIP válido pero sin word/
+HTML_DATA = b"<html><body>test</body></html>"
+TXT_DATA = b"hello world"
+
+
+def test_c3_png_has_inline_disposition(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="image.png").json()["id"]
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    assert res.headers["content-disposition"] == "inline"
+    assert res.headers["x-content-type-options"] == "nosniff"
+
+
+def test_c3_pdf_has_inline_disposition(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, data=PDF, filename="doc.pdf", content_type="application/pdf")
+    assert res.status_code == 201
+    file_id = res.json()["id"]
+
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    assert res.headers["content-disposition"] == "inline"
+    assert res.headers["x-content-type-options"] == "nosniff"
+
+
+def test_c3_html_has_inline_with_csp_sandbox(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, data=HTML_DATA, filename="page.html", content_type="text/html")
+    assert res.status_code == 201
+    file_id = res.json()["id"]
+
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    assert res.headers["content-disposition"] == "inline"
+    csp = res.headers["content-security-policy"]
+    assert "sandbox" in csp and "allow-scripts" in csp and "connect-src 'none'" in csp
+    assert res.headers["x-content-type-options"] == "nosniff"
+
+
+def test_c3_txt_has_attachment_disposition(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, data=TXT_DATA, filename="readme.txt", content_type="text/plain")
+    assert res.status_code == 201
+    file_id = res.json()["id"]
+
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    # TXT no está en _INLINE_TYPES, así que debe ser attachment
+    assert "attachment" in res.headers["content-disposition"]
+    assert res.headers["x-content-type-options"] == "nosniff"
+
+
+def test_c3_private_file_has_cache_control(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="image.png").json()["id"]
+    # El archivo es privado por defecto
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    assert res.headers["cache-control"] == "private, no-store"
+
+
+def test_c3_public_file_no_cache_control(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="image.png").json()["id"]
+    # Cambiar a público
+    ready_admin.patch(f"/files/{file_id}", json={"visibility": "public"})
+
+    res = ready_admin.get(f"/files/{file_id}")
+    assert res.status_code == 200
+    # Público no debe tener Cache-Control: private, no-store
+    assert "cache-control" not in res.headers or "private" not in res.headers["cache-control"]
+
+
+# --- C-5/C-11: Límites por tipo ---
+
+def test_c11_document_larger_than_25mb_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    big_doc = PDF + b"\x00" * (25 * 1024 * 1024 + 1)
+    res = _upload(ready_admin, vault_id, data=big_doc, filename="big.pdf")
+    assert_problem(res, 413, "file-too-large")
+    # No debe crear nada en el fake
+    assert storage.objects == {}
+
+
+def test_c11_document_exactly_25mb_is_accepted(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    doc_25mb = PDF + b"\x00" * (25 * 1024 * 1024 - len(PDF))
+    res = _upload(ready_admin, vault_id, data=doc_25mb, filename="exact.pdf")
+    assert res.status_code == 201
+
+
+# --- C-2: Seguridad por firma ---
+
+def test_c2_exe_renamed_to_pdf_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    exe_data = b"MZ" + b"\x00" * 100
+    res = _upload(ready_admin, vault_id, data=exe_data, filename="evil.pdf")
+    assert_problem(res, 415, "unsupported-file-type")
+    assert storage.objects == {}
+
+
+def test_c2_script_shebang_renamed_to_txt_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    script_data = b"#!/bin/bash\necho hello"
+    res = _upload(ready_admin, vault_id, data=script_data, filename="script.txt")
+    assert_problem(res, 415, "unsupported-file-type")
+    assert storage.objects == {}
+
+
+# --- C-12: API key de agente aplica misma regla de dueño ---
+
+def test_c12_key_cannot_list_foreign_vault_files(ready_admin, db, storage):
+    guest = _guest(ready_admin, db)
+    guest_vault = _vault(guest)
+    _upload(guest, guest_vault, filename="guest.png")
+
+    admin_key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, admin_key)
+
+    # El agente del admin intenta listar la bóveda del guest
+    assert_problem(agent.get(f"/vaults/{guest_vault}/files"), 404, "vault-not-found")
+
+
+def test_c12_key_cannot_rename_foreign_file(ready_admin, db, storage):
+    guest = _guest(ready_admin, db)
+    guest_vault = _vault(guest)
+    file_id = _upload(guest, guest_vault, filename="guest.png").json()["id"]
+
+    admin_key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, admin_key)
+
+    # El agente del admin intenta renombrar el archivo del guest
+    assert_problem(agent.patch(f"/files/{file_id}", json={"name": "new.png"}), 404, "file-not-found")
+
+
+def test_c12_key_cannot_delete_foreign_file(ready_admin, db, storage):
+    guest = _guest(ready_admin, db)
+    guest_vault = _vault(guest)
+    file_id = _upload(guest, guest_vault, filename="guest.png").json()["id"]
+
+    admin_key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, admin_key)
+
+    # El agente del admin intenta borrar el archivo del guest
+    assert_problem(agent.delete(f"/files/{file_id}"), 404, "file-not-found")
+
+
+def test_c12_key_can_list_own_vault_files(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="own.png").json()["id"]
+
+    key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, key)
+
+    res = agent.get(f"/vaults/{vault_id}/files")
+    assert res.status_code == 200
+    assert len(res.json()["files"]) == 1
+
+
+def test_c12_key_can_rename_own_file(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="own.png").json()["id"]
+
+    key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, key)
+
+    res = agent.patch(f"/files/{file_id}", json={"name": "renamed.png"})
+    assert res.status_code == 200
+
+
+def test_c12_key_can_delete_own_file(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="own.png").json()["id"]
+
+    key = create_agent_key(ready_admin, "aira").json()["key"]
+    agent = _bearer_client(ready_admin, key)
+
+    res = agent.delete(f"/files/{file_id}")
+    assert res.status_code == 204
