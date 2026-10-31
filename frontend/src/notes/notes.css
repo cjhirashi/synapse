@@ -309,12 +309,16 @@
   padding: 0;
 }
 
-/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). */
+/* El árbol tiene scroll propio: con miles de notas la página no crece con él (VU-4). Una sola columna del
+   ancho de su fila más ancha: cada fila se estira a ella, así su fondo cubre el ancho visible también
+   desplazado (H-023 C-2). */
 .note-tree {
   flex: 1 1 auto;
   min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr);
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: auto;
 }
 
 .note-tree-item {
@@ -363,11 +367,9 @@
   color: var(--vault-icon-color, var(--warning));
 }
 
-/* Nombre en una línea, con elipsis si no cabe (el nombre completo va en `title`, RF-010). */
+/* Nombre en una línea sin elipsis: el árbol desplaza en horizontal en vez de recortarlo (H-023 C-1). */
 .note-tree-name {
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -488,15 +490,46 @@
   position: relative;
 }
 
-/* Barra lateral: 240 px, fondo `--bg-secondary` y borde derecho, pegada al riel (R-6, R-10, R-15). */
+/* Barra lateral: 240 px salvo `--side-width` (H-023: la página la fija en escritorio), fondo `--bg-secondary`
+   y borde derecho, pegada al riel (R-6, R-10, R-15). `relative` ancla el asa de redimensión. */
 .vault-workspace-side {
+  position: relative;
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 240px;
+  width: var(--side-width, 240px);
   min-height: 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
+}
+
+/* Asa de la orilla derecha (H-023 C-4): 6 px pegados FUERA del borde de la barra, para no tapar la barra
+   vertical del árbol (8 px, H-022); el z-index la mantiene sobre el panel del editor, que se pinta después.
+   `touch-action: none` impide que un arrastre táctil se convierta en desplazamiento de la página. */
+.sidebar-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  bottom: 0;
+  z-index: 5;
+  width: 6px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--accent-soft);
+}
+
+.sidebar-resize-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Durante el arrastre el cursor no cambia al salir del asa y el texto de debajo no se selecciona (H-023 C-4). */
+body.is-resizing {
+  cursor: col-resize;
+  user-select: none;
 }
 
 /* Cabecera de la barra (R-7, 51 px): carpeta abierta en acento + nombre de la bóveda con elipsis. */

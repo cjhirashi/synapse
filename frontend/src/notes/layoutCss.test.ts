@@ -25,6 +25,17 @@ test("RNF-001: el árbol de notas tiene scroll vertical propio", () => {
   expect(rule(read("notes.css"), ".note-tree")).toMatch(/overflow-y: auto/);
 });
 
+// H-023 C-1/C-2: una sola columna del ancho de la fila más ancha; cada fila se estira a ella, así su fondo
+// cubre el ancho visible aunque el árbol esté desplazado. `minmax(max-content, 1fr)` y no
+// `minmax(100%, max-content)`: en navegador real la pista no crece sobre el ancho del contenedor y todas
+// las filas quedaban de 239 px con el texto desbordado.
+test("H-023 C-1/C-2: el árbol desplaza en horizontal con una columna del ancho de su fila más ancha", () => {
+  const tree = rule(read("notes.css"), ".note-tree");
+  expect(tree).toMatch(/overflow-x: auto/);
+  expect(tree).toMatch(/display: grid/);
+  expect(tree).toMatch(/grid-template-columns: minmax\(max-content, 1fr\)/);
+});
+
 test("RF-009: el marco de la app mide el viewport y cada columna hace su propio scroll", () => {
   const layout = read("../layout/AppLayout.css");
   expect(rule(layout, ".app-shell")).toMatch(/height: 100dvh/);
@@ -55,12 +66,39 @@ test("RF-003: el formulario «Nueva nota» y el panel del árbol tienen fondos d
   const notes = read("notes.css");
   expect(rule(notes, ".note-sidebar-new")).toMatch(/background: var\(--bg-tertiary\)/);
   expect(rule(notes, ".note-tree-panel")).toMatch(/background: var\(--bg-secondary\)/);
-  expect(rule(notes, ".vault-workspace-side")).toMatch(/width: 240px/);
+  expect(rule(notes, ".vault-workspace-side")).toMatch(/width: var\(--side-width, 240px\)/);
 });
 
-test("RF-010: el nombre de una fila se recorta con elipsis en una sola línea", () => {
+// H-023 C-4/C-9: el asa va anclada a la orilla de la barra, que toma su ancho de la variable que pone la
+// página en escritorio; el panel del editor se encoge (min-width: 0) y no fuerza scroll horizontal.
+test("H-023 C-9: la barra ancla el asa y el panel del editor absorbe el cambio de ancho", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, ".vault-workspace-side")).toMatch(/position: relative/);
+  expect(rule(notes, ".vault-workspace-main")).toMatch(/min-width: 0/);
+});
+
+// El asa va FUERA de la barra (a la derecha de su borde): dentro taparía la barra vertical del árbol (8 px).
+test("H-023 C-4: el asa queda junto al borde derecho de la barra, sin tapar su barra de scroll", () => {
+  const notes = read("notes.css");
+  const handle = rule(notes, ".sidebar-resize-handle");
+  expect(handle).toMatch(/position: absolute/);
+  expect(handle).toMatch(/right: -6px/);
+  expect(handle).toMatch(/width: 6px/);
+  expect(handle).toMatch(/z-index: \d+/);
+  expect(handle).toMatch(/cursor: col-resize/);
+  expect(handle).toMatch(/touch-action: none/);
+});
+
+test("H-023 C-4: durante el arrastre el cursor es de redimensión y el texto no se selecciona", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, "body.is-resizing")).toMatch(/cursor: col-resize/);
+  expect(rule(notes, "body.is-resizing")).toMatch(/user-select: none/);
+});
+
+// H-023 C-1 retira el elipsis de RF-010 en el árbol: el nombre completo se lee desplazando.
+test("H-023 C-1: el nombre de una fila va en una sola línea y sin elipsis", () => {
   const name = rule(read("notes.css"), ".note-tree-name");
-  expect(name).toMatch(/text-overflow: ellipsis/);
+  expect(name).not.toMatch(/overflow/);
   expect(name).toMatch(/white-space: nowrap/);
   expect(name).toMatch(/min-width: 0/);
 });

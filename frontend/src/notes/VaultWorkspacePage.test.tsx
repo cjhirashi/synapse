@@ -671,16 +671,19 @@ test("H-006 C-5: cada bóveda lleva su propio color a la sidebar", async () => {
 // `useMediaQuery` ("(max-width: 640px)") decide el modo. El matchMedia de jsdom (test-setup) es fijo
 // (`matches:false`); aquí se instala uno CONTROLABLE (mismo patrón que useTheme.test.tsx) que permite
 // fijar el ancho inicial y DISPARAR el cruce de breakpoint (C-7) llamando a los oyentes registrados.
-let currentViewport: { setMobile: (next: boolean) => void; restore: () => void } | null = null;
+let currentViewport: { setMobile: (next: boolean) => void; setDesktop: (next: boolean) => void; restore: () => void } | null = null;
 
-function installViewport(initialMobile: boolean) {
+function installViewport(initialMobile: boolean, initialDesktop = false) {
   let mobile = initialMobile;
+  let desktop = initialDesktop;
   const listeners = new Set<() => void>();
   const original = window.matchMedia;
+  const notify = () => act(() => listeners.forEach((fn) => fn()));
   window.matchMedia = ((query: string) =>
     ({
-      // Las queries de la app son "(max-width: 640px)": `matches` = móvil. Cualquier otra → false.
+      // Las queries de la app son "(max-width: 640px)" (móvil) y "(min-width: 1024px)" (escritorio).
       get matches() {
+        if (query.includes("1024")) return desktop;
         return query.includes("640") ? mobile : false;
       },
       media: query,
@@ -694,7 +697,11 @@ function installViewport(initialMobile: boolean) {
   currentViewport = {
     setMobile(next: boolean) {
       mobile = next;
-      act(() => listeners.forEach((fn) => fn()));
+      notify();
+    },
+    setDesktop(next: boolean) {
+      desktop = next;
+      notify();
     },
     restore() {
       window.matchMedia = original;
@@ -883,4 +890,89 @@ test("H-009 C-7: cruzar el breakpoint recalcula el modo sin cerrar la nota abier
   expect(sideEl(container)).toHaveAttribute("data-floating");
   expect(sideEl(container)).not.toHaveAttribute("data-open");
   expect(screen.getByRole("heading", { level: 2, name: "Hola" })).toBeInTheDocument();
+});
+
+// --- H-023: ancho ajustable de la barra en escritorio (≥ 1024 px) ----------------------------------
+
+const SIDE_WIDTH_KEY = "synapse.sidebar-width";
+
+/** El ancho que la página fija a la barra como variable CSS (vacío = sin variable, 240 px por CSS). */
+const sideWidth = (container: HTMLElement) => sideEl(container).style.getPropertyValue("--side-width");
+
+const resizeHandle = (container: HTMLElement) => within(sideEl(container)).queryByRole("separator");
+
+test("H-023 C-4: en escritorio la barra tiene un asa en su orilla y ancho de 240 px", async () => {
+  installViewport(false, true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  expect(resizeHandle(container)).toHaveAttribute("aria-valuenow", "240");
+  expect(sideWidth(container)).toBe("240px");
+});
+
+test("H-023 C-4/C-7: el ancho ajustado con el teclado llega a la barra y se guarda", async () => {
+  installViewport(false, true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  fireEvent.keyDown(resizeHandle(container)!, { key: "ArrowRight" });
+
+  expect(sideWidth(container)).toBe("256px");
+  expect(localStorage.getItem(SIDE_WIDTH_KEY)).toBe("256");
+});
+
+test.each([
+  ["tableta (800 px)", false],
+  ["móvil (≤ 640 px)", true],
+])("H-023 C-6: en %s no hay asa ni variable de ancho", async (_name, mobile) => {
+  installViewport(mobile, false);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  expect(resizeHandle(container)).toBeNull();
+  expect(sideWidth(container)).toBe("");
+});
+
+test("H-023 C-8: ocultar y volver a mostrar la barra conserva el ancho elegido", async () => {
+  installViewport(false, true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  fireEvent.keyDown(resizeHandle(container)!, { key: "ArrowRight" });
+
+  await userEvent.click(toggle());
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
+  await userEvent.click(toggle());
+
+  expect(sideWidth(container)).toBe("256px");
+  expect(resizeHandle(container)).not.toBeNull();
+});
+
+test("H-023 C-7: el ancho guardado se aplica al montar la barra", async () => {
+  installViewport(false, true);
+  localStorage.setItem(SIDE_WIDTH_KEY, "336");
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+
+  expect(sideWidth(container)).toBe("336px");
+});
+
+test("H-023 C-7: al cruzar el umbral de escritorio el ancho se quita y vuelve al regresar", async () => {
+  const vp = installViewport(false, true);
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  fireEvent.keyDown(resizeHandle(container)!, { key: "ArrowRight" });
+
+  vp.setDesktop(false);
+  expect(sideWidth(container)).toBe("");
+  expect(resizeHandle(container)).toBeNull();
+
+  vp.setDesktop(true);
+  expect(sideWidth(container)).toBe("256px");
+  expect(resizeHandle(container)).not.toBeNull();
 });

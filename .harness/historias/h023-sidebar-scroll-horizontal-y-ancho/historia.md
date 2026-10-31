@@ -1,7 +1,7 @@
 ---
 id: H-023
 titulo: Sidebar de archivos con scroll horizontal y ancho ajustable en escritorio
-estado: refined # Gate 1 pasado (Carlos, 2026-10-30: «Así es», P-1..P-3 confirmadas); pedido 2026-10-30
+estado: implemented # Gate 1 pasado (Carlos, 2026-10-30: «Así es», P-1..P-3 confirmadas); implementada 2026-10-30 (TDD, 5 pasos)
 covers:
   - frontend/src/notes/notes.css
   - frontend/src/notes/NoteSidebar.tsx
@@ -9,6 +9,8 @@ covers:
   - frontend/src/notes/VaultWorkspacePage.tsx
   - frontend/src/notes/SidebarResizeHandle.tsx
   - frontend/src/notes/SidebarResizeHandle.test.tsx
+  - frontend/src/notes/useSidebarWidth.ts
+  - frontend/src/notes/useSidebarWidth.test.ts
   - frontend/src/notes/layoutCss.test.ts
 origen: pedido de Carlos 2026-10-30
 ---
