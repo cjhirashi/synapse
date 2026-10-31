@@ -109,3 +109,42 @@ export async function listVaultFiles(vaultId: string): Promise<VaultFile[]> {
   const res = await request(`/vaults/${vaultId}/files`);
   return res.json();
 }
+
+/**
+ * Renombra un archivo (PATCH /files/{id}, C-5). Valida el nombre en cliente:
+ * sin separadores de ruta (/ o \), entre 1 y 255 caracteres.
+ */
+export async function renameFile(fileId: string, newName: string): Promise<UploadedFile> {
+  if (!newName || newName.length > 255) {
+    throw new Error(`Nombre inválido: debe tener entre 1 y 255 caracteres`);
+  }
+  if (newName.includes("/") || newName.includes("\\")) {
+    throw new Error(`Nombre inválido: no puede contener / o \\`);
+  }
+  const res = await request(`/files/${fileId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: newName }),
+  });
+  return res.json();
+}
+
+/**
+ * Cambia la visibilidad de un archivo (PATCH /files/{id}, C-5, C-8).
+ */
+export async function setFileVisibility(fileId: string, visibility: "private" | "public"): Promise<UploadedFile> {
+  if (!["private", "public"].includes(visibility)) {
+    throw new Error(`Visibilidad inválida: debe ser 'private' o 'public'`);
+  }
+  const res = await request(`/files/${fileId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ visibility }),
+  });
+  return res.json();
+}
+
+/**
+ * Borra un archivo (DELETE /files/{id}, C-6). Solo el dueño puede borrar.
+ */
+export async function deleteFile(fileId: string): Promise<void> {
+  await request(`/files/${fileId}`, { method: "DELETE" });
+}
