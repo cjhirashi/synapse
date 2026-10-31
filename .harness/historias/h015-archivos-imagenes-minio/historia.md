@@ -131,7 +131,7 @@ Renombrar una bóveda no mueve nada porque la clave usa el id.
 
 Migración `006_files` (tabla `files`): `test_file_repository` ejercita el esquema sobre sqlite
 (`create_all`); la migración Alembic real sobre Postgres la corre AIRA al desplegar.
-Contrato OpenAPI del feature: `.harness/specs/h015-archivos-imagenes-minio/contracts/openapi.yaml`
+Contrato OpenAPI del feature: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml (H-016 absorbió el contrato de /files)`
 (verificado por `test_contract`).
 
 ## 8. Checkpoint demostrable

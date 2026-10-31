@@ -51,33 +51,19 @@ components:
       title: FileMetaOut
       type: object
     FileUpdate:
-      additionalProperties: false
       description: 'PATCH /files/{id}: actualizar name y/o visibility (C-5).'
       properties:
         name:
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Name
-          type: string
         visibility:
-          enum:
-          - private
-          - public
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Visibility
-          type: string
       title: FileUpdate
-      type: object
-    FileVisibilityUpdate:
-      additionalProperties: false
-      description: Cuerpo de `PATCH /files/{id}`; cualquier otro campo → 422 (C-8).
-      properties:
-        visibility:
-          enum:
-          - private
-          - public
-          title: Visibility
-          type: string
-      required:
-      - visibility
-      title: FileVisibilityUpdate
       type: object
     Problem:
       additionalProperties: false
@@ -130,6 +116,31 @@ components:
       required:
       - detail
       title: ProblemError
+      type: object
+    VaultFilesResponse:
+      description: 'GET /vaults/{vault_id}/files: lista paginada de archivos de la
+        bóveda.'
+      properties:
+        files:
+          items:
+            $ref: '#/components/schemas/FileMetaOut'
+          title: Files
+          type: array
+        limit:
+          title: Limit
+          type: integer
+        offset:
+          title: Offset
+          type: integer
+        total:
+          title: Total
+          type: integer
+      required:
+      - files
+      - total
+      - limit
+      - offset
+      title: VaultFilesResponse
       type: object
 info:
   title: Synapse
@@ -205,6 +216,7 @@ paths:
       - files
   /files/{file_id}:
     delete:
+      description: Borra el archivo (objeto + registro) solo si es del dueño (C-6).
       operationId: delete_file_files__file_id__delete
       parameters:
       - in: path
@@ -250,6 +262,11 @@ paths:
       tags:
       - files
     get:
+      description: 'Sirve un archivo (C-3). Regla de acceso: privado exige sesión/key
+        del dueño, público sin credencial.
+
+        Cabeceras por tipo: imágenes/PDF/HTML inline, resto attachment. HTML con CSP
+        sandbox.'
       operationId: get_file_files__file_id__get
       parameters:
       - in: path
@@ -295,6 +312,7 @@ paths:
       tags:
       - files
     patch:
+      description: Actualizar name y/o visibility del archivo (C-5). Solo el dueño.
       operationId: update_file_files__file_id__patch
       parameters:
       - in: path
@@ -328,6 +346,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: File not found
+        '415':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Unsupported file type
         '422':
           content:
             application/problem+json:
@@ -351,19 +375,26 @@ paths:
       - files
   /vaults/{vault_id}/files:
     get:
+      description: 'Lista archivos de la bóveda del usuario (C-4). 404 si la bóveda
+        no es suya.
+
+        Paginación: limit (1-100, def 50) + offset.'
       operationId: list_vault_files_vaults__vault_id__files_get
       parameters:
       - in: path
         name: vault_id
         required: true
         schema:
+          format: uuid
           title: Vault Id
           type: string
       - in: query
         name: limit
         required: false
         schema:
-          default: 100
+          default: 50
+          maximum: 100
+          minimum: 1
           title: Limit
           type: integer
       - in: query
@@ -371,6 +402,7 @@ paths:
         required: false
         schema:
           default: 0
+          minimum: 0
           title: Offset
           type: integer
       responses:
@@ -378,10 +410,7 @@ paths:
           content:
             application/json:
               schema:
-                items:
-                  $ref: '#/components/schemas/FileMetaOut'
-                title: Items
-                type: array
+                $ref: '#/components/schemas/VaultFilesResponse'
           description: Successful Response
         '401':
           content:
@@ -389,6 +418,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
         '404':
           content:
             application/problem+json:
@@ -407,12 +442,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Internal Server Error
-        '503':
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-          description: Storage unavailable
       summary: List Vault Files
       tags:
-      - files
+      - vaults
