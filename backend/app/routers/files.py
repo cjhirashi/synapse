@@ -61,6 +61,12 @@ _HTML_CSP_HEADERS = {
     ),
 }
 
+_SVG_CSP_HEADERS = {
+    "Content-Disposition": "inline",
+    "X-Content-Type-Options": "nosniff",
+    "Content-Security-Policy": "sandbox",
+}
+
 
 def _get_response_headers(record) -> dict[str, str]:
     """Genera cabeceras por tipo de archivo (C-3). Retorna dict para Response(headers=...)."""
@@ -68,6 +74,8 @@ def _get_response_headers(record) -> dict[str, str]:
 
     if record.content_type == HTML:
         headers.update(_HTML_CSP_HEADERS)
+    elif record.content_type == SVG:
+        headers.update(_SVG_CSP_HEADERS)
     elif record.content_type in _INLINE_TYPES:
         headers["Content-Disposition"] = "inline"
     else:

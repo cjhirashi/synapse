@@ -209,7 +209,7 @@ def resolve_content_type(data: bytes, ext: str) -> str | None:
 
     # ZIP (genérico y OOXML/ODF)
     if ext_lower == "zip":
-        if data.startswith(b"PK\x03\x04"):
+        if data.startswith(b"PK\x03\x04") or data.startswith(b"PK\x05\x06"):
             return ZIP
         return None
 

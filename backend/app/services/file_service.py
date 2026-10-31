@@ -12,7 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from app.adapters.file_repository import FileRepository
-from app.core.errors import FileNotFound, FileTooLarge, UnsafeSvg, UnsupportedFileType
+from app.core.errors import FileNotFound, FileTooLarge, UnsafeSvg, UnsupportedFileType, ValidationFailed
 from app.core.file_safety import SVG, is_safe_svg, resolve_content_type
 from app.core.models.file import File
 from app.core.ports.object_storage_port import ObjectStoragePort
@@ -26,13 +26,16 @@ MAX_FILE_SIZE = MAX_FILE_SIZE_IMAGE
 # Categorías de imagen (5 MB)
 _IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp", "svg"}
 
+# Valores válidos de visibilidad
+_VALID_VISIBILITIES = {"private", "public"}
+
 # Patrón para sanear nombres: sin separadores de ruta, sin control chars, 1-255 caracteres
 _INVALID_NAME_PATTERN = re.compile(r'[\x00-\x1f\x7f/\\]|^\s+|\s+$')
 
 
 def _sanitize_filename(name: str) -> str | None:
     """Sanea el nombre del archivo (C-5/C-11):
-    - Sin separadores de ruta (/ \)
+    - Sin separadores de ruta (/ \\)
     - Sin caracteres de control
     - Sin espacios en los extremos
     - 1-255 caracteres
@@ -137,7 +140,9 @@ class FileService:
 
     def set_visibility(self, file_id: str, visibility: str) -> File:
         """Cambia la visibilidad sólo si el archivo es del usuario autenticado (C-8); si no
-        existe o es de otro, `FileNotFound` (no revela que existe)."""
+        existe o es de otro, `FileNotFound` (no revela que existe). Rechaza visibilidad inválida."""
+        if visibility not in _VALID_VISIBILITIES:
+            raise ValidationFailed(f"visibilidad inválida: {visibility}")
         record = self._repo.set_visibility(file_id, self._owner_id, visibility)
         if record is None:
             raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")

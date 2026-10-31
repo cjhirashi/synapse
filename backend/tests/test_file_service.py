@@ -49,8 +49,9 @@ def test_too_large_is_rejected_and_nothing_is_stored(db):
 
 def test_unsupported_type_is_rejected_and_nothing_is_stored(db):
     service, storage = _service(db)
+    exe_data = b"MZ" + b"\x00" * 32  # ejecutable Windows
     with pytest.raises(UnsupportedFileType):
-        service.create(vault_id=VAULT, filename="doc.pdf", data=b"%PDF-1.7 not an image")
+        service.create(vault_id=VAULT, filename="malware.exe", data=exe_data)
     assert storage.objects == {}
 
 

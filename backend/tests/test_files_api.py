@@ -67,7 +67,8 @@ def test_c2_too_large_is_rejected(ready_admin, storage):
 
 def test_c2_unsupported_type_is_rejected(ready_admin, storage):
     vault_id = _vault(ready_admin)
-    res = _upload(ready_admin, vault_id, data=b"%PDF-1.7 nope", filename="d.pdf", content_type="application/pdf")
+    exe_data = b"MZ" + b"\x00" * 32  # ejecutable Windows
+    res = _upload(ready_admin, vault_id, data=exe_data, filename="malware.exe", content_type="application/octet-stream")
     assert_problem(res, 415, "unsupported-file-type")
     assert storage.objects == {}
 
