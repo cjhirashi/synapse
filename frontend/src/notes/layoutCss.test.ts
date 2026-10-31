@@ -26,12 +26,14 @@ test("RNF-001: el árbol de notas tiene scroll vertical propio", () => {
 });
 
 // H-023 C-1/C-2: una sola columna del ancho de la fila más ancha; cada fila se estira a ella, así su fondo
-// cubre el ancho visible aunque el árbol esté desplazado.
+// cubre el ancho visible aunque el árbol esté desplazado. `minmax(max-content, 1fr)` y no
+// `minmax(100%, max-content)`: en navegador real la pista no crece sobre el ancho del contenedor y todas
+// las filas quedaban de 239 px con el texto desbordado.
 test("H-023 C-1/C-2: el árbol desplaza en horizontal con una columna del ancho de su fila más ancha", () => {
   const tree = rule(read("notes.css"), ".note-tree");
   expect(tree).toMatch(/overflow-x: auto/);
   expect(tree).toMatch(/display: grid/);
-  expect(tree).toMatch(/grid-template-columns: minmax\(100%, max-content\)/);
+  expect(tree).toMatch(/grid-template-columns: minmax\(max-content, 1fr\)/);
 });
 
 test("RF-009: el marco de la app mide el viewport y cada columna hace su propio scroll", () => {
@@ -75,12 +77,14 @@ test("H-023 C-9: la barra ancla el asa y el panel del editor absorbe el cambio d
   expect(rule(notes, ".vault-workspace-main")).toMatch(/min-width: 0/);
 });
 
-test("H-023 C-4: el asa ocupa la orilla derecha de la barra con cursor de redimensión", () => {
+// El asa va FUERA de la barra (a la derecha de su borde): dentro taparía la barra vertical del árbol (8 px).
+test("H-023 C-4: el asa queda junto al borde derecho de la barra, sin tapar su barra de scroll", () => {
   const notes = read("notes.css");
   const handle = rule(notes, ".sidebar-resize-handle");
   expect(handle).toMatch(/position: absolute/);
-  expect(handle).toMatch(/right: 0/);
+  expect(handle).toMatch(/right: -6px/);
   expect(handle).toMatch(/width: 6px/);
+  expect(handle).toMatch(/z-index: \d+/);
   expect(handle).toMatch(/cursor: col-resize/);
   expect(handle).toMatch(/touch-action: none/);
 });

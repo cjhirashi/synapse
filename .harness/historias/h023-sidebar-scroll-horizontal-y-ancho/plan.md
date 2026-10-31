@@ -12,7 +12,7 @@ jsdom no calcula layout: C-1/C-2/C-9 se prueban como contrato de CSS (patrón `r
 ## Decisiones de diseño
 
 - **Todas las filas del ancho del contenido más ancho (C-2):** `ul.note-tree` pasa a
-  `display: grid; grid-template-columns: minmax(100%, max-content)`. La columna única mide
+  `display: grid; grid-template-columns: minmax(max-content, 1fr)`. La columna única mide
   `max(ancho visible, fila más ancha)` y cada `li`/fila se estira a ella, así el fondo de
   hover/selección cubre todo el ancho también con el árbol desplazado. Se mantiene
   `overflow-y: auto` y `overflow-x: auto` (antes `hidden`).
@@ -25,6 +25,10 @@ jsdom no calcula layout: C-1/C-2/C-9 se prueban como contrato de CSS (patrón `r
   variable CSS `--side-width` en `style` de `.vault-workspace-side` SOLO si es escritorio; la regla
   `.vault-workspace-side` usa `width: var(--side-width, 240px)`. En < 1024 px no se pone la
   variable (conserva 240 / ventana flotante de H-009, cuyo `@media (max-width: 640px)` sigue ganando).
+- **Corrección tras verificar en Chromium real (AIRA, 2026-10-30):** `minmax(100%, max-content)` (borrador) NO
+  estiraba las filas (la pista no crece sobre el contenedor: filas de 239 px con el texto desbordado); y el asa
+  con `right: 0` tapaba la barra vertical del árbol. Quedan `minmax(max-content, 1fr)` y el asa FUERA del borde
+  (`right: -6px`, `z-index`); el arrastre también termina con `pointercancel`.
 - **Asa:** `<div role="separator" aria-orientation="vertical" tabIndex=0>` como último hijo de
   `.vault-workspace-side` (que pasa a `position: relative`), 6 px de ancho pegada al borde derecho,
   `cursor: col-resize`, `touch-action: none`. Arrastre con `pointerdown` en el asa y

@@ -316,7 +316,7 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(100%, max-content);
+  grid-template-columns: minmax(max-content, 1fr);
   overflow-y: auto;
   overflow-x: auto;
 }
@@ -503,13 +503,15 @@
   background: var(--bg-secondary);
 }
 
-/* Asa de la orilla derecha (H-023 C-4): 6 px sobre el borde. `touch-action: none` impide que un arrastre
-   táctil se convierta en desplazamiento de la página. */
+/* Asa de la orilla derecha (H-023 C-4): 6 px pegados FUERA del borde de la barra, para no tapar la barra
+   vertical del árbol (8 px, H-022); el z-index la mantiene sobre el panel del editor, que se pinta después.
+   `touch-action: none` impide que un arrastre táctil se convierta en desplazamiento de la página. */
 .sidebar-resize-handle {
   position: absolute;
   top: 0;
-  right: 0;
+  right: -6px;
   bottom: 0;
+  z-index: 5;
   width: 6px;
   cursor: col-resize;
   touch-action: none;

@@ -19,15 +19,19 @@ export default function SidebarResizeHandle({ width, onChange, onReset }: Sideba
       onChange(clampSidebarWidth(startWidth + move.clientX - startX));
     }
 
+    // `pointercancel` también termina el arrastre: sin él, un gesto cancelado dejaría `is-resizing` (sin
+    // selección de texto, cursor fijo) pegado al cuerpo.
     function onPointerUp() {
       window.removeEventListener("pointermove", onPointerMove);
       window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
       document.body.classList.remove("is-resizing");
     }
 
     document.body.classList.add("is-resizing");
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {

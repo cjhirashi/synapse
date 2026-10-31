@@ -6,7 +6,7 @@ import { SIDEBAR_MAX, SIDEBAR_MIN, SIDEBAR_STEP } from "./useSidebarWidth";
 
 // jsdom no tiene PointerEvent y `fireEvent.pointer*` descarta `clientX`: el arrastre se dispara con un
 // MouseEvent del mismo tipo, que sí lo lleva.
-function pointer(target: Element | Window, type: "pointerdown" | "pointermove" | "pointerup", clientX: number) {
+function pointer(target: Element | Window, type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel", clientX: number) {
   return fireEvent(target, new MouseEvent(type, { bubbles: true, cancelable: true, clientX }));
 }
 
@@ -69,6 +69,18 @@ test("H-023 C-4: durante el arrastre el cuerpo lleva is-resizing y lo suelta al 
 
   pointer(window, "pointerup", 240);
   expect(document.body).not.toHaveClass("is-resizing");
+});
+
+test("H-023 C-4: si el sistema cancela el arrastre, el cuerpo también suelta is-resizing", () => {
+  const { handle, onChange } = renderHandle(240);
+
+  pointer(handle, "pointerdown", 240);
+  pointer(window, "pointercancel", 240);
+  onChange.mockClear();
+  pointer(window, "pointermove", 300);
+
+  expect(document.body).not.toHaveClass("is-resizing");
+  expect(onChange).not.toHaveBeenCalled();
 });
 
 test("H-023 C-4: el pointerdown no inicia selección de texto ni deja pasar el evento por defecto", () => {
