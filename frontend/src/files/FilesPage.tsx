@@ -1,19 +1,30 @@
 import { useState, useEffect } from "react";
 import { useSync } from "../sync/useSync";
+import type { Vault } from "../sync/vaultStore";
 import { listVaultFiles, type VaultFile } from "./uploadFile";
 
 type Status = "loading" | "ready" | "error";
 
 export default function FilesPage() {
   const { vaults } = useSync();
+  const [allVaults, setAllVaults] = useState<Vault[]>([]);
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [status, setStatus] = useState<Status>("loading");
 
   useEffect(() => {
-    if (!selectedVaultId) {
-      setSelectedVaultId(vaults.keys().next().value || null);
-    }
+    const load = async () => {
+      try {
+        const list = await vaults.list({ deleted: false });
+        setAllVaults(list);
+        if (!selectedVaultId && list.length > 0) {
+          setSelectedVaultId(list[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to load vaults:", err);
+      }
+    };
+    void load();
   }, [vaults]);
 
   useEffect(() => {
@@ -30,16 +41,14 @@ export default function FilesPage() {
       }
     };
 
-    load();
+    void load();
   }, [selectedVaultId]);
-
-  const activeVaults = Array.from(vaults.values()).filter((v) => !v.deleted_at);
 
   return (
     <section>
       <h1>Archivos</h1>
 
-      {activeVaults.length > 0 && (
+      {allVaults.length > 0 && (
         <div>
           <label htmlFor="vault-selector">Bóveda:</label>
           <select
@@ -47,7 +56,7 @@ export default function FilesPage() {
             value={selectedVaultId || ""}
             onChange={(e) => setSelectedVaultId(e.target.value)}
           >
-            {activeVaults.map((v) => (
+            {allVaults.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.name}
               </option>
