@@ -566,38 +566,40 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         );
         return (
           <li key={`f:${node.path}`} role="none">
-            {editing ? (
-              renameInput("carpeta", indent, icon)
-            ) : (
-              <button
-                type="button"
-                role="treeitem"
-                aria-expanded={open}
-                data-key={folderKey(node.path)}
-                tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
-                onFocus={() => setFocusKey(folderKey(node.path))}
-                className="note-tree-row note-tree-folder"
-                style={indent}
-                aria-current={activeFolder === node.path ? "true" : undefined}
-                draggable
-                data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
-                onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
-                onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
-                onDragLeave={() => onTargetDragLeave(folderKey(node.path))}
-                onDrop={(event) => onTargetDrop(event, node.path)}
-                onClick={() => {
-                  toggle(node.path);
-                  setActiveFolder(node.path);
-                }}
-              >
-                {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
-                {icon}
-                <span className="note-tree-name" title={node.name}>
-                  {node.name}
-                </span>
-              </button>
-            )}
-            {!editing && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+            <div className="note-tree-line">
+              {editing ? (
+                renameInput("carpeta", indent, icon)
+              ) : (
+                <button
+                  type="button"
+                  role="treeitem"
+                  aria-expanded={open}
+                  data-key={folderKey(node.path)}
+                  tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
+                  onFocus={() => setFocusKey(folderKey(node.path))}
+                  className="note-tree-row note-tree-folder"
+                  style={indent}
+                  aria-current={activeFolder === node.path ? "true" : undefined}
+                  draggable
+                  data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
+                  onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
+                  onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
+                  onDragLeave={() => onTargetDragLeave(folderKey(node.path))}
+                  onDrop={(event) => onTargetDrop(event, node.path)}
+                  onClick={() => {
+                    toggle(node.path);
+                    setActiveFolder(node.path);
+                  }}
+                >
+                  {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+                  {icon}
+                  <span className="note-tree-name" title={node.name}>
+                    {node.name}
+                  </span>
+                </button>
+              )}
+              {!editing && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+            </div>
             {open && (
               <ul role="group" className="note-tree-group">
                 {renderNodes(node.children, depth + 1)}
@@ -611,34 +613,36 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       const editing = inlineRename?.kind === "note" && inlineRename.note.id === note.id;
       const icon = <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />;
       return (
-        <li key={note.id} role="none" className="note-tree-item">
-          {editing ? (
-            renameInput("nota", indent, icon)
-          ) : (
-            <button
-              type="button"
-              role="treeitem"
-              aria-selected={note.id === openId}
-              data-key={noteKey(note.id)}
-              tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
-              onFocus={() => {
-                setFocusKey(noteKey(note.id));
-                onPrefetch?.(note.id);
-              }}
-              onPointerEnter={() => onPrefetch?.(note.id)}
-              className="note-tree-row note-tree-note"
-              style={indent}
-              draggable
-              onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
-              onClick={() => onOpen(note.id)}
-            >
-              {icon}
-              <span className="note-tree-name" title={node.name}>
-                {node.name}
-              </span>
-            </button>
-          )}
-          {!editing && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+        <li key={note.id} role="none">
+          <div className="note-tree-line">
+            {editing ? (
+              renameInput("nota", indent, icon)
+            ) : (
+              <button
+                type="button"
+                role="treeitem"
+                aria-selected={note.id === openId}
+                data-key={noteKey(note.id)}
+                tabIndex={tabbable === noteKey(note.id) ? 0 : -1}
+                onFocus={() => {
+                  setFocusKey(noteKey(note.id));
+                  onPrefetch?.(note.id);
+                }}
+                onPointerEnter={() => onPrefetch?.(note.id)}
+                className="note-tree-row note-tree-note"
+                style={indent}
+                draggable
+                onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
+                onClick={() => onOpen(note.id)}
+              >
+                {icon}
+                <span className="note-tree-name" title={node.name}>
+                  {node.name}
+                </span>
+              </button>
+            )}
+            {!editing && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+          </div>
         </li>
       );
     });

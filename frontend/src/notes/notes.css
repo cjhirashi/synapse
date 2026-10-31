@@ -323,9 +323,41 @@
   overflow-x: auto;
 }
 
-.note-tree-item {
+/* La línea agrupa la fila y su ⋮: el ⋮ es `sticky` respecto a la línea, que mide lo que mide la
+   columna del árbol (H-023), así que sigue visible al desplazar horizontalmente. */
+.note-tree-line {
   display: flex;
   align-items: center;
+  min-width: 0;
+}
+
+/* El ⋮ sólo aparece al señalar o enfocar su fila; en táctil no hay hover, así que siempre se ve. */
+.note-tree-line > .note-menu-button {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  opacity: 0;
+  background: var(--bg-secondary);
+}
+
+.note-tree-line:hover > .note-menu-button {
+  opacity: 1;
+}
+
+.note-tree-line:focus-within > .note-menu-button {
+  opacity: 1;
+}
+
+.note-tree-line > .note-menu-button[aria-expanded="true"] {
+  opacity: 1;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .note-tree-line > .note-menu-button {
+    opacity: 1;
+  }
 }
 
 /* Las filas son botones: sin el aspecto de botón del formulario, a sangre como una lista de archivos.

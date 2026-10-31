@@ -780,10 +780,12 @@ test("RF-055: revealFolder (por ref) despliega la carpeta y la deja activa", asy
 // --- H-024: menú ⋮ por fila y borrado sólo tras confirmar (C-1, C-2, C-7, C-8, C-8b) ---
 
 test("C-1: cada nota y carpeta tiene su ⋮ con el nombre de la fila; «Raíz» no", async () => {
-  await setup(["Carpeta/Hoja.md", "Nota.md"]);
+  const { container } = await setup(["Carpeta/Hoja.md", "Nota.md"]);
   expect(menuButton("Carpeta")).toHaveAttribute("aria-haspopup", "menu");
   expect(menuButton("Nota")).toHaveAttribute("aria-haspopup", "menu");
   expect(screen.queryByRole("button", { name: "Acciones de Raíz" })).toBeNull();
+  // C-10: el ⋮ es hermano del treeitem dentro de su línea; así su `sticky` tiene la línea como referencia.
+  expect(container.querySelectorAll(".note-tree-line > .note-menu-button")).toHaveLength(2);
 });
 
 test("C-2: pulsar el ⋮ de una nota no la abre ni la selecciona", async () => {
