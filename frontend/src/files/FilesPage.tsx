@@ -74,7 +74,7 @@ export default function FilesPage() {
   const filesWithReferences = useMemo(() => {
     return files.map((file) => ({
       ...file,
-      references_count: getFileReferencesCount(file.id, notes),
+ references_count: getFileReferencesCount(file.id, notes as any),
     }));
   }, [files, notes]);
 
@@ -115,7 +115,7 @@ export default function FilesPage() {
 
   function handleVisibilityClick(file: VaultFile) {
     const newVisibility = file.visibility === "private" ? "public" : "private";
-    const refs = getFileReferenceDetails(file.id, notes);
+    const refs = getFileReferenceDetails(file.id, notes as any);
 
     // Si cambiar a público, SIEMPRE pedir confirmación (C-8)
     // Si cambiar a privado y está en uso, pedir confirmación (C-9)
@@ -152,7 +152,7 @@ export default function FilesPage() {
   }
 
   function handleDeleteClick(file: VaultFile) {
-    const refs = getFileReferenceDetails(file.id, notes);
+    const refs = getFileReferenceDetails(file.id, notes as any);
     setDeleteConfirm({
       fileId: file.id,
       fileName: file.name,

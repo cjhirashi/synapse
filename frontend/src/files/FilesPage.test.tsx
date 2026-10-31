@@ -41,7 +41,7 @@ describe("FilesPage", () => {
   it("renders heading and vault selector (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -58,7 +58,7 @@ describe("FilesPage", () => {
     );
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -71,7 +71,7 @@ describe("FilesPage", () => {
   it("shows empty state when no files (C-7)", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -85,7 +85,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockRejectedValue(new Error("Network error"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -99,7 +99,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -125,7 +125,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -154,7 +154,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     render(
       <WithSync value={value}>
@@ -175,7 +175,7 @@ describe("FilesPage", () => {
     });
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -208,7 +208,7 @@ describe("FilesPage", () => {
     });
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -259,7 +259,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "deleteFile").mockResolvedValue(undefined);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes,
+      notes: notes as any,
     });
     const user = userEvent.setup();
     render(
@@ -291,7 +291,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "renameFile").mockRejectedValue(mockError);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -319,7 +319,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -352,7 +352,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockResolvedValue(newFile);
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -377,7 +377,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTypeError("Tipo no admitido"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(
@@ -400,7 +400,7 @@ describe("FilesPage", () => {
     vi.spyOn(uploadFileModule, "uploadFile").mockRejectedValue(new UploadTooLargeError("Archivo muy grande"));
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
-      notes: new Map(),
+      notes: new Map() as any,
     });
     const user = userEvent.setup();
     render(

@@ -16,10 +16,10 @@ const referenceCache = new Map<string, CacheEntry>();
  * Busca la cadena `/files/<id>` en el contenido de todas las notas.
  *
  * @param fileId ID del archivo
- * @param notes Map de notas de la réplica local (por ejemplo, del resultado de useSync().notes)
+ * @param notes Map-like de notas (p. ej. Map, NoteStore) que soporta .values() o es iterable
  * @returns Número de notas que contienen el archivo
  */
-export function getFileReferencesCount(fileId: string, notes: Map<string, any>): number {
+export function getFileReferencesCount(fileId: string, notes: Map<string, any> | { values: () => Iterable<any> }): number {
   let count = 0;
   const searchString = `/files/${fileId}`;
 
@@ -58,10 +58,10 @@ export function getFileReferencesCount(fileId: string, notes: Map<string, any>):
  * Obtiene los IDs y nombres de las notas que referencian un archivo.
  *
  * @param fileId ID del archivo
- * @param notes Map de notas
+ * @param notes Map-like de notas (p. ej. Map, NoteStore)
  * @returns Array de {id, path} de las notas que contienen el archivo
  */
-export function getFileReferenceDetails(fileId: string, notes: Map<string, any>): Array<{ id: string; path: string }> {
+export function getFileReferenceDetails(fileId: string, notes: Map<string, any> | { values: () => Iterable<any> }): Array<{ id: string; path: string }> {
   const results: Array<{ id: string; path: string }> = [];
   const searchString = `/files/${fileId}`;
 
