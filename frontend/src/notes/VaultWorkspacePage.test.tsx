@@ -196,6 +196,7 @@ test("RF-010: borrar la nota abierta cierra el editor; la papelera de la bóveda
   await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
   await screen.findByRole("heading", { level: 2, name: "Hola" });
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await confirmTreeDelete("Hola");
   await waitFor(() => expect(screen.queryByRole("heading", { level: 2, name: "Hola" })).toBeNull());
   expect(screen.getByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Papelera de la bóveda" }));
@@ -224,6 +225,12 @@ test("RF-015: un id de nota de otra bóveda en el estado de navegación se ignor
   expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });
 
+/** Primer paso de todo borrado desde el árbol (H-024 C-7): confirma «¿Borrar «…»?» antes de tocar el borrador. */
+async function confirmTreeDelete(name: string) {
+  const dialog = await screen.findByRole("alertdialog", { name: `¿Borrar «${name}»?` });
+  await userEvent.click(within(dialog).getByRole("button", { name: "Borrar" }));
+}
+
 /** Abre "Hola" en edición con el editor de código y le añade texto: el borrador queda sucio. */
 async function openDirtyNote() {
   const { value, vault } = await setup();
@@ -242,6 +249,7 @@ async function openDirtyNote() {
 test("RF-010: borrar la nota abierta con cambios sin guardar pide confirmación y 'Seguir editando' no borra", async () => {
   const { value } = await openDirtyNote();
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await confirmTreeDelete("Hola");
   const dialog = await screen.findByRole("alertdialog");
   await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
   expect(screen.queryByRole("alertdialog")).toBeNull();
@@ -252,6 +260,7 @@ test("RF-010: borrar la nota abierta con cambios sin guardar pide confirmación 
 test("RF-010: 'Borrar y descartar cambios' manda la nota a la papelera y cierra el editor", async () => {
   const { value, note } = await openDirtyNote();
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await confirmTreeDelete("Hola");
   await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Borrar y descartar cambios" }));
   await waitFor(() => expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull());
   expect((await value.notes.list(note.vault_id, { deleted: true })).map((n) => n.id)).toEqual([note.id]);
@@ -262,6 +271,7 @@ test("RF-010: Supr en el treeitem de la nota abierta con cambios sin guardar pid
   const { value } = await openDirtyNote();
   screen.getByRole("treeitem", { name: "Hola" }).focus();
   await userEvent.keyboard("{Delete}");
+  await confirmTreeDelete("Hola");
   const dialog = await screen.findByRole("alertdialog");
   await userEvent.click(within(dialog).getByRole("button", { name: "Seguir editando" }));
   expect(await value.notes.list((await value.vaults.list())[0].id, { deleted: true })).toEqual([]);
@@ -287,6 +297,7 @@ test("RF-014, RF-002: bóveda a la papelera con borrador sucio → 404 que muest
 test("RF-014: un borrador descartado a propósito («Borrar y descartar cambios») no reaparece en el 404", async () => {
   const { value, vault, rerender } = await openDirtyNote();
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await confirmTreeDelete("Hola");
   await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Borrar y descartar cambios" }));
   await waitFor(() => expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull());
   const current = await value.vaults.get(vault.id);
@@ -314,6 +325,7 @@ test("RF-014: «Copiar texto» sin navigator.clipboard avisa y selecciona el tex
 test("RF-010: el diálogo «Borrar y descartar cambios» enfoca primero «Seguir editando»", async () => {
   await openDirtyNote();
   await userEvent.click(screen.getByRole("button", { name: "Borrar «Hola»" }));
+  await confirmTreeDelete("Hola");
   const dialog = await screen.findByRole("alertdialog");
   await waitFor(() => expect(within(dialog).getByRole("button", { name: "Seguir editando" })).toHaveFocus());
 });
@@ -544,6 +556,7 @@ test("RF-062: «Renombrar o mover» del menú abre el mismo flujo de renombrado 
 test("RF-062: «Borrar» del menú manda la nota a la papelera con el flujo del árbol y cierra el editor", async () => {
   const { value, vault } = await deepNote();
   await pick("Borrar");
+  await confirmTreeDelete("Plan");
   expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
   expect(await value.notes.list(vault.id, { deleted: true })).toHaveLength(1);
 });
@@ -555,6 +568,7 @@ test("RF-062: «Borrar» con cambios sin guardar pide la misma confirmación y �
   act(() => EditorView.findFromDOM(document.querySelector(".cm-editor") as HTMLElement)!.dispatch({ changes: { from: 0, insert: "x" } }));
   await screen.findByText("Cambios sin guardar");
   await pick("Borrar");
+  await confirmTreeDelete("Plan");
   await userEvent.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Seguir editando" }));
   expect(await value.notes.list(vault.id, { deleted: true })).toEqual([]);
 });

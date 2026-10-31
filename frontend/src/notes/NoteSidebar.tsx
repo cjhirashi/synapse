@@ -33,6 +33,8 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
+import { ConfirmDelete } from "./ConfirmDelete";
+import { TreeRowMenu } from "./TreeRowMenu";
 
 interface NoteSidebarProps {
   vaultId: string;
@@ -91,6 +93,9 @@ function visibleRows(nodes: TreeNode<NoteSummary>[], expanded: ReadonlySet<strin
 /** Nodo que se está arrastrando (H-003): una nota (por id y ruta) o una carpeta (por ruta). */
 type DragItem = { kind: "note"; id: string; path: string } | { kind: "folder"; path: string };
 
+/** Borrado esperando confirmación (C-7, C-8): una nota, o una carpeta con sus notas activas. */
+type PendingDelete = { kind: "note"; note: NoteSummary } | { kind: "folder"; path: string; notes: NoteSummary[] };
+
 /**
  * ¿Soltar `drag` en la carpeta `dest` (`""` = raíz) movería algo? `false` cubre C-4 (destino no
  * válido) y C-7 (sin desplazamiento real): una nota ya en esa carpeta, una carpeta sobre sí misma,
@@ -105,7 +110,8 @@ function canDrop(drag: DragItem, dest: string): boolean {
 /** Acciones que el `Workspace` (y, por él, el editor y el menú ⋮) piden a la sidebar por `ref` (RF-062, RF-055). */
 export interface NoteSidebarHandle {
   startRename(id: string): void;
-  remove(id: string): Promise<void>;
+  /** Pide borrar la nota: abre la confirmación (C-7). */
+  remove(id: string): void;
   /** Despliega la carpeta (y sus antecesoras), la deja activa y la desplaza a la vista (RF-055). */
   revealFolder(folderPath: string): void;
 }
@@ -157,6 +163,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   /** Nodo que se arrastra ahora mismo (`null` = ninguno) y la fila destino resaltada durante el arrastre (C-3). */
   const [dragItem, setDragItem] = useState<DragItem | null>(null);
   const [dropTargetKey, setDropTargetKey] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
 
   /**
    * Relee los resúmenes. `after` decide, SOBRE la lista recién leída, a dónde va el foco (y qué
@@ -260,7 +267,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         event.preventDefault();
         setSelectedId(note.id);
         if (event.key === "F2") startRename(note);
-        else void remove(note);
+        else askDeleteNote(note);
         return;
       }
       case "ArrowRight":
@@ -344,7 +351,38 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     setRenaming(null);
   }
 
-  async function remove(note: NoteSummary) {
+  /** Pide confirmación para borrar una nota (C-7): nada se toca hasta confirmar. */
+  function askDeleteNote(note: NoteSummary) {
+    if (inFlight.current || pendingDelete) return;
+    setPendingDelete({ kind: "note", note });
+  }
+
+  /** Pide confirmación para borrar una carpeta con todas sus notas activas, también las de subcarpetas (C-8). */
+  function askDeleteFolder(path: string) {
+    if (inFlight.current || pendingDelete) return;
+    const folderNotes = (items ?? []).filter((item) => item.deleted_at === null && item.path.startsWith(`${path}/`));
+    setPendingDelete({ kind: "folder", path, notes: folderNotes });
+  }
+
+  async function confirmPendingDelete() {
+    const pending = pendingDelete;
+    setPendingDelete(null);
+    if (pending?.kind === "note") await removeNote(pending.note);
+    else if (pending?.kind === "folder") await removeFolder(pending.path, pending.notes);
+  }
+
+  /**
+   * Fila que recibe el foco al quitar la de índice `index`, calculada sobre el árbol RESULTANTE (H1): la
+   * siguiente que sobreviva, si no la anterior, si no «Nueva nota». Así no cae en una carpeta que desaparece.
+   */
+  function focusAfterRemoval(index: number, list: NoteSummary[]): string {
+    const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
+    const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
+    const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
+    return next?.key ?? previous?.key ?? NEW_NOTE;
+  }
+
+  async function removeNote(note: NoteSummary) {
     if (inFlight.current) return; // ya hay un borrado/renombrado en marcha (auto-repeat de Supr)
     inFlight.current = true;
     try {
@@ -354,18 +392,31 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       inFlight.current = false; // `run` retoma la guarda mientras escribe
       const ok = await run(async () => {
         await notes.softDelete(note.id, note.rev);
-        // Foco a la fila vecina (siguiente; si no, anterior; si no, «Nueva nota») calculada sobre el
-        // árbol RESULTANTE: sin la nota y sin las carpetas que se vacían con ella (H1).
-        await reload((list) => {
-          const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
-          const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
-          const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
-          return { focus: next?.key ?? previous?.key ?? NEW_NOTE };
-        });
+        await reload((list) => ({ focus: focusAfterRemoval(index, list) }));
       });
       if (ok) {
         setSelectedId((current) => (current === note.id ? null : current));
         onDeleted(note.id);
+      }
+    } finally {
+      inFlight.current = false;
+    }
+  }
+
+  async function removeFolder(path: string, folderNotes: NoteSummary[]) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    try {
+      if (confirmDelete && folderNotes.some((item) => item.id === openId) && !(await confirmDelete())) return;
+      const index = rows.findIndex((row) => row.key === folderKey(path));
+      inFlight.current = false;
+      const ok = await run(async () => {
+        await notes.softDeleteFolder(vaultId, path);
+        await reload((list) => ({ focus: focusAfterRemoval(index, list) }));
+      });
+      if (ok) {
+        setActiveFolder((current) => (current === path || current.startsWith(`${path}/`) ? parentFolder(path) : current));
+        for (const note of folderNotes) onDeleted(note.id);
       }
     } finally {
       inFlight.current = false;
@@ -475,6 +526,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 {node.name}
               </span>
             </button>
+            <TreeRowMenu label={node.name} onRename={() => undefined} onDelete={() => askDeleteFolder(node.path)} />
             {open && (
               <ul role="group" className="note-tree-group">
                 {renderNodes(node.children, depth + 1)}
@@ -510,6 +562,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
               {node.name}
             </span>
           </button>
+          <TreeRowMenu label={node.name} onRename={() => startRename(note)} onDelete={() => askDeleteNote(note)} />
         </li>
       );
     });
@@ -597,7 +650,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       },
       remove(id) {
         const note = items?.find((item) => item.id === id);
-        return note ? remove(note) : Promise.resolve();
+        if (note) askDeleteNote(note);
       },
       revealFolder,
     }),
@@ -712,7 +765,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           <button type="button" aria-label={`Renombrar «${selectedName}»`} onClick={() => startRename(selected)}>
             Renombrar
           </button>
-          <button type="button" aria-label={`Borrar «${selectedName}»`} onClick={() => void remove(selected)} disabled={busy}>
+          <button type="button" aria-label={`Borrar «${selectedName}»`} onClick={() => askDeleteNote(selected)} disabled={busy}>
             Borrar
           </button>
         </div>
@@ -745,6 +798,23 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             Cancelar
           </button>
         </form>
+      )}
+      {pendingDelete?.kind === "note" && (
+        <ConfirmDelete
+          kind="note"
+          name={displayName(pendingDelete.note.path.split("/").pop() ?? pendingDelete.note.path)}
+          onConfirm={() => void confirmPendingDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingDelete?.kind === "folder" && (
+        <ConfirmDelete
+          kind="folder"
+          name={pendingDelete.path.split("/").pop() ?? pendingDelete.path}
+          count={pendingDelete.notes.length}
+          onConfirm={() => void confirmPendingDelete()}
+          onCancel={() => setPendingDelete(null)}
+        />
       )}
       <div className="note-sidebar-footer">
         <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>
