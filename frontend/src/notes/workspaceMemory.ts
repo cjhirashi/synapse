@@ -65,28 +65,31 @@ export function readMemory(userId: string, vaultId: string): WorkspaceMemory | n
 export function writeMemory(userId: string, vaultId: string, patch: Partial<WorkspaceMemory>): void {
   try {
     const key = getKey(userId, vaultId);
-    
+
     // Leer lo guardado o usar defaults
     let current = readMemory(userId, vaultId);
     if (current === null) {
       current = { noteId: null, expanded: [], scroll: 0 };
     }
-    
+
     // Mezclar el patch
+    const newNoteId = patch.noteId !== undefined ? patch.noteId : current.noteId;
+    const noteIdChanged = newNoteId !== current.noteId;
+
     const merged: WorkspaceMemory = {
-      noteId: patch.noteId !== undefined ? patch.noteId : current.noteId,
+      noteId: newNoteId,
       expanded: patch.expanded !== undefined ? patch.expanded : current.expanded,
-      scroll: patch.scroll !== undefined ? patch.scroll : current.scroll,
+      scroll: patch.scroll !== undefined ? patch.scroll : noteIdChanged ? 0 : current.scroll,
     };
-    
+
     // Validar el resultado
     if (!isValidMemory(merged, vaultId)) return;
-    
+
     // Serializar y verificar tamaño (máx 64 KiB)
     const json = JSON.stringify(merged);
     const sizeBytes = new Blob([json]).size;
     if (sizeBytes > 65536) return;
-    
+
     localStorage.setItem(key, json);
   } catch {
     // Sin almacenamiento (modo privado, cuota llena) no hacemos nada

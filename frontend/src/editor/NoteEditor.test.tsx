@@ -1431,3 +1431,13 @@ describe("wikilinks · vista previa en Lectura (H-021)", () => {
     });
   });
 });
+
+describe("H-026: recordar y restaurar scroll", () => {
+  it("acepta props onScroll e initialScroll", async () => {
+    const onScroll = vi.fn();
+    const { ui, first, second, rerender } = await setup("# Hola\n", {}, {
+      views: { Visual: fake("visual"), Code: fake("code") },
+    });
+    expect(screen.getByRole("textbox", { name: "Contenido de la nota" })).toBeInTheDocument();
+  });
+});

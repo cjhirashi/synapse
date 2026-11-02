@@ -152,6 +152,42 @@ describe("workspaceMemory", () => {
       expect(stored).toEqual(data);
     });
 
+    it("al cambiar de noteId y no especificar scroll, reinicia scroll a 0", () => {
+      const userId = "user1";
+      const vaultId = "vault1";
+      const initial = { noteId: "note:vault1:abc", expanded: [], scroll: 420 };
+      localStorage.setItem(`synapse.workspace.${userId}.${vaultId}`, JSON.stringify(initial));
+
+      writeMemory(userId, vaultId, { noteId: "note:vault1:def" });
+
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
+      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 0 });
+    });
+
+    it("al cambiar de noteId pero especificar scroll explícito, lo respeta", () => {
+      const userId = "user1";
+      const vaultId = "vault1";
+      const initial = { noteId: "note:vault1:abc", expanded: [], scroll: 420 };
+      localStorage.setItem(`synapse.workspace.${userId}.${vaultId}`, JSON.stringify(initial));
+
+      writeMemory(userId, vaultId, { noteId: "note:vault1:def", scroll: 500 });
+
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
+      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 500 });
+    });
+
+    it("al guardar el mismo noteId sin scroll explícito, conserva el scroll anterior", () => {
+      const userId = "user1";
+      const vaultId = "vault1";
+      const initial = { noteId: "note:vault1:abc", expanded: [], scroll: 420 };
+      localStorage.setItem(`synapse.workspace.${userId}.${vaultId}`, JSON.stringify(initial));
+
+      writeMemory(userId, vaultId, { expanded: ["folder1"] });
+
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
+      expect(stored).toEqual({ noteId: "note:vault1:abc", expanded: ["folder1"], scroll: 420 });
+    });
+
     it("mezcla el patch sin pisar campos no mencionados", () => {
       const userId = "user1";
       const vaultId = "vault1";
