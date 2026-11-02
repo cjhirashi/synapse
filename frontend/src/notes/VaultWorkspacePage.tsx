@@ -5,8 +5,9 @@
  * - La bóveda se lee de la réplica y se relee con `dataVersion`: una que llega después por el
  *   pull sustituye al 404, y una que se borra mientras está abierta pasa a 404 (RF-002, RF-014).
  *   Un id que no es un UUID canónico no se consulta siquiera.
- * - La nota abierta vive sólo en el estado del componente (RF-015): ni URL ni almacenamiento,
- *   así que al entrar (o volver a montar) el editor está vacío.
+ * - La nota abierta vive en el estado del componente, sin URL (RF-015 original: entrar abría vacío). Desde H-026
+ *   se recuerda por dispositivo, usuario y bóveda (`workspaceMemory`): al entrar se restaura el último
+ *   documento (con sus carpetas y su scroll) y solo sin registro, o con un documento que ya no existe, abre vacío.
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
@@ -280,7 +281,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
 
   // El estado de navegación vive en el historial del navegador y sobreviviría a recargar:
-  // una vez usado se limpia, para que entrar de nuevo a la bóveda siga abriendo vacía (RF-015).
+  // una vez usado se limpia, para que un pedido explícito no se repita al recargar (lo demás lo decide la memoria, H-026).
   useEffect(() => {
     if (location.state !== null) navigate(location.pathname, { replace: true, state: null });
     // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
