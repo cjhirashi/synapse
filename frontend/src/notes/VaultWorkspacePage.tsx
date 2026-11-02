@@ -453,6 +453,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           onShowTrash={() => setShowTrash(true)}
           confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
           onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
+          initialExpanded={restoredMemory.current?.expanded}
+          onExpandedChange={(expanded) => me?.user_id && writeMemory(me.user_id, vault.id, { expanded })}
         />
         {isDesktop && sidebarOpen && (
           <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
