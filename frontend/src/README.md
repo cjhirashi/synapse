@@ -221,6 +221,7 @@ Módulos de `notes/`:
 | `repush.ts` | reintento dirigido de las notas rechazadas con `vault-not-found`: al quedar la bóveda activa (`sync/vaultActive.ts`: cuenta la ganadora o una perdedora activa), al abrir la app con rechazos persistidos y al reconectar tras un fallo de red; no escribe revisiones nuevas |
 | `TreeRowMenu.tsx`, `ConfirmDelete.tsx` | ⋮ por fila del árbol (H-024): menú `role="menu"` en portal con «Renombrar» y «Borrar» (roving focus; Esc o Tab cierran y devuelven el foco al ⋮). `ConfirmDelete` envuelve `editor/ConfirmDialog.tsx` para la confirmación obligatoria de todo borrado de nota o carpeta |
 | `useSidebarWidth.ts`, `SidebarResizeHandle.tsx` | ancho de la barra lateral (H-023): 240–384 px en `--side-width`, persistido en `localStorage` (`synapse.sidebar-width`; valor inválido → 240). Asa en la orilla derecha (`role="separator"`) con arrastre, ←/→ de 16 px, Inicio y doble clic para volver a 240; sólo ≥ 1024 px |
+| `workspaceMemory.ts` | memoria de la bóveda (H-026): último documento abierto, carpetas desplegadas y scroll, por dispositivo, usuario y bóveda en `localStorage` (`synapse.workspace.<usuario>.<bóveda>`). Solo ids, rutas y números; valor corrupto o almacenamiento bloqueado → no recuerda. `VaultWorkspacePage` restaura al entrar (riel o lista), un pedido explícito gana y una nota que ya no existe vuelve al estado vacío. |
 | `errors.ts`, `messages.ts` | errores de las operaciones y sus textos en español |
 
 **Estilos de lista:** `styles/global.css` no estiliza `ul`/`li` sueltos; la tarjeta de la lista de
