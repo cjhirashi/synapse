@@ -10,6 +10,27 @@
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 
+## En análisis — proceso nuevo (2026-11-02)
+
+> **Desde 2026-11-02 el diseño y el seguimiento de cada slice viven en la bóveda Proyectos de Synapse**
+> (`1 - Proyectos AIRA/5 - Proyectos/1  - AI Solutions/Synapse/9 - implentaciones/`). Ciclo: Descripción (Carlos) →
+> Análisis en rondas pregunta/respuesta (AIRA y Carlos) → Plan de implementación → Autorización de Carlos →
+> Checklist con tareas y validaciones que se marcan con fecha al ejecutarlas por el arnés. Esta lista sólo
+> indexa; el detalle está en el documento de cada slice.
+
+- [~] H-019 — HTML incrustado (iframe aislado): Gate 1 pasado en el proceso anterior; **plan propuesto, espera aprobación de Carlos** en su documento de la bóveda.
+- [ ] H-025 — Videos de YouTube: **análisis ronda 1**, espera respuestas de Carlos. Depende de H-019.
+- [ ] H-026 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
+- [ ] H-027 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
+- [ ] H-028 — Propiedades de las notas como atributos META (antes H-0032; propone reemplazar H-001.1–H-001.3) — análisis ronda 1
+- [ ] H-029 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1
+- [ ] H-030 — ÍNDICES automáticos de bóvedas (antes H-0033) — análisis ronda 1
+- [ ] H-031 — Sidebar con vistas por tags y búsqueda (antes H-0037) — análisis ronda 1
+- [ ] H-032 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
+- [ ] H-033 — Mapa de relación de documentos (antes H-0036) — análisis ronda 1
+- [ ] H-034 — Publicar documento (antes H-0038; propone absorber H-020 y partir publicar/compartir) — análisis ronda 1
+- [ ] H-035 — Descargar documento como PDF (antes H-0039) — análisis ronda 1
+
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
 - [~] H-021 (implementada, mergeada `67b70c0` y desplegada 2026-10-30 14:15 CDMX, verificada por AIRA en navegador real; falta checkpoint de Carlos) — Vista previa emergente de wikilinks en Lectura (título + inicio renderizado, sin metadatos, ~320 px/12 líneas, retardo 400 ms, sin vista previa en celular; aviso "Esta nota no existe, clic para crearla" en rotos) y cambio de H-012: la nota faltante se crea en la carpeta de la nota de origen, no en la raíz → `historias/h021-wikilinks-vista-previa/historia.md`, Gate 1 pasado (Carlos, 2026-10-30); H-015 ya mergeada antes.
@@ -23,7 +44,7 @@
 - [ ] H-001.2 — Edición de propiedades: menú de tipo por icono + pastillas + añadir/quitar · rama `feature/0012-propiedades-obsidian`
 - [ ] H-001.3 — No regresión de SPEC-0010 + fidelidad visual final + documentación de cierre · rama `feature/0012-propiedades-obsidian`
 - [ ] H-007 — `NoteSidebar.test.tsx` > «RF-042: "Nueva carpeta" crea una nota dentro y la abre en edición» es intermitente (falla ~2 de 3 corridas aisladas, `expect(onOpen).toHaveBeenCalledWith(...)` recibe 0 llamadas — carrera entre `waitForCondition` y el callback de apertura). Confirmado preexistente: falla igual en el commit base antes de H-006 (no es regresión de ese trabajo). Encontrado al verificar independientemente H-006 (la sesión headless reportó "1683 en verde" sin haber corrido la suite completa tras el 429 de rate-limit, 2026-10-29). No bloqueante (pasa casi siempre en la suite completa por el orden/paralelismo de vitest), pero hay que arreglar la carrera en el test, no ignorarla.
-- [ ] H-004.2 — Un agente OpenClaw crea/actualiza/borra notas de su bóveda vía REST (escritura) → Gate 1 pasado ("así es", 2026-10-29); prioridad **máxima**, por encima de todo lo anterior en esta lista; depende de H-004.1 (ya `implemented`/desplegado, ver abajo); mismo borrador en `historias/0014-acceso-agentes-notas/historia.md`
+- [~] H-004.2 (**implementada y desplegada 2026-10-29; esta línea estaba desactualizada**, ver `historias/0014-acceso-agentes-notas/historia.md`; falta checkpoint de Carlos) — Un agente OpenClaw crea/actualiza/borra notas de su bóveda vía REST (escritura) → Gate 1 pasado ("así es", 2026-10-29); prioridad **máxima**, por encima de todo lo anterior en esta lista; depende de H-004.1 (ya `implemented`/desplegado, ver abajo); mismo borrador en `historias/0014-acceso-agentes-notas/historia.md`
 - [ ] H-005 — Corregir `_check_precondition` para aceptar `ETag` débil (`W/"..."`) en `If-Match`: Cloudflare reescribe el `ETag` fuerte del origen a débil cuando comprime la respuesta con Brotli (confirmado con curl externo: `Accept-Encoding: br` → débil, `identity` → fuerte, directo a `localhost:8000` sin Cloudflare → siempre fuerte — no es bug de origen ni del plugin cliente). La comparación de string exacta actual rechaza con 412 cualquier `update`/`delete`/`restore` cuyo `GET` previo llegó comprimido, aunque la revisión (`_rev`) sí coincida. Repro: nota creada (ETag fuerte, update ok) → ese mismo update ya responde comprimido (ETag débil) → el siguiente `delete` con ese ETag da 412 pese a mismo `_rev`. Afecta `note_content_service.py::_check_precondition` (líneas 291-296) y la copia idéntica en `vault_service.py` (líneas 274-279). Arreglo propuesto: comparar ignorando el prefijo `W/` (comparación débil, RFC 7232 — correcta cuando el cliente solo ve lo que el borde entrega). No bloqueante: `list`/`get`/`create` funcionan siempre; solo falla el segundo write cuando el ETag previo llegó débil. Hallazgo de un subagente verificando el checkpoint demostrable de H-004, 2026-10-29.
 
 ## Implementadas, pendientes de checkpoint de Carlos
