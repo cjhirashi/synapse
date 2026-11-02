@@ -27,7 +27,7 @@ export function isAllowedEmbedSrc(src: string): boolean {
       // Verificar .. en la URL original (URL.pathname normaliza, eliminando ..).
       if (src.includes("/..")) return false;
       // RFC3986 unreserved + percent-encoded + forward slash (para directorios).
-      const validPathPattern = /^\/[A-Za-z0-9._~%-/]+$/;
+      const validPathPattern = /^\/[A-Za-z0-9._~%/-]+$/;
       return validPathPattern.test(url.pathname);
     }
 
@@ -38,30 +38,19 @@ export function isAllowedEmbedSrc(src: string): boolean {
 }
 
 export function sanitizeHtmlFragment(html: string): DocumentFragment {
-  // Crear una instancia propia de DOMPurify para no contaminar otros usos.
+  // Instancia propia para no compartir configuración con otros usos de DOMPurify.
   const purifier = DOMPurify(window);
-
-  // Validar src de iframes: rechazar atributos src inválidos.
-  purifier.addHook("uponSanitizingAttribute", (node, data) => {
-    if (data.attrName === "src" && node.tagName?.toLowerCase() === "iframe") {
-      const src = data.attrValue;
-      // Si src no es válido, rechazarlo (devolver false).
-      if (!isAllowedEmbedSrc(src)) {
-        return false;
-      }
-      // src válido: permitirlo.
-      return true;
-    }
-  });
 
   const fragment = purifier.sanitize(html, {
     RETURN_DOM_FRAGMENT: true,
     ALLOWED_TAGS: ["br", "sub", "sup", "mark", "kbd", "small", "del", "ins", "span", "div", "details", "summary", "iframe"],
     ALLOWED_ATTR: ["open", "title", "src", "sandbox", "referrerpolicy", "loading"],
+    ALLOW_DATA_ATTR: false,
+    ALLOW_ARIA_ATTR: false,
     FORCE_BODY: false,
   }) as DocumentFragment;
 
-  // Post-procesar iframes: eliminar los sin src válido y configurar atributos exactos.
+  // El src se valida aquí, tras DOMPurify: un iframe sin src permitido se elimina y los demás salen con atributos fijos.
   const iframes = fragment.querySelectorAll("iframe");
   Array.from(iframes).forEach((iframe) => {
     const src = iframe.getAttribute("src");
@@ -73,9 +62,6 @@ export function sanitizeHtmlFragment(html: string): DocumentFragment {
       iframe.setAttribute("loading", "lazy");
     }
   });
-
-  // Limpiar hooks para no contaminar futuros usos.
-  purifier.removeHook("uponSanitizingAttribute");
 
   return fragment;
 }

@@ -28,6 +28,12 @@ describe("isAllowedEmbedSrc", () => {
     expect(isAllowedEmbedSrc("https://files-synapse.cjhirashi.com/documento.pdf")).toBe(true);
   });
 
+  it("rechaza en la ruta de files-synapse los caracteres ' ( ) * + , &", () => {
+    for (const bad of ["'", "(", ")", "*", "+", ",", "&"]) {
+      expect(isAllowedEmbedSrc(`https://files-synapse.cjhirashi.com/a${bad}b.html`)).toBe(false);
+    }
+  });
+
   it("admite https://files-synapse.cjhirashi.com/carpeta/archivo.txt", () => {
     expect(isAllowedEmbedSrc("https://files-synapse.cjhirashi.com/carpeta/archivo.txt")).toBe(true);
   });
@@ -117,6 +123,12 @@ describe("isAllowedEmbedSrc", () => {
 });
 
 describe("sanitizeHtmlFragment", () => {
+  it("quita los atributos data-* y aria-* (solo open, title y el src del iframe sobreviven)", () => {
+    const frag = sanitizeHtmlFragment('<span data-x="1" aria-label="a" title="t">hola</span>');
+    const span = frag.querySelector("span");
+    expect(span?.getAttributeNames()).toEqual(["title"]);
+  });
+
   // Etiquetas permitidas pasan
   it("preserva <br>", () => {
     const result = sanitizeHtmlFragment("Línea 1<br>Línea 2");
