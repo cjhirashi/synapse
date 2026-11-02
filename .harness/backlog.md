@@ -18,7 +18,7 @@
 > Checklist con tareas y validaciones que se marcan con fecha al ejecutarlas por el arnés. Esta lista sólo
 > indexa; el detalle está en el documento de cada slice.
 
-- [~] H-019 — HTML incrustado (iframe aislado): **plan aprobado por Carlos 2026-11-02 (chat) y checklist creado**; espera la autorización del plan de modelos para lanzar. Paso 5 en pausa por una observación en su nota.
+- [~] H-019 — HTML incrustado (iframe aislado): **implementada, mergeada (`1d6b96a`) y desplegada 2026-11-02**; aislamiento y Archify verificados en Chromium real; falta el checkpoint de Carlos. Detalle en su nota de la bóveda.
 - [ ] H-025 — YouTube + control «Subir o pegar URL» y reconocedor de enlaces: **análisis ronda 3**, espera respuestas de Carlos. Partido el 2026-11-02; depende de H-019.
 - [ ] H-018 — Video subido a Synapse (MP4/WebM; rangos y transmisión por partes en el servidor): **análisis ronda 1**. Se ejecuta después de H-025.
 - [ ] H-026 — Recordar el último documento abierto y las carpetas desplegadas de cada bóveda (pedido de Carlos 2026-11-02; primera de la fila) — análisis ronda 1
