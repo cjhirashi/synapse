@@ -148,7 +148,7 @@ describe("workspaceMemory", () => {
 
       writeMemory(userId, vaultId, data);
 
-      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`));
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
       expect(stored).toEqual(data);
     });
 
@@ -160,7 +160,7 @@ describe("workspaceMemory", () => {
 
       writeMemory(userId, vaultId, { expanded: ["folder1", "folder2"] });
 
-      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`));
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
       expect(stored).toEqual({
         noteId: "note:vault1:abc",
         expanded: ["folder1", "folder2"],
@@ -177,7 +177,7 @@ describe("workspaceMemory", () => {
       const huge = "a".repeat(65536);
       writeMemory(userId, vaultId, { expanded: [huge] });
 
-      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`));
+      const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
       expect(stored).toEqual(initial);
     });
 

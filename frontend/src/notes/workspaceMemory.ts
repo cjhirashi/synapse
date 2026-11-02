@@ -56,7 +56,7 @@ export function readMemory(userId: string, vaultId: string): WorkspaceMemory | n
       return null;
     }
     
-    return data;
+    return { ...data, noteId: data.noteId ?? null };
   } catch {
     return null;
   }

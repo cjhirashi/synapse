@@ -9,7 +9,7 @@ import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
-import { readMemory } from "./workspaceMemory";
+import { forgetNote, readMemory, writeMemory } from "./workspaceMemory";
 import { MeContext } from "../auth/RequireAuth";
 import { derivedColor } from "../vaults/vaultIcon";
 import { parseMarkdownToJson } from "../editor/markdown/parseStage";
@@ -997,4 +997,95 @@ test("H-023 C-7: al cruzar el umbral de escritorio el ancho se quita y vuelve al
   vp.setDesktop(true);
   expect(sideWidth(container)).toBe("256px");
   expect(resizeHandle(container)).not.toBeNull();
+});
+
+// H-026: la bóveda recuerda, por dispositivo, usuario y bóveda, el último documento y las carpetas desplegadas.
+const ME = (user_id: string) => ({ user_id, email: `${user_id}@example.com`, role: "admin" as const, must_change_password: false });
+
+function treeMe(value: SyncContextValue, path: string, userId: string | null, state?: unknown) {
+  return (
+    <MeContext.Provider value={userId === null ? null : ME(userId)}>{tree(value, path, state)}</MeContext.Provider>
+  );
+}
+
+const editorRegion = () => screen.findByRole("region", { name: "Editor de nota" });
+
+test("H-026: abrir una nota la recuerda aunque la bóveda no tuviera registro", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await editorRegion();
+  await waitFor(() => expect(readMemory("u1", vault.id)?.noteId).toBe(note.id));
+});
+
+test("H-026: al volver a montar la bóveda se restaura el documento recordado en Lectura", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  writeMemory("u1", vault.id, { noteId: note.id });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await editorRegion();
+  expect(screen.queryByRole("button", { name: /Guardar/ })).toBeNull();
+});
+
+test("H-026: un pedido explícito de abrir otra nota gana sobre lo recordado", async () => {
+  const { value, vault } = await setup();
+  const a = await value.notes.create(vault.id, "A");
+  const b = await value.notes.create(vault.id, "B");
+  writeMemory("u1", vault.id, { noteId: a.id });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1", { noteId: b.id }));
+  await editorRegion();
+  await waitFor(() => expect(readMemory("u1", vault.id)?.noteId).toBe(b.id));
+  expect(screen.getByRole("treeitem", { name: "B" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("H-026: una nota recordada que ya no existe da estado vacío y se olvida", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  const sums = await value.notes.list(vault.id);
+  await value.notes.softDelete(note.id, sums[0].rev);
+  writeMemory("u1", vault.id, { noteId: note.id });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  await waitFor(() => expect(readMemory("u1", vault.id)?.noteId ?? null).toBeNull());
+});
+
+test("H-026: otro usuario no hereda lo recordado por el primero", async () => {
+  const { value, vault } = await setup();
+  const note = await value.notes.create(vault.id, "Hola");
+  writeMemory("u1", vault.id, { noteId: note.id });
+  render(treeMe(value, `/vaults/${vault.id}`, "u2"));
+  expect(await screen.findByText("Abre o crea una nota para empezar.")).toBeInTheDocument();
+  expect(readMemory("u2", vault.id)?.noteId ?? null).toBeNull();
+});
+
+test("H-026: sin usuario en el contexto no se guarda nada en el navegador", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(treeMe(value, `/vaults/${vault.id}`, null));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await editorRegion();
+  expect(Object.keys(localStorage).filter((k) => k.startsWith("synapse.workspace"))).toEqual([]);
+});
+
+test("H-026: las carpetas recordadas salen desplegadas desde el primer pintado", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Carp/Dentro");
+  writeMemory("u1", vault.id, { expanded: ["Carp"] });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  expect(await screen.findByRole("treeitem", { name: "Dentro" })).toBeInTheDocument();
+});
+
+test("H-026: desplegar una carpeta la recuerda", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Carp/Dentro");
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Carp" }));
+  await waitFor(() => expect(readMemory("u1", vault.id)?.expanded).toEqual(["Carp"]));
+});
+
+test("H-026: forgetNote conserva las carpetas recordadas", () => {
+  writeMemory("u1", "vault", { noteId: null, expanded: ["X"] });
+  forgetNote("u1", "vault");
+  expect(readMemory("u1", "vault")?.expanded).toEqual(["X"]);
 });
