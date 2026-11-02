@@ -21,7 +21,7 @@
 - [~] H-019 — HTML incrustado (iframe aislado): **implementada, mergeada (`1d6b96a`) y desplegada 2026-11-02**; aislamiento y Archify verificados en Chromium real; falta el checkpoint de Carlos. Detalle en su nota de la bóveda.
 - [ ] H-025 — YouTube + control «Subir o pegar URL» y reconocedor de enlaces: **análisis ronda 3**, espera respuestas de Carlos. Partido el 2026-11-02; depende de H-019.
 - [ ] H-018 — Video subido a Synapse (MP4/WebM; rangos y transmisión por partes en el servidor): **análisis ronda 1**. Se ejecuta después de H-025.
-- [~] H-026 — Recordar último documento, carpetas desplegadas y scroll por bóveda: **implementada, mergeada (`aabf78a`) y desplegada 2026-11-02**; verificada en Chromium real; falta el checkpoint de Carlos. Detalle en su nota de la bóveda.
+- [x] H-026 — Recordar último documento, carpetas desplegadas y scroll por bóveda: **verificada por Carlos 2026-11-02** (mergeada `aabf78a`, desplegada). Detalle en su nota de la bóveda.
 - [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
 - [ ] H-028 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
 - [ ] H-029 — Propiedades de las notas como atributos META (antes H-0032; propone reemplazar H-001.1–H-001.3) — análisis ronda 1
