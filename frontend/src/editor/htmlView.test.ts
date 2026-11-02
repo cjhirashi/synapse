@@ -30,7 +30,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     expect(view.dom.className).toContain("md-embed");
@@ -50,7 +50,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://evil.example/x"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     // Sin iframe permitido, la vista debe renderizar como plainItem (texto).
@@ -62,7 +62,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="http://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     expect(view.dom.querySelector("iframe")).toBeNull();
@@ -73,7 +73,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="javascript:alert(1)"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     expect(view.dom.querySelector("iframe")).toBeNull();
@@ -84,7 +84,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe><script>alert(1)</script>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     expect(view.dom.querySelector("script")).toBeNull();
@@ -97,13 +97,13 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     const nextNode = createHtmlNode(markdown);
-    expect(view.update?.(nextNode)).toBe(true);
+    expect(view.update?.(nextNode, [], {} as never)).toBe(true);
 
     const diffNode = createHtmlNode("otro html");
-    expect(view.update?.(diffNode)).toBe(false);
+    expect(view.update?.(diffNode, [], {} as never)).toBe(false);
   });
 
   // ignoreMutation() devuelve true para ignorar cambios en el DOM (el iframe es estático).
@@ -111,7 +111,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     const iframe = view.dom.querySelector("iframe");
@@ -124,7 +124,7 @@ describe("htmlView", () => {
     const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
     const node = createHtmlNode(markdown);
     const factory = htmlViewFactory();
-    const view = factory(node, { editable: true } as any, undefined);
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
 
     if (!view.dom) throw new Error("No dom");
     const iframe = view.dom.querySelector("iframe");
