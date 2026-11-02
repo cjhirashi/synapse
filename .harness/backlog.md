@@ -20,16 +20,17 @@
 
 - [~] H-019 — HTML incrustado (iframe aislado): Gate 1 pasado en el proceso anterior; **plan propuesto, espera aprobación de Carlos** en su documento de la bóveda.
 - [ ] H-025 — Videos de YouTube: **análisis ronda 1**, espera respuestas de Carlos. Depende de H-019.
-- [ ] H-026 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
-- [ ] H-027 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
-- [ ] H-028 — Propiedades de las notas como atributos META (antes H-0032; propone reemplazar H-001.1–H-001.3) — análisis ronda 1
-- [ ] H-029 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1
-- [ ] H-030 — ÍNDICES automáticos de bóvedas (antes H-0033) — análisis ronda 1
-- [ ] H-031 — Sidebar con vistas por tags y búsqueda (antes H-0037) — análisis ronda 1
-- [ ] H-032 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
-- [ ] H-033 — Mapa de relación de documentos (antes H-0036) — análisis ronda 1
-- [ ] H-034 — Publicar documento (antes H-0038; propone absorber H-020 y partir publicar/compartir) — análisis ronda 1
-- [ ] H-035 — Descargar documento como PDF (antes H-0039) — análisis ronda 1
+- [ ] H-026 — Recordar el último documento abierto y las carpetas desplegadas de cada bóveda (pedido de Carlos 2026-11-02; primera de la fila) — análisis ronda 1
+- [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
+- [ ] H-028 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
+- [ ] H-029 — Propiedades de las notas como atributos META (antes H-0032; propone reemplazar H-001.1–H-001.3) — análisis ronda 1
+- [ ] H-030 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1
+- [ ] H-031 — ÍNDICES automáticos de bóvedas (antes H-0033) — análisis ronda 1
+- [ ] H-032 — Sidebar con vistas por tags y búsqueda (antes H-0037) — análisis ronda 1
+- [ ] H-033 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
+- [ ] H-034 — Mapa de relación de documentos (antes H-0036) — análisis ronda 1
+- [ ] H-035 — Publicar documento (antes H-0038; propone absorber H-020 y partir publicar/compartir) — análisis ronda 1
+- [ ] H-036 — Descargar documento como PDF (antes H-0039) — análisis ronda 1
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
