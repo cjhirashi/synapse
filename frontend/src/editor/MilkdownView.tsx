@@ -54,6 +54,7 @@ import { applyHeadingIds } from "./markdown/headingIds";
 import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
+import { htmlViewFactory } from "./htmlView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
 import "prosemirror-view/style/prosemirror.css";
@@ -445,6 +446,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ["code_block", codeBlockViewFactory({ mermaid: mermaidRenderer })] as [string, NodeViewConstructor],
           ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
+          ["html", htmlViewFactory()] as [string, NodeViewConstructor],
         ]);
         // RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos. El
         // `editorStateOptionsCtx` recibe el documento recién parseado (por `parserCtx`) justo antes de
