@@ -372,6 +372,18 @@ describe("RF-001, RNF-001: índice de resumen (S-1)", () => {
     expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Movida.md"]);
   });
 
+  // Una nota creada por la API REST se escribe SIN la clave `frontmatter` (contrato del servidor): la
+  // UI no debe recibir `undefined`, o `Object.keys(frontmatter)` rompe el editor al pulsar Editar.
+  it("una nota sin clave `frontmatter` (creada por REST) se lee con frontmatter vacío", async () => {
+    const id = `note:${VAULT}:rest`;
+    await db.put({
+      _id: id, type: "note", vault_id: VAULT, path: "Rest.md", content: "# x",
+      created_at: "2026-10-22T09:00:00.000000Z", updated_at: "2026-10-22T09:00:00.000000Z", deleted_at: null,
+    });
+    const note = await store.get(id);
+    expect(note.frontmatter).toEqual({});
+  });
+
   // S-7 (PLAN-0008 §18): la construcción inicial lee los cuerpos por lotes, no todos de una vez.
   it("la construcción inicial del índice pide los cuerpos en lotes de 200 como máximo", async () => {
     const stamp = "2026-10-22T09:00:00.000000Z";

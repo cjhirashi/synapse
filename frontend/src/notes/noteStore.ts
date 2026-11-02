@@ -102,7 +102,7 @@ function toNote(doc: NoteDoc): Note {
     id: doc._id,
     vault_id: doc.vault_id,
     path: doc.path,
-    frontmatter: doc.frontmatter,
+    frontmatter: doc.frontmatter ?? {},
     content: doc.content,
     created_at: doc.created_at,
     updated_at: doc.updated_at,
