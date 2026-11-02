@@ -9,6 +9,8 @@ import { memoryDb, seedStore, syncValue, WithSync } from "../test-utils/sync";
 import { createVaultStore } from "../sync/vaultStore";
 import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
+import { readMemory } from "./workspaceMemory";
+import { MeContext } from "../auth/RequireAuth";
 import { derivedColor } from "../vaults/vaultIcon";
 import { parseMarkdownToJson } from "../editor/markdown/parseStage";
 import { PARSE_MARK } from "../editor/markdown/cachedParser";

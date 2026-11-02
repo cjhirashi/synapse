@@ -10,9 +10,10 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { CSSProperties, KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, lazy, Suspense, useContext, useEffect, useId, useRef, useState } from "react";
 import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { MeContext } from "../auth/RequireAuth";
 import { whenIdle } from "../editor/deferred/idle";
 import { hasUnmanagedExtension } from "../editor/wikilink";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
@@ -24,6 +25,7 @@ import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
+import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
@@ -249,12 +251,23 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     saveHistory(sessionStorage, vault.id, next);
   }
 
+  // H-026: memoria del documento abierto, carpetas desplegadas y scroll por dispositivo/usuario/bóveda.
+  const me = useContext(MeContext);
+  const memoryReady = useRef(false);
+  const restoredMemory = useRef<ReturnType<typeof readMemory>>(null);
+
+  // Leer memoria UNA VEZ al montar (si hay usuario).
+  useEffect(() => {
+    if (!me?.user_id) return;
+    restoredMemory.current = readMemory(me.user_id, vault.id);
+  }, []);
+
   // RNF-001 (Converge 1, M-1): el chunk del editor (~1 MB: Milkdown, CodeMirror…) se descarga, analiza y compila en idle,
   // ya dentro de una bóveda, y no en el «clic → legible» de la primera nota. Sigue siendo un chunk aparte: `/vaults` no
   // lo descarga (P-3) y mermaid, svg-pan-zoom, yaml y las gramáticas siguen pidiéndose sólo cuando una nota los usa.
   useEffect(() => whenIdle(() => void loadEditor(), 2000), []);
 
-  /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
+  /** Nota abierta (RF-015: restaurada de memoria si existe y es viva, de lo contrario vacía). */
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
 
   // El estado de navegación vive en el historial del navegador y sobreviviría a recargar:
@@ -263,14 +276,42 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     if (location.state !== null) navigate(location.pathname, { replace: true, state: null });
     // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
   }, []);
-  /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
+
+/** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+
+  // H-026: intentar restaurar el documento recordado cuando termina de cargar la lista de notas.
+  useEffect(() => {
+    if (memoryReady.current || !me?.user_id || !restoredMemory.current?.noteId || liveIds === null) return;
+    memoryReady.current = true;
+    
+    // La nota recordada existe y es viva: restaurarla en lectura (no en edición).
+    if (liveIds.has(restoredMemory.current.noteId)) {
+      setOpenId(restoredMemory.current.noteId);
+      setEditOnOpen(false);
+    } else {
+      // La nota recordada no existe o está en papelera: olvidar el registro.
+      forgetNote(me.user_id, vault.id);
+    }
+  }, [liveIds, me?.user_id, vault.id]);
   // Cerrar la nota a propósito (borrarla descartando cambios…) suelta el borrador conservado: sólo la
   // pérdida involuntaria de la bóveda (papelera por sync) lo deja disponible en el 404 (E-3).
   useEffect(() => {
     if (openId === null) onDirtyDraft(null);
   }, [openId, onDirtyDraft]);
+
+  // H-026: guardar memoria del documento abierto cuando cambia (pero no durante la restauración inicial).
+  useEffect(() => {
+    if (!me?.user_id || !memoryReady.current || openId === null) return;
+    writeMemory(me.user_id, vault.id, { noteId: openId });
+  }, [openId, me?.user_id, vault.id]);
+
+  // H-026: olvidar el registro si el usuario cierra la nota a propósito (onDeleted).
+  useEffect(() => {
+    if (openId !== null || !me?.user_id || !memoryReady.current) return;
+    forgetNote(me.user_id, vault.id);
+  }, [me?.user_id, vault.id]);
 
   // Quiénes están vivos, para habilitar Atrás/Adelante (RF-056, RF-058) y para resolver wikilinks (H-011).
   // Aparte del precálculo: éste puede no existir.
