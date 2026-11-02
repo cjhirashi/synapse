@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -825,23 +825,26 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     event.preventDefault();
   }
 
-  // H-026: debounce de scroll (250 ms) cuando hay un listener.
-  useEffect(() => {
-    if (!onScroll || !editorBodyRef.current) return;
-    const el = editorBodyRef.current;
-    const handleScroll = () => {
-      if (scrollTimeoutRef.current !== null) clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = setTimeout(() => {
-        onScroll(Math.round(el.scrollTop));
-        scrollTimeoutRef.current = null;
-      }, 250);
-    };
-    el.addEventListener("scroll", handleScroll);
-    return () => {
-      el.removeEventListener("scroll", handleScroll);
-      if (scrollTimeoutRef.current !== null) clearTimeout(scrollTimeoutRef.current);
-    };
-  }, [onScroll]);
+  // H-026: el scroll se avisa con debounce de 250 ms; al desmontar o cambiar de nota se entrega lo pendiente.
+  const lastScrollPx = useRef(0);
+  const onScrollRef = useRef(onScroll);
+  onScrollRef.current = onScroll;
+  const flushScroll = useCallback(() => {
+    if (scrollTimeoutRef.current === null) return;
+    clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = null;
+    onScrollRef.current?.(lastScrollPx.current);
+  }, []);
+  const handleBodyScroll = useCallback((event: ReactUIEvent<HTMLDivElement>) => {
+    if (!onScrollRef.current) return;
+    lastScrollPx.current = Math.round(event.currentTarget.scrollTop);
+    if (scrollTimeoutRef.current !== null) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      scrollTimeoutRef.current = null;
+      onScrollRef.current?.(lastScrollPx.current);
+    }, 250);
+  }, []);
+  useEffect(() => flushScroll, [openId, flushScroll]);
 
   // H-026: restaurar scroll inicial (RAF hasta que el contenido esté completo o venza el plazo).
   useEffect(() => {
@@ -1048,7 +1051,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
-      <div className="note-editor-body" ref={editorBodyRef} onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
+      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
         <div className="note-editor-column">
           {pathInvalid && (
             <div className="note-editor-notice" role="alert">

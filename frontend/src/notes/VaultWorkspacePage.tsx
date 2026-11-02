@@ -334,6 +334,11 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     setMemoryReady(true);
   }, [liveIds, memoryReady, openId, userId, vault.id]);
 
+  // H-026: el scroll recordado solo vale para la primera apertura del documento restaurado.
+  useEffect(() => {
+    if (scrollTarget !== null && openId !== scrollTarget.noteId) setScrollTarget(null);
+  }, [openId, scrollTarget]);
+
   // H-026: cada cambio del documento abierto se recuerda; cerrarlo a propósito lo olvida.
   useEffect(() => {
     if (!userId || !memoryReady) return;

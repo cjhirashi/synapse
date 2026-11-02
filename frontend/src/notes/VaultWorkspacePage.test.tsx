@@ -1089,3 +1089,82 @@ test("H-026: forgetNote conserva las carpetas recordadas", () => {
   forgetNote("u1", "vault");
   expect(readMemory("u1", "vault")?.expanded).toEqual(["X"]);
 });
+
+/** jsdom no calcula alturas ni guarda `scrollTop`: se simulan para probar el scroll recordado (H-026). */
+function mockLayout(scrollHeight: number, clientHeight: number) {
+  const tops = new WeakMap<Element, number>();
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+  Object.defineProperty(Element.prototype, "scrollTop", {
+    configurable: true,
+    get(this: Element) {
+      return tops.get(this) ?? 0;
+    },
+    set(this: Element, value: number) {
+      tops.set(this, value);
+    },
+  });
+  const h = vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
+  const c = vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
+  return {
+    tops,
+    restore() {
+      h.mockRestore();
+      c.mockRestore();
+      if (original) Object.defineProperty(Element.prototype, "scrollTop", original);
+      else delete (Element.prototype as unknown as Record<string, unknown>).scrollTop;
+    },
+  };
+}
+
+const bodyEl = () => document.querySelector<HTMLElement>(".note-editor-body")!;
+
+test("H-026: con scroll recordado, al restaurar el documento se vuelve a esa posición", async () => {
+  const layout = mockLayout(2000, 500);
+  try {
+    const { value, vault } = await setup();
+    const note = await value.notes.create(vault.id, "Hola");
+    writeMemory("u1", vault.id, { noteId: note.id, scroll: 300 });
+    render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+    await editorRegion();
+    await waitFor(() => expect(layout.tops.get(bodyEl())).toBe(300));
+  } finally {
+    layout.restore();
+  }
+});
+
+test("H-026: un scroll posterior se guarda en la memoria de la bóveda", async () => {
+  const layout = mockLayout(2000, 500);
+  try {
+    const { value, vault } = await setup();
+    await value.notes.create(vault.id, "Hola");
+    render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+    await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+    await editorRegion();
+    layout.tops.set(bodyEl(), 640);
+    fireEvent.scroll(bodyEl());
+    await waitFor(() => expect(readMemory("u1", vault.id)?.scroll).toBe(640), { timeout: 2000 });
+  } finally {
+    layout.restore();
+  }
+});
+
+test("H-026: el scroll recordado no se reaplica al volver a un documento ya abierto", async () => {
+  const layout = mockLayout(2000, 500);
+  try {
+    const { value, vault } = await setup();
+    const a = await value.notes.create(vault.id, "A");
+    await value.notes.create(vault.id, "B");
+    writeMemory("u1", vault.id, { noteId: a.id, scroll: 300 });
+    render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+    await editorRegion();
+    await waitFor(() => expect(layout.tops.get(bodyEl())).toBe(300));
+    await userEvent.click(screen.getByRole("treeitem", { name: "B" }));
+    await waitFor(() => expect(readMemory("u1", vault.id)?.scroll).toBe(0));
+    layout.tops.set(bodyEl(), 0);
+    await userEvent.click(screen.getByRole("treeitem", { name: "A" }));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(layout.tops.get(bodyEl()) ?? 0).toBe(0);
+  } finally {
+    layout.restore();
+  }
+});

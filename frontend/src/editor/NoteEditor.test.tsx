@@ -1432,12 +1432,94 @@ describe("wikilinks · vista previa en Lectura (H-021)", () => {
   });
 });
 
+
+/** jsdom no calcula alturas ni guarda `scrollTop`: se simulan para probar el scroll recordado (H-026). */
+function mockLayout(scrollHeight: number, clientHeight: number) {
+  const tops = new WeakMap<Element, number>();
+  const original = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+  Object.defineProperty(Element.prototype, "scrollTop", {
+    configurable: true,
+    get(this: Element) {
+      return tops.get(this) ?? 0;
+    },
+    set(this: Element, value: number) {
+      tops.set(this, value);
+    },
+  });
+  const h = vi.spyOn(Element.prototype, "scrollHeight", "get").mockReturnValue(scrollHeight);
+  const c = vi.spyOn(Element.prototype, "clientHeight", "get").mockReturnValue(clientHeight);
+  return {
+    tops,
+    restore() {
+      h.mockRestore();
+      c.mockRestore();
+      if (original) Object.defineProperty(Element.prototype, "scrollTop", original);
+      else delete (Element.prototype as unknown as Record<string, unknown>).scrollTop;
+    },
+  };
+}
+
 describe("H-026: recordar y restaurar scroll", () => {
-  it("acepta props onScroll e initialScroll", async () => {
+  const body = () => document.querySelector<HTMLElement>(".note-editor-body")!;
+
+  it("avisa el scroll tras 250 ms y una sola vez aunque lleguen varios eventos", async () => {
     const onScroll = vi.fn();
-    const { ui, first, second, rerender } = await setup("# Hola\n", {}, {
-      views: { Visual: fake("visual"), Code: fake("code") },
-    });
-    expect(screen.getByRole("textbox", { name: "Contenido de la nota" })).toBeInTheDocument();
+    await setup("# Hola\n", {}, { onScroll });
+    vi.useFakeTimers();
+    try {
+      const layout = mockLayout(2000, 500);
+      try {
+        layout.tops.set(body(), 420);
+        fireEvent.scroll(body());
+        fireEvent.scroll(body());
+        act(() => void vi.advanceTimersByTime(249));
+        expect(onScroll).not.toHaveBeenCalled();
+        act(() => void vi.advanceTimersByTime(1));
+        expect(onScroll).toHaveBeenCalledTimes(1);
+        expect(onScroll).toHaveBeenCalledWith(420);
+      } finally {
+        layout.restore();
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("entrega el scroll pendiente al desmontar", async () => {
+    const onScroll = vi.fn();
+    const { unmount } = await setup("# Hola\n", {}, { onScroll });
+    const layout = mockLayout(2000, 500);
+    try {
+      layout.tops.set(body(), 333);
+      fireEvent.scroll(body());
+      unmount();
+      expect(onScroll).toHaveBeenCalledWith(333);
+    } finally {
+      layout.restore();
+    }
+  });
+
+  it("restaura initialScroll cuando la nota carga, con tope si el documento es más corto", async () => {
+    for (const [height, expected] of [[2000, 500], [700, 200]] as const) {
+      const layout = mockLayout(height, 500);
+      try {
+        const { unmount } = await setup("# Hola\n", {}, { initialScroll: 500 });
+        await waitFor(() => expect(layout.tops.get(body())).toBe(expected));
+        unmount();
+      } finally {
+        layout.restore();
+      }
+    }
+  });
+
+  it("sin initialScroll no toca el scroll", async () => {
+    const layout = mockLayout(2000, 500);
+    try {
+      await setup("# Hola\n", {}, {});
+      await new Promise((r) => setTimeout(r, 80));
+      expect(layout.tops.get(body()) ?? 0).toBe(0);
+    } finally {
+      layout.restore();
+    }
   });
 });
