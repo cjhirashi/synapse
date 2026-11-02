@@ -963,3 +963,57 @@ describe("MilkdownView · vista del nodo html (H-019)", () => {
     expect(container.querySelector("iframe")).not.toBeNull();
   });
 });
+
+// H-019 paso 5: comando `insertEmbed` para insertar un iframe en el cursor.
+describe("MilkdownView · comando de incrustado (H-019)", () => {
+  async function mountEmbed() {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    render(
+      <MilkdownView
+        value=""
+        readOnly={false}
+        onChange={() => {}}
+        label="Visual"
+        registerCommands={(c) => (commands = c)}
+        onView={(v) => (view = v)}
+      />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as EditorCommands, view: view as unknown as EditorView };
+  }
+
+  it("5a: insertEmbed inserta un nodo html con iframe, el DOM lo renderiza con sandbox y el markdown lo contiene", async () => {
+    const { commands, view } = await mountEmbed();
+    const url = "https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000";
+    act(() => commands.insertEmbed(url));
+
+    // El nodo html está en el árbol ProseMirror
+    let htmlNode: { attrs: { value: string } } | null = null;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === "html") htmlNode = node as never;
+    });
+    expect(htmlNode).not.toBeNull();
+    expect(htmlNode!.attrs.value).toContain(`<iframe src="${url}"></iframe>`);
+
+    // El DOM contiene un iframe con sandbox exactamente "allow-scripts"
+    await waitFor(() => {
+      const iframe = view.dom.querySelector("iframe");
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+      expect(iframe!.getAttribute("src")).toBe(url);
+    });
+  });
+
+  it("5b: al volver a montar el markdown con insertEmbed, el iframe reaparece", async () => {
+    const url = "https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000";
+    const markup = `<iframe src="${url}"></iframe>`;
+    const { container } = await mount({ value: markup, readOnly: false });
+    await waitFor(() => {
+      const iframe = container.querySelector("iframe");
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+    });
+  });
+});

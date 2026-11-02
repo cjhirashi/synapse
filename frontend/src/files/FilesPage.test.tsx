@@ -431,4 +431,88 @@ describe("FilesPage", () => {
     await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1"));
     expect(await screen.findByText("hoja.xlsx")).toBeInTheDocument();
   });
+
+  // H-019 paso 5: botón «Incrustado» solo para archivos HTML
+  it("H-019: fila text/html muestra botón «Incrustado» que copia el markup al portapapeles", async () => {
+    const htmlFile: VaultFile = {
+      id: "html-file-id",
+      vault_id: "vault-1",
+      name: "widget.html",
+      content_type: "text/html",
+      size: 512,
+      visibility: "public",
+      created_at: "2026-10-31T10:00:00Z",
+      references_count: 1,
+    };
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([htmlFile]);
+    const mockClipboard = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue(undefined);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: emptyNotes(),
+    });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const htmlRow = await screen.findByText("widget.html");
+    const buttons = htmlRow.closest("tr")?.querySelectorAll("button");
+    const embedButton = Array.from(buttons || []).find((btn) => btn.textContent?.includes("Incrustado"));
+    expect(embedButton).toBeTruthy();
+    await userEvent.click(embedButton!);
+
+    await waitFor(() =>
+      expect(mockClipboard).toHaveBeenCalledWith(
+        '<iframe src="https://synapse.cjhirashi.com/files/html-file-id"></iframe>'
+      )
+    );
+    expect(await screen.findByText("Incrustado copiado.")).toBeInTheDocument();
+  });
+
+  it("H-019: fila application/pdf NO muestra botón «Incrustado»", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([SAMPLE_FILES[0]]); // PDF
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: emptyNotes(),
+    });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const pdfRow = await screen.findByText("documento.pdf");
+    const buttons = pdfRow.closest("tr")?.querySelectorAll("button");
+    const embedButton = Array.from(buttons || []).find((btn) => btn.textContent?.includes("Incrustado"));
+    expect(embedButton).toBeUndefined();
+  });
+
+  it("H-019: fila image/png NO muestra botón «Incrustado»", async () => {
+    const imageFile: VaultFile = {
+      id: "img-id",
+      vault_id: "vault-1",
+      name: "foto.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-31T10:00:00Z",
+      references_count: 0,
+    };
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([imageFile]);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: emptyNotes(),
+    });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+
+    const imgRow = await screen.findByText("foto.png");
+    const buttons = imgRow.closest("tr")?.querySelectorAll("button");
+    const embedButton = Array.from(buttons || []).find((btn) => btn.textContent?.includes("Incrustado"));
+    expect(embedButton).toBeUndefined();
+  });
 });
