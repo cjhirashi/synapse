@@ -13,6 +13,7 @@ import {
   fileUrl,
 } from "./uploadFile";
 import { scanFileReferences, type FileRef } from "./fileReferences";
+import { htmlEmbedMarkup } from "./embed";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import "./files.css";
 
@@ -108,6 +109,16 @@ export default function FilesPage() {
       setTimeout(() => setNotice(null), 3000);
     } catch (err) {
       setNotice({ kind: "alert", text: "No se pudo copiar el link." });
+    }
+  }
+
+  async function handleCopyEmbed(file: VaultFile) {
+    try {
+      await navigator.clipboard.writeText(htmlEmbedMarkup(fileUrl(file.id)));
+      setNotice({ kind: "status", text: "Incrustado copiado." });
+      setTimeout(() => setNotice(null), 3000);
+    } catch (err) {
+      setNotice({ kind: "alert", text: "No se pudo copiar el incrustado." });
     }
   }
 
@@ -374,6 +385,15 @@ export default function FilesPage() {
                       >
                         Link
                       </button>
+                      {file.content_type === "text/html" && (
+                        <button
+                          type="button"
+                          aria-label={`Copiar incrustado de ${file.name}`}
+                          onClick={() => void handleCopyEmbed(file)}
+                        >
+                          Incrustado
+                        </button>
+                      )}
                       <button
                         type="button"
                         aria-label={`Renombrar ${file.name}`}

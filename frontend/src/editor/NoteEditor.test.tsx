@@ -540,6 +540,94 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
   });
 });
 
+// H-019 paso 5: subir archivo HTML e insertar como incrustado.
+describe("subir archivo HTML en la Fila 3 (H-019)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  async function setupHtmlUpload() {
+    const insertEmbed = vi.fn();
+    const insertLink = vi.fn();
+    const insertImage = vi.fn();
+    function VisualWithEmbed({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertEmbed, insertLink, insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithEmbed, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertEmbed, insertLink, insertImage };
+  }
+
+  function fileInput(container: HTMLElement): HTMLInputElement {
+    return container.querySelector<HTMLInputElement>('input[type="file"]')!;
+  }
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("C-1: elegir un archivo text/html lo sube e inserta incrustado (insertEmbed)", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "abc",
+      vault_id: VAULT,
+      name: "página.html",
+      content_type: "text/html",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container, insertEmbed } = await setupHtmlUpload();
+    const input = fileInput(container);
+    const file = new File([new Uint8Array(256)], "página.html", { type: "text/html" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(insertEmbed).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc"));
+  });
+
+  it("C-2: imagen se sigue insertando como insertImage (no como incrustado)", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "xyz",
+      vault_id: VAULT,
+      name: "foto.png",
+      content_type: "image/png",
+      size: 512,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container, insertImage, insertEmbed } = await setupHtmlUpload();
+    const input = fileInput(container);
+    const file = new File([new Uint8Array(512)], "foto.png", { type: "image/png" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/xyz", "foto"));
+    expect(insertEmbed).not.toHaveBeenCalled();
+  });
+
+  it("C-3: PDF se sigue insertando como insertLink (no como incrustado)", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "pdf123",
+      vault_id: VAULT,
+      name: "contrato.pdf",
+      content_type: "application/pdf",
+      size: 1024,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container, insertLink, insertEmbed } = await setupHtmlUpload();
+    const input = fileInput(container);
+    const file = new File([new Uint8Array(1024)], "contrato.pdf", { type: "application/pdf" });
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    fireEvent.change(input);
+
+    await waitFor(() => expect(insertLink).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/pdf123", "contrato"));
+    expect(insertEmbed).not.toHaveBeenCalled();
+  });
+});
+
 describe("alternar Visual/Código (RF-008)", () => {
   // RF-008
   it("conserva el borrador y no llama al almacén", async () => {

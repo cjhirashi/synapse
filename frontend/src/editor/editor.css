@@ -1637,3 +1637,17 @@ li.note-task[data-checked="true"] .note-task-body {
 .wikilink-preview-create:hover {
   color: var(--vault-secondary);
 }
+
+/* H-019 paso 4: iframe saneado en Visual y Lectura. */
+.md-embed {
+  width: 100%;
+  margin: var(--space-3) 0;
+}
+
+.md-embed iframe {
+  width: 100%;
+  height: min(70vh, 640px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  display: block;
+}

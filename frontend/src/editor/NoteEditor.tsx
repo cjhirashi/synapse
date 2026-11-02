@@ -47,6 +47,7 @@ import {
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
+import { htmlEmbedMarkup } from "../files/embed";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -290,7 +291,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   /**
-   * Sube un archivo a la bóveda de la nota e inserta `![nombre](url)` (imagen) o `[nombre](url)` (documento) (H-015/H-016).
+   * Sube un archivo a la bóveda de la nota e inserta `![nombre](url)` (imagen), incrustado (HTML H-019)
+   * o `[nombre](url)` (documento) (H-015/H-016).
    * La URL es `https://synapse.cjhirashi.com/files/<id>` (pasa `safeImageUrl` sin cambios, C-4).
    * El tipo y límites se validan en el cliente (feedback inmediato) y en el backend (C-11).
    */
@@ -302,11 +304,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       const uploaded = await uploadFile(file, current.vault_id);
       const alt = file.name.replace(/\.[^.]+$/, "") || uploaded.name;
       const url = fileUrl(uploaded.id);
-      // Si es imagen, inserta como ![alt](url); si es documento, como [nombre](url)
       if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(uploaded.content_type)) {
         editorCommands.current?.insertImage(url, alt);
+      } else if (uploaded.content_type === "text/html") {
+        editorCommands.current?.insertEmbed(url);
       } else {
-        // Para documentos: insertar como enlace [nombre](url) (H-016 C-10)
         editorCommands.current?.insertLink(url, alt);
       }
     } catch (err) {

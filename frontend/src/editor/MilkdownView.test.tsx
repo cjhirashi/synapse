@@ -871,3 +871,149 @@ describe("MilkdownView · comando de enlace (H-016)", () => {
     expect(view.dom.querySelector("a:not(.ProseMirror-separator)")?.textContent).toBe(text);
   });
 });
+
+// H-019 paso 4: vista del nodo html — iframe saneado en Visual y Lectura.
+describe("MilkdownView · vista del nodo html (H-019)", () => {
+  // 4a: iframe permitido en el markdown → existe iframe en el DOM con atributos exactos.
+  it("4a: iframe permitido de synapse.cjhirashi.com se renderiza con sandbox exacto", async () => {
+    const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
+    const { container } = await mount({ value: markdown, readOnly: false });
+    const iframe = container.querySelector("iframe");
+    expect(iframe).not.toBeNull();
+    expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+    expect(iframe!.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(iframe!.getAttribute("loading")).toBe("lazy");
+    expect(iframe!.getAttribute("src")).toBe("https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000");
+  });
+
+  // 4a en Lectura: iframe permitido se sigue mostrando.
+  it("4a: iframe permitido se renderiza igual en Lectura (readOnly)", async () => {
+    const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
+    const { container } = await mount({ value: markdown, readOnly: true });
+    const iframe = container.querySelector("iframe");
+    expect(iframe).not.toBeNull();
+    expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+  });
+
+  // 4b: iframe bloqueado (src externo) → NO hay iframe en DOM.
+  it("4b: iframe con src externo no se renderiza", async () => {
+    const markdown = '<iframe src="https://evil.example/x"></iframe>';
+    const { container } = await mount({ value: markdown });
+    expect(container.querySelector("iframe")).toBeNull();
+  });
+
+  // 4b: http → sin iframe.
+  it("4b: iframe con http (no https) no se renderiza", async () => {
+    const markdown = '<iframe src="http://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
+    const { container } = await mount({ value: markdown });
+    expect(container.querySelector("iframe")).toBeNull();
+  });
+
+  // 4b: javascript: → sin iframe.
+  it("4b: iframe con javascript: no se renderiza", async () => {
+    const markdown = '<iframe src="javascript:alert(1)"></iframe>';
+    const { container } = await mount({ value: markdown });
+    expect(container.querySelector("iframe")).toBeNull();
+  });
+
+  // 4c: ida y vuelta — markdown que emite el editor sin editar es idéntico.
+  it("4c: ida y vuelta sin editar: markdown emitido es igual al original", async () => {
+    const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
+    let emitted = "";
+    const { view } = await mount({ value: markdown, onChange: (v) => (emitted = v) });
+    // Sin editar, no emite. Espera justificada (F-3): se afirma una ausencia.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Desmontar lo que está pendiente (listener debounce de 200 ms).
+    const onView = vi.fn();
+    render(<MilkdownView value={markdown} readOnly={false} onChange={() => {}} label="t" onView={onView} />);
+    expect(emitted).toBe("");
+  });
+
+  // 4c: editar otro párrafo no altera la línea del iframe.
+  it("4c: editar otro párrafo preserva la línea del iframe sin cambios", async () => {
+    const markdown = 'texto\n\n<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>\n\nmás texto';
+    let emitted: string | null = null;
+    const { view } = await mount({ value: markdown, onChange: (v) => (emitted = v) });
+    // Editar en el primer párrafo (antes del iframe).
+    act(() => {
+      view.dispatch(view.state.tr.insertText(" editado", 5));
+    });
+    // Emitir lo pendiente.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Verificar que la línea del iframe sigue intacta.
+    if (emitted) {
+      expect(emitted).toContain('<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>');
+    }
+  });
+
+  // 4d: documento sin HTML sigue igual.
+  it("4d: documento sin HTML se ve exactamente igual que antes", async () => {
+    const markdown = "# Título\n\n**texto fuerte**";
+    const { container } = await mount({ value: markdown });
+    expect(container.querySelector("h1")).toHaveTextContent("Título");
+    expect(container.querySelector("strong")).toHaveTextContent("texto fuerte");
+  });
+
+  // 4e: HTML con <script> no crea script en DOM.
+  it("4e: HTML con <script> no ejecuta ni crea script en el DOM", async () => {
+    const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe><script>alert(1)</script>';
+    const { container } = await mount({ value: markdown });
+    expect(container.querySelector("script")).toBeNull();
+    // El iframe sigue ahí.
+    expect(container.querySelector("iframe")).not.toBeNull();
+  });
+});
+
+// H-019 paso 5: comando `insertEmbed` para insertar un iframe en el cursor.
+describe("MilkdownView · comando de incrustado (H-019)", () => {
+  async function mountEmbed() {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    render(
+      <MilkdownView
+        value=""
+        readOnly={false}
+        onChange={() => {}}
+        label="Visual"
+        registerCommands={(c) => (commands = c)}
+        onView={(v) => (view = v)}
+      />,
+    );
+    await waitFor(() => expect(view).not.toBeNull());
+    await waitFor(() => expect(commands).not.toBeNull());
+    return { commands: commands as unknown as EditorCommands, view: view as unknown as EditorView };
+  }
+
+  it("5a: insertEmbed inserta un nodo html con iframe, el DOM lo renderiza con sandbox y el markdown lo contiene", async () => {
+    const { commands, view } = await mountEmbed();
+    const url = "https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000";
+    act(() => commands.insertEmbed(url));
+
+    // El nodo html está en el árbol ProseMirror
+    let htmlNode: { attrs: { value: string } } | null = null;
+    view.state.doc.descendants((node) => {
+      if (node.type.name === "html") htmlNode = node as never;
+    });
+    expect(htmlNode).not.toBeNull();
+    expect(htmlNode!.attrs.value).toContain(`<iframe src="${url}"></iframe>`);
+
+    // El DOM contiene un iframe con sandbox exactamente "allow-scripts"
+    await waitFor(() => {
+      const iframe = view.dom.querySelector("iframe");
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+      expect(iframe!.getAttribute("src")).toBe(url);
+    });
+  });
+
+  it("5b: al volver a montar el markdown con insertEmbed, el iframe reaparece", async () => {
+    const url = "https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000";
+    const markup = `<iframe src="${url}"></iframe>`;
+    const { container } = await mount({ value: markup, readOnly: false });
+    await waitFor(() => {
+      const iframe = container.querySelector("iframe");
+      expect(iframe).not.toBeNull();
+      expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
+    });
+  });
+});

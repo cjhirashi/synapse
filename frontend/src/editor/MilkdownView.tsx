@@ -54,7 +54,9 @@ import { applyHeadingIds } from "./markdown/headingIds";
 import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
+import { htmlViewFactory } from "./htmlView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
+import { htmlEmbedMarkup } from "../files/embed";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
 import "prosemirror-view/style/prosemirror.css";
 
@@ -231,6 +233,8 @@ export interface EditorCommands {
   insertImage: (url: string, alt: string) => void;
   /** Inserta en el cursor un enlace `[text](url)` (H-016); la URL se filtra con `safeLinkUrl` al pintarla. */
   insertLink: (url: string, text: string) => void;
+  /** Inserta un nodo html con un iframe en el cursor (H-019 paso 5). */
+  insertEmbed: (url: string) => void;
 }
 
 interface MilkdownViewProps {
@@ -445,6 +449,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ["code_block", codeBlockViewFactory({ mermaid: mermaidRenderer })] as [string, NodeViewConstructor],
           ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
+          ["html", htmlViewFactory()] as [string, NodeViewConstructor],
         ]);
         // RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos. El
         // `editorStateOptionsCtx` recibe el documento recién parseado (por `parserCtx`) justo antes de
@@ -658,6 +663,15 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
             const tr = state.tr.insertText(text, from, to);
             const linkMark = state.schema.marks.link;
             tr.addMark(from, from + text.length, linkMark.create({ href: url }));
+            view.dispatch(tr);
+            view.focus();
+          },
+          // H-019 paso 5: inserta un nodo html con iframe en el cursor; el markdown queda `<iframe src="url"></iframe>`.
+          insertEmbed: (url: string) => {
+            const { state } = view;
+            const { from, to } = state.selection;
+            const htmlNode = state.schema.nodes.html.create({ value: htmlEmbedMarkup(url) });
+            const tr = state.tr.replaceWith(from, to, htmlNode);
             view.dispatch(tr);
             view.focus();
           },
