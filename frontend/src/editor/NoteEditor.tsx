@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -167,6 +167,10 @@ interface NoteEditorProps {
    * sidebar y el editor lo reenvía a la vista Visual, que lo publica como variable CSS del documento.
    */
   vaultColor?: PaletteKey;
+  /** Restaurar el scroll a esta posición (px) cuando se carga la nota (H-026). */
+  initialScroll?: number;
+  /** Avisa del scroll actual (px, redondeado) con debounce de 250 ms (H-026). */
+  onScroll?: (px: number) => void;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -186,7 +190,7 @@ function uploadErrorMessage(error: unknown): string {
 }
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent" },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -289,6 +293,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [uploadError, setUploadError] = useState<string | null>(null);
   /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
   const imageInputRef = useRef<HTMLInputElement>(null);
+  /** H-026: referencia al div contenedor del scroll del documento. */
+  const editorBodyRef = useRef<HTMLDivElement>(null);
+  /** H-026: timeout del debounce de scroll. */
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** H-026: si ya se aplicó el scroll inicial para esta nota. */
+  const scrollAppliedRef = useRef(false);
+  /** H-026: timeout del bucle RAF de restauración de scroll. */
+  const scrollRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
 
   /**
    * Sube un archivo a la bóveda de la nota e inserta `![nombre](url)` (imagen), incrustado (HTML H-019)
@@ -813,6 +825,59 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     event.preventDefault();
   }
 
+  // H-026: el scroll se avisa con debounce de 250 ms; al desmontar o cambiar de nota se entrega lo pendiente.
+  const lastScrollPx = useRef(0);
+  const onScrollRef = useRef(onScroll);
+  onScrollRef.current = onScroll;
+  const flushScroll = useCallback(() => {
+    if (scrollTimeoutRef.current === null) return;
+    clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = null;
+    onScrollRef.current?.(lastScrollPx.current);
+  }, []);
+  const handleBodyScroll = useCallback((event: ReactUIEvent<HTMLDivElement>) => {
+    if (!onScrollRef.current) return;
+    lastScrollPx.current = Math.round(event.currentTarget.scrollTop);
+    if (scrollTimeoutRef.current !== null) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      scrollTimeoutRef.current = null;
+      onScrollRef.current?.(lastScrollPx.current);
+    }, 250);
+  }, []);
+  useEffect(() => flushScroll, [openId, flushScroll]);
+
+  // H-026: restaurar scroll inicial (RAF hasta que el contenido esté completo o venza el plazo).
+  useEffect(() => {
+    if (!initialScroll || initialScroll === 0 || !editorBodyRef.current || note === null) {
+      return;
+    }
+    if (scrollAppliedRef.current) return;
+    scrollAppliedRef.current = true;
+
+    const el = editorBodyRef.current;
+    const startTime = Date.now();
+    const maxDuration = 1500;
+
+    const applyScroll = () => {
+      const maxScroll = Math.max(0, el.scrollHeight - el.clientHeight);
+      el.scrollTop = Math.min(initialScroll, maxScroll);
+      if (el.scrollHeight - el.clientHeight >= initialScroll || Date.now() - startTime > maxDuration) {
+        return;
+      }
+      scrollRafRef.current = requestAnimationFrame(applyScroll);
+    };
+
+    scrollRafRef.current = requestAnimationFrame(applyScroll);
+    return () => {
+      if (scrollRafRef.current !== null) cancelAnimationFrame(scrollRafRef.current);
+    };
+  }, [initialScroll, note?.id]);
+
+  // H-026: reiniciar el flag de scroll al cambiar de nota.
+  useEffect(() => {
+    scrollAppliedRef.current = false;
+  }, [openId]);
+
   // Sin borrador, una nota que ya no existe no tiene nada que ofrecer; con borrador se conserva
   // el editor y se ofrece restaurarla (VF-4).
   if (missing && !dirty) return <p role="status">{noteErrorMessage(new NoteNotFoundError())}</p>;
@@ -986,7 +1051,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
-      <div className="note-editor-body" onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
+      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
         <div className="note-editor-column">
           {pathInvalid && (
             <div className="note-editor-notice" role="alert">

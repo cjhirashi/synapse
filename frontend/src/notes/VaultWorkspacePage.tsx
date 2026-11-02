@@ -5,14 +5,16 @@
  * - La bóveda se lee de la réplica y se relee con `dataVersion`: una que llega después por el
  *   pull sustituye al 404, y una que se borra mientras está abierta pasa a 404 (RF-002, RF-014).
  *   Un id que no es un UUID canónico no se consulta siquiera.
- * - La nota abierta vive sólo en el estado del componente (RF-015): ni URL ni almacenamiento,
- *   así que al entrar (o volver a montar) el editor está vacío.
+ * - La nota abierta vive en el estado del componente, sin URL (RF-015 original: entrar abría vacío). Desde H-026
+ *   se recuerda por dispositivo, usuario y bóveda (`workspaceMemory`): al entrar se restaura el último
+ *   documento (con sus carpetas y su scroll) y solo sin registro, o con un documento que ya no existe, abre vacío.
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { CSSProperties, KeyboardEvent, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { MeContext } from "../auth/RequireAuth";
 import { whenIdle } from "../editor/deferred/idle";
 import { hasUnmanagedExtension } from "../editor/wikilink";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
@@ -24,6 +26,7 @@ import { NOTE_ID_PREFIX } from "./noteRules";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
+import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
@@ -249,23 +252,47 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     saveHistory(sessionStorage, vault.id, next);
   }
 
+  // H-026: memoria por dispositivo, usuario y bóveda (documento abierto y carpetas desplegadas). Sin usuario no recuerda.
+  const userId = useContext(MeContext)?.user_id ?? null;
+  const remembered = useRef<ReturnType<typeof readMemory> | undefined>(undefined);
+  if (remembered.current === undefined) remembered.current = userId ? readMemory(userId, vault.id) : null;
+  // Hasta intentar restaurar el documento no se guarda nada: el estado vacío inicial no debe borrar lo recordado.
+  const [memoryReady, setMemoryReady] = useState(false);
+  const rememberExpanded = useCallback(
+    (expanded: string[]) => {
+      if (userId) writeMemory(userId, vault.id, { expanded });
+    },
+    [userId, vault.id],
+  );
+
+  const rememberScroll = useCallback(
+    (px: number) => {
+      if (userId) writeMemory(userId, vault.id, { scroll: px });
+    },
+    [userId, vault.id],
+  );
+
   // RNF-001 (Converge 1, M-1): el chunk del editor (~1 MB: Milkdown, CodeMirror…) se descarga, analiza y compila en idle,
   // ya dentro de una bóveda, y no en el «clic → legible» de la primera nota. Sigue siendo un chunk aparte: `/vaults` no
   // lo descarga (P-3) y mermaid, svg-pan-zoom, yaml y las gramáticas siguen pidiéndose sólo cuando una nota los usa.
   useEffect(() => whenIdle(() => void loadEditor(), 2000), []);
 
-  /** Nota abierta (RF-015: nunca persiste fuera de este estado). */
+  /** Nota abierta (RF-015: restaurada de memoria si existe y es viva, de lo contrario vacía). */
   const [openId, setOpenId] = useState<string | null>(() => requestedNote(location.state, vault.id));
 
   // El estado de navegación vive en el historial del navegador y sobreviviría a recargar:
-  // una vez usado se limpia, para que entrar de nuevo a la bóveda siga abriendo vacía (RF-015).
+  // una vez usado se limpia, para que un pedido explícito no se repita al recargar (lo demás lo decide la memoria, H-026).
   useEffect(() => {
     if (location.state !== null) navigate(location.pathname, { replace: true, state: null });
     // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
   }, []);
+
   /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
+  /** H-026: scroll a restaurar en la nota abierta. */
+  const [scrollTarget, setScrollTarget] = useState<{ noteId: string; px: number } | null>(null);
+
   // Cerrar la nota a propósito (borrarla descartando cambios…) suelta el borrador conservado: sólo la
   // pérdida involuntaria de la bóveda (papelera por sync) lo deja disponible en el 404 (E-3).
   useEffect(() => {
@@ -289,6 +316,36 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       alive = false;
     };
   }, [notes, notesVersion, vault.id]);
+
+  // H-026: con la lista de notas cargada se restaura, una sola vez, el documento recordado si sigue vivo; si no, se
+  // olvida. Un pedido explícito de abrir otra nota, o una que el usuario ya abrió, gana sobre lo recordado.
+  useEffect(() => {
+    if (memoryReady || liveIds === null) return;
+    const noteId = remembered.current?.noteId ?? null;
+    const scroll = remembered.current?.scroll ?? 0;
+    if (userId && noteId !== null && openId === null) {
+      if (liveIds.has(noteId)) {
+        setEditOnOpen(false);
+        setOpenId(noteId);
+        if (scroll > 0) setScrollTarget({ noteId, px: scroll });
+      } else {
+        forgetNote(userId, vault.id);
+      }
+    }
+    setMemoryReady(true);
+  }, [liveIds, memoryReady, openId, userId, vault.id]);
+
+  // H-026: el scroll recordado solo vale para la primera apertura del documento restaurado.
+  useEffect(() => {
+    if (scrollTarget !== null && openId !== scrollTarget.noteId) setScrollTarget(null);
+  }, [openId, scrollTarget]);
+
+  // H-026: cada cambio del documento abierto se recuerda; cerrarlo a propósito lo olvida.
+  useEffect(() => {
+    if (!userId || !memoryReady) return;
+    if (openId === null) forgetNote(userId, vault.id);
+    else writeMemory(userId, vault.id, { noteId: openId });
+  }, [openId, memoryReady, userId, vault.id]);
 
   /** El editor responde si se puede descartar su borrador (borrar la nota abierta, VF-2). */
   const editorRef = useRef<NoteEditorHandle>(null);
@@ -412,6 +469,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           onShowTrash={() => setShowTrash(true)}
           confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
           onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
+          initialExpanded={remembered.current?.expanded}
+          onExpandedChange={rememberExpanded}
         />
         {isDesktop && sidebarOpen && (
           <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
@@ -441,7 +500,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
             </Suspense>
           )}
         </div>

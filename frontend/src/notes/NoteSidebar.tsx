@@ -59,6 +59,10 @@ interface NoteSidebarProps {
    * clic suele llegar cientos de ms después, o Enter tras el foco). Sin esta función no hace nada.
    */
   onPrefetch?: (id: string) => void;
+  /** H-026: carpetas inicialmente desplegadas. */
+  initialExpanded?: readonly string[];
+  /** H-026: notificación cuando expanded cambia. */
+  onExpandedChange?: (expanded: string[]) => void;
 }
 
 /** Fila visible del árbol, en orden de pantalla (lo que recorre el teclado). */
@@ -128,12 +132,12 @@ export interface NoteSidebarHandle {
 }
 
 const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function NoteSidebar(
-  { vaultId, vaultColor, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch },
+  { vaultId, vaultColor, openId, onOpen, onDeleted, onShowTrash, confirmDelete, onPrefetch, initialExpanded, onExpandedChange },
   ref,
 ) {
   const { notes, notesVersion } = useSync();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(initialExpanded ?? []));
   const [title, setTitle] = useState("");
   /** Carpeta activa (`""` = raíz): dónde se crea lo nuevo. Estado visual del árbol (RF-043). */
   const [activeFolder, setActiveFolder] = useState("");
@@ -193,7 +197,19 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   useEffect(() => {
     let alive = true;
     void notes.list(vaultId).then((list) => {
-      if (alive) setItems(list);
+      if (alive) {
+        setItems(list);
+        // H-026: filtrar expanded a las carpetas que existen (prefijos de notas vivas).
+        const existingPaths = new Set<string>();
+        for (const note of list) {
+          if (note.deleted_at === null) {
+            for (const path of ancestors(note.path)) {
+              existingPaths.add(path);
+            }
+          }
+        }
+        setExpanded((prev) => new Set([...prev].filter(p => existingPaths.has(p))));
+      }
     });
     return () => {
       alive = false;
@@ -205,6 +221,12 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     const open = items?.find((item) => item.id === openId);
     if (open) setExpanded((prev) => new Set([...prev, ...ancestors(open.path)]));
   }, [items, openId]);
+
+  // H-026: notificar cambios en expanded (solo si items cargó).
+  useEffect(() => {
+    if (items === null) return;
+    onExpandedChange?.([...expanded]);
+  }, [expanded, items, onExpandedChange]);
 
   // Al abrir una nota (RF-042) la carpeta activa pasa a ser la suya; pulsar otras carpetas después la mueve.
   const lastOpen = useRef<string | null>(null);
