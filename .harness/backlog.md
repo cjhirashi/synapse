@@ -18,8 +18,9 @@
 > Checklist con tareas y validaciones que se marcan con fecha al ejecutarlas por el arnés. Esta lista sólo
 > indexa; el detalle está en el documento de cada slice.
 
-- [~] H-019 — HTML incrustado (iframe aislado): Gate 1 pasado en el proceso anterior; **plan propuesto, espera aprobación de Carlos** en su documento de la bóveda.
-- [ ] H-025 — Videos de YouTube: **análisis ronda 1**, espera respuestas de Carlos. Depende de H-019.
+- [~] H-019 — HTML incrustado (iframe aislado): **plan aprobado por Carlos 2026-11-02 (chat) y checklist creado**; espera la autorización del plan de modelos para lanzar. Paso 5 en pausa por una observación en su nota.
+- [ ] H-025 — YouTube + control «Subir o pegar URL» y reconocedor de enlaces: **análisis ronda 3**, espera respuestas de Carlos. Partido el 2026-11-02; depende de H-019.
+- [ ] H-018 — Video subido a Synapse (MP4/WebM; rangos y transmisión por partes en el servidor): **análisis ronda 1**. Se ejecuta después de H-025.
 - [ ] H-026 — Recordar el último documento abierto y las carpetas desplegadas de cada bóveda (pedido de Carlos 2026-11-02; primera de la fila) — análisis ronda 1
 - [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
 - [ ] H-028 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
