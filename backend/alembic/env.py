@@ -18,9 +18,9 @@ from app.adapters.database import Base
 import app.core.models  # noqa: F401
 
 # Interpret the config file for Python logging.
-# This line sets up loggers basically.
+# Sin apagar los loggers que ya existen: alembic se ejecuta también dentro de las pruebas y de la app.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

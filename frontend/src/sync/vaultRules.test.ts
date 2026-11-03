@@ -1,10 +1,10 @@
 // Reglas espejo (SPEC-0005 RF-005, RF-015; PLAN-0005 §5): la misma batería que
 // `backend/tests/test_sync_rules_mirror.py` fija contra `core/schemas.py`.
 import cases from "../../../backend/tests/fixtures/vault_rules_cases.json";
-import { checkIcon, FIELD_RULES, ICON_MAX, type VaultField, nameKey, validateVault } from "./vaultRules";
+import { checkIcon, FIELD_RULES, ICON_MAX, type VaultRuleField, nameKey, validateVault } from "./vaultRules";
 
 interface FieldCase {
-  field: VaultField;
+  field: VaultRuleField;
   input: unknown;
   valid: boolean;
   normalized?: unknown;

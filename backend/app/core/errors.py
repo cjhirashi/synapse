@@ -27,6 +27,21 @@ PROBLEM_TYPE_PREFIX = "urn:synapse:problem:"
 FIELD_ERROR_MESSAGES: dict[str, str] = {
     "invalid_email": "Invalid email format",
     "control_characters": "Must not contain control characters",
+    # H-029: Catálogo de atributos
+    "options_invalid_type": "Attribute options must be a list",
+    "attribute_key_invalid": "Attribute key must be 1 to 64 lowercase letters, digits or underscores",
+    "attribute_key_reserved": "Attribute key is reserved",
+    "attribute_type_invalid": "Attribute type is invalid",
+    "attribute_type_missing": "Attribute type is required",
+    "attribute_value_invalid": "Attribute value must be an object",
+    "attributes_invalid_type": "Attributes must be an object",
+    "attributes_too_many": "Too many attributes (max 100)",
+    "attributes_too_large": "Attributes JSON exceeds 64 KiB",
+    "option_duplicate": "Duplicate option",
+    "option_invalid": "Option must be non-empty string without leading/trailing spaces",
+    "option_too_long": "Option exceeds 64 characters",
+    "options_not_allowed_for_type": "Options are not allowed for this attribute type",
+    "options_too_many": "Too many options (max 200)",
 }
 
 

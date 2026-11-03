@@ -405,3 +405,98 @@ def test_rf_017_unreachable_couchdb_is_503(ready_admin):
         assert_problem(create(ready_admin), 503, "storage-unavailable")
     finally:
         del app.dependency_overrides[get_vault_port]
+
+
+# --- H-029: Catálogo de atributos (PASO 1) ---
+
+def test_h029_rf001_post_vault_with_attributes(ready_admin):
+    """POST con atributos válidos → 201 (RF-001)."""
+    attrs = {"status": {"type": "select", "options": ["active", "inactive"]}}
+    created = ready_admin.post("/vaults", json={"name": "proyecto", "attributes": attrs})
+    assert created.status_code == 201
+    assert created.json()["attributes"] == attrs
+
+
+def test_h029_rf001_post_vault_without_attributes(ready_admin):
+    """POST sin atributos → crea sin el campo (RF-001)."""
+    created = ready_admin.post("/vaults", json={"name": "proyecto"})
+    assert created.status_code == 201
+    assert created.json()["attributes"] is None
+
+
+def test_h029_rf002_post_vault_attributes_invalid_key(ready_admin):
+    """POST con clave inválida → 422 (RF-002)."""
+    attrs = {"ProjectStatus": {"type": "text"}}
+    response = ready_admin.post("/vaults", json={"name": "p", "attributes": attrs})
+    assert_problem(response, 422, "validation-error")
+
+
+def test_h029_rf002_post_vault_attributes_reserved_key(ready_admin):
+    """POST con clave reservada → 422 (RF-002)."""
+    attrs = {"titulo": {"type": "text"}}
+    response = ready_admin.post("/vaults", json={"name": "p", "attributes": attrs})
+    assert_problem(response, 422, "validation-error")
+
+
+def test_h029_rf003_post_vault_attributes_invalid_type(ready_admin):
+    """POST con tipo inválido → 422 (RF-003)."""
+    attrs = {"field": {"type": "enum"}}
+    response = ready_admin.post("/vaults", json={"name": "p", "attributes": attrs})
+    assert_problem(response, 422, "validation-error")
+
+
+def test_h029_rf004_post_vault_attributes_options_invalid(ready_admin):
+    """POST con opciones inválidas → 422 (RF-004)."""
+    attrs = {"status": {"type": "select", "options": ["active", ""]}}
+    response = ready_admin.post("/vaults", json={"name": "p", "attributes": attrs})
+    assert_problem(response, 422, "validation-error")
+
+
+def test_h029_rf005_patch_vault_attributes_replaces(ready_admin, db):
+    """PATCH reemplaza atributos (RF-005)."""
+    old_attrs = {"status": {"type": "text"}}
+    created = create(ready_admin, **{"attributes": old_attrs})
+    vault_id = created.json()["id"]
+    etag = created.headers["etag"]
+
+    new_attrs = {"priority": {"type": "number"}}
+    response = ready_admin.patch(f"/vaults/{vault_id}", headers={"If-Match": etag},
+                                  json={"attributes": new_attrs})
+    assert response.status_code == 200
+    assert response.json()["attributes"] == new_attrs
+
+
+def test_h029_rf005_patch_vault_attributes_null(ready_admin):
+    """PATCH con `attributes: null` borra el campo (RF-005)."""
+    attrs = {"status": {"type": "text"}}
+    created = create(ready_admin, **{"attributes": attrs})
+    vault_id = created.json()["id"]
+    etag = created.headers["etag"]
+
+    response = ready_admin.patch(f"/vaults/{vault_id}", headers={"If-Match": etag},
+                                  json={"attributes": None})
+    assert response.status_code == 200
+    assert response.json()["attributes"] is None
+
+
+def test_h029_rf006_get_vault_returns_attributes(ready_admin):
+    """GET devuelve atributos (RF-006)."""
+    attrs = {"tag": {"type": "text"}}
+    created = create(ready_admin, **{"attributes": attrs})
+    vault_id = created.json()["id"]
+
+    response = ready_admin.get(f"/vaults/{vault_id}")
+    assert response.status_code == 200
+    assert response.json()["attributes"] == attrs
+
+
+def test_h029_rf006_get_vaults_list_includes_attributes(ready_admin):
+    """GET /vaults listado devuelve atributos (RF-006)."""
+    attrs = {"category": {"type": "text"}}
+    create(ready_admin, **{"attributes": attrs})
+
+    response = ready_admin.get("/vaults")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert len(items) > 0
+    assert items[0]["attributes"] == attrs

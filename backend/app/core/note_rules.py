@@ -8,6 +8,8 @@ Las funciones `check_*` devuelven el código de rechazo del push (`validation-er
 import json
 import unicodedata
 
+from app.core.attribute_rules import validate_general
+
 PATH_MAX = 300                          # puntos de código, tras normalizar
 CONTENT_MAX_BYTES = 2 * 1024 * 1024     # bytes UTF-8 (RF-016)
 FRONTMATTER_MAX_BYTES = 64 * 1024       # JSON compacto en UTF-8 (PLAN-0008 P-4)
@@ -108,7 +110,7 @@ def nesting_depth_exceeds(value: object, limit: int) -> bool:
 
 def check_frontmatter(value: object) -> str | None:
     """`frontmatter`: objeto JSON de a lo sumo 32 niveles de profundidad cuya serialización compacta
-    pesa ≤ 64 KiB en UTF-8.
+    pesa ≤ 64 KiB en UTF-8, y cuyas claves conocidas pasan las reglas de los siete generales (H-029).
 
     El tope de profundidad (SPEC-0010, Converge 1) se comprueba **antes** de serializar: `json.loads`
     admite cientos de niveles pero `json.dumps` revienta con `RecursionError` cerca de los 950, y con
@@ -125,4 +127,6 @@ def check_frontmatter(value: object) -> str | None:
             value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
     except (UnicodeEncodeError, ValueError):  # sustituto suelto en una cadena; número no finito
         return "validation-error:frontmatter"
-    return None if size <= FRONTMATTER_MAX_BYTES else "validation-error:frontmatter"
+    if size > FRONTMATTER_MAX_BYTES:
+        return "validation-error:frontmatter"
+    return "validation-error:frontmatter" if validate_general(value) is not None else None

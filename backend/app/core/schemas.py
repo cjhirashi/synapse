@@ -1,3 +1,5 @@
+import json
+import re
 import unicodedata
 from datetime import datetime
 from typing import Annotated, Literal
@@ -96,6 +98,70 @@ def _dedupe_tags(tags: list[str]) -> list[str]:
 VaultTags = Annotated[list[VaultTag], Field(max_length=20), AfterValidator(_dedupe_tags)]
 
 
+# --- H-029: Catálogo de atributos (PASO 1) ---
+# Las 7 claves generales de notas (no se pueden usar como atributos de bóveda).
+_VAULT_RESERVED_KEYS = {"titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags"}
+_ATTRIBUTE_KEY = re.compile(r"[a-z0-9_]{1,64}")
+_ATTRIBUTE_TYPES = ("text", "number", "boolean", "list", "date", "select", "multiselect")
+
+
+def _validate_attributes_dict(attrs: dict | None) -> dict | None:
+    """Valida el diccionario completo de atributos (H-029 PASO 1, RF-001 a RF-004)."""
+    if attrs is None:
+        return None
+    if not isinstance(attrs, dict):
+        raise field_error("attributes_invalid_type")
+    if len(attrs) > 100:
+        raise field_error("attributes_too_many")
+
+    # Validar claves y valores
+    for key, val in attrs.items():
+        # Validar clave
+        if not isinstance(key, str) or not _ATTRIBUTE_KEY.fullmatch(key):
+            raise field_error("attribute_key_invalid")
+        if key in _VAULT_RESERVED_KEYS:
+            raise field_error("attribute_key_reserved")
+        # `estado` sí se declara en el catálogo, solo como select: ahí cada bóveda guarda sus estados nuevos.
+        if key == "estado" and not (isinstance(val, dict) and val.get("type") == "select"):
+            raise field_error("attribute_key_reserved")
+
+        # Validar valor (debe ser dict con "type" y opcionalmente "options")
+        if not isinstance(val, dict):
+            raise field_error("attribute_value_invalid")
+        if "type" not in val:
+            raise field_error("attribute_type_missing")
+
+        attr_type = val.get("type")
+        if attr_type not in _ATTRIBUTE_TYPES:
+            raise field_error("attribute_type_invalid")
+
+        options = val.get("options")
+        if options is not None:
+            if not isinstance(options, list):
+                raise field_error("options_invalid_type")
+            if options and attr_type not in ("select", "multiselect"):
+                raise field_error("options_not_allowed_for_type")
+            if len(options) > 200:
+                raise field_error("options_too_many")
+            for opt in options:
+                if not isinstance(opt, str) or not opt or opt != opt.strip():
+                    raise field_error("option_invalid")
+                if len(opt) > 64:
+                    raise field_error("option_too_long")
+            if len(set(options)) != len(options):
+                raise field_error("option_duplicate")
+
+    # Tamaño total JSON (UTF-8 sin ASCII, separadores compactos).
+    json_bytes = json.dumps(attrs, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    if len(json_bytes) > 64 * 1024:
+        raise field_error("attributes_too_large")
+
+    return attrs
+
+
+VaultAttributes = Annotated[dict | None, AfterValidator(_validate_attributes_dict)]
+
+
 class VaultCreate(BaseModel):
     """Cuerpo de `POST /vaults`; cualquier otro campo → 422 (RF-023)."""
 
@@ -105,6 +171,7 @@ class VaultCreate(BaseModel):
     description: VaultDescription | None = None
     tags: VaultTags = Field(default_factory=list)
     icon: VaultIcon | None = None
+    attributes: VaultAttributes = None
 
 
 class VaultUpdate(BaseModel):
@@ -112,7 +179,7 @@ class VaultUpdate(BaseModel):
 
     `name` y `tags` no admiten `null`: su tipo no es anulable y el valor por defecto `None`
     no se valida (pydantic no valida defaults), así que "ausente" se distingue de un
-    `null` explícito, que da 422. `description: null` e `icon: null` sí valen: borran el campo.
+    `null` explícito, que da 422. `description: null`, `icon: null` y `attributes: null` sí valen: borran el campo.
     Se lee con `model_dump(exclude_unset=True)`.
     """
 
@@ -122,6 +189,7 @@ class VaultUpdate(BaseModel):
     description: VaultDescription | None = None
     tags: VaultTags = None  # type: ignore[assignment]
     icon: VaultIcon | None = None
+    attributes: VaultAttributes = None
 
 
 class VaultOut(BaseModel):
@@ -130,6 +198,7 @@ class VaultOut(BaseModel):
     description: str | None
     tags: list[str]
     icon: str | None
+    attributes: dict | None = None
     owner_id: str
     created_at: str
     updated_at: str

@@ -917,3 +917,69 @@ def test_rf_003_trash_cursor_on_the_normal_list_is_invalid(service):
     trash_cursor = service.list(deleted=True, limit=1, cursor=None).next_cursor
     with pytest.raises(InvalidCursor):
         service.list(deleted=False, limit=1, cursor=trash_cursor)
+
+
+# --- H-029: Catálogo de atributos (PASO 1) ---
+
+def test_h029_rf001_vault_create_with_attributes(service):
+    """Crear bóveda con atributos válidos — persiste (RF-001)."""
+    attrs = {"status": {"type": "select", "options": ["active", "inactive"]}}
+    created = service.create(
+        VaultCreate(name="proyecto", attributes=attrs),
+        owner_id="u1"
+    )
+    assert created.vault.attributes == attrs
+
+
+def test_h029_rf001_vault_create_without_attributes(service):
+    """Crear bóveda sin atributos — se crea sin el campo."""
+    created = service.create(
+        VaultCreate(name="proyecto"),
+        owner_id="u1"
+    )
+    assert created.vault.attributes is None
+
+
+def test_h029_rf001_vault_get_returns_attributes(service):
+    """GET devuelve atributos en VaultOut (RF-001)."""
+    attrs = {"priority": {"type": "number"}}
+    created, etag = _create(service, name="proj", attributes=attrs)
+    fetched = service.get(created.id)
+    assert fetched.vault.attributes == attrs
+
+
+def test_h029_rf005_vault_patch_replaces_attributes(service):
+    """PATCH reemplaza `attributes` completo (RF-005)."""
+    old_attrs = {"status": {"type": "text"}}
+    created, etag = _create(service, name="proj", attributes=old_attrs)
+
+    new_attrs = {"priority": {"type": "number"}}
+    updated = service.update(created.id, VaultUpdate(attributes=new_attrs), if_match=etag)
+    assert updated.vault.attributes == new_attrs
+
+
+def test_h029_rf005_vault_patch_attributes_null_deletes(service):
+    """`attributes: null` en PATCH borra el campo (RF-005)."""
+    attrs = {"status": {"type": "text"}}
+    created, etag = _create(service, name="proj", attributes=attrs)
+
+    updated = service.update(created.id, VaultUpdate(attributes=None), if_match=etag)
+    assert updated.vault.attributes is None
+
+
+def test_h029_rf005_vault_patch_attributes_absent_no_change(service):
+    """PATCH sin `attributes` no lo cambia (RF-005)."""
+    attrs = {"status": {"type": "text"}}
+    created, etag = _create(service, name="proj", attributes=attrs)
+
+    updated = service.update(created.id, VaultUpdate(name="nuevo"), if_match=etag)
+    assert updated.vault.attributes == attrs
+
+
+def test_h029_rf006_vault_list_includes_attributes(service):
+    """Listado devuelve `attributes` en cada bóveda (RF-006)."""
+    attrs = {"tag": {"type": "text"}}
+    created, _ = _create(service, name="proj", attributes=attrs)
+    page = service.list(deleted=False, limit=10, cursor=None)
+    assert len(page.items) > 0
+    assert page.items[0].attributes == attrs

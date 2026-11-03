@@ -56,6 +56,12 @@ components:
       additionalProperties: false
       description: Cuerpo de `POST /vaults`; cualquier otro campo → 422 (RF-023).
       properties:
+        attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Attributes
         description:
           anyOf:
           - maxLength: 2000
@@ -89,6 +95,12 @@ components:
       type: object
     VaultListItem:
       properties:
+        attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Attributes
         created_at:
           title: Created At
           type: string
@@ -142,6 +154,12 @@ components:
       type: object
     VaultOut:
       properties:
+        attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Attributes
         created_at:
           title: Created At
           type: string
@@ -218,11 +236,17 @@ components:
         no se valida (pydantic no valida defaults), así que "ausente" se distingue
         de un
 
-        `null` explícito, que da 422. `description: null` e `icon: null` sí valen:
-        borran el campo.
+        `null` explícito, que da 422. `description: null`, `icon: null` y `attributes:
+        null` sí valen: borran el campo.
 
         Se lee con `model_dump(exclude_unset=True)`.'
       properties:
+        attributes:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Attributes
         description:
           anyOf:
           - maxLength: 2000

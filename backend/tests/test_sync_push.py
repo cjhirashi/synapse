@@ -651,3 +651,62 @@ async def test_rf_019_storage_failure_before_writing_propagates(push, couch, op)
 async def test_rf_005_empty_batch_touches_nothing(push, couch):
     assert await push.push([]) == []
     assert couch.calls == []
+
+
+# --- H-029: Catálogo de atributos (PASO 1) ---
+
+async def test_h029_rf001_vault_with_valid_attributes_is_accepted(push, couch):
+    """Push de bóveda con atributos válidos → se acepta (RF-001)."""
+    attrs = {"status": {"type": "select", "options": ["active", "inactive"]}}
+    doc = _vault(attributes=attrs)
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
+    assert couch.winner(DB, doc["_id"])["attributes"] == attrs
+
+
+async def test_h029_rf001_vault_without_attributes_key_is_accepted(push, couch):
+    """Push de bóveda SIN `attributes` → compatible hacia atrás (RF-001)."""
+    doc = _vault()
+    assert "attributes" not in doc
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
+
+
+async def test_h029_rf001_vault_with_attributes_null_is_accepted(push, couch):
+    """`attributes: null` → se acepta (RF-001, modo estricto)."""
+    doc = _vault(attributes=None)
+    assert await push.push([doc]) == []
+    assert _stored(couch, doc)
+
+
+@pytest.mark.parametrize("attrs", [
+    {"ProjectStatus": {"type": "text"}},  # mayúscula en clave
+    {"titulo": {"type": "text"}},  # clave reservada
+])
+async def test_h029_rf002_vault_with_invalid_attribute_key_is_rejected(push, couch, attrs):
+    """Push con clave de atributo inválida → rechazada (RF-002)."""
+    doc = _vault(attributes=attrs)
+    assert await push.push([doc]) == [_rejected(doc, "validation-error:attributes")]
+    assert not _stored(couch, doc)
+
+
+@pytest.mark.parametrize("attrs", [
+    {"field": {"type": "enum"}},  # tipo inválido
+    {"field": {"type": "select", "options": ["a", " b"]}},  # opción con espacio
+    {"field": {"type": "text", "options": ["a", "b"]}},  # options en tipo no permitido
+])
+async def test_h029_rf003_vault_with_invalid_attributes_is_rejected(push, couch, attrs):
+    """Push con atributos inválidos (tipo, opciones mal formadas) → rechazada (RF-003/004)."""
+    doc = _vault(attributes=attrs)
+    assert await push.push([doc]) == [_rejected(doc, "validation-error:attributes")]
+    assert not _stored(couch, doc)
+
+
+async def test_h029_rf001_mixed_batch_with_and_without_attributes(push, couch):
+    """Lote mixto: una bóveda con atributos, otra sin → ambas se aceptan (RF-001)."""
+    attrs = {"status": {"type": "text"}}
+    doc1 = _vault(attributes=attrs)
+    doc2 = _vault(doc_id="vault:00000000-0000-4000-8000-000000000001", name="Otra bóveda")
+    assert "attributes" not in doc2
+    assert await push.push([doc1, doc2]) == []
+    assert _stored(couch, doc1) and _stored(couch, doc2)
