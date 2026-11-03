@@ -7,10 +7,13 @@
  * por el que hace falta la resolución manual. Leer el ancestro y escribir el resultado
  * (hija de `W` + lápida sobre `L`) es trabajo de `conflicts.ts`.
  */
-import { validateVault, type VaultField, type VaultFields } from "./vaultRules";
+import { canonical } from "./canonical";
+import { checkAttributes, validateVault, type AttributeCatalog, type AttributeDef, type VaultField, type VaultFields } from "./vaultRules";
 
 /** Cuerpo de una bóveda sin los metadatos de PouchDB (`_id`, `_rev`, `type`). */
 export interface MergeBody extends VaultFields {
+  /** Catálogo de atributos de las notas (H-029); los documentos anteriores no traen la clave. */
+  attributes?: AttributeCatalog | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -40,13 +43,45 @@ function sameTags(x: string[], y: string[]): boolean {
 function sameExceptUpdatedAt(w: MergeBody, l: MergeBody): boolean {
   return w.name === l.name && w.description === l.description && w.deleted_at === l.deleted_at
     && (w.icon ?? null) === (l.icon ?? null)
+    && canonical(w.attributes ?? null) === canonical(l.attributes ?? null)
     && w.owner_id === l.owner_id && w.created_at === l.created_at
     && w.tags.length === l.tags.length && w.tags.every((tag, i) => tag === l.tags[i]);
 }
 
 /** ¿Este lado editó algún campo de contenido respecto al ancestro? (paso 4). */
 function editedContent(side: MergeBody, ancestor: MergeBody): boolean {
-  return side.name !== ancestor.name || side.description !== ancestor.description || !sameTags(side.tags, ancestor.tags);
+  return side.name !== ancestor.name || side.description !== ancestor.description || !sameTags(side.tags, ancestor.tags)
+    || canonical(side.attributes ?? null) !== canonical(ancestor.attributes ?? null);
+}
+
+/**
+ * Catálogo de atributos (H-029), atributo por atributo y sin perder nada: lo que solo un lado tocó gana; un
+ * atributo que un lado borró y el otro no tocó se borra, y si el otro lo cambió se conserva; si ambos lo
+ * cambiaron, las opciones de un `select`/`multiselect` del mismo tipo se UNEN (W primero) y en cualquier otro
+ * choque gana W. El orden de las claves es el de W y después las altas de L.
+ */
+export function mergeAttributes(
+  w: AttributeCatalog | null | undefined,
+  l: AttributeCatalog | null | undefined,
+  a: AttributeCatalog | null | undefined,
+): AttributeCatalog | null {
+  const W = w ?? {};
+  const L = l ?? {};
+  const A = a ?? {};
+  const same = (x: AttributeDef | undefined, y: AttributeDef | undefined) => canonical(x ?? null) === canonical(y ?? null);
+  const out: AttributeCatalog = {};
+  for (const key of [...new Set([...Object.keys(W), ...Object.keys(L)])]) {
+    const [wd, ld, ad] = [W[key], L[key], A[key]];
+    let pick: AttributeDef | undefined;
+    if (same(wd, ld)) pick = wd;
+    else if (same(wd, ad)) pick = ld;
+    else if (same(ld, ad)) pick = wd;
+    else if (wd && ld && wd.type === ld.type && (wd.type === "select" || wd.type === "multiselect")) {
+      pick = { type: wd.type, options: [...new Set([...(wd.options ?? []), ...(ld.options ?? [])])] };
+    } else pick = wd ?? ld;
+    if (pick !== undefined) out[key] = pick;
+  }
+  return Object.keys(out).length === 0 && w == null && l == null ? null : out;
 }
 
 /**
@@ -93,6 +128,10 @@ export function mergeVault(w: MergeBody, l: MergeBody, a: MergeBody | null, now:
   const iconOf = (body: MergeBody) => body.icon ?? null;
   const icon = iconOf(w) !== iconOf(a) ? iconOf(w) : iconOf(l);
 
+  // `attributes` (H-029): fusión por atributo; si el resultado no fuera válido, gana el catálogo de W.
+  const merged = mergeAttributes(w.attributes, l.attributes, a.attributes);
+  const attributes = merged !== null && !checkAttributes(merged).ok ? (w.attributes ?? null) : merged;
+
   // Paso 6: el resultado debe cumplir las mismas reglas que cualquier escritura (RF-015).
   const checked = validateVault({ name: pick("name"), description: pick("description"), tags: mergeTags(w.tags, l.tags, a.tags), icon });
   if (!checked.ok) return { kind: "manual", reason: "invalid", fields: checked.fields };
@@ -101,11 +140,13 @@ export function mergeVault(w: MergeBody, l: MergeBody, a: MergeBody | null, now:
   // escribe si algún lado la tenía o el resultado no es null: un documento anterior sigue sin ella.
   const { icon: mergedIcon, ...content } = checked.value;
   const keepIcon = mergedIcon !== null || w.icon !== undefined || l.icon !== undefined;
+  const keepAttributes = attributes !== null || w.attributes !== undefined || l.attributes !== undefined;
   return {
     kind: "merged",
     doc: {
       ...content,
       ...(keepIcon ? { icon: mergedIcon } : {}),
+      ...(keepAttributes ? { attributes } : {}),
       owner_id: w.owner_id,
       created_at: w.created_at,
       updated_at: now,

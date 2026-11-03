@@ -189,3 +189,31 @@ describe("NoteMeta · estado", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe("NoteMeta · estados nuevos y catálogo de la bóveda", () => {
+  it("crear un estado que no estaba en la lista avisa una vez al padre para que lo añada al catálogo", async () => {
+    const onNewEstado = vi.fn();
+    render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onNewEstado={onNewEstado} />);
+    await userEvent.selectOptions(screen.getByLabelText("Estado"), "Otro estado…");
+    await userEvent.type(screen.getByLabelText("Nuevo estado"), "En Pruebas{Enter}");
+    expect(onNewEstado).toHaveBeenCalledTimes(1);
+    expect(onNewEstado).toHaveBeenCalledWith("en pruebas");
+  });
+
+  it("escribir un estado que ya existe (estándar o de la bóveda) no avisa", async () => {
+    const onNewEstado = vi.fn();
+    render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" estadoOptions={["en pruebas"]} onNewEstado={onNewEstado} />);
+    await userEvent.selectOptions(screen.getByLabelText("Estado"), "Otro estado…");
+    await userEvent.type(screen.getByLabelText("Nuevo estado"), "EN PRUEBAS{Enter}");
+    await userEvent.selectOptions(screen.getByLabelText("Estado"), "Otro estado…");
+    await userEvent.type(screen.getByLabelText("Nuevo estado"), "borrador{Enter}");
+    expect(onNewEstado).not.toHaveBeenCalled();
+  });
+
+  it("elegir uno de la lista nunca avisa", async () => {
+    const onNewEstado = vi.fn();
+    render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onNewEstado={onNewEstado} />);
+    await userEvent.selectOptions(screen.getByLabelText("Estado"), "aprobado");
+    expect(onNewEstado).not.toHaveBeenCalled();
+  });
+});

@@ -11,7 +11,7 @@
  * - El editor (Milkdown + CodeMirror) se carga bajo demanda con `React.lazy`: `/vaults` no lo
  *   descarga (P-3).
  */
-import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MeContext } from "../auth/RequireAuth";
@@ -20,6 +20,7 @@ import { hasUnmanagedExtension } from "../editor/wikilink";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
+import { catalogEstados, withEstado } from "../editor/catalogEstados";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
 import { parentFolder } from "./folders";
 import { NOTE_ID_PREFIX } from "./noteRules";
@@ -154,10 +155,24 @@ function SalvagedDraft({ text }: { text: string }) {
 function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft: string | null) => void }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { notes, notesVersion } = useSync();
+  const { notes, notesVersion, vaults } = useSync();
   // H-006: color de los iconos de contenido de la sidebar, resuelto igual que `VaultChip`
   // (color elegido en `Vault.icon`, o el derivado del id si no hay uno).
   const vaultColor = parseIcon(vault.icon).color ?? derivedColor(vault.id);
+  // H-029: estados propios de la bóveda (su catálogo de atributos) y alta de uno nuevo desde una nota.
+  const estadoOptions = useMemo(() => catalogEstados(vault.attributes), [vault.attributes]);
+  const addEstadoToCatalog = useCallback(
+    async (estado: string) => {
+      try {
+        const fresh = await vaults.get(vault.id);
+        const next = withEstado(fresh.attributes, estado);
+        if (next !== null) await vaults.setAttributes(vault.id, next, fresh.rev);
+      } catch {
+        // La nota ya guardó su estado; el catálogo se completa la próxima vez que se cree.
+      }
+    },
+    [vaults, vault.id],
+  );
 
   // H-009: la barra de notas es fija/dockeada en tableta y escritorio (> 640 px) y flotante en móvil
   // (≤ 640 px). `isMobile` decide el MODO; `sidebarOpen` la visibilidad. Mismo media query que usa
@@ -500,7 +515,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 </div>
               }
             >
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
+              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
             </Suspense>
           )}
         </div>

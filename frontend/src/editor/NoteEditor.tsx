@@ -178,8 +178,10 @@ interface NoteEditorProps {
   initialScroll?: number;
   /** Avisa del scroll actual (px, redondeado) con debounce de 250 ms (H-026). */
   onScroll?: (px: number) => void;
-  /** Opciones de estado personalizadas para la nota (H-029, paso 7). */
+  /** Estados propios de la bóveda, además de los estándar (H-029). */
   estadoOptions?: readonly string[];
+  /** La persona creó un estado nuevo en una nota: el padre lo añade al catálogo de la bóveda (H-029). */
+  onNewEstado?: (estado: string) => void;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -205,7 +207,7 @@ function uploadErrorMessage(error: unknown): string {
 const codeTextOf = (body: string): string => body;
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll, estadoOptions },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll, estadoOptions, onNewEstado },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -1283,7 +1285,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} />}
           {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
               `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
-          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} />}
+          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} />}
 
           {mode === "read" ? (
             <>

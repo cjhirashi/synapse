@@ -28,6 +28,8 @@ interface NoteMetaProps {
   onChange?: (next: Record<string, unknown>) => void;
   /** Estados propios de la bóveda y los que ya usan sus notas, además de los estándar. */
   estadoOptions?: readonly string[];
+  /** Se llama una vez cuando la persona crea un estado que no estaba en la lista (para añadirlo al catálogo de la bóveda). */
+  onNewEstado?: (estado: string) => void;
 }
 
 interface Values {
@@ -49,10 +51,10 @@ function fileTitle(path: string): string {
   return (path.split("/").pop() ?? path).replace(/\.md$/i, "");
 }
 
-export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions }: NoteMetaProps) {
+export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado }: NoteMetaProps) {
   const fm = frontmatter ?? {};
   if (mode === "read") return <ReadMeta fm={fm} path={path} />;
-  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} />;
+  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} />;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -98,7 +100,7 @@ function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
   );
 }
 
-function EditMeta({ fm, path, onChange, estadoOptions }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
+function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
   const uid = useId();
   const initial = useRef({
     free: freeProperties(fm),
@@ -117,6 +119,8 @@ function EditMeta({ fm, path, onChange, estadoOptions }: Omit<NoteMetaProps, "mo
   const [creatingEstado, setCreatingEstado] = useState(false);
   const [estadoText, setEstadoText] = useState("");
   const [estadoError, setEstadoError] = useState("");
+
+  const estados = [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...(values.estado ? [values.estado] : [])])];
 
   const tituloError = points(values.titulo) > TITULO_MAX ? `Máximo ${TITULO_MAX} caracteres` : "";
   const descripcionError = points(values.descripcion) > DESCRIPCION_MAX ? `Máximo ${DESCRIPCION_MAX} caracteres` : "";
@@ -171,9 +175,8 @@ function EditMeta({ fm, path, onChange, estadoOptions }: Omit<NoteMetaProps, "mo
     setEstadoText("");
     setCreatingEstado(false);
     commit({ estado });
+    if (!estados.includes(estado)) onNewEstado?.(estado);
   }
-
-  const estados = [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...(values.estado ? [values.estado] : [])])];
 
   return (
     <div className="note-meta">
