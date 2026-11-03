@@ -19,7 +19,7 @@
 > indexa; el detalle está en el documento de cada slice.
 
 - [~] H-019 — HTML incrustado (iframe aislado): **implementada, mergeada (`1d6b96a`) y desplegada 2026-11-02**; aislamiento y Archify verificados en Chromium real; falta el checkpoint de Carlos. Detalle en su nota de la bóveda.
-- [ ] H-025 — YouTube + control «Subir o pegar URL» y reconocedor de enlaces: **implementada y desplegada 2026-11-02 (CDMX), falta checkpoint de Carlos** (mergeada `5668910`, migración 007 `files.folder` aplicada en producción). Partido el 2026-11-02; depende de H-019.
+- [ ] H-025 — YouTube + control «Subir o pegar URL» y reconocedor de enlaces: **implementada y desplegada 2026-11-02 (CDMX); checkpoint de Carlos parcial** (validó el reproductor por `![]()`; falta validar en su computadora la captura pegada y el pegado directo de enlaces; mergeada `5668910` + correcciones, migración 007 `files.folder` aplicada en producción). Partido el 2026-11-02; depende de H-019.
 - [ ] H-018 — Video subido a Synapse (MP4/WebM; rangos y transmisión por partes en el servidor): **análisis ronda 1**. Se ejecuta después de H-025.
 - [x] H-026 — Recordar último documento, carpetas desplegadas y scroll por bóveda: **verificada por Carlos 2026-11-02** (mergeada `aabf78a`, desplegada). Detalle en su nota de la bóveda.
 - [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
