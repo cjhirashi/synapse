@@ -187,3 +187,59 @@ describe("icon (RF-012)", () => {
     expect(mergeVault(withIcon("Folder", { name: "W" }), withIcon("folder"), a, NOW)).toEqual({ kind: "manual", reason: "invalid", fields: ["icon"] });
   });
 });
+
+// H-029: el catálogo de atributos se fusiona atributo por atributo y nunca se pierde en silencio.
+describe("attributes (H-029)", () => {
+  const sel = (...options: string[]) => ({ type: "select" as const, options });
+  const withAttrs = (attributes: MergeBody["attributes"], changes: Partial<MergeBody> = {}) => side({ attributes, ...changes });
+  const BASE = { prioridad: sel("alta", "baja") };
+  const A_ATTRS = withAttrs(BASE);
+
+  it("un lado sin catálogo y el otro con él: se conserva", () => {
+    expect(merged(withAttrs(BASE, { name: "W" }), withAttrs(null), withAttrs(null)).doc.attributes).toEqual(BASE);
+  });
+
+  it("solo cambió W o solo cambió L: gana el que cambió", () => {
+    const changed = { prioridad: sel("alta", "baja", "media") };
+    expect(merged(withAttrs(changed, { name: "W" }), withAttrs(BASE), A_ATTRS).doc.attributes).toEqual(changed);
+    expect(merged(withAttrs(BASE, { name: "W" }), withAttrs(changed), A_ATTRS).doc.attributes).toEqual(changed);
+  });
+
+  it("atributos distintos añadidos en cada lado: ganan los dos", () => {
+    const out = merged(withAttrs({ ...BASE, a: { type: "text" } }, { name: "W" }), withAttrs({ ...BASE, b: { type: "date" } }), A_ATTRS).doc.attributes;
+    expect(out).toEqual({ ...BASE, a: { type: "text" }, b: { type: "date" } });
+  });
+
+  it("las opciones de un mismo select que ambos ampliaron se UNEN, sin repetir", () => {
+    const out = merged(
+      withAttrs({ prioridad: sel("alta", "baja", "media") }, { name: "W" }),
+      withAttrs({ prioridad: sel("alta", "baja", "urgente", "media") }),
+      A_ATTRS,
+    ).doc.attributes;
+    expect(out).toEqual({ prioridad: sel("alta", "baja", "media", "urgente") });
+  });
+
+  it("un atributo borrado por un lado y no tocado por el otro se borra; si el otro lo cambió, se conserva", () => {
+    expect(merged(withAttrs({}, { name: "W" }), withAttrs(BASE), A_ATTRS).doc.attributes).toEqual({});
+    expect(merged(withAttrs({}, { name: "W" }), withAttrs({ prioridad: sel("alta") }), A_ATTRS).doc.attributes).toEqual({ prioridad: sel("alta") });
+  });
+
+  it("un choque que no es de opciones (tipos distintos) gana W", () => {
+    const out = merged(withAttrs({ x: { type: "text" } }, { name: "W" }), withAttrs({ x: { type: "number" } }), withAttrs({ x: { type: "list" } })).doc.attributes;
+    expect(out).toEqual({ x: { type: "text" } });
+  });
+
+  it("dos resoluciones idénticas solo cierran la rama perdedora (convergencia) y no pierden el catálogo", () => {
+    const result = mergeVault(withAttrs(BASE), withAttrs(BASE, { updated_at: "2026-10-05T00:00:00.000000Z" }), A_ATTRS, NOW);
+    expect(result).toMatchObject({ kind: "merged", tombstoneOnly: true });
+  });
+
+  it("una edición solo del catálogo cuenta como edición frente a un borrado", () => {
+    const result = merged(side({ deleted_at: DELETED }), withAttrs({ ...BASE, nuevo: { type: "text" } }), A_ATTRS);
+    expect(result.doc.deleted_at).toBeNull();
+  });
+
+  it("un documento anterior sin catálogo en ningún lado sigue sin la clave", () => {
+    expect("attributes" in merged(side({ name: "W" }), side({})).doc).toBe(false);
+  });
+});

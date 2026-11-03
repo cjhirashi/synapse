@@ -31,8 +31,14 @@ export type NoteMergeResult =
 export function mergeNote(w: NoteBody, l: NoteBody): NoteMergeResult {
   // `updated_at` queda fuera de la comparación; el frontmatter se compara en forma canónica
   // para que el orden de sus claves no cuente como diferencia.
-  const { updated_at: _w, deleted_at: wDeleted, ...wRest } = w;
-  const { updated_at: _l, deleted_at: lDeleted, ...lRest } = l;
+  // `fecha_actualizacion` (H-029) la sella el dispositivo al guardar, como `updated_at`: dos resoluciones iguales
+  // hechas en días distintos solo difieren en ella y no son un conflicto.
+  const comparable = (note: NoteBody): NoteBody => {
+    const { fecha_actualizacion: _date, ...frontmatter } = note.frontmatter;
+    return { ...note, frontmatter };
+  };
+  const { updated_at: _w, deleted_at: wDeleted, ...wRest } = comparable(w);
+  const { updated_at: _l, deleted_at: lDeleted, ...lRest } = comparable(l);
   const sameState = (wDeleted !== null) === (lDeleted !== null);
   return sameState && canonical(wRest) === canonical(lRest) ? { kind: "merged", doc: w, tombstoneOnly: true } : { kind: "manual" };
 }

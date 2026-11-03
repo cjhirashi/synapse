@@ -12,7 +12,7 @@
  * servidor, que rechaza en el push (`vault-name-taken`) lo que dos dispositivos escriban
  * a la vez sin conexión.
  */
-import { nameKey, validateVault, FIELD_RULES, type VaultField, type VaultFields } from "./vaultRules";
+import { nameKey, validateVault, FIELD_RULES, checkAttributes, type VaultField, type VaultFields, type AttributeCatalog } from "./vaultRules";
 
 /** Prefijo de los ids de bóveda en CouchDB/PouchDB (PLAN-0005 §2.3). */
 export const ID_PREFIX = "vault:";
@@ -29,6 +29,8 @@ interface VaultDoc {
   tags: string[];
   /** Ícono «glifo[:color]» (SPEC-0009); los documentos anteriores no traen la clave. */
   icon?: string | null;
+  /** Catálogo de atributos (H-029); los documentos anteriores no traen la clave. */
+  attributes?: AttributeCatalog | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -39,6 +41,7 @@ interface VaultDoc {
 export interface Vault extends VaultFields {
   id: string;
   // `icon` (SPEC-0009) llega de `VaultFields`; `toVault` lo da siempre (`null` si el documento no lo trae).
+  attributes: AttributeCatalog | null;
   owner_id: string;
   created_at: string;
   updated_at: string;
@@ -58,6 +61,7 @@ export interface VaultStore {
   get(id: string): Promise<Vault>;
   create(input: VaultFields): Promise<Vault>;
   update(id: string, changes: Partial<VaultFields>, rev: string): Promise<Vault>;
+  setAttributes(id: string, attributes: AttributeCatalog | null, rev: string): Promise<Vault>;
   softDelete(id: string, rev: string): Promise<Vault>;
   restore(id: string, rev: string): Promise<Vault>;
 }
@@ -119,6 +123,7 @@ function toVault(doc: VaultDoc): Vault {
     description: doc.description,
     tags: doc.tags,
     icon: doc.icon ?? null,
+    attributes: doc.attributes ?? null,
     owner_id: doc.owner_id,
     created_at: doc.created_at,
     updated_at: doc.updated_at,
@@ -240,6 +245,15 @@ export function createVaultStore(db: PouchDB.Database, ownerId: string, options:
       assertCurrent(doc, rev);
       if (normalized.name !== undefined) await assertNameFree(normalized.name, doc._id);
       return write({ ...doc, ...normalized, updated_at: now() });
+    },
+
+    async setAttributes(id, attributes, rev) {
+      const result = checkAttributes(attributes);
+      if (!result.ok) throw new VaultValidationError(["attributes" as unknown as VaultField]);
+
+      const doc = await load(id, false);
+      assertCurrent(doc, rev);
+      return write({ ...doc, attributes, updated_at: now() });
     },
 
     async softDelete(id, rev) {

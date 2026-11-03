@@ -502,3 +502,31 @@ describe("icon (RF-012)", () => {
     expect(await winner()).toMatchObject({ name: "Elegido", icon: "heart" });
   });
 });
+
+// H-029: el catálogo de atributos de la bóveda viaja en la combinación automática y en la resolución manual.
+describe("attributes (H-029)", () => {
+  const sel = (...options: string[]) => ({ type: "select", options });
+  const withAttrs = (attributes: unknown, body: Partial<Body> = {}) => ({ attributes, ...body }) as unknown as Partial<Body>;
+
+  it("la combinación automática une los atributos que tocó cada lado y no pierde el catálogo", async () => {
+    await insert({ hashes: [A], body: withAttrs({ prioridad: sel("alta") }) });
+    await insert(
+      { hashes: [W, A], body: withAttrs({ prioridad: sel("alta") }, { updated_at: T1, name: "Nombre W" }) },
+      { hashes: [L, A], body: withAttrs({ prioridad: sel("alta"), estado: sel("en pruebas") }, { updated_at: T2 }) },
+    );
+    await open();
+    await waitForCondition(async () => expect((await winner())._conflicts).toBeUndefined());
+    expect(await winner()).toMatchObject({ name: "Nombre W", attributes: { prioridad: sel("alta"), estado: sel("en pruebas") } });
+  });
+
+  it("`resolve` manual conserva el catálogo de la ganadora", async () => {
+    await insert({ hashes: [A], body: withAttrs({ x: { type: "text" } }) });
+    await insert(
+      { hashes: [W, A], body: withAttrs({ x: { type: "text" }, w: { type: "date" } }, { updated_at: T1, name: "Nombre W" }) },
+      { hashes: [L, A], body: withAttrs({ x: { type: "text" } }, { updated_at: T2, name: "Nombre L" }) },
+    );
+    const store = await open();
+    await store.resolve(ID, `2-${L}`, { name: "Elegido", description: null, tags: ["a"], deleted_at: null });
+    expect(await winner()).toMatchObject({ name: "Elegido", attributes: { x: { type: "text" }, w: { type: "date" } } });
+  });
+});

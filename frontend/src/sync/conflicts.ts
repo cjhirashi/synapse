@@ -143,6 +143,8 @@ function vaultBody(doc: VaultRevision): MergeBody {
     tags: doc.tags,
     // Sólo si el documento la trae: así un documento anterior no «gana» una clave `icon: null`.
     ...(doc.icon !== undefined ? { icon: doc.icon } : {}),
+    // Catálogo de atributos (H-029): sin esta clave una combinación o una resolución lo borraría en silencio.
+    ...(doc.attributes !== undefined ? { attributes: doc.attributes } : {}),
     owner_id: doc.owner_id,
     created_at: doc.created_at,
     updated_at: doc.updated_at,
@@ -409,6 +411,8 @@ export async function openConflicts(db: PouchDB.Database, options: ConflictsOpti
           ...checked.value,
           // La resolución manual no ofrece selector de ícono (P-6): conserva el de la ganadora.
           ...((w as VaultRevision).icon !== undefined ? { icon: (w as VaultRevision).icon } : {}),
+          // La resolución manual tampoco ofrece el catálogo: conserva el de la ganadora (H-029).
+          ...((w as VaultRevision).attributes !== undefined ? { attributes: (w as VaultRevision).attributes } : {}),
           owner_id: (w as VaultRevision).owner_id,
           created_at: (w as VaultRevision).created_at,
           updated_at: now(),

@@ -202,17 +202,19 @@ def test_c4_post_creates_the_note_in_the_callers_database(ready_admin, db):
     assert res.status_code == 201, res.text
     body = res.json()
     assert uuid.UUID(body["id"]).version == 4
-    assert (body["path"], body["content"], body["frontmatter"]) == ("Carpeta/Nota.md", "hola", {"a": 1})
+    assert (body["path"], body["content"]) == ("Carpeta/Nota.md", "hola")
+    assert _without_dates(body["frontmatter"]) == {"a": 1}  # H-029: el servidor sella las fechas
     assert body["vault_id"] == vault_id
     assert body["deleted_at"] is None and body["created_at"] == body["updated_at"]
     stored = stored_docs(user_db(db))[f"note:{vault_id}:{body['id']}"]
     assert res.headers["etag"] == f'"{stored["_rev"]}"' and stored["type"] == "note"
 
 
-def test_c4_post_with_a_missing_frontmatter_stores_null(ready_admin, db):
+def test_c4_post_with_a_missing_frontmatter_stores_only_the_dates(ready_admin, db):
     vault_id = create(ready_admin).json()["id"]
     res = create_note(ready_admin, vault_id, "Nota.md")
-    assert res.json()["frontmatter"] is None
+    fm = res.json()["frontmatter"]
+    assert set(fm) == {"fecha_creacion", "fecha_actualizacion"} and fm["fecha_creacion"] == fm["fecha_actualizacion"]
 
 
 def test_c4_post_of_a_missing_vault_is_404(ready_admin):
@@ -261,7 +263,9 @@ def test_h029_post_accepts_valid_generals_free_keys_and_migrated_keys(ready_admi
     }
     res = create_note(ready_admin, vault_id, "Nota.md", frontmatter=frontmatter)
     assert res.status_code == 201
-    assert res.json()["frontmatter"] == frontmatter
+    stored = res.json()["frontmatter"]
+    assert stored["fecha_creacion"] == "2026-07-06"  # la fecha de creación válida se respeta
+    assert {k: v for k, v in stored.items() if k != "fecha_actualizacion"} == {k: v for k, v in frontmatter.items() if k != "fecha_actualizacion"}
 
 
 def test_c5_unnormalized_path_is_422(ready_admin):
@@ -314,6 +318,26 @@ def test_c8_patch_with_a_stale_if_match_is_412(ready_admin):
     assert_problem(res, 412, "precondition-failed")
 
 
+def _without_dates(frontmatter):
+    return {k: v for k, v in frontmatter.items() if k not in ("fecha_creacion", "fecha_actualizacion")}
+
+
+def test_h029_the_server_stamps_dates_on_create_and_refreshes_the_update_date_on_patch(ready_admin):
+    vault_id = create(ready_admin).json()["id"]
+    created = create_note(ready_admin, vault_id, "Fechas.md", frontmatter={"fecha_creacion": "2026-07-06", "fecha_actualizacion": "2026-07-15", "x": 1})
+    assert created.json()["frontmatter"]["fecha_creacion"] == "2026-07-06"  # una fecha de creación válida se respeta
+    assert created.json()["frontmatter"]["fecha_actualizacion"] != "2026-07-15"  # la de actualización la pone el servidor
+    note_id = created.json()["id"]
+    patched = ready_admin.patch(f"/vaults/{vault_id}/notes/{note_id}", json={"frontmatter": None},
+                                headers={"If-Match": created.headers["etag"]})
+    assert set(patched.json()["frontmatter"]) == {"fecha_creacion", "fecha_actualizacion"}  # `null` borra las libres pero no las fechas
+    assert patched.json()["frontmatter"]["fecha_creacion"] == "2026-07-06"
+    replaced = ready_admin.patch(f"/vaults/{vault_id}/notes/{note_id}", json={"frontmatter": {"x": 2}},
+                                 headers={"If-Match": patched.headers["etag"]})
+    assert replaced.json()["frontmatter"]["fecha_creacion"] == "2026-07-06"  # reemplazar las libres no pierde la fecha de creación
+    assert replaced.json()["frontmatter"]["x"] == 2
+
+
 def test_c8_patch_updates_only_sent_fields_with_a_new_etag(ready_admin):
     vault_id = create(ready_admin).json()["id"]
     created = create_note(ready_admin, vault_id, "Nota.md", content="a", frontmatter={"x": 1})
@@ -322,7 +346,8 @@ def test_c8_patch_updates_only_sent_fields_with_a_new_etag(ready_admin):
                             headers={"If-Match": created.headers["etag"]})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert (body["content"], body["path"], body["frontmatter"]) == ("b", "Nota.md", {"x": 1})
+    assert (body["content"], body["path"]) == ("b", "Nota.md")
+    assert _without_dates(body["frontmatter"]) == {"x": 1}
     assert res.headers["etag"] != created.headers["etag"]
     get_res = ready_admin.get(f"/vaults/{vault_id}/notes/{note_id}")
     assert get_res.headers["etag"] == res.headers["etag"]

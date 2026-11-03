@@ -26,6 +26,7 @@ from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
+from app.core.note_dates import stamp_dates, today_cdmx
 from app.core.note_rules import check_content, check_frontmatter, check_path
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
@@ -145,11 +146,9 @@ class NoteContentService:
             "updated_at": now,
             "deleted_at": None,
         }
-        # `frontmatter` sólo se escribe si el cuerpo lo trajo: ausente, no `null` (contrato
-        # `note.schema.json` de SPEC-0008) — así el mismo documento es replicable sin que el
-        # push, que distingue "clave presente" de "ausente", lo rechace (C-10).
-        if "frontmatter" in fields:
-            doc["frontmatter"] = fields["frontmatter"]
+        # El frontmatter siempre lleva las fechas de la nota (H-029): las sella el servidor, con la fecha
+        # de CDMX, porque quien escribe por REST es un agente sin reloj de la app.
+        doc["frontmatter"] = stamp_dates(fields.get("frontmatter"), today_cdmx(), now)
         # Si este `put` falla, la reserva queda huérfana (su nota no existe) y no se libera:
         # un fallo de red puede ocultar un `put` que sí entró (mismo riesgo que `VaultService.create`).
         doc["_rev"] = self._port.put(self._db, doc)
@@ -178,10 +177,13 @@ class NoteContentService:
         if renamed:
             self._reserve(doc["_id"], changes["path"])
         updated = {**doc, **changes, "updated_at": utc_now()}
-        # `frontmatter: null` explícito lo borra (como `description` en `VaultUpdate`): la
-        # clave debe quedar ausente, no `None` (mismo motivo que en `create`, C-10).
-        if changes.get("frontmatter") is None and "frontmatter" in changes:
-            updated.pop("frontmatter", None)
+        # `frontmatter: null` explícito borra las propiedades libres, pero las fechas de la nota se conservan
+        # y se actualizan (H-029): cada escritura de un agente refresca `fecha_actualizacion`.
+        old = doc.get("frontmatter") or {}
+        base = dict(changes.get("frontmatter") or {}) if "frontmatter" in changes else dict(old)
+        if "fecha_creacion" not in base and "fecha_creacion" in old:
+            base["fecha_creacion"] = old["fecha_creacion"]  # reemplazar las propiedades no borra la fecha de creación
+        updated["frontmatter"] = stamp_dates(base, today_cdmx(), doc.get("created_at"))
         updated["_rev"] = self._write(updated)
         if renamed:
             self._release(doc["_id"], old_path)

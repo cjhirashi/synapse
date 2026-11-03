@@ -51,3 +51,25 @@ describe("RF-009: mergeNote", () => {
     expect(mergeNote(w, l).kind).toBe("merged");
   });
 });
+
+describe("H-029: la fecha de actualización sellada no crea conflictos", () => {
+  const withDates = (updated: string, extra: Record<string, unknown> = {}): NoteBody => ({
+    ...base,
+    frontmatter: { tags: ["x"], fecha_creacion: "2026-01-01", fecha_actualizacion: updated, ...extra },
+  });
+
+  it("dos resoluciones iguales guardadas en días distintos solo difieren en `fecha_actualizacion` y convergen", () => {
+    const w = withDates("2026-01-02");
+    expect(mergeNote(w, withDates("2026-01-09"))).toEqual({ kind: "merged", doc: w, tombstoneOnly: true });
+  });
+
+  it("una diferencia real de propiedades sigue siendo manual aunque coincidan las fechas", () => {
+    expect(mergeNote(withDates("2026-01-02"), withDates("2026-01-02", { estado: "aprobado" }))).toEqual({ kind: "manual" });
+  });
+
+  it("`fecha_creacion` distinta sí es una diferencia", () => {
+    const l = withDates("2026-01-02");
+    l.frontmatter.fecha_creacion = "2025-12-31";
+    expect(mergeNote(withDates("2026-01-02"), l)).toEqual({ kind: "manual" });
+  });
+});

@@ -68,6 +68,8 @@ import { NoteBreadcrumb } from "./NoteBreadcrumb";
 import { NoteMenu } from "./NoteMenu";
 import { PropertiesForm } from "./PropertiesForm";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { NoteMeta } from "./NoteMeta";
+import { migrateFrontmatter } from "./attributeRules";
 import "./editor.css";
 import "./syntax.css";
 
@@ -176,6 +178,10 @@ interface NoteEditorProps {
   initialScroll?: number;
   /** Avisa del scroll actual (px, redondeado) con debounce de 250 ms (H-026). */
   onScroll?: (px: number) => void;
+  /** Estados propios de la bóveda, además de los estándar (H-029). */
+  estadoOptions?: readonly string[];
+  /** La persona creó un estado nuevo en una nota: el padre lo añade al catálogo de la bóveda (H-029). */
+  onNewEstado?: (estado: string) => void;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -194,8 +200,14 @@ function uploadErrorMessage(error: unknown): string {
   return "No se pudo subir el archivo. Revisa tu conexión e inténtalo de nuevo.";
 }
 
+/**
+ * La vista Código muestra solo el cuerpo markdown (H-029): las propiedades se editan en la sección META y
+ * no se mezclan con el texto como bloque YAML. El texto de Código ES el cuerpo.
+ */
+const codeTextOf = (body: string): string => body;
+
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll, estadoOptions, onNewEstado },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -214,7 +226,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [draft, setDraft] = useState("");
   /**
    * Propiedades de la sesión de edición (D1, RF-012): objeto `frontmatter` que se edita en Visual con
-   * el formulario. En Código la verdad es `codeText` (el texto compuesto `---\nYAML\n---\nbody`).
+   * la sección META. En Código la verdad del cuerpo es `codeText` (solo el cuerpo; las propiedades siguen en `props`).
    */
   const [props, setProps] = useState<Record<string, unknown>>({});
   const [codeText, setCodeText] = useState<string | null>(null);
@@ -362,7 +374,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     note !== null &&
     (pending ||
       (view === "code"
-        ? codeText !== (fmRef.current ? fmRef.current.composeCode(note.frontmatter, note.content) : codeText)
+        ? codeText !== codeTextOf(note.content) || canonical(props) !== canonical(note.frontmatter)
         : draft !== note.content || canonical(props) !== canonical(note.frontmatter)));
   /** El mdast precalculado sólo vale si el texto mostrado ES el `content` guardado y no hay bloque protegido (§10.4, P-6). */
   const savedPreparsed = note !== null && prefix === "" && draft === note.content ? preparsed : null;
@@ -370,21 +382,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const visualValue = prefix !== "" && draft.startsWith(prefix) ? draft.slice(prefix.length) : draft;
 
   /**
-   * Texto y propiedades vigentes de la sesión (síncrono, por refs). En Código parte del texto compuesto
-   * (`split`+`parse`); si el YAML es inválido devuelve `valid: false` y conserva lo último válido. En
-   * Visual vacía el debounce y devuelve `{body: draft, props}`.
+   * Texto y propiedades vigentes de la sesión (síncrono, por refs). En Código el cuerpo es el texto de
+   * Código y las propiedades las de la sección META. En Visual vacía el debounce y devuelve `{body: draft, props}`.
    */
   function currentEdit(): { body: string; props: Record<string, unknown>; valid: boolean } {
-    if (viewRef.current === "code") {
-      const fm = fmRef.current;
-      const text = codeTextRef.current ?? "";
-      if (!fm) return { body: draftRef.current, props: propsRef.current, valid: false };
-      const { yaml, body } = fm.splitFrontmatter(text);
-      if (yaml === null) return { body, props: {}, valid: true };
-      const parsed = fm.parseFrontmatterYaml(yaml);
-      if ("error" in parsed) return { body: draftRef.current, props: propsRef.current, valid: false };
-      return { body, props: parsed.value, valid: true };
-    }
+    if (viewRef.current === "code") return { body: codeTextRef.current ?? "", props: propsRef.current, valid: true };
     flushVisual.current?.();
     return { body: draftRef.current, props: propsRef.current, valid: true };
   }
@@ -394,9 +396,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     const current = noteRef.current;
     if (current === null) return false;
     if (viewRef.current === "code") {
-      const fm = fmRef.current;
-      const text = codeTextRef.current ?? "";
-      return fm ? text !== fm.composeCode(current.frontmatter, current.content) : true;
+      return (codeTextRef.current ?? "") !== codeTextOf(current.content) || canonical(propsRef.current) !== canonical(current.frontmatter);
     }
     flushVisual.current?.();
     return draftRef.current !== current.content || canonical(propsRef.current) !== canonical(current.frontmatter);
@@ -418,7 +418,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       onDirtyDraft?.(null);
       return;
     }
-    const body = view === "code" && fmRef.current ? fmRef.current.splitFrontmatter(codeText ?? "").body : draft;
+    const body = view === "code" ? codeText ?? "" : draft;
     onDirtyDraft?.(body);
   }, [dirty, draft, codeText, view, onDirtyDraft]);
 
@@ -508,7 +508,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           setNote(latest);
           setDraft(latest.content);
           setProps(latest.frontmatter);
-          if (viewRef.current === "code" && fmRef.current) setCodeText(fmRef.current.composeCode(latest.frontmatter, latest.content));
+          if (viewRef.current === "code") setCodeText(codeTextOf(latest.content));
           setMissing(false);
         } else if (latest.content === base.content && canonical(latest.frontmatter) === canonical(base.frontmatter)) {
           setNote(latest);
@@ -602,7 +602,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     if (kind === "migrate") {
       const { yaml, body } = fm.splitFrontmatter(note.content);
       const parsed = fm.parseFrontmatterYaml(yaml ?? "");
-      const nextProps = "value" in parsed ? parsed.value : {};
+      // Las claves antiguas pasan a los nombres de los atributos (`título` → `titulo`…) y se conservan las fechas de la nota.
+      const dates = Object.fromEntries(Object.entries(note.frontmatter).filter(([key]) => key === "fecha_creacion" || key === "fecha_actualizacion"));
+      const nextProps = { ...dates, ...("value" in parsed ? migrateFrontmatter(parsed.value) : {}) };
       propsRef.current = nextProps;
       draftRef.current = body;
       setProps(nextProps);
@@ -677,26 +679,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   async function writeDraft(): Promise<boolean> {
     const current = noteRef.current;
     if (current === null) return false;
-    // Commit de la sesión: en Código la verdad es el texto compuesto → `split`+`parse`. Un YAML inválido
-    // (RF-015/017) no guarda ni cambia de vista: avisa con el motivo y la línea (+1 por el `---` de apertura).
+    // Commit de la sesión: en Código el cuerpo es el texto de Código y las propiedades las de la sección META.
     let body: string;
     let nextProps: Record<string, unknown>;
     if (viewRef.current === "code") {
-      const fm = await loadFm();
-      const split = fm.splitFrontmatter(codeTextRef.current ?? "");
-      body = split.body;
-      if (split.yaml === null) {
-        nextProps = {};
-      } else {
-        const parsed = fm.parseFrontmatterYaml(split.yaml);
-        if ("error" in parsed) {
-          const line = parsed.line === undefined ? undefined : parsed.line + 1;
-          setError(frontmatterYamlMessage(parsed.error, line));
-          setErrorLine(line ?? null);
-          return false;
-        }
-        nextProps = parsed.value;
-      }
+      body = codeTextRef.current ?? "";
+      nextProps = propsRef.current;
     } else {
       flushVisual.current?.();
       body = draftRef.current;
@@ -723,9 +711,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       setNote(saved);
       // En Visual NO se tocan `draft`/`props`: son el estado vivo del usuario (si siguió escribiendo
       // durante el guardado en vuelo, debe conservarse para guardarlo luego, E-1). En Código se
-      // renormaliza el texto compuesto a la forma guardada, para que «sucio» vuelva a ser falso.
-      if (viewRef.current === "code" && fmRef.current) {
-        const text = fmRef.current.composeCode(saved.frontmatter, saved.content);
+      // renormaliza el texto a la forma guardada, para que «sucio» vuelva a ser falso.
+      if (viewRef.current === "code") {
+        const text = codeTextOf(saved.content);
         codeTextRef.current = text;
         setCodeText(text);
         // Lectura se pinta desde `draft`/`props`: sin esto «Leer» tras guardar en Código mostraba el texto anterior.
@@ -733,6 +721,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         propsRef.current = saved.frontmatter;
         setDraft(saved.content);
         setProps(saved.frontmatter);
+      } else {
+        // Las fechas que sella el almacén al guardar entran a la sesión viva, para que no cuenten como cambio.
+        const dates: Record<string, unknown> = {};
+        for (const key of ["fecha_creacion", "fecha_actualizacion"]) {
+          if (key in saved.frontmatter) dates[key] = saved.frontmatter[key];
+        }
+        const merged = { ...propsRef.current, ...dates };
+        propsRef.current = merged;
+        setProps(merged);
       }
       // NC-2 (RF-044): al guardar una migración, el bloque ya está fuera del texto; avísalo.
       if (legacyNoticeRef.current === "migrate") setLegacyNotice("moved");
@@ -747,16 +744,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   }
 
   /**
-   * Alterna Visual/Código (RF-021). A Código: vaciado de Visual y compón el texto `---\nYAML\n---\nbody`.
-   * A Visual: el texto de Código es la verdad → `split`+`parse` a `{props, body}`; si el YAML es inválido
-   * se queda en Código (el aviso lo da el guardado, T-058).
+   * Alterna Visual/Código (RF-021). A Código: vaciado de Visual y el texto es el cuerpo. A Visual: el texto de
+   * Código es la verdad del cuerpo; las propiedades no cambian (se editan en la sección META).
    */
   async function switchView(next: View) {
     if (next === viewRef.current) return;
     await loadFm();
     if (next === "code") {
       flushVisual.current?.();
-      const text = fmRef.current!.composeCode(propsRef.current, draftRef.current);
+      const text = codeTextOf(draftRef.current);
       codeTextRef.current = text;
       viewRef.current = "code";
       setCodeText(text);
@@ -1294,12 +1290,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             />
           )}
 
-          {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición el formulario de la sesión (D1). */}
-          {mode === "read" && <PropertiesPanel frontmatter={note.frontmatter} />}
-          {/* En Visual, el formulario parte de las propiedades vigentes (`props`) y las emite con `onProps`.
-              `key={note.rev}` lo reinicia tras guardar o cambiar de nota; al volver de Código se remonta
-              con `props` ya actualizado por `switchView`, así alternar no pierde ediciones. */}
-          {mode === "edit" && view === "visual" && <PropertiesForm key={`${note.rev}-${formKey}`} frontmatter={props} onChange={onProps} />}
+          {/* Propiedades de la nota (RF-009): los 7 generales + propiedades libres. */}
+          {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} />}
+          {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
+              `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
+          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} />}
 
           {mode === "read" ? (
             <>
