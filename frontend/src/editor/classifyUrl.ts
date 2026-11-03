@@ -1,5 +1,7 @@
 // H-025 PASO 2: clasificador de URLs (YouTube, imágenes, links)
 
+const MAX_START_SECONDS = 86400;
+
 export function parseYoutubeUrl(
   url: string
 ): { id: string; start: number | null } | null {
@@ -8,6 +10,8 @@ export function parseYoutubeUrl(
 
     if (parsedUrl.protocol !== "https:") return null;
     if (parsedUrl.username || parsedUrl.password) return null;
+    // `URL.port` es vacío con :443 explícito; se mira el texto original para rechazarlo también.
+    if (parsedUrl.port || /^https:\/\/[^/?#]*:/i.test(url.trim())) return null;
 
     const host = parsedUrl.hostname;
     if (!host) return null;
@@ -79,8 +83,9 @@ export function parseYoutubeEmbedSrc(
     if (url.hash) return null;
 
     const startStr = params.get("start");
+    if (startStr !== null && !/^\d+$/.test(startStr)) return null;
     const start = startStr ? parseInt(startStr, 10) : null;
-    if (startStr && (isNaN(start!) || start! < 0)) return null;
+    if (start !== null && start > MAX_START_SECONDS) return null;
 
     return { id, start };
   } catch {
@@ -121,10 +126,11 @@ export function classifyUrl(
   // Check if it's a single HTTPS URL without internal spaces
   if (
     trimmed.startsWith("https://") &&
-    !trimmed.slice("https://".length).includes(" ")
+    !/\s/.test(trimmed)
   ) {
     try {
       const url = new URL(trimmed);
+      if (url.username || url.password) return { kind: "link", url: trimmed };
       const pathname = url.pathname.toLowerCase();
 
       // Check for image extensions
@@ -163,11 +169,11 @@ function parseStartTime(url: URL): number | null {
 
   // Parse different formats
   if (/^\d+$/.test(timeStr)) {
-    return parseInt(timeStr, 10);
+    return inRange(parseInt(timeStr, 10));
   }
 
   if (/^\d+s$/.test(timeStr)) {
-    return parseInt(timeStr.slice(0, -1), 10);
+    return inRange(parseInt(timeStr.slice(0, -1), 10));
   }
 
   // Parse hms format: 1h2m3s
@@ -180,5 +186,10 @@ function parseStartTime(url: URL): number | null {
   const minutes = hmsMatch[2] ? parseInt(hmsMatch[2], 10) : 0;
   const seconds = hmsMatch[3] ? parseInt(hmsMatch[3], 10) : 0;
 
-  return hours * 3600 + minutes * 60 + seconds;
+  return inRange(hours * 3600 + minutes * 60 + seconds);
+}
+
+/** Un inicio fuera de 0..24 h se ignora (el enlace sigue siendo de YouTube, sin tiempo). */
+function inRange(seconds: number): number | null {
+  return Number.isSafeInteger(seconds) && seconds >= 0 && seconds <= MAX_START_SECONDS ? seconds : null;
 }

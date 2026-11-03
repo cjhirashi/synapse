@@ -1017,3 +1017,57 @@ describe("MilkdownView · comando de incrustado (H-019)", () => {
     });
   });
 });
+
+// H-025 paso 3: reproductor de YouTube en el editor completo (Visual y Lectura).
+describe("MilkdownView · reproductor de YouTube (H-025)", () => {
+  const YT = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>';
+
+  it.each([
+    ["Visual", false],
+    ["Lectura", true],
+  ])("%s: un iframe de youtube-nocookie sale en 16:9 con sus atributos exactos y el enlace «Abrir en YouTube»", async (_n, readOnly) => {
+    const { container } = await mount({ value: YT, readOnly });
+    const box = container.querySelector(".md-embed-video");
+    expect(box).not.toBeNull();
+    const iframe = box!.querySelector(".md-embed-frame iframe")!;
+    expect(iframe.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+    expect(iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-presentation");
+    expect(iframe.getAttribute("allow")).toBe("fullscreen");
+    expect(iframe.getAttribute("referrerpolicy")).toBe("no-referrer");
+    const link = box!.querySelector<HTMLAnchorElement>("a.md-embed-link")!;
+    expect(link.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it.each([
+    "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1",
+    "https://www.youtube-nocookie.com.evil.com/embed/dQw4w9WgXcQ",
+    "http://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+  ])("un src no permitido (%s) no crea iframe", async (src) => {
+    const { container } = await mount({ value: `<iframe src="${src}"></iframe>` });
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.querySelector(".md-embed-video")).toBeNull();
+  });
+
+  it("un iframe de Synapse nunca recibe allow-same-origin ni el enlace de YouTube", async () => {
+    const md = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000" sandbox="allow-same-origin allow-scripts" allow="fullscreen"></iframe>';
+    const { container } = await mount({ value: md });
+    const iframe = container.querySelector("iframe")!;
+    expect(iframe.getAttribute("sandbox")).toBe("allow-scripts");
+    expect(iframe.hasAttribute("allow")).toBe(false);
+    expect(container.querySelector("a.md-embed-link")).toBeNull();
+  });
+
+  it("un <script> junto al reproductor no crea ningún script", async () => {
+    const { container } = await mount({ value: YT + "<script>window.__pwn = 1</script>" });
+    expect(container.querySelector("script")).toBeNull();
+    expect((window as unknown as Record<string, unknown>).__pwn).toBeUndefined();
+  });
+
+  it("ida y vuelta: el markdown de la vista conserva el iframe original en data-value", async () => {
+    const { container } = await mount({ value: YT });
+    expect(container.querySelector(".md-embed-video")!.getAttribute("data-value")).toBe(YT);
+  });
+});

@@ -310,3 +310,32 @@ describe("classifyUrl", () => {
     expect(result).toEqual({ kind: "link", url: "data:text/html,<script>alert(1)</script>" });
   });
 });
+
+describe("parseYoutubeUrl · puertos (revisión de AIRA)", () => {
+  it.each(["https://youtube.com:8443/watch?v=dQw4w9WgXcQ", "https://youtu.be:443/dQw4w9WgXcQ"])("rechaza %s", (u) => {
+    expect(parseYoutubeUrl(u)).toBeNull();
+  });
+});
+
+describe("inicio fuera de rango o mal formado (revisión de AIRA)", () => {
+  const id = "dQw4w9WgXcQ";
+  it.each(["999999", "86401", "99999999999999999999", "100h", "-5"])("el enlace de YouTube con t=%s queda sin inicio", (t) => {
+    expect(parseYoutubeUrl(`https://youtu.be/${id}?t=${t}`)).toEqual({ id, start: null });
+  });
+  it("86400 es el máximo válido", () => {
+    expect(parseYoutubeUrl(`https://youtu.be/${id}?t=86400`)?.start).toBe(86400);
+  });
+  it.each(["999999", "12abc", "1e3", "-1", ""])("un embed con start=%s se rechaza", (v) => {
+    expect(parseYoutubeEmbedSrc(`https://www.youtube-nocookie.com/embed/${id}?start=${v}`)).toBeNull();
+  });
+});
+
+describe("classifyUrl · credenciales y espacios en blanco (revisión de AIRA)", () => {
+  it("una imagen con usuario o contraseña en la URL es un enlace normal", () => {
+    expect(classifyUrl("https://u:p@x.com/a.png").kind).toBe("link");
+    expect(classifyUrl("https://u@x.com/a.png").kind).toBe("link");
+  });
+  it.each(["https://x.com/a b.png", "https://x.com/a\tb.png", "https://x.com/a\nb.png"])("un espacio interno (%j) lo vuelve enlace normal", (u) => {
+    expect(classifyUrl(u).kind).toBe("link");
+  });
+});
