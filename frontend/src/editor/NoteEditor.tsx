@@ -104,6 +104,8 @@ export interface ViewProps {
   onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
   /** Color de la bóveda abierta (H-014); sólo lo usa la vista Visual para publicar las variables de color del documento. */
   vaultColor?: PaletteKey;
+  /** Notificación de conversión de enlace (H-025 paso 4); sólo la vista Visual en edición. */
+  onLinkConverted?: (info: { kind: "youtube" | "image" }) => void;
 }
 
 export interface NoteEditorViews {

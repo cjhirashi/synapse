@@ -31,8 +31,8 @@ export function linkPastePlugin(
         }
 
         // No con selección no vacía
-        const { $from, $to } = view.state.selection;
-        if (!$from.eq($to)) return false;
+        if (!view.state.selection.empty) return false;
+        const { $from } = view.state.selection;
 
         // El textblock debe estar vacío o el contenido ser vacío
         const textblock = $from.parent;
