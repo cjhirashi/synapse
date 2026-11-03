@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ClipboardEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,7 +47,9 @@ import {
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
+import { captureFileName } from "../files/captureName";
 import { htmlEmbedMarkup } from "../files/embed";
+import { classifyUrl, youtubeEmbedUrl } from "./classifyUrl";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -313,13 +315,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * o `[nombre](url)` (documento) (H-015/H-016).
    * La URL es `https://synapse.cjhirashi.com/files/<id>` (pasa `safeImageUrl` sin cambios, C-4).
    * El tipo y límites se validan en el cliente (feedback inmediato) y en el backend (C-11).
+   * Si `folder` se proporciona, lo agrega al formulario (H-025 paso 6).
    */
-  const insertUploadedImage = useCallback(async (file: File) => {
+  const insertUploadedImage = useCallback(async (file: File, folder?: string) => {
     const current = noteRef.current;
     if (current === null) return;
     setUploadError(null);
     try {
-      const uploaded = await uploadFile(file, current.vault_id);
+      const uploaded = await uploadFile(file, current.vault_id, folder);
       const alt = file.name.replace(/\.[^.]+$/, "") || uploaded.name;
       const url = fileUrl(uploaded.id);
       if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(uploaded.content_type)) {
@@ -842,6 +845,56 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     event.preventDefault();
   }
 
+  /**
+   * Pegado de captura de pantalla (H-025 paso 6): intercepta imágenes del portapapeles.
+   * Solo en edición Visual. Si trae imagen, la sube a carpeta "Varios".
+   * Si hay imagen Y texto, y hay `text/plain`, no intercepta (es pegado normal).
+   */
+  function onPasteCapture(event: ClipboardEvent<HTMLDivElement>) {
+    if (mode !== "edit" || view !== "visual") return;
+    const clipData = event.clipboardData;
+    if (!clipData) return;
+
+    let file: File | null = null;
+    const items = clipData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === "file") {
+          const f = items[i].getAsFile();
+          if (f && f.type.startsWith("image/")) {
+            file = f;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!file) {
+      const files = clipData.files;
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith("image/")) {
+          file = files[i];
+          break;
+        }
+      }
+    }
+
+    if (!file) return;
+
+    const hasText = clipData.types.includes("text/plain");
+    if (hasText) return;
+
+    event.preventDefault();
+    const name = captureFileName(new Date(), file.type);
+    if (name === null) {
+      setUploadError("Ese tipo de archivo no se admite.");
+      return;
+    }
+
+    const namedFile = new File([file], name, { type: file.type });
+    void insertUploadedImage(namedFile, "Varios");
+  }
+
   // H-026: el scroll se avisa con debounce de 250 ms; al desmontar o cambiar de nota se entrega lo pendiente.
   const lastScrollPx = useRef(0);
   const onScrollRef = useRef(onScroll);
@@ -1068,7 +1121,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
-      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
+      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver} onPasteCapture={onPasteCapture}>
         <div className="note-editor-column">
           {pathInvalid && (
             <div className="note-editor-notice" role="alert">

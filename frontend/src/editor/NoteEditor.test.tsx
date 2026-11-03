@@ -501,7 +501,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     fireEvent.change(input);
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc", "foto"));
   });
 
@@ -512,7 +512,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     const file = new File([new Uint8Array(16)], "dibujo.png", { type: "image/png" });
     fireEvent.drop(body, { dataTransfer: { files: [file] } });
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/xyz", "dibujo"));
   });
 
@@ -583,7 +583,7 @@ describe("subir archivo HTML en la Fila 3 (H-019)", () => {
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     fireEvent.change(input);
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertEmbed).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc"));
   });
 
@@ -1596,5 +1596,173 @@ describe("aviso de enlace convertido (H-025)", () => {
     convert("image");
     await userEvent.click(screen.getByRole("button", { name: /Cerrar aviso/i }));
     expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+  });
+});
+
+// H-025 paso 6: captura de pantalla pegada con carpeta "Varios"
+describe("captura de pantalla pegada (H-025 paso 6)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  async function setupPaste() {
+    const insertImage = vi.fn();
+    function VisualWithPaste({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithPaste, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertImage };
+  }
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("pegar una imagen PNG en edición Visual sube con folder 'Varios' e inserta", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container, insertImage } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "screenshot.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      const call = mockUpload.mock.calls[0];
+      expect(call).toBeDefined();
+      expect(call[1]).toBe(VAULT);
+      expect(call[2]).toBe("Varios");
+      expect(call[0]).toBeInstanceOf(File);
+      expect(call[0].type).toBe("image/png");
+      expect(call[0].name).toMatch(/^captura-\d+-\d+\.png$/);
+    });
+    await waitFor(() =>
+      expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/cap123", expect.stringContaining("captura-"))
+    );
+  });
+
+  it("en lectura no intercepta pegado", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container } = await setup("hola");
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        types: ["Files"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("en vista Código no intercepta pegado", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container } = await setupPaste();
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        types: ["Files"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar solo texto no llama a uploadFile", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [],
+        types: ["text/plain"],
+        getData: (type) => (type === "text/plain" ? "texto de prueba" : ""),
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar imagen Y texto no intercepta (pegado normal)", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [
+          { kind: "file", type: "image/png", getAsFile: () => file },
+          { kind: "string", type: "text/plain", getAsString: (cb) => cb("texto") },
+        ],
+        types: ["Files", "text/plain"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar SVG muestra aviso de error y no inserta", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "dibujo.svg", { type: "image/svg+xml" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/svg+xml", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    expect(await screen.findByText(/no se admite/i)).toBeInTheDocument();
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("si uploadFile falla, muestra el aviso de error", async () => {
+    mockUpload.mockRejectedValueOnce(new uploadModule.UploadTooLargeError("demasiado grande"));
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    expect(await screen.findByText(/límite de tamaño/i)).toBeInTheDocument();
   });
 });

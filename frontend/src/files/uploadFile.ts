@@ -81,8 +81,9 @@ export class UploadTypeError extends Error {}
 /**
  * Sube `file` a la bóveda `vaultId`. Rechaza en el cliente (sin tocar la red) si el tipo no
  * está admitido o supera su límite; un fallo del servidor llega como `ApiError` (vía `request`).
+ * Si `folder` se proporciona, lo agrega como campo de formulario opcional (H-025 paso 6).
  */
-export async function uploadFile(file: File, vaultId: string): Promise<UploadedFile> {
+export async function uploadFile(file: File, vaultId: string, folder?: string): Promise<UploadedFile> {
   const isImage = (ALLOWED_IMAGE_TYPES as readonly string[]).includes(file.type);
   const isDocument = (ALLOWED_DOCUMENT_TYPES as readonly string[]).includes(file.type);
 
@@ -98,6 +99,9 @@ export async function uploadFile(file: File, vaultId: string): Promise<UploadedF
   const form = new FormData();
   form.append("vault_id", vaultId);
   form.append("file", file);
+  if (folder) {
+    form.append("folder", folder);
+  }
   const res = await request("/files", { method: "POST", body: form, headers: {} });
   return res.json();
 }
