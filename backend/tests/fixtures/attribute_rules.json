@@ -1,0 +1,683 @@
+{
+ "_doc": "H-029: especificación compartida de atributos META. La implementan backend (Python) y frontend (TypeScript); ambos deben pasar TODOS estos casos. Cada sección define su algoritmo en 'rule'.",
+ "limits": {
+  "titulo_max": 200,
+  "descripcion_max": 1000,
+  "tags_max": 20,
+  "tag_max_len": 32
+ },
+ "estados": [
+  "borrador",
+  "en_revision",
+  "vigente",
+  "archivado"
+ ],
+ "reserved_keys": [
+  "ruta",
+  "fecha_creacion",
+  "fecha_actualizacion"
+ ],
+ "normalize_key": {
+  "rule": "NFD, quitar marcas diacríticas, minúsculas, cada racha de caracteres que no sean [a-z0-9] pasa a '_', recortar '_' de los extremos; si queda vacía, null.",
+  "cases": [
+   [
+    "título",
+    "titulo"
+   ],
+   [
+    "Fecha creación",
+    "fecha_creacion"
+   ],
+   [
+    "fecha_creación",
+    "fecha_creacion"
+   ],
+   [
+    "última_actualización",
+    "ultima_actualizacion"
+   ],
+   [
+    "Estado",
+    "estado"
+   ],
+   [
+    "año",
+    "ano"
+   ],
+   [
+    "Valor 1",
+    "valor_1"
+   ],
+   [
+    "  mi  clave  ",
+    "mi_clave"
+   ],
+   [
+    "a-b/c",
+    "a_b_c"
+   ],
+   [
+    "___",
+    null
+   ],
+   [
+    "",
+    null
+   ],
+   [
+    "ÑANDÚ",
+    "nandu"
+   ]
+  ]
+ },
+ "normalize_tag": {
+  "rule": "NFC, recortar, minúsculas, cada racha de caracteres que no sea letra Unicode, dígito, '-' o '_' pasa a '_', recortar '_' y '-' de los extremos, cortar a 32 caracteres y volver a recortar '_' y '-' del final; si queda vacío, null. Las letras con acento se conservan.",
+  "cases": [
+   [
+    "Mi Tag",
+    "mi_tag"
+   ],
+   [
+    "IA",
+    "ia"
+   ],
+   [
+    "CLAUDE.md",
+    "claude_md"
+   ],
+   [
+    "tr-##",
+    "tr"
+   ],
+   [
+    "análisis",
+    "análisis"
+   ],
+   [
+    "proyecto/synapse",
+    "proyecto_synapse"
+   ],
+   [
+    "  x  ",
+    "x"
+   ],
+   [
+    "###",
+    null
+   ],
+   [
+    "",
+    null
+   ],
+   [
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   ],
+   [
+    "año-2026",
+    "año-2026"
+   ],
+   [
+    "a  b   c",
+    "a_b_c"
+   ],
+   [
+    "_inicio",
+    "inicio"
+   ],
+   [
+    "fin-",
+    "fin"
+   ]
+  ]
+ },
+ "estado_synonyms": {
+  "rule": "Se busca el valor (cadena) normalizado: recortar, minúsculas, quitar acentos, cada racha de espacios, '-' o '_' pasa a un espacio. Si está en la tabla, el estado es su código; si no, 'estado' no se escribe y el valor original queda en 'estado_original'.",
+  "table": {
+   "active": "vigente",
+   "activo": "vigente",
+   "vigente": "vigente",
+   "draft": "borrador",
+   "borrador": "borrador",
+   "en revision": "en_revision",
+   "revision": "en_revision",
+   "archived": "archivado",
+   "archivado": "archivado",
+   "superseded": "archivado"
+  },
+  "cases": [
+   [
+    "active",
+    "vigente"
+   ],
+   [
+    "Activo",
+    "vigente"
+   ],
+   [
+    "en revisión",
+    "en_revision"
+   ],
+   [
+    "en-revisión",
+    "en_revision"
+   ],
+   [
+    "en_revision",
+    "en_revision"
+   ],
+   [
+    "draft",
+    "borrador"
+   ],
+   [
+    "archived",
+    "archivado"
+   ],
+   [
+    "superseded",
+    "archivado"
+   ],
+   [
+    "en-proceso",
+    null
+   ],
+   [
+    "publicado",
+    null
+   ],
+   [
+    "",
+    null
+   ]
+  ]
+ },
+ "migrate_frontmatter": {
+  "rule": [
+   "Entrada: objeto frontmatter. Se recorren las claves EN ORDEN; la clave conocida se detecta con normalize_key.",
+   "Claves conocidas: titulo; descripcion; tags; status y estado -> estado; fecha_creacion -> fecha_creacion_original; ultima_actualizacion y fecha_actualizacion -> fecha_actualizacion_original; ruta -> ruta_original. Cualquier otra clave queda INTACTA (nombre y valor).",
+   "titulo y descripcion: cadena -> igual; número (no booleano) -> su texto; null -> se elimina la clave; cualquier otro tipo -> '<destino>_original' con el valor original y sin destino.",
+   "tags: lista -> cada elemento (cadena, o número pasado a texto) por normalize_tag, sin nulos ni repetidos, en orden; elemento que no sea cadena ni número -> toda la clave pasa a 'tags_original' y no se escribe 'tags'; más de 20 -> primeros 20 y la lista original completa en 'tags_original'. Cadena -> se parte por ',' y se trata como lista. Cualquier otro tipo -> 'tags_original'.",
+   "estado: cadena -> estado_synonyms; número u otro tipo -> 'estado_original' con el valor original.",
+   "Los destinos '_original' conservan el valor tal cual.",
+   "Colisión: si el destino ya tiene valor puesto por una clave anterior o ya existía en la entrada con otro valor, gana el primero en el orden de claves; el valor perdedor va a '<destino>_original' (si el valor es igual, se descarta sin más); si '<destino>_original' también está ocupado, la clave perdedora se deja INTACTA.",
+   "Idempotente: migrar un resultado ya migrado no lo cambia.",
+   "La salida conserva el orden: cada clave migrada ocupa la posición de la clave de origen."
+  ],
+  "cases": [
+   {
+    "name": "claves antiguas en español",
+    "in": {
+     "título": "Hola",
+     "descripción": "Algo",
+     "tags": [
+      "Mi Tag",
+      "IA"
+     ],
+     "status": "active",
+     "tipo": "README",
+     "fecha_creación": "2026-07-06",
+     "última_actualización": "2026-07-15"
+    },
+    "out": {
+     "titulo": "Hola",
+     "descripcion": "Algo",
+     "tags": [
+      "mi_tag",
+      "ia"
+     ],
+     "estado": "vigente",
+     "tipo": "README",
+     "fecha_creacion_original": "2026-07-06",
+     "fecha_actualizacion_original": "2026-07-15"
+    }
+   },
+   {
+    "name": "ruta libre pasa a ruta_original",
+    "in": {
+     "ruta": "a/b/c.md",
+     "tipo": "x"
+    },
+    "out": {
+     "ruta_original": "a/b/c.md",
+     "tipo": "x"
+    }
+   },
+   {
+    "name": "estado desconocido se conserva sin adivinar",
+    "in": {
+     "status": "en-proceso"
+    },
+    "out": {
+     "estado_original": "en-proceso"
+    }
+   },
+   {
+    "name": "Estado con mayúscula",
+    "in": {
+     "Estado": "Activo"
+    },
+    "out": {
+     "estado": "vigente"
+    }
+   },
+   {
+    "name": "status y estado iguales",
+    "in": {
+     "status": "active",
+     "estado": "vigente"
+    },
+    "out": {
+     "estado": "vigente"
+    }
+   },
+   {
+    "name": "status y estado distintos: gana el primero",
+    "in": {
+     "status": "active",
+     "estado": "borrador"
+    },
+    "out": {
+     "estado": "vigente",
+     "estado_original": "borrador"
+    }
+   },
+   {
+    "name": "título que es lista",
+    "in": {
+     "título": [
+      "a",
+      "b"
+     ]
+    },
+    "out": {
+     "titulo_original": [
+      "a",
+      "b"
+     ]
+    }
+   },
+   {
+    "name": "título numérico",
+    "in": {
+     "título": 2026
+    },
+    "out": {
+     "titulo": "2026"
+    }
+   },
+   {
+    "name": "título null se elimina",
+    "in": {
+     "título": null,
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    }
+   },
+   {
+    "name": "tags como cadena",
+    "in": {
+     "tags": "uno, Dos tres"
+    },
+    "out": {
+     "tags": [
+      "uno",
+      "dos_tres"
+     ]
+    }
+   },
+   {
+    "name": "tags repetidos tras normalizar",
+    "in": {
+     "tags": [
+      "IA",
+      "ia",
+      "Ia"
+     ]
+    },
+    "out": {
+     "tags": [
+      "ia"
+     ]
+    }
+   },
+   {
+    "name": "tags con elemento no texto ni número",
+    "in": {
+     "tags": [
+      "a",
+      {
+       "x": 1
+      }
+     ]
+    },
+    "out": {
+     "tags_original": [
+      "a",
+      {
+       "x": 1
+      }
+     ]
+    }
+   },
+   {
+    "name": "más de 20 tags",
+    "in": {
+     "tags": [
+      "t0",
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+      "t5",
+      "t6",
+      "t7",
+      "t8",
+      "t9",
+      "t10",
+      "t11",
+      "t12",
+      "t13",
+      "t14",
+      "t15",
+      "t16",
+      "t17",
+      "t18",
+      "t19",
+      "t20",
+      "t21",
+      "t22",
+      "t23",
+      "t24"
+     ]
+    },
+    "out": {
+     "tags": [
+      "t0",
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+      "t5",
+      "t6",
+      "t7",
+      "t8",
+      "t9",
+      "t10",
+      "t11",
+      "t12",
+      "t13",
+      "t14",
+      "t15",
+      "t16",
+      "t17",
+      "t18",
+      "t19"
+     ],
+     "tags_original": [
+      "t0",
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+      "t5",
+      "t6",
+      "t7",
+      "t8",
+      "t9",
+      "t10",
+      "t11",
+      "t12",
+      "t13",
+      "t14",
+      "t15",
+      "t16",
+      "t17",
+      "t18",
+      "t19",
+      "t20",
+      "t21",
+      "t22",
+      "t23",
+      "t24"
+     ]
+    }
+   },
+   {
+    "name": "claves desconocidas intactas (también con acentos o espacios)",
+    "in": {
+     "Valor 1": "x",
+     "categoría": "c",
+     "fecha_creado": "2026-01-01"
+    },
+    "out": {
+     "Valor 1": "x",
+     "categoría": "c",
+     "fecha_creado": "2026-01-01"
+    }
+   },
+   {
+    "name": "sin frontmatter útil",
+    "in": {},
+    "out": {}
+   },
+   {
+    "name": "ya migrado no cambia",
+    "in": {
+     "titulo": "Hola",
+     "tags": [
+      "a"
+     ],
+     "estado": "vigente",
+     "ruta_original": "x"
+    },
+    "out": {
+     "titulo": "Hola",
+     "tags": [
+      "a"
+     ],
+     "estado": "vigente",
+     "ruta_original": "x"
+    }
+   },
+   {
+    "name": "se conserva el orden de las claves",
+    "in": {
+     "tipo": "x",
+     "título": "T",
+     "status": "draft"
+    },
+    "out_order": [
+     "tipo",
+     "titulo",
+     "estado"
+    ],
+    "out": {
+     "tipo": "x",
+     "titulo": "T",
+     "estado": "borrador"
+    }
+   }
+  ]
+ },
+ "validate_general": {
+  "rule": "Valida los siete generales en el frontmatter de una nota. Devuelve el código del primer error o null. Orden de comprobación: claves reservadas, titulo, descripcion, tags, estado. Las claves libres no se validan.",
+  "cases": [
+   [
+    {},
+    null
+   ],
+   [
+    {
+     "titulo": ""
+    },
+    null
+   ],
+   [
+    {
+     "titulo": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    null
+   ],
+   [
+    {
+     "titulo": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "titulo"
+   ],
+   [
+    {
+     "titulo": 5
+    },
+    "titulo"
+   ],
+   [
+    {
+     "descripcion": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    null
+   ],
+   [
+    {
+     "descripcion": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "descripcion"
+   ],
+   [
+    {
+     "tags": [
+      "a",
+      "mi_tag",
+      "análisis"
+     ]
+    },
+    null
+   ],
+   [
+    {
+     "tags": [
+      "Mayus"
+     ]
+    },
+    "tags"
+   ],
+   [
+    {
+     "tags": [
+      "con espacio"
+     ]
+    },
+    "tags"
+   ],
+   [
+    {
+     "tags": [
+      ""
+     ]
+    },
+    "tags"
+   ],
+   [
+    {
+     "tags": "a"
+    },
+    "tags"
+   ],
+   [
+    {
+     "tags": [
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x",
+      "x"
+     ]
+    },
+    "tags"
+   ],
+   [
+    {
+     "tags": [
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+     ]
+    },
+    "tags"
+   ],
+   [
+    {
+     "estado": "vigente"
+    },
+    null
+   ],
+   [
+    {
+     "estado": "en_revision"
+    },
+    null
+   ],
+   [
+    {
+     "estado": "active"
+    },
+    "estado"
+   ],
+   [
+    {
+     "estado": null
+    },
+    "estado"
+   ],
+   [
+    {
+     "ruta": "a"
+    },
+    "reservada:ruta"
+   ],
+   [
+    {
+     "fecha_creacion": "2026-01-01"
+    },
+    "reservada:fecha_creacion"
+   ],
+   [
+    {
+     "fecha_actualizacion": "x"
+    },
+    "reservada:fecha_actualizacion"
+   ],
+   [
+    {
+     "ruta_original": "a",
+     "tipo": "x",
+     "categoría": "y"
+    },
+    null
+   ],
+   [
+    {
+     "ruta": "a",
+     "titulo": 5
+    },
+    "reservada:ruta"
+   ]
+  ]
+ }
+}
