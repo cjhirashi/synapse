@@ -31,10 +31,13 @@ def _vault(client) -> str:
     return res.json()["id"]
 
 
-def _upload(client, vault_id, data=PNG, filename="foto.png", content_type="image/png"):
+def _upload(client, vault_id, data=PNG, filename="foto.png", content_type="image/png", folder=None):
+    form_data = {"vault_id": vault_id}
+    if folder is not None:
+        form_data["folder"] = folder
     return client.post(
         "/files",
-        data={"vault_id": vault_id},
+        data=form_data,
         files={"file": (filename, data, content_type)},
     )
 
@@ -565,3 +568,111 @@ def test_c12_key_can_delete_own_file(ready_admin, storage):
 
     res = agent.delete(f"/files/{file_id}")
     assert res.status_code == 204
+
+
+# --- H-025: campo folder ---
+
+def test_h025_upload_without_folder_returns_null(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png")
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["folder"] is None
+
+
+def test_h025_upload_with_folder(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="Varios")
+    assert res.status_code == 201, res.text
+    body = res.json()
+    assert body["folder"] == "Varios"
+
+
+def test_h025_folder_appears_in_list(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png", folder="Imágenes").json()["id"]
+    res = ready_admin.get(f"/vaults/{vault_id}/files")
+    assert res.status_code == 200
+    files = res.json()["files"]
+    assert len(files) == 1
+    assert files[0]["folder"] == "Imágenes"
+
+
+def test_h025_empty_folder_becomes_null(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="")
+    assert res.status_code == 201, res.text
+    assert res.json()["folder"] is None
+
+
+def test_h025_whitespace_folder_becomes_null(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="   ")
+    assert res.status_code == 201, res.text
+    assert res.json()["folder"] is None
+
+
+def test_h025_folder_too_long_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    long_folder = "a" * 65
+    res = _upload(ready_admin, vault_id, filename="file.png", folder=long_folder)
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_folder_with_slash_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="path/to/folder")
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_folder_with_backslash_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="path\\to\\folder")
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_folder_with_control_char_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="folder\x00name")
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_folder_dot_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder=".")
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_folder_dotdot_is_rejected(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder="..")
+    assert_problem(res, 422, "validation-error")
+    assert storage.objects == {}
+
+
+def test_h025_old_file_without_folder_still_null(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="old.png").json()["id"]
+    # Listar
+    res = ready_admin.get(f"/vaults/{vault_id}/files")
+    files = res.json()["files"]
+    assert len(files) == 1
+    assert files[0]["folder"] is None
+
+
+def test_h025_patch_preserves_folder(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, filename="file.png", folder="Documentos").json()["id"]
+    # Cambiar visibilidad
+    res = ready_admin.patch(f"/files/{file_id}", json={"visibility": "public"})
+    assert res.status_code == 200
+    assert res.json()["folder"] == "Documentos"
+    # Cambiar nombre
+    res = ready_admin.patch(f"/files/{file_id}", json={"name": "renamed.png"})
+    assert res.status_code == 200
+    assert res.json()["folder"] == "Documentos"

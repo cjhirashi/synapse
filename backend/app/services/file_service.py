@@ -32,6 +32,9 @@ _VALID_VISIBILITIES = {"private", "public"}
 # Patrón para sanear nombres: sin separadores de ruta, sin control chars, 1-255 caracteres
 _INVALID_NAME_PATTERN = re.compile(r'[\x00-\x1f\x7f/\\]|^\s+|\s+$')
 
+# Patrón para validar folder: sin separadores de ruta, sin control chars, 1-64 caracteres, no . ni ..
+_INVALID_FOLDER_PATTERN = re.compile(r'[\x00-\x1f\x7f/\\]')
+
 
 def _sanitize_filename(name: str) -> str | None:
     """Sanea el nombre del archivo (C-5/C-11):
@@ -43,6 +46,30 @@ def _sanitize_filename(name: str) -> str | None:
     if not name or len(name) > 255 or _INVALID_NAME_PATTERN.search(name):
         return None
     return name.strip()
+
+
+def _validate_folder(folder: str | None) -> str | None:
+    """Valida folder (H-025):
+    - None → None (sin carpeta)
+    - Cadena vacía o solo espacios → None
+    - 1-64 caracteres sin separadores de ruta ni control chars
+    - No . ni ..
+    Lanza ValidationFailed si es inválido, retorna la carpeta saneada o None."""
+    if folder is None or not folder or not folder.strip():
+        return None
+
+    clean_folder = folder.strip()
+
+    if len(clean_folder) > 64:
+        raise ValidationFailed("carpeta muy larga: máximo 64 caracteres")
+
+    if _INVALID_FOLDER_PATTERN.search(clean_folder):
+        raise ValidationFailed("carpeta inválida: contiene caracteres no permitidos")
+
+    if clean_folder in {'.', '..'}:
+        raise ValidationFailed(f"carpeta inválida: {clean_folder} no permitido")
+
+    return clean_folder
 
 
 def _get_file_extension(filename: str) -> str:
@@ -74,7 +101,7 @@ class FileService:
         # con el `VaultService` del dueño; los tests pasan un doble).
         self._ensure_vault = ensure_vault
 
-    def create(self, *, vault_id: str, filename: str, data: bytes) -> File:
+    def create(self, *, vault_id: str, filename: str, data: bytes, folder: str | None = None) -> File:
         """Guarda el objeto y crea su registro privado (C-1), o rechaza sin crear nada (C-2/C-5).
 
         El orden importa (C-2): toda validación ocurre ANTES de tocar MinIO o Postgres, así un
@@ -82,6 +109,7 @@ class FileService:
 
         Valida:
         - Nombre (sin separadores de ruta, sin control chars, 1-255, sin espacios en extremos)
+        - Carpeta (opcional, 1-64 caracteres si se proporciona)
         - Tamaño (5 MB imágenes, 25 MB resto)
         - Tipo (por firma de bytes, nunca por Content-Type del cliente)
         - SVG (por RNF-003)
@@ -92,6 +120,9 @@ class FileService:
         clean_name = _sanitize_filename(filename)
         if clean_name is None:
             raise UnsupportedFileType(f"nombre inválido: {filename}")
+
+        # Validar carpeta (H-025)
+        clean_folder = _validate_folder(folder)
 
         # Extraer extensión y verificar tamaño antes de validar tipo
         ext = _get_file_extension(clean_name)
@@ -121,6 +152,7 @@ class FileService:
                 content_type=content_type,
                 size=len(data),
                 visibility="private",
+                folder=clean_folder,
                 object_key=object_key,
                 created_at=datetime.now(UTC),
             )
