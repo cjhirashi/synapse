@@ -239,12 +239,12 @@ def test_c5_invalid_path_is_422_with_the_pointer(ready_admin, db):
 
 
 @pytest.mark.parametrize("frontmatter", [
-    {"estado": "active"},
+    {"estado": "En Revisión"},
     {"tags": ["Con Espacio"]},
     {"titulo": 5},
     {"descripcion": "x" * 1001},
     {"ruta": "a/b.md"},
-    {"fecha_actualizacion": "2026-01-01"},
+    {"fecha_actualizacion": "YYYY-MM-DD"},
 ])
 def test_h029_post_with_an_invalid_general_attribute_is_422(ready_admin, frontmatter):
     vault_id = create(ready_admin).json()["id"]
@@ -256,8 +256,8 @@ def test_h029_post_with_an_invalid_general_attribute_is_422(ready_admin, frontma
 def test_h029_post_accepts_valid_generals_free_keys_and_migrated_keys(ready_admin):
     vault_id = create(ready_admin).json()["id"]
     frontmatter = {
-        "titulo": "Hola", "descripcion": "Algo", "tags": ["análisis", "ia"], "estado": "en_proceso",
-        "categoría": "libre con acento", "Valor 1": "x", "ruta_original": "a/b.md", "estado_original": "pendiente",
+        "titulo": "Hola", "descripcion": "Algo", "tags": ["análisis", "ia"], "estado": "en pruebas",
+        "fecha_creacion": "2026-07-06", "fecha_actualizacion": "2026-07-15", "categoría": "libre con acento", "Valor 1": "x",
     }
     res = create_note(ready_admin, vault_id, "Nota.md", frontmatter=frontmatter)
     assert res.status_code == 201

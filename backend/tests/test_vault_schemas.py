@@ -211,6 +211,24 @@ def test_h029_rf002_attributes_key_reserved_titulo():
         VaultCreate(name="n", attributes=attrs)
 
 
+@pytest.mark.parametrize("key", ["ruta", "fecha_creacion", "fecha_actualizacion", "tags", "descripcion"])
+def test_h029_the_other_generals_stay_reserved(key):
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes={key: {"type": "select", "options": ["a"]}})
+
+
+def test_h029_estado_can_be_declared_as_select_to_add_states():
+    attrs = {"estado": {"type": "select", "options": ["en pruebas", "en producción"]}}
+    assert VaultCreate(name="n", attributes=attrs).attributes == attrs
+    assert VaultUpdate(attributes=attrs).attributes == attrs
+
+
+@pytest.mark.parametrize("definition", [{"type": "text"}, {"type": "multiselect", "options": ["a"]}, {"type": "date"}])
+def test_h029_estado_in_the_catalog_must_be_a_select(definition):
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes={"estado": definition})
+
+
 def test_h029_rf002_attributes_key_valid():
     """Claves válidas: minúsculas, números, guiones bajos (RF-002)."""
     valid_keys = [

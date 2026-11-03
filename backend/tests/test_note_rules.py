@@ -131,9 +131,9 @@ def test_h029_check_frontmatter_rejects_tags_element_exceeds_max_length():
     assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
 
 
-def test_h029_check_frontmatter_rejects_invalid_estado():
-    fm = {"estado": "invalid_state"}
-    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+@pytest.mark.parametrize("estado", ["En Revisión", "en_proceso", "", None, True, "x" * 33])
+def test_h029_check_frontmatter_rejects_estado_not_in_stored_form(estado):
+    assert note_rules.check_frontmatter({"estado": estado}) == "validation-error:frontmatter"
 
 
 def test_h029_check_frontmatter_rejects_reserved_key_ruta():
@@ -141,14 +141,15 @@ def test_h029_check_frontmatter_rejects_reserved_key_ruta():
     assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
 
 
-def test_h029_check_frontmatter_rejects_reserved_key_fecha_creacion():
-    fm = {"fecha_creacion": "2024-01-01"}
-    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+@pytest.mark.parametrize("key", ["fecha_creacion", "fecha_actualizacion"])
+@pytest.mark.parametrize("value", ["2024-02-30", "YYYY-MM-DD", "2024-01-01 (v2)", 20240101, None])
+def test_h029_check_frontmatter_rejects_invalid_dates(key, value):
+    assert note_rules.check_frontmatter({key: value}) == "validation-error:frontmatter"
 
 
-def test_h029_check_frontmatter_rejects_reserved_key_fecha_actualizacion():
-    fm = {"fecha_actualizacion": "2024-01-01"}
-    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+@pytest.mark.parametrize("key", ["fecha_creacion", "fecha_actualizacion"])
+def test_h029_check_frontmatter_accepts_valid_dates(key):
+    assert note_rules.check_frontmatter({key: "2024-01-01"}) is None
 
 
 def test_h029_check_frontmatter_accepts_valid_titulo():
@@ -166,9 +167,9 @@ def test_h029_check_frontmatter_accepts_valid_tags():
     assert note_rules.check_frontmatter(fm) is None
 
 
-def test_h029_check_frontmatter_accepts_valid_estado():
-    fm = {"estado": "en_proceso"}
-    assert note_rules.check_frontmatter(fm) is None
+@pytest.mark.parametrize("estado", ["borrador", "en revisión", "aprobado", "en implementación", "implementado", "en pruebas", "activo"])
+def test_h029_check_frontmatter_accepts_standard_and_new_estados(estado):
+    assert note_rules.check_frontmatter({"estado": estado}) is None
 
 
 def test_h029_check_frontmatter_accepts_free_keys_with_accents_and_spaces():
@@ -176,9 +177,8 @@ def test_h029_check_frontmatter_accepts_free_keys_with_accents_and_spaces():
     assert note_rules.check_frontmatter(fm) is None
 
 
-def test_h029_check_frontmatter_accepts_original_keys():
-    fm = {"ruta_original": "some/path", "tags_original": ["tag"]}
-    assert note_rules.check_frontmatter(fm) is None
+def test_h029_check_frontmatter_accepts_other_keys_that_look_like_generals():
+    assert note_rules.check_frontmatter({"fecha_creado": "x", "Estado": "x", "ruta_origen": "x"}) is None
 
 
 def test_h029_check_frontmatter_accepts_null_frontmatter():

@@ -99,7 +99,7 @@ VaultTags = Annotated[list[VaultTag], Field(max_length=20), AfterValidator(_dedu
 
 # --- H-029: Catálogo de atributos (PASO 1) ---
 # Las 7 claves generales de notas (no se pueden usar como atributos de bóveda).
-_VAULT_RESERVED_KEYS = {"titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags", "estado"}
+_VAULT_RESERVED_KEYS = {"titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags"}
 _ATTRIBUTE_TYPES = Literal["text", "number", "boolean", "list", "date", "select", "multiselect"]
 
 
@@ -120,6 +120,9 @@ def _validate_attributes_dict(attrs: dict | None) -> dict | None:
         if not all(c.islower() or c.isdigit() or c == "_" for c in key):
             raise field_error("attribute_key_invalid")
         if key in _VAULT_RESERVED_KEYS:
+            raise field_error("attribute_key_reserved")
+        # `estado` sí se declara en el catálogo, solo como select: ahí cada bóveda guarda sus estados nuevos.
+        if key == "estado" and not (isinstance(val, dict) and val.get("type") == "select"):
             raise field_error("attribute_key_reserved")
 
         # Validar valor (debe ser dict con "type" y opcionalmente "options")

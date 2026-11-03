@@ -1,22 +1,21 @@
 {
- "_doc": "H-029: especificación compartida de atributos META. La implementan backend (Python) y frontend (TypeScript); ambos deben pasar TODOS estos casos. Cada sección define su algoritmo en 'rule'.",
+ "_doc": "H-029: especificación compartida de atributos META. La implementan backend (Python) y frontend (TypeScript); ambos deben pasar TODOS estos casos. Los valores antiguos se migran al atributo con su nombre final (sin sufijos); un valor que no cabe se descarta y queda en el informe.",
  "limits": {
   "titulo_max": 200,
   "descripcion_max": 1000,
   "tags_max": 20,
-  "tag_max_len": 32
+  "tag_max_len": 32,
+  "estado_max_len": 32
  },
- "estados": [
+ "estados_estandar": [
   "borrador",
-  "en_proceso",
-  "en_revision",
-  "vigente",
-  "archivado"
+  "en revisión",
+  "aprobado",
+  "en implementación",
+  "implementado"
  ],
  "reserved_keys": [
-  "ruta",
-  "fecha_creacion",
-  "fecha_actualizacion"
+  "ruta"
  ],
  "normalize_key": {
   "rule": "NFD, quitar marcas diacríticas, minúsculas, cada racha de caracteres que no sean [a-z0-9] pasa a '_', recortar '_' de los extremos; si queda vacía, null.",
@@ -132,57 +131,179 @@
    ]
   ]
  },
- "estado_synonyms": {
-  "rule": "Se busca el valor (cadena) normalizado: recortar, minúsculas, quitar acentos, cada racha de espacios, '-' o '_' pasa a un espacio. Si está en la tabla, el estado es su código; si no, 'estado' no se escribe y el valor original queda en 'estado_original'.",
+ "normalize_estado": {
+  "rule": "Texto: NFC, recortar, minúsculas, cada racha de espacios, '-' o '_' pasa a un espacio, recortar; con acentos; de 1 a 32 caracteres. Si no es texto, queda vacío o es demasiado largo, null. Es la forma GUARDADA de un estado (no aplica sinónimos).",
+  "cases": [
+   [
+    "borrador",
+    "borrador"
+   ],
+   [
+    "En Revisión",
+    "en revisión"
+   ],
+   [
+    "en-implementación",
+    "en implementación"
+   ],
+   [
+    "  en   proceso ",
+    "en proceso"
+   ],
+   [
+    "activo",
+    "activo"
+   ],
+   [
+    "en_pruebas",
+    "en pruebas"
+   ],
+   [
+    "",
+    null
+   ],
+   [
+    "   ",
+    null
+   ],
+   [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    null
+   ],
+   [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   ],
+   [
+    true,
+    null
+   ],
+   [
+    5,
+    null
+   ]
+  ]
+ },
+ "legacy_estado": {
+  "rule": "Estado de un valor ANTIGUO al migrar: se normaliza como normalize_estado; luego se compara sin acentos con la tabla; si está, su estado estándar (o traducción); si no, el valor normalizado, que pasa a ser un estado nuevo de la bóveda. null si normalize_estado da null.",
   "table": {
-   "active": "vigente",
-   "activo": "vigente",
-   "vigente": "vigente",
-   "draft": "borrador",
    "borrador": "borrador",
-   "en revision": "en_revision",
-   "revision": "en_revision",
-   "archived": "archivado",
-   "archivado": "archivado",
-   "superseded": "archivado",
-   "en proceso": "en_proceso",
-   "en progreso": "en_proceso"
+   "draft": "borrador",
+   "en revision": "en revisión",
+   "aprobado": "aprobado",
+   "aprobada": "aprobado",
+   "active": "aprobado",
+   "activo": "aprobado",
+   "vigente": "aprobado",
+   "en implementacion": "en implementación",
+   "en proceso": "en implementación",
+   "en progreso": "en implementación",
+   "en desarrollo": "en implementación",
+   "implementado": "implementado",
+   "implementada": "implementado",
+   "completado": "implementado",
+   "completada": "implementado",
+   "completo": "implementado",
+   "completa": "implementado",
+   "aplicada": "implementado",
+   "archived": "archivado"
   },
   "cases": [
    [
     "active",
-    "vigente"
+    "aprobado"
    ],
    [
     "Activo",
-    "vigente"
+    "aprobado"
    ],
    [
     "en revisión",
-    "en_revision"
+    "en revisión"
    ],
    [
     "en-revisión",
-    "en_revision"
-   ],
-   [
-    "en_revision",
-    "en_revision"
+    "en revisión"
    ],
    [
     "draft",
     "borrador"
    ],
    [
+    "en-proceso",
+    "en implementación"
+   ],
+   [
+    "en-progreso",
+    "en implementación"
+   ],
+   [
+    "en-desarrollo",
+    "en implementación"
+   ],
+   [
+    "completado",
+    "implementado"
+   ],
+   [
     "archived",
     "archivado"
    ],
    [
-    "superseded",
-    "archivado"
+    "pendiente",
+    "pendiente"
    ],
    [
     "publicado",
+    "publicado"
+   ],
+   [
+    "en-desarrollo-publicado",
+    "en desarrollo publicado"
+   ],
+   [
+    "superseded",
+    "superseded"
+   ],
+   [
+    "líneas dudosas revisadas; quedan 3 lecturas abiertas",
+    null
+   ],
+   [
+    true,
+    null
+   ]
+  ]
+ },
+ "normalize_date": {
+  "rule": "Texto que EMPIEZA por AAAA-MM-DD con una fecha real: devuelve esos 10 caracteres (se descarta el texto que sigue). Si no, null.",
+  "cases": [
+   [
+    "2026-07-15",
+    "2026-07-15"
+   ],
+   [
+    "2026-07-15 (v2)",
+    "2026-07-15"
+   ],
+   [
+    "  2026-07-15",
+    "2026-07-15"
+   ],
+   [
+    "YYYY-MM-DD",
+    null
+   ],
+   [
+    "2026-13-40",
+    null
+   ],
+   [
+    "2026-02-30",
+    null
+   ],
+   [
+    "15/07/2026",
     null
    ],
    [
@@ -190,357 +311,16 @@
     null
    ],
    [
-    "en-proceso",
-    "en_proceso"
-   ],
-   [
-    "En proceso",
-    "en_proceso"
-   ],
-   [
-    "en-progreso",
-    "en_proceso"
-   ],
-   [
-    "en_proceso",
-    "en_proceso"
-   ],
-   [
-    "pendiente",
+    20260715,
     null
    ]
   ]
  },
- "migrate_frontmatter": {
-  "rule": [
-   "Entrada: objeto frontmatter. Se recorren las claves EN ORDEN; la clave conocida se detecta con normalize_key.",
-   "Claves conocidas: titulo; descripcion; tags; status y estado -> estado; fecha_creacion -> fecha_creacion_original; ultima_actualizacion y fecha_actualizacion -> fecha_actualizacion_original; ruta -> ruta_original. Cualquier otra clave queda INTACTA (nombre y valor).",
-   "titulo y descripcion: cadena -> igual; número (no booleano) -> su texto; null -> se elimina la clave; cualquier otro tipo -> '<destino>_original' con el valor original y sin destino.",
-   "tags: lista -> cada elemento (cadena, o número pasado a texto) por normalize_tag, sin nulos ni repetidos, en orden; elemento que no sea cadena ni número -> toda la clave pasa a 'tags_original' y no se escribe 'tags'; más de 20 -> primeros 20 y la lista original completa en 'tags_original'. Cadena -> se parte por ',' y se trata como lista. Cualquier otro tipo -> 'tags_original'.",
-   "estado: cadena -> estado_synonyms; número u otro tipo -> 'estado_original' con el valor original.",
-   "Los destinos '_original' conservan el valor tal cual.",
-   "Colisión: si el destino ya tiene valor puesto por una clave anterior o ya existía en la entrada con otro valor, gana el primero en el orden de claves; el valor perdedor va a '<destino>_original' (si el valor es igual, se descarta sin más); si '<destino>_original' también está ocupado, la clave perdedora se deja INTACTA.",
-   "Idempotente: migrar un resultado ya migrado no lo cambia.",
-   "La salida conserva el orden: cada clave migrada ocupa la posición de la clave de origen."
-  ],
-  "cases": [
-   {
-    "name": "claves antiguas en español",
-    "in": {
-     "título": "Hola",
-     "descripción": "Algo",
-     "tags": [
-      "Mi Tag",
-      "IA"
-     ],
-     "status": "active",
-     "tipo": "README",
-     "fecha_creación": "2026-07-06",
-     "última_actualización": "2026-07-15"
-    },
-    "out": {
-     "titulo": "Hola",
-     "descripcion": "Algo",
-     "tags": [
-      "mi_tag",
-      "ia"
-     ],
-     "estado": "vigente",
-     "tipo": "README",
-     "fecha_creacion_original": "2026-07-06",
-     "fecha_actualizacion_original": "2026-07-15"
-    }
-   },
-   {
-    "name": "ruta libre pasa a ruta_original",
-    "in": {
-     "ruta": "a/b/c.md",
-     "tipo": "x"
-    },
-    "out": {
-     "ruta_original": "a/b/c.md",
-     "tipo": "x"
-    }
-   },
-   {
-    "name": "estado desconocido se conserva sin adivinar",
-    "in": {
-     "status": "pendiente"
-    },
-    "out": {
-     "estado_original": "pendiente"
-    }
-   },
-   {
-    "name": "Estado con mayúscula",
-    "in": {
-     "Estado": "Activo"
-    },
-    "out": {
-     "estado": "vigente"
-    }
-   },
-   {
-    "name": "status y estado iguales",
-    "in": {
-     "status": "active",
-     "estado": "vigente"
-    },
-    "out": {
-     "estado": "vigente"
-    }
-   },
-   {
-    "name": "status y estado distintos: gana el primero",
-    "in": {
-     "status": "active",
-     "estado": "borrador"
-    },
-    "out": {
-     "estado": "vigente",
-     "estado_original": "borrador"
-    }
-   },
-   {
-    "name": "título que es lista",
-    "in": {
-     "título": [
-      "a",
-      "b"
-     ]
-    },
-    "out": {
-     "titulo_original": [
-      "a",
-      "b"
-     ]
-    }
-   },
-   {
-    "name": "título numérico",
-    "in": {
-     "título": 2026
-    },
-    "out": {
-     "titulo": "2026"
-    }
-   },
-   {
-    "name": "título null se elimina",
-    "in": {
-     "título": null,
-     "tipo": "x"
-    },
-    "out": {
-     "tipo": "x"
-    }
-   },
-   {
-    "name": "tags como cadena",
-    "in": {
-     "tags": "uno, Dos tres"
-    },
-    "out": {
-     "tags": [
-      "uno",
-      "dos_tres"
-     ]
-    }
-   },
-   {
-    "name": "tags repetidos tras normalizar",
-    "in": {
-     "tags": [
-      "IA",
-      "ia",
-      "Ia"
-     ]
-    },
-    "out": {
-     "tags": [
-      "ia"
-     ]
-    }
-   },
-   {
-    "name": "tags con elemento no texto ni número",
-    "in": {
-     "tags": [
-      "a",
-      {
-       "x": 1
-      }
-     ]
-    },
-    "out": {
-     "tags_original": [
-      "a",
-      {
-       "x": 1
-      }
-     ]
-    }
-   },
-   {
-    "name": "más de 20 tags",
-    "in": {
-     "tags": [
-      "t0",
-      "t1",
-      "t2",
-      "t3",
-      "t4",
-      "t5",
-      "t6",
-      "t7",
-      "t8",
-      "t9",
-      "t10",
-      "t11",
-      "t12",
-      "t13",
-      "t14",
-      "t15",
-      "t16",
-      "t17",
-      "t18",
-      "t19",
-      "t20",
-      "t21",
-      "t22",
-      "t23",
-      "t24"
-     ]
-    },
-    "out": {
-     "tags": [
-      "t0",
-      "t1",
-      "t2",
-      "t3",
-      "t4",
-      "t5",
-      "t6",
-      "t7",
-      "t8",
-      "t9",
-      "t10",
-      "t11",
-      "t12",
-      "t13",
-      "t14",
-      "t15",
-      "t16",
-      "t17",
-      "t18",
-      "t19"
-     ],
-     "tags_original": [
-      "t0",
-      "t1",
-      "t2",
-      "t3",
-      "t4",
-      "t5",
-      "t6",
-      "t7",
-      "t8",
-      "t9",
-      "t10",
-      "t11",
-      "t12",
-      "t13",
-      "t14",
-      "t15",
-      "t16",
-      "t17",
-      "t18",
-      "t19",
-      "t20",
-      "t21",
-      "t22",
-      "t23",
-      "t24"
-     ]
-    }
-   },
-   {
-    "name": "claves desconocidas intactas (también con acentos o espacios)",
-    "in": {
-     "Valor 1": "x",
-     "categoría": "c",
-     "fecha_creado": "2026-01-01"
-    },
-    "out": {
-     "Valor 1": "x",
-     "categoría": "c",
-     "fecha_creado": "2026-01-01"
-    }
-   },
-   {
-    "name": "sin frontmatter útil",
-    "in": {},
-    "out": {}
-   },
-   {
-    "name": "ya migrado no cambia",
-    "in": {
-     "titulo": "Hola",
-     "tags": [
-      "a"
-     ],
-     "estado": "vigente",
-     "ruta_original": "x"
-    },
-    "out": {
-     "titulo": "Hola",
-     "tags": [
-      "a"
-     ],
-     "estado": "vigente",
-     "ruta_original": "x"
-    }
-   },
-   {
-    "name": "se conserva el orden de las claves",
-    "in": {
-     "tipo": "x",
-     "título": "T",
-     "status": "draft"
-    },
-    "out_order": [
-     "tipo",
-     "titulo",
-     "estado"
-    ],
-    "out": {
-     "tipo": "x",
-     "titulo": "T",
-     "estado": "borrador"
-    }
-   },
-   {
-    "name": "en-proceso pasa a en_proceso",
-    "in": {
-     "status": "en-proceso"
-    },
-    "out": {
-     "estado": "en_proceso"
-    }
-   }
-  ]
- },
  "validate_general": {
-  "rule": "Valida los siete generales en el frontmatter de una nota. Devuelve el código del primer error o null. Orden de comprobación: claves reservadas, titulo, descripcion, tags, estado. Las claves libres no se validan.",
+  "rule": "Valida los generales en el frontmatter de una nota. Devuelve el código del primer error o null. Orden: claves reservadas, titulo, descripcion, tags, fecha_creacion, fecha_actualizacion, estado. Las claves libres no se validan. fecha_*: AAAA-MM-DD real. estado: igual a normalize_estado de sí mismo (cualquier texto en forma guardada es válido: los estados no se limitan a los estándar).",
   "cases": [
    [
     {},
-    null
-   ],
-   [
-    {
-     "titulo": ""
-    },
     null
    ],
    [
@@ -651,19 +431,43 @@
    ],
    [
     {
-     "estado": "vigente"
+     "estado": "borrador"
     },
     null
    ],
    [
     {
-     "estado": "en_revision"
+     "estado": "en implementación"
     },
     null
    ],
    [
     {
-     "estado": "active"
+     "estado": "en pruebas"
+    },
+    null
+   ],
+   [
+    {
+     "estado": "activo"
+    },
+    null
+   ],
+   [
+    {
+     "estado": "En revisión"
+    },
+    "estado"
+   ],
+   [
+    {
+     "estado": "en_proceso"
+    },
+    "estado"
+   ],
+   [
+    {
+     "estado": ""
     },
     "estado"
    ],
@@ -675,29 +479,51 @@
    ],
    [
     {
-     "ruta": "a"
+     "estado": true
     },
-    "reservada:ruta"
+    "estado"
    ],
    [
     {
-     "fecha_creacion": "2026-01-01"
+     "estado": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     },
-    "reservada:fecha_creacion"
+    "estado"
    ],
    [
     {
-     "fecha_actualizacion": "x"
-    },
-    "reservada:fecha_actualizacion"
-   ],
-   [
-    {
-     "ruta_original": "a",
-     "tipo": "x",
-     "categoría": "y"
+     "fecha_creacion": "2026-07-06"
     },
     null
+   ],
+   [
+    {
+     "fecha_creacion": "2026-07-06 (v2)"
+    },
+    "fecha_creacion"
+   ],
+   [
+    {
+     "fecha_creacion": "YYYY-MM-DD"
+    },
+    "fecha_creacion"
+   ],
+   [
+    {
+     "fecha_actualizacion": "2026-02-30"
+    },
+    "fecha_actualizacion"
+   ],
+   [
+    {
+     "fecha_actualizacion": "2026-07-15"
+    },
+    null
+   ],
+   [
+    {
+     "ruta": "a/b.md"
+    },
+    "reservada:ruta"
    ],
    [
     {
@@ -708,10 +534,400 @@
    ],
    [
     {
-     "estado": "en_proceso"
+     "tipo": "x",
+     "categoría": "y",
+     "Valor 1": "z"
     },
     null
    ]
+  ]
+ },
+ "migrate_frontmatter": {
+  "rule": [
+   "Entrada: objeto frontmatter. Se recorren las claves EN ORDEN; la clave conocida se detecta con normalize_key. El resultado trae el MISMO valor (limpio) bajo el nombre final; no se crean claves con sufijo.",
+   "Claves conocidas: titulo, descripcion, tags, status y estado -> estado, fecha_creacion, ultima_actualizacion y fecha_actualizacion -> fecha_actualizacion, ruta. Cualquier otra clave queda INTACTA (nombre y valor).",
+   "titulo y descripcion: texto -> igual; lista no vacía de textos -> unidos con ', '; número (no booleano) -> su texto; null -> sin clave; otro tipo -> descartado.",
+   "tags: cadena -> se parte por ','; lista -> cada elemento (texto o número) por normalize_tag, sin nulos ni repetidos, en orden, máximo 20; otro tipo -> descartado.",
+   "estado: legacy_estado; null -> descartado. fecha_*: normalize_date; null -> descartado.",
+   "ruta: siempre descartada (ahora la calcula el sistema desde la ubicación de la nota).",
+   "Descartado = no se escribe y se informa en `dropped` como {key, reason}. Si dos claves dan el mismo destino con distinto valor, gana la primera y la otra se descarta; con el mismo valor se une sin avisar.",
+   "Idempotente: migrar un resultado ya migrado no lo cambia. La salida conserva el orden de la primera clave de cada destino."
+  ],
+  "cases": [
+   {
+    "name": "claves antiguas en español",
+    "in": {
+     "título": "Hola",
+     "descripción": "Algo",
+     "tags": [
+      "Mi Tag",
+      "IA"
+     ],
+     "status": "active",
+     "tipo": "README",
+     "fecha_creación": "2026-07-06",
+     "última_actualización": "2026-07-15"
+    },
+    "out": {
+     "titulo": "Hola",
+     "descripcion": "Algo",
+     "tags": [
+      "mi_tag",
+      "ia"
+     ],
+     "estado": "aprobado",
+     "tipo": "README",
+     "fecha_creacion": "2026-07-06",
+     "fecha_actualizacion": "2026-07-15"
+    },
+    "dropped": []
+   },
+   {
+    "name": "ruta se descarta",
+    "in": {
+     "ruta": "a/b/c.md",
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    },
+    "dropped": [
+     "ruta"
+    ]
+   },
+   {
+    "name": "estado nuevo no estándar se conserva como estado",
+    "in": {
+     "status": "pendiente"
+    },
+    "out": {
+     "estado": "pendiente"
+    },
+    "dropped": []
+   },
+   {
+    "name": "en-proceso pasa a en implementación",
+    "in": {
+     "status": "en-proceso"
+    },
+    "out": {
+     "estado": "en implementación"
+    },
+    "dropped": []
+   },
+   {
+    "name": "Estado con mayúscula",
+    "in": {
+     "Estado": "Activo"
+    },
+    "out": {
+     "estado": "aprobado"
+    },
+    "dropped": []
+   },
+   {
+    "name": "status y estado iguales",
+    "in": {
+     "status": "active",
+     "estado": "aprobado"
+    },
+    "out": {
+     "estado": "aprobado"
+    },
+    "dropped": []
+   },
+   {
+    "name": "status y estado distintos: gana el primero",
+    "in": {
+     "status": "active",
+     "estado": "borrador"
+    },
+    "out": {
+     "estado": "aprobado"
+    },
+    "dropped": [
+     "estado"
+    ]
+   },
+   {
+    "name": "estado que no es texto se descarta",
+    "in": {
+     "estado": true,
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    },
+    "dropped": [
+     "estado"
+    ]
+   },
+   {
+    "name": "estado frase larga se descarta",
+    "in": {
+     "status": "líneas dudosas revisadas; quedan 3 lecturas abiertas"
+    },
+    "out": {},
+    "dropped": [
+     "status"
+    ]
+   },
+   {
+    "name": "título lista de textos",
+    "in": {
+     "título": [
+      "Nombre del documento"
+     ]
+    },
+    "out": {
+     "titulo": "Nombre del documento"
+    },
+    "dropped": []
+   },
+   {
+    "name": "título lista de varios",
+    "in": {
+     "título": [
+      "a",
+      "b"
+     ]
+    },
+    "out": {
+     "titulo": "a, b"
+    },
+    "dropped": []
+   },
+   {
+    "name": "título objeto se descarta",
+    "in": {
+     "título": {
+      "x": 1
+     }
+    },
+    "out": {},
+    "dropped": [
+     "título"
+    ]
+   },
+   {
+    "name": "título numérico",
+    "in": {
+     "título": 2026
+    },
+    "out": {
+     "titulo": "2026"
+    },
+    "dropped": []
+   },
+   {
+    "name": "título null se elimina",
+    "in": {
+     "título": null,
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    },
+    "dropped": []
+   },
+   {
+    "name": "fecha con texto pegado",
+    "in": {
+     "última_actualización": "2026-07-15 (v2)"
+    },
+    "out": {
+     "fecha_actualizacion": "2026-07-15"
+    },
+    "dropped": []
+   },
+   {
+    "name": "fecha plantilla se descarta",
+    "in": {
+     "fecha_creación": "YYYY-MM-DD",
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    },
+    "dropped": [
+     "fecha_creación"
+    ]
+   },
+   {
+    "name": "tags como cadena",
+    "in": {
+     "tags": "uno, Dos tres"
+    },
+    "out": {
+     "tags": [
+      "uno",
+      "dos_tres"
+     ]
+    },
+    "dropped": []
+   },
+   {
+    "name": "tags repetidos tras normalizar",
+    "in": {
+     "tags": [
+      "IA",
+      "ia",
+      "Ia"
+     ]
+    },
+    "out": {
+     "tags": [
+      "ia"
+     ]
+    },
+    "dropped": []
+   },
+   {
+    "name": "tags con elementos no texto se ignoran",
+    "in": {
+     "tags": [
+      "a",
+      {
+       "x": 1
+      },
+      true
+     ]
+    },
+    "out": {
+     "tags": [
+      "a"
+     ]
+    },
+    "dropped": []
+   },
+   {
+    "name": "tags que no es lista se descarta",
+    "in": {
+     "tags": {
+      "a": 1
+     }
+    },
+    "out": {},
+    "dropped": [
+     "tags"
+    ]
+   },
+   {
+    "name": "más de 20 tags se cortan a 20",
+    "in": {
+     "tags": [
+      "t0",
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+      "t5",
+      "t6",
+      "t7",
+      "t8",
+      "t9",
+      "t10",
+      "t11",
+      "t12",
+      "t13",
+      "t14",
+      "t15",
+      "t16",
+      "t17",
+      "t18",
+      "t19",
+      "t20",
+      "t21",
+      "t22",
+      "t23",
+      "t24"
+     ]
+    },
+    "out": {
+     "tags": [
+      "t0",
+      "t1",
+      "t2",
+      "t3",
+      "t4",
+      "t5",
+      "t6",
+      "t7",
+      "t8",
+      "t9",
+      "t10",
+      "t11",
+      "t12",
+      "t13",
+      "t14",
+      "t15",
+      "t16",
+      "t17",
+      "t18",
+      "t19"
+     ]
+    },
+    "dropped": []
+   },
+   {
+    "name": "claves desconocidas intactas (también con acentos o espacios)",
+    "in": {
+     "Valor 1": "x",
+     "categoría": "c",
+     "fecha_creado": "2026-01-01"
+    },
+    "out": {
+     "Valor 1": "x",
+     "categoría": "c",
+     "fecha_creado": "2026-01-01"
+    },
+    "dropped": []
+   },
+   {
+    "name": "sin frontmatter útil",
+    "in": {},
+    "out": {},
+    "dropped": []
+   },
+   {
+    "name": "ya migrado no cambia",
+    "in": {
+     "titulo": "Hola",
+     "tags": [
+      "a"
+     ],
+     "estado": "en revisión",
+     "fecha_creacion": "2026-07-06"
+    },
+    "out": {
+     "titulo": "Hola",
+     "tags": [
+      "a"
+     ],
+     "estado": "en revisión",
+     "fecha_creacion": "2026-07-06"
+    },
+    "dropped": []
+   },
+   {
+    "name": "se conserva el orden de las claves",
+    "in": {
+     "tipo": "x",
+     "título": "T",
+     "status": "draft"
+    },
+    "out_order": [
+     "tipo",
+     "titulo",
+     "estado"
+    ],
+    "out": {
+     "tipo": "x",
+     "titulo": "T",
+     "estado": "borrador"
+    },
+    "dropped": []
+   }
   ]
  }
 }

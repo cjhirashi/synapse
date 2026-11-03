@@ -5,21 +5,28 @@ La especificación vive en `tests/fixtures/attribute_rules.json` y la comparte e
 """
 import re
 import unicodedata
+from datetime import date
 
 TITULO_MAX = 200
 DESCRIPCION_MAX = 1000
 TAGS_MAX = 20
 TAG_MAX_LEN = 32
-ESTADOS = ("borrador", "en_proceso", "en_revision", "vigente", "archivado")
-RESERVED_KEYS = ("ruta", "fecha_creacion", "fecha_actualizacion")
+ESTADO_MAX_LEN = 32
+# Estados de partida; el usuario puede añadir otros (cada bóveda guarda los suyos en su catálogo).
+ESTADOS_ESTANDAR = ("borrador", "en revisión", "aprobado", "en implementación", "implementado")
+# `ruta` es del sistema (se calcula desde la ubicación de la nota): no se guarda en el frontmatter.
+RESERVED_KEYS = ("ruta",)
 
-# Valor de estado ya normalizado (ver `_estado_lookup`) -> código estándar.
+# Valor de estado ya normalizado para comparar (ver `_estado_lookup`) -> estado estándar o traducción.
 ESTADO_SYNONYMS = {
-    "active": "vigente", "activo": "vigente", "vigente": "vigente",
-    "draft": "borrador", "borrador": "borrador",
-    "en proceso": "en_proceso", "en progreso": "en_proceso",
-    "en revision": "en_revision", "revision": "en_revision",
-    "archived": "archivado", "archivado": "archivado", "superseded": "archivado",
+    "borrador": "borrador", "draft": "borrador",
+    "en revision": "en revisión",
+    "aprobado": "aprobado", "aprobada": "aprobado", "active": "aprobado", "activo": "aprobado", "vigente": "aprobado",
+    "en implementacion": "en implementación", "en proceso": "en implementación",
+    "en progreso": "en implementación", "en desarrollo": "en implementación",
+    "implementado": "implementado", "implementada": "implementado", "completado": "implementado",
+    "completada": "implementado", "completo": "implementado", "completa": "implementado", "aplicada": "implementado",
+    "archived": "archivado",
 }
 
 
@@ -39,14 +46,40 @@ def normalize_tag(tag: str) -> str | None:
     return text or None
 
 
-def estado_of(value: object) -> str | None:
+def normalize_estado(value: object) -> str | None:
+    """Forma guardada de un estado: minúsculas, espacios simples (`-` y `_` pasan a espacio), con acentos,
+    de 1 a 32 caracteres. `None` si no es texto o queda vacío o demasiado largo."""
     if not isinstance(value, str):
         return None
-    return ESTADO_SYNONYMS.get(re.sub(r"[-_\s]+", " ", _strip_accents(value.strip().lower())))
+    text = re.sub(r"[-_\s]+", " ", unicodedata.normalize("NFC", value).strip().lower()).strip()
+    return text if text and len(text) <= ESTADO_MAX_LEN else None
+
+
+def legacy_estado(value: object) -> str | None:
+    """Estado de un valor ANTIGUO al migrar: si está en la tabla de sinónimos, su estado estándar; si no, el
+    propio valor normalizado (pasa a ser un estado nuevo de la bóveda)."""
+    text = normalize_estado(value)
+    if text is None:
+        return None
+    return ESTADO_SYNONYMS.get(re.sub(r"[-_\s]+", " ", _strip_accents(text)), text)
+
+
+def normalize_date(value: object) -> str | None:
+    """`AAAA-MM-DD` de un valor que empieza por una fecha válida (se descarta el texto que sigue); si no, `None`."""
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"\d{4}-\d{2}-\d{2}", value.strip())
+    if not match:
+        return None
+    try:
+        date.fromisoformat(match.group())
+    except ValueError:
+        return None
+    return match.group()
 
 
 def validate_general(frontmatter: dict) -> str | None:
-    """Código del primer error de los siete generales, o `None`. Las claves libres no se validan."""
+    """Código del primer error de los generales, o `None`. Las claves libres no se validan."""
     for key in RESERVED_KEYS:
         if key in frontmatter:
             return f"reservada:{key}"
@@ -61,66 +94,75 @@ def validate_general(frontmatter: dict) -> str | None:
         if (not isinstance(tags, list) or len(tags) > TAGS_MAX
                 or any(not isinstance(t, str) or normalize_tag(t) != t for t in tags)):
             return "tags"
-    if "estado" in frontmatter and frontmatter["estado"] not in ESTADOS:
+    for key in ("fecha_creacion", "fecha_actualizacion"):
+        if key in frontmatter and (not isinstance(frontmatter[key], str) or normalize_date(frontmatter[key]) != frontmatter[key]):
+            return key
+    if "estado" in frontmatter and (
+            not isinstance(frontmatter["estado"], str) or normalize_estado(frontmatter["estado"]) != frontmatter["estado"]):
         return "estado"
     return None
 
 
-def migrate_frontmatter(frontmatter: dict) -> dict:
-    """Pasa las claves conocidas al conjunto nuevo y deja intactas las demás (ver la especificación)."""
-    out: dict = {}
+def migrate_frontmatter_detailed(frontmatter: dict) -> tuple[dict, list[dict]]:
+    """Pasa las claves conocidas a los nombres nuevos, con el MISMO valor (limpio), y deja intactas las demás.
 
-    def put(target: str, value: object, original: object) -> bool:
+    Devuelve `(nuevo, descartados)`; cada descartado es `{"key", "value", "reason"}`: un valor que no cabe en
+    su atributo (fecha no válida, estado que no es texto, `ruta` que ahora es del sistema…) no se guarda con
+    otro nombre; queda en este informe para que se revise.
+    """
+    out: dict = {}
+    dropped: list[dict] = []
+
+    def drop(key: str, value: object, reason: str) -> None:
+        dropped.append({"key": key, "value": value, "reason": reason})
+
+    def put(key: str, target: str, value: object) -> None:
         if target not in out:
             out[target] = value
-            return True
-        if out[target] == value:
-            return True
-        if target + "_original" not in out:
-            out[target + "_original"] = original
-            return True
-        return False
+        elif out[target] != value:
+            drop(key, value, f"duplica a «{target}» con otro valor; se conserva el primero")
 
     for key, value in frontmatter.items():
         name = normalize_key(key)
         if name in ("titulo", "descripcion"):
+            if isinstance(value, list) and value and all(isinstance(x, str) for x in value):
+                value = ", ".join(value)
+            if isinstance(value, (int, float)) and not isinstance(value, bool):
+                value = str(value)
             if isinstance(value, str):
-                put(name, value, value)
-            elif value is None:
-                continue
-            elif isinstance(value, (int, float)) and not isinstance(value, bool):
-                put(name, str(value), value)
-            else:
-                out.setdefault(name + "_original", value)
+                put(key, name, value)
+            elif value is not None:
+                drop(key, value, "no es texto")
         elif name == "tags":
             if isinstance(value, str):
                 value = value.split(",")
-            if not isinstance(value, list) or any(
-                    isinstance(t, bool) or not isinstance(t, (str, int, float)) for t in value):
-                out["tags_original"] = value
+            if not isinstance(value, list):
+                drop(key, value, "no es una lista")
                 continue
             tags: list[str] = []
             for item in value:
-                tag = normalize_tag(str(item))
+                tag = normalize_tag(str(item)) if isinstance(item, (str, int, float)) and not isinstance(item, bool) else None
                 if tag and tag not in tags:
                     tags.append(tag)
-            if len(tags) > TAGS_MAX or len(value) > TAGS_MAX:
-                out["tags_original"] = value
-                tags = tags[:TAGS_MAX]
-            put("tags", tags, value)
+            put(key, "tags", tags[:TAGS_MAX])
         elif name in ("status", "estado"):
-            code = estado_of(value)
-            if not (put("estado", code, value) if code else put("estado_original", value, value)):
-                out[key] = value
-        elif name == "fecha_creacion":
-            if not put("fecha_creacion_original", value, value):
-                out[key] = value
-        elif name in ("ultima_actualizacion", "fecha_actualizacion"):
-            if not put("fecha_actualizacion_original", value, value):
-                out[key] = value
+            estado = legacy_estado(value)
+            if estado is None:
+                drop(key, value, "no es un estado válido (texto de 1 a 32 caracteres)")
+            else:
+                put(key, "estado", estado)
+        elif name in ("fecha_creacion", "ultima_actualizacion", "fecha_actualizacion"):
+            fecha = normalize_date(value)
+            if fecha is None:
+                drop(key, value, "no es una fecha AAAA-MM-DD")
+            else:
+                put(key, "fecha_creacion" if name == "fecha_creacion" else "fecha_actualizacion", fecha)
         elif name == "ruta":
-            if not put("ruta_original", value, value):
-                out[key] = value
+            drop(key, value, "la ruta ahora la calcula el sistema desde la ubicación de la nota")
         else:
             out[key] = value
-    return out
+    return out, dropped
+
+
+def migrate_frontmatter(frontmatter: dict) -> dict:
+    return migrate_frontmatter_detailed(frontmatter)[0]

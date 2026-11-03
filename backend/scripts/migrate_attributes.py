@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.core.attribute_rules import migrate_frontmatter, normalize_key, validate_general
+from app.core.attribute_rules import ESTADOS_ESTANDAR, migrate_frontmatter, migrate_frontmatter_detailed, normalize_key, validate_general
 
 
 class CouchError(Exception):
@@ -72,8 +72,8 @@ class CouchClient:
 
 _TARGETS = {
     "titulo": "titulo", "descripcion": "descripcion", "tags": "tags", "status": "estado", "estado": "estado",
-    "fecha_creacion": "fecha_creacion_original", "ultima_actualizacion": "fecha_actualizacion_original",
-    "fecha_actualizacion": "fecha_actualizacion_original", "ruta": "ruta_original",
+    "fecha_creacion": "fecha_creacion", "ultima_actualizacion": "fecha_actualizacion",
+    "fecha_actualizacion": "fecha_actualizacion", "ruta": "(se descarta: la calcula el sistema)",
 }
 
 
@@ -106,7 +106,8 @@ def run_report(
     source_keys: dict[str, dict] = defaultdict(lambda: {"count": 0, "target": None})
     estado_counts: dict[str, int] = defaultdict(int)
     tags_before_after: list[tuple[list, list]] = []
-    original_keys_count: dict[str, int] = defaultdict(int)
+    dropped_all: list[dict] = []
+    custom_estados: dict[str, int] = defaultdict(int)
 
     plan_items: list[tuple[str, str, str, dict]] = []
 
@@ -134,7 +135,9 @@ def run_report(
             total_notes += 1
 
             # Calcular migración
-            new_fm = migrate_frontmatter(fm)
+            new_fm, dropped = migrate_frontmatter_detailed(fm)
+            for item in dropped:
+                dropped_all.append({"id": doc["_id"], "key": item["key"], "value": item["value"], "reason": item["reason"]})
 
             for key in fm.keys():
                 target = _TARGETS.get(normalize_key(key) or "")
@@ -143,22 +146,16 @@ def run_report(
                 source_keys[key]["count"] += 1
 
             # Contar cambios de tags
-            if "tags" in fm or any(k in fm for k in ("tags_original",)):
+            if "tags" in fm:
                 fm_tags = fm.get("tags", []) if isinstance(fm.get("tags"), list) else []
                 new_tags = new_fm.get("tags", []) if isinstance(new_fm.get("tags"), list) else []
                 if fm_tags != new_tags:
                     tags_before_after.append((fm_tags, new_tags))
 
-            # Contar claves *_original
-            for key in new_fm:
-                if key.endswith("_original"):
-                    original_keys_count[key] += 1
-
-            # Registrar estado
+            if "estado" in new_fm and new_fm["estado"] not in ESTADOS_ESTANDAR:
+                custom_estados[new_fm["estado"]] += 1
             if "estado" in new_fm:
                 estado_counts[new_fm["estado"]] += 1
-            elif "estado_original" in new_fm:
-                estado_counts[f"_original_{str(new_fm['estado_original'])}"] += 1
 
             # Validar que la nota migrada pase validate_general
             validation_error = validate_general(new_fm)
@@ -187,7 +184,8 @@ def run_report(
             "count": len(tags_before_after),
             "examples": tags_before_after[:10],
         },
-        "original_keys": dict(original_keys_count),
+        "estados_nuevos": dict(custom_estados),
+        "dropped": dropped_all,
         "notes_with_conflicts": notes_with_conflicts,
         "notes_with_validation_errors": notes_with_validation_errors,
         "validation_errors": validation_error_list,
@@ -213,9 +211,18 @@ def run_report(
         target = info["target"] or "(clave libre, sin cambio)"
         summary_lines.append(f"- `{key}` → {target if target.startswith('(') else '`' + target + '`'} ({info['count']} notas)")
 
-    summary_lines.extend(["", "## Estado"])
-    for state in sorted(estado_counts.keys()):
-        summary_lines.append(f"- {state}: {estado_counts[state]}")
+    summary_lines.extend(["", "## Estado (valor final y notas)"])
+    for state in sorted(estado_counts, key=lambda k: -estado_counts[k]):
+        mark = "" if state in ESTADOS_ESTANDAR else "  ← estado nuevo (no estándar)"
+        summary_lines.append(f"- {state}: {estado_counts[state]}{mark}")
+
+    by_reason: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for item in dropped_all:
+        by_reason[(item["key"], item["reason"])].append(item)
+    summary_lines.extend(["", f"## Valores que NO caben en su atributo y se descartan ({len(dropped_all)})"])
+    for (key, reason), items in sorted(by_reason.items(), key=lambda kv: -len(kv[1])):
+        values = sorted({json.dumps(i["value"], ensure_ascii=False)[:60] for i in items})[:6]
+        summary_lines.append(f"- `{key}`: {len(items)} notas, {reason}. Valores: {', '.join(values)}")
 
     if notes_with_conflicts:
         summary_lines.extend(["", "## Notas con conflictos (excluidas)"])

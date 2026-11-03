@@ -345,8 +345,9 @@ class TestReportMode:
 
         report = json.loads(report_file.read_text())
         estado_rep = report.get("estado", {})
-        assert estado_rep.get("vigente", 0) == 1
-        assert "_original_invalid_status" in estado_rep
+        assert estado_rep.get("aprobado", 0) == 1
+        assert estado_rep.get("invalid status", 0) == 1
+        assert report["estados_nuevos"] == {"invalid status": 1}
 
     def test_report_only_db_filter(self, fake_couch, tmp_path):
         """--only-db filtra a una sola base."""
@@ -621,7 +622,7 @@ class TestRealFormats:
         assert fm["titulo"] == "Mi README"
         assert fm["descripcion"] == "Guía de instalación"
         assert fm["tags"] == ["ia", "mi_tag"]
-        assert fm["estado"] == "vigente"
+        assert fm["estado"] == "aprobado"
         assert fm["tipo"] == "README"
 
     def test_report_minimal_format(self, fake_couch, tmp_path):
@@ -761,7 +762,38 @@ class TestReportTargets:
         migrate.run_report(fake_couch, tmp_path / "r.json", tmp_path / "s.md", only_db=None)
         keys = json.loads((tmp_path / "r.json").read_text())["source_keys"]
         assert keys["Estado"]["target"] == "estado"
-        assert keys["fecha_creación"]["target"] == "fecha_creacion_original"
-        assert keys["última_actualización"]["target"] == "fecha_actualizacion_original"
-        assert keys["ruta"]["target"] == "ruta_original"
+        assert keys["fecha_creación"]["target"] == "fecha_creacion"
+        assert keys["última_actualización"]["target"] == "fecha_actualizacion"
+        assert keys["ruta"]["target"].startswith("(se descarta")
         assert keys["categoría"]["target"] is None
+
+
+class TestNoSuffixedKeysAndDropped:
+    def _report(self, fake_couch, tmp_path, fm):
+        migrate = load_migrate_script()
+        fake_couch.add_db("synapse_user_alice")
+        fake_couch.add_note("synapse_user_alice", "note:v:n1", fm)
+        migrate.run_report(fake_couch, tmp_path / "r.json", tmp_path / "s.md", only_db=None)
+        return json.loads((tmp_path / "r.json").read_text()), (tmp_path / "s.md").read_text(), migrate
+
+    def test_the_old_values_land_under_the_final_names_never_with_a_suffix(self, fake_couch, tmp_path):
+        report, _, migrate = self._report(fake_couch, tmp_path, {
+            "título": "T", "status": "draft", "fecha_creación": "2026-07-06", "última_actualización": "2026-07-15 (v2)"})
+        report_file = tmp_path / "r.json"
+        assert migrate.run_apply(fake_couch, report_file) == 0
+        stored = fake_couch.databases["synapse_user_alice"]["note:v:n1"]["frontmatter"]
+        assert stored == {"titulo": "T", "estado": "borrador", "fecha_creacion": "2026-07-06", "fecha_actualizacion": "2026-07-15"}
+        assert not [k for k in stored if k.endswith("_original")]
+
+    def test_what_does_not_fit_is_listed_and_not_kept_under_another_name(self, fake_couch, tmp_path):
+        report, summary, migrate = self._report(fake_couch, tmp_path, {
+            "ruta": "a/b.md", "fecha_creación": "YYYY-MM-DD", "status": True, "tipo": "x"})
+        assert {d["key"] for d in report["dropped"]} == {"ruta", "fecha_creación", "status"}
+        assert "NO caben" in summary and "ruta" in summary
+        assert migrate.run_apply(fake_couch, tmp_path / "r.json") == 0
+        assert fake_couch.databases["synapse_user_alice"]["note:v:n1"]["frontmatter"] == {"tipo": "x"}
+
+    def test_the_report_marks_new_non_standard_states(self, fake_couch, tmp_path):
+        report, summary, _ = self._report(fake_couch, tmp_path, {"status": "pendiente"})
+        assert report["estados_nuevos"] == {"pendiente": 1}
+        assert "estado nuevo" in summary
