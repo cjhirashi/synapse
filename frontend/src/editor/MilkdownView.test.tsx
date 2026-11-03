@@ -551,6 +551,42 @@ describe("MilkdownView · pegar", () => {
       expect(nodeNames(view)).toContain("html");
     });
 
+    it.each([
+      ["título entre comillas dobles", 'https://www.youtube.com/watch?v=RLqPB1PM6gE "Cómo instalar microPython en la ESP32 - fácil - v1"'],
+      ["título entre comillas simples", "https://youtu.be/RLqPB1PM6gE 'Un título'"],
+      ["título con comillas tipográficas", "https://youtu.be/RLqPB1PM6gE “Un título”"],
+    ])("un enlace de YouTube con %s se convierte y el enlace deshecho queda sin el título", async (_n, text) => {
+      const { view, onLinkConverted } = await mount("");
+      paste(view, { "text/plain": text });
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "youtube" });
+      let value = "";
+      view.state.doc.descendants((n) => {
+        if (n.type.name === "html") value = n.attrs.value;
+      });
+      expect(value).toContain("youtube-nocookie.com/embed/RLqPB1PM6gE");
+      act(() => {
+        undo(view.state, view.dispatch);
+      });
+      expect(view.state.doc.textContent).toMatch(/^https:\/\/(www\.youtube\.com\/watch\?v=|youtu\.be\/)RLqPB1PM6gE$/);
+    });
+
+    it("una imagen con título entre comillas se convierte con el src sin el título", async () => {
+      const { view, onLinkConverted } = await mount("");
+      paste(view, { "text/plain": 'https://example.com/foto.png "Mi foto"' });
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "image" });
+      let src = "";
+      view.state.doc.descendants((n) => {
+        if (n.type.name === "image") src = n.attrs.src;
+      });
+      expect(src).toBe("https://example.com/foto.png");
+    });
+
+    it("un texto con más palabras después del enlace NO convierte", async () => {
+      const { view, onLinkConverted } = await mount("");
+      paste(view, { "text/plain": "https://youtu.be/RLqPB1PM6gE mira este video" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
     it("dentro de un bloque de código NO convierte", async () => {
       const { view, onLinkConverted } = await mount("```\n```\n");
       let pos = -1;
@@ -1232,6 +1268,39 @@ describe("MilkdownView · comando de incrustado (H-019)", () => {
 // H-025 paso 3: reproductor de YouTube en el editor completo (Visual y Lectura).
 describe("MilkdownView · reproductor de YouTube (H-025)", () => {
   const YT = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>';
+
+  it.each([
+    ["Visual", false],
+    ["Lectura", true],
+  ])("%s: una imagen ![](enlace de YouTube) se pinta como reproductor y el markdown no cambia", async (_n, readOnly) => {
+    const md = '![Cómo instalar](https://www.youtube.com/watch?v=RLqPB1PM6gE&t=90)';
+    const onChange = vi.fn();
+    const { container, view } = await mount({ value: md, readOnly, onChange });
+    const box = container.querySelector(".md-embed-video");
+    expect(box).not.toBeNull();
+    const iframe = box!.querySelector("iframe")!;
+    expect(iframe.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/RLqPB1PM6gE?start=90");
+    expect(iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-presentation");
+    expect(box!.querySelector("a.md-embed-link")!.getAttribute("href")).toBe("https://www.youtube.com/watch?v=RLqPB1PM6gE&t=90");
+    expect(container.querySelector("img:not(.ProseMirror-separator)")).toBeNull();
+    // el nodo sigue siendo una imagen: el markdown guardado es el mismo
+    const names: string[] = [];
+    view.state.doc.descendants((n) => { names.push(n.type.name); });
+    expect(names).toContain("image");
+    expect(names).not.toContain("html");
+  });
+
+  it("una imagen normal (no YouTube) sigue siendo <img>", async () => {
+    const { container } = await mount({ value: "![foto](https://example.com/foto.png)", readOnly: false });
+    expect(container.querySelector(".md-embed-video")).toBeNull();
+    expect(container.querySelector('img[src="https://example.com/foto.png"]')).not.toBeNull();
+  });
+
+  it("una imagen con un enlace de YouTube inválido (id corto) no crea reproductor", async () => {
+    const { container } = await mount({ value: "![x](https://www.youtube.com/watch?v=corto)", readOnly: false });
+    expect(container.querySelector(".md-embed-video")).toBeNull();
+    expect(container.querySelector("iframe")).toBeNull();
+  });
 
   it.each([
     ["Visual", false],

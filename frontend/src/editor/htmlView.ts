@@ -3,7 +3,7 @@
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
-import { parseYoutubeEmbedSrc, youtubeWatchUrl } from "./classifyUrl";
+import { parseYoutubeEmbedSrc, parseYoutubeUrl, youtubeEmbedUrl, youtubeWatchUrl } from "./classifyUrl";
 
 /** Renderiza el nodo html como texto plano (esquema original). */
 function plainItem(node: PMNode): NodeView {
@@ -98,4 +98,47 @@ export const htmlViewFactory = (): NodeViewConstructor => (node, _view, _getPos)
   const fragment = sanitizeHtmlFragment(html);
   const hasIframe = fragment.querySelector("iframe") !== null;
   return hasIframe ? new HtmlEmbedView(node) : plainItem(node);
+};
+
+/** Una imagen `![](enlace de YouTube)` se pinta como el reproductor; el nodo (y su markdown) no cambia. */
+class YoutubeImageView implements NodeView {
+  readonly dom: HTMLDivElement;
+  private src: string;
+
+  constructor(node: PMNode, private readonly youtube: { id: string; start: number | null }) {
+    this.src = node.attrs.src as string;
+    this.dom = document.createElement("div");
+    this.dom.className = "md-embed md-embed-video";
+    this.dom.setAttribute("contenteditable", "false");
+    const frameDiv = document.createElement("div");
+    frameDiv.className = "md-embed-frame";
+    const iframe = sanitizeHtmlFragment(`<iframe src="${youtubeEmbedUrl(youtube.id, youtube.start)}"></iframe>`).querySelector("iframe");
+    if (iframe) frameDiv.appendChild(iframe);
+    this.dom.appendChild(frameDiv);
+    const link = document.createElement("a");
+    link.className = "md-embed-link";
+    link.href = youtubeWatchUrl(youtube.id, youtube.start);
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = "Abrir en YouTube";
+    this.dom.appendChild(link);
+  }
+
+  update(next: PMNode): boolean {
+    return next.type.name === "image" && next.attrs.src === this.src;
+  }
+
+  stopEvent(event: Event): boolean {
+    return event.target instanceof Node && this.dom.contains(event.target);
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
+export const imageViewFactory = (): NodeViewConstructor => (node, _view, _getPos) => {
+  const youtube = parseYoutubeUrl(String(node.attrs.src ?? ""));
+  if (youtube) return new YoutubeImageView(node, youtube);
+  return plainItem(node);
 };

@@ -56,7 +56,7 @@ import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
 import { linkPastePlugin } from "./markdown/linkPaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
-import { htmlViewFactory } from "./htmlView";
+import { htmlViewFactory, imageViewFactory } from "./htmlView";
 import { safeImageUrl, safeLinkUrl } from "./safeUrl";
 import { htmlEmbedMarkup } from "../files/embed";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
@@ -462,6 +462,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ["list_item", taskItemViewFactory()] as [string, NodeViewConstructor],
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
           ["html", htmlViewFactory()] as [string, NodeViewConstructor],
+          ["image", imageViewFactory()] as [string, NodeViewConstructor],
         ]);
         // RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos. El
         // `editorStateOptionsCtx` recibe el documento recién parseado (por `parserCtx`) justo antes de
