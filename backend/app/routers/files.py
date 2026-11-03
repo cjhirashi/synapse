@@ -53,7 +53,9 @@ _HTML_CSP_HEADERS = {
     "Content-Security-Policy": (
         "sandbox allow-scripts; "
         "default-src 'none'; "
-        "script-src 'unsafe-inline'; "
+        # `unsafe-eval`: Plotly (WebGL 2D) compila sus shaders con `new Function`. El documento ya corre
+        # aislado (sandbox sin same-origin, sin red) y puede ejecutar scripts propios: no añade superficie.
+        "script-src 'unsafe-inline' 'unsafe-eval'; "
         "style-src 'unsafe-inline' https:; "
         "img-src data: blob: https:; "
         "font-src data: https:; "
