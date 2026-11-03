@@ -210,8 +210,8 @@ def run_report(
 
     for key in sorted(source_keys.keys()):
         info = source_keys[key]
-        target = info["target"] or "desconocida"
-        summary_lines.append(f"- `{key}` → `{target}` ({info['count']} notas)")
+        target = info["target"] or "(clave libre, sin cambio)"
+        summary_lines.append(f"- `{key}` → {target if target.startswith('(') else '`' + target + '`'} ({info['count']} notas)")
 
     summary_lines.extend(["", "## Estado"])
     for state in sorted(estado_counts.keys()):
