@@ -375,6 +375,109 @@ describe("MilkdownView · pegar", () => {
     expect((view as unknown as EditorView).state.doc.textContent.split("Notaabierta")).toHaveLength(2); // la nota, una sola vez
     expect((view as unknown as EditorView).state.doc.textContent).toContain("pegado");
   });
+
+  // H-025 paso 4: pegado de enlace de YouTube o imagen con conversión reversible.
+  describe("linkPaste (H-025 paso 4)", () => {
+    it("pegar https://youtu.be/dQw4w9WgXcQ?t=90 en un párrafo vacío crea un nodo html", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ?t=90" });
+      const nodeNames = new Set<string>();
+      (view as unknown as EditorView).state.doc.descendants((node) => {
+        nodeNames.add(node.type.name);
+      });
+      expect(nodeNames.has("html")).toBe(true);
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "youtube" });
+    });
+
+    it("pegar https://example.com/foto.png crea un nodo image", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://example.com/foto.png" });
+      const nodeNames = new Set<string>();
+      (view as unknown as EditorView).state.doc.descendants((node) => {
+        nodeNames.add(node.type.name);
+      });
+      expect(nodeNames.has("image")).toBe(true);
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "image" });
+    });
+
+    it("pegar una URL normal (no YouTube, no imagen) NO convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://example.com/pagina" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
+    it("pegar con texto antes en el párrafo NO convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value="texto"
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
+    it("en modo Lectura (readOnly) no convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={true}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // SPEC-0010 RF-025 (P-7): comandos de tabla que el padre dispara desde su barra.
