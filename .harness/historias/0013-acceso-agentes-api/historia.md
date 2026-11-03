@@ -123,6 +123,4 @@ curl -b /tmp/ck.txt -s -X DELETE https://synapse.cjhirashi.com/auth/agent-keys/<
 - **Riesgo residual:** ninguno nuevo; R-1…R-5 de PLAN-0013 aceptados como
   estaban.
 - **Próximo paso:** Carlos corre la receta de arriba y confirma; entonces
-  `estado: verified`. En paralelo, tomar H-001.1 (SPEC-0012) — pendiente de
-  que Carlos revise el plan técnico (Gate 2 de esa spec sigue `pendiente`,
-  nunca se le presentó formalmente).
+  `estado: verified`. (H-001.1 a H-001.3 / SPEC-0012 se retiraron el 2026-11-03: las absorbe H-029.)
