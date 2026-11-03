@@ -8,6 +8,11 @@ describe("captureFileName", () => {
     expect(name).toBe("captura-20261102-190509.png");
   });
 
+  it("a medianoche en CDMX muestra 00, no 24", () => {
+    const utc = new Date("2026-11-03T06:00:05Z");
+    expect(captureFileName(utc, "image/png")).toBe("captura-20261103-000005.png");
+  });
+
   it("maneja cambio de día (UTC más tarde que CDMX)", () => {
     const utc = new Date("2026-11-04T03:30:00Z");
     const name = captureFileName(utc, "image/jpeg");

@@ -117,6 +117,25 @@ describe("AttachDialog (H-025 paso 7)", () => {
     expect(onUrl).not.toHaveBeenCalled();
   });
 
+  it("al desmontarse devuelve el foco al elemento que lo abrió", () => {
+    const opener = document.createElement("button");
+    document.body.appendChild(opener);
+    opener.focus();
+    const { unmount } = render(<AttachDialog onUpload={onUpload} onUrl={onUrl} onClose={onClose} />);
+    expect(opener).not.toHaveFocus();
+    unmount();
+    expect(opener).toHaveFocus();
+    opener.remove();
+  });
+
+  it("Shift+Tab desde el primer elemento salta al último", async () => {
+    const user = userEvent.setup();
+    render(<AttachDialog onUpload={onUpload} onUrl={onUrl} onClose={onClose} />);
+    expect(screen.getByRole("button", { name: "Subir archivo" })).toHaveFocus();
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(screen.getByRole("button", { name: "Pegar URL" })).toHaveFocus();
+  });
+
   it("Escape cierra el diálogo", async () => {
     const user = userEvent.setup();
     render(<AttachDialog onUpload={onUpload} onUrl={onUrl} onClose={onClose} />);

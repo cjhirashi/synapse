@@ -21,6 +21,14 @@ export default function AttachDialog({ onUpload, onUrl, onClose }: AttachDialogP
   const urlInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
+  // Al cerrar, el foco vuelve al elemento que abrió el diálogo.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    return () => {
+      if (previous && document.contains(previous)) previous.focus();
+    };
+  }, []);
+
   // Foco inicial
   useEffect(() => {
     if (!showForm && uploadBtnRef.current) {

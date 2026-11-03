@@ -1709,7 +1709,7 @@ describe("captura de pantalla pegada (H-025 paso 6)", () => {
       clipboardData: {
         files: [],
         types: ["text/plain"],
-        getData: (type) => (type === "text/plain" ? "texto de prueba" : ""),
+        getData: (type: string) => (type === "text/plain" ? "texto de prueba" : ""),
       },
     });
 
@@ -1725,7 +1725,7 @@ describe("captura de pantalla pegada (H-025 paso 6)", () => {
         files: [file],
         items: [
           { kind: "file", type: "image/png", getAsFile: () => file },
-          { kind: "string", type: "text/plain", getAsString: (cb) => cb("texto") },
+          { kind: "string", type: "text/plain", getAsString: (cb: (s: string) => void) => cb("texto") },
         ],
         types: ["Files", "text/plain"],
       },
@@ -1799,6 +1799,35 @@ describe("control «Subir o pegar URL» (H-025 paso 7)", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     await user.click(attachBtn);
     expect(screen.getByRole("dialog", { name: /Adjuntar/i })).toBeInTheDocument();
+  });
+
+  it("abrir el diálogo no dispara el selector de archivos, y Escape devuelve el foco al botón Adjuntar archivo", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const clickSpy = vi.spyOn(input, "click");
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    expect(clickSpy).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(attachBtn).toHaveFocus();
+  });
+
+  it("data: y ftp: se rechazan en cualquier tipo y no insertan", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed, insertLink, insertImage } = await setupAttach();
+    await user.click(screen.getByRole("button", { name: "Adjuntar archivo" }));
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+    for (const bad of ["data:text/html,<b>x</b>", "ftp://example.com/a.png"]) {
+      await user.clear(screen.getByLabelText("URL"));
+      await user.type(screen.getByLabelText("URL"), bad);
+      await user.click(screen.getByRole("button", { name: "Insertar" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Escribe una dirección web válida.");
+    }
+    expect(insertEmbed).not.toHaveBeenCalled();
+    expect(insertLink).not.toHaveBeenCalled();
+    expect(insertImage).not.toHaveBeenCalled();
   });
 
   it("el diálogo tiene botones Subir archivo y Pegar URL", async () => {
