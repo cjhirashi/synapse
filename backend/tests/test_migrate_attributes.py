@@ -16,6 +16,11 @@ class FakeCouch:
     def __init__(self):
         self.databases: dict[str, dict[str, dict]] = {}
         self.conflict_ids: set[str] = set()
+        self.mutate_after_put: dict[str, dict] = {}
+        self.put_status: dict[str, int] = {}
+        self.puts = 0
+        self.note_docs_calls = 0
+        self.listing_error: Exception | None = None
 
     def add_db(self, name: str):
         self.databases[name] = {}
@@ -62,9 +67,16 @@ class FakeCouch:
         self.conflict_ids.add(note_id)
 
     def list_dbs(self) -> list[str]:
+        if self.listing_error:
+            raise self.listing_error
         return sorted(list(self.databases.keys()))
 
+    def get_doc(self, db: str, doc_id: str):
+        doc = self.databases.get(db, {}).get(doc_id)
+        return json.loads(json.dumps(doc)) if doc else None
+
     def note_docs(self, db: str) -> list[dict]:
+        self.note_docs_calls += 1
         if db not in self.databases:
             return []
         docs = []
@@ -85,11 +97,15 @@ class FakeCouch:
             self.conflict_ids.remove(note_id)
             return 409, {"error": "conflict"}
 
+        if note_id in self.put_status:
+            return self.put_status[note_id], {"error": "boom"}
         existing = self.databases[db][note_id]
         if doc.get("_rev") != existing.get("_rev"):
             return 409, {"error": "conflict"}
-        self.databases[db][note_id] = doc
-        return 201, {"ok": True, "id": note_id, "rev": "2-new"}
+        self.puts += 1
+        stored = {**doc, "_rev": f"{self.puts + 1}-new", **self.mutate_after_put.get(note_id, {})}
+        self.databases[db][note_id] = stored
+        return 201, {"ok": True, "id": note_id, "rev": stored["_rev"]}
 
 
 @pytest.fixture
@@ -624,3 +640,128 @@ class TestRealFormats:
 
         report = json.loads(report_file.read_text())
         assert report["total_notes"] == 1
+
+
+class TestApplySafety:
+    """Seguridad de `apply`: lo que se relee debe coincidir, los fallos no se tragan y el resumen es claro."""
+
+    def _prepared(self, fake_couch, tmp_path, **notes):
+        migrate = load_migrate_script()
+        fake_couch.add_db("synapse_user_alice")
+        for note_id, fm in (notes or {"n1": {"título": "Hola", "status": "active"}}).items():
+            fake_couch.add_note("synapse_user_alice", f"note:v:{note_id}", fm, content="CUERPO", updated_at="2026-07-15T10:30:00Z")
+        report = tmp_path / "r.json"
+        migrate.run_report(fake_couch, report, tmp_path / "s.md", only_db=None)
+        return migrate, report
+
+    def test_a_note_whose_reread_updated_at_differs_is_reported_and_exit_is_3(self, fake_couch, tmp_path, capsys):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        fake_couch.mutate_after_put["note:v:n1"] = {"updated_at": "2099-01-01T00:00:00Z"}
+        assert migrate.run_apply(fake_couch, report) == 3
+        assert "updated_at" in capsys.readouterr().out
+
+    def test_a_note_whose_reread_content_differs_is_reported(self, fake_couch, tmp_path, capsys):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        fake_couch.mutate_after_put["note:v:n1"] = {"content": "OTRO"}
+        assert migrate.run_apply(fake_couch, report) == 3
+        assert "content" in capsys.readouterr().out
+
+    def test_a_reread_frontmatter_that_is_not_the_planned_one_is_reported(self, fake_couch, tmp_path):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        fake_couch.mutate_after_put["note:v:n1"] = {"frontmatter": {"titulo": "otro"}}
+        assert migrate.run_apply(fake_couch, report) == 3
+
+    def test_summary_counts_written_409_and_conflicted(self, fake_couch, tmp_path, capsys):
+        migrate, report = self._prepared(fake_couch, tmp_path, a={"título": "A"}, b={"título": "B"})
+        fake_couch.add_note_with_conflicts("synapse_user_alice", "note:v:c", {"título": "C"})
+        fake_couch.mark_for_conflict("note:v:b")
+        assert migrate.run_apply(fake_couch, report) == 0
+        out = capsys.readouterr().out
+        assert "Escritas: 1" in out and "409 (cambió entretanto): 1" in out and "omitidas por conflictos: 1" in out
+
+    def test_a_write_error_other_than_409_exits_4_and_is_listed(self, fake_couch, tmp_path, capsys):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        fake_couch.put_status["note:v:n1"] = 500
+        assert migrate.run_apply(fake_couch, report) == 4
+        assert "note:v:n1: HTTP 500" in capsys.readouterr().out
+
+    def test_the_plan_reads_each_database_once_not_once_per_note(self, fake_couch, tmp_path):
+        notes = {f"n{i}": {"título": f"T{i}"} for i in range(6)}
+        migrate, report = self._prepared(fake_couch, tmp_path, **notes)
+        fake_couch.note_docs_calls = 0
+        assert migrate.run_apply(fake_couch, report) == 0
+        assert fake_couch.note_docs_calls == 1
+
+    def test_a_note_edited_after_the_report_aborts_with_2_and_writes_nothing(self, fake_couch, tmp_path):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        fake_couch.databases["synapse_user_alice"]["note:v:n1"]["_rev"] = "9-edited"
+        assert migrate.run_apply(fake_couch, report) == 2
+        assert fake_couch.puts == 0
+
+    def test_a_second_run_writes_nothing_and_says_so(self, fake_couch, tmp_path, capsys):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        assert migrate.run_apply(fake_couch, report) == 0
+        puts = fake_couch.puts
+        capsys.readouterr()
+        assert migrate.run_apply(fake_couch, report) == 0
+        assert fake_couch.puts == puts
+        assert "Nada que migrar" in capsys.readouterr().out
+
+    def test_a_dry_apply_does_not_write(self, fake_couch, tmp_path):
+        migrate, report = self._prepared(fake_couch, tmp_path)
+        assert migrate.run_apply(fake_couch, report, dry_apply=True) == 0
+        assert fake_couch.puts == 0
+
+
+class TestFailLoudly:
+    """CouchDB caído o con error no puede parecer «sin notas»."""
+
+    def test_the_report_raises_when_couchdb_fails(self, fake_couch, tmp_path):
+        migrate = load_migrate_script()
+        fake_couch.listing_error = migrate.CouchError("GET _all_dbs: HTTP 500")
+        with pytest.raises(migrate.CouchError):
+            migrate.run_report(fake_couch, tmp_path / "r.json", tmp_path / "s.md", only_db=None)
+
+    def test_the_client_raises_on_http_500_and_returns_404_and_409(self, monkeypatch):
+        from urllib.error import HTTPError
+
+        migrate = load_migrate_script()
+        client = migrate.CouchClient("http://x:5984", "u", "p")
+
+        def boom(code):
+            def _open(*_a, **_k):
+                raise HTTPError("http://x", code, "err", {}, None)
+            return _open
+
+        monkeypatch.setattr(migrate, "urlopen", boom(500))
+        with pytest.raises(migrate.CouchError):
+            client.list_dbs()
+        monkeypatch.setattr(migrate, "urlopen", boom(404))
+        assert client.get_doc("synapse_user_a", "note:v:n") is None
+        monkeypatch.setattr(migrate, "urlopen", boom(409))
+        assert client.put("synapse_user_a", {"_id": "note:v:n", "_rev": "1-a"})[0] == 409
+
+    def test_the_command_requires_the_couchdb_variables(self, monkeypatch, tmp_path):
+        migrate = load_migrate_script()
+        for key in ("COUCHDB_URL", "COUCHDB_USER", "COUCHDB_PASSWORD"):
+            monkeypatch.delenv(key, raising=False)
+        monkeypatch.setattr("sys.argv", ["x", "--mode", "report", "--report-file", str(tmp_path / "r"), "--summary-file", str(tmp_path / "s")])
+        with pytest.raises(SystemExit) as exc:
+            migrate.main()
+        assert exc.value.code == 2
+
+
+class TestReportTargets:
+    def test_destinations_use_the_normalized_key(self, fake_couch, tmp_path):
+        migrate = load_migrate_script()
+        fake_couch.add_db("synapse_user_alice")
+        fake_couch.add_note("synapse_user_alice", "note:v:n1", {
+            "Estado": "Activo", "fecha_creación": "2026-07-06", "última_actualización": "2026-07-15",
+            "ruta": "a/b.md", "título": "T", "categoría": "c"})
+        migrate.run_report(fake_couch, tmp_path / "r.json", tmp_path / "s.md", only_db=None)
+        keys = json.loads((tmp_path / "r.json").read_text())["source_keys"]
+        assert keys["Estado"]["target"] == "estado"
+        assert keys["fecha_creación"]["target"] == "fecha_creacion_original"
+        assert keys["última_actualización"]["target"] == "fecha_actualizacion_original"
+        assert keys["ruta"]["target"] == "ruta_original"
+        assert keys["categoría"]["target"] is None

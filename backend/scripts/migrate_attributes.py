@@ -9,13 +9,18 @@ from base64 import b64encode
 from collections import defaultdict
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
+from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.core.attribute_rules import migrate_frontmatter, validate_general
+from app.core.attribute_rules import migrate_frontmatter, normalize_key, validate_general
+
+
+class CouchError(Exception):
+    """CouchDB no respondió como se esperaba; la herramienta se detiene en lugar de seguir a medias."""
 
 
 class CouchClient:
@@ -28,43 +33,48 @@ class CouchClient:
         self._auth = b64encode(f"{user}:{password}".encode()).decode()
 
     def _request(self, method: str, path: str, body: Optional[bytes] = None) -> tuple[int, dict]:
-        """Ejecuta una petición HTTP contra CouchDB."""
+        """Petición HTTP a CouchDB. Un 409 o un 404 se devuelven; cualquier otro fallo lanza `CouchError`."""
         url = f"{self.url}/{path}"
-        headers = {
-            "Authorization": f"Basic {self._auth}",
-            "Content-Type": "application/json",
-        }
+        headers = {"Authorization": f"Basic {self._auth}", "Content-Type": "application/json"}
         req = Request(url, data=body, headers=headers, method=method)
         try:
-            with urlopen(req) as resp:
+            with urlopen(req, timeout=60) as resp:
                 return resp.status, json.loads(resp.read())
+        except HTTPError as e:
+            if e.code in (404, 409):
+                return e.code, {"error": str(e)}
+            raise CouchError(f"{method} {path}: HTTP {e.code}") from e
         except Exception as e:
-            status = getattr(e, "code", 500)
-            return status, {"error": str(e)}
+            raise CouchError(f"{method} {path}: {e}") from e
 
     def list_dbs(self) -> list[str]:
-        """Lista todas las bases disponibles."""
-        status, resp = self._request("GET", "_all_dbs")
-        if status == 200:
-            return [db for db in resp if db.startswith("synapse_user_")]
-        return []
+        """Bases de usuario (`synapse_user_*`). Si CouchDB falla, lanza: nunca devuelve «sin bases»."""
+        _, resp = self._request("GET", "_all_dbs")
+        return [db for db in resp if db.startswith("synapse_user_")]
 
     def note_docs(self, db: str) -> list[dict]:
-        """Lee todas las notas de una base."""
+        """Todas las notas de una base, con sus conflictos."""
         query = "_all_docs?include_docs=true&startkey=%22note:%22&endkey=%22note:%EF%B0%B0%22&conflicts=true"
-        status, resp = self._request("GET", f"{db}/{query}")
-        if status == 200:
-            return [row.get("doc") for row in resp.get("rows", []) if row.get("doc")]
-        return []
+        _, resp = self._request("GET", f"{db}/{query}")
+        return [row["doc"] for row in resp.get("rows", []) if row.get("doc")]
+
+    def get_doc(self, db: str, doc_id: str) -> Optional[dict]:
+        """Un documento con sus conflictos, o `None` si no existe."""
+        status, resp = self._request("GET", f"{db}/{quote(doc_id, safe='')}?conflicts=true")
+        return None if status == 404 else resp
 
     def put(self, db: str, doc: dict) -> tuple[int, dict]:
         """Escribe un documento."""
-        doc_id = doc["_id"]
-        body = json.dumps(doc).encode()
-        rev = doc.get("_rev", "")
-        query = f"?rev={rev}" if rev else ""
-        status, resp = self._request("PUT", f"{db}/{doc_id}{query}", body)
+        body = json.dumps(doc, ensure_ascii=False).encode("utf-8")
+        status, resp = self._request("PUT", f"{db}/{quote(doc['_id'], safe='')}?rev={doc['_rev']}", body)
         return status, resp
+
+
+_TARGETS = {
+    "titulo": "titulo", "descripcion": "descripcion", "tags": "tags", "status": "estado", "estado": "estado",
+    "fecha_creacion": "fecha_creacion_original", "ultima_actualizacion": "fecha_actualizacion_original",
+    "fecha_actualizacion": "fecha_actualizacion_original", "ruta": "ruta_original",
+}
 
 
 def calculate_plan_digest(plan_items: list[tuple[str, str, str, dict]]) -> str:
@@ -91,6 +101,7 @@ def run_report(
     notes_unchanged = 0
     notes_with_conflicts = []
     notes_with_validation_errors = 0
+    validation_error_list: list[dict] = []
 
     source_keys: dict[str, dict] = defaultdict(lambda: {"count": 0, "target": None})
     estado_counts: dict[str, int] = defaultdict(int)
@@ -125,27 +136,10 @@ def run_report(
             # Calcular migración
             new_fm = migrate_frontmatter(fm)
 
-            # Registrar cambios de claves
             for key in fm.keys():
-                target = None
-                if key in ("título", "titulo"):
-                    target = "titulo"
-                elif key in ("descripción", "descripcion"):
-                    target = "descripcion"
-                elif key in ("tags",):
-                    target = "tags"
-                elif key in ("status", "estado"):
-                    target = "estado"
-                elif key in ("fecha_creación", "fecha_creacion"):
-                    target = "fecha_creacion"
-                elif key in ("última_actualización", "fecha_actualizacion", "ultima_actualizacion"):
-                    target = "fecha_actualizacion"
-                elif key in ("ruta",):
-                    target = "ruta"
-
+                target = _TARGETS.get(normalize_key(key) or "")
                 if key not in source_keys or source_keys[key]["target"] is None:
                     source_keys[key]["target"] = target
-
                 source_keys[key]["count"] += 1
 
             # Contar cambios de tags
@@ -170,6 +164,7 @@ def run_report(
             validation_error = validate_general(new_fm)
             if validation_error:
                 notes_with_validation_errors += 1
+                validation_error_list.append({"id": doc["_id"], "code": validation_error})
 
             # Comparar si cambió
             if fm == new_fm:
@@ -195,10 +190,11 @@ def run_report(
         "original_keys": dict(original_keys_count),
         "notes_with_conflicts": notes_with_conflicts,
         "notes_with_validation_errors": notes_with_validation_errors,
+        "validation_errors": validation_error_list,
         "plan_digest": plan_digest,
     }
 
-    report_file.write_text(json.dumps(report, indent=2))
+    report_file.write_text(json.dumps(report, indent=2, ensure_ascii=False))
 
     # Construir resumen Markdown
     summary_lines = [
@@ -231,94 +227,85 @@ def run_report(
             [
                 "",
                 f"## ⚠️ {notes_with_validation_errors} notas con errores de validación",
+                "",
             ]
+            + [f"- {item['id']}: {item['code']}" for item in validation_error_list]
         )
 
     summary_file.write_text("\n".join(summary_lines))
 
 
-def run_apply(
-    couch_client,
-    report_file: Path,
-    dry_apply: bool = False,
-) -> int:
-    """Modo apply: aplica cambios con validación de digest."""
-    report = json.loads(report_file.read_text())
-    stored_digest = report["plan_digest"]
-
-    # Recalcular plan desde las bases
-    dbs = couch_client.list_dbs()
-    plan_items: list[tuple[str, str, str, dict]] = []
-
+def _live_note_plan(couch_client, dbs: list[str]) -> tuple[list[tuple[str, str, str, dict]], int]:
+    """Plan de migración (db, id, rev, frontmatter nuevo) y número de notas omitidas por conflictos."""
+    items: list[tuple[str, str, str, dict]] = []
+    conflicted = 0
     for db in dbs:
-        docs = couch_client.note_docs(db)
-        for doc in docs:
-            if doc is None:
+        for doc in couch_client.note_docs(db):
+            if doc.get("type") != "note" or doc.get("deleted_at") is not None or "_deleted" in doc:
                 continue
-            if doc.get("type") != "note":
-                continue
-            if doc.get("deleted_at") is not None:
-                continue
-            if "_deleted" in doc:
-                continue
-            if "_conflicts" in doc:
-                continue
-
             fm = doc.get("frontmatter") or {}
             if not fm:
                 continue
-
+            if "_conflicts" in doc:
+                conflicted += 1
+                continue
             new_fm = migrate_frontmatter(fm)
             if fm != new_fm:
-                plan_items.append((db, doc["_id"], doc["_rev"], new_fm))
+                items.append((db, doc["_id"], doc["_rev"], new_fm))
+    return items, conflicted
 
-    recalc_digest = calculate_plan_digest(plan_items)
 
-    # Si no hay cambios (idempotente) es OK
-    if len(plan_items) == 0 and len(report.get("plan_items", [])) == 0:
+_PRESERVED = ("created_at", "updated_at", "content", "deleted_at", "type", "path")
+
+
+def run_apply(couch_client, report_file: Path, dry_apply: bool = False) -> int:
+    """Modo apply. Códigos: 0 bien, 2 el plan ya no coincide con el informe, 3 una nota releída difiere
+    de lo esperado, 4 error de escritura distinto de un 409."""
+    report = json.loads(report_file.read_text())
+    items, conflicted = _live_note_plan(couch_client, couch_client.list_dbs())
+
+    if not items:
+        print("Nada que migrar: ninguna nota viva con cambios pendientes.")
         return 0
-
-    if recalc_digest != stored_digest:
-        print(f"ERROR: digest mismatch. Stored: {stored_digest}, Calculated: {recalc_digest}")
+    if calculate_plan_digest(items) != report["plan_digest"]:
+        print("ERROR: el plan actual no coincide con el informe aprobado (cambiaron las notas o el informe es de otra corrida). No se escribió nada.")
         return 2
 
-    # Aplicar cambios
-    written = 0
-    conflicts = 0
-    validation_fails = 0
-
-    for db, note_id, old_rev, new_fm in plan_items:
-        # Leer la nota actual (para conservar otros campos)
-        docs = couch_client.note_docs(db)
-        doc = next((d for d in docs if d["_id"] == note_id), None)
-        if not doc:
+    written = conflicts = skipped = 0
+    problems: list[str] = []
+    errors: list[str] = []
+    for db, note_id, rev, new_fm in items:
+        doc = couch_client.get_doc(db, note_id)
+        if doc is None or doc.get("_rev") != rev or "_conflicts" in doc:
+            skipped += 1
             continue
-
-        # Preservar campos
-        doc["frontmatter"] = new_fm
-        doc["_rev"] = old_rev
-
+        before = {k: doc.get(k) for k in _PRESERVED}
         if dry_apply:
-            # No escribir
             continue
-
-        # Escribir
-        status, resp = couch_client.put(db, doc)
+        status, _ = couch_client.put(db, {**doc, "frontmatter": new_fm})
         if status == 409:
             conflicts += 1
-        elif status in (200, 201):
-            # Verificar que se escribió correctamente
-            validation_error = validate_general(new_fm)
-            if validation_error:
-                validation_fails += 1
-                print(f"VALIDATION ERROR after write: {note_id} - {validation_error}")
-            else:
-                written += 1
+            continue
+        if status not in (200, 201):
+            errors.append(f"{db}/{note_id}: HTTP {status}")
+            continue
+        written += 1
+        after = couch_client.get_doc(db, note_id)
+        if after is None:
+            problems.append(f"{db}/{note_id}: no se pudo releer")
+            continue
+        changed = [k for k in _PRESERVED if after.get(k) != before[k]]
+        if changed:
+            problems.append(f"{db}/{note_id}: cambió {', '.join(changed)}")
+        if after.get("frontmatter") != new_fm or validate_general(after.get("frontmatter") or {}) is not None:
+            problems.append(f"{db}/{note_id}: el frontmatter releído no es el esperado")
 
-    if validation_fails > 0:
+    print(f"Escritas: {written} | 409 (cambió entretanto): {conflicts} | omitidas por conflictos: {conflicted} | omitidas por cambio de revisión: {skipped} | errores de escritura: {len(errors)}")
+    for line in problems + errors:
+        print("  ", line)
+    if problems:
         return 3
-
-    return 0
+    return 4 if errors else 0
 
 
 def main():
@@ -332,9 +319,11 @@ def main():
     args = parser.parse_args()
 
     # Credenciales
-    couchdb_url = os.environ.get("COUCHDB_URL", "http://localhost:5984")
-    couchdb_user = os.environ.get("COUCHDB_USER", "admin")
-    couchdb_password = os.environ.get("COUCHDB_PASSWORD", "password")
+    try:
+        couchdb_url, couchdb_user, couchdb_password = (
+            os.environ[k] for k in ("COUCHDB_URL", "COUCHDB_USER", "COUCHDB_PASSWORD"))
+    except KeyError as missing:
+        parser.error(f"falta la variable de entorno {missing}")
 
     couch = CouchClient(couchdb_url, couchdb_user, couchdb_password)
 
@@ -344,7 +333,11 @@ def main():
         if not args.summary_file:
             parser.error("--summary-file requerido para mode=report")
 
-        run_report(couch, args.report_file, args.summary_file, args.only_db)
+        try:
+            run_report(couch, args.report_file, args.summary_file, args.only_db)
+        except CouchError as e:
+            print(f"ERROR: {e}")
+            sys.exit(1)
         print(f"Informe escrito en {args.report_file}")
         print(f"Resumen escrito en {args.summary_file}")
 
@@ -352,7 +345,11 @@ def main():
         if not args.report_file:
             parser.error("--report-file requerido para mode=apply")
 
-        exit_code = run_apply(couch, args.report_file, dry_apply=args.dry_apply)
+        try:
+            exit_code = run_apply(couch, args.report_file, dry_apply=args.dry_apply)
+        except CouchError as e:
+            print(f"ERROR: {e}")
+            exit_code = 1
         sys.exit(exit_code)
 
 
