@@ -75,6 +75,21 @@ GET /vaults/{vault_id}
 
 **PATCH** reemplaza el mapa completo; `null` borra el campo. Ausente en el PATCH no lo cambia.
 
+## Gráficos Plotly en una nota (H-037)
+
+Un agente puede subir un gráfico de Plotly como archivo HTML y embeberlo en una nota, igual que un diagrama de Archify.
+
+1. **Generar el HTML autocontenido.** Con la librería incrustada, sin CDN:
+   ```python
+   import plotly.io as pio
+   pio.write_html(fig, "grafico.html", include_plotlyjs=True, full_html=True, config={"responsive": True})
+   ```
+   Pesa ~4,7 MB (el límite de un documento es 25 MB). Con `include_plotlyjs="cdn"` el archivo **no se verá**: el HTML se sirve con una política de seguridad que impide cargar scripts externos y no tiene red. Quita el ancho fijo de la figura (`fig.update_layout(width=None, height=None)`) para que se adapte al celular.
+2. **Subirlo.** `POST /files` (multipart: `vault_id`, `file` con `content_type: text/html`) con la API key del agente (`Authorization: Bearer …`). Devuelve el `id`.
+3. **Embeberlo.** En el markdown de la nota: `<iframe src="https://synapse.cjhirashi.com/files/<id>"></iframe>`.
+
+Funcionan los gráficos con SVG (líneas, barras, mapas de calor…), 3D y WebGL 2D (`scattergl`). El HTML corre aislado: sandbox sin `allow-same-origin`, sin acceso a red ni a la sesión. Esa política permite `unsafe-eval` solo para ese HTML (Plotly compila shaders con `new Function`); los demás tipos de archivo no lo llevan.
+
 ## API keys de agente (SPEC-0013)
 
 Pensadas para que los agentes OpenClaw (AIRA, Liza, main, n8n…) consulten y gestionen las

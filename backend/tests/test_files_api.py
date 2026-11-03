@@ -428,6 +428,24 @@ def test_c3_html_has_inline_with_csp_sandbox(ready_admin, storage):
     assert res.headers["x-content-type-options"] == "nosniff"
 
 
+def test_h037_html_csp_lets_plotly_work_and_keeps_the_document_isolated(ready_admin, storage):
+    """Plotly (incl. WebGL 2D) necesita `unsafe-eval`; el aislamiento y la ausencia de red no se tocan."""
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id, data=HTML_DATA, filename="g.html", content_type="text/html").json()["id"]
+    csp = ready_admin.get(f"/files/{file_id}").headers["content-security-policy"]
+    directives = {d.split(" ", 1)[0]: d.split(" ", 1)[1] if " " in d else "" for d in (x.strip() for x in csp.split(";")) if d}
+    assert directives["script-src"].split() == ["'unsafe-inline'", "'unsafe-eval'"]  # ningún origen externo de scripts
+    assert directives["sandbox"].split() == ["allow-scripts"]  # sin allow-same-origin
+    assert directives["default-src"] == "'none'" and directives["connect-src"] == "'none'"
+    assert "https:" not in directives["script-src"]
+
+
+def test_h037_other_types_do_not_get_unsafe_eval(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    file_id = _upload(ready_admin, vault_id).json()["id"]  # PNG
+    assert "unsafe-eval" not in ready_admin.get(f"/files/{file_id}").headers.get("content-security-policy", "")
+
+
 def test_c3_txt_has_attachment_disposition(ready_admin, storage):
     vault_id = _vault(ready_admin)
     res = _upload(ready_admin, vault_id, data=TXT_DATA, filename="readme.txt", content_type="text/plain")
