@@ -28,7 +28,8 @@ FIELD_ERROR_MESSAGES: dict[str, str] = {
     "invalid_email": "Invalid email format",
     "control_characters": "Must not contain control characters",
     # H-029: Catálogo de atributos
-    "attribute_key_invalid": "Attribute key must match pattern ^[a-z0-9_]{1,64}$",
+    "options_invalid_type": "Attribute options must be a list",
+    "attribute_key_invalid": "Attribute key must be 1 to 64 lowercase letters, digits or underscores",
     "attribute_key_reserved": "Attribute key is reserved",
     "attribute_type_invalid": "Attribute type is invalid",
     "attribute_type_missing": "Attribute type is required",

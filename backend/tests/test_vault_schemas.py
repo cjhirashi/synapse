@@ -330,3 +330,34 @@ def test_h029_rnf001_attributes_size_limit_64kb():
 
     vault = VaultCreate(name="n", attributes=attrs)
     assert vault.attributes == attrs
+
+
+# --- H-029: defectos encontrados al cruzar el catálogo con la batería común y la suite completa ---
+
+@pytest.mark.parametrize("key", ["año", "ñandú", "é", "clave-con-guion", "Mayus", "con espacio", ""])
+def test_h029_attribute_keys_are_ascii_lowercase_digits_and_underscore_only(key):
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes={key: {"type": "text"}})
+
+
+@pytest.mark.parametrize("options", ["a", 5, {"a": 1}, True])
+def test_h029_options_that_are_not_a_list_are_a_422_not_a_server_error(options):
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes={"x": {"type": "select", "options": options}})
+
+
+@pytest.mark.parametrize("attr_type", ["text", "number", "boolean", "list", "date"])
+def test_h029_an_empty_options_list_is_valid_on_any_type(attr_type):
+    attrs = {"x": {"type": attr_type, "options": []}}
+    assert VaultCreate(name="n", attributes=attrs).attributes == attrs
+
+
+def test_h029_every_field_error_code_used_in_schemas_has_a_catalog_message():
+    import re
+    from pathlib import Path
+
+    from app.core import schemas
+    from app.core.errors import FIELD_ERROR_MESSAGES
+
+    used = set(re.findall(r'field_error\("([a-z_]+)"\)', Path(schemas.__file__).read_text(encoding="utf-8")))
+    assert used - set(FIELD_ERROR_MESSAGES) == set()

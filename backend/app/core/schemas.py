@@ -1,4 +1,5 @@
 import json
+import re
 import unicodedata
 from datetime import datetime
 from typing import Annotated, Literal
@@ -100,7 +101,8 @@ VaultTags = Annotated[list[VaultTag], Field(max_length=20), AfterValidator(_dedu
 # --- H-029: Catálogo de atributos (PASO 1) ---
 # Las 7 claves generales de notas (no se pueden usar como atributos de bóveda).
 _VAULT_RESERVED_KEYS = {"titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags"}
-_ATTRIBUTE_TYPES = Literal["text", "number", "boolean", "list", "date", "select", "multiselect"]
+_ATTRIBUTE_KEY = re.compile(r"[a-z0-9_]{1,64}")
+_ATTRIBUTE_TYPES = ("text", "number", "boolean", "list", "date", "select", "multiselect")
 
 
 def _validate_attributes_dict(attrs: dict | None) -> dict | None:
@@ -115,9 +117,7 @@ def _validate_attributes_dict(attrs: dict | None) -> dict | None:
     # Validar claves y valores
     for key, val in attrs.items():
         # Validar clave
-        if not isinstance(key, str) or not key or len(key) > 64:
-            raise field_error("attribute_key_invalid")
-        if not all(c.islower() or c.isdigit() or c == "_" for c in key):
+        if not isinstance(key, str) or not _ATTRIBUTE_KEY.fullmatch(key):
             raise field_error("attribute_key_invalid")
         if key in _VAULT_RESERVED_KEYS:
             raise field_error("attribute_key_reserved")
@@ -132,15 +132,15 @@ def _validate_attributes_dict(attrs: dict | None) -> dict | None:
             raise field_error("attribute_type_missing")
 
         attr_type = val.get("type")
-        if attr_type not in ("text", "number", "boolean", "list", "date", "select", "multiselect"):
+        if attr_type not in _ATTRIBUTE_TYPES:
             raise field_error("attribute_type_invalid")
 
         options = val.get("options")
         if options is not None:
-            if attr_type not in ("select", "multiselect"):
-                raise field_error("options_not_allowed_for_type")
             if not isinstance(options, list):
                 raise field_error("options_invalid_type")
+            if options and attr_type not in ("select", "multiselect"):
+                raise field_error("options_not_allowed_for_type")
             if len(options) > 200:
                 raise field_error("options_too_many")
             for opt in options:

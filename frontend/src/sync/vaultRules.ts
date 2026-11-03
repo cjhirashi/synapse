@@ -16,6 +16,8 @@
  */
 
 export type VaultField = "name" | "description" | "tags" | "icon";
+/** Campos con regla en la batería común: los del formulario y el catálogo de atributos (H-029). */
+export type VaultRuleField = VaultField | "attributes";
 
 export type RuleResult<T> = { ok: true; value: T } | { ok: false };
 
@@ -29,6 +31,13 @@ export interface VaultFields {
    */
   icon?: string | null;
 }
+
+export type AttributeType = "text" | "number" | "boolean" | "list" | "date" | "select" | "multiselect";
+export interface AttributeDef {
+  type: AttributeType;
+  options?: string[];
+}
+export type AttributeCatalog = Record<string, AttributeDef>;
 
 // Límites de `core/schemas.py` (SPEC-0003 RF-005).
 export const NAME_MAX = 100;
@@ -108,11 +117,49 @@ export function checkIcon(value: unknown): RuleResult<string | null> {
   return ok(value);
 }
 
-export const FIELD_RULES: Record<VaultField, (value: unknown) => RuleResult<unknown>> = {
+// Catálogo de atributos (H-029): mismas reglas que `_validate_attributes_dict` de `core/schemas.py`.
+export const ATTRIBUTES_MAX = 100;
+export const OPTIONS_MAX = 200;
+export const OPTION_MAX = 64;
+export const ATTRIBUTES_MAX_BYTES = 64 * 1024;
+const ATTRIBUTE_KEY = /^[a-z0-9_]{1,64}$/;
+const ATTRIBUTE_TYPES = ["text", "number", "boolean", "list", "date", "select", "multiselect"];
+// Claves de los generales de una nota; `estado` sí puede declararse, solo como select (ahí van los estados de la bóveda).
+const RESERVED_ATTRIBUTE_KEYS = ["titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags"];
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** `VaultAttributes`: sin normalizar (el valor llega ya en su forma final); `null` es «sin catálogo». */
+export function checkAttributes(value: unknown): RuleResult<AttributeCatalog | null> {
+  if (value === null) return ok(null);
+  if (!isObject(value)) return INVALID;
+  const entries = Object.entries(value);
+  if (entries.length > ATTRIBUTES_MAX) return INVALID;
+  for (const [key, def] of entries) {
+    if (!ATTRIBUTE_KEY.test(key) || RESERVED_ATTRIBUTE_KEYS.includes(key)) return INVALID;
+    if (!isObject(def) || typeof def.type !== "string" || !ATTRIBUTE_TYPES.includes(def.type)) return INVALID;
+    if (key === "estado" && def.type !== "select") return INVALID;
+    const options = def.options;
+    if (options === undefined || options === null) continue;
+    if (!Array.isArray(options)) return INVALID;
+    if (options.length > 0 && def.type !== "select" && def.type !== "multiselect") return INVALID;
+    if (options.length > OPTIONS_MAX) return INVALID;
+    for (const option of options) {
+      if (typeof option !== "string" || option === "" || option !== strip(option) || codePoints(option) > OPTION_MAX) return INVALID;
+    }
+    if (new Set(options).size !== options.length) return INVALID;
+  }
+  if (new TextEncoder().encode(JSON.stringify(value)).length > ATTRIBUTES_MAX_BYTES) return INVALID;
+  return ok(value as AttributeCatalog);
+}
+
+export const FIELD_RULES: Record<VaultRuleField, (value: unknown) => RuleResult<unknown>> = {
   name: checkName,
   description: checkDescription,
   tags: checkTags,
   icon: checkIcon,
+  attributes: checkAttributes,
 };
 
 /**
