@@ -46,7 +46,8 @@ describe("RF-003, RF-012: create", () => {
     expect(note.path).toBe("Ideas.md");
     const doc = await db.get(note.id);
     expect(doc).toEqual({
-      _id: note.id, _rev: note.rev, type: "note", vault_id: VAULT, path: "Ideas.md", frontmatter: {},
+      _id: note.id, _rev: note.rev, type: "note", vault_id: VAULT, path: "Ideas.md",
+      frontmatter: { fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" },
       content: "", created_at: "2026-10-22T10:00:01.000000Z", updated_at: "2026-10-22T10:00:01.000000Z",
       deleted_at: null,
     });
@@ -252,17 +253,17 @@ describe("RF-003, RF-016: save", () => {
   it("RF-012: save con frontmatter escribe content y frontmatter juntos", async () => {
     const a = await store.create(VAULT, "A");
     const saved = await store.save(a.id, "# Hola", a.rev, { título: "Nota", n: 3, t: ["a", "b"] });
-    expect(saved.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"] });
+    expect(saved.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"], fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" });
     expect(saved.content).toBe("# Hola");
     const reloaded = await store.get(a.id);
-    expect(reloaded.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"] });
+    expect(reloaded.frontmatter).toEqual({ título: "Nota", n: 3, t: ["a", "b"], fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" });
   });
 
   it("RF-012: save sin frontmatter conserva el anterior", async () => {
     const a = await store.create(VAULT, "A");
     const withFm = await store.save(a.id, "cuerpo 1", a.rev, { k: 1 });
     const without = await store.save(a.id, "cuerpo 2", withFm.rev);
-    expect(without.frontmatter).toEqual({ k: 1 });
+    expect(without.frontmatter).toEqual({ k: 1, fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" });
     expect(without.content).toBe("cuerpo 2");
   });
 
@@ -271,7 +272,7 @@ describe("RF-003, RF-016: save", () => {
     await store.save(a.id, "otra pestaña", a.rev, { origen: "otra" }); // adelanta la revisión
     const branch = await store.save(a.id, "mi edición", a.rev, { origen: "mía" }); // sobre a.rev (desfasada)
     expect(branch.content).toBe("mi edición");
-    expect(branch.frontmatter).toEqual({ origen: "mía" });
+    expect(branch.frontmatter).toEqual({ origen: "mía", fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" });
   });
 
   it("RF-019: frontmatter cuyo JSON supera 64 KiB → NoteValidationError(frontmatter) sin escribir", async () => {
@@ -281,7 +282,7 @@ describe("RF-003, RF-016: save", () => {
     expect(err).toBeInstanceOf(NoteValidationError);
     expect(err.fields).toEqual(["frontmatter"]);
     expect((await store.get(a.id)).rev).toBe(a.rev);
-    expect((await store.get(a.id)).frontmatter).toEqual({});
+    expect((await store.get(a.id)).frontmatter).toEqual({ fecha_creacion: "2026-10-22", fecha_actualizacion: "2026-10-22" });
   });
 });
 
@@ -623,5 +624,58 @@ describe("SPEC-0010 RF-001/RF-003/RF-008: carpetas y puerta de ruta", () => {
     const err = await store.softDelete(id, doc.rev).catch((e) => e);
     expect(err).toBeInstanceOf(NoteValidationError);
     expect(err.fields).toEqual(["path"]);
+  });
+});
+
+describe("H-029: las fechas de la nota son del día LOCAL, no del día UTC", () => {
+  const originalTZ = process.env.TZ;
+  afterEach(() => {
+    if (originalTZ === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTZ;
+  });
+
+  it("a las 21:30 en Ciudad de México (03:30 UTC del día siguiente) la nota nace con la fecha de CDMX", async () => {
+    process.env.TZ = "America/Mexico_City";
+    const late = createNoteStore(new PouchDB(`notestore-tz-${++counter}`, { adapter: "memory" }), { now: () => "2026-11-04T03:30:00.000000Z" });
+    const note = await late.create(VAULT, "Tarde");
+    expect(note.frontmatter).toEqual({ fecha_creacion: "2026-11-03", fecha_actualizacion: "2026-11-03" });
+  });
+
+  it("guardar dos días después conserva la fecha de creación local y pone la de hoy local", async () => {
+    process.env.TZ = "America/Mexico_City";
+    let clock = "2026-11-04T03:30:00.000000Z"; // 3 nov, 21:30 en CDMX
+    const s = createNoteStore(new PouchDB(`notestore-tz-${++counter}`, { adapter: "memory" }), { now: () => clock });
+    const created = await s.create(VAULT, "Dos días");
+    clock = "2026-11-05T07:00:00.000000Z"; // 5 nov, 01:00 en CDMX
+    const saved = await s.save(created.id, "cambio", created.rev);
+    expect(saved.frontmatter).toEqual({ fecha_creacion: "2026-11-03", fecha_actualizacion: "2026-11-05" });
+  });
+
+  it("una nota antigua sin fechas recibe fecha_creacion desde su created_at, a fecha local", async () => {
+    process.env.TZ = "America/Mexico_City";
+    const database = new PouchDB(`notestore-tz-${++counter}`, { adapter: "memory" });
+    const s = createNoteStore(database, { now: () => "2026-11-10T18:00:00.000000Z" });
+    const id = `note:${VAULT}:33333333-3333-4333-8333-333333333333`;
+    const put = await database.put({ _id: id, type: "note", vault_id: VAULT, path: "Vieja.md", content: "", created_at: "2026-10-29T03:00:00.000000Z", updated_at: "2026-10-29T03:00:00.000000Z", deleted_at: null });
+    const saved = await s.save(id, "x", put.rev);
+    expect(saved.frontmatter).toMatchObject({ fecha_creacion: "2026-10-28", fecha_actualizacion: "2026-11-10" });
+  });
+});
+
+describe("H-029: guardar sin cambios reales no toca las fechas", () => {
+  it("el mismo contenido y las mismas propiedades conservan el frontmatter tal cual", async () => {
+    const note = await store.create(VAULT, "Quieta");
+    const first = await store.save(note.id, "texto", note.rev, { a: 1 });
+    const again = await store.save(first.id, "texto", first.rev, { ...first.frontmatter });
+    expect(again.frontmatter).toEqual(first.frontmatter);
+  });
+
+  it("un cambio de contenido sella `fecha_actualizacion`; uno solo de propiedades también", async () => {
+    const note = await store.create(VAULT, "Cambia");
+    const old = await db.get<{ frontmatter: Record<string, unknown> }>(note.id);
+    await db.put({ ...old, frontmatter: { ...old.frontmatter, fecha_actualizacion: "2020-01-01" } });
+    const fresh = (await store.get(note.id)) as { rev: string };
+    const byProps = await store.save(note.id, "", fresh.rev, { fecha_creacion: "2026-10-22", fecha_actualizacion: "2020-01-01", x: 1 });
+    expect(byProps.frontmatter?.fecha_actualizacion).toBe("2026-10-22");
   });
 });

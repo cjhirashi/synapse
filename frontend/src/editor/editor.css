@@ -1772,3 +1772,49 @@ li.note-task[data-checked="true"] .note-task-body {
   gap: var(--space-1);
   justify-content: flex-end;
 }
+
+/* H-029: sección META (siete atributos generales arriba del documento). */
+.note-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.note-meta-form {
+  gap: var(--space-3);
+}
+
+.note-meta-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.note-meta-field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.note-meta-field input[readonly] {
+  color: var(--text-secondary);
+  background: transparent;
+}
+
+.note-meta-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+@media (max-width: 560px) {
+  .note-meta-pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+.note-meta-error {
+  margin: 0;
+  font-size: 12px;
+  color: var(--danger-text);
+}

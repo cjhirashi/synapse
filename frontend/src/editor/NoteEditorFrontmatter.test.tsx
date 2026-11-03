@@ -1,7 +1,7 @@
 // Sesión de edición D1 (SPEC-0010 RF-012, RF-014, RF-016, RF-020, RF-021; PLAN-0010 §2.1, §6):
-// en Visual se editan `body` (markdown) y `props` (el formulario de propiedades); en Código la verdad
-// es el texto compuesto `---\nYAML\n---\nbody`. Alternar no pierde nada; guardar escribe `content` y
-// `frontmatter` juntos. Vistas falsas (textarea) + el `PropertiesForm` real que monta el editor.
+// en Visual se editan `body` (markdown) y `props` (la sección META); en Código se edita SOLO el cuerpo
+// (H-029: las propiedades no se mezclan con el texto como YAML). Alternar no pierde nada; guardar escribe
+// `content` y `frontmatter` juntos. Vistas falsas (textarea) + la `NoteMeta` real que monta el editor.
 import { type ComponentProps } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -42,15 +42,21 @@ async function setup(content: string, frontmatter: Record<string, unknown>, extr
 const visual = () => screen.getByRole("textbox", { name: "Editor visual" });
 const code = () => screen.getByRole("textbox", { name: "Editor de código" });
 const propValue = (key: string) => screen.getByRole("textbox", { name: `Valor de «${key}»` });
+const titleField = () => screen.getByLabelText("Título");
+/** El almacén sella `fecha_creacion` y `fecha_actualizacion` al guardar (H-029): se comparan aparte. */
+const noDates = (fm: Record<string, unknown>) => Object.fromEntries(Object.entries(fm).filter(([key]) => !key.startsWith("fecha_")));
+const isDate = (value: unknown) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () => {
-  it("Visual muestra el body y el formulario; Código muestra el texto compuesto", async () => {
+  it("Visual muestra el body y la sección META; Código muestra SOLO el cuerpo, sin YAML", async () => {
     await setup("# Cuerpo\n", { titulo: "Plan", n: 3 });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
     expect(visual()).toHaveValue("# Cuerpo\n");
-    expect(propValue("titulo")).toHaveValue("Plan");
+    expect(titleField()).toHaveValue("Plan");
+    expect(screen.getByLabelText("Clave de la propiedad 1")).toHaveValue("n");
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
-    expect(code()).toHaveValue("---\ntitulo: Plan\nn: 3\n---\n# Cuerpo\n");
+    expect(code()).toHaveValue("# Cuerpo\n");
+    expect(titleField()).toHaveValue("Plan"); // la sección META sigue arriba en Código
   });
 
   it("abrir en Código y guardar sin cambios deja frontmatter y content idénticos (complejos)", async () => {
@@ -60,7 +66,8 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     const reloaded = await value.notes.get(note.id);
-    expect(reloaded.frontmatter).toEqual(fm);
+    expect(reloaded.frontmatter).toEqual(note.frontmatter); // sin cambios reales no se toca ni una clave
+    expect(noDates(reloaded.frontmatter)).toEqual(fm);
     expect(reloaded.content).toBe("# Cuerpo\n");
   });
 
@@ -70,7 +77,8 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     await userEvent.type(propValue("a"), "y"); // "x" → "xy"
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     const reloaded = await value.notes.get(note.id);
-    expect(reloaded.frontmatter).toEqual({ a: "xy" });
+    expect(noDates(reloaded.frontmatter)).toEqual({ a: "xy" });
+    expect(isDate(reloaded.frontmatter.fecha_actualizacion)).toBe(true); // guardar un cambio sella la fecha
     expect(reloaded.content).toBe("# Cuerpo\n");
   });
 
@@ -84,39 +92,44 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     expect(await screen.findByText("Esta nota tiene cambios sin guardar.")).toBeInTheDocument();
   });
 
-  it("guardar desde Código con YAML inválido no guarda, se queda en Código y avisa con la línea (RF-015, RF-017)", async () => {
+  it("Código ya no interpreta YAML: un bloque `---` escrito en Código es cuerpo y las propiedades no cambian", async () => {
     const { value, note } = await setup("# B\n", { a: 1 });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
-    // Clave duplicada en el bloque (línea 2 del YAML → línea 3 en el texto, por el `---` de apertura).
-    fireEvent.change(code(), { target: { value: "---\na: 1\na: 2\n---\n# B\n" } });
+    fireEvent.change(code(), { target: { value: "---\na: 1\na: 2\n---\n# B\n" } }); // antes: YAML inválido; ahora es texto
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
-    const alerta = screen.getByRole("alert");
-    expect(alerta).toHaveTextContent(/repetida/i);
-    expect(alerta).toHaveTextContent(/línea 3/);
-    expect(screen.getByRole("button", { name: "Ir a la línea 3" })).toBeInTheDocument();
-    // No cambió de vista (sigue en Código) ni guardó.
-    expect(code()).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Ir a la línea/ })).toBeNull();
     const reloaded = await value.notes.get(note.id);
-    expect(reloaded.frontmatter).toEqual({ a: 1 });
-    expect(reloaded.content).toBe("# B\n");
+    expect(reloaded.content).toBe("---\na: 1\na: 2\n---\n# B\n");
+    expect(noDates(reloaded.frontmatter)).toEqual({ a: 1 });
   });
 
-  it("guardar desde Código con frontmatter > 64 KiB avisa con los KiB y no guarda (RF-019)", async () => {
-    const { value, note } = await setup("# B\n", { a: 1 });
+  it("editar una propiedad en META estando en Código se guarda junto al cuerpo", async () => {
+    const { value, note } = await setup("# B\n", { a: "x" });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
-    fireEvent.change(code(), { target: { value: `---\nbig: ${"x".repeat(70 * 1024)}\n---\n# B\n` } });
+    fireEvent.change(code(), { target: { value: "# Otro\n" } });
+    await userEvent.type(propValue("a"), "y");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    const reloaded = await value.notes.get(note.id);
+    expect(reloaded.content).toBe("# Otro\n");
+    expect(noDates(reloaded.frontmatter)).toEqual({ a: "xy" });
+  });
+
+  it("guardar con propiedades > 64 KiB avisa con los KiB y no guarda (RF-019)", async () => {
+    const { value, note } = await setup("# B\n", { a: "x" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    fireEvent.change(propValue("a"), { target: { value: "x".repeat(70 * 1024) } });
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     expect(screen.getByRole("alert")).toHaveTextContent(/KiB/);
     expect(screen.getByRole("alert")).toHaveTextContent(/64/);
-    expect((await value.notes.get(note.id)).frontmatter).toEqual({ a: 1 });
+    expect((await value.notes.get(note.id)).frontmatter).toEqual(note.frontmatter);
   });
 
   it("migrate (RF-044): abrir en edición una nota con YAML heredado lo trata como propiedades y avisa antes de guardar", async () => {
     await setup("---\ntitulo: X\n---\n# B\n", {});
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
-    expect(await screen.findByRole("textbox", { name: "Valor de «titulo»" })).toHaveValue("X");
+    expect(await screen.findByLabelText("Título")).toHaveValue("X");
     expect(visual()).toHaveValue("# B\n"); // el bloque salió del cuerpo en la sesión
     expect(screen.getByText(/se moverán/i)).toBeInTheDocument(); // aviso previo (P-5)
     expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled(); // Guardar habilitado sin editar
@@ -125,10 +138,10 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
   it("migrate: guardar mueve el bloque a frontmatter, lo quita del content y avisa «se movieron»", async () => {
     const { value, note } = await setup("---\ntitulo: X\n---\n# B\n", {});
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
-    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    await screen.findByLabelText("Título");
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     const reloaded = await value.notes.get(note.id);
-    expect(reloaded.frontmatter).toEqual({ titulo: "X" });
+    expect(noDates(reloaded.frontmatter)).toEqual({ titulo: "X" });
     expect(reloaded.content).toBe("# B\n");
     expect(screen.getByText(/se movieron fuera/i)).toBeInTheDocument();
   });
@@ -136,9 +149,9 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
   it("migrate: salir sin guardar no cambia la nota (RF-044)", async () => {
     const { value, note } = await setup("---\ntitulo: X\n---\n# B\n", {});
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
-    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    await screen.findByLabelText("Título");
     const reloaded = await value.notes.get(note.id); // no se guardó nada
-    expect(reloaded.frontmatter).toEqual({});
+    expect(noDates(reloaded.frontmatter)).toEqual({});
     expect(reloaded.content).toBe("---\ntitulo: X\n---\n# B\n");
   });
 
@@ -178,7 +191,7 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     await userEvent.type(visual(), "# Nuevo\n");
     await userEvent.type(propValue("a"), "y"); // "xy"
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
-    expect(code()).toHaveValue("---\na: xy\n---\n# Nuevo\n");
+    expect(code()).toHaveValue("# Nuevo\n");
     await userEvent.click(screen.getByRole("button", { name: "Visual" }));
     expect(visual()).toHaveValue("# Nuevo\n");
     expect(propValue("a")).toHaveValue("xy");
@@ -202,7 +215,7 @@ describe("avisos y lectura del YAML heredado (UX-H2, UX-H4)", () => {
   it("migrate: tras guardar el aviso es persistente con «Cerrar aviso»", async () => {
     await setup("---\ntitulo: X\n---\n# B\n", {});
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
-    await screen.findByRole("textbox", { name: "Valor de «titulo»" });
+    await screen.findByLabelText("Título");
     await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
     const notice = await screen.findByText(/Ahora están en el panel de propiedades/);
     expect(notice.closest(".note-editor-notice")).toHaveClass("note-notice-info");

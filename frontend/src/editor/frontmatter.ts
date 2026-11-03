@@ -154,7 +154,8 @@ function normalize(value: unknown): unknown {
  *  - `none`: nada que avisar.
  */
 export function classifyLegacy(frontmatter: Record<string, unknown>, content: string): "none" | "migrate" | "looks-yaml" {
-  const hasFrontmatter = Object.keys(frontmatter).length > 0;
+  // Las fechas de la nota las sella el sistema (H-029): una nota que solo trae esas dos no tiene propiedades propias.
+  const hasFrontmatter = Object.keys(frontmatter).some((key) => key !== "fecha_creacion" && key !== "fecha_actualizacion");
   const { yaml } = splitFrontmatter(content);
   if (yaml !== null) {
     const parsed = parseFrontmatterYaml(yaml);

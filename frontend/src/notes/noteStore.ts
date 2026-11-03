@@ -18,6 +18,8 @@ import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePat
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
 import { joinPath, parentFolder } from "./folders";
+import { stampDates, localDateISO } from "../editor/metaDates";
+import { canonical } from "../sync/canonical";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
 export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
@@ -231,6 +233,30 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     return doc;
   }
 
+  /**
+   * Fecha local (`AAAA-MM-DD`) de una marca UTC del almacén: la fecha que ve la persona, no la de UTC
+   * (a las 19:00 en Ciudad de México el reloj UTC ya está en el día siguiente).
+   */
+  function localDay(utc: string): string {
+    return localDateISO(new Date(utc));
+  }
+
+  /**
+   * Frontmatter a guardar. Si el guardado cambia algo (contenido o propiedades) se sellan las fechas:
+   * `fecha_actualizacion` hoy; `fecha_creacion` se conserva o sale de `created_at`. Un guardado sin cambios
+   * reales no toca el frontmatter.
+   */
+  function frontmatterToSave(
+    next: Record<string, unknown>,
+    base: { frontmatter: Record<string, unknown>; content: string; created_at: string },
+    content: string,
+    timestamp: string,
+  ): Record<string, unknown> {
+    const unchanged = content === base.content && canonical(next) === canonical(base.frontmatter);
+    if (unchanged) return next;
+    return stampDates(next, { today: localDay(timestamp), createdAtISO: localDay(base.created_at) });
+  }
+
   /** Escribe una revisión nueva; traduce el 409 de PouchDB y la cuota agotada. */
   async function write(doc: NoteDoc): Promise<Note> {
     try {
@@ -261,14 +287,16 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       throw err;
     }
     if (base._deleted) throw new NoteChangedError();
+    const timestamp = now();
+    const sealedFrontmatter = frontmatterToSave(frontmatter ?? base.frontmatter, base, content, timestamp);
     const body = {
       type: "note" as const,
       vault_id: base.vault_id,
       path: base.path,
-      frontmatter: frontmatter ?? base.frontmatter,
+      frontmatter: sealedFrontmatter,
       content,
       created_at: base.created_at,
-      updated_at: now(),
+      updated_at: timestamp,
       deleted_at: base.deleted_at,
     };
     const revision = await child({ _rev: baseRev, _revisions: base._revisions }, body);
@@ -342,12 +370,13 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (checkPath(path) !== null) throw new NoteValidationError(["path"]);
     await assertPathFree(vaultId, path, null);
     const timestamp = now();
+    const stampedFrontmatter = stampDates({}, { today: localDay(timestamp) });
     return write({
       _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
       type: "note",
       vault_id: vaultId,
       path,
-      frontmatter: {},
+      frontmatter: stampedFrontmatter,
       content: "",
       created_at: timestamp,
       updated_at: timestamp,
@@ -430,8 +459,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
       if (doc._rev === baseRev) {
         try {
-          // `frontmatter` ausente conserva el del documento; presente lo reemplaza.
-          return await write({ ...doc, content, frontmatter: frontmatter ?? doc.frontmatter, updated_at: now() });
+          const timestamp = now();
+          const sealedFrontmatter = frontmatterToSave(frontmatter ?? doc.frontmatter, doc, content, timestamp);
+          return await write({ ...doc, content, frontmatter: sealedFrontmatter, updated_at: timestamp });
         } catch (err) {
           // Otra escritura se coló entre la lectura y la nuestra: es el mismo caso de abajo.
           if (!(err instanceof NoteChangedError)) throw err;
