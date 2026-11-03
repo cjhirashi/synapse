@@ -221,7 +221,11 @@ test("H-025 paso 8: una imagen ![](enlace de YouTube) ya existente se pinta como
   const code = page.locator(".cm-content");
   await code.click();
   await page.keyboard.press("Control+End");
-  await page.keyboard.type("\n\n![Cómo instalar microPython](https://www.youtube.com/watch?v=jNQXAC9IVRw)\n");
+  // Markdown exacto de la nota de Carlos: imagen con título, enlace con título y autoenlace con título suelto.
+  await page.keyboard.insertText(
+    '\n\n![Cómo instalar microPython en la ESP32 - fácil - v1](https://www.youtube.com/watch?v=jNQXAC9IVRw "Cómo instalar microPython en la ESP32 - fácil - v1")\n\n' +
+      '[Cómo instalar](https://www.youtube.com/watch?v=jNQXAC9IVRw "Cómo instalar")\n\n<https://www.youtube.com/watch?v=jNQXAC9IVRw> "Cómo instalar"\n',
+  );
   await page.getByRole("button", { name: "Visual", exact: true }).click();
   const frame = page.locator('.milkdown-view iframe[src^="https://www.youtube-nocookie.com/embed/jNQXAC9IVRw"]');
   await expect(frame).toHaveCount(1);
@@ -232,8 +236,17 @@ test("H-025 paso 8: una imagen ![](enlace de YouTube) ya existente se pinta como
   expect(await inner.locator("body").innerText().catch(() => ""), "el reproductor carga").toMatch(/Me at the zoo/);
   await frame.scrollIntoViewIfNeeded();
   await shot(page, "h025-390-7-imagen-youtube-existente");
-  // Lectura
-  await page.getByRole("button", { name: /Leer|Lectura/ }).first().click().catch(() => undefined);
+  // Lectura: el mismo reproductor, un solo iframe y ninguna imagen rota.
+  await page.getByRole("button", { name: "Leer", exact: true }).click();
+  await expect(page.locator('.milkdown-view iframe[src^="https://www.youtube-nocookie.com/embed/jNQXAC9IVRw"]')).toHaveCount(1);
+  await expect(page.locator(".milkdown-view img:not(.ProseMirror-separator)")).toHaveCount(0);
+  await page.locator(".md-embed-video").first().scrollIntoViewIfNeeded();
+  const readFrame = page.locator('.milkdown-view iframe[src^="https://www.youtube-nocookie.com/embed/jNQXAC9IVRw"]');
+  const readInner = (await (await readFrame.elementHandle())!.contentFrame())!;
+  await readInner.waitForLoadState("load", { timeout: 20_000 }).catch(() => undefined);
+  await page.waitForTimeout(3_000);
+  expect(await readInner.locator("body").innerText().catch(() => ""), "en Lectura el reproductor también carga").toMatch(/Me at the zoo/);
+  await shot(page, "h025-390-8-lectura-nota-real");
   expect(errors, "sin errores de consola propios").toEqual([]);
   await context.close();
 });
