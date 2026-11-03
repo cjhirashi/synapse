@@ -124,13 +124,14 @@ def get_file_service(
 def upload_file(
     vault_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
+    folder: Annotated[str | None, Form()] = None,
     service: FileService = Depends(get_file_service),
 ):
     # Se lee el archivo con tope por tipo (5 MB imágenes, 25 MB resto). El servicio decide el
     # límite basado en la extensión (C-2/C-11). El handler es síncrono → corre en el threadpool,
     # así la lectura y la subida a MinIO (que bloquean) no frenan el bucle de eventos.
     data = file.file.read(MAX_FILE_SIZE_DOCUMENT + 1)
-    return service.create(vault_id=vault_id, filename=file.filename or "archivo", data=data)
+    return service.create(vault_id=vault_id, filename=file.filename or "archivo", data=data, folder=folder)
 
 
 @router.get(

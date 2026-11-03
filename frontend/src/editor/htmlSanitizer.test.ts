@@ -367,4 +367,65 @@ describe("sanitizeHtmlFragment", () => {
     expect(fragmentHTML(result)).not.toContain("<script");
     expect(fragmentHTML(result)).not.toContain("<b>");
   });
+
+  // H-025 PASO 3: YouTube embeds
+  it("conserva iframe de YouTube nocookie con src válido", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>');
+    expect(fragmentHTML(result)).toContain('<iframe');
+    expect(fragmentHTML(result)).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"');
+  });
+
+  it("normaliza iframe de YouTube nocookie a atributos exactos (sandbox, allow, allowfullscreen)", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>');
+    const html = fragmentHTML(result);
+    expect(html).toContain('sandbox="allow-scripts allow-same-origin allow-presentation"');
+    expect(html).toContain('allow="fullscreen"');
+    expect(html).toContain('allowfullscreen');
+    expect(html).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+    expect(html).not.toContain('no-referrer');
+    expect(html).toContain('loading="lazy"');
+  });
+
+  it("los iframes que no son de YouTube siguen con referrerpolicy=\"no-referrer\"", () => {
+    const html = fragmentHTML(sanitizeHtmlFragment('<iframe src="https://synapse.cjhirashi.com/files/550e8400-e29b-41d4-a716-446655440000" referrerpolicy="unsafe-url"></iframe>'));
+    expect(html).toContain('referrerpolicy="no-referrer"');
+    expect(html).not.toContain("unsafe-url");
+  });
+
+  it("conserva parámetro start= en YouTube", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>');
+    const html = fragmentHTML(result);
+    expect(html).toContain('src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"');
+  });
+
+  it("elimina iframe con src youtube.com/embed (no nocookie)", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>');
+    expect(fragmentHTML(result)).not.toContain("<iframe");
+  });
+
+  it("elimina iframe con parámetros extra en YouTube", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90&rel=0"></iframe>');
+    expect(fragmentHTML(result)).not.toContain("<iframe");
+  });
+
+  it("elimina iframe con dominio parecido a YouTube (youtube-nocookie.com.evil.com)", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://youtube-nocookie.com.evil.com/embed/dQw4w9WgXcQ"></iframe>');
+    expect(fragmentHTML(result)).not.toContain("<iframe");
+  });
+
+  it("iframe de Synapse sigue con sandbox=\"allow-scripts\" solo (sin allow-same-origin)", () => {
+    const result = sanitizeHtmlFragment('<iframe src="https://synapse.cjhirashi.com/files/550e8400-e29b-41d4-a716-446655440000" sandbox="allow-same-origin allow-scripts" allow="fullscreen" allowfullscreen></iframe>');
+    const html = fragmentHTML(result);
+    expect(html).toContain('sandbox="allow-scripts"');
+    expect(html).not.toContain('allow-same-origin');
+    expect(html).not.toContain('allow=');
+    expect(html).not.toContain('allowfullscreen');
+  });
+
+  it("no acepta <script> junto a iframe de YouTube", () => {
+    const result = sanitizeHtmlFragment('<script>alert(1)</script><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>');
+    const html = fragmentHTML(result);
+    expect(html).not.toContain("<script");
+    expect(html).toContain("<iframe");
+  });
 });

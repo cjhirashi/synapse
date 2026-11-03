@@ -1,5 +1,7 @@
 // H-019: saneador de HTML del markdown con lista blanca, validador de URLs embebidas.
+// H-025: soporte para YouTube embeds.
 import DOMPurify from "dompurify";
+import { parseYoutubeEmbedSrc } from "./classifyUrl";
 
 export function isAllowedEmbedSrc(src: string): boolean {
   try {
@@ -13,6 +15,11 @@ export function isAllowedEmbedSrc(src: string): boolean {
     // La parte host está entre // y el primer / o fin de la cadena.
     const hostPart = src.split("/").slice(2, 3)[0];
     if (hostPart?.includes(":")) return false;
+
+    // Patrón YouTube: youtube-nocookie.com/embed/<id>
+    if (parseYoutubeEmbedSrc(src)) {
+      return true;
+    }
 
     // Patrón a): synapse.cjhirashi.com/files/<uuid v4>, sin query ni hash.
     if (url.origin === "https://synapse.cjhirashi.com") {
@@ -44,7 +51,7 @@ export function sanitizeHtmlFragment(html: string): DocumentFragment {
   const fragment = purifier.sanitize(html, {
     RETURN_DOM_FRAGMENT: true,
     ALLOWED_TAGS: ["br", "sub", "sup", "mark", "kbd", "small", "del", "ins", "span", "div", "details", "summary", "iframe"],
-    ALLOWED_ATTR: ["open", "title", "src", "sandbox", "referrerpolicy", "loading"],
+    ALLOWED_ATTR: ["open", "title", "src", "sandbox", "referrerpolicy", "loading", "allow", "allowfullscreen"],
     ALLOW_DATA_ATTR: false,
     ALLOW_ARIA_ATTR: false,
     FORCE_BODY: false,
@@ -57,8 +64,21 @@ export function sanitizeHtmlFragment(html: string): DocumentFragment {
     if (!src || !isAllowedEmbedSrc(src)) {
       iframe.remove();
     } else {
-      iframe.setAttribute("sandbox", "allow-scripts");
-      iframe.setAttribute("referrerpolicy", "no-referrer");
+      // Detectar si es YouTube
+      const isYoutube = parseYoutubeEmbedSrc(src);
+      if (isYoutube) {
+        iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-presentation");
+        iframe.setAttribute("allow", "fullscreen");
+        iframe.setAttribute("allowfullscreen", "");
+        // YouTube rechaza el reproductor (Error 153) si no recibe referente; solo viaja el origen, nunca la ruta.
+        iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+      } else {
+        iframe.setAttribute("sandbox", "allow-scripts");
+        // Remover allow y allowfullscreen para embeds de Synapse
+        iframe.removeAttribute("allow");
+        iframe.removeAttribute("allowfullscreen");
+        iframe.setAttribute("referrerpolicy", "no-referrer");
+      }
       iframe.setAttribute("loading", "lazy");
     }
   });

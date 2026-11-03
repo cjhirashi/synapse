@@ -257,3 +257,7 @@ papelera). El `ETag` de una nota borrada sale del listado (`GET …/notes?delete
 | `POST` | `/vaults/{vault_id}/notes/{note_id}/restore` | cookie **o** `Bearer syn_ak_…` | `200` + `ETag` · `401` · `404` · `409` · `412` · `428` · `503` |
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
+
+## Archivos: carpeta opcional (H-025)
+
+`POST /files` (multipart) acepta el campo opcional `folder`: de 1 a 64 caracteres, sin `/`, `\` ni caracteres de control, y distinto de `.` y `..`. Vacío o solo espacios equivale a sin carpeta. Un valor inválido da `422` `validation-error` sin crear nada en MinIO ni en la base. Las respuestas de `POST /files`, `PATCH /files/{id}` y `GET /vaults/{vault_id}/files` devuelven `folder` (`null` para los archivos sin carpeta, incluidos los anteriores a la migración 007). `PATCH` no cambia la carpeta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.

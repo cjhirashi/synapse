@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ChangeEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ClipboardEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -47,7 +47,9 @@ import {
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
+import { captureFileName } from "../files/captureName";
 import { htmlEmbedMarkup } from "../files/embed";
+import { classifyUrl, youtubeEmbedUrl } from "./classifyUrl";
 import { canonical } from "../sync/canonical";
 import type * as Frontmatter from "./frontmatter";
 import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
@@ -59,6 +61,7 @@ import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
+import AttachDialog from "./AttachDialog";
 import { MilkdownView, type EditorCommands } from "./MilkdownView";
 import { WikilinkPreview, type WikilinkHoverTarget } from "./WikilinkPreview";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
@@ -104,6 +107,8 @@ export interface ViewProps {
   onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
   /** Color de la bóveda abierta (H-014); sólo lo usa la vista Visual para publicar las variables de color del documento. */
   vaultColor?: PaletteKey;
+  /** Notificación de conversión de enlace (H-025 paso 4); sólo la vista Visual en edición. */
+  onLinkConverted?: (info: { kind: "youtube" | "image" }) => void;
 }
 
 export interface NoteEditorViews {
@@ -291,8 +296,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [inTable, setInTable] = useState(false);
   /** Aviso de una subida de imagen fallida (H-015): tamaño, tipo o red; se limpia al reintentar. */
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /** Aviso de conversión de enlace (H-025 paso 5): "youtube" o "image"; se limpia a los 8 s. */
+  const [converted, setConverted] = useState<{ kind: "youtube" | "image"; n: number } | null>(null);
+  /** Diálogo de adjuntar (H-025 paso 7): abierto o cerrado. */
+  const [attachOpen, setAttachOpen] = useState(false);
   /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
   const imageInputRef = useRef<HTMLInputElement>(null);
+  /** Timeout del aviso de conversión de enlace (H-025 paso 5). */
+  const convertedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** H-026: referencia al div contenedor del scroll del documento. */
   const editorBodyRef = useRef<HTMLDivElement>(null);
   /** H-026: timeout del debounce de scroll. */
@@ -307,13 +318,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
    * o `[nombre](url)` (documento) (H-015/H-016).
    * La URL es `https://synapse.cjhirashi.com/files/<id>` (pasa `safeImageUrl` sin cambios, C-4).
    * El tipo y límites se validan en el cliente (feedback inmediato) y en el backend (C-11).
+   * Si `folder` se proporciona, lo agrega al formulario (H-025 paso 6).
    */
-  const insertUploadedImage = useCallback(async (file: File) => {
+  const insertUploadedImage = useCallback(async (file: File, folder?: string) => {
     const current = noteRef.current;
     if (current === null) return;
     setUploadError(null);
     try {
-      const uploaded = await uploadFile(file, current.vault_id);
+      const uploaded = await uploadFile(file, current.vault_id, folder);
       const alt = file.name.replace(/\.[^.]+$/, "") || uploaded.name;
       const url = fileUrl(uploaded.id);
       if ((ALLOWED_IMAGE_TYPES as readonly string[]).includes(uploaded.content_type)) {
@@ -432,6 +444,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setSaved(false);
     setPending(false);
     setPreparsed(null);
+    setConverted(null);
+    if (convertedTimeoutRef.current) clearTimeout(convertedTimeoutRef.current);
     notes.get(openId).then(
       async (loaded) => {
         if (!alive) return;
@@ -467,6 +481,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       alive = false;
     };
   }, [notes, openId]);
+
+  // Temporizador del aviso de conversión de enlace (H-025 paso 5): se limpia a los 8 s.
+  useEffect(() => {
+    if (!converted) return;
+    convertedTimeoutRef.current = setTimeout(() => setConverted(null), 8000);
+    return () => {
+      if (convertedTimeoutRef.current) clearTimeout(convertedTimeoutRef.current);
+    };
+  }, [converted]);
 
   // Otra revisión llegó (el pull, otra pestaña, un renombrado). Sin cambios locales se muestra
   // tal cual. Con cambios sin guardar el borrador se respeta: si la revisión nueva conserva el
@@ -825,6 +848,106 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     event.preventDefault();
   }
 
+  /**
+   * Pegado de captura de pantalla (H-025 paso 6): intercepta imágenes del portapapeles.
+   * Solo en edición Visual. Si trae imagen, la sube a carpeta "Varios".
+   * Si hay imagen Y texto, y hay `text/plain`, no intercepta (es pegado normal).
+   */
+  function onPasteCapture(event: ClipboardEvent<HTMLDivElement>) {
+    if (mode !== "edit" || view !== "visual") return;
+    const clipData = event.clipboardData;
+    if (!clipData) return;
+
+    let file: File | null = null;
+    const items = clipData.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === "file") {
+          const f = items[i].getAsFile();
+          if (f && f.type.startsWith("image/")) {
+            file = f;
+            break;
+          }
+        }
+      }
+    }
+
+    if (!file) {
+      const files = clipData.files;
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith("image/")) {
+          file = files[i];
+          break;
+        }
+      }
+    }
+
+    if (!file) return;
+
+    const hasText = clipData.types.includes("text/plain");
+    if (hasText) return;
+
+    event.preventDefault();
+    const name = captureFileName(new Date(), file.type);
+    if (name === null) {
+      setUploadError("Ese tipo de archivo no se admite.");
+      return;
+    }
+
+    const namedFile = new File([file], name, { type: file.type });
+    void insertUploadedImage(namedFile, "Varios");
+  }
+
+  /**
+   * Valida y inserta una URL (H-025 paso 7): según el tipo (auto, imagen, youtube),
+   * valida que sea HTTPS bien formada, usa classifyUrl para automático, y llama
+   * a insertImage/insertEmbed/insertLink. Devuelve null si insertó, string si error.
+   */
+  function onAttachUrl(url: string, kind: "auto" | "image" | "youtube"): string | null {
+    const trimmed = url.trim();
+
+    try {
+      new URL(trimmed);
+    } catch {
+      return "Escribe una dirección web válida.";
+    }
+
+    if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
+      return "Escribe una dirección web válida.";
+    }
+
+    if (kind === "auto") {
+      const classified = classifyUrl(trimmed);
+      if (classified.kind === "youtube") {
+        editorCommands.current?.insertEmbed(youtubeEmbedUrl(classified.id, classified.start));
+      } else if (classified.kind === "image") {
+        editorCommands.current?.insertImage(trimmed, "");
+      } else {
+        editorCommands.current?.insertLink(trimmed, trimmed);
+      }
+      return null;
+    }
+
+    if (kind === "image") {
+      if (!trimmed.startsWith("https://")) {
+        return "Las imágenes solo se admiten con https.";
+      }
+      editorCommands.current?.insertImage(trimmed, "");
+      return null;
+    }
+
+    if (kind === "youtube") {
+      const classified = classifyUrl(trimmed);
+      if (classified.kind !== "youtube") {
+        return "No es un enlace de YouTube admitido.";
+      }
+      editorCommands.current?.insertEmbed(youtubeEmbedUrl(classified.id, classified.start));
+      return null;
+    }
+
+    return null;
+  }
+
   // H-026: el scroll se avisa con debounce de 250 ms; al desmontar o cambiar de nota se entrega lo pendiente.
   const lastScrollPx = useRef(0);
   const onScrollRef = useRef(onScroll);
@@ -1027,9 +1150,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
               <ListOrdered size={16} aria-hidden="true" />
             </button>
-            {/* H-015/H-016: subir archivo (botón) e insertarlo en el cursor; también se puede
-                arrastrar y soltar sobre el área de edición. El input de archivo va oculto. */}
-            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => imageInputRef.current?.click()}>
+            {/* H-015/H-016/H-025: adjuntar archivo o URL (H-025 paso 7: diálogo con dos opciones).
+                El input de archivo va oculto y se dispara desde el diálogo. */}
+            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => setAttachOpen(true)}>
               <ImagePlus size={16} aria-hidden="true" />
             </button>
             <input
@@ -1051,7 +1174,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
       {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
-      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver}>
+      <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver} onPasteCapture={onPasteCapture}>
         <div className="note-editor-column">
           {pathInvalid && (
             <div className="note-editor-notice" role="alert">
@@ -1105,6 +1228,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               {uploadError}
             </Notice>
           )}
+          {/* H-025 paso 5: aviso de conversión de enlace con botón Deshacer. */}
+          {converted !== null && (
+            <Notice
+              variant="info"
+              action={{
+                label: "Deshacer",
+                onClick: () => {
+                  editorCommands.current?.undo();
+                  setConverted(null);
+                },
+              }}
+              onClose={() => setConverted(null)}
+            >
+              {converted.kind === "youtube"
+                ? "Enlace convertido en reproductor de YouTube."
+                : "Enlace convertido en imagen."}
+            </Notice>
+          )}
           {pendingId !== null && (
             <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
               <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
@@ -1144,6 +1285,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </ConfirmDialog>
           )}
 
+          {/* H-025 paso 7: diálogo de adjuntar archivo o URL. */}
+          {attachOpen && mode === "edit" && view === "visual" && (
+            <AttachDialog
+              onUpload={() => imageInputRef.current?.click()}
+              onUrl={onAttachUrl}
+              onClose={() => setAttachOpen(false)}
+            />
+          )}
+
           {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición el formulario de la sesión (D1). */}
           {mode === "read" && <PropertiesPanel frontmatter={note.frontmatter} />}
           {/* En Visual, el formulario parte de las propiedades vigentes (`props`) y las emite con `onProps`.
@@ -1174,7 +1324,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               )}
             </>
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} onLinkConverted={(info) => setConverted((prev) => ({ kind: info.kind, n: (prev?.n ?? 0) + 1 }))} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}

@@ -22,5 +22,6 @@ class File(Base):
     content_type = Column(String, nullable=False)
     size = Column(Integer, nullable=False)
     visibility = Column(String, nullable=False, server_default=text("'private'"), default="private")
+    folder = Column(String, nullable=True)
     object_key = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False)

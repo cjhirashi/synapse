@@ -272,6 +272,7 @@ class FileMetaOut(BaseModel):
     content_type: str
     size: int
     visibility: str
+    folder: str | None
     created_at: datetime
 
 

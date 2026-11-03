@@ -501,7 +501,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     fireEvent.change(input);
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc", "foto"));
   });
 
@@ -512,7 +512,7 @@ describe("subir imagen en la Fila 3 (H-015)", () => {
     const file = new File([new Uint8Array(16)], "dibujo.png", { type: "image/png" });
     fireEvent.drop(body, { dataTransfer: { files: [file] } });
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/xyz", "dibujo"));
   });
 
@@ -583,7 +583,7 @@ describe("subir archivo HTML en la Fila 3 (H-019)", () => {
     Object.defineProperty(input, "files", { value: [file], configurable: true });
     fireEvent.change(input);
 
-    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT));
+    await waitFor(() => expect(mockUpload).toHaveBeenCalledWith(file, VAULT, undefined));
     await waitFor(() => expect(insertEmbed).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/abc"));
   });
 
@@ -1521,5 +1521,473 @@ describe("H-026: recordar y restaurar scroll", () => {
     } finally {
       layout.restore();
     }
+  });
+});
+
+// H-025 paso 5: aviso «Deshacer» tras convertir un enlace pegado.
+describe("aviso de enlace convertido (H-025)", () => {
+  async function setupConvert() {
+    const undoSpy = vi.fn();
+    let fire: ((kind: "youtube" | "image") => void) | null = null;
+    function VisualConvert({ value, onChange, label, readOnly, registerCommands, onLinkConverted }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ undo: undoSpy } as never);
+        fire = (kind) => onLinkConverted?.({ kind });
+        return () => registerCommands?.(null);
+      }, [registerCommands, onLinkConverted]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const utils = await setup("hola", {}, { views: { Visual: VisualConvert, Code: fake("code") } });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, undoSpy, convert: (kind: "youtube" | "image") => act(() => fire!(kind)) };
+  }
+
+  it("muestra el texto y el botón «Deshacer»; «Deshacer» llama a undo y oculta el aviso", async () => {
+    const { undoSpy, convert } = await setupConvert();
+    convert("youtube");
+    expect(screen.getByText("Enlace convertido en reproductor de YouTube.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    expect(undoSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+  });
+
+  it("desaparece a los 8 s y no antes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { convert } = await setupConvert();
+      convert("image");
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(7900);
+      });
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("dos conversiones seguidas (aun del mismo tipo) reinician el temporizador", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { convert } = await setupConvert();
+      convert("image");
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      convert("image");
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      convert("youtube");
+      expect(screen.getByText("Enlace convertido en reproductor de YouTube.")).toBeInTheDocument();
+      expect(screen.queryByText("Enlace convertido en imagen.")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("«Cerrar aviso» lo oculta", async () => {
+    const { convert } = await setupConvert();
+    convert("image");
+    await userEvent.click(screen.getByRole("button", { name: /Cerrar aviso/i }));
+    expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+  });
+});
+
+// H-025 paso 6: captura de pantalla pegada con carpeta "Varios"
+describe("captura de pantalla pegada (H-025 paso 6)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  async function setupPaste() {
+    const insertImage = vi.fn();
+    function VisualWithPaste({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithPaste, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertImage };
+  }
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("pegar una imagen PNG en edición Visual sube con folder 'Varios' e inserta", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container, insertImage } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "screenshot.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    await waitFor(() => {
+      const call = mockUpload.mock.calls[0];
+      expect(call).toBeDefined();
+      expect(call[1]).toBe(VAULT);
+      expect(call[2]).toBe("Varios");
+      expect(call[0]).toBeInstanceOf(File);
+      expect(call[0].type).toBe("image/png");
+      expect(call[0].name).toMatch(/^captura-\d+-\d+\.png$/);
+    });
+    await waitFor(() =>
+      expect(insertImage).toHaveBeenCalledWith("https://synapse.cjhirashi.com/files/cap123", expect.stringContaining("captura-"))
+    );
+  });
+
+  it("en lectura no intercepta pegado", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container } = await setup("hola");
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        types: ["Files"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("en vista Código no intercepta pegado", async () => {
+    mockUpload.mockResolvedValueOnce({
+      id: "cap123",
+      vault_id: VAULT,
+      name: "captura.png",
+      content_type: "image/png",
+      size: 256,
+      visibility: "private",
+      created_at: "2026-10-30T00:00:00Z",
+    });
+    const { container } = await setupPaste();
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        types: ["Files"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar solo texto no llama a uploadFile", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [],
+        types: ["text/plain"],
+        getData: (type: string) => (type === "text/plain" ? "texto de prueba" : ""),
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar imagen Y texto no intercepta (pegado normal)", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [
+          { kind: "file", type: "image/png", getAsFile: () => file },
+          { kind: "string", type: "text/plain", getAsString: (cb: (s: string) => void) => cb("texto") },
+        ],
+        types: ["Files", "text/plain"],
+      },
+    });
+
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("pegar SVG muestra aviso de error y no inserta", async () => {
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "dibujo.svg", { type: "image/svg+xml" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/svg+xml", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    expect(await screen.findByText(/no se admite/i)).toBeInTheDocument();
+    expect(mockUpload).not.toHaveBeenCalled();
+  });
+
+  it("si uploadFile falla, muestra el aviso de error", async () => {
+    mockUpload.mockRejectedValueOnce(new uploadModule.UploadTooLargeError("demasiado grande"));
+    const { container } = await setupPaste();
+    const body = container.querySelector<HTMLElement>(".note-editor-body")!;
+    const file = new File([new Uint8Array(256)], "captura.png", { type: "image/png" });
+    fireEvent.paste(body, {
+      clipboardData: {
+        files: [file],
+        items: [{ kind: "file", type: "image/png", getAsFile: () => file }],
+        types: ["Files"],
+      },
+    });
+
+    expect(await screen.findByText(/límite de tamaño/i)).toBeInTheDocument();
+  });
+});
+
+// H-025 paso 7: control «Subir o pegar URL»
+describe("control «Subir o pegar URL» (H-025 paso 7)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  async function setupAttach() {
+    const insertEmbed = vi.fn();
+    const insertLink = vi.fn();
+    const insertImage = vi.fn();
+    function VisualWithAttach({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertEmbed, insertLink, insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithAttach, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertEmbed, insertLink, insertImage };
+  }
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("el botón Adjuntar archivo abre el diálogo (no abre el input)", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(attachBtn);
+    expect(screen.getByRole("dialog", { name: /Adjuntar/i })).toBeInTheDocument();
+  });
+
+  it("abrir el diálogo no dispara el selector de archivos, y Escape devuelve el foco al botón Adjuntar archivo", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const clickSpy = vi.spyOn(input, "click");
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    expect(clickSpy).not.toHaveBeenCalled();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(attachBtn).toHaveFocus();
+  });
+
+  it("data: y ftp: se rechazan en cualquier tipo y no insertan", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed, insertLink, insertImage } = await setupAttach();
+    await user.click(screen.getByRole("button", { name: "Adjuntar archivo" }));
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+    for (const bad of ["data:text/html,<b>x</b>", "ftp://example.com/a.png"]) {
+      await user.clear(screen.getByLabelText("URL"));
+      await user.type(screen.getByLabelText("URL"), bad);
+      await user.click(screen.getByRole("button", { name: "Insertar" }));
+      expect(screen.getByRole("alert")).toHaveTextContent("Escribe una dirección web válida.");
+    }
+    expect(insertEmbed).not.toHaveBeenCalled();
+    expect(insertLink).not.toHaveBeenCalled();
+    expect(insertImage).not.toHaveBeenCalled();
+  });
+
+  it("el diálogo tiene botones Subir archivo y Pegar URL", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+
+    expect(screen.getByRole("button", { name: "Subir archivo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pegar URL" })).toBeInTheDocument();
+  });
+
+  it("Subir archivo en el diálogo hace click en el input y cierra", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const clickSpy = vi.spyOn(input, "click");
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Subir archivo" }));
+
+    expect(clickSpy).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("YouTube automático: URL con ?t=90 inserta con youtubeEmbedUrl", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertEmbed).toHaveBeenCalledWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("imagen automática: HTTPS URL insertImageN", async () => {
+    const user = userEvent.setup();
+    const { insertImage } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://example.com/image.png");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertImage).toHaveBeenCalledWith("https://example.com/image.png", "");
+  });
+
+  it("link automático: URL genérica insertLink", async () => {
+    const user = userEvent.setup();
+    const { insertLink } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://example.com/pagina");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertLink).toHaveBeenCalledWith("https://example.com/pagina", "https://example.com/pagina");
+  });
+
+  it("Imagen con http:// muestra error", async () => {
+    const user = userEvent.setup();
+    const { insertImage } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    const kindSelect = screen.getByLabelText("Tipo");
+    await user.selectOptions(kindSelect, "image");
+    await user.type(urlInput, "http://example.com/image.png");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/solo.*https/i);
+    expect(insertImage).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("YouTube con URL que no es YouTube muestra error", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    const kindSelect = screen.getByLabelText("Tipo");
+    await user.selectOptions(kindSelect, "youtube");
+    await user.type(urlInput, "https://example.com");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/no es un enlace de YouTube/i);
+    expect(insertEmbed).not.toHaveBeenCalled();
+  });
+
+  it("javascript: URL muestra error", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "javascript:alert(1)");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/dirección web válida/i);
+  });
+
+  it("texto suelto muestra error", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "solo texto sin url");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/dirección web válida/i);
+  });
+
+  it("Escape cierra el diálogo", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("Cancelar cierra el diálogo", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 });

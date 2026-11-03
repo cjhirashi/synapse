@@ -2,6 +2,7 @@
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { TextSelection } from "@milkdown/prose/state";
 import { EditorView } from "@milkdown/prose/view";
+import { undo } from "@milkdown/prose/history";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { HEADING_CASES, CONTENT_NOTES } from "../../e2e/content-notes";
 import { PARSE_MARK } from "./markdown/cachedParser";
@@ -374,6 +375,203 @@ describe("MilkdownView · pegar", () => {
     paste(view as unknown as EditorView, { "text/plain": "- pegado\n" });
     expect((view as unknown as EditorView).state.doc.textContent.split("Notaabierta")).toHaveLength(2); // la nota, una sola vez
     expect((view as unknown as EditorView).state.doc.textContent).toContain("pegado");
+  });
+
+  // H-025 paso 4: pegado de enlace de YouTube o imagen con conversión reversible.
+  describe("linkPaste (H-025 paso 4)", () => {
+    it("pegar https://youtu.be/dQw4w9WgXcQ?t=90 en un párrafo vacío crea un nodo html", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ?t=90" });
+      const nodeNames = new Set<string>();
+      (view as unknown as EditorView).state.doc.descendants((node) => {
+        nodeNames.add(node.type.name);
+      });
+      expect(nodeNames.has("html")).toBe(true);
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "youtube" });
+    });
+
+    it("pegar https://example.com/foto.png crea un nodo image", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://example.com/foto.png" });
+      const nodeNames = new Set<string>();
+      (view as unknown as EditorView).state.doc.descendants((node) => {
+        nodeNames.add(node.type.name);
+      });
+      expect(nodeNames.has("image")).toBe(true);
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "image" });
+    });
+
+    it("pegar una URL normal (no YouTube, no imagen) NO convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://example.com/pagina" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
+    it("pegar con texto antes en el párrafo NO convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value="texto"
+          readOnly={false}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
+    it("en modo Lectura (readOnly) no convierte", async () => {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(
+        <MilkdownView
+          value=""
+          readOnly={true}
+          onChange={() => {}}
+          label="Visual"
+          onView={(v) => (view = v)}
+          onLinkConverted={onLinkConverted}
+        />
+      );
+      await waitFor(() => expect(view).not.toBeNull());
+      paste(view as unknown as EditorView, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+    });
+
+    async function mount(value: string) {
+      const onLinkConverted = vi.fn();
+      let view: EditorView | null = null;
+      render(<MilkdownView value={value} readOnly={false} onChange={() => {}} label="Visual" onView={(v) => (view = v)} onLinkConverted={onLinkConverted} />);
+      await waitFor(() => expect(view).not.toBeNull());
+      return { view: view as unknown as EditorView, onLinkConverted };
+    }
+
+    function pasteWithFile(view: EditorView, text: string) {
+      const event = new Event("paste", { bubbles: true, cancelable: true });
+      const file = new File(["x"], "a.png", { type: "image/png" });
+      Object.defineProperty(event, "clipboardData", { value: { getData: (type: string) => (type === "text/plain" ? text : ""), types: ["text/plain", "Files"], files: [file], items: [{ kind: "file" }] } });
+      act(() => {
+        view.dom.dispatchEvent(event);
+      });
+    }
+
+    it("el nodo html lleva el embed con start=90 y se pinta el reproductor", async () => {
+      const { view } = await mount("");
+      paste(view, { "text/plain": "https://youtu.be/dQw4w9WgXcQ?t=90" });
+      let value = "";
+      view.state.doc.descendants((n) => {
+        if (n.type.name === "html") value = n.attrs.value;
+      });
+      expect(value).toContain("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+      await waitFor(() => expect(view.dom.querySelector(".md-embed-video")).not.toBeNull());
+    });
+
+    it("la imagen pegada lleva el src de la URL", async () => {
+      const { view } = await mount("");
+      paste(view, { "text/plain": "https://example.com/foto.png" });
+      let src = "";
+      view.state.doc.descendants((n) => {
+        if (n.type.name === "image") src = n.attrs.src;
+      });
+      expect(src).toBe("https://example.com/foto.png");
+    });
+
+    it("un undo deja el enlace con marca link y un segundo undo deja el documento vacío", async () => {
+      const { view } = await mount("");
+      paste(view, { "text/plain": "https://youtu.be/dQw4w9WgXcQ?t=90" });
+      expect(nodeNames(view)).toContain("html");
+      act(() => {
+        undo(view.state, view.dispatch);
+      });
+      expect(nodeNames(view)).not.toContain("html");
+      expect(view.state.doc.textContent).toBe("https://youtu.be/dQw4w9WgXcQ?t=90");
+      let linked = false;
+      view.state.doc.descendants((n) => {
+        if (n.isText && n.marks.some((m) => m.type.name === "link" && m.attrs.href === "https://youtu.be/dQw4w9WgXcQ?t=90")) linked = true;
+      });
+      expect(linked).toBe(true);
+      act(() => {
+        undo(view.state, view.dispatch);
+      });
+      expect(view.state.doc.textContent).toBe("");
+      expect(nodeNames(view)).not.toContain("html");
+    });
+
+    it("dentro de un bloque de código NO convierte", async () => {
+      const { view, onLinkConverted } = await mount("```\n```\n");
+      let pos = -1;
+      view.state.doc.descendants((n, p) => {
+        if (n.type.spec.code && pos < 0) pos = p + 1;
+      });
+      expect(pos).toBeGreaterThan(-1);
+      act(() => {
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
+      });
+      paste(view, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+      expect(nodeNames(view)).not.toContain("html");
+    });
+
+    it("con selección no vacía NO convierte", async () => {
+      const { view, onLinkConverted } = await mount("texto");
+      act(() => {
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, 1, 4)));
+      });
+      paste(view, { "text/plain": "https://youtu.be/dQw4w9WgXcQ" });
+      expect(onLinkConverted).not.toHaveBeenCalled();
+      expect(nodeNames(view)).not.toContain("html");
+    });
+
+    it("una imagen http://, un texto con salto de línea y un portapapeles con archivo NO convierten", async () => {
+      const { view, onLinkConverted } = await mount("");
+      paste(view, { "text/plain": "http://example.com/a.png" });
+      paste(view, { "text/plain": "https://youtu.be/dQw4w9WgXcQ\nmás texto" });
+      pasteWithFile(view, "https://example.com/foto.png");
+      expect(onLinkConverted).not.toHaveBeenCalled();
+      expect(nodeNames(view)).not.toContain("image");
+      expect(nodeNames(view)).not.toContain("html");
+    });
   });
 });
 
@@ -1015,5 +1213,59 @@ describe("MilkdownView · comando de incrustado (H-019)", () => {
       expect(iframe).not.toBeNull();
       expect(iframe!.getAttribute("sandbox")).toBe("allow-scripts");
     });
+  });
+});
+
+// H-025 paso 3: reproductor de YouTube en el editor completo (Visual y Lectura).
+describe("MilkdownView · reproductor de YouTube (H-025)", () => {
+  const YT = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>';
+
+  it.each([
+    ["Visual", false],
+    ["Lectura", true],
+  ])("%s: un iframe de youtube-nocookie sale en 16:9 con sus atributos exactos y el enlace «Abrir en YouTube»", async (_n, readOnly) => {
+    const { container } = await mount({ value: YT, readOnly });
+    const box = container.querySelector(".md-embed-video");
+    expect(box).not.toBeNull();
+    const iframe = box!.querySelector(".md-embed-frame iframe")!;
+    expect(iframe.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+    expect(iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-presentation");
+    expect(iframe.getAttribute("allow")).toBe("fullscreen");
+    expect(iframe.getAttribute("referrerpolicy")).toBe("strict-origin-when-cross-origin");
+    const link = box!.querySelector<HTMLAnchorElement>("a.md-embed-link")!;
+    expect(link.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it.each([
+    "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1",
+    "https://www.youtube-nocookie.com.evil.com/embed/dQw4w9WgXcQ",
+    "http://www.youtube-nocookie.com/embed/dQw4w9WgXcQ",
+  ])("un src no permitido (%s) no crea iframe", async (src) => {
+    const { container } = await mount({ value: `<iframe src="${src}"></iframe>` });
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(container.querySelector(".md-embed-video")).toBeNull();
+  });
+
+  it("un iframe de Synapse nunca recibe allow-same-origin ni el enlace de YouTube", async () => {
+    const md = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000" sandbox="allow-same-origin allow-scripts" allow="fullscreen"></iframe>';
+    const { container } = await mount({ value: md });
+    const iframe = container.querySelector("iframe")!;
+    expect(iframe.getAttribute("sandbox")).toBe("allow-scripts");
+    expect(iframe.hasAttribute("allow")).toBe(false);
+    expect(container.querySelector("a.md-embed-link")).toBeNull();
+  });
+
+  it("un <script> junto al reproductor no crea ningún script", async () => {
+    const { container } = await mount({ value: YT + "<script>window.__pwn = 1</script>" });
+    expect(container.querySelector("script")).toBeNull();
+    expect((window as unknown as Record<string, unknown>).__pwn).toBeUndefined();
+  });
+
+  it("ida y vuelta: el markdown de la vista conserva el iframe original en data-value", async () => {
+    const { container } = await mount({ value: YT });
+    expect(container.querySelector(".md-embed-video")!.getAttribute("data-value")).toBe(YT);
   });
 });

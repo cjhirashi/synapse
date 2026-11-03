@@ -19,6 +19,7 @@ import { colorVar, SECONDARY, type PaletteKey } from "../vaults/vaultIcon";
 import { type CmdKey, Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
+import { undo } from "@milkdown/prose/history";
 import { listener, listenerCtx } from "@milkdown/plugin-listener";
 import {
   commonmark,
@@ -52,6 +53,7 @@ import { mermaidRenderer } from "./mermaid/renderMermaid";
 import { cachedParser, preparsedMdastCtx } from "./markdown/cachedParser";
 import { applyHeadingIds } from "./markdown/headingIds";
 import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
+import { linkPastePlugin } from "./markdown/linkPaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
 import { htmlViewFactory } from "./htmlView";
@@ -235,6 +237,8 @@ export interface EditorCommands {
   insertLink: (url: string, text: string) => void;
   /** Inserta un nodo html con un iframe en el cursor (H-019 paso 5). */
   insertEmbed: (url: string) => void;
+  /** Deshace la última acción en el editor (H-025 paso 5). */
+  undo: () => void;
 }
 
 interface MilkdownViewProps {
@@ -300,6 +304,12 @@ interface MilkdownViewProps {
    * marcadores de lista del markdown renderizado. Por defecto `accent` (el cian de siempre).
    */
   vaultColor?: PaletteKey;
+  /**
+   * Notificación de conversión de enlace (H-025 paso 4): cuando el pegado convierte un enlace
+   * de YouTube o imagen. El padre lo usa para mostrar un aviso con deshacer. Sólo se registra
+   * el plugin si el editor es editable (readOnly === false).
+   */
+  onLinkConverted?: (info: { kind: "youtube" | "image" }) => void;
 }
 
 /** Un editor en marcha. `ready` termina cuando `Editor.create()` acaba (es asíncrono). */
@@ -315,7 +325,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent" }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent", onLinkConverted }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
@@ -340,6 +350,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   onWikilinkClickRef.current = onWikilinkClick;
   const onWikilinkHoverRef = useRef(onWikilinkHover);
   onWikilinkHoverRef.current = onWikilinkHover;
+  const onLinkConvertedRef = useRef(onLinkConverted);
+  onLinkConvertedRef.current = onLinkConverted;
   /** Último valor informado por `onTableContext` (sólo se informan los cambios). */
   const inTableRef = useRef(false);
   /** Pendiente de enfocar al estar listo el primer editor (se consume una vez: recrearlo por un `value` nuevo no roba el foco). */
@@ -463,6 +475,15 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         // «Sucio» síncrono (E-7): cada actualización de la vista compara su documento con el último emitido.
         ctx.update(prosePluginsCtx, (plugins) =>
           plugins.concat(
+            // H-025 paso 4: pegado de enlace de YouTube o imagen, ANTES de vscodeMarkdownPaste
+            // (ambos son `handlePaste`; el primero en el array gana). Sólo en edición (readOnly === false).
+            ...(!readOnly
+              ? [
+                  linkPastePlugin((info) => {
+                    onLinkConvertedRef.current?.(info);
+                  }),
+                ]
+              : []),
             // Antes que el `handlePaste` del plugin oficial (se registra después de `config`): ver P-8.
             vscodeMarkdownPaste(ctx),
             // Resaltado de los bloques de código en lectura y Visual (RF-027, RF-028): decoraciones `sx-*`; un
@@ -673,6 +694,11 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
             const htmlNode = state.schema.nodes.html.create({ value: htmlEmbedMarkup(url) });
             const tr = state.tr.replaceWith(from, to, htmlNode);
             view.dispatch(tr);
+            view.focus();
+          },
+          // H-025 paso 5: deshace la última acción en el editor.
+          undo: () => {
+            undo(view.state, view.dispatch);
             view.focus();
           },
         });
