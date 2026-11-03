@@ -14,6 +14,7 @@ import {
 } from "./attributeRules";
 import { PropertiesForm } from "./PropertiesForm";
 import { PropertiesPanel } from "./PropertiesPanel";
+import type { AttributeCatalog, AttributeDef } from "../sync/vaultRules";
 
 const GENERAL_KEYS = new Set(["titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags", "estado"]);
 /** Valor del `<select>` de estado para «sin estado» y para «crear uno nuevo» (un estado guardado nunca los usa: `_` pasa a espacio). */
@@ -30,6 +31,8 @@ interface NoteMetaProps {
   estadoOptions?: readonly string[];
   /** Se llama una vez cuando la persona crea un estado que no estaba en la lista (para añadirlo al catálogo de la bóveda). */
   onNewEstado?: (estado: string) => void;
+  /** Catálogo de atributos tipados de la bóveda (H-029). Solo se usa en edición. */
+  attributes?: AttributeCatalog | null;
 }
 
 interface Values {
@@ -42,8 +45,29 @@ interface Values {
 const text = (value: unknown): string => (typeof value === "string" ? value : "");
 const points = (value: string): number => [...value].length;
 
-function freeProperties(frontmatter: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(Object.entries(frontmatter).filter(([key]) => !GENERAL_KEYS.has(key)));
+/** Valida que un valor sea una fecha en formato AAAA-MM-DD. */
+function isValidDate(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+const TYPED = new Set<string>(["date", "select", "multiselect"]);
+
+/** El valor tiene la forma que exige el tipo del atributo (si no, se queda en las propiedades libres). */
+function matchesType(def: AttributeDef, value: unknown): boolean {
+  if (def.type === "date") return isValidDate(value);
+  if (def.type === "select") return typeof value === "string";
+  if (def.type === "multiselect") return Array.isArray(value) && value.every((v) => typeof v === "string");
+  return false;
+}
+
+/** Propiedades libres: todo lo que no es general ni un atributo tipado del catálogo con valor válido. */
+function freeProperties(frontmatter: Record<string, unknown>, attributes?: AttributeCatalog | null): Record<string, unknown> {
+  const typed = (key: string): boolean => {
+    const def = attributes?.[key];
+    return def !== undefined && TYPED.has(def.type) && matchesType(def, frontmatter[key]);
+  };
+  return Object.fromEntries(Object.entries(frontmatter).filter(([key]) => !GENERAL_KEYS.has(key) && !typed(key)));
 }
 
 /** Nombre de archivo sin carpeta ni `.md`: el título que se usa mientras no haya uno propio. */
@@ -51,10 +75,10 @@ function fileTitle(path: string): string {
   return (path.split("/").pop() ?? path).replace(/\.md$/i, "");
 }
 
-export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado }: NoteMetaProps) {
+export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado, attributes }: NoteMetaProps) {
   const fm = frontmatter ?? {};
   if (mode === "read") return <ReadMeta fm={fm} path={path} />;
-  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} />;
+  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} />;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -69,7 +93,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
   const dash = <span className="note-prop-empty">—</span>;
   const tags = Array.isArray(fm.tags) ? fm.tags.filter((t): t is string => typeof t === "string") : [];
-  const free = freeProperties(fm);
+  const free = freeProperties(fm, null);
   return (
     <div className="note-meta">
       <div role="group" aria-label="Atributos generales" className="note-properties">
@@ -100,10 +124,10 @@ function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
   );
 }
 
-function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
+function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado, attributes }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
   const uid = useId();
   const initial = useRef({
-    free: freeProperties(fm),
+    free: freeProperties(fm, attributes),
     fechaCreacion: text(fm.fecha_creacion),
     fechaActualizacion: text(fm.fecha_actualizacion),
   }).current;
@@ -120,13 +144,20 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteM
   const [estadoText, setEstadoText] = useState("");
   const [estadoError, setEstadoError] = useState("");
 
+  // H-029: valores de atributos tipados (date, select, multiselect).
+  const initTypedValues = (): Record<string, unknown> =>
+    Object.fromEntries(
+      Object.entries(attributes ?? {}).filter(([key, def]) => TYPED.has(def.type) && matchesType(def, fm[key])).map(([key]) => [key, fm[key]]),
+    );
+  const [typedValuesState, setTypedValuesState] = useState(initTypedValues);
+
   const estados = [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...(values.estado ? [values.estado] : [])])];
 
   const tituloError = points(values.titulo) > TITULO_MAX ? `Máximo ${TITULO_MAX} caracteres` : "";
   const descripcionError = points(values.descripcion) > DESCRIPCION_MAX ? `Máximo ${DESCRIPCION_MAX} caracteres` : "";
 
   /** Aplica un cambio y avisa al padre con el objeto completo si todo es válido. */
-  function commit(patch: Partial<Values>, nextFree: Record<string, unknown> = free.current) {
+  function commit(patch: Partial<Values> = {}, nextFree: Record<string, unknown> = free.current, nextTyped: Record<string, unknown> = typedValuesState) {
     const next = { ...values, ...patch };
     setValues(next);
     free.current = nextFree;
@@ -138,7 +169,7 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteM
     if (initial.fechaActualizacion) out.fecha_actualizacion = initial.fechaActualizacion;
     if (next.tags.length > 0) out.tags = next.tags;
     if (next.estado) out.estado = next.estado;
-    onChange?.({ ...out, ...nextFree });
+    onChange?.({ ...out, ...nextFree, ...nextTyped });
   }
 
   function addTag() {
@@ -177,6 +208,115 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteM
     commit({ estado });
     if (!estados.includes(estado)) onNewEstado?.(estado);
   }
+
+  /** Renderiza los campos de atributos tipados (date, select, multiselect). */
+  const typedAttributesContent = (() => {
+    if (!attributes) return null;
+    const fields: React.ReactNode[] = [];
+    for (const [key, def] of Object.entries(attributes)) {
+      if (!TYPED.has(def.type)) continue;
+      // Un valor presente con la forma equivocada se queda en las propiedades libres.
+      if (fm[key] !== undefined && !matchesType(def, fm[key])) continue;
+      const currentValue = typedValuesState[key];
+      const isDateType = def.type === "date";
+      const isSelectType = def.type === "select";
+      const isMultiselectType = def.type === "multiselect";
+
+      if (isDateType) {
+        fields.push(
+          <div key={key} className="note-meta-field">
+            <label htmlFor={`${uid}-${key}`}>{key}</label>
+            <input
+              id={`${uid}-${key}`}
+              type="date"
+              value={typeof currentValue === "string" ? currentValue : ""}
+              onChange={(event) => {
+                const next = { ...typedValuesState };
+                if (event.target.value) {
+                  next[key] = event.target.value;
+                } else {
+                  delete next[key];
+                }
+                setTypedValuesState(next);
+                commit({}, free.current, next);
+              }}
+            />
+          </div>,
+        );
+      } else if (isSelectType) {
+        const options = def.options ?? [];
+        const hasCurrentValue = typeof currentValue === "string" && currentValue !== "";
+        const currentValueInOptions = hasCurrentValue && options.includes(currentValue as string);
+        const selectOptions = currentValueInOptions ? options : (hasCurrentValue ? [...options, currentValue as string] : options);
+
+        fields.push(
+          <div key={key} className="note-meta-field">
+            <label htmlFor={`${uid}-${key}`}>{key}</label>
+            <select
+              id={`${uid}-${key}`}
+              value={typeof currentValue === "string" ? currentValue : ""}
+              onChange={(event) => {
+                const next = { ...typedValuesState };
+                if (event.target.value) {
+                  next[key] = event.target.value;
+                } else {
+                  delete next[key];
+                }
+                setTypedValuesState(next);
+                commit({}, free.current, next);
+              }}
+            >
+              <option value="">—</option>
+              {selectOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </div>,
+        );
+      } else if (isMultiselectType) {
+        const options = def.options ?? [];
+        const currentArray = Array.isArray(currentValue) ? currentValue : [];
+        const extraValues = currentArray.filter((v) => !options.includes(v));
+        const allOptions = [...options, ...extraValues];
+
+        fields.push(
+          <fieldset key={key} className="note-meta-field">
+            <legend>{key}</legend>
+            <div className="note-meta-checkboxes">
+              {allOptions.map((opt) => (
+                <label key={opt} className="note-meta-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={currentArray.includes(opt)}
+                    onChange={(event) => {
+                      let next: string[];
+                      if (event.target.checked) {
+                        next = [...currentArray, opt];
+                      } else {
+                        next = currentArray.filter((v) => v !== opt);
+                      }
+                      const typedNext = { ...typedValuesState };
+                      if (next.length > 0) {
+                        typedNext[key] = next;
+                      } else {
+                        delete typedNext[key];
+                      }
+                      setTypedValuesState(typedNext);
+                      commit({}, free.current, typedNext);
+                    }}
+                  />
+                  <span>{opt}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>,
+        );
+      }
+    }
+    return fields.length > 0 ? fields : null;
+  })();
 
   return (
     <div className="note-meta">
@@ -283,7 +423,12 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado }: Omit<NoteM
           {estadoError && <p id={`${uid}-estado-err`} role="alert" className="note-meta-error">{estadoError}</p>}
         </div>
       </div>
-      <PropertiesForm frontmatter={initial.free} onChange={(next) => commit({}, next)} />
+      {typedAttributesContent && (
+        <div role="group" aria-label="Atributos de la bóveda" className="note-properties props-form note-meta-form">
+          {typedAttributesContent}
+        </div>
+      )}
+      <PropertiesForm frontmatter={initial.free} onChange={(next) => commit({}, next, typedValuesState)} />
     </div>
   );
 }

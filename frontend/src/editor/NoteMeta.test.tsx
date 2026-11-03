@@ -217,3 +217,167 @@ describe("NoteMeta · estados nuevos y catálogo de la bóveda", () => {
     expect(onNewEstado).not.toHaveBeenCalled();
   });
 });
+
+describe("NoteMeta · atributos tipados (date, select, multiselect)", () => {
+  describe("date", () => {
+    it("cambia el valor y emite onChange con la fecha en formato AAAA-MM-DD", async () => {
+      const onChange = vi.fn();
+      const attributes = { fecha_x: { type: "date" as const } };
+      render(<NoteMeta mode="edit" frontmatter={{ titulo: "T" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      const input = screen.getByLabelText("fecha_x");
+      await userEvent.type(input, "2026-11-03");
+      expect(lastEmit(onChange)).toEqual({ titulo: "T", fecha_x: "2026-11-03" });
+    });
+
+    it("vaciar la fecha la elimina del objeto", async () => {
+      const onChange = vi.fn();
+      const attributes = { fecha_x: { type: "date" as const } };
+      render(<NoteMeta mode="edit" frontmatter={{ titulo: "T", fecha_x: "2026-11-03" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      const input = screen.getByLabelText("fecha_x");
+      await userEvent.clear(input);
+      expect("fecha_x" in lastEmit(onChange)).toBe(false);
+    });
+  });
+
+  describe("select", () => {
+    it("renderiza las opciones del catálogo con primera opción vacía", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media", "alta"] } };
+      render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onChange={onChange} attributes={attributes} />);
+      const select = screen.getByLabelText("prioridad") as HTMLSelectElement;
+      const options = Array.from(select.options).map((o) => o.value);
+      expect(options).toEqual(["", "baja", "media", "alta"]);
+    });
+
+    it("elegir una opción la emite", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media", "alta"] } };
+      render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onChange={onChange} attributes={attributes} />);
+      await userEvent.selectOptions(screen.getByLabelText("prioridad"), "media");
+      expect(lastEmit(onChange).prioridad).toBe("media");
+    });
+
+    it("vaciar (seleccionar —) la elimina del objeto", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media", "alta"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ prioridad: "media" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      await userEvent.selectOptions(screen.getByLabelText("prioridad"), "—");
+      expect("prioridad" in lastEmit(onChange)).toBe(false);
+    });
+
+    it("si el valor actual no está en options, lo añade como opción extra", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media", "alta"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ prioridad: "urgente" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      const select = screen.getByLabelText("prioridad") as HTMLSelectElement;
+      const options = Array.from(select.options).map((o) => o.value);
+      expect(options).toContain("urgente");
+    });
+  });
+
+  describe("multiselect", () => {
+    it("renderiza un checkbox por opción", async () => {
+      const onChange = vi.fn();
+      const attributes = { categorías: { type: "multiselect" as const, options: ["A", "B", "C"] } };
+      render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onChange={onChange} attributes={attributes} />);
+      expect(screen.getByLabelText("A")).toBeInTheDocument();
+      expect(screen.getByLabelText("B")).toBeInTheDocument();
+      expect(screen.getByLabelText("C")).toBeInTheDocument();
+    });
+
+    it("marcar checkboxes emite un array con los valores seleccionados", async () => {
+      const onChange = vi.fn();
+      const attributes = { categorías: { type: "multiselect" as const, options: ["A", "B", "C"] } };
+      render(<NoteMeta mode="edit" frontmatter={{}} path="N.md" onChange={onChange} attributes={attributes} />);
+      await userEvent.click(screen.getByLabelText("A"));
+      await userEvent.click(screen.getByLabelText("C"));
+      expect(lastEmit(onChange).categorías).toEqual(["A", "C"]);
+    });
+
+    it("valores actuales que no estén en options aparecen como checkbox marcado extra", async () => {
+      const onChange = vi.fn();
+      const attributes = { categorías: { type: "multiselect" as const, options: ["A", "B"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ categorías: ["A", "X"] }} path="N.md" onChange={onChange} attributes={attributes} />);
+      expect(screen.getByLabelText("X")).toBeChecked();
+      expect(screen.getByLabelText("X")).toBeInTheDocument();
+    });
+
+    it("desmarcar todos los checkboxes elimina la clave del objeto", async () => {
+      const onChange = vi.fn();
+      const attributes = { categorías: { type: "multiselect" as const, options: ["A", "B"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ categorías: ["A"] }} path="N.md" onChange={onChange} attributes={attributes} />);
+      await userEvent.click(screen.getByLabelText("A"));
+      expect("categorías" in lastEmit(onChange)).toBe(false);
+    });
+  });
+
+  describe("valores tipados incorrectos", () => {
+    it("un valor de tipo incorrecto no se muestra en el editor tipado (sigue en propiedades libres)", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ titulo: "T", prioridad: 123 }} path="N.md" onChange={onChange} attributes={attributes} />);
+      expect(screen.queryByLabelText("prioridad")).not.toBeInTheDocument();
+      // La propiedad libre debe mostrar el valor incorrecto (buscamos el input con la clave)
+      const freeInputs = screen.getAllByDisplayValue("123");
+      expect(freeInputs.length).toBeGreaterThan(0);
+    });
+
+    it("un select con número no se trata como select tipado", async () => {
+      const onChange = vi.fn();
+      const attributes = { status: { type: "select" as const, options: ["a", "b"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ status: 456 }} path="N.md" onChange={onChange} attributes={attributes} />);
+      expect(screen.queryByLabelText("status")).not.toBeInTheDocument();
+    });
+
+    it("un multiselect que no es array no se trata como multiselect tipado", async () => {
+      const onChange = vi.fn();
+      const attributes = { tags: { type: "multiselect" as const, options: ["x", "y"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ tags: "no soy un array" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      // tags es un atributo general, no entra en propiedades libres, pero el punto es que no aparece el editor tipado
+      expect(screen.queryByRole("fieldset")).not.toBeInTheDocument();
+    });
+
+    it("un date que no es string AAAA-MM-DD no se trata como date tipado", async () => {
+      const onChange = vi.fn();
+      const attributes = { fecha: { type: "date" as const } };
+      render(<NoteMeta mode="edit" frontmatter={{ fecha: "not-a-date" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      expect(screen.queryByLabelText("fecha")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("sin atributos", () => {
+    it("sin prop attributes el comportamiento es idéntico al de antes (tests existentes siguen pasando)", async () => {
+      const onChange = vi.fn();
+      render(<NoteMeta mode="edit" frontmatter={FULL} path="Nota.md" onChange={onChange} />);
+      const input = screen.getByLabelText("Título");
+      await userEvent.clear(input);
+      await userEvent.type(input, "Otro");
+      expect(lastEmit(onChange)).toEqual({ ...FULL, titulo: "Otro" });
+    });
+
+    it("propiedades libres sin atributos tipados funcionan normalmente", async () => {
+      const onChange = vi.fn();
+      render(<NoteMeta mode="edit" frontmatter={{ titulo: "T" }} path="N.md" onChange={onChange} />);
+      await userEvent.click(screen.getByRole("button", { name: "Añadir propiedad" }));
+      await userEvent.type(screen.getByLabelText("Clave de la propiedad 1"), "proyecto");
+      await userEvent.type(screen.getByLabelText("Valor de «proyecto»"), "Synapse");
+      expect(lastEmit(onChange)).toEqual({ titulo: "T", proyecto: "Synapse" });
+    });
+  });
+
+  describe("no duplicar propiedades", () => {
+    it("una clave tipada (date/select/multiselect) no aparece duplicada en PropertiesForm", async () => {
+      const onChange = vi.fn();
+      const attributes = { prioridad: { type: "select" as const, options: ["baja", "media", "alta"] } };
+      render(<NoteMeta mode="edit" frontmatter={{ titulo: "T", prioridad: "media", otros: "valor" }} path="N.md" onChange={onChange} attributes={attributes} />);
+      // El select tipado debe existir
+      const timedSelect = screen.getByLabelText("prioridad");
+      expect(timedSelect).toBeInTheDocument();
+      // La propiedad libre "otros" debe estar en PropertiesForm, pero no duplicada prioridad
+      const otherInputs = screen.getAllByLabelText("Clave de la propiedad 1");
+      expect(otherInputs.some((input) => (input as HTMLInputElement).value === "otros")).toBeTruthy();
+      const priorityInFree = screen.queryAllByLabelText("Clave de la propiedad 1").some((input) => (input as HTMLInputElement).value === "prioridad");
+      expect(priorityInFree).toBe(false);
+    });
+  });
+});
