@@ -325,7 +325,7 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent" }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent", onLinkConverted }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
