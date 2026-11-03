@@ -143,6 +143,12 @@ def _nested(depth: int) -> dict:
     ({"frontmatter": "x"}, "validation-error:frontmatter"),
     ({"frontmatter": None}, "validation-error:frontmatter"),
     ({"frontmatter": {"k": "a" * 65536}}, "validation-error:frontmatter"),
+    # H-029: los siete generales (las claves libres no se validan).
+    ({"frontmatter": {"estado": "active"}}, "validation-error:frontmatter"),
+    ({"frontmatter": {"tags": ["Con Espacio"]}}, "validation-error:frontmatter"),
+    ({"frontmatter": {"titulo": 5}}, "validation-error:frontmatter"),
+    ({"frontmatter": {"ruta": "a/b.md"}}, "validation-error:frontmatter"),
+    ({"frontmatter": {"fecha_creacion": "2026-01-01"}}, "validation-error:frontmatter"),
     # SPEC-0010 (Converge 1, H1): tope de profundidad, también donde `json.dumps` reventaría con RecursionError.
     ({"frontmatter": _nested(33)}, "validation-error:frontmatter"),
     ({"frontmatter": _nested(400)}, "validation-error:frontmatter"),

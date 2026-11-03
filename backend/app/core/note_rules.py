@@ -8,6 +8,8 @@ Las funciones `check_*` devuelven el código de rechazo del push (`validation-er
 import json
 import unicodedata
 
+from app.core.attribute_rules import validate_general
+
 PATH_MAX = 300                          # puntos de código, tras normalizar
 CONTENT_MAX_BYTES = 2 * 1024 * 1024     # bytes UTF-8 (RF-016)
 FRONTMATTER_MAX_BYTES = 64 * 1024       # JSON compacto en UTF-8 (PLAN-0008 P-4)
@@ -127,8 +129,4 @@ def check_frontmatter(value: object) -> str | None:
         return "validation-error:frontmatter"
     if size > FRONTMATTER_MAX_BYTES:
         return "validation-error:frontmatter"
-    # Validar reglas de los siete generales (H-029).
-    from app.core.attribute_rules import validate_general
-    if validate_general(value) is not None:
-        return "validation-error:frontmatter"
-    return None
+    return "validation-error:frontmatter" if validate_general(value) is not None else None
