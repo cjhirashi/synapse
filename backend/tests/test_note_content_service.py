@@ -215,7 +215,7 @@ def test_create_reserves_the_path_and_returns_etag(service, port):
     _put_vault(port)
     result = service.create(VAULT, NoteCreate(path="Nota.md", content="hola"))
     assert (result.note.path, result.note.content) == ("Nota.md", "hola")
-    assert result.note.vault_id == VAULT and result.note.frontmatter is None
+    assert result.note.vault_id == VAULT and set(result.note.frontmatter) == {"fecha_creacion", "fecha_actualizacion"}
     assert result.note.created_at == result.note.updated_at and result.note.deleted_at is None
     stored = port.docs[DB][f"note:{VAULT}:{result.note.id}"]
     assert result.etag == f'"{stored["_rev"]}"'
@@ -227,7 +227,7 @@ def test_create_reserves_the_path_and_returns_etag(service, port):
 def test_create_accepts_frontmatter(service, port):
     _put_vault(port)
     result = service.create(VAULT, NoteCreate(path="Nota.md", content="x", frontmatter={"a": 1}))
-    assert result.note.frontmatter == {"a": 1}
+    assert {k: v for k, v in result.note.frontmatter.items() if not k.startswith("fecha_")} == {"a": 1}
 
 
 def test_create_of_a_missing_vault_is_vault_not_found(service):
@@ -307,7 +307,7 @@ def test_update_changes_only_sent_fields_with_a_new_etag(service, port):
     created = service.create(VAULT, NoteCreate(path="Nota.md", content="a", frontmatter={"x": 1}))
     result = service.update(VAULT, created.note.id, NoteUpdate(content="b"), created.etag)
     assert (result.note.content, result.note.path) == ("b", "Nota.md")
-    assert result.note.frontmatter == {"x": 1}
+    assert {k: v for k, v in result.note.frontmatter.items() if not k.startswith("fecha_")} == {"x": 1}
     assert result.etag != created.etag
     assert result.note.updated_at >= created.note.created_at
 
@@ -316,7 +316,7 @@ def test_update_can_clear_frontmatter_with_explicit_null(service, port):
     _put_vault(port)
     created = service.create(VAULT, NoteCreate(path="Nota.md", content="a", frontmatter={"x": 1}))
     result = service.update(VAULT, created.note.id, NoteUpdate(frontmatter=None), created.etag)
-    assert result.note.frontmatter is None
+    assert set(result.note.frontmatter) == {"fecha_creacion", "fecha_actualizacion"}  # las fechas de la nota no se borran
 
 
 def test_update_that_changes_path_releases_the_old_reservation_and_takes_the_new_one(service, port):
