@@ -1290,6 +1290,28 @@ describe("MilkdownView · reproductor de YouTube (H-025)", () => {
     expect(names).not.toContain("html");
   });
 
+  it.each([
+    ["Visual", false],
+    ["Lectura", true],
+  ])("%s: la nota real de Carlos (imagen con título, enlace con título y autoenlace) pinta un solo reproductor y conserva su markdown", async (_n, readOnly) => {
+    const md = [
+      "# Curso de Micro Python",
+      "",
+      '![Cómo instalar microPython en la ESP32 - fácil - v1](https://www.youtube.com/watch?v=RLqPB1PM6gE "Cómo instalar microPython en la ESP32 - fácil - v1")',
+      "",
+      '[Cómo instalar microPython en la ESP32 - fácil -](https://www.youtube.com/watch?v=RLqPB1PM6gE "Cómo instalar microPython en la ESP32 - fácil - v1")',
+      "",
+      '<https://www.youtube.com/watch?v=RLqPB1PM6gE> "Cómo instalar microPython en la ESP32 - fácil - v1"',
+      "",
+    ].join("\n");
+    const { container } = await mount({ value: md, readOnly });
+    const iframes = container.querySelectorAll('iframe[src="https://www.youtube-nocookie.com/embed/RLqPB1PM6gE"]');
+    expect(iframes).toHaveLength(1);
+    expect(container.querySelector("img:not(.ProseMirror-separator)")).toBeNull();
+    // los otros dos enlaces siguen siendo enlaces
+    expect(container.querySelectorAll("a[href='https://www.youtube.com/watch?v=RLqPB1PM6gE']").length).toBeGreaterThanOrEqual(2);
+  });
+
   it("una imagen normal (no YouTube) sigue siendo <img>", async () => {
     const { container } = await mount({ value: "![foto](https://example.com/foto.png)", readOnly: false });
     expect(container.querySelector(".md-embed-video")).toBeNull();
