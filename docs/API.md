@@ -21,6 +21,60 @@ alcance de datos (su base `synapse_user_{id}`):
 La API key **no** es un segundo usuario: autentica *como el mismo usuario* que la creó (mismo
 `owner_id`, misma base). Nunca da acceso a los datos de otro usuario (aislamiento por usuario).
 
+## Bóvedas — catálogo de atributos (H-029)
+
+Las bóvedas soportan un **catálogo personalizado de atributos** (opcional) para organizar
+metadatos sin alterar el cuerpo de las notas.
+
+### 1. Crear o actualizar bóveda con atributos
+
+```json
+POST /vaults
+{
+  "name": "Proyecto",
+  "attributes": {
+    "status": {
+      "type": "select",
+      "options": ["active", "inactive", "on-hold"]
+    },
+    "priority": {
+      "type": "number"
+    },
+    "tags_meta": {
+      "type": "text"
+    }
+  }
+}
+```
+
+- **Atributos opcionales**: ausentes o `null` es válido; compatibles hacia atrás con bóvedas
+  antiguas.
+- **Tipos válidos**: `text`, `number`, `boolean`, `list`, `date`, `select`, `multiselect`.
+- **Opciones** (sólo `select`/`multiselect`): lista opcional; si presente, máx 200 elementos,
+  cada uno 1–64 caracteres sin espacios laterales, sin repetidas.
+- **Límites**: máx 100 atributos; tamaño JSON compacto ≤ 64 KiB (UTF-8).
+- **Validación estricta**: sin conversión de tipos; errores → `422` `validation-error`.
+
+### 2. Recuperar atributos
+
+```http
+GET /vaults/{vault_id}
+```
+
+```json
+{
+  "id": "0c1f…",
+  "name": "Proyecto",
+  "attributes": {
+    "status": { "type": "select", "options": ["active", "inactive", "on-hold"] },
+    "priority": { "type": "number" }
+  },
+  "…": "…"
+}
+```
+
+**PATCH** reemplaza el mapa completo; `null` borra el campo. Ausente en el PATCH no lo cambia.
+
 ## API keys de agente (SPEC-0013)
 
 Pensadas para que los agentes OpenClaw (AIRA, Liza, main, n8n…) consulten y gestionen las

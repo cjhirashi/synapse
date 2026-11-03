@@ -171,3 +171,144 @@ def test_rf_012_contract_schema_matches_vault_icon():
         assert contract[key] == published[key], key
     # Y el contrato admite `null` (clave anulable) igual que la entrada REST.
     assert {"type": "null"} in [{"type": branch["type"]} for branch in json.loads(_ICON_CONTRACT.read_text())["oneOf"]]
+
+
+# --- H-029: Catálogo de atributos (PASO 1) ---
+
+def test_h029_rf001_attributes_valid_types():
+    """Un atributo con tipo válido se acepta (RF-001)."""
+    attrs = {"project_status": {"type": "select"}}
+    vault = VaultCreate(name="n", attributes=attrs)
+    assert vault.attributes == attrs
+
+
+def test_h029_rf001_attributes_is_optional():
+    """El campo `attributes` es opcional en `VaultCreate` (RF-001)."""
+    vault = VaultCreate(name="n")
+    assert vault.attributes is None
+
+
+def test_h029_rf001_attributes_null_is_valid():
+    """`attributes: null` es válido (RF-001, modo estricto como `icon`)."""
+    vault = VaultCreate(name="n", attributes=None)
+    assert vault.attributes is None
+
+
+def test_h029_rf002_attributes_key_invalid_uppercase():
+    """Clave con mayúscula se rechaza (RF-002)."""
+    attrs = {"ProjectStatus": {"type": "text"}}
+    with pytest.raises(ValidationError) as exc:
+        VaultCreate(name="n", attributes=attrs)
+    # El error debe indicar que la clave es inválida
+    errors = exc.value.errors()
+    assert any("ProjectStatus" in str(e) or "pattern" in str(e) for e in errors)
+
+
+def test_h029_rf002_attributes_key_reserved_titulo():
+    """Clave reservada `titulo` se rechaza (RF-002)."""
+    attrs = {"titulo": {"type": "text"}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf002_attributes_key_valid():
+    """Claves válidas: minúsculas, números, guiones bajos (RF-002)."""
+    valid_keys = [
+        "status",
+        "project_id",
+        "priority_1",
+        "a",
+        "a" * 64,  # máximo
+        "tag_001_v2",
+    ]
+    for key in valid_keys:
+        attrs = {key: {"type": "text"}}
+        vault = VaultCreate(name="n", attributes=attrs)
+        assert key in vault.attributes
+
+
+def test_h029_rf003_attributes_type_valid():
+    """Tipos válidos se aceptan (RF-003)."""
+    valid_types = ["text", "number", "boolean", "list", "date", "select", "multiselect"]
+    for t in valid_types:
+        attrs = {f"field_{t}": {"type": t}}
+        vault = VaultCreate(name="n", attributes=attrs)
+        assert vault.attributes[f"field_{t}"]["type"] == t
+
+
+def test_h029_rf003_attributes_type_invalid():
+    """Tipo inválido se rechaza (RF-003)."""
+    attrs = {"field": {"type": "enum"}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf004_attributes_options_in_select():
+    """Opciones válidas en `select` se aceptan (RF-004)."""
+    attrs = {"status": {"type": "select", "options": ["active", "inactive"]}}
+    vault = VaultCreate(name="n", attributes=attrs)
+    assert vault.attributes["status"]["options"] == ["active", "inactive"]
+
+
+def test_h029_rf004_attributes_options_not_in_text():
+    """Opciones en tipo `text` se rechaza (RF-004)."""
+    attrs = {"name": {"type": "text", "options": ["a", "b"]}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf004_attributes_options_max_200():
+    """Máximo 200 opciones en `select` (RF-004)."""
+    attrs = {"status": {"type": "select", "options": [f"opt_{i}" for i in range(200)]}}
+    vault = VaultCreate(name="n", attributes=attrs)
+    assert len(vault.attributes["status"]["options"]) == 200
+
+    # 201 opciones se rechaza
+    attrs_over = {"status": {"type": "select", "options": [f"opt_{i}" for i in range(201)]}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs_over)
+
+
+def test_h029_rf004_attributes_option_empty():
+    """Opción vacía se rechaza (RF-004)."""
+    attrs = {"status": {"type": "select", "options": ["active", ""]}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf004_attributes_option_too_long():
+    """Opción > 64 caracteres se rechaza (RF-004)."""
+    long_opt = "a" * 65
+    attrs = {"status": {"type": "select", "options": ["active", long_opt]}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf004_attributes_option_duplicate():
+    """Opciones duplicadas se rechazan (RF-004)."""
+    attrs = {"status": {"type": "select", "options": ["active", "active"]}}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs)
+
+
+def test_h029_rf002_max_100_attributes():
+    """Máximo 100 atributos (RF-002)."""
+    attrs = {f"attr_{i}": {"type": "text"} for i in range(100)}
+    vault = VaultCreate(name="n", attributes=attrs)
+    assert len(vault.attributes) == 100
+
+    # 101 atributos se rechaza
+    attrs_over = {f"attr_{i}": {"type": "text"} for i in range(101)}
+    with pytest.raises(ValidationError):
+        VaultCreate(name="n", attributes=attrs_over)
+
+
+def test_h029_rnf001_attributes_size_limit_64kb():
+    """JSON de atributos ≤ 64 KiB (RNF-001)."""
+    # Crear un dict grande pero dentro del límite
+    attrs = {f"attr_{i}": {"type": "text"} for i in range(100)}
+    json_str = json.dumps(attrs)
+    assert len(json_str.encode("utf-8")) < 64 * 1024
+
+    vault = VaultCreate(name="n", attributes=attrs)
+    assert vault.attributes == attrs

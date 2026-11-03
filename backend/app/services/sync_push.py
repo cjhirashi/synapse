@@ -43,7 +43,7 @@ from app.core.note_rules import (
 )
 from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
-from app.core.schemas import VaultDescription, VaultIcon, VaultName, VaultTags
+from app.core.schemas import VaultAttributes, VaultDescription, VaultIcon, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
@@ -52,10 +52,11 @@ from app.services.vault_service import VaultService, name_key
 # Claves de una revisión de bóveda, en el orden en que se informa la que falta (§2.3 paso 4).
 _VAULT_KEYS = (
     "_id", "_rev", "_revisions", "type", "name", "description", "tags",
-    "owner_id", "created_at", "updated_at", "deleted_at", "icon",
+    "owner_id", "created_at", "updated_at", "deleted_at", "icon", "attributes",
 )
-# `icon` (SPEC-0009 RF-012) es admitida pero no obligatoria: las bóvedas anteriores no la tienen.
-_VAULT_REQUIRED = tuple(key for key in _VAULT_KEYS if key != "icon")
+# `icon` (SPEC-0009 RF-012) y `attributes` (H-029) son admitidas pero no obligatorias:
+# las bóvedas anteriores no las tienen.
+_VAULT_REQUIRED = tuple(key for key in _VAULT_KEYS if key not in ("icon", "attributes"))
 # Una lápida no lleva nada más (P-5): el borrado de una bóveda es el soft delete de 0003.
 _TOMBSTONE_KEYS = {"_id", "_rev", "_revisions", "_deleted"}
 
@@ -74,6 +75,7 @@ _FIELD_RULES = {
     "description": TypeAdapter(VaultDescription | None),
     "tags": TypeAdapter(VaultTags),
     "icon": TypeAdapter(VaultIcon | None),
+    "attributes": TypeAdapter(VaultAttributes),
 }
 
 
