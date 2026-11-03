@@ -291,8 +291,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [inTable, setInTable] = useState(false);
   /** Aviso de una subida de imagen fallida (H-015): tamaño, tipo o red; se limpia al reintentar. */
   const [uploadError, setUploadError] = useState<string | null>(null);
+  /** Aviso de conversión de enlace (H-025 paso 5): "youtube" o "image"; se limpia a los 8 s. */
+  const [converted, setConverted] = useState<"youtube" | "image" | null>(null);
   /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
   const imageInputRef = useRef<HTMLInputElement>(null);
+  /** Timeout del aviso de conversión de enlace (H-025 paso 5). */
+  const convertedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** H-026: referencia al div contenedor del scroll del documento. */
   const editorBodyRef = useRef<HTMLDivElement>(null);
   /** H-026: timeout del debounce de scroll. */
@@ -432,6 +436,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setSaved(false);
     setPending(false);
     setPreparsed(null);
+    setConverted(null);
+    if (convertedTimeoutRef.current) clearTimeout(convertedTimeoutRef.current);
     notes.get(openId).then(
       async (loaded) => {
         if (!alive) return;
@@ -467,6 +473,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
       alive = false;
     };
   }, [notes, openId]);
+
+  // Temporizador del aviso de conversión de enlace (H-025 paso 5): se limpia a los 8 s.
+  useEffect(() => {
+    if (!converted) return;
+    convertedTimeoutRef.current = setTimeout(() => setConverted(null), 8000);
+    return () => {
+      if (convertedTimeoutRef.current) clearTimeout(convertedTimeoutRef.current);
+    };
+  }, [converted]);
 
   // Otra revisión llegó (el pull, otra pestaña, un renombrado). Sin cambios locales se muestra
   // tal cual. Con cambios sin guardar el borrador se respeta: si la revisión nueva conserva el
@@ -1105,6 +1120,24 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               {uploadError}
             </Notice>
           )}
+          {/* H-025 paso 5: aviso de conversión de enlace con botón Deshacer. */}
+          {converted !== null && (
+            <Notice
+              variant="info"
+              action={{
+                label: "Deshacer",
+                onClick: () => {
+                  editorCommands.current?.undo();
+                  setConverted(null);
+                },
+              }}
+              onClose={() => setConverted(null)}
+            >
+              {converted === "youtube"
+                ? "Enlace convertido en reproductor de YouTube."
+                : "Enlace convertido en imagen."}
+            </Notice>
+          )}
           {pendingId !== null && (
             <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
               <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
@@ -1174,7 +1207,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               )}
             </>
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} onLinkConverted={(info) => setConverted(info.kind)} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}
