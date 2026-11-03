@@ -58,6 +58,7 @@ import type { Note } from "../notes/noteStore";
 import type { NoteRef } from "./wikilink";
 import type { PaletteKey } from "../vaults/vaultIcon";
 import type { ParseCache } from "./markdown/parseCache";
+import type { AttributeCatalog } from "../sync/vaultRules";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -182,6 +183,8 @@ interface NoteEditorProps {
   estadoOptions?: readonly string[];
   /** La persona creó un estado nuevo en una nota: el padre lo añade al catálogo de la bóveda (H-029). */
   onNewEstado?: (estado: string) => void;
+  /** Catálogo de atributos tipados de la bóveda (H-029). */
+  attributes?: AttributeCatalog | null;
 }
 
 /** Lo que el padre puede pedirle al editor por `ref`. */
@@ -207,7 +210,7 @@ function uploadErrorMessage(error: unknown): string {
 const codeTextOf = (body: string): string => body;
 
 const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEditor(
-  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll, estadoOptions, onNewEstado },
+  { noteId, editOnOpen = false, onCancelOpen, views = REAL_VIEWS, onDirtyDraft, canBack = false, canForward = false, onBack, onForward, onOpened, onRevealFolder, onRename, onDelete, parseCache = null, sidebarToggle, vaultNotes, onOpenWikilink, vaultColor = "accent", initialScroll, onScroll, estadoOptions, onNewEstado, attributes },
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
@@ -1291,10 +1294,10 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           )}
 
           {/* Propiedades de la nota (RF-009): los 7 generales + propiedades libres. */}
-          {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} />}
+          {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} attributes={attributes} />}
           {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
               `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
-          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} />}
+          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} />}
 
           {mode === "read" ? (
             <>
