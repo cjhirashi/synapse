@@ -1,7 +1,9 @@
 // H-019 paso 4: vista del nodo html — iframe saneado en Visual y Lectura.
+// H-025: soporte para YouTube embeds.
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
+import { parseYoutubeEmbedSrc, youtubeWatchUrl } from "./classifyUrl";
 
 /** Renderiza el nodo html como texto plano (esquema original). */
 function plainItem(node: PMNode): NodeView {
@@ -33,7 +35,46 @@ class HtmlEmbedView implements NodeView {
     const html = this.node.attrs.value as string;
     const fragment = sanitizeHtmlFragment(html);
     this.dom.replaceChildren();
-    this.dom.appendChild(fragment);
+
+    // Detectar si hay iframe de YouTube
+    const youtube = this.detectYoutubeIframe(fragment);
+    if (youtube) {
+      this.dom.classList.add("md-embed-video");
+
+      // Crear wrapper para iframe (aspect-ratio: 16/9)
+      const frameDiv = document.createElement("div");
+      frameDiv.className = "md-embed-frame";
+
+      // Mover el iframe al wrapper
+      const iframe = fragment.querySelector("iframe");
+      if (iframe) {
+        frameDiv.appendChild(iframe);
+      }
+
+      this.dom.appendChild(frameDiv);
+
+      // Crear enlace "Abrir en YouTube"
+      const link = document.createElement("a");
+      link.className = "md-embed-link";
+      link.href = youtubeWatchUrl(youtube.id, youtube.start);
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Abrir en YouTube";
+      this.dom.appendChild(link);
+    } else {
+      // No es YouTube: insertar el fragmento sin cambios
+      this.dom.appendChild(fragment);
+    }
+  }
+
+  private detectYoutubeIframe(fragment: DocumentFragment): { id: string; start: number | null } | null {
+    const iframe = fragment.querySelector("iframe");
+    if (!iframe) return null;
+
+    const src = iframe.getAttribute("src");
+    if (!src) return null;
+
+    return parseYoutubeEmbedSrc(src);
   }
 
   update(node: PMNode): boolean {

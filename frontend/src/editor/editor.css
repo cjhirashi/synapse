@@ -1651,3 +1651,26 @@ li.note-task[data-checked="true"] .note-task-body {
   border-radius: var(--radius-md);
   display: block;
 }
+
+/* H-025 PASO 3: YouTube embeds */
+.md-embed-frame {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+
+.md-embed-video iframe {
+  height: 100%;
+  width: 100%;
+}
+
+.md-embed-link {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: var(--space-1);
+  text-decoration: none;
+}
+
+.md-embed-link:hover {
+  text-decoration: underline;
+}

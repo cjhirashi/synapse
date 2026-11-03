@@ -131,4 +131,74 @@ describe("htmlView", () => {
     if (!iframe) throw new Error("No iframe");
     expect(view.stopEvent?.({ target: iframe } as any)).toBe(true);
   });
+
+  // H-025 PASO 3: YouTube embeds
+  it("H-025: iframe de YouTube se renderiza en div.md-embed-video con md-embed-frame", () => {
+    const markdown = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>';
+    const node = createHtmlNode(markdown);
+    const factory = htmlViewFactory();
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+
+    if (!view.dom) throw new Error("No dom");
+    expect(view.dom.className).toContain("md-embed-video");
+    expect(view.dom.getAttribute("data-type")).toBe("html");
+
+    const frame = view.dom.querySelector(".md-embed-frame");
+    expect(frame).not.toBeNull();
+
+    const iframe = frame?.querySelector("iframe");
+    expect(iframe).not.toBeNull();
+    expect(iframe!.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
+    expect(iframe!.getAttribute("sandbox")).toContain("allow-scripts");
+    expect(iframe!.getAttribute("sandbox")).toContain("allow-same-origin");
+    expect(iframe!.getAttribute("sandbox")).toContain("allow-presentation");
+  });
+
+  it("H-025: iframe de YouTube incluye enlace 'Abrir en YouTube' con href correcto", () => {
+    const markdown = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"></iframe>';
+    const node = createHtmlNode(markdown);
+    const factory = htmlViewFactory();
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+
+    if (!view.dom) throw new Error("No dom");
+    const link = view.dom.querySelector(".md-embed-link");
+    expect(link).not.toBeNull();
+    expect(link!.textContent).toBe("Abrir en YouTube");
+    expect(link!.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+    expect(link!.getAttribute("target")).toBe("_blank");
+    expect(link!.getAttribute("rel")).toBe("noopener noreferrer");
+  });
+
+  it("H-025: iframe de YouTube con start= tiene enlace con &t=", () => {
+    const markdown = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>';
+    const node = createHtmlNode(markdown);
+    const factory = htmlViewFactory();
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+
+    if (!view.dom) throw new Error("No dom");
+    const link = view.dom.querySelector(".md-embed-link");
+    expect(link!.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
+  });
+
+  it("H-025: iframe de Synapse no tiene enlace (no es YouTube)", () => {
+    const markdown = '<iframe src="https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000"></iframe>';
+    const node = createHtmlNode(markdown);
+    const factory = htmlViewFactory();
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+
+    if (!view.dom) throw new Error("No dom");
+    const link = view.dom.querySelector(".md-embed-link");
+    expect(link).toBeNull();
+  });
+
+  it("H-025: markdown emitido del editor sin editar es idéntico al original (YouTube)", () => {
+    const markdown = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90"></iframe>';
+    const node = createHtmlNode(markdown);
+    const factory = htmlViewFactory();
+    const view = factory(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+
+    if (!view.dom) throw new Error("No dom");
+    // El atributo data-value debe coincidir con el markdown original
+    expect(view.dom.getAttribute("data-value")).toBe(markdown);
+  });
 });
