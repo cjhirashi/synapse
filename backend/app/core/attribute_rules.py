@@ -13,7 +13,7 @@ TAGS_MAX = 20
 TAG_MAX_LEN = 32
 ESTADO_MAX_LEN = 32
 # Estados de partida; el usuario puede añadir otros (cada bóveda guarda los suyos en su catálogo).
-ESTADOS_ESTANDAR = ("borrador", "en revisión", "aprobado", "en implementación", "implementado")
+ESTADOS_ESTANDAR = ("borrador", "en proceso", "en revisión", "aprobado", "en implementación", "implementado")
 # `ruta` es del sistema (se calcula desde la ubicación de la nota): no se guarda en el frontmatter.
 RESERVED_KEYS = ("ruta",)
 
@@ -22,8 +22,8 @@ ESTADO_SYNONYMS = {
     "borrador": "borrador", "draft": "borrador",
     "en revision": "en revisión",
     "aprobado": "aprobado", "aprobada": "aprobado", "active": "aprobado", "activo": "aprobado", "vigente": "aprobado",
-    "en implementacion": "en implementación", "en proceso": "en implementación",
-    "en progreso": "en implementación", "en desarrollo": "en implementación",
+    "en implementacion": "en implementación", "en desarrollo": "en implementación",
+    "en proceso": "en proceso", "en progreso": "en proceso",
     "implementado": "implementado", "implementada": "implementado", "completado": "implementado",
     "completada": "implementado", "completo": "implementado", "completa": "implementado", "aplicada": "implementado",
     "archived": "archivado",
@@ -59,7 +59,7 @@ def legacy_estado(value: object) -> str | None:
     """Estado de un valor ANTIGUO al migrar: si está en la tabla de sinónimos, su estado estándar; si no, el
     propio valor normalizado (pasa a ser un estado nuevo de la bóveda)."""
     text = normalize_estado(value)
-    if text is None:
+    if text is None or text == "estado":  # «estado» literal: valor de plantilla, no un estado
         return None
     return ESTADO_SYNONYMS.get(re.sub(r"[-_\s]+", " ", _strip_accents(text)), text)
 
@@ -148,7 +148,7 @@ def migrate_frontmatter_detailed(frontmatter: dict) -> tuple[dict, list[dict]]:
         elif name in ("status", "estado"):
             estado = legacy_estado(value)
             if estado is None:
-                drop(key, value, "no es un estado válido (texto de 1 a 32 caracteres)")
+                drop(key, value, "no es un estado válido (texto de 1 a 32 caracteres, y no el valor de plantilla «estado»)")
             else:
                 put(key, "estado", estado)
         elif name in ("fecha_creacion", "ultima_actualizacion", "fecha_actualizacion"):

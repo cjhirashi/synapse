@@ -9,6 +9,7 @@
  },
  "estados_estandar": [
   "borrador",
+  "en proceso",
   "en revisión",
   "aprobado",
   "en implementación",
@@ -185,7 +186,7 @@
   ]
  },
  "legacy_estado": {
-  "rule": "Estado de un valor ANTIGUO al migrar: se normaliza como normalize_estado; luego se compara sin acentos con la tabla; si está, su estado estándar (o traducción); si no, el valor normalizado, que pasa a ser un estado nuevo de la bóveda. null si normalize_estado da null.",
+  "rule": "Estado de un valor ANTIGUO al migrar: se normaliza como normalize_estado; luego se compara sin acentos con la tabla; si está, su estado estándar (o traducción); si no, el valor normalizado, que pasa a ser un estado nuevo de la bóveda. null si normalize_estado da null o si el valor es exactamente «estado» (valor de plantilla).",
   "table": {
    "borrador": "borrador",
    "draft": "borrador",
@@ -196,8 +197,8 @@
    "activo": "aprobado",
    "vigente": "aprobado",
    "en implementacion": "en implementación",
-   "en proceso": "en implementación",
-   "en progreso": "en implementación",
+   "en proceso": "en proceso",
+   "en progreso": "en proceso",
    "en desarrollo": "en implementación",
    "implementado": "implementado",
    "implementada": "implementado",
@@ -228,14 +229,6 @@
    [
     "draft",
     "borrador"
-   ],
-   [
-    "en-proceso",
-    "en implementación"
-   ],
-   [
-    "en-progreso",
-    "en implementación"
    ],
    [
     "en-desarrollo",
@@ -271,6 +264,26 @@
    ],
    [
     true,
+    null
+   ],
+   [
+    "en-proceso",
+    "en proceso"
+   ],
+   [
+    "en progreso",
+    "en proceso"
+   ],
+   [
+    "En Proceso",
+    "en proceso"
+   ],
+   [
+    "estado",
+    null
+   ],
+   [
+    "Estado",
     null
    ]
   ]
@@ -539,6 +552,12 @@
      "Valor 1": "z"
     },
     null
+   ],
+   [
+    {
+     "estado": "en proceso"
+    },
+    null
    ]
   ]
  },
@@ -606,12 +625,12 @@
     "dropped": []
    },
    {
-    "name": "en-proceso pasa a en implementación",
+    "name": "en-proceso pasa a en proceso",
     "in": {
      "status": "en-proceso"
     },
     "out": {
-     "estado": "en implementación"
+     "estado": "en proceso"
     },
     "dropped": []
    },
@@ -925,6 +944,29 @@
      "tipo": "x",
      "titulo": "T",
      "estado": "borrador"
+    },
+    "dropped": []
+   },
+   {
+    "name": "el valor de plantilla «estado» se descarta",
+    "in": {
+     "status": "estado",
+     "tipo": "x"
+    },
+    "out": {
+     "tipo": "x"
+    },
+    "dropped": [
+     "status"
+    ]
+   },
+   {
+    "name": "en desarrollo pasa a en implementación",
+    "in": {
+     "status": "en-desarrollo"
+    },
+    "out": {
+     "estado": "en implementación"
     },
     "dropped": []
    }

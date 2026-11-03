@@ -797,3 +797,63 @@ class TestNoSuffixedKeysAndDropped:
         report, summary, _ = self._report(fake_couch, tmp_path, {"status": "pendiente"})
         assert report["estados_nuevos"] == {"pendiente": 1}
         assert "estado nuevo" in summary
+
+
+class TestBackupAndRollback:
+    def _setup(self, fake_couch):
+        migrate = load_migrate_script()
+        fake_couch.add_db("synapse_user_alice")
+        fake_couch.add_note("synapse_user_alice", "note:v:a", {"título": "A", "status": "draft", "fecha_creación": "2026-07-06"}, content="UNO", updated_at="2026-07-15T10:30:00Z")
+        fake_couch.add_note("synapse_user_alice", "note:v:b", {"tipo": "x"}, content="DOS")
+        return migrate
+
+    def test_backup_writes_every_note_with_600_permissions(self, fake_couch, tmp_path):
+        migrate = self._setup(fake_couch)
+        backup = tmp_path / "b.json"
+        assert migrate.run_backup(fake_couch, backup) == 0
+        data = json.loads(backup.read_text())
+        assert sorted(d["_id"] for d in data["synapse_user_alice"]) == ["note:v:a", "note:v:b"]
+        assert (backup.stat().st_mode & 0o777) == 0o600
+
+    def test_rollback_restores_what_apply_migrated_and_only_that(self, fake_couch, tmp_path):
+        migrate = self._setup(fake_couch)
+        backup, report = tmp_path / "b.json", tmp_path / "r.json"
+        migrate.run_backup(fake_couch, backup)
+        migrate.run_report(fake_couch, report, tmp_path / "s.md", only_db=None)
+        assert migrate.run_apply(fake_couch, report) == 0
+        migrated = fake_couch.databases["synapse_user_alice"]["note:v:a"]["frontmatter"]
+        assert migrated == {"titulo": "A", "estado": "borrador", "fecha_creacion": "2026-07-06"}
+        assert migrate.run_rollback(fake_couch, backup) == 0
+        doc = fake_couch.databases["synapse_user_alice"]["note:v:a"]
+        assert doc["frontmatter"] == {"título": "A", "status": "draft", "fecha_creación": "2026-07-06"}
+        assert doc["content"] == "UNO" and doc["updated_at"] == "2026-07-15T10:30:00Z"
+
+    def test_rollback_does_not_touch_a_note_edited_after_the_migration(self, fake_couch, tmp_path, capsys):
+        migrate = self._setup(fake_couch)
+        backup, report = tmp_path / "b.json", tmp_path / "r.json"
+        migrate.run_backup(fake_couch, backup)
+        migrate.run_report(fake_couch, report, tmp_path / "s.md", only_db=None)
+        migrate.run_apply(fake_couch, report)
+        fake_couch.databases["synapse_user_alice"]["note:v:a"]["frontmatter"]["titulo"] = "Editado por una persona"
+        puts = fake_couch.puts
+        assert migrate.run_rollback(fake_couch, backup) == 0
+        assert fake_couch.puts == puts
+        assert fake_couch.databases["synapse_user_alice"]["note:v:a"]["frontmatter"]["titulo"] == "Editado por una persona"
+        assert "editadas después (no se tocan): 1" in capsys.readouterr().out
+
+    def test_rollback_dry_run_writes_nothing(self, fake_couch, tmp_path):
+        migrate = self._setup(fake_couch)
+        backup, report = tmp_path / "b.json", tmp_path / "r.json"
+        migrate.run_backup(fake_couch, backup)
+        migrate.run_report(fake_couch, report, tmp_path / "s.md", only_db=None)
+        migrate.run_apply(fake_couch, report)
+        puts = fake_couch.puts
+        assert migrate.run_rollback(fake_couch, backup, dry_run=True) == 0
+        assert fake_couch.puts == puts
+
+    def test_rollback_before_any_migration_does_nothing(self, fake_couch, tmp_path):
+        migrate = self._setup(fake_couch)
+        backup = tmp_path / "b.json"
+        migrate.run_backup(fake_couch, backup)
+        assert migrate.run_rollback(fake_couch, backup) == 0
+        assert fake_couch.puts == 0

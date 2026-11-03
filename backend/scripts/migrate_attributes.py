@@ -315,9 +315,61 @@ def run_apply(couch_client, report_file: Path, dry_apply: bool = False) -> int:
     return 4 if errors else 0
 
 
+def run_backup(couch_client, backup_file: Path) -> int:
+    """Guarda todas las notas de todas las bases (con sus conflictos) en un JSON de permisos 600."""
+    backup: dict[str, list[dict]] = {db: couch_client.note_docs(db) for db in couch_client.list_dbs()}
+    fd = os.open(backup_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(backup, handle, ensure_ascii=False)
+    total = sum(len(docs) for docs in backup.values())
+    print(f"Respaldo: {total} notas de {len(backup)} bases en {backup_file}")
+    return 0
+
+
+def run_rollback(couch_client, backup_file: Path, dry_run: bool = False) -> int:
+    """Devuelve el frontmatter original SOLO de las notas cuyo frontmatter actual es exactamente el migrado
+    desde el respaldo; una nota editada después no se toca. Códigos: 0 bien, 3 diferencia releída, 4 error."""
+    backup = json.loads(backup_file.read_text(encoding="utf-8"))
+    restored = untouched = edited = 0
+    problems: list[str] = []
+    errors: list[str] = []
+    for db, docs in backup.items():
+        for old in docs:
+            old_fm = old.get("frontmatter") or {}
+            if not old_fm or old.get("type") != "note" or old.get("deleted_at") is not None or "_deleted" in old:
+                continue
+            current = couch_client.get_doc(db, old["_id"])
+            if current is None:
+                continue
+            current_fm = current.get("frontmatter") or {}
+            if current_fm == old_fm:
+                untouched += 1
+                continue
+            if current_fm != migrate_frontmatter(old_fm):
+                edited += 1
+                continue
+            if dry_run:
+                restored += 1
+                continue
+            before = {k: current.get(k) for k in _PRESERVED}
+            status, _ = couch_client.put(db, {**current, "frontmatter": old_fm})
+            if status not in (200, 201):
+                errors.append(f"{db}/{old['_id']}: HTTP {status}")
+                continue
+            restored += 1
+            after = couch_client.get_doc(db, old["_id"])
+            if after is None or after.get("frontmatter") != old_fm or any(after.get(k) != before[k] for k in _PRESERVED):
+                problems.append(f"{db}/{old['_id']}: lo releído no es lo esperado")
+    print(f"Restauradas: {restored} | ya originales: {untouched} | editadas después (no se tocan): {edited} | errores: {len(errors)}")
+    for line in problems + errors:
+        print("  ", line)
+    return 3 if problems else (4 if errors else 0)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Migración de atributos de notas")
-    parser.add_argument("--mode", choices=["report", "apply"], required=True)
+    parser.add_argument("--mode", choices=["report", "apply", "backup", "rollback"], required=True)
+    parser.add_argument("--backup-file", type=Path, help="Archivo JSON del respaldo (modos backup y rollback)")
     parser.add_argument("--report-file", type=Path, help="Archivo JSON del informe")
     parser.add_argument("--summary-file", type=Path, help="Archivo Markdown del resumen")
     parser.add_argument("--only-db", type=str, help="Filtrar a una sola base")
@@ -347,6 +399,17 @@ def main():
             sys.exit(1)
         print(f"Informe escrito en {args.report_file}")
         print(f"Resumen escrito en {args.summary_file}")
+
+    elif args.mode in ("backup", "rollback"):
+        if not args.backup_file:
+            parser.error("--backup-file requerido para backup y rollback")
+        try:
+            if args.mode == "backup":
+                sys.exit(run_backup(couch, args.backup_file))
+            sys.exit(run_rollback(couch, args.backup_file, dry_run=args.dry_apply))
+        except CouchError as e:
+            print(f"ERROR: {e}")
+            sys.exit(1)
 
     elif args.mode == "apply":
         if not args.report_file:
