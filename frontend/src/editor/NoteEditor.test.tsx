@@ -1523,3 +1523,78 @@ describe("H-026: recordar y restaurar scroll", () => {
     }
   });
 });
+
+// H-025 paso 5: aviso «Deshacer» tras convertir un enlace pegado.
+describe("aviso de enlace convertido (H-025)", () => {
+  async function setupConvert() {
+    const undoSpy = vi.fn();
+    let fire: ((kind: "youtube" | "image") => void) | null = null;
+    function VisualConvert({ value, onChange, label, readOnly, registerCommands, onLinkConverted }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ undo: undoSpy } as never);
+        fire = (kind) => onLinkConverted?.({ kind });
+        return () => registerCommands?.(null);
+      }, [registerCommands, onLinkConverted]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const utils = await setup("hola", {}, { views: { Visual: VisualConvert, Code: fake("code") } });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, undoSpy, convert: (kind: "youtube" | "image") => act(() => fire!(kind)) };
+  }
+
+  it("muestra el texto y el botón «Deshacer»; «Deshacer» llama a undo y oculta el aviso", async () => {
+    const { undoSpy, convert } = await setupConvert();
+    convert("youtube");
+    expect(screen.getByText("Enlace convertido en reproductor de YouTube.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+    expect(undoSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+  });
+
+  it("desaparece a los 8 s y no antes", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { convert } = await setupConvert();
+      convert("image");
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(7900);
+      });
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("dos conversiones seguidas (aun del mismo tipo) reinician el temporizador", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const { convert } = await setupConvert();
+      convert("image");
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      convert("image");
+      act(() => {
+        vi.advanceTimersByTime(5000);
+      });
+      expect(screen.getByText("Enlace convertido en imagen.")).toBeInTheDocument();
+      convert("youtube");
+      expect(screen.getByText("Enlace convertido en reproductor de YouTube.")).toBeInTheDocument();
+      expect(screen.queryByText("Enlace convertido en imagen.")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("«Cerrar aviso» lo oculta", async () => {
+    const { convert } = await setupConvert();
+    convert("image");
+    await userEvent.click(screen.getByRole("button", { name: /Cerrar aviso/i }));
+    expect(screen.queryByText(/Enlace convertido/)).toBeNull();
+  });
+});

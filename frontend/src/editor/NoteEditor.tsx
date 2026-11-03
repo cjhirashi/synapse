@@ -294,7 +294,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   /** Aviso de una subida de imagen fallida (H-015): tamaño, tipo o red; se limpia al reintentar. */
   const [uploadError, setUploadError] = useState<string | null>(null);
   /** Aviso de conversión de enlace (H-025 paso 5): "youtube" o "image"; se limpia a los 8 s. */
-  const [converted, setConverted] = useState<"youtube" | "image" | null>(null);
+  const [converted, setConverted] = useState<{ kind: "youtube" | "image"; n: number } | null>(null);
   /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
   const imageInputRef = useRef<HTMLInputElement>(null);
   /** Timeout del aviso de conversión de enlace (H-025 paso 5). */
@@ -1135,7 +1135,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               }}
               onClose={() => setConverted(null)}
             >
-              {converted === "youtube"
+              {converted.kind === "youtube"
                 ? "Enlace convertido en reproductor de YouTube."
                 : "Enlace convertido en imagen."}
             </Notice>
@@ -1209,7 +1209,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               )}
             </>
           ) : view === "visual" ? (
-            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} onLinkConverted={(info) => setConverted(info.kind)} />
+            <Visual value={visualValue} onChange={onDraft} label="Editor visual" readOnly={false} registerFlush={registerFlush} onDirty={onViewDirty} autoFocus={focusEditor} preparsedMdast={savedPreparsed} prefix={prefix} registerCommands={registerCommands} onTableContext={setInTable} notes={vaultNotes} vaultColor={vaultColor} onLinkConverted={(info) => setConverted((prev) => ({ kind: info.kind, n: (prev?.n ?? 0) + 1 }))} />
           ) : (
             <Code value={codeText ?? ""} onChange={onCodeChange} label="Editor de código" readOnly={false} autoFocus={focusEditor} errorLine={errorLine} registerReveal={registerReveal} />
           )}
