@@ -61,6 +61,7 @@ import type { ParseCache } from "./markdown/parseCache";
 import { useSync } from "../sync/useSync";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
+import AttachDialog from "./AttachDialog";
 import { MilkdownView, type EditorCommands } from "./MilkdownView";
 import { WikilinkPreview, type WikilinkHoverTarget } from "./WikilinkPreview";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
@@ -297,6 +298,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [uploadError, setUploadError] = useState<string | null>(null);
   /** Aviso de conversión de enlace (H-025 paso 5): "youtube" o "image"; se limpia a los 8 s. */
   const [converted, setConverted] = useState<{ kind: "youtube" | "image"; n: number } | null>(null);
+  /** Diálogo de adjuntar (H-025 paso 7): abierto o cerrado. */
+  const [attachOpen, setAttachOpen] = useState(false);
   /** Input de archivo oculto que dispara el botón «Insertar imagen» (H-015). */
   const imageInputRef = useRef<HTMLInputElement>(null);
   /** Timeout del aviso de conversión de enlace (H-025 paso 5). */
@@ -895,6 +898,56 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     void insertUploadedImage(namedFile, "Varios");
   }
 
+  /**
+   * Valida y inserta una URL (H-025 paso 7): según el tipo (auto, imagen, youtube),
+   * valida que sea HTTPS bien formada, usa classifyUrl para automático, y llama
+   * a insertImage/insertEmbed/insertLink. Devuelve null si insertó, string si error.
+   */
+  function onAttachUrl(url: string, kind: "auto" | "image" | "youtube"): string | null {
+    const trimmed = url.trim();
+
+    try {
+      new URL(trimmed);
+    } catch {
+      return "Escribe una dirección web válida.";
+    }
+
+    if (!trimmed.startsWith("https://") && !trimmed.startsWith("http://")) {
+      return "Escribe una dirección web válida.";
+    }
+
+    if (kind === "auto") {
+      const classified = classifyUrl(trimmed);
+      if (classified.kind === "youtube") {
+        editorCommands.current?.insertEmbed(youtubeEmbedUrl(classified.id, classified.start));
+      } else if (classified.kind === "image") {
+        editorCommands.current?.insertImage(trimmed, "");
+      } else {
+        editorCommands.current?.insertLink(trimmed, trimmed);
+      }
+      return null;
+    }
+
+    if (kind === "image") {
+      if (!trimmed.startsWith("https://")) {
+        return "Las imágenes solo se admiten con https.";
+      }
+      editorCommands.current?.insertImage(trimmed, "");
+      return null;
+    }
+
+    if (kind === "youtube") {
+      const classified = classifyUrl(trimmed);
+      if (classified.kind !== "youtube") {
+        return "No es un enlace de YouTube admitido.";
+      }
+      editorCommands.current?.insertEmbed(youtubeEmbedUrl(classified.id, classified.start));
+      return null;
+    }
+
+    return null;
+  }
+
   // H-026: el scroll se avisa con debounce de 250 ms; al desmontar o cambiar de nota se entrega lo pendiente.
   const lastScrollPx = useRef(0);
   const onScrollRef = useRef(onScroll);
@@ -1097,9 +1150,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
               <ListOrdered size={16} aria-hidden="true" />
             </button>
-            {/* H-015/H-016: subir archivo (botón) e insertarlo en el cursor; también se puede
-                arrastrar y soltar sobre el área de edición. El input de archivo va oculto. */}
-            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => imageInputRef.current?.click()}>
+            {/* H-015/H-016/H-025: adjuntar archivo o URL (H-025 paso 7: diálogo con dos opciones).
+                El input de archivo va oculto y se dispara desde el diálogo. */}
+            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => setAttachOpen(true)}>
               <ImagePlus size={16} aria-hidden="true" />
             </button>
             <input
@@ -1230,6 +1283,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
                 Seguir editando
               </button>
             </ConfirmDialog>
+          )}
+
+          {/* H-025 paso 7: diálogo de adjuntar archivo o URL. */}
+          {attachOpen && mode === "edit" && view === "visual" && (
+            <AttachDialog
+              onUpload={() => imageInputRef.current?.click()}
+              onUrl={onAttachUrl}
+              onClose={() => setAttachOpen(false)}
+            />
           )}
 
           {/* Propiedades de la nota (RF-009): panel de sólo lectura; en edición el formulario de la sesión (D1). */}

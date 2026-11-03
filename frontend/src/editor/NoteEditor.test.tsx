@@ -1766,3 +1766,199 @@ describe("captura de pantalla pegada (H-025 paso 6)", () => {
     expect(await screen.findByText(/límite de tamaño/i)).toBeInTheDocument();
   });
 });
+
+// H-025 paso 7: control «Subir o pegar URL»
+describe("control «Subir o pegar URL» (H-025 paso 7)", () => {
+  const mockUpload = vi.mocked(uploadModule.uploadFile);
+
+  async function setupAttach() {
+    const insertEmbed = vi.fn();
+    const insertLink = vi.fn();
+    const insertImage = vi.fn();
+    function VisualWithAttach({ value, onChange, label, readOnly, registerCommands }: ViewProps) {
+      useEffect(() => {
+        registerCommands?.({ insertEmbed, insertLink, insertImage } as never);
+        return () => registerCommands?.(null);
+      }, [registerCommands]);
+      return <textarea aria-label={label} readOnly={readOnly} value={value} onChange={(event) => onChange(event.target.value)} />;
+    }
+    const customViews: NoteEditorViews = { Visual: VisualWithAttach, Code: fake("code") };
+    const utils = await setup("hola", {}, { views: customViews });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    return { ...utils, insertEmbed, insertLink, insertImage };
+  }
+
+  beforeEach(() => mockUpload.mockReset());
+
+  it("el botón Adjuntar archivo abre el diálogo (no abre el input)", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(attachBtn);
+    expect(screen.getByRole("dialog", { name: /Adjuntar/i })).toBeInTheDocument();
+  });
+
+  it("el diálogo tiene botones Subir archivo y Pegar URL", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+
+    expect(screen.getByRole("button", { name: "Subir archivo" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Pegar URL" })).toBeInTheDocument();
+  });
+
+  it("Subir archivo en el diálogo hace click en el input y cierra", async () => {
+    const user = userEvent.setup();
+    const { container } = await setupAttach();
+    const input = container.querySelector<HTMLInputElement>('input[type="file"]')!;
+    const clickSpy = vi.spyOn(input, "click");
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Subir archivo" }));
+
+    expect(clickSpy).toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("YouTube automático: URL con ?t=90 inserta con youtubeEmbedUrl", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertEmbed).toHaveBeenCalledWith("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("imagen automática: HTTPS URL insertImageN", async () => {
+    const user = userEvent.setup();
+    const { insertImage } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://example.com/image.png");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertImage).toHaveBeenCalledWith("https://example.com/image.png", "");
+  });
+
+  it("link automático: URL genérica insertLink", async () => {
+    const user = userEvent.setup();
+    const { insertLink } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "https://example.com/pagina");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(insertLink).toHaveBeenCalledWith("https://example.com/pagina", "https://example.com/pagina");
+  });
+
+  it("Imagen con http:// muestra error", async () => {
+    const user = userEvent.setup();
+    const { insertImage } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    const kindSelect = screen.getByLabelText("Tipo");
+    await user.selectOptions(kindSelect, "image");
+    await user.type(urlInput, "http://example.com/image.png");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/solo.*https/i);
+    expect(insertImage).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("YouTube con URL que no es YouTube muestra error", async () => {
+    const user = userEvent.setup();
+    const { insertEmbed } = await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    const kindSelect = screen.getByLabelText("Tipo");
+    await user.selectOptions(kindSelect, "youtube");
+    await user.type(urlInput, "https://example.com");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/no es un enlace de YouTube/i);
+    expect(insertEmbed).not.toHaveBeenCalled();
+  });
+
+  it("javascript: URL muestra error", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "javascript:alert(1)");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/dirección web válida/i);
+  });
+
+  it("texto suelto muestra error", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+
+    const urlInput = screen.getByLabelText("URL");
+    await user.type(urlInput, "solo texto sin url");
+    await user.click(screen.getByRole("button", { name: "Insertar" }));
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/dirección web válida/i);
+  });
+
+  it("Escape cierra el diálogo", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("Cancelar cierra el diálogo", async () => {
+    const user = userEvent.setup();
+    await setupAttach();
+
+    const attachBtn = screen.getByRole("button", { name: "Adjuntar archivo" });
+    await user.click(attachBtn);
+    await user.click(screen.getByRole("button", { name: "Pegar URL" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
