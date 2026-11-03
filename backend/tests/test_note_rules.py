@@ -82,3 +82,108 @@ def test_rf_005_a_normalized_path_is_a_fixed_point():
         if isinstance(_value(case), str):
             normalized = case["normalized"]
             assert note_rules.normalize_path(normalized) == normalized
+
+
+# --- H-029: Reglas de los siete generales en el servidor ---
+
+def test_h029_check_frontmatter_rejects_titulo_exceeds_max():
+    fm = {"titulo": "a" * 201}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_titulo_not_text():
+    fm = {"titulo": 123}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_descripcion_exceeds_max():
+    fm = {"descripcion": "a" * 1001}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_descripcion_not_text():
+    fm = {"descripcion": ["not", "text"]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_tags_with_spaces():
+    fm = {"tags": ["tag with space"]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_tags_with_uppercase():
+    fm = {"tags": ["TAG"]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_tags_empty_string():
+    fm = {"tags": [""]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_tags_exceeds_max_elements():
+    fm = {"tags": ["tag" + str(i) for i in range(21)]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_tags_element_exceeds_max_length():
+    fm = {"tags": ["a" * 33]}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_invalid_estado():
+    fm = {"estado": "invalid_state"}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_reserved_key_ruta():
+    fm = {"ruta": "some/path"}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_reserved_key_fecha_creacion():
+    fm = {"fecha_creacion": "2024-01-01"}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_rejects_reserved_key_fecha_actualizacion():
+    fm = {"fecha_actualizacion": "2024-01-01"}
+    assert note_rules.check_frontmatter(fm) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_accepts_valid_titulo():
+    fm = {"titulo": "Valid Title"}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_valid_descripcion():
+    fm = {"descripcion": "Valid description"}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_valid_tags():
+    fm = {"tags": ["tag1", "tag2", "tag3"]}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_valid_estado():
+    fm = {"estado": "en_proceso"}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_free_keys_with_accents_and_spaces():
+    fm = {"custom_key": "Valor con acentos: é, ñ"}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_original_keys():
+    fm = {"ruta_original": "some/path", "tags_original": ["tag"]}
+    assert note_rules.check_frontmatter(fm) is None
+
+
+def test_h029_check_frontmatter_accepts_null_frontmatter():
+    assert note_rules.check_frontmatter(None) == "validation-error:frontmatter"
+
+
+def test_h029_check_frontmatter_accepts_empty_frontmatter():
+    assert note_rules.check_frontmatter({}) is None

@@ -108,7 +108,7 @@ def nesting_depth_exceeds(value: object, limit: int) -> bool:
 
 def check_frontmatter(value: object) -> str | None:
     """`frontmatter`: objeto JSON de a lo sumo 32 niveles de profundidad cuya serialización compacta
-    pesa ≤ 64 KiB en UTF-8.
+    pesa ≤ 64 KiB en UTF-8, y cuyas claves conocidas pasan las reglas de los siete generales (H-029).
 
     El tope de profundidad (SPEC-0010, Converge 1) se comprueba **antes** de serializar: `json.loads`
     admite cientos de niveles pero `json.dumps` revienta con `RecursionError` cerca de los 950, y con
@@ -125,4 +125,10 @@ def check_frontmatter(value: object) -> str | None:
             value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8"))
     except (UnicodeEncodeError, ValueError):  # sustituto suelto en una cadena; número no finito
         return "validation-error:frontmatter"
-    return None if size <= FRONTMATTER_MAX_BYTES else "validation-error:frontmatter"
+    if size > FRONTMATTER_MAX_BYTES:
+        return "validation-error:frontmatter"
+    # Validar reglas de los siete generales (H-029).
+    from app.core.attribute_rules import validate_general
+    if validate_general(value) is not None:
+        return "validation-error:frontmatter"
+    return None
