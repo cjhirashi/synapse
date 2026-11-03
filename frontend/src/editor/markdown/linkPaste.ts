@@ -3,7 +3,7 @@
 import type { Ctx } from "@milkdown/ctx";
 import { Plugin, PluginKey } from "@milkdown/prose/state";
 import { closeHistory } from "@milkdown/prose/history";
-import { classifyUrl, youtubeEmbedUrl } from "../classifyUrl";
+import { classifyUrl, extractPastedUrl, youtubeEmbedUrl } from "../classifyUrl";
 
 const MAX_URL_LENGTH = 2048;
 
@@ -62,7 +62,7 @@ export function linkPastePlugin(
         const { from, to } = state.selection;
 
         // TR1: inserta el texto como enlace
-        const linkUrl = text.trim();
+        const linkUrl = extractPastedUrl(text) ?? text;
         const tr1 = state.tr.insertText(linkUrl, from, to);
         const linkMark = state.schema.marks.link;
         tr1.addMark(from, from + linkUrl.length, linkMark.create({ href: linkUrl }));

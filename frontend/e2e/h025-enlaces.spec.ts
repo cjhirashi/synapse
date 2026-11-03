@@ -101,7 +101,8 @@ for (const { label, size } of SIZE_LIST) {
     await emptyParagraph(page);
 
     // 1. Enlace de YouTube → reproductor 16:9 con pantalla completa y «Abrir en YouTube».
-    await paste(page, YT);
+    // Formato exacto que pegó Carlos desde su celular: enlace + título entre comillas.
+    await paste(page, `${YT} "Cómo instalar microPython en la ESP32 - fácil - v1"`);
     const frame = page.locator('.milkdown-view iframe[src^="https://www.youtube-nocookie.com/embed/jNQXAC9IVRw"]');
     await expect(frame).toHaveCount(1);
     await expect(frame).toHaveAttribute("src", /start=90/);
@@ -204,3 +205,35 @@ async function emptyParagraphAgain(page: Page): Promise<void> {
   await page.keyboard.press("Enter");
   await page.waitForTimeout(700);
 }
+
+test("H-025 paso 8: una imagen ![](enlace de YouTube) ya existente se pinta como reproductor (390 px)", async ({ browser, content }) => {
+  const { context, page } = await openWorkspaceWithSidebar(browser, content, MOBILE);
+  const errors = trackErrors(page);
+  const note = CONTENT_NOTES.find((n) => n.key === "props-types")!;
+  const tree = page.getByRole("tree", { name: "Notas" });
+  for (const folder of note.path.split("/").slice(0, -1)) {
+    const row = tree.getByRole("treeitem", { name: folder, exact: true });
+    if ((await row.getAttribute("aria-expanded")) === "false") await row.click();
+  }
+  await tree.getByRole("treeitem", { name: noteName(note), exact: true }).click();
+  await page.getByRole("button", { name: "Editar", exact: true }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
+  const code = page.locator(".cm-content");
+  await code.click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("\n\n![Cómo instalar microPython](https://www.youtube.com/watch?v=jNQXAC9IVRw)\n");
+  await page.getByRole("button", { name: "Visual", exact: true }).click();
+  const frame = page.locator('.milkdown-view iframe[src^="https://www.youtube-nocookie.com/embed/jNQXAC9IVRw"]');
+  await expect(frame).toHaveCount(1);
+  await expect(page.locator(".milkdown-view img:not(.ProseMirror-separator)")).toHaveCount(0);
+  const inner = (await (await frame.elementHandle())!.contentFrame())!;
+  await inner.waitForLoadState("load", { timeout: 20_000 }).catch(() => undefined);
+  await page.waitForTimeout(3_000);
+  expect(await inner.locator("body").innerText().catch(() => ""), "el reproductor carga").toMatch(/Me at the zoo/);
+  await frame.scrollIntoViewIfNeeded();
+  await shot(page, "h025-390-7-imagen-youtube-existente");
+  // Lectura
+  await page.getByRole("button", { name: /Leer|Lectura/ }).first().click().catch(() => undefined);
+  expect(errors, "sin errores de consola propios").toEqual([]);
+  await context.close();
+});

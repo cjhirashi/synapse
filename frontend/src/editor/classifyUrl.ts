@@ -109,13 +109,22 @@ export function youtubeWatchUrl(id: string, start: number | null): string {
   return url;
 }
 
+/**
+ * El enlace de un texto pegado: acepta «enlace "título"» (así lo copian algunas apps, como la sintaxis
+ * de markdown `[t](enlace "título")`). Cualquier otro texto tras el enlace lo invalida y se devuelve `null`.
+ */
+export function extractPastedUrl(text: string): string | null {
+  const match = text.trim().match(/^(\S+)(?:\s+(?:"[^"]*"|'[^']*'|“[^”]*”))?$/);
+  return match ? match[1] : null;
+}
+
 export function classifyUrl(
   text: string
 ):
   | { kind: "youtube"; id: string; start: number | null }
   | { kind: "image"; url: string }
   | { kind: "link"; url: string } {
-  const trimmed = text.trim();
+  const trimmed = extractPastedUrl(text) ?? text.trim();
 
   // Try YouTube
   const yt = parseYoutubeUrl(trimmed);
