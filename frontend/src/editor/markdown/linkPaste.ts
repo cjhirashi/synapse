@@ -42,7 +42,8 @@ export function linkPastePlugin(
         if (textblock.type.spec.code) return false;
 
         // Obtener texto/plain
-        const text = clipboardData.getData("text/plain");
+        // Muchas fuentes copian el enlace con un salto de línea o espacios al final: se recortan.
+        const text = clipboardData.getData("text/plain").trim();
         if (!text) return false;
 
         // Rechazar si tiene saltos de línea internos o es muy largo
