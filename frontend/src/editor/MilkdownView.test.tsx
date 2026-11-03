@@ -1231,7 +1231,7 @@ describe("MilkdownView · reproductor de YouTube (H-025)", () => {
     expect(iframe.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=90");
     expect(iframe.getAttribute("sandbox")).toBe("allow-scripts allow-same-origin allow-presentation");
     expect(iframe.getAttribute("allow")).toBe("fullscreen");
-    expect(iframe.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(iframe.getAttribute("referrerpolicy")).toBe("strict-origin-when-cross-origin");
     const link = box!.querySelector<HTMLAnchorElement>("a.md-embed-link")!;
     expect(link.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=90");
     expect(link.getAttribute("target")).toBe("_blank");

@@ -70,13 +70,15 @@ export function sanitizeHtmlFragment(html: string): DocumentFragment {
         iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-presentation");
         iframe.setAttribute("allow", "fullscreen");
         iframe.setAttribute("allowfullscreen", "");
+        // YouTube rechaza el reproductor (Error 153) si no recibe referente; solo viaja el origen, nunca la ruta.
+        iframe.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
       } else {
         iframe.setAttribute("sandbox", "allow-scripts");
         // Remover allow y allowfullscreen para embeds de Synapse
         iframe.removeAttribute("allow");
         iframe.removeAttribute("allowfullscreen");
+        iframe.setAttribute("referrerpolicy", "no-referrer");
       }
-      iframe.setAttribute("referrerpolicy", "no-referrer");
       iframe.setAttribute("loading", "lazy");
     }
   });

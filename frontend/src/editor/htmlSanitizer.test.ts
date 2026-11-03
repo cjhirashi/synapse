@@ -381,8 +381,15 @@ describe("sanitizeHtmlFragment", () => {
     expect(html).toContain('sandbox="allow-scripts allow-same-origin allow-presentation"');
     expect(html).toContain('allow="fullscreen"');
     expect(html).toContain('allowfullscreen');
-    expect(html).toContain('referrerpolicy="no-referrer"');
+    expect(html).toContain('referrerpolicy="strict-origin-when-cross-origin"');
+    expect(html).not.toContain('no-referrer');
     expect(html).toContain('loading="lazy"');
+  });
+
+  it("los iframes que no son de YouTube siguen con referrerpolicy=\"no-referrer\"", () => {
+    const html = fragmentHTML(sanitizeHtmlFragment('<iframe src="https://synapse.cjhirashi.com/files/550e8400-e29b-41d4-a716-446655440000" referrerpolicy="unsafe-url"></iframe>'));
+    expect(html).toContain('referrerpolicy="no-referrer"');
+    expect(html).not.toContain("unsafe-url");
   });
 
   it("conserva parámetro start= en YouTube", () => {
