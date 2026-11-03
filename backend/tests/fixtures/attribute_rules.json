@@ -8,6 +8,7 @@
  },
  "estados": [
   "borrador",
+  "en_proceso",
   "en_revision",
   "vigente",
   "archivado"
@@ -143,7 +144,9 @@
    "revision": "en_revision",
    "archived": "archivado",
    "archivado": "archivado",
-   "superseded": "archivado"
+   "superseded": "archivado",
+   "en proceso": "en_proceso",
+   "en progreso": "en_proceso"
   },
   "cases": [
    [
@@ -179,15 +182,31 @@
     "archivado"
    ],
    [
-    "en-proceso",
-    null
-   ],
-   [
     "publicado",
     null
    ],
    [
     "",
+    null
+   ],
+   [
+    "en-proceso",
+    "en_proceso"
+   ],
+   [
+    "En proceso",
+    "en_proceso"
+   ],
+   [
+    "en-progreso",
+    "en_proceso"
+   ],
+   [
+    "en_proceso",
+    "en_proceso"
+   ],
+   [
+    "pendiente",
     null
    ]
   ]
@@ -246,10 +265,10 @@
    {
     "name": "estado desconocido se conserva sin adivinar",
     "in": {
-     "status": "en-proceso"
+     "status": "pendiente"
     },
     "out": {
-     "estado_original": "en-proceso"
+     "estado_original": "pendiente"
     }
    },
    {
@@ -499,6 +518,15 @@
      "titulo": "T",
      "estado": "borrador"
     }
+   },
+   {
+    "name": "en-proceso pasa a en_proceso",
+    "in": {
+     "status": "en-proceso"
+    },
+    "out": {
+     "estado": "en_proceso"
+    }
    }
   ]
  },
@@ -677,6 +705,12 @@
      "titulo": 5
     },
     "reservada:ruta"
+   ],
+   [
+    {
+     "estado": "en_proceso"
+    },
+    null
    ]
   ]
  }

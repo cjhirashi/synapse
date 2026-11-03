@@ -10,13 +10,14 @@ TITULO_MAX = 200
 DESCRIPCION_MAX = 1000
 TAGS_MAX = 20
 TAG_MAX_LEN = 32
-ESTADOS = ("borrador", "en_revision", "vigente", "archivado")
+ESTADOS = ("borrador", "en_proceso", "en_revision", "vigente", "archivado")
 RESERVED_KEYS = ("ruta", "fecha_creacion", "fecha_actualizacion")
 
 # Valor de estado ya normalizado (ver `_estado_lookup`) -> código estándar.
 ESTADO_SYNONYMS = {
     "active": "vigente", "activo": "vigente", "vigente": "vigente",
     "draft": "borrador", "borrador": "borrador",
+    "en proceso": "en_proceso", "en progreso": "en_proceso",
     "en revision": "en_revision", "revision": "en_revision",
     "archived": "archivado", "archivado": "archivado", "superseded": "archivado",
 }
