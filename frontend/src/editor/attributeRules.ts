@@ -60,8 +60,8 @@ export function normalizeKey(key: string): string | null {
 export function normalizeTag(tag: string): string | null {
   let text = tag.normalize("NFC").trim().toLowerCase();
   text = [...text].map((c) => (/[\p{L}\p{Nd}\-_]/u.test(c) ? c : "_")).join("");
-  text = text.replace(/_+/g, "_").replace(/^_+|_+$|-+$/g, "");
-  text = [...text].slice(0, TAG_MAX_LEN).join("").replace(/-+$/g, "");
+  text = text.replace(/_+/g, "_").replace(/^[_-]+|[_-]+$/g, "");
+  text = [...text].slice(0, TAG_MAX_LEN).join("").replace(/[_-]+$/g, "");
   return text || null;
 }
 
@@ -157,7 +157,7 @@ export function migrateFrontmatterDetailed(
   function put(key: string, target: string, value: unknown): void {
     if (!(target in out)) {
       out[target] = value;
-    } else if (out[target] !== value) {
+    } else if (JSON.stringify(out[target]) !== JSON.stringify(value)) {
       drop(key, value, `duplica a «${target}» con otro valor; se conserva el primero`);
     }
   }

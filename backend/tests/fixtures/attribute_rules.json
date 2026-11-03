@@ -129,6 +129,26 @@
    [
     "fin-",
     "fin"
+   ],
+   [
+    "-abc",
+    "abc"
+   ],
+   [
+    "a-_",
+    "a"
+   ],
+   [
+    "_-a-_",
+    "a"
+   ],
+   [
+    "a--b",
+    "a--b"
+   ],
+   [
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-y",
+    "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    ]
   ]
  },
