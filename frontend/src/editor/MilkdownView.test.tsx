@@ -538,6 +538,19 @@ describe("MilkdownView · pegar", () => {
       expect(nodeNames(view)).not.toContain("html");
     });
 
+    it.each([
+      ["salto de línea final", "https://youtu.be/dQw4w9WgXcQ\n"],
+      ["salto de línea final de Windows", "https://youtu.be/dQw4w9WgXcQ\r\n"],
+      ["espacios alrededor", "  https://youtu.be/dQw4w9WgXcQ  "],
+      ["enlace de compartir con si=", "https://youtu.be/dQw4w9WgXcQ?si=AbC123xyz"],
+      ["watch con parámetros de seguimiento", "https://www.youtube.com/watch?v=dQw4w9WgXcQ&feature=shared&pp=abc"],
+    ])("un enlace de YouTube con %s se convierte", async (_n, text) => {
+      const { view, onLinkConverted } = await mount("");
+      paste(view, { "text/plain": text });
+      expect(onLinkConverted).toHaveBeenCalledWith({ kind: "youtube" });
+      expect(nodeNames(view)).toContain("html");
+    });
+
     it("dentro de un bloque de código NO convierte", async () => {
       const { view, onLinkConverted } = await mount("```\n```\n");
       let pos = -1;

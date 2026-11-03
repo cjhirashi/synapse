@@ -130,7 +130,8 @@ for (const { label, size } of SIZE_LIST) {
 
     // 3. Ctrl+Z: de nuevo pega, un undo deja el enlace y un segundo lo quita.
     await emptyParagraphAgain(page);
-    await paste(page, YT);
+    // Enlace de «Compartir» de YouTube: parámetro si= y salto de línea final, como lo copian chats y apps.
+    await paste(page, "https://youtu.be/jNQXAC9IVRw?si=AbC123xyz&t=90\n");
     await expect(frame).toHaveCount(1);
     await page.locator(".milkdown-view .ProseMirror").focus();
     await page.keyboard.press("Control+z");
