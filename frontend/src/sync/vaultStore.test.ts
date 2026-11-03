@@ -193,6 +193,69 @@ describe("almacenamiento", () => {
   });
 });
 
+// H-029: `attributes` (catálogo o null) se guarda, se valida y se fusiona.
+describe("attributes (H-029)", () => {
+  it("setAttributes guarda y get lo devuelve", async () => {
+    const vault = await store.create(input("Notas"));
+    const attrs = { estado: { type: "select" as const, options: ["a", "b"] } };
+    const updated = await store.setAttributes(vault.id, attrs, vault.rev);
+    expect(updated.attributes).toEqual(attrs);
+    expect(await store.get(vault.id)).toMatchObject({ attributes: attrs });
+  });
+
+  it("setAttributes con null borra el catálogo", async () => {
+    const vault = await store.create(input("Notas"));
+    const attrs = { custom: { type: "text" as const } };
+    const first = await store.setAttributes(vault.id, attrs, vault.rev);
+    const cleared = await store.setAttributes(vault.id, null, first.rev);
+    expect(cleared.attributes).toBeNull();
+    expect(await store.get(vault.id)).toMatchObject({ attributes: null });
+  });
+
+  it("setAttributes inválido lanza VaultValidationError sin escribir", async () => {
+    const vault = await store.create(input("Notas"));
+    const invalid = { titulo: { type: "text" as const } };
+    const err = await store.setAttributes(vault.id, invalid as any, vault.rev).catch((e) => e);
+    expect(err).toBeInstanceOf(VaultValidationError);
+    expect(err.fields).toContain("attributes");
+    expect(await store.get(vault.id)).toMatchObject({ attributes: null });
+  });
+
+  it("setAttributes con rev vieja → la bóveda cambió", async () => {
+    const vault = await store.create(input("Notas"));
+    const attrs1 = { field1: { type: "text" as const } };
+    const updated = await store.setAttributes(vault.id, attrs1, vault.rev);
+    const attrs2 = { field2: { type: "text" as const } };
+    await expect(store.setAttributes(vault.id, attrs2, vault.rev)).rejects.toBeInstanceOf(VaultChangedError);
+    expect(await store.get(vault.id)).toMatchObject({ attributes: attrs1 });
+  });
+
+  it("update de name conserva attributes", async () => {
+    const vault = await store.create(input("Notas"));
+    const attrs = { custom: { type: "number" as const } };
+    const withAttrs = await store.setAttributes(vault.id, attrs, vault.rev);
+    const renamed = await store.update(vault.id, { name: "Otra" }, withAttrs.rev);
+    expect(renamed.attributes).toEqual(attrs);
+  });
+
+  it("una bóveda sin attributes devuelve attributes: null", async () => {
+    const vault = await store.create(input("Notas"));
+    expect(vault.attributes).toBeNull();
+    expect(await store.get(vault.id)).toMatchObject({ attributes: null });
+  });
+
+  it("el catálogo sobrevive a softDelete y restore", async () => {
+    const vault = await store.create(input("Notas"));
+    const attrs = { status: { type: "select" as const } };
+    const withAttrs = await store.setAttributes(vault.id, attrs, vault.rev);
+    await store.softDelete(vault.id, withAttrs.rev);
+    const trashed = (await store.list({ deleted: true }))[0];
+    expect(trashed.attributes).toEqual(attrs);
+    const restored = await store.restore(vault.id, trashed.rev);
+    expect(restored.attributes).toEqual(attrs);
+  });
+});
+
 // SPEC-0009 RF-012: `icon` («glifo[:color]» o null) se guarda, se valida y se fusiona como los demás campos.
 describe("icon (RF-012)", () => {
   it("create con icon lo guarda en el documento y lo devuelve", async () => {
