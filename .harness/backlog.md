@@ -24,9 +24,9 @@
 - [x] H-026 — Recordar último documento, carpetas desplegadas y scroll por bóveda: **verificada por Carlos 2026-11-02** (mergeada `aabf78a`, desplegada). Detalle en su nota de la bóveda.
 - [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
 - [ ] H-028 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
-- [ ] H-029 — Propiedades de las notas como atributos META (antes H-0032; reemplaza H-001.1–H-001.3, retiradas por Carlos 2026-11-02) — **análisis ronda 2** (prioridad 1 de Carlos 2026-11-02, después H-031)
+- [ ] H-029 — Propiedades de las notas como atributos META (antes H-0032; reemplaza H-001.1–H-001.3, retiradas por Carlos 2026-11-02) — **plan propuesto, espera aprobación de Carlos** (análisis acordado en 2 rondas; prioridad 1 de Carlos 2026-11-02; se entrega en dos partes: A servidor y migración, B interfaz)
 - [ ] H-030 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1
-- [ ] H-031 — ÍNDICES automáticos de bóvedas (antes H-0033) — **análisis ronda 2** (prioridad 2 de Carlos 2026-11-02; depende de H-029)
+- [ ] H-031 — ÍNDICES automáticos de bóvedas (antes H-0033) — **análisis acordado en 2 rondas; plan pendiente de redactar** tras aprobar el de H-029 (prioridad 2 de Carlos 2026-11-02)
 - [ ] H-032 — Sidebar con vistas por tags y búsqueda (antes H-0037) — análisis ronda 1
 - [ ] H-033 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
 - [ ] H-034 — Mapa de relación de documentos (antes H-0036) — análisis ronda 1
