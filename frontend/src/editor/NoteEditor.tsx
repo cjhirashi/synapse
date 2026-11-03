@@ -721,6 +721,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         propsRef.current = saved.frontmatter;
         setDraft(saved.content);
         setProps(saved.frontmatter);
+      } else {
+        // Las fechas que sella el almacén al guardar entran a la sesión viva, para que no cuenten como cambio.
+        const dates: Record<string, unknown> = {};
+        for (const key of ["fecha_creacion", "fecha_actualizacion"]) {
+          if (key in saved.frontmatter) dates[key] = saved.frontmatter[key];
+        }
+        const merged = { ...propsRef.current, ...dates };
+        propsRef.current = merged;
+        setProps(merged);
       }
       // NC-2 (RF-044): al guardar una migración, el bloque ya está fuera del texto; avísalo.
       if (legacyNoticeRef.current === "migrate") setLegacyNotice("moved");

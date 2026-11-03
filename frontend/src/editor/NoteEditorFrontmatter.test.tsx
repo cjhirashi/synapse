@@ -3,7 +3,7 @@
 // (H-029: las propiedades no se mezclan con el texto como YAML). Alternar no pierde nada; guardar escribe
 // `content` y `frontmatter` juntos. Vistas falsas (textarea) + la `NoteMeta` real que monta el editor.
 import { type ComponentProps } from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { DataMemoryRouter } from "../test-utils/router";
@@ -44,6 +44,8 @@ const code = () => screen.getByRole("textbox", { name: "Editor de código" });
 const propValue = (key: string) => screen.getByRole("textbox", { name: `Valor de «${key}»` });
 const titleField = () => screen.getByLabelText("Título");
 /** El almacén sella `fecha_creacion` y `fecha_actualizacion` al guardar (H-029): se comparan aparte. */
+/** Entrar en edición carga el módulo de frontmatter y remonta la sección META una vez: se espera a que se asiente. */
+const settled = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 150)); });
 const noDates = (fm: Record<string, unknown>) => Object.fromEntries(Object.entries(fm).filter(([key]) => !key.startsWith("fecha_")));
 const isDate = (value: unknown) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
@@ -52,6 +54,7 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     await setup("# Cuerpo\n", { titulo: "Plan", n: 3 });
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
     expect(visual()).toHaveValue("# Cuerpo\n");
+    await settled();
     expect(titleField()).toHaveValue("Plan");
     expect(screen.getByLabelText("Clave de la propiedad 1")).toHaveValue("n");
     await userEvent.click(screen.getByRole("button", { name: "Código" }));
@@ -80,6 +83,82 @@ describe("sesión de edición D1 (RF-012, RF-014, RF-016, RF-020, RF-021)", () =
     expect(noDates(reloaded.frontmatter)).toEqual({ a: "xy" });
     expect(isDate(reloaded.frontmatter.fecha_actualizacion)).toBe(true); // guardar un cambio sella la fecha
     expect(reloaded.content).toBe("# Cuerpo\n");
+  });
+
+  it("tras guardar una propiedad la nota queda limpia: las fechas que sella el almacén no cuentan como cambio", async () => {
+    await setup("# Cuerpo\n", { a: "x" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await settled();
+    await userEvent.type(propValue("a"), "y");
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("Guardado")).toBeInTheDocument();
+    expect(screen.queryByText("Cambios sin guardar")).toBeNull();
+  });
+
+  it.each([
+    ["título", async () => { await userEvent.type(titleField(), "Nota META"); }],
+    ["etiqueta", async () => { await userEvent.type(screen.getByPlaceholderText("Añadir etiqueta (Enter)"), "Mi Tag{Enter}"); }],
+    ["estado estándar", async () => { await userEvent.selectOptions(screen.getByLabelText("Estado"), "aprobado"); }],
+    ["estado nuevo", async () => {
+      await userEvent.selectOptions(screen.getByLabelText("Estado"), "Otro estado…");
+      await userEvent.type(screen.getByLabelText("Nuevo estado"), "En Pruebas{Enter}");
+    }],
+  ])("tras guardar un cambio de %s en META la nota queda limpia", async (_name, edit) => {
+    await setup("# Cuerpo\n", { a: "x" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await settled();
+    await edit();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("Guardado")).toBeInTheDocument();
+    expect(screen.queryByText("Cambios sin guardar")).toBeNull();
+  });
+
+  it("una nota antigua SIN fechas queda limpia tras guardar: las fechas nuevas se incorporan a la sesión", async () => {
+    const db = memoryDb();
+    const { value } = syncValue({}, db);
+    const id = `note:${VAULT}:cccccccc-bbbb-4ccc-8ddd-eeeeeeeeeeee`;
+    await db.put({ _id: id, type: "note", vault_id: VAULT, path: "Antigua.md", frontmatter: { a: "x" }, content: "# Vieja\n", created_at: "2026-07-06T10:00:00.000000Z", updated_at: "2026-07-06T10:00:00.000000Z", deleted_at: null });
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}>
+          <NoteEditor noteId={id} views={views} />
+        </WithSync>
+      </DataMemoryRouter>,
+    );
+    await screen.findByRole("heading", { name: "Antigua" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await settled();
+    await userEvent.type(titleField(), "Con título");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("Guardado")).toBeInTheDocument();
+    expect(screen.queryByText("Cambios sin guardar")).toBeNull();
+    const saved = await value.notes.get(id);
+    expect(isDate(saved.frontmatter.fecha_creacion) && isDate(saved.frontmatter.fecha_actualizacion)).toBe(true);
+    expect(screen.getByLabelText("Fecha de actualización")).toHaveValue(String(saved.frontmatter.fecha_actualizacion));
+  });
+
+  it("alternar a Código y volver a Visual y guardar deja la nota limpia", async () => {
+    await setup("# Cuerpo\n", { a: "x" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await settled();
+    await userEvent.type(titleField(), "T");
+    await userEvent.click(screen.getByRole("button", { name: "Código" }));
+    await userEvent.click(screen.getByRole("button", { name: "Visual" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    expect(await screen.findByText("Guardado")).toBeInTheDocument();
+    expect(screen.queryByText("Cambios sin guardar")).toBeNull();
+  });
+
+  it("tras guardar y seguir escribiendo en META vuelve a estar sucia solo por lo nuevo", async () => {
+    await setup("# Cuerpo\n", { a: "x" });
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    await settled();
+    await userEvent.type(propValue("a"), "y");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar" }));
+    await screen.findByText("Guardado");
+    await userEvent.type(titleField(), "Nuevo");
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
   });
 
   it("cambiar una propiedad marca la nota como sucia (pregunta al abrir otra)", async () => {
