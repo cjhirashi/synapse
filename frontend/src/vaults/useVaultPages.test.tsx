@@ -14,6 +14,7 @@ function vault(n: number): Vault {
     name: `Bóveda ${n}`,
     description: null,
     tags: [],
+    attributes: null,
     owner_id: "u1",
     created_at: "2026-10-12T09:00:00.000000Z",
     updated_at: "2026-10-12T09:00:00.000000Z",

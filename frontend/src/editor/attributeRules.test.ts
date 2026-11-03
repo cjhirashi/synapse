@@ -48,38 +48,38 @@ describe("attributeRules", () => {
   });
 
   describe("normalize_key", () => {
-    it.each(spec.normalize_key.cases)("normalizeKey(%s) === %s", (input, expected) => {
-      expect(normalizeKey(input)).toBe(expected);
+    it.each(spec.normalize_key.cases as Array<[unknown, unknown]>)("normalizeKey(%s) === %s", (input, expected) => {
+      expect(normalizeKey(input as string)).toBe(expected);
     });
   });
 
   describe("normalize_tag", () => {
-    it.each(spec.normalize_tag.cases)("normalizeTag(%s) === %s", (input, expected) => {
-      expect(normalizeTag(input)).toBe(expected);
+    it.each(spec.normalize_tag.cases as Array<[unknown, unknown]>)("normalizeTag(%s) === %s", (input, expected) => {
+      expect(normalizeTag(input as string)).toBe(expected);
     });
   });
 
   describe("normalize_estado", () => {
-    it.each(spec.normalize_estado.cases)("normalizeEstado(%s) === %s", (input, expected) => {
+    it.each(spec.normalize_estado.cases as Array<[unknown, unknown]>)("normalizeEstado(%s) === %s", (input, expected) => {
       expect(normalizeEstado(input)).toBe(expected);
     });
   });
 
   describe("legacy_estado", () => {
-    it.each(spec.legacy_estado.cases)("legacyEstado(%s) === %s", (input, expected) => {
+    it.each(spec.legacy_estado.cases as Array<[unknown, unknown]>)("legacyEstado(%s) === %s", (input, expected) => {
       expect(legacyEstado(input)).toBe(expected);
     });
   });
 
   describe("normalize_date", () => {
-    it.each(spec.normalize_date.cases)("normalizeDate(%s) === %s", (input, expected) => {
+    it.each(spec.normalize_date.cases as Array<[unknown, unknown]>)("normalizeDate(%s) === %s", (input, expected) => {
       expect(normalizeDate(input)).toBe(expected);
     });
   });
 
   describe("validate_general", () => {
-    it.each(spec.validate_general.cases)("validateGeneral(%O) === %s", (input, expected) => {
-      expect(validateGeneral(input)).toBe(expected);
+    it.each(spec.validate_general.cases as Array<[unknown, unknown]>)("validateGeneral(%O) === %s", (input, expected) => {
+      expect(validateGeneral(input as Record<string, unknown>)).toBe(expected);
     });
   });
 
