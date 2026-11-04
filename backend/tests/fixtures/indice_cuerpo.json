@@ -295,7 +295,7 @@
   ]
  },
  "rules": {
-  "_doc": "Reglas de protección (servidor y cliente). `other_live_below_after`: notas vivas, distintas del INDICE, que quedan por debajo de su carpeta al final de la operación. `changed`: claves del frontmatter que la operación cambia respecto de lo guardado; `content_changed`: si cambia el contenido. `code` es el rechazo (null si pasa). La creación y el borrado automáticos al crear o borrar la carpeta (op `system_*`) siempre pasan salvo la raíz.",
+  "_doc": "Reglas de protección (servidor y cliente). `other_live_below_after`: notas vivas, distintas del INDICE, que quedan por debajo de su carpeta al final de la operación. `changed`: claves del frontmatter que la operación cambia respecto de lo guardado; `content_changed`: si cambia el contenido. `code` es el rechazo (null si pasa). La creación y el borrado automáticos al crear o borrar la carpeta (op `system_create`) siempre pasa. Operaciones: `create_user` (REST: un agente o usuario crea la nota), `system_create` (el servidor o la app crean el INDICE de una carpeta), `rename_or_move` (`path` es la ruta actual y `to` la nueva), `edit`, `delete`.",
   "codes": [
    "reserved-name:path",
    "index-readonly:content",
@@ -309,8 +309,9 @@
    {"op": "create_user", "path": "Synapse/indice.md", "code": "reserved-name:path"},
    {"op": "create_user", "path": "Synapse/ÍNDICE.md", "code": null},
    {"op": "system_create", "path": "Synapse/INDICE.md", "code": null},
-   {"op": "rename_user_to_reserved", "path": "Synapse/Nota.md", "to": "Synapse/INDICE.md", "code": "reserved-name:path"},
+   {"op": "rename_or_move", "path": "Synapse/Nota.md", "to": "Synapse/INDICE.md", "code": "reserved-name:path"},
    {"op": "rename_or_move", "path": "Synapse/INDICE.md", "to": "Otra/INDICE.md", "code": "index-readonly:path"},
+   {"op": "rename_or_move", "path": "Synapse/Nota.md", "to": "Synapse/Nota2.md", "code": null},
    {"op": "rename_or_move", "path": "INDICE.md", "to": "Raiz.md", "code": "index-readonly:path"},
    {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["descripcion"], "content_changed": false, "code": null},
    {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["descripcion", "estado"], "content_changed": false, "code": "index-readonly:attr"},
