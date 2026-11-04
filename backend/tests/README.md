@@ -21,7 +21,7 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
 - **Excepción declarada:** el control plane usa SQLite (`test.db`) en lugar de PostgreSQL
   (plan.md §7 de SPEC-0002); pasar a PostgreSQL real queda para una feature aparte.
 
-- **INDICES (H-031):** `test_index_rules.py` y `test_index_body.py` (sobre `fixtures/indice_cuerpo.json`, que el cliente también recorre) y `test_index_protection.py` (REST y sync).
+- **INDICES (H-031):** `test_index_rules.py` y `test_index_body.py` (sobre `fixtures/indice_cuerpo.json`, que el cliente también recorre) y `test_index_protection.py` (REST y sync) y `test_migrate_indices.py` (herramienta `scripts/migrate_indices.py`: en seco por defecto, `--apply` borra la lista de `--ids` a la papelera y crea el INDICE de cada carpeta).
 - **Notas (SPEC-0008):** `test_note_rules.py` (reglas puras sobre la batería compartida
   `fixtures/note_rules_cases.json`, que el cliente también recorre), `test_note_contract.py`
   (`note.schema.json` frente a `core/note_rules.py`; SPEC-0010 añade a `note_rules_cases.json` los casos de `path` `X/.md`, `X/.MD`, `.md`, `X/ .md` (inválidos) y `X/a.md`, `.md/a.md` (válidos) y el patrón del esquema), `test_reservations.py` y
