@@ -216,6 +216,7 @@ test("H-014 C-7 (2026-11-04): el <hr> y los bordes de tabla usan var(--border) a
   expect(quote).toMatch(/border-left: 4px solid var\(--vault-secondary-600\)/); // cambio de Carlos 2026-11-04 (antes gris 1px)
   expect(quote).toMatch(/border-radius: var\(--radius-sm\)/); // esquinas redondeadas
   expect(quote).toMatch(/background: color-mix\(in srgb, var\(--vault-secondary-600\) 8%, transparent\)/);
+  expect(rule(css, ':root[data-theme="dark"] .milkdown-view .ProseMirror blockquote')).toMatch(/background: color-mix\(in srgb, var\(--vault-secondary-600\) 15%, transparent\)/); // más claro solo en oscuro
   expect(quote).not.toMatch(/--accent/); // sin el cian fijo
   expect(quote).toMatch(/color: var\(--text-secondary\)/); // sigue tenue y en cursiva
   expect(quote).toMatch(/font-style: italic/);

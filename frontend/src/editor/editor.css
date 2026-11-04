@@ -1388,6 +1388,11 @@
   font-style: italic;
 }
 
+/* En el tema oscuro el 8 % se pierde sobre el fondo, así que sube a 15 % solo ahí (cambio de Carlos 2026-11-04). */
+:root[data-theme="dark"] .milkdown-view .ProseMirror blockquote {
+  background: color-mix(in srgb, var(--vault-secondary-600) 15%, transparent);
+}
+
 /* Una cita dentro de otra no repite el relleno. */
 .milkdown-view .ProseMirror blockquote blockquote {
   background: transparent;

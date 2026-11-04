@@ -422,3 +422,8 @@ La cita lleva las esquinas redondeadas (`--radius-sm`, 6 px) y la barra izquierd
 La viñeta de las listas desordenadas, el número de las ordenadas y las casillas de tarea (borde, hover en 400 y relleno
 al marcarse) van en el primario de la bóveda en tono 600 (`--vault-accent-600`). Supersede C-6 (marcador al 30 % con el
 texto) y el gris/cian de la casilla de SPEC-0010 RF-039. Verificado en Chromium.
+
+## Enmienda 2026-11-04 (12): fondo de la cita más claro solo en tema oscuro
+
+El 8 % se pierde sobre el fondo oscuro. El fondo de la cita sube a **15 %** únicamente con `data-theme="dark"`; el tema claro
+queda en 8 %.
