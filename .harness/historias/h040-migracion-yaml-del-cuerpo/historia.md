@@ -71,3 +71,13 @@ la migración real solo se ejecuta tras la confirmación de Carlos.
 | C-7 | 4, 5 | `test_migrate_body_yaml.py` |
 
 `[NEEDS CLARIFICATION] = 0`. Decisión abierta para Carlos: la clave `date` (ver informe de ensayo).
+
+## Avance (AIRA, 2026-11-04 17:00 CDMX)
+
+- Pasos 1-3 hechos (`63bd25e`, `e6f0cd0`, `437f1f3`, reescritos en `bcdf11f`: cuerpo con sus saltos de línea, normalización antes de comparar,
+  `vault_id` real, `---x` no es YAML, atributo `etiquetas` sin YAML también migra). Pruebas en verde en tmpfs (214).
+- **Ensayo en producción (solo lectura, 20 bases):** 1258 notas vivas (600 más en papelera, intactas); solo **1** empieza por YAML
+  (`Proyectos / 3 - Proyectos Banzi/Referencia/Familia ESP32 - comparativa.md`: `tags`, `date`, `author`, `status`), migrable sin
+  conflictos. Otra empieza por `---` tras una línea en blanco (`Inglés / BITACORA.md`): regla horizontal, no migrable, no se toca.
+  0 notas con atributo `etiquetas`, 0 conflictos de CouchDB. Decisión abierta para Carlos: `date` queda como atributo libre `date`
+  (no `fecha_creacion`). Digest del plan: `e593ffcc…3551d`. `apply`/`backup`/`rollback` (pasos 4-5) NO implementados: esperan confirmación de Carlos.
