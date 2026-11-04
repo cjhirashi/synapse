@@ -433,9 +433,10 @@ queda en 8 %.
 Carlos la veía reducida: el ancho máximo de la columna de la nota (`.note-editor-column`) y de la papelera sube de **780 a 900 px**
 (+15 %). La e2e `workspace-visual.spec.ts` (R-13) y las pruebas de CSS se ajustan a 900.
 
-## Enmienda 2026-11-04 (14): código en línea más claro solo en el tema oscuro
+## Enmienda 2026-11-04 (14): código en línea más claro y con chip visible
 
-Carlos lo veía muy oscuro en el tema oscuro y con el fondo apenas distinguible; pidió el cambio **solo en oscuro**. Nuevo token `--md-code-bg`:
-oscuro = texto 14 % sobre `--bg-primary`; claro = `--bg-tertiary` (sin cambio). El tono del código oscuro pasa de 90 % terciario + fondo a
-**35 % terciario + texto** (más claro que el wikilink, separado de él y del enlace). El tema claro queda como estaba. `vaultIcon.test.ts` y
-`layoutCss.test.ts` se ajustan; los 17 colores pasan en ambos temas.
+Carlos lo veía muy oscuro en el tema oscuro y con el fondo apenas distinguible. Nuevo token `--md-code-bg` (chip propio, ya no `--bg-tertiary`):
+oscuro = texto 14 % sobre `--bg-primary`; claro = texto 10 % (Carlos confirmó que el claro quedó bien). El tono del código oscuro pasa de
+90 % terciario + fondo a **35 % terciario + texto** (más claro que el wikilink, separado de él y del enlace). En claro el tono se queda en
+45 % terciario + texto: más claro choca con enlace y wikilink o baja del piso de 3,4:1 (`success`). `vaultIcon.test.ts` y `layoutCss.test.ts`
+se ajustan; los 17 colores pasan en ambos temas.

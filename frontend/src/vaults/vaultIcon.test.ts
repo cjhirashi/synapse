@@ -262,7 +262,7 @@ test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y 
     const vars = theme(mode);
     const bg = parse(vars["bg-primary"]);
     const ink = parse(vars["text-primary"]);
-    const bgCode = mode === "dark" ? mix(ink, 0.14, bg) : parse(vars["bg-tertiary"]);
+    const bgCode = mix(ink, mode === "dark" ? 0.14 : 0.1, bg);
     for (const key of PALETTE) {
       const primary = parse(vars[tokenOf(key)]);
       const secondary = rotateHue(primary, 30);
