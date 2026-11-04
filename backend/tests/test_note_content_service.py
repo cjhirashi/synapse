@@ -302,6 +302,41 @@ def test_update_with_a_stale_if_match_is_412(service, port):
         service.update(VAULT, created.note.id, NoteUpdate(content="b"), '"1-stale"')
 
 
+def test_update_accepts_weak_etag_w_prefix_with_current_rev(service, port):
+    """ETag débil (W/) con _rev vigente: debe pasar (H-038, C-4)."""
+    _put_vault(port)
+    created = service.create(VAULT, NoteCreate(path="Nota.md", content="a"))
+    rev = created.etag[1:-1]  # Quita comillas: "abc123" -> abc123
+    weak_etag = f'W/"{rev}"'
+    result = service.update(VAULT, created.note.id, NoteUpdate(content="b"), weak_etag)
+    assert result.note.content == "b"
+
+
+def test_delete_accepts_weak_etag_w_prefix_with_current_rev(service, port):
+    """ETag débil (W/) con _rev vigente en DELETE: debe pasar (H-038, C-7)."""
+    _put_vault(port)
+    created = service.create(VAULT, NoteCreate(path="Nota.md", content="a"))
+    rev = created.etag[1:-1]
+    weak_etag = f'W/"{rev}"'
+    service.delete(VAULT, created.note.id, weak_etag)
+    # Verifica que la nota está en papelera
+    stored = port.docs[DB][f"note:{VAULT}:{created.note.id}"]
+    assert stored["deleted_at"] is not None
+
+
+def test_restore_accepts_weak_etag_w_prefix_with_current_rev(service, port):
+    """ETag débil (W/) con _rev vigente en restore: debe pasar (H-038, C-7)."""
+    _put_vault(port)
+    created = service.create(VAULT, NoteCreate(path="Nota.md", content="a"))
+    service.delete(VAULT, created.note.id, created.etag)
+    # Busca el ETag actual (de la versión borrada)
+    stored = port.docs[DB][f"note:{VAULT}:{created.note.id}"]
+    rev = stored["_rev"]
+    weak_etag = f'W/"{rev}"'
+    result = service.restore(VAULT, created.note.id, weak_etag)
+    assert result.note.deleted_at is None
+
+
 def test_update_changes_only_sent_fields_with_a_new_etag(service, port):
     _put_vault(port)
     created = service.create(VAULT, NoteCreate(path="Nota.md", content="a", frontmatter={"x": 1}))

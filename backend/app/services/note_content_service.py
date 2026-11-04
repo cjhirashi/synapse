@@ -26,6 +26,7 @@ from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
+from app.core.etag import etag_matches
 from app.core.index_body import render_body
 from app.core.index_rules import ancestor_folders, changed_keys, check_op, folder_of, index_path_for, is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
@@ -363,10 +364,14 @@ def _check_rules(path: object, content: object, frontmatter: object, *, frontmat
 
 
 def _check_precondition(doc: dict, if_match: str | None) -> None:
-    """`If-Match` obligatorio e igual al `ETag` vigente (C-7/C-8)."""
+    """`If-Match` obligatorio e igual al `ETag` vigente (C-7/C-8).
+
+    Acepta `W/"..."` (débil, por intermediarios que lo comprimen).
+    """
     if if_match is None:
         raise PreconditionRequired()
-    if if_match != _etag(doc):
+    rev = doc["_rev"]
+    if not etag_matches(if_match, rev):
         raise PreconditionFailed(f"If-Match {if_match} != {_etag(doc)}")
 
 

@@ -318,6 +318,19 @@ def test_c8_patch_with_a_stale_if_match_is_412(ready_admin):
     assert_problem(res, 412, "precondition-failed")
 
 
+def test_h038_patch_accepts_weak_etag_w_prefix_with_current_rev(ready_admin):
+    """PATCH con ETag débil (W/) vigente: debe pasar 200 (H-038, C-4)."""
+    vault_id = create(ready_admin).json()["id"]
+    created = create_note(ready_admin, vault_id, "Nota.md", content="a")
+    etag = created.headers["etag"]
+    rev = etag[1:-1]  # Quita comillas
+    weak_etag = f'W/"{rev}"'
+    res = ready_admin.patch(f"/vaults/{vault_id}/notes/{created.json()['id']}",
+                            json={"content": "b"}, headers={"If-Match": weak_etag})
+    assert res.status_code == 200
+    assert res.json()["content"] == "b"
+
+
 def _without_dates(frontmatter):
     return {k: v for k, v in frontmatter.items() if k not in ("fecha_creacion", "fecha_actualizacion")}
 
