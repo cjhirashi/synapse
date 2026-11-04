@@ -396,3 +396,11 @@ tal cual. El terciario sigue en enlaces, wikilinks y código. Verificado en Chro
   mismo color de la cabecera, solo para seguir cada fila.
 - **Wikilink roto:** deja de usar el color de peligro; toma el color del wikilink (`--md-wikilink`) al 50 % de opacidad con
   subrayado punteado, para que se vea inactivo (supersede el «H-014 NO lo cambia» de H-011). Verificado en Chromium, claro y oscuro.
+
+## Enmienda 2026-11-04 (7): esquinas de tabla redondeadas y cita en secundario 600
+
+- **Tablas:** esquinas redondeadas (`--radius-sm`, 6 px). `border-radius` no se aplica con `border-collapse: collapse`, así que la
+  tabla usa bordes separados (`border-spacing: 0`): cada celda dibuja derecha e inferior y la primera fila y columna ponen arriba e
+  izquierda, sin líneas dobles. El tinte de las filas pares va en las celdas, no en la fila, para respetar el redondeo.
+- **Cita:** barra izquierda de 3 px en el secundario 600 (`--vault-secondary-600`) y fondo del mismo color al 20 % de opacidad
+  (antes línea gris de 1 px sin fondo; supersede la parte de la cita de H-014 C-7). Verificado en Chromium, claro y oscuro.

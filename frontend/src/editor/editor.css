@@ -1381,7 +1381,8 @@
 .milkdown-view .ProseMirror blockquote {
   margin: var(--space-4) 0;
   padding: var(--space-2) var(--space-4);
-  border-left: 1px solid var(--border);
+  border-left: 3px solid var(--vault-secondary-600);
+  background: color-mix(in srgb, var(--vault-secondary-600) 20%, transparent);
   color: var(--text-secondary);
   font-style: italic;
 }
@@ -1428,7 +1429,8 @@
 .milkdown-view .ProseMirror table {
   width: max-content;
   min-width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   border-color: var(--border); /* el navegador pone un gris propio a table/tr/tbody aunque no pinten borde */
   font-size: 14px;
   line-height: 1.6;
@@ -1452,6 +1454,34 @@
   margin: 0;
 }
 
+/* Esquinas redondeadas de la tabla (cambio de Carlos 2026-11-04). `border-radius` no se aplica con
+   `border-collapse: collapse`, así que la tabla usa bordes separados: cada celda dibuja solo su borde derecho
+   e inferior, y el superior e izquierdo los pone la primera fila y la primera columna (sin líneas dobles). El
+   redondeo va en las celdas de las cuatro esquinas. */
+.milkdown-view .ProseMirror th,
+.milkdown-view .ProseMirror td {
+  border-top-width: 0;
+  border-left-width: 0;
+}
+.milkdown-view .ProseMirror tr:first-child > * {
+  border-top-width: 1px;
+}
+.milkdown-view .ProseMirror tr > *:first-child {
+  border-left-width: 1px;
+}
+.milkdown-view .ProseMirror tr:first-child > *:first-child {
+  border-top-left-radius: var(--radius-sm);
+}
+.milkdown-view .ProseMirror tr:first-child > *:last-child {
+  border-top-right-radius: var(--radius-sm);
+}
+.milkdown-view .ProseMirror tr:last-child > *:first-child {
+  border-bottom-left-radius: var(--radius-sm);
+}
+.milkdown-view .ProseMirror tr:last-child > *:last-child {
+  border-bottom-right-radius: var(--radius-sm);
+}
+
 /* H-014 (C-11): la cabecera de tabla lleva el color de la bóveda — fondo tenue (`color-mix` al 15 % sobre
    transparente, antes `--bg-tertiary`) y texto al 100 % (`--vault-accent`). El cuerpo de la tabla no cambia. */
 .milkdown-view .ProseMirror th {
@@ -1462,8 +1492,10 @@
 }
 
 /* Filas pares con un tinte tenue del mismo color de la cabecera (el primario de la bóveda, 7 % sobre
-   transparente): solo ayuda a seguir cada fila (cambio de Carlos 2026-11-04). La cabecera cuenta como fila 1. */
-.milkdown-view .ProseMirror tr:nth-child(even) {
+   transparente): solo ayuda a seguir cada fila (cambio de Carlos 2026-11-04). La cabecera cuenta como fila 1. El fondo
+   va en las celdas, no en la fila, para respetar las esquinas redondeadas. */
+.milkdown-view .ProseMirror tr:nth-child(even) > td,
+.milkdown-view .ProseMirror tr:nth-child(even) > th {
   background: color-mix(in srgb, var(--vault-accent) 7%, transparent);
 }
 

@@ -210,18 +210,18 @@ test("H-014 C-6: el marcador de lista va al color de bóveda en la intensidad de
 // RF-037 (la cita en barra --accent + relleno --accent-soft) queda SUPERSEDIDO por H-014 C-7: las
 // líneas divisorias pasan a gris neutro (`--border`) a 1px — contraste entre contenido coloreado y
 // estructura neutra (historia §1). La cita pierde el cian fijo (barra Y relleno); conserva la cursiva.
-test("H-014 C-7: la cita, el <hr> y los bordes de tabla usan var(--border) a 1px, sin --accent ni color de bóveda", () => {
+test("H-014 C-7 (2026-11-04): el <hr> y los bordes de tabla usan var(--border) a 1px; la cita lleva barra y fondo del secundario 600", () => {
   const css = read("../editor/editor.css");
   const quote = rule(css, ".milkdown-view .ProseMirror blockquote");
-  expect(quote).toMatch(/border-left: 1px solid var\(--border\)/);
-  expect(quote).not.toMatch(/--accent/); // perdió el cian fijo: ni la barra ni el relleno --accent-soft
-  expect(quote).not.toMatch(/--vault-accent/); // ni el color de la bóveda
+  expect(quote).toMatch(/border-left: 3px solid var\(--vault-secondary-600\)/); // cambio de Carlos 2026-11-04 (antes gris 1px)
+  expect(quote).toMatch(/background: color-mix\(in srgb, var\(--vault-secondary-600\) 20%, transparent\)/);
+  expect(quote).not.toMatch(/--accent/); // sin el cian fijo
   expect(quote).toMatch(/color: var\(--text-secondary\)/); // sigue tenue y en cursiva
   expect(quote).toMatch(/font-style: italic/);
   const hr = rule(css, ".milkdown-view .ProseMirror hr");
   expect(hr).toMatch(/border-top: 1px solid var\(--border\)/);
   expect(hr).not.toMatch(/--accent/);
-  // Los bordes de celda (las líneas visibles de la tabla) ya eran 1px var(--border); C-7 lo exige.
+  // Los bordes de celda (las líneas visibles de la tabla) siguen siendo 1px var(--border).
   expect(editorCss()).toMatch(/\.milkdown-view \.ProseMirror th,\s*\.milkdown-view \.ProseMirror td\s*\{[^}]*border: 1px solid var\(--border\)/);
 });
 
@@ -310,8 +310,25 @@ test("H-014 (2026-11-04): el secundario es el primario girado +30° y el terciar
 
 test("H-014 (2026-11-04): las filas pares de la tabla llevan un tinte tenue (7 %) del primario de la bóveda, el mismo de la cabecera", () => {
   const css = editorCss();
-  const even = rule(css, ".milkdown-view .ProseMirror tr:nth-child(even)");
+  const even = rule(css, ".milkdown-view .ProseMirror tr:nth-child(even) > td,\n.milkdown-view .ProseMirror tr:nth-child(even) > th");
   expect(even).toMatch(/background: color-mix\(in srgb, var\(--vault-accent\) 7%, transparent\)/);
   const header = rule(css, ".milkdown-view .ProseMirror th");
   expect(header).toMatch(/color: var\(--vault-accent\)/); // mismo color de la bóveda; la fila par solo lo suaviza
+});
+
+test("H-014 (2026-11-04): la tabla tiene las cuatro esquinas redondeadas (bordes separados, sin líneas dobles)", () => {
+  const css = editorCss();
+  const table = rule(css, ".milkdown-view .ProseMirror table");
+  expect(table).toMatch(/border-collapse: separate/); // con `collapse` el radio no se aplica
+  expect(table).toMatch(/border-spacing: 0/);
+  for (const [selector, corner] of [
+    ["tr:first-child > *:first-child", "border-top-left-radius"],
+    ["tr:first-child > *:last-child", "border-top-right-radius"],
+    ["tr:last-child > *:first-child", "border-bottom-left-radius"],
+    ["tr:last-child > *:last-child", "border-bottom-right-radius"],
+  ]) {
+    expect(rule(css, `.milkdown-view .ProseMirror ${selector}`), selector).toMatch(new RegExp(`${corner}: var\\(--radius-sm\\)`));
+  }
+  // Sin líneas dobles: la celda solo dibuja derecha e inferior; arriba e izquierda las pone la primera fila/columna.
+  expect(css).toMatch(/th,\s*\.milkdown-view \.ProseMirror td\s*\{\s*border-top-width: 0;\s*border-left-width: 0;/);
 });
