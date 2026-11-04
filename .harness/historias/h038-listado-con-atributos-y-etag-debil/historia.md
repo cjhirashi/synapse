@@ -1,7 +1,7 @@
 ---
 id: H-038
 titulo: Listado de notas con atributos (frontmatter) y ETag débil aceptado en If-Match (cierra H-005)
-estado: in-progress # orden de Carlos 2026-11-04 (vía `main`); diseño de AIRA
+estado: implemented # desplegado y probado en producción 2026-11-04 16:45 CDMX
 covers:
   - backend/app/core/etag.py
   - backend/app/core/schemas.py
@@ -66,4 +66,7 @@ cual en `If-Match` da 412 sin que nadie haya editado.
 - Pasos 1-4 hechos y commiteados (`c776163`, `307e3ac`, `a656b98`, `b27b1ce`). Pruebas en tmpfs (el disco2 estaba saturado):
   386 de los archivos tocados en verde; suite completa 2039 ok / 21 fallos ajenos (20 `test_brand_assets.py` necesitan
   `frontend/public`, que no se copia a tmpfs; 1 `test_note_sync_api::…index-readonly:path` falla igual en la rama base `f3f0f96`).
-- Pendiente: despliegue y prueba en producción con la bóveda «Prueba» (ver plan).
+- Desplegado 2026-11-04 16:43 CDMX (imagen previa `synapse-backend:pre-h038`, `/health` 200). Prueba en producción, bóveda «Prueba»
+  (nota `Prueba 1/Prueba 5.md`): `note_list` devuelve `frontmatter` en cada ítem con `limit`/`next_cursor`; `note_get` devolvió
+  `W/"9-…"` (Cloudflare); `note_update` con ese `W/"9-…"` tal cual → 200; reenviar el `W/"9-…"` ya viejo → 412; con el vigente
+  `W/"10-…"` → 200. El frontmatter de la nota quedó como estaba.
