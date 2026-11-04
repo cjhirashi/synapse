@@ -6,6 +6,9 @@ Código fuente React.
 src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
+├── files/      # pantalla de archivos (/files): subir, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025)
+├── theme/      # tema claro/oscuro/sistema (useTheme, ThemeToggle)
+├── styles/     # tokens de diseño y estilos globales (scrollbars con el formato del tema)
 ├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
 ├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
 ├── brand/      # logo oficial (BrandLogo + brand.css) y sus pruebas de assets (SPEC-0011)
@@ -37,6 +40,9 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
 | `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
+| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): subir, renombrar, visibilidad, borrar |
+| `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente |
+| `/settings/password` | `settings/ChangePasswordPage.tsx` — cambiar contraseña |
 | `/rejections` | `sync/RejectionsPage.tsx` — cambios que el servidor rechazó, con el motivo y «Corregir» |
 | `/conflicts` | `sync/ConflictView.tsx` — conflictos que el usuario elige o combina |
 

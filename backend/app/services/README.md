@@ -9,7 +9,16 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   `None` → 401, nunca 403) y actualiza `last_used_at` best-effort en commit propio (si falla no
   tumba la petición); `list`/`revoke` scoped por `owner_id` (ajena → `AgentKeyNotFound`). Sin
   dependencia de CouchDB: sólo identidad en el control plane.
-- `vault_service.py` (`VaultService`, SPEC-0003): reglas de las bóvedas y reservas de nombre.
+- `auth_service.py` (`AuthService`, SPEC-0002): login, refresh y logout, cambio de contraseña, alta de usuarios (provisiona su base en CouchDB) y siembra del administrador (`bootstrap_admin`).
+- `file_service.py` (`FileService`, H-015/H-016): reglas de archivos. Comprueba que la bóveda sea del
+  usuario, el tamaño (5 MB imágenes, 25 MB documentos), el tipo por **firma de bytes** (nunca por el
+  `Content-Type` del cliente), sanea SVG y valida el nombre y la carpeta. Opera sobre el repositorio de
+  metadatos y el puerto de almacenamiento de objetos; no conoce HTTP.
+- `note_content_service.py` (`NoteContentService`, historia 0014): contenido de notas vía REST para agentes
+  sobre la base CouchDB del usuario (a través de `VaultPort`). Cursor opaco ligado a la bóveda, `ETag` =
+  `_rev` entre comillas, y escritura que reusa `core/note_rules.py`, `core/attribute_rules.py` y
+  `core/note_dates.py` (sin reescribirlas).
+- `vault_service.py` (`VaultService`, SPEC-0003, H-029; ahora también guarda el catálogo de atributos META): reglas de las bóvedas y reservas de nombre.
   Desde SPEC-0005 una reserva sigue siendo de su bóveda mientras **alguna** hoja viva activa
   use el nombre (`_holder` mira todas las hojas, no sólo la ganadora).
 - `sync_filter.py` (SPEC-0005): funciones puras del canal: lista blanca de parámetros,

@@ -10,6 +10,17 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
   revoca keys (P-4). `vaults.py` y `sync.py` aceptan además la `Bearer` key porque usan
   `get_current_principal` (cookie→Bearer) en vez de `get_current_user`; la base sigue saliendo
   sólo del principal.
+- `auth.py`: sesión por cookie (`/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`) y cambio de contraseña.
+- `admin.py`: `POST /admin/users` (alta de usuarios, solo administrador).
+- `vaults.py` (SPEC-0003, H-029): CRUD de bóvedas con `ETag`/`If-Match`, papelera y restauración
+  (`DELETE`, `POST /{id}/restore`), catálogo de atributos META de la bóveda, y
+  `GET /vaults/{vault_id}/files` (lista paginada de los archivos de la bóveda, 404 si no es del usuario).
+- `notes.py` (historia 0014, H-029): notas de una bóveda para agentes —listar con cursor, leer, crear,
+  actualizar parcial (`PATCH`), borrar y restaurar— con `ETag`; delega en `NoteContentService`. Las fechas
+  de la nota las sella el servidor (día de CDMX) cuando escribe un agente.
+- `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campo opcional `folder`), `GET /files/{id}`
+  (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
+  `PATCH /files/{id}` (nombre y visibilidad) y `DELETE /files/{id}`. MinIO nunca se expone directo.
 - `sync.py` (SPEC-0005): canal `/sync` para PouchDB. La base sale del token
   (`get_sync_db`); sólo existe el subconjunto del protocolo que usa el replicador y una ruta
   comodín final responde `SyncEndpointNotFound` a todo lo demás (también a métodos no

@@ -78,7 +78,19 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 
+## Atributos, fechas y archivos (H-029, H-015/H-016)
+
+- `attribute_rules.py` — reglas de los atributos META de una nota (claves, etiquetas, estados, fechas
+  `AAAA-MM-DD`) y migración de frontmatter antiguo. La especificación compartida vive en
+  `tests/fixtures/attribute_rules.json` y la comparte `frontend/src/editor/attributeRules.ts`: ambos pasan los mismos casos.
+- `note_dates.py` — `stamp_dates`: fechas de creación y actualización que sella el servidor (día de CDMX) cuando un
+  agente escribe por REST.
+- `file_safety.py` — funciones puras sobre bytes: tipo por firma (`sniff_content_type`, `resolve_content_type`, que rechaza
+  ejecutables y verifica coherencia OOXML/ODF) y saneo de SVG (`is_safe_svg`, mismo criterio RNF-003 que el editor).
+- `models/file.py` — `File`, metadatos de un archivo subido a MinIO (migraciones 006 y 007, carpeta opcional).
+
 ## Subdirectorios
 
 - `ports/` — Protocols de Python que definen las interfaces que `services/` consume
-  (`agent_key_port.py` es el de las API keys de agente, SPEC-0013)
+  (`agent_key_port.py` es el de las API keys de agente, SPEC-0013; `object_storage_port.py`, el del almacén
+  de objetos de archivos, H-015/H-016)
