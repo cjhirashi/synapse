@@ -211,10 +211,10 @@ for (const theme of THEMES) {
         expectExact(`R-10e ${key}`, "fondo de la barra superior = --bg-secondary", top.bg, tokenColor(theme, "--bg-secondary"));
         expect(top.borderBottomColor, "borde inferior en --border").toBe(tokenColor(theme, "--border"));
 
-        // Columna: min(780, ancho del área de scroll) y centrada dentro de ella.
+        // Columna: min(900, ancho del área de scroll) y centrada dentro de ella.
         const area = await measure(page, ".note-editor-body");
         const column = await measure(page, ".note-editor-column");
-        expectMeasure(`R-13 ${key}`, "ancho de la columna", column.w, Math.min(780, area.clientWidth), 2);
+        expectMeasure(`R-13 ${key}`, "ancho de la columna", column.w, Math.min(900, area.clientWidth), 2);
         const left = column.x - area.x;
         const right = area.x + area.clientWidth - (column.x + column.w);
         expectMeasure(`R-13c ${key}`, "descentrado de la columna", Math.abs(left - right), 0, 2);

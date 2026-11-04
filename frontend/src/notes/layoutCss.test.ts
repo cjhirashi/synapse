@@ -127,10 +127,10 @@ test("H-023 C-1: el nombre de una fila va en una sola línea y sin elipsis", () 
   expect(name).toMatch(/min-width: 0/);
 });
 
-test("RF-005: el contenido del editor va en una columna centrada de 780 px sin tarjeta", () => {
+test("RF-005: el contenido del editor va en una columna centrada de 900 px sin tarjeta", () => {
   const editor = read("../editor/editor.css");
   const column = rule(editor, ".note-editor-column");
-  expect(column).toMatch(/max-width: 780px/);
+  expect(column).toMatch(/max-width: 900px/);
   expect(column).toMatch(/margin-inline: auto/);
   expect(column).toMatch(/padding: var\(--space-8\) var\(--space-16\)/);
   expect(rule(editor, ".note-editor-header")).toMatch(/background: var\(--bg-secondary\)/);

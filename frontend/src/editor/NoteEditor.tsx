@@ -1171,7 +1171,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         {pathNotice}
       </span>
 
-      {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 780 px con los avisos,
+      {/* Área de scroll del contenido (SPEC-0009 RF-005): una columna centrada de 900 px con los avisos,
           las confirmaciones y la vista activa. La barra superior (`header`) queda fija arriba. */}
       <div className="note-editor-body" ref={editorBodyRef} onScroll={handleBodyScroll} onDrop={onEditorDrop} onDragOver={onEditorDragOver} onPasteCapture={onPasteCapture}>
         <div className="note-editor-column">

@@ -639,7 +639,7 @@ body.is-resizing {
 
 /* Papelera de notas dentro del panel: misma columna centrada que el editor. */
 .vault-workspace-main > .note-trash {
-  max-width: 780px;
+  max-width: 900px;
   margin-inline: auto;
   padding: var(--space-8) var(--space-16);
 }

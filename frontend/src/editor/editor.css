@@ -490,7 +490,7 @@
 }
 
 /* Cuerpo sin tarjeta: el área de scroll ocupa el resto del panel y el contenido va en una columna
-   centrada de 780 px como máximo (R-13), con avisos y confirmaciones dentro de la misma columna. */
+   centrada de 900 px como máximo (R-13; antes 780, ampliada a pedido de Carlos 2026-11-04), con avisos y confirmaciones dentro de la misma columna. */
 .note-editor-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -501,7 +501,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-width: 780px;
+  max-width: 900px;
   margin-inline: auto;
   padding: var(--space-8) var(--space-16);
 }

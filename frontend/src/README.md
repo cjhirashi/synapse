@@ -182,7 +182,7 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   el modo sin perder la nota abierta. Es el primer uso del patrón **sidebar oculta** (vs. **sidebar en
   riel** de `VaultRail`/H-008).
 - **Editor** (`editor/editor.css`): barra superior fija de 43 px y cuerpo sin tarjeta con una
-  columna centrada de 780 px (`.note-editor-column`; avisos y confirmaciones dentro). El estado
+  columna centrada de 900 px (`.note-editor-column`; avisos y confirmaciones dentro). El estado
   vacío (`.vault-workspace-empty`) va centrado en el panel.
 - **Verificación visual:** `e2e/` (Playwright 1.56.0; ver `frontend/README.md`, `npm run test:visual`).
 

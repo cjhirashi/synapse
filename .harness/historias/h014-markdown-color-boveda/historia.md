@@ -427,3 +427,8 @@ texto) y el gris/cian de la casilla de SPEC-0010 RF-039. Verificado en Chromium.
 
 El 8 % se pierde sobre el fondo oscuro. El fondo de la cita sube a **15 %** únicamente con `data-theme="dark"`; el tema claro
 queda en 8 %.
+
+## Enmienda 2026-11-04 (13): columna de la nota más ancha
+
+Carlos la veía reducida: el ancho máximo de la columna de la nota (`.note-editor-column`) y de la papelera sube de **780 a 900 px**
+(+15 %). La e2e `workspace-visual.spec.ts` (R-13) y las pruebas de CSS se ajustan a 900.
