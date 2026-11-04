@@ -139,7 +139,9 @@ def _check_note_fields(doc: dict) -> None:
     El servidor no normaliza (P-3 de 0005): una ruta con espacios sobrantes es `not-normalized`.
     """
     checks = [("path", check_path), ("content", check_content)]
-    if "frontmatter" in doc:  # opcional (spec §3)
+    # Opcional (spec §3). `null` equivale a ausente: lo dejaron las escrituras REST de agentes anteriores al sellado
+    # de fechas de H-029 y el cliente lo reenvía tal cual al mover o renombrar la nota.
+    if doc.get("frontmatter") is not None:
         checks.append(("frontmatter", check_frontmatter))
     for field, check in checks:
         if (code := check(doc[field])) is not None:

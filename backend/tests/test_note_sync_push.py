@@ -141,7 +141,6 @@ def _nested(depth: int) -> dict:
     ({"content": "é" * (CONTENT_MAX_BYTES // 2) + "a"}, "validation-error:content"),
     ({"frontmatter": []}, "validation-error:frontmatter"),
     ({"frontmatter": "x"}, "validation-error:frontmatter"),
-    ({"frontmatter": None}, "validation-error:frontmatter"),
     ({"frontmatter": {"k": "a" * 65536}}, "validation-error:frontmatter"),
     # H-029: los siete generales (las claves libres no se validan).
     ({"frontmatter": {"estado": "En Revisión"}}, "validation-error:frontmatter"),
@@ -159,6 +158,15 @@ async def test_rf_016_note_fields_follow_the_rules_of_note_rules(push, couch, va
     doc = _note(**change)
     assert await push.push([doc]) == [_rejected(doc, reason)]
     assert not _stored(couch, doc)
+
+
+async def test_note_with_null_frontmatter_is_accepted_like_an_absent_one(push, couch, vault):
+    # Notas escritas por REST antes de H-029 quedaron con `frontmatter: null`; mover o renombrar una reenvía ese `null`.
+    first = _note(frontmatter=None)
+    assert await push.push([first]) == []
+    moved = _note(first["_id"], "2-bbb", ("1-aaa",), path="Otra/Nota.md", frontmatter=None)
+    assert await push.push([moved]) == []
+    assert couch.winner(DB, first["_id"])["path"] == "Otra/Nota.md"
 
 
 async def test_rf_007_note_in_a_folder_with_a_real_name_is_accepted(push, couch, vault):
