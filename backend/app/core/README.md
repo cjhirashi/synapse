@@ -75,6 +75,13 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   recorren `tests/fixtures/note_rules_cases.json`.
   Desde SPEC-0010 `check_path` rechaza además un último segmento `.md` (sin distinguir mayúsculas), tras normalizar:
   `X/.md` y `X/ .md` son `validation-error:path` (también `.ｍｄ` en anchos completos: NFKC + casefold). `check_frontmatter` añade un tope de 32 niveles de anidamiento (`FRONTMATTER_MAX_DEPTH`), comprobado de forma iterativa antes de serializar.
+- `index_rules.py` — reglas puras de los `INDICE.md` automáticos (H-031), sin E/S: nombre reservado por `path_key`,
+  `folder_of`/`index_path_for`/`ancestor_folders`, `changed_keys` y `check_op` (códigos `reserved-name:path`,
+  `index-readonly:content|attr|path|delete`, `index-root:delete`). Un INDICE sólo admite editar `descripcion` y se borra
+  únicamente con su carpeta; el de la raíz nunca. Las usan `note_content_service.py` y `sync_push.py`; las espeja
+  `frontend/src/notes/indexRules.ts` sobre `tests/fixtures/indice_cuerpo.json`.
+- `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con tablas META):
+  se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 
