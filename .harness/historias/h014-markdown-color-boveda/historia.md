@@ -389,3 +389,10 @@ Con la relación a 30° aprobada por Carlos, los encabezados quedan: H1 primario
 H4 secundario 400 (el secundario es el primario girado +30° en OKLCH; `--vault-secondary-400` nuevo, `--vault-tertiary-600`
 retirado por sin uso). En el tema claro H3 y H4 se mezclan 60/40 con el texto (el 400 puro da 1,5:1 en amarillo); en oscuro van
 tal cual. El terciario sigue en enlaces, wikilinks y código. Verificado en Chromium (azul y naranja, claro y oscuro).
+
+## Enmienda 2026-11-04 (6): filas pares de tabla y enlaces rotos
+
+- **Tablas:** las filas pares (la cabecera cuenta como fila 1) llevan el primario de la bóveda al 7 % sobre transparente, el
+  mismo color de la cabecera, solo para seguir cada fila.
+- **Wikilink roto:** deja de usar el color de peligro; toma el color del wikilink (`--md-wikilink`) al 50 % de opacidad con
+  subrayado punteado, para que se vea inactivo (supersede el «H-014 NO lo cambia» de H-011). Verificado en Chromium, claro y oscuro.

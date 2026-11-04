@@ -1461,6 +1461,12 @@
   font-weight: 600;
 }
 
+/* Filas pares con un tinte tenue del mismo color de la cabecera (el primario de la bóveda, 7 % sobre
+   transparente): solo ayuda a seguir cada fila (cambio de Carlos 2026-11-04). La cabecera cuenta como fila 1. */
+.milkdown-view .ProseMirror tr:nth-child(even) {
+  background: color-mix(in srgb, var(--vault-accent) 7%, transparent);
+}
+
 .milkdown-view .ProseMirror .selectedCell {
   background: var(--accent-soft);
 }
@@ -1625,8 +1631,8 @@ li.note-task[data-checked="true"] .note-task-body {
 
 /* Wikilinks `[[...]]` en Lectura y edición Visual (H-011). Resuelto: color SECUNDARIO (análogo) de la bóveda
    (H-014 C-10, antes `--accent-hover`) + subrayado, mismo tratamiento que los enlaces normales y la
-   negrita, distinguible del texto (C-3). Roto (`data-broken`): color de peligro + subrayado punteado,
-   visible pero marcado como inválido (H-014 NO lo cambia). Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
+   negrita, distinguible del texto (C-3). Roto (`data-broken`): el color del wikilink al 50 % de opacidad + subrayado
+   punteado, para que se vea inactivo (cambio de Carlos 2026-11-04; antes color de peligro). Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
 .milkdown-view .ProseMirror a.wikilink {
   color: var(--md-wikilink);
   text-decoration: underline;
@@ -1636,7 +1642,7 @@ li.note-task[data-checked="true"] .note-task-body {
 }
 
 .milkdown-view .ProseMirror a.wikilink[data-broken] {
-  color: var(--danger-text);
+  color: color-mix(in srgb, var(--md-wikilink) 50%, transparent);
   text-decoration-style: dashed;
 }
 

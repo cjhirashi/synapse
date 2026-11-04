@@ -164,7 +164,7 @@ test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secu
   expect(css).toMatch(/\.milkdown-view \.ProseMirror strong em,\s*\.milkdown-view \.ProseMirror em strong\s*\{\s*color: var\(--md-strongem\)/);
 });
 
-test("H-014 C-10 (2026-11-04): enlace y wikilink resuelto en tonos del terciario y subrayados; el roto sigue en --danger-text", () => {
+test("H-014 C-10 (2026-11-04): enlace y wikilink resuelto en tonos del terciario y subrayados; el roto, el color del wikilink al 50 % (inactivo)", () => {
   const css = editorCss();
   const link = rule(css, ".milkdown-view .ProseMirror a");
   expect(link).toMatch(/color: var\(--md-link\)/);
@@ -172,7 +172,8 @@ test("H-014 C-10 (2026-11-04): enlace y wikilink resuelto en tonos del terciario
   const wiki = rule(css, ".milkdown-view .ProseMirror a.wikilink");
   expect(wiki).toMatch(/color: var\(--md-wikilink\)/);
   expect(wiki).toMatch(/text-decoration: underline/);
-  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
+  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("color-mix(in srgb, var(--md-wikilink) 50%, transparent)"); // se ve inactivo, mismo tono que el wikilink
+  expect(rule(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toMatch(/text-decoration-style: dashed/);
 });
 
 test("H-014 (2026-11-04): los tonos --md-link/--md-wikilink/--md-code salen del terciario, distintos en oscuro y claro", () => {
@@ -305,4 +306,12 @@ test("H-014 (2026-11-04): el secundario es el primario girado +30° y el terciar
   expect(vars).toMatch(/--vault-secondary-600: oklch\(from var\(--vault-accent-600\) l c calc\(h \+ 30\)\)/);
   expect(vars).toMatch(/--vault-secondary-400: oklch\(from var\(--vault-accent-400\) l c calc\(h \+ 30\)\)/);
   expect(block).toBeTruthy();
+});
+
+test("H-014 (2026-11-04): las filas pares de la tabla llevan un tinte tenue (7 %) del primario de la bóveda, el mismo de la cabecera", () => {
+  const css = editorCss();
+  const even = rule(css, ".milkdown-view .ProseMirror tr:nth-child(even)");
+  expect(even).toMatch(/background: color-mix\(in srgb, var\(--vault-accent\) 7%, transparent\)/);
+  const header = rule(css, ".milkdown-view .ProseMirror th");
+  expect(header).toMatch(/color: var\(--vault-accent\)/); // mismo color de la bóveda; la fila par solo lo suaviza
 });
