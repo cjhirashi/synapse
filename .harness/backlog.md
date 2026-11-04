@@ -26,7 +26,7 @@
 - [ ] H-027 — Cambios de sidebar de bóvedas (antes H-0030) — análisis ronda 1
 - [ ] H-028 — Reestructura del riel principal (antes H-0031) — análisis ronda 1
 - [ ] H-029 — Propiedades de las notas como atributos META (antes H-0032; reemplaza H-001.1–H-001.3, retiradas por Carlos 2026-11-02) — **plan aprobado por Carlos 2026-11-03; Entrega A (servidor y migración de 631 notas reales) desplegada 2026-11-03 (merge `d798b84`); Entrega B (interfaz, sección META) desplegada 2026-11-03 (merge de `feature/h029-propiedades-meta`, imagen previa `pre-h029b`); paso 8 (editores tipados fecha/select/multiselect del catálogo) desplegado 2026-11-03 (merge de `feature/h029-tipos-atributos`, imagen previa `pre-h029-paso8`); pendiente checkpoint de Carlos**
-- [ ] H-030 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1
+- [ ] H-030 — Carpetas META de bóvedas: skills, bitácora, plantillas (antes H-0034) — análisis ronda 1; ronda 2 (2026-11-04): spec de carpetas AG (SKILLS, MENSAJES, AGENTES) con permisos por agente, esperando Q1 a Q6 de Carlos
 - [~] H-031 — ÍNDICES automáticos de bóvedas (antes H-0033) — **mergeada (`dab1465`), migrada y desplegada en producción 2026-11-04 (CDMX)**: 276 documentos a la papelera con respaldo, 320 INDICES creados, 311 carpetas conservadas, correcciones posteriores de sincronización ya en `main`. Paso 11 (referencia a `README`/`ÍNDICE` en las instrucciones de los agentes) coordinado con `main` por Carlos el 2026-11-04. Falta solo el checkpoint de Carlos. Detalle en su nota de la bóveda.
 - [ ] H-032 — Sidebar con vistas por tags y búsqueda (antes H-0037) — análisis ronda 1
 - [ ] H-033 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
