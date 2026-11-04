@@ -1382,7 +1382,7 @@
   margin: var(--space-4) 0;
   padding: var(--space-2) var(--space-4);
   border-left: 3px solid var(--vault-secondary-600);
-  background: color-mix(in srgb, var(--vault-secondary-600) 20%, transparent);
+  background: color-mix(in srgb, var(--vault-secondary-600) 5%, transparent);
   color: var(--text-secondary);
   font-style: italic;
 }

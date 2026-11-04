@@ -404,3 +404,7 @@ tal cual. El terciario sigue en enlaces, wikilinks y código. Verificado en Chro
   izquierda, sin líneas dobles. El tinte de las filas pares va en las celdas, no en la fila, para respetar el redondeo.
 - **Cita:** barra izquierda de 3 px en el secundario 600 (`--vault-secondary-600`) y fondo del mismo color al 20 % de opacidad
   (antes línea gris de 1 px sin fondo; supersede la parte de la cita de H-014 C-7). Verificado en Chromium, claro y oscuro.
+
+## Enmienda 2026-11-04 (8): fondo de la cita al 5 %
+
+El fondo de la cita (secundario 600) baja de 20 % a **5 %** de opacidad; la barra izquierda no cambia. Supersede el 20 % de la enmienda (7).
