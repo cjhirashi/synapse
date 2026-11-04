@@ -42,10 +42,35 @@ def _meta(frontmatter: dict, extra: Sequence[str]) -> list[str]:
     return ([description] if description else []) + [f"{label}: {_flat(value)}" for label, value in labeled if _flat(value)]
 
 
+_ENTITY = re.compile(r"&(?:#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});")
+
+
+def _escape(text: str) -> str:
+    """Escapa con `\\` lo que el parser de Markdown interpretaría dentro de un enlace (código, énfasis, HTML,
+    entidades), para que el texto de la ruta y del nombre llegue intacto al reconocer el wikilink."""
+    entities = {m.start() for m in _ENTITY.finditer(text)}
+    out = []
+    for i, ch in enumerate(text):
+        if ch in "\\`*~<":
+            out.append("\\" + ch)
+        elif ch == "_" and not (0 < i < len(text) - 1 and text[i - 1].isalnum() and text[i + 1].isalnum()):
+            out.append("\\_")
+        elif ch == "&" and i in entities:
+            out.append("\\&")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+_AUTOLINK = re.compile(r"@|://|www\.", re.IGNORECASE)
+
+
 def _link(path: str, text: str) -> str:
-    if any(ch in path + text for ch in "[]"):
+    """Wikilink `[[ruta\\|texto]]`. Si la ruta o el texto traen `[`, `]` (o `|` en la ruta), o algo que GFM
+    convierte en autoenlace (`@`, `://`, `www.`), el wikilink no se reconocería: se emite el texto plano, sin enlace."""
+    if any(ch in path + text for ch in "[]") or "|" in path or _AUTOLINK.search(path + text):
         return _flat(text)
-    return f"[[{path}\\|{_flat(text).replace('|', chr(92) + '|')}]]"
+    return f"[[{_escape(path)}\\|{_escape(_flat(text)).replace('|', chr(92) + '|')}]]"
 
 
 def _item(link: str, parts: list[str]) -> str:

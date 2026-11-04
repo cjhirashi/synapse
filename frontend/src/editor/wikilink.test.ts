@@ -122,3 +122,35 @@ describe("splitWikiLinks (C-1: reconocer en el texto)", () => {
     expect(splitWikiLinks("x [[]] y")).toEqual([{ type: "text", value: "x [[]] y" }]);
   });
 });
+
+describe("resolveWikiLink: ruta completa e INDICE.md (H-031)", () => {
+  const withIndexes: NoteRef[] = [
+    { id: "note:v:a", path: "00 - AG - SKILLS/INDICE.md" }, // primero de la lista: antes capturaba `INDICE.md`
+    { id: "note:v:b", path: "00 - AG - SKILLS/skill.md" },
+    { id: "note:v:c", path: "1 - Proyectos AIRA/INDICE.md" },
+    { id: "note:v:d", path: "INDICE.md" },
+    { id: "note:v:e", path: "Plan.md" },
+    { id: "note:v:f", path: "A/Plan.md" },
+  ];
+  const reordered = [...withIndexes].reverse();
+
+  it("`INDICE.md` es el de la raíz, sin importar el orden de la lista", () => {
+    expect(resolveWikiLink("INDICE.md", withIndexes)).toBe("note:v:d");
+    expect(resolveWikiLink("INDICE.md", reordered)).toBe("note:v:d");
+  });
+
+  it("`Carpeta/INDICE.md` resuelve a su ruta exacta", () => {
+    expect(resolveWikiLink("1 - Proyectos AIRA/INDICE.md", withIndexes)).toBe("note:v:c");
+    expect(resolveWikiLink("00 - AG - SKILLS/INDICE.md", reordered)).toBe("note:v:a");
+  });
+
+  it("un INDICE que no existe en esa ruta queda roto: nunca cae en el INDICE de otra carpeta", () => {
+    expect(resolveWikiLink("Otra/INDICE.md", withIndexes)).toBeNull();
+    expect(resolveWikiLink("INDICE.md", withIndexes.filter((n) => n.path !== "INDICE.md"))).toBeNull();
+  });
+
+  it("un documento de la raíz gana al homónimo de otra carpeta aunque éste vaya primero", () => {
+    expect(resolveWikiLink("Plan.md", [withIndexes[5], withIndexes[4]])).toBe("note:v:e");
+    expect(resolveWikiLink("A/Plan.md", [withIndexes[4], withIndexes[5]])).toBe("note:v:f");
+  });
+});

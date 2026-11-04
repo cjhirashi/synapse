@@ -10,10 +10,13 @@
  *  - P-1: sólo resuelven destinos a una nota `.md` de la MISMA bóveda; `.docx`/`.pdf`/inexistente → roto.
  *  - P-2: comparación insensible a mayúsculas/minúsculas sobre el nombre de archivo (como Obsidian;
  *    sin plegar acentos más allá de lo que implique `toLowerCase`).
- *  - P-3: dos notas con el mismo nombre en carpetas distintas → resuelve la primera que se encuentre.
+ *  - P-3: dos notas con el mismo nombre en carpetas distintas → resuelve la primera que se encuentre,
+ *    salvo que el destino sea una ruta completa (H-031): entonces gana la nota de esa ruta.
  *  - C-7: la resolución devuelve el `id` de la nota (no el nombre); ese id vive como atributo interno
  *    de la marca, listo para la navegación de H-012 sin re-buscar por nombre.
  */
+
+import { isIndexPath } from "../notes/indexRules";
 
 /** Nota de la bóveda que `resolveWikiLink` puede alcanzar: su `id` interno y su ruta (con `.md`). */
 export interface NoteRef {
@@ -55,19 +58,20 @@ function baseName(path: string): string {
  * El `id` de la nota `.md` que resuelve este destino, o `null` (enlace roto). Compara el nombre de
  * archivo del destino contra el de cada nota, insensible a mayúsculas (P-2) y tolerando que el destino
  * traiga o no el sufijo `.md`. Un destino con otra extensión (`.docx`, `.pdf`) no casa con ninguna nota
- * `.md` y queda roto (P-1/C-4). Con nombres duplicados devuelve el primero del listado (P-3).
+ * `.md` y queda roto (P-1/C-4). Con nombres duplicados devuelve el primero del listado (P-3), pero una
+ * ruta completa exacta (`Carpeta/Nota.md`, o `Nota.md` en la raíz) siempre gana; `INDICE.md` sólo resuelve por ruta.
  */
 export function resolveWikiLink(target: string, notes: readonly NoteRef[]): string | null {
-  const wanted = baseName(target.trim()).toLowerCase();
-  if (!wanted) return null;
-  // H-031: un destino con ruta (`Carpeta/INDICE.md`) resuelve por la ruta completa antes que por el nombre,
-  // porque cada carpeta tiene un INDICE.md y el nombre solo sería ambiguo.
   const trimmed = target.trim().toLowerCase();
-  if (trimmed.includes("/")) {
-    const full = trimmed.endsWith(".md") ? trimmed : `${trimmed}.md`;
-    const exact = notes.find((note) => note.path.toLowerCase() === full);
-    if (exact) return exact.id;
-  }
+  const wanted = baseName(trimmed);
+  if (!wanted) return null;
+  // H-031: la ruta completa gana al nombre. Cada carpeta tiene su INDICE.md y un documento de la raíz puede
+  // repetir su nombre en otra carpeta; sin esto `INDICE.md` (el de la raíz) caería en el primer INDICE de la lista.
+  const full = trimmed.endsWith(".md") ? trimmed : `${trimmed}.md`;
+  const exact = notes.find((note) => note.path.toLowerCase() === full);
+  if (exact) return exact.id;
+  // INDICE.md es un nombre reservado y existe en cada carpeta: nunca se resuelve por nombre, sólo por su ruta.
+  if (isIndexPath(full)) return null;
   for (const note of notes) {
     const base = baseName(note.path).toLowerCase();
     const baseNoMd = base.endsWith(".md") ? base.slice(0, -3) : base;

@@ -44,9 +44,39 @@ function meta(fm: Record<string, unknown>, extra: readonly string[]): string[] {
   return [...(description ? [description] : []), ...labeled.filter(([, value]) => flat(value)).map(([label, value]) => `${label}: ${flat(value)}`)];
 }
 
+const ENTITY = /&(?:#[0-9]{1,7}|#[xX][0-9a-fA-F]{1,6}|[A-Za-z][A-Za-z0-9]{0,31});/gu;
+const ALNUM = /^[\p{L}\p{N}]$/u;
+
+/** Escapa con `\` lo que el parser de Markdown interpretaría dentro de un enlace (código, énfasis, HTML, entidades). */
+function escapeInline(text: string): string {
+  const chars = [...text];
+  const entities = new Set<number>();
+  let offset = 0;
+  const unitToIndex = new Map<number, number>();
+  for (const [i, ch] of chars.entries()) {
+    unitToIndex.set(offset, i);
+    offset += ch.length;
+  }
+  for (const m of text.matchAll(ENTITY)) entities.add(unitToIndex.get(m.index!)!);
+  return chars
+    .map((ch, i) => {
+      if ("\\`*~<".includes(ch)) return `\\${ch}`;
+      if (ch === "_" && !(i > 0 && i < chars.length - 1 && ALNUM.test(chars[i - 1]) && ALNUM.test(chars[i + 1]))) return "\\_";
+      if (ch === "&" && entities.has(i)) return "\\&";
+      return ch;
+    })
+    .join("");
+}
+
+const AUTOLINK = /@|:\/\/|www\./iu;
+
+/**
+ * Wikilink `[[ruta\|texto]]`. Con `[`, `]` (o `|` en la ruta), o algo que GFM convierte en autoenlace (`@`, `://`,
+ * `www.`), el wikilink no se reconocería: texto plano, sin enlace.
+ */
 function link(path: string, label: string): string {
-  if (/[[\]]/u.test(path + label)) return flat(label);
-  return `[[${path}\\|${flat(label).replace(/\|/g, "\\|")}]]`;
+  if (/[[\]]/u.test(path + label) || path.includes("|") || AUTOLINK.test(path + label)) return flat(label);
+  return `[[${escapeInline(path)}\\|${escapeInline(flat(label)).replace(/\|/g, "\\|")}]]`;
 }
 
 const item = (target: string, parts: string[]): string => (parts.length ? `- ${target} — ${parts.join(" · ")}` : `- ${target}`);

@@ -11,7 +11,7 @@
     "Subcarpetas: las carpetas hijas directas de `folder`. Una carpeta hija existe si hay al menos una nota viva en cualquier nivel por debajo de ella, tenga o no su INDICE.md. Se ordenan por la clave del nombre (NFKC + casefold) comparada por puntos de código. Sin hijas: la línea `_Sin subcarpetas._`.",
     "Documentos: las notas que cuelgan directamente de `folder`, sin contar INDICE.md (clave NFKC + casefold igual a `indice.md`; `ÍNDICE.md` con acento sí cuenta como documento). Se ordenan por la clave del nombre de archivo sin `.md`, por puntos de código. Sin documentos: la línea `_Sin documentos._`.",
     "Cada sección con elementos es una lista de Markdown, un elemento por línea: `- ` más el enlace; si el elemento tiene partes con valor, a continuación ` — ` y las partes unidas con ` · `. Las partes, en este orden y sólo las que tienen valor: la descripción (sin etiqueta), `Estado: <valor>`, `Tags: <valor>`, `Actualizado: <valor>` y, por cada clave de `extra` en su orden, `<clave>: <valor>`. Un elemento sin ninguna parte es sólo `- <enlace>`.",
-    "Enlace: wikilink `[[<ruta completa con .md>\\|<texto>]]`. Texto de una carpeta = su nombre; texto de un documento = `frontmatter.titulo` si es texto no vacío, si no el nombre de archivo sin `.md`. Si la ruta o el texto contienen `[` o `]` no se emite wikilink: el enlace es el texto plano, sin escapar.",
+    "Enlace: wikilink `[[<ruta completa con .md>\\|<texto>]]`. Texto de una carpeta = su nombre; texto de un documento = `frontmatter.titulo` si es texto no vacío, si no el nombre de archivo sin `.md`. Si la ruta o el texto contienen `[` o `]` no se emite wikilink: el enlace es el texto plano, sin escapar. Dentro del wikilink, ruta y texto se escapan con `\\\\` carácter a carácter: `\\\\`, `` ` ``, `*`, `~` y `<` siempre; `_` salvo que sus dos vecinos sean letra o dígito; `&` sólo cuando abre una entidad (`&amp;`, `&#169;`, `&#xA9;`). No se emite wikilink, sino el texto plano, si la ruta o el texto traen `[` o `]`, si la ruta trae `|`, o si ruta o texto traen algo que GFM convierte en autoenlace (`@`, `://` o `www.`, sin distinguir mayúsculas): el editor no reconocería ese wikilink.",
     "Metadatos de una carpeta = frontmatter de su INDICE.md (vacíos si no existe). Metadatos de un documento = su frontmatter. Descripción = `descripcion` si es texto; Estado = `estado` si es texto; Tags = `tags` si es lista de textos, unidos con `, `; Actualizado = `fecha_actualizacion` si es texto. Un valor de otro tipo omite la parte.",
     "Partes `extra` de columnas `extra` (sólo las pide la interfaz): texto tal cual, número con su forma decimal, booleano como `true`/`false`, lista de textos unida con `, `; cualquier otro tipo o clave ausente omite la parte.",
     "Todo valor: los espacios en blanco consecutivos (incluidos saltos de línea y tabuladores) pasan a un solo espacio y se recortan los extremos; un valor vacío tras ese recorte se omite. En el texto del enlace, `|` pasa a `\\|` (porque `\\|` separa ruta y texto); en las demás partes `|` se deja tal cual. La descripción se corta a `descripcion_max` puntos de código y, si era más larga, se le añade `…`.",
@@ -430,6 +430,88 @@
         "## Documentos",
         "",
         "_Sin documentos._"
+      ]
+    },
+    {
+      "name": "nombres-con-caracteres-de-markdown",
+      "vault": "V",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Módulo `collections`.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "_x_.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "snake_case_name.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "negrita *x* ~y~ <b>.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Q&A &amp; &#169; & Co.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "barra \\ invertida.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Tarea [x].md",
+          "frontmatter": {}
+        },
+        {
+          "path": "a | b.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "correo a@b.co.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "www.ejemplo.com.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "url.md",
+          "frontmatter": {
+            "titulo": "ver http://ejemplo.com/a"
+          }
+        },
+        {
+          "path": "Carp`eta/Hija.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# V",
+        "",
+        "## Subcarpetas",
+        "",
+        "- [[Carp\\`eta/INDICE.md\\|Carp\\`eta]]",
+        "",
+        "## Documentos",
+        "",
+        "- [[\\_x\\_.md\\|\\_x\\_]]",
+        "- a | b",
+        "- [[barra \\\\ invertida.md\\|barra \\\\ invertida]]",
+        "- correo a@b.co",
+        "- [[Módulo \\`collections\\`.md\\|Módulo \\`collections\\`]]",
+        "- [[negrita \\*x\\* \\~y\\~ \\<b>.md\\|negrita \\*x\\* \\~y\\~ \\<b>]]",
+        "- [[Q&A \\&amp; \\&#169; & Co.md\\|Q&A \\&amp; \\&#169; & Co]]",
+        "- [[snake_case_name.md\\|snake_case_name]]",
+        "- Tarea [x]",
+        "- ver http://ejemplo.com/a",
+        "- www.ejemplo.com"
       ]
     }
   ],
