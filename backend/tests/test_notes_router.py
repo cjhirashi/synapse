@@ -53,7 +53,8 @@ def test_c1_list_returns_live_notes_without_content_or_frontmatter(ready_admin, 
     [item] = res.json()["items"]
     assert item["path"] == "Nota.md" and item["vault_id"] == vault_id
     assert item["etag"] == f'"{stored["_rev"]}"'
-    assert set(item) == {"id", "vault_id", "path", "created_at", "updated_at", "deleted_at", "etag"}
+    assert set(item) == {"id", "vault_id", "path", "frontmatter", "created_at", "updated_at", "deleted_at", "etag"}
+    assert item["frontmatter"] == {"a": 1}  # H-038: el frontmatter está en el ítem del listado
     assert res.json()["next_cursor"] is None
 
 
@@ -316,6 +317,19 @@ def test_c8_patch_with_a_stale_if_match_is_412(ready_admin):
     res = ready_admin.patch(f"/vaults/{vault_id}/notes/{created.json()['id']}",
                             json={"content": "b"}, headers={"If-Match": '"1-stale"'})
     assert_problem(res, 412, "precondition-failed")
+
+
+def test_h038_patch_accepts_weak_etag_w_prefix_with_current_rev(ready_admin):
+    """PATCH con ETag débil (W/) vigente: debe pasar 200 (H-038, C-4)."""
+    vault_id = create(ready_admin).json()["id"]
+    created = create_note(ready_admin, vault_id, "Nota.md", content="a")
+    etag = created.headers["etag"]
+    rev = etag[1:-1]  # Quita comillas
+    weak_etag = f'W/"{rev}"'
+    res = ready_admin.patch(f"/vaults/{vault_id}/notes/{created.json()['id']}",
+                            json={"content": "b"}, headers={"If-Match": weak_etag})
+    assert res.status_code == 200
+    assert res.json()["content"] == "b"
 
 
 def _without_dates(frontmatter):

@@ -579,6 +579,33 @@ def test_rf_010_update_with_stale_etag_is_412_without_changes(service, port):
     assert _reservation(port, "otro") is None
 
 
+def test_rf_010_update_accepts_weak_etag_w_prefix_with_current_rev(service):
+    """ETag débil (W/) con _rev vigente en PATCH de bóveda: debe pasar (H-038, C-7)."""
+    created, etag = _create(service, name="Notas")
+    rev = etag[1:-1]  # Quita comillas: "abc123" -> abc123
+    weak_etag = f'W/"{rev}"'
+    result, _ = service.update(created.id, VaultUpdate(description="updated"), weak_etag)
+    assert result.description == "updated"
+
+
+def test_rf_010_delete_and_restore_accept_weak_etag(service, port):
+    """ETag débil (W/) en DELETE y restore de bóveda: debe pasar (H-038, C-7)."""
+    created, etag = _create(service)
+    rev = etag[1:-1]
+    weak_etag = f'W/"{rev}"'
+    service.delete(created.id, weak_etag)
+    # Verifica que está borrada en la base
+    doc = port.docs[DB][f"vault:{created.id}"]
+    assert doc["deleted_at"] is not None
+    # Para restore, necesitamos el ETag actual (de la versión borrada)
+    restore_etag = f'"{doc["_rev"]}"'
+    # Convertir a débil
+    restore_rev = doc["_rev"]
+    weak_restore = f'W/"{restore_rev}"'
+    restored, _ = service.restore(created.id, weak_restore)
+    assert restored.deleted_at is None
+
+
 def test_rf_010_write_between_read_and_put_is_412(service, port):
     created, etag = _create(service)
     rival = VaultService(port, DB, clock=TickingClock())

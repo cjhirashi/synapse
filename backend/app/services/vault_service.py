@@ -15,6 +15,7 @@ from app.core.errors import (
     InvalidCursor, PreconditionFailed, PreconditionRequired, RevisionConflict,
     VaultNameTaken, VaultNotFound,
 )
+from app.core.etag import etag_matches
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultCreate, VaultListItem, VaultOut, VaultPage, VaultUpdate
 from app.core.timestamps import is_timestamp, utc_now
@@ -273,10 +274,14 @@ def _etag(doc: dict) -> str:
 
 
 def _check_precondition(doc: dict, if_match: str | None) -> None:
-    """`If-Match` obligatorio e igual al `ETag` vigente (RF-010)."""
+    """`If-Match` obligatorio e igual al `ETag` vigente (RF-010).
+
+    Acepta `W/"..."` (débil, por intermediarios que lo comprimen).
+    """
     if if_match is None:
         raise PreconditionRequired()
-    if if_match != _etag(doc):
+    rev = doc["_rev"]
+    if not etag_matches(if_match, rev):
         raise PreconditionFailed(f"If-Match {if_match} != {_etag(doc)}")
 
 

@@ -206,6 +206,7 @@ Authorization: Bearer syn_ak_…
   "items": [
     {
       "id": "3c2f…", "vault_id": "0c1f…", "path": "Carpeta/Nota.md",
+      "frontmatter": { "titulo": "Nota", "tags": ["trabajo"] },
       "created_at": "2026-10-29T00:00:00.000000Z",
       "updated_at": "2026-10-29T00:00:00.000000Z",
       "deleted_at": null,
@@ -216,8 +217,9 @@ Authorization: Bearer syn_ak_…
 }
 ```
 
-- Sin `content` ni `frontmatter` (tan ligero como el listado de bóvedas); para leerlos, `GET`
-  por `id`.
+- Cada ítem lleva `frontmatter` (los atributos guardados, o `null` si la nota no tiene) y **no**
+  lleva `content`; para leer el cuerpo, `GET` por `id`. El máximo `limit=200` se mantiene (≈ 31 KB
+  por página con el frontmatter medio).
 - Paginación por cursor opaco (`cursor`, `limit`, 1–200, 50 por defecto), igual que
   `GET /vaults`. Un cursor sólo vale para la misma bóveda y la misma lista (vivas ↔ papelera):
   usarlo en otra → `422` `validation-error`.
@@ -290,6 +292,9 @@ vieja y reserva la nueva (si la nueva ya la usa otra nota viva, `409` `note-path
 nota no cambia).
 
 - Sin `If-Match` → `428` `precondition-required`.
+- `If-Match` acepta el `ETag` tal como llegó, **fuerte (`"1-abc"`) o débil (`W/"1-abc"`)**: el servidor
+  compara el valor sin el prefijo `W/` (un intermediario como Cloudflare puede debilitar el `ETag` al
+  comprimir). Aplica igual a notas y bóvedas.
 - `If-Match` distinto del `ETag` vigente → `412` `precondition-failed` (otra escritura ganó:
   relee y repite).
 - Mismas reglas de `core/note_rules.py` que `POST` sobre los campos enviados → `422`.

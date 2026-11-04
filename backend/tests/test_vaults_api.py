@@ -362,6 +362,27 @@ def test_rf_010_writes_need_a_current_if_match(ready_admin, db, operation):
     assert stored_docs(user_db(db)) == before
 
 
+def test_h038_patch_and_delete_accept_weak_etag_w_prefix_with_current_rev(ready_admin):
+    """PATCH/DELETE de bóveda con ETag débil (W/) vigente: debe pasar (H-038, C-7)."""
+    created = create(ready_admin)
+    vault_id = created.json()["id"]
+    etag = created.headers["etag"]
+    rev = etag[1:-1]  # Quita comillas
+    weak_etag = f'W/"{rev}"'
+
+    # PATCH con W/
+    res = ready_admin.patch(f"/vaults/{vault_id}", json={"description": "updated"},
+                            headers={"If-Match": weak_etag})
+    assert res.status_code == 200
+
+    # DELETE con W/ (usa el nuevo ETag)
+    new_etag = res.headers["etag"]
+    rev = new_etag[1:-1]
+    weak_etag = f'W/"{rev}"'
+    res = ready_admin.delete(f"/vaults/{vault_id}", headers={"If-Match": weak_etag})
+    assert res.status_code == 204
+
+
 def test_rf_026_delete_of_deleted_and_restore_of_active_are_404(ready_admin, db):
     active = create(ready_admin, name="activa")
     res = ready_admin.post(f"/vaults/{active.json()['id']}/restore",
