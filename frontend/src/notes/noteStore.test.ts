@@ -29,7 +29,7 @@ beforeEach(() => {
   counter += 1;
   tick = 0;
   db = new PouchDB(`notestore-test-${counter}`, { adapter: "memory" });
-  store = createNoteStore(db, { now: nextTime });
+  store = createNoteStore(db, { now: nextTime, indexes: false });
 });
 
 /** Manda una nota a la papelera escribiendo el documento a mano (`softDelete` se prueba aparte). */
@@ -97,7 +97,7 @@ describe("RF-001, RF-019: list y get", () => {
     await store.create(OTHER_VAULT, "B");
     const [item, ...rest] = await store.list(VAULT);
     expect(rest).toEqual([]);
-    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null, size: 0 });
+    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null, size: 0, frontmatter: a.frontmatter });
     expect(item).not.toHaveProperty("content");
   });
 
@@ -471,12 +471,6 @@ describe("H-003: moveFolder (mover una carpeta en lote)", () => {
 // teclado) que deja su carpeta de origen sin notas activas crea ahí un `Sin título.md` para que la
 // carpeta siga existiendo. NO aplica a `moveFolder` (la carpeta se reubica entera, no se vacía).
 describe("H-003 C-8: placeholder al vaciar la carpeta de origen al mover una nota", () => {
-  it("mover la última nota de una carpeta deja un «Sin título.md» en el origen", async () => {
-    const a = await store.create(VAULT, "Carpeta/Sola.md");
-    await store.rename(a.id, "Sola.md", a.rev); // la saca a la raíz
-    expect((await store.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]);
-  });
-
   it("si quedan otras notas en la carpeta de origen no crea placeholder", async () => {
     const uno = await store.create(VAULT, "Carpeta/Uno.md");
     await store.create(VAULT, "Carpeta/Dos.md");

@@ -38,6 +38,7 @@ from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
 from app.core.errors import StorageUnavailable, VaultNameTaken
+from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
 from app.core.note_rules import (
     NOTE_KEYS, NOTE_REQUIRED, check_content, check_frontmatter, check_path, path_key,
 )
@@ -215,9 +216,13 @@ class SyncPushService:
 
         stored = await self._stored([doc for _, doc in candidates])
         accepted: list[dict] = []
+        deferred: list[tuple[int, dict]] = []
         for position, doc in candidates:
             if doc["_rev"] in stored.get(doc["_id"], set()):
                 continue  # paso 2: ya está, sin escribir ni reservar
+            if _is_index_deletion(doc):
+                deferred.append((position, doc))  # H-031: se evalúa cuando el resto del lote ya está escrito
+                continue
             try:
                 await self._accept(doc)
             except Rejected as rejected:
@@ -229,7 +234,50 @@ class SyncPushService:
         if accepted:
             await self._write(accepted)
             await self._release_unused()
+        if deferred:
+            deleted_indexes = await self._push_index_deletions(deferred, rejections, stored)
+            if deleted_indexes:
+                await self._write(deleted_indexes)
+                await self._release_unused()
         return [rejections[position] for position in sorted(rejections)]
+
+    async def _push_index_deletions(
+            self, deferred: list[tuple[int, dict]], rejections: dict[int, dict],
+            stored: dict[str, set[str]]) -> list[dict]:
+        """H-031: borra un INDICE sólo si, con el lote ya escrito, no queda otra nota viva bajo su carpeta
+        (nunca el de la raíz). De la carpeta más profunda a la menos: borrar `A/B` y `A` en un mismo lote
+        funciona sin importar el orden en que lleguen. Devuelve las revisiones aceptadas."""
+        accepted: list[dict] = []
+        gone: set[str] = set()
+        for position, doc in sorted(deferred, key=lambda item: -item[1]["path"].count("/")):
+            try:
+                vault_id = doc["_id"].split(":")[1]
+                below = await self._live_below(vault_id, doc["path"], gone | {doc["_id"]})
+                if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
+                    raise Rejected(code)
+                await self._accept(doc)
+            except Rejected as rejected:
+                rejections[position] = _rejection(doc, rejected.reason)
+                continue
+            stored.setdefault(doc["_id"], set()).add(doc["_rev"])
+            gone.add(doc["_id"])
+            accepted.append(doc)
+        return accepted
+
+    async def _live_below(self, vault_id: str, index_path: str, excluded: set[str]) -> int:
+        """Notas vivas del servidor por debajo de la carpeta de `index_path` (en la raíz, todas), sin las
+        de `excluded`."""
+        folder = folder_of(index_path)
+        prefix = path_key(folder) + "/" if folder else ""
+        count, after = 0, None
+        while True:
+            page = await to_thread.run_sync(self._port.list_notes, self._db, vault_id, False, 100, after)
+            count += sum(
+                1 for note in page
+                if note["_id"] not in excluded and not note.get("deleted_at") and path_key(note["path"]).startswith(prefix))
+            if len(page) < 100:
+                return count
+            after = (page[-1]["created_at"], page[-1]["_id"])
 
     # --- Paso 1: id, `_rev`, `_revisions` ---
 
@@ -283,6 +331,8 @@ class SyncPushService:
             self._check_shape(doc, kind)
             kind.check_fields(doc)
             await kind.check_server(self, doc, leaves)
+            if doc["_id"].startswith(NOTE_PREFIX):
+                self._check_index_rules(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
         if not tombstone and doc["deleted_at"] is None:
@@ -344,6 +394,24 @@ class SyncPushService:
         if doc["vault_id"] != doc["_id"].split(":")[1]:
             raise Rejected("validation-error:vault_id")
         _check_timestamps(doc, leaves)
+
+    @staticmethod
+    def _check_index_rules(doc: dict, leaves: dict[str, dict]) -> None:
+        """H-031: un INDICE no se renombra, no lleva contenido y sólo admite cambiar su `descripcion`;
+        ninguna otra nota toma su nombre. El borrado se decide aparte (`_push_index_deletions`)."""
+        path = doc["path"]
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        if previous is not None and previous["path"] != path:
+            if (code := check_op("rename_or_move", previous["path"], to=path)) is not None:
+                raise Rejected(code)
+        if not is_index_path(path):
+            return
+        if doc["content"] != "":
+            raise Rejected("index-readonly:content")
+        changed = changed_keys(previous.get("frontmatter") if previous else None, doc.get("frontmatter"))
+        if (code := check_op("edit", path, changed=changed)) is not None:
+            raise Rejected(code)
 
     async def _check_vault_is_active(self, note_id: str) -> None:
         """Paso 6c (RF-004, RF-014): la bóveda de la nota tiene alguna hoja viva y activa.
@@ -410,6 +478,13 @@ _KINDS = {
         SyncPushService._check_note_rules, SyncPushService._check_vault_is_active,
         _note_use, SyncPushService._reserve_note_path, SyncPushService._release_note_path),
 }
+
+
+def _is_index_deletion(doc: dict) -> bool:
+    """Revisión de nota con `deleted_at` cuya ruta es la de un INDICE (las lápidas `_deleted` no llevan ruta)."""
+    return (
+        doc["_id"].startswith(NOTE_PREFIX) and doc.get("_deleted") is not True
+        and doc.get("deleted_at") is not None and isinstance(doc.get("path"), str) and is_index_path(doc["path"]))
 
 
 def _rejection(doc: dict, reason: str) -> dict:

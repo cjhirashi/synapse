@@ -707,3 +707,14 @@ body.is-resizing {
    este tope quedó huérfano: cortaba el árbol a ~24% de la pantalla aunque el panel flotante ya tenía todo
    el alto disponible (Carlos, captura 2026-10-30 — la lista de archivos no llenaba la sidebar). Retirado;
    `.note-tree` ya hace su propio scroll con `flex: 1 1 auto; min-height: 0` dentro del panel flotante.
+
+/* H-031: vista de un INDICE */
+.index-view-header { display: flex; align-items: center; gap: 0.5rem; }
+.index-view-title { margin: 0; font-size: 1rem; }
+.index-view-description { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
+.index-view-description textarea { width: 100%; resize: vertical; font: inherit; }
+.index-view-description button { justify-self: start; }
+.index-view-columns { margin: 0 0 0.75rem; }
+.index-view-columns summary { cursor: pointer; }
+.index-view-columns-list { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.4rem 0; max-height: 9rem; overflow-y: auto; }
+.index-view-columns label { display: inline-flex; align-items: center; gap: 0.3rem; }

@@ -26,8 +26,10 @@ from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
+from app.core.index_body import render_body
+from app.core.index_rules import ancestor_folders, changed_keys, check_op, folder_of, index_path_for, is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
-from app.core.note_rules import check_content, check_frontmatter, check_path
+from app.core.note_rules import check_content, check_frontmatter, check_path, path_key
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
@@ -94,10 +96,11 @@ class Versioned(NamedTuple):
 class NoteContentService:
     """Notas de una bóveda sobre la base de un usuario (una instancia por petición)."""
 
-    def __init__(self, port: VaultPort, db: str):
+    def __init__(self, port: VaultPort, db: str, auto_indexes: bool = True):
         self._port = port
         self._db = db
         self._notes = NoteService(port, db)
+        self._auto_indexes = auto_indexes
 
     def list(self, vault_id: str, deleted: bool, limit: int, cursor: str | None) -> NotePage:
         self._check_vault(vault_id)
@@ -116,7 +119,10 @@ class NoteContentService:
 
     def get(self, vault_id: str, note_id: str) -> Versioned:
         self._check_vault(vault_id)
-        return _versioned(self._load(vault_id, note_id, deleted=False))
+        doc = self._load(vault_id, note_id, deleted=False)
+        if is_index_path(doc["path"]):
+            doc = {**doc, "content": self._index_body(vault_id, doc["path"])}  # H-031: el cuerpo no se guarda, se genera
+        return _versioned(doc)
 
     # --- Escritura (H-004.2) ---
 
@@ -132,6 +138,8 @@ class NoteContentService:
         fields = data.model_dump(exclude_unset=True)
         _check_rules(
             data.path, data.content, fields.get("frontmatter"), frontmatter_set="frontmatter" in fields)
+        if (code := check_op("create_user", data.path)) is not None:
+            raise _field_error("path", code)
         note_id = str(uuid.uuid4())
         doc_id = _doc_id(vault_id, note_id)
         now = utc_now()
@@ -152,6 +160,8 @@ class NoteContentService:
         # Si este `put` falla, la reserva queda huérfana (su nota no existe) y no se libera:
         # un fallo de red puede ocultar un `put` que sí entró (mismo riesgo que `VaultService.create`).
         doc["_rev"] = self._port.put(self._db, doc)
+        if self._auto_indexes:
+            self._ensure_indexes(vault_id, data.path)
         return _versioned(doc)
 
     def update(self, vault_id: str, note_id: str, data: NoteUpdate, if_match: str | None) -> Versioned:
@@ -174,26 +184,42 @@ class NoteContentService:
                 raise _field_error("frontmatter", code)
         old_path = doc["path"]
         renamed = "path" in changes and changes["path"] != old_path
-        if renamed:
-            self._reserve(doc["_id"], changes["path"])
-        updated = {**doc, **changes, "updated_at": utc_now()}
         # `frontmatter: null` explícito borra las propiedades libres, pero las fechas de la nota se conservan
         # y se actualizan (H-029): cada escritura de un agente refresca `fecha_actualizacion`.
         old = doc.get("frontmatter") or {}
         base = dict(changes.get("frontmatter") or {}) if "frontmatter" in changes else dict(old)
         if "fecha_creacion" not in base and "fecha_creacion" in old:
             base["fecha_creacion"] = old["fecha_creacion"]  # reemplazar las propiedades no borra la fecha de creación
+        # H-031: un INDICE no se renombra ni se edita salvo su `descripcion`; ninguna otra nota toma su nombre.
+        # Se comprueba antes de reservar la ruta nueva para no dejar una reserva huérfana.
+        if renamed and (code := check_op("rename_or_move", old_path, to=changes["path"])) is not None:
+            raise _field_error("path", code)
+        content_changed = "content" in changes and changes["content"] != doc.get("content")
+        if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
+            raise _field_error("content" if code == "index-readonly:content" else "frontmatter", code)
+        if renamed:
+            self._reserve(doc["_id"], changes["path"])
+        updated = {**doc, **changes, "updated_at": utc_now()}
         updated["frontmatter"] = stamp_dates(base, today_cdmx(), doc.get("created_at"))
         updated["_rev"] = self._write(updated)
         if renamed:
             self._release(doc["_id"], old_path)
+            if self._auto_indexes:
+                self._ensure_indexes(vault_id, changes["path"])
         return _versioned(updated)
 
     def delete(self, vault_id: str, note_id: str, if_match: str | None) -> None:
-        """C-9: soft-delete (`deleted_at`, nunca borra el documento) y libera `path`."""
+        """C-9: soft-delete (`deleted_at`, nunca borra el documento) y libera `path`.
+
+        H-031: un INDICE sólo se borra si no queda ninguna otra nota viva bajo su carpeta; el de la raíz, nunca.
+        """
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
         _check_precondition(doc, if_match)
+        if is_index_path(doc["path"]):
+            below = self._count_live_below(vault_id, doc["path"], doc["_id"])
+            if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
+                raise _field_error("path", code)
         self._write({**doc, "deleted_at": utc_now()})
         self._release(doc["_id"], doc["path"])
 
@@ -206,6 +232,8 @@ class NoteContentService:
         self._reserve(doc["_id"], doc["path"])
         restored = {**doc, "deleted_at": None}
         restored["_rev"] = self._write(restored)
+        if self._auto_indexes:
+            self._ensure_indexes(vault_id, doc["path"])
         return _versioned(restored)
 
     # --- Internos ---
@@ -253,6 +281,50 @@ class NoteContentService:
 
     def _release(self, note_id: str, path: str) -> None:
         self._notes.release_path(note_id, path)
+
+    def _index_body(self, vault_id: str, index_path: str) -> str:
+        """Cuerpo del INDICE con las cinco columnas generales, desde las notas vivas de la bóveda."""
+        vault = self._port.get(self._db, f"vault:{vault_id}")
+        notes, after = [], None
+        while True:
+            page = self._port.list_notes(self._db, vault_id, False, 100, after)
+            notes += [{"path": d["path"], "frontmatter": d.get("frontmatter")} for d in page if not d.get("deleted_at")]
+            if len(page) < 100:
+                break
+            after = (page[-1]["created_at"], page[-1]["_id"])
+        return render_body(vault["name"], folder_of(index_path), notes)
+
+    def _count_live_below(self, vault_id: str, index_path: str, index_doc_id: str) -> int:
+        """Notas vivas de la bóveda por debajo de la carpeta del INDICE, sin contar el propio INDICE
+        (en la raíz, todas las demás)."""
+        folder = folder_of(index_path)
+        prefix = path_key(folder) + "/" if folder else ""
+        count, after = 0, None
+        while True:
+            page = self._port.list_notes(self._db, vault_id, False, 100, after)
+            count += sum(
+                1 for doc in page
+                if doc["_id"] != index_doc_id and not doc.get("deleted_at") and path_key(doc["path"]).startswith(prefix))
+            if len(page) < 100:
+                return count
+            after = (page[-1]["created_at"], page[-1]["_id"])
+
+    def _ensure_indexes(self, vault_id: str, path: str) -> None:
+        """Crea el INDICE de cada carpeta de `path` (y el de la raíz) que aún no exista."""
+        for folder in ancestor_folders(path):
+            index_path = index_path_for(folder)
+            doc_id = _doc_id(vault_id, str(uuid.uuid4()))
+            try:
+                self._notes.reserve_path(doc_id, index_path)
+            except NotePathTaken:
+                continue  # ya existe
+            now = utc_now()
+            doc = {
+                "_id": doc_id, "type": "note", "vault_id": vault_id, "path": index_path, "content": "",
+                "frontmatter": stamp_dates({}, today_cdmx(), now),
+                "created_at": now, "updated_at": now, "deleted_at": None,
+            }
+            self._port.put(self._db, doc)
 
 
 def _doc_id(vault_id: str, note_id: str) -> str:

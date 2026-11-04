@@ -176,7 +176,7 @@ describe("openSyncResources: notas y reintento dirigido (SPEC-0008 RF-001, RF-01
     const { res } = await open();
     const note = await res.notes.create(VAULT, "Ideas");
     expect((await res.db.get(note.id)) as { type: string }).toMatchObject({ type: "note" });
-    expect((await res.notes.list(VAULT)).map((n) => n.path)).toEqual(["Ideas.md"]);
+    expect((await res.notes.list(VAULT)).map((n) => n.path)).toEqual(["INDICE.md", "Ideas.md"]); // H-031: la raíz tiene su INDICE
   });
 
   it("`repush` va cableado: un vault-not-found y la bóveda escrita por el push reintentan la nota", async () => {

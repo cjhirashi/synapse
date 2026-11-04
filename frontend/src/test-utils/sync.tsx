@@ -70,7 +70,7 @@ export function memoryEnv(overrides: Partial<SyncEnv> = {}) {
 export function syncValue(overrides: Partial<SyncContextValue> = {}, db = memoryDb()) {
   const value: SyncContextValue = {
     vaults: createVaultStore(db, "u1"),
-    notes: createNoteStore(db),
+    notes: createNoteStore(db, { indexes: false }),
     dataVersion: 0,
     notesVersion: 0,
     replicating: true,

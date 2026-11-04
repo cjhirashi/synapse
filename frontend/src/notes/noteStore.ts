@@ -17,6 +17,7 @@ import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
 import { nextUntitledPath } from "./untitled";
+import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
@@ -61,6 +62,8 @@ export interface NoteSummary {
   /** Longitud de `content` (RNF-001, PLAN-0010 §10.5): el programador de precálculo elige candidatas
    *  sin leer los cuerpos. Se calcula al indexar (el índice ya lee el documento completo). */
   size: number;
+  /** Atributos de la nota (sin cuerpo): los INDICES los muestran sin releer cada documento (H-031). */
+  frontmatter?: Record<string, unknown>;
 }
 
 export interface NoteStoreOptions {
@@ -68,6 +71,8 @@ export interface NoteStoreOptions {
   now?: () => string;
   /** Generador del uuid v4 de las notas nuevas; por defecto `crypto.randomUUID()`. */
   newId?: () => string;
+  /** H-031: mantiene el INDICE de cada carpeta. Siempre activo en la app; las pruebas viejas que cuentan notas lo apagan. */
+  indexes?: boolean;
 }
 
 export interface NoteStore {
@@ -92,6 +97,10 @@ export interface NoteStore {
   softDeleteFolder(vaultId: string, path: string): Promise<number>;
   softDelete(id: string, rev: string): Promise<Note>;
   restore(id: string, rev: string): Promise<Note>;
+  /** Crea la carpeta `path` (y las que falten por encima) con su INDICE; no crea ninguna nota más (H-031). */
+  createFolder(vaultId: string, path: string): Promise<void>;
+  /** Garantiza el INDICE de la raíz y el de cada carpeta que ya tiene notas (H-031); devuelve cuántos creó. */
+  ensureIndexes(vaultId: string): Promise<number>;
   /**
    * Guarda el contenido editado sobre la revisión `baseRev` que se cargó. `frontmatter` ausente
    * conserva el del documento; presente se valida (RF-019) y se escribe junto al contenido.
@@ -114,7 +123,7 @@ function toNote(doc: NoteDoc): Note {
 }
 
 function toSummary(doc: NoteDoc): NoteSummary {
-  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at, size: doc.content.length };
+  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at, size: doc.content.length, frontmatter: doc.frontmatter ?? {} };
 }
 
 function isStatus(err: unknown, status: number): boolean {
@@ -140,6 +149,7 @@ const INDEX_BATCH = 200;
 export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions = {}): NoteStore {
   const now = options.now ?? (() => utcNow());
   const newId = options.newId ?? (() => crypto.randomUUID());
+  const indexesEnabled = options.indexes ?? true;
 
   /**
    * Índice de resumen (S-1): `{id, path, rev, deleted_at, updated_at}` de cada nota por bóveda,
@@ -231,6 +241,46 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     }
     if (doc.type !== "note" || (doc.deleted_at !== null) !== deleted) throw new NoteNotFoundError();
     return doc;
+  }
+
+  /**
+   * H-031: el INDICE de cada carpeta de `path` (y el de la raíz) existe. Es un documento sin cuerpo (se genera al
+   * leerlo) que sólo guarda sus atributos; los crea la propia app al crear una carpeta o poner una nota en ella.
+   */
+  async function ensureIndexFor(vaultId: string, paths: readonly string[]): Promise<number> {
+    if (!indexesEnabled) return 0;
+    const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+    const present = new Set(active.map((note) => pathKey(note.path)));
+    let created = 0;
+    for (const path of paths) {
+      for (const folder of ancestorFolders(path)) {
+        const indexPath = indexPathFor(folder);
+        if (present.has(pathKey(indexPath))) continue;
+        const timestamp = now();
+        await write({
+          _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
+          type: "note",
+          vault_id: vaultId,
+          path: indexPath,
+          frontmatter: stampDates({}, { today: localDay(timestamp) }),
+          content: "",
+          created_at: timestamp,
+          updated_at: timestamp,
+          deleted_at: null,
+        });
+        present.add(pathKey(indexPath));
+        created += 1;
+      }
+    }
+    return created;
+  }
+
+  /** Notas activas bajo la carpeta del INDICE `indexPath` (en la raíz, todas), sin contar `selfId`. */
+  async function liveBelow(vaultId: string, indexPath: string, selfId: string): Promise<number> {
+    const folder = folderOf(indexPath);
+    const prefix = folder ? `${pathKey(folder)}/` : "";
+    return (await summaries(vaultId)).filter(
+      (note) => note.deleted_at === null && note.id !== selfId && pathKey(note.path).startsWith(prefix)).length;
   }
 
   /**
@@ -355,7 +405,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     for (const { note, path } of targets) await renameDoc(note.id, path, note.rev);
   }
 
-  /** Crea una nota (la comparten `create` y el placeholder de C-8): sin título usa «Sin título n» de la carpeta. */
+  /** Crea una nota y el INDICE de su carpeta si falta (H-031): sin título usa «Sin título n» de la carpeta. */
   async function createNote(vaultId: string, title: string | undefined, folder = ""): Promise<Note> {
     const requested = title?.trim() ?? "";
     let path: string;
@@ -367,11 +417,11 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
       path = titleToPath(joinPath(folder, requested));
     }
-    if (checkPath(path) !== null) throw new NoteValidationError(["path"]);
+    if (checkPath(path) !== null || checkIndexOp("create_user", path) !== null) throw new NoteValidationError(["path"]);
     await assertPathFree(vaultId, path, null);
     const timestamp = now();
     const stampedFrontmatter = stampDates({}, { today: localDay(timestamp) });
-    return write({
+    const created = await write({
       _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
       type: "note",
       vault_id: vaultId,
@@ -382,27 +432,15 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       updated_at: timestamp,
       deleted_at: null,
     });
-  }
-
-  /**
-   * C-8 (H-003): si mover una nota dejó su carpeta de origen `folder` sin ninguna nota activa, crea
-   * ahí un `Sin título.md` para que la carpeta siga existiendo (una carpeta existe por tener una nota
-   * dentro; mismo patrón que «Crear carpeta»). La raíz no es una carpeta derivada y siempre se ve, así
-   * que se omite. Sólo lo llama `rename` (drag de nota y renombrado por teclado), nunca `moveFolder`.
-   */
-  async function keepSourceFolder(vaultId: string, folder: string): Promise<void> {
-    if (folder === "") return;
-    const prefix = `${folder}/`;
-    const stillThere = (await summaries(vaultId)).some(
-      (note) => note.deleted_at === null && note.path.startsWith(prefix),
-    );
-    if (!stillThere) await createNote(vaultId, "", folder);
+    await ensureIndexFor(vaultId, [path]);
+    return created;
   }
 
   return {
     async list(vaultId, { deleted = false } = {}) {
       return (await summaries(vaultId))
         .filter((note) => (note.deleted_at !== null) === deleted)
+        .filter((note) => !deleted || !isIndexPath(note.path)) // un INDICE no se restaura solo: vuelve con sus notas
         .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     },
 
@@ -415,20 +453,26 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async rename(id, path, rev) {
-      const source = parentFolder((await load(id, false)).path); // carpeta de origen, antes de mover
+      const current = await load(id, false);
+      // H-031: un INDICE no se renombra ni se mueve, y ninguna otra nota toma su nombre.
+      if (checkIndexOp("rename_or_move", current.path, { to: titleToPath(path) }) !== null) throw new NoteValidationError(["path"]);
       const moved = await renameDoc(id, path, rev);
-      // C-8: si el movimiento vació la carpeta de origen, la sostiene con un «Sin título.md».
-      if (source !== parentFolder(moved.path)) await keepSourceFolder(moved.vault_id, source);
+      // La carpeta de origen sigue existiendo por su INDICE; la de destino necesita el suyo.
+      await ensureIndexFor(moved.vault_id, [moved.path]);
       return moved;
     },
 
     async moveFolder(vaultId, from, to) {
       const name = from.split("/").at(-1) ?? from;
-      await relocateFolder(vaultId, from, joinPath(to, name)); // la carpeta movida conserva su nombre, ahora bajo `to`
+      const dest = joinPath(to, name);
+      await relocateFolder(vaultId, from, dest); // la carpeta movida conserva su nombre, ahora bajo `to`; su INDICE se mueve con ella
+      await ensureIndexFor(vaultId, [joinPath(dest, "x.md")]);
     },
 
     async renameFolder(vaultId, from, newName) {
-      await relocateFolder(vaultId, from, joinPath(parentFolder(from), newName));
+      const dest = joinPath(parentFolder(from), newName);
+      await relocateFolder(vaultId, from, dest);
+      await ensureIndexFor(vaultId, [joinPath(dest, "x.md")]);
     },
 
     async softDeleteFolder(vaultId, path) {
@@ -440,7 +484,24 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async softDelete(id, rev) {
+      const doc = await load(id, false);
+      // H-031: un INDICE sólo desaparece con su carpeta (`softDeleteFolder`); el de la raíz, nunca.
+      if (isIndexPath(doc.path)) {
+        const below = await liveBelow(doc.vault_id, doc.path, doc._id);
+        if (checkIndexOp("delete", doc.path, { otherLiveBelowAfter: below }) !== null) throw new NoteValidationError(["path"]);
+      }
       return trashDoc(id, rev);
+    },
+
+    async createFolder(vaultId, path) {
+      const normalized = normalizePath(path);
+      if (checkPath(`${normalized}/x.md`) !== null) throw new NoteValidationError(["path"]);
+      await ensureIndexFor(vaultId, [`${normalized}/x.md`]);
+    },
+
+    async ensureIndexes(vaultId) {
+      const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
+      return ensureIndexFor(vaultId, ["x.md", ...active.map((note) => note.path)]);
     },
 
     async restore(id, rev) {
@@ -448,7 +509,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       assertCurrent(doc, rev);
       // Al volver a estar activa, su ruta vuelve a competir con las demás activas (RF-017).
       await assertPathFree(doc.vault_id, doc.path, doc._id);
-      return write({ ...doc, deleted_at: null, updated_at: now() });
+      const restored = await write({ ...doc, deleted_at: null, updated_at: now() });
+      await ensureIndexFor(restored.vault_id, [restored.path]);
+      return restored;
     },
 
     async save(id, content, baseRev, frontmatter) {
@@ -457,6 +520,13 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       const doc = await load(id, false);
       // Puerta RF-008 (P-12): no se guarda sobre una nota cuya ruta ya es inválida; pide renombrar antes.
       if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
+      // H-031: un INDICE no guarda cuerpo y sólo admite cambiar su `descripcion`.
+      if (isIndexPath(doc.path)) {
+        const changed = changedKeys(doc.frontmatter, frontmatter ?? doc.frontmatter);
+        if (checkIndexOp("edit", doc.path, { changed, contentChanged: content !== "" }) !== null) {
+          throw new NoteValidationError([content !== "" ? "content" : "frontmatter"]);
+        }
+      }
       if (doc._rev === baseRev) {
         try {
           const timestamp = now();
