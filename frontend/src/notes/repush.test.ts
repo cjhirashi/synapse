@@ -221,7 +221,12 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     toSpy.mockImplementationOnce((() => {
       const gate = new Promise<void>((resolve) => (release = resolve));
       const replication = fakeReplication();
-      return Object.assign(gate.then(() => replication), { on: replication.on });
+      // El servidor vuelve a rechazar la nota: su rechazo sigue en la lista y los cambios acumulados la reintentan.
+      const done = gate.then(() => {
+        handlers.denied?.({ id: NOTE_1, rev: "1-a", reason: "vault-not-found" });
+        return replication;
+      });
+      return Object.assign(done, { on: replication.on });
     }) as never);
     await putVault(V);
     await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
@@ -243,7 +248,12 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     toSpy.mockImplementationOnce((() => {
       const gate = new Promise<void>((resolve) => (release = resolve));
       const replication = fakeReplication();
-      return Object.assign(gate.then(() => replication), { on: replication.on });
+      // El servidor vuelve a rechazar la nota: su rechazo sigue en la lista y los cambios acumulados la reintentan.
+      const done = gate.then(() => {
+        handlers.denied?.({ id: NOTE_1, rev: "1-a", reason: "vault-not-found" });
+        return replication;
+      });
+      return Object.assign(done, { on: replication.on });
     }) as never);
     await putVault(V);
     await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1)); // el primer push queda en curso
@@ -341,6 +351,46 @@ describe("RD-2: disparadores de arranque y de reconexión", () => {
   it("close() deja de seguir el estado de la conexión", async () => {
     repush.close();
     expect(unsubscribe).toHaveBeenCalled();
+  });
+});
+
+describe("H-031: un rechazo que el servidor ya no repite se limpia", () => {
+  it("sin evento denied tras el reintento (ya estaba en el servidor) el rechazo desaparece", async () => {
+    await rejectNote(NOTE_1, "validation-error:frontmatter");
+    await rejectNote(NOTE_2, "validation-error:frontmatter");
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    await waitForCondition(() => expect(rejections.list()).toEqual([]));
+  });
+
+  it("los documentos que el servidor vuelve a rechazar se quedan, y sólo ésos", async () => {
+    await rejectNote(NOTE_1, "validation-error:frontmatter");
+    await rejectNote(NOTE_2, "validation-error:frontmatter");
+    toSpy.mockImplementationOnce((() => {
+      const replication = fakeReplication();
+      const done = Promise.resolve().then(() => {
+        handlers.denied?.({ id: NOTE_2, rev: "1-b", reason: "validation-error:frontmatter" });
+        return replication;
+      });
+      return Object.assign(done, { on: replication.on });
+    }) as never);
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(rejections.list().map((item) => item.id)).toEqual([NOTE_2]));
+  });
+
+  it("si el push falla (sin red) no se limpia nada", async () => {
+    await rejectNote(NOTE_1, "validation-error:frontmatter");
+    toSpy.mockImplementationOnce((() => {
+      const failure = Promise.reject(new Error("offline"));
+      failure.catch(() => undefined);
+      return Object.assign(failure, { on: vi.fn(() => failure) });
+    }) as never);
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    expect(rejections.list().map((item) => item.id)).toEqual([NOTE_1]);
   });
 });
 

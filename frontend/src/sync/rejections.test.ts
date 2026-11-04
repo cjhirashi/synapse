@@ -126,4 +126,15 @@ describe("settled (VC-4, enmienda 1)", () => {
     await store.handle({ type: "denied", id: B, rev: "1-b", reason: "invalid-name" });
     expect(store.list()).toEqual([{ id: B, rev: "1-b", reason: "invalid-name" }]);
   });
+
+  it("resolve quita sólo los documentos indicados y persiste", async () => {
+    const store = await open();
+    await store.handle({ type: "denied", id: A, rev: "2-a", reason: "x" });
+    await store.handle({ type: "denied", id: B, rev: "1-b", reason: "y" });
+    await store.resolve([A, "otro"]);
+    expect(store.list()).toEqual([{ id: B, rev: "1-b", reason: "y" }]);
+    expect((await open()).list()).toEqual([{ id: B, rev: "1-b", reason: "y" }]);
+    await store.resolve([]); // sin ids no escribe nada
+    expect(store.list()).toHaveLength(1);
+  });
 });

@@ -50,16 +50,23 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
   /** Bóvedas con un reintento esperando turno: varios cambios seguidos dan un solo push. */
   const queued = new Set<string>();
 
-  /** Push de una vez de `docIds`; sus eventos van a los mismos almacenes que los de `pushOnce`. */
+  /**
+   * Push de una vez de `docIds`; sus eventos van a los mismos almacenes que los de `pushOnce`. Los documentos que el
+   * servidor no volvió a rechazar (se escribieron, o ya tenía todas sus revisiones) dejan de estar en la lista de
+   * rechazos: PouchDB no emite nada en el segundo caso y el rechazo viejo se quedaría para siempre.
+   */
   async function pushNotes(docIds: string[]): Promise<void> {
     const handled: Promise<void>[] = [];
+    const denied = new Set<string>();
     const emit = (event: SyncEvent) => {
+      if (event.type === "denied") denied.add(event.id);
       handled.push(status.handle(event), rejections.handle(event));
     };
     const replication = db.replicate.to(remote, { doc_ids: docIds, checkpoint: false });
     listenPush(replication as unknown as RuntimeReplication, emit);
     await replication;
     await Promise.all(handled);
+    await rejections.resolve(docIds.filter((id) => !denied.has(id)));
   }
 
   async function retry(vaultId: string): Promise<void> {

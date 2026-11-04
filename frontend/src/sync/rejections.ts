@@ -31,6 +31,11 @@ export interface RejectionsStore {
   /** Aplica un evento; la promesa termina cuando la lista persistida está escrita. */
   handle(event: SyncEvent): Promise<void>;
   /**
+   * Quita los rechazos de estos documentos: el reintento de un push no volvió a rechazarlos (ya estaban en el
+   * servidor, o se escribieron), y en ese caso PouchDB no emite ningún evento que los borre.
+   */
+  resolve(ids: readonly string[]): Promise<void>;
+  /**
    * Termina cuando están aplicadas todas las escrituras encoladas hasta ahora (nunca falla).
    * Lo usa el cierre de sesión para decidir con la lista al día (RF-017, VC-4).
    */
@@ -96,6 +101,19 @@ export async function openRejections(db: PouchDB.Database): Promise<RejectionsSt
   const listeners = new Set<(items: Rejection[]) => void>();
   let writes: Promise<void> = Promise.resolve();
 
+  function enqueue(change: Change): Promise<void> {
+    // En orden dentro de la pestaña; cada escritura parte del documento recién leído, así
+    // que un fallo sólo se devuelve a quien lo espera y la cola sigue con la siguiente.
+    const run = writes.then(async () => {
+      const next = await applyStored(db, change);
+      const changed = !sameItems(next, items);
+      items = next;
+      if (changed) listeners.forEach((listener) => listener(items));
+    });
+    writes = run.catch(() => undefined);
+    return run;
+  }
+
   return {
     list: () => items,
 
@@ -106,17 +124,13 @@ export async function openRejections(db: PouchDB.Database): Promise<RejectionsSt
 
     handle(event) {
       const change = changeFor(event);
-      if (!change) return Promise.resolve();
-      // En orden dentro de la pestaña; cada escritura parte del documento recién leído, así
-      // que un fallo sólo se devuelve a quien lo espera y la cola sigue con la siguiente.
-      const run = writes.then(async () => {
-        const next = await applyStored(db, change);
-        const changed = !sameItems(next, items);
-        items = next;
-        if (changed) listeners.forEach((listener) => listener(items));
-      });
-      writes = run.catch(() => undefined);
-      return run;
+      return change ? enqueue(change) : Promise.resolve();
+    },
+
+    resolve(ids) {
+      if (ids.length === 0) return Promise.resolve();
+      const gone = new Set(ids);
+      return enqueue((current) => current.filter((item) => !gone.has(item.id)));
     },
 
     settled: () => writes,
