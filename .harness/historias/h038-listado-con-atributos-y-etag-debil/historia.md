@@ -60,3 +60,10 @@ cual en `If-Match` da 412 sin que nadie haya editado.
 | C-8 | 4 | `test_contract.py`, `test_note_contract.py` (contrato re-exportado) |
 
 `[NEEDS CLARIFICATION] = 0`. Orden y alcance de Carlos 2026-11-04.
+
+## Avance (AIRA, 2026-11-04 16:50 CDMX)
+
+- Pasos 1-4 hechos y commiteados (`c776163`, `307e3ac`, `a656b98`, `b27b1ce`). Pruebas en tmpfs (el disco2 estaba saturado):
+  386 de los archivos tocados en verde; suite completa 2039 ok / 21 fallos ajenos (20 `test_brand_assets.py` necesitan
+  `frontend/public`, que no se copia a tmpfs; 1 `test_note_sync_api::…index-readonly:path` falla igual en la rama base `f3f0f96`).
+- Pendiente: despliegue y prueba en producción con la bóveda «Prueba» (ver plan).
