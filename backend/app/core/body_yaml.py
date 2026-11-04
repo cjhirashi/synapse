@@ -94,6 +94,8 @@ def merge_yaml_into_frontmatter(
     Devuelve `(nuevo_frontmatter, reportados)`.
 
     Cada reportado es `{"key", "yaml_value", "attribute_value", "reason"}`.
+    Aplica alias de claves: `title`→`titulo`, `description`→`descripcion`,
+    `etiquetas`→`tags`.
     """
     from app.core.attribute_rules import migrate_frontmatter_detailed
 

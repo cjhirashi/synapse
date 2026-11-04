@@ -151,22 +151,27 @@ class TestMergeYamlIntoFrontmatter:
         yaml_data = {"title": "Test"}
         new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
         # Después de aplicar alias en body_yaml, `title` debe convertirse a `titulo`
-        assert new_fm.get("titulo") == "Test" or new_fm.get("title") == "Test"
+        assert new_fm.get("titulo") == "Test"
+        assert "title" not in new_fm
 
     def test_merge_alias_description_to_descripcion(self):
         """Alias: `description` del YAML manda a `descripcion`."""
         existing = {}
         yaml_data = {"description": "Desc"}
         new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm.get("descripcion") == "Desc" or new_fm.get("description") == "Desc"
+        assert new_fm.get("descripcion") == "Desc"
+        assert "description" not in new_fm
 
     def test_merge_alias_etiquetas_to_tags(self):
-        """Alias: `etiquetas` del YAML manda a `tags`."""
+        """Alias: `etiquetas` del YAML manda a `tags` (normalizado)."""
         existing = {}
-        yaml_data = {"etiquetas": ["etiq1", "etiq2"]}
+        yaml_data = {"etiquetas": ["etiq_1", "ETIQ_2"]}
         new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
         # Debe convertirse a `tags` (normalizado)
-        assert "tags" in new_fm or "etiquetas" in new_fm
+        assert "tags" in new_fm
+        assert "etiquetas" not in new_fm
+        # Las etiquetas deben estar normalizadas
+        assert all(isinstance(t, str) for t in new_fm["tags"])
 
     def test_merge_free_keys_preserved(self):
         """Claves libres (no mapeadas) se conservan."""
