@@ -60,6 +60,14 @@ function baseName(path: string): string {
 export function resolveWikiLink(target: string, notes: readonly NoteRef[]): string | null {
   const wanted = baseName(target.trim()).toLowerCase();
   if (!wanted) return null;
+  // H-031: un destino con ruta (`Carpeta/INDICE.md`) resuelve por la ruta completa antes que por el nombre,
+  // porque cada carpeta tiene un INDICE.md y el nombre solo sería ambiguo.
+  const trimmed = target.trim().toLowerCase();
+  if (trimmed.includes("/")) {
+    const full = trimmed.endsWith(".md") ? trimmed : `${trimmed}.md`;
+    const exact = notes.find((note) => note.path.toLowerCase() === full);
+    if (exact) return exact.id;
+  }
   for (const note of notes) {
     const base = baseName(note.path).toLowerCase();
     const baseNoMd = base.endsWith(".md") ? base.slice(0, -3) : base;
