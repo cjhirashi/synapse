@@ -42,6 +42,17 @@ por la API REST (usuario, bóvedas con `icon`) y por la UI/CouchDB (notas). `reg
 capturas de login, lista, papelera, diálogo y menú de cuenta para comparar antes/después de un cambio
 de estilos globales. `test:perf` sigue midiendo RNF-001 de SPEC-0008 en jsdom (p95 < 300 ms).
 
+## Verificación e2e de historias recientes
+
+Mismas reglas que `test:visual` (`scripts/visual.sh`; se filtran con `-- e2e/<archivo>`):
+
+- `e2e/h025-enlaces.spec.ts` — H-025: pegado de enlaces, aviso «Deshacer», captura pegada y diálogo «Subir o pegar URL»
+  (los eventos de pegado se simulan; la reproducción real del vídeo es del checkpoint de Carlos).
+- `e2e/h029-meta.spec.ts` y `e2e/h029-tipos.spec.ts` — H-029: sección META de la nota, Código sin YAML, fechas selladas,
+  estados de la bóveda y atributos tipados (fecha, select, multiselect).
+- `e2e/h037-plotly.spec.ts` — H-037: gráficos Plotly (línea SVG, WebGL 2D y 3D) subidos como archivo y embebidos en una nota.
+  Los HTML (~4,8 MB) viven en `e2e/.fixtures-h037/`, fuera del repositorio.
+
 ## Contenido markdown completo (SPEC-0010)
 
 Dependencias nuevas (versión exacta): `@milkdown/plugin-clipboard` 7.22.3, `prosemirror-highlight` 0.16.0,

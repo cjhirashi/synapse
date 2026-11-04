@@ -13,11 +13,11 @@ FastAPI — monolito modular por capas con puertos (ADR-001).
 ```
 backend/
 ├── app/
-│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores, reglas de nota, marcas de tiempo
+│   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores, reglas de nota/atributos/fechas, seguridad de archivos, marcas de tiempo
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
-│   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, reservations.py, sync_*.py)
-│   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py; CouchDB: vault_repository.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, vaults.py, sync.py)
+│   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, reservations.py, sync_*.py)
+│   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, vaults.py, notes.py, files.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
@@ -39,6 +39,7 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `COUCHDB_URL`, `COUCHDB_USER`, `COUCHDB_PASSWORD` | CouchDB (una base por usuario) |
 | `JWT_SECRET` | Firma HS256 de los JWT |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
+| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO (archivos subidos). Obligatorias. `MINIO_ENDPOINT` (`synapse-minio:9000`) y `MINIO_BUCKET` (`synapse-files`) tienen valor por defecto |
 
 ## Sirve la SPA (SPEC-0007)
 
