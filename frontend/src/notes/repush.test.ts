@@ -115,11 +115,21 @@ describe("RF-004: repush de notas rechazadas por bóveda inexistente", () => {
     expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1, NOTE_2], checkpoint: false });
   });
 
-  it("sólo reintenta el motivo vault-not-found", async () => {
-    await rejectNote(NOTE_1, "validation-error:content");
+  it("reintenta también los demás motivos de rechazo: un defecto ya corregido en el servidor sana al cliente (H-031)", async () => {
+    await rejectNote(NOTE_1, "validation-error:frontmatter");
     await putVault(V);
     await settle();
-    expect(toSpy).not.toHaveBeenCalled();
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    expect(toSpy).toHaveBeenCalledWith(remote, { doc_ids: [NOTE_1], checkpoint: false });
+  });
+
+  it("empuja las notas antes que los INDICES, en dos pushes (el servidor sólo borra un INDICE sin notas debajo)", async () => {
+    await rejectNote(NOTE_1, "index-readonly:delete");
+    await rejectNote(NOTE_2, "validation-error:frontmatter");
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(2));
+    expect(toSpy.mock.calls.map((call) => (call[1] as { doc_ids: string[] }).doc_ids)).toEqual([[NOTE_2], [NOTE_1]]);
   });
 
   it("sin rechazos no hace nada", async () => {

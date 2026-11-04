@@ -144,8 +144,11 @@ async def test_sync_index_only_allows_changing_descripcion(push, vault):
     assert await push.push([ok]) == []
     bad = {**ok, "_rev": "3-ccc", "_revisions": {"start": 3, "ids": ["ccc", "bbb", "aaa"]}, "frontmatter": {"descripcion": "d", "estado": "x"}}
     assert await push.push([bad]) == [_rejected(bad, "index-readonly:attr")]
-    moved = {**ok, "_rev": "3-ddd", "_revisions": {"start": 3, "ids": ["ddd", "bbb", "aaa"]}, "path": "B/INDICE.md"}
-    assert await push.push([moved]) == [_rejected(moved, "index-readonly:path")]
+    renamed = {**ok, "_rev": "3-ddd", "_revisions": {"start": 3, "ids": ["ddd", "bbb", "aaa"]}, "path": "A/Otro.md"}
+    assert await push.push([renamed]) == [_rejected(renamed, "index-readonly:path")]
+    # H-031: acompaña a su carpeta (de una ruta de INDICE a otra); lo que no puede es cambiar de nombre.
+    moved = {**ok, "_rev": "3-eee", "_revisions": {"start": 3, "ids": ["eee", "bbb", "aaa"]}, "path": "B/INDICE.md"}
+    assert await push.push([moved]) == []
 
 
 async def test_sync_another_note_cannot_take_the_reserved_name(push, vault):

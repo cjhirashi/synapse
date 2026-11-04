@@ -1,24 +1,21 @@
 /**
- * Reintento dirigido de las notas rechazadas con `vault-not-found` (SPEC-0008 RF-004, RF-014;
- * PLAN-0008 P-7).
+ * Reintento dirigido de las notas rechazadas (SPEC-0008 RF-004, RF-014; PLAN-0008 P-7; ampliado en H-031).
  *
- * El feed de cambios ordena por la última secuencia: si una bóveda creada sin conexión se
- * edita después de crear sus notas y el corte de lote cae entre ambas, la nota llega antes
- * que su bóveda y el servidor la rechaza (RF-004 lo exige). `forbidden` no se reintenta, así
- * que la nota no subiría hasta otra edición suya. Este módulo lo resuelve: cuando la bóveda
- * `V` queda activa en la réplica (cambio local o del pull) o el push la escribe en el
- * servidor, lanza un push de una vez sólo con las notas rechazadas de `V`
- * (`doc_ids`, sin tocar el checkpoint) y no escribe revisiones nuevas. Cubre también la
- * bóveda restaurada de la papelera.
+ * `forbidden` no se reintenta por sí solo: la revisión rechazada ya salió del feed y no volvería a subir hasta
+ * otra edición suya. Eso deja a las notas atascadas en dos casos: (1) `vault-not-found`, cuando la nota llegó
+ * antes que su bóveda (el feed ordena por la última secuencia); y (2) cualquier rechazo que el servidor dio por
+ * un defecto suyo y que luego se corrigió (p. ej. `frontmatter: null` heredado o el movimiento de un INDICE con
+ * su carpeta): sin reintento, el cliente conserva para siempre rechazos que el servidor ya aceptaría.
  *
- * Otros dos disparadores cubren lo que el feed de la bóveda no ve (RD-2): al abrirse, las
- * notas con `vault-not-found` persistidas cuya bóveda ya está activa (la bóveda no volverá a
- * cambiar), y cada vuelta a "en línea" tras un fallo de red. Un fallo del push no se
- * reintenta por sí mismo: el rechazo sigue en la lista y espera a esos disparadores.
+ * Este módulo lanza un push de una vez sólo con las notas rechazadas de una bóveda `V` (`doc_ids`, sin tocar el
+ * checkpoint) y no escribe revisiones nuevas. Disparadores: la bóveda `V` queda activa en la réplica (cambio local
+ * o del pull) o el push la escribe en el servidor (también restaurada de la papelera), el arranque, y cada vuelta
+ * a "en línea" tras un fallo de red. Si el motivo sigue vigente el servidor vuelve a rechazar y el rechazo sigue en
+ * la lista. Un rechazo nuevo **no** dispara el reintento: se encadenarían pushes sin fin; el siguiente disparador
+ * es el cambio de la bóveda, el arranque o la reconexión.
  *
- * Un rechazo nuevo **no** dispara el reintento: si la bóveda sigue sin estar en el servidor
- * volvería a rechazarse y se encadenarían pushes sin fin; el siguiente disparador es la
- * propia bóveda llegando al servidor. Los eventos del push van a `rejections.ts` y
+ * Las notas van antes que los INDICES: el servidor sólo deja borrar un INDICE cuando ya no quedan notas vivas bajo
+ * su carpeta, y esas notas se mueven o borran en el mismo reintento. Los eventos del push van a `rejections.ts` y
  * `status.ts` igual que los de `pushOnce`.
  */
 import type { RejectionsStore } from "../sync/rejections";
@@ -28,8 +25,8 @@ import { vaultIsActive } from "../sync/vaultActive";
 import { ID_PREFIX } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, parseNoteId } from "./noteRules";
 
-/** Motivo del rechazo que se reintenta (el único que se resuelve solo al llegar la bóveda). */
-const VAULT_NOT_FOUND = "vault-not-found";
+/** Los motivos de INDICE (H-031): se empujan después de las notas. */
+const isIndexReason = (reason: string): boolean => reason.startsWith("index-");
 
 export interface RepushDeps {
   db: PouchDB.Database;
@@ -70,12 +67,12 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
     // El rechazo del mismo lote puede estar aún escribiéndose (RD-3): se lee la lista al día.
     await rejections.settled();
     const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
-    const docIds = rejections
-      .list()
-      .filter((item) => item.reason === VAULT_NOT_FOUND && item.id.startsWith(prefix))
-      .map((item) => item.id);
-    if (docIds.length === 0 || !(await vaultIsActive(db, vaultId))) return;
-    await pushNotes(docIds);
+    const mine = rejections.list().filter((item) => item.id.startsWith(prefix));
+    if (mine.length === 0 || !(await vaultIsActive(db, vaultId))) return;
+    const notes = mine.filter((item) => !isIndexReason(item.reason)).map((item) => item.id);
+    const indexes = mine.filter((item) => isIndexReason(item.reason)).map((item) => item.id);
+    if (notes.length > 0) await pushNotes(notes);
+    if (indexes.length > 0) await pushNotes(indexes);
   }
 
   /**
@@ -94,11 +91,10 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
       .catch(() => undefined);
   }
 
-  /** Reintenta todas las bóvedas con notas rechazadas por `vault-not-found` (arranque, reconexión). */
+  /** Reintenta todas las bóvedas con notas rechazadas (arranque, reconexión). */
   function enqueueAll(): void {
     const vaults = new Set<string>();
     for (const item of rejections.list()) {
-      if (item.reason !== VAULT_NOT_FOUND) continue;
       const parts = parseNoteId(item.id);
       if (parts) vaults.add(parts.vaultId);
     }

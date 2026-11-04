@@ -169,6 +169,31 @@ async def test_note_with_null_frontmatter_is_accepted_like_an_absent_one(push, c
     assert couch.winner(DB, first["_id"])["path"] == "Otra/Nota.md"
 
 
+async def test_h031_an_index_moves_with_its_folder(push, couch, vault):
+    index = _note(path="A/INDICE.md", content="")
+    assert await push.push([index]) == []
+    moved = _note(index["_id"], "2-bbb", ("1-aaa",), path="B/INDICE.md", content="")
+    assert await push.push([moved]) == []
+    assert couch.winner(DB, index["_id"])["path"] == "B/INDICE.md"
+
+
+async def test_h031_an_index_cannot_take_another_name_or_a_note_the_reserved_one(push, couch, vault):
+    index = _note(path="A/INDICE.md", content="")
+    note = _note(path="A/Nota.md")
+    assert await push.push([index, note]) == []
+    renamed = _note(index["_id"], "2-bbb", ("1-aaa",), path="A/Otro.md", content="")
+    taking = _note(note["_id"], "2-ccc", ("1-aaa",), path="B/INDICE.md")
+    assert await push.push([renamed]) == [_rejected(renamed, "index-readonly:path")]
+    assert await push.push([taking]) == [_rejected(taking, "reserved-name:path")]
+
+
+async def test_h031_an_index_cannot_move_onto_the_index_of_another_folder(push, couch, vault):
+    a, b = _note(path="A/INDICE.md", content=""), _note(path="B/INDICE.md", content="")
+    assert await push.push([a, b]) == []
+    clash = _note(a["_id"], "2-bbb", ("1-aaa",), path="B/INDICE.md", content="")
+    assert await push.push([clash]) == [_rejected(clash, "note-path-taken")]
+
+
 async def test_rf_007_note_in_a_folder_with_a_real_name_is_accepted(push, couch, vault):
     # SPEC-0010 RF-007: el último segmento con nombre (`X/a.md`) sí se acepta; sólo `X/.md` se rechaza.
     doc = _note(path="X/a.md")

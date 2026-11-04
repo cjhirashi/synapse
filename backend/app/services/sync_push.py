@@ -405,7 +405,10 @@ class SyncPushService:
         history = _history(doc)
         previous = leaves.get(history[1]) if len(history) > 1 else None
         if previous is not None and previous["path"] != path:
-            if (code := check_op("rename_or_move", previous["path"], to=path)) is not None:
+            # Un INDICE acompaña a su carpeta cuando ésta se mueve o se renombra: el cliente lo mueve junto con sus
+            # notas. Sólo se admite de una ruta de INDICE a otra; la reserva de ruta evita pisar el de otra carpeta.
+            moves_with_folder = is_index_path(previous["path"]) and is_index_path(path)
+            if not moves_with_folder and (code := check_op("rename_or_move", previous["path"], to=path)) is not None:
                 raise Rejected(code)
         if not is_index_path(path):
             return
