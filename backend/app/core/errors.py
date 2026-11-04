@@ -214,6 +214,28 @@ class NotePathTaken(DomainError):
     detail = "Note path already in use"
 
 
+class FolderMoveInvalid(ValidationFailed):
+    """Operación de carpeta inválida: `to` dentro de `from`, o `from`/`to` = raíz (plan §1.d)."""
+
+
+class FolderNotFound(DomainError):
+    """Carpeta de origen o destino inexistente (ni `from` ni `to` tienen notas vivas; plan §1.d)."""
+
+    slug = "folder-not-found"
+    title = "Folder not found"
+    status = 404
+    detail = "Folder not found"
+
+
+class WikilinkRewriteConflict(DomainError):
+    """Una nota movida siguió cambiando durante la operación y no se pudo reescribir (plan §1.d, C-14)."""
+
+    slug = "wikilink-rewrite-conflict"
+    title = "Wikilink rewrite conflict"
+    status = 412
+    detail = "A moved note kept changing during the operation; retry it"
+
+
 # --- Sincronización (SPEC-0005) ---
 
 class SyncEndpointNotFound(DomainError):
