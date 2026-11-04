@@ -389,7 +389,7 @@ def _to_out(doc: dict) -> NoteOut:
 
 
 def _to_list_item(doc: dict) -> NoteListItem:
-    return NoteListItem(**_to_out(doc).model_dump(exclude={"frontmatter", "content"}), etag=_etag(doc))
+    return NoteListItem(**_to_out(doc).model_dump(exclude={"content"}), etag=_etag(doc))
 
 
 def _versioned(doc: dict) -> Versioned:

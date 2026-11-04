@@ -237,6 +237,7 @@ class NoteListItem(BaseModel):
     id: str
     vault_id: str
     path: str
+    frontmatter: dict | None
     created_at: str
     updated_at: str
     deleted_at: str | None

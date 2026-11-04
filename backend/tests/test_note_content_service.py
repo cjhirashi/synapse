@@ -20,7 +20,7 @@ VAULT = "7d1c9a8e-0000-4000-8000-000000000001"
 OTHER_VAULT = "7d1c9a8e-0000-4000-8000-000000000002"
 WHEN = "2026-10-12T10:00:00.000000Z"
 
-_LIST_ITEM_KEYS = {"id", "vault_id", "path", "created_at", "updated_at", "deleted_at", "etag"}
+_LIST_ITEM_KEYS = {"id", "vault_id", "path", "frontmatter", "created_at", "updated_at", "deleted_at", "etag"}
 
 
 @pytest.fixture

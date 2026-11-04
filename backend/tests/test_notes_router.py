@@ -53,7 +53,8 @@ def test_c1_list_returns_live_notes_without_content_or_frontmatter(ready_admin, 
     [item] = res.json()["items"]
     assert item["path"] == "Nota.md" and item["vault_id"] == vault_id
     assert item["etag"] == f'"{stored["_rev"]}"'
-    assert set(item) == {"id", "vault_id", "path", "created_at", "updated_at", "deleted_at", "etag"}
+    assert set(item) == {"id", "vault_id", "path", "frontmatter", "created_at", "updated_at", "deleted_at", "etag"}
+    assert item["frontmatter"] == {"a": 1}  # H-038: el frontmatter está en el ítem del listado
     assert res.json()["next_cursor"] is None
 
 
