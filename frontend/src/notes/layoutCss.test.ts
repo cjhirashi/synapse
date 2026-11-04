@@ -294,13 +294,13 @@ test("UX-H6: el botón «…» de las migas lleva la clase note-crumb-more", () 
   expect(read("../editor/NoteBreadcrumb.tsx")).toMatch(/className="note-crumb note-crumb-more"/);
 });
 
-test("H-014 (2026-11-04): el secundario es el primario girado +20° y el terciario el secundario girado +20° (OKLCH), también en los tonos 600", () => {
+test("H-014 (2026-11-04): el secundario es el primario girado +30° y el terciario el secundario girado +30° (OKLCH), también en los tonos 600", () => {
   const block = rule(editorCss(), ".milkdown-view");
   const css = editorCss();
   const vars = css.match(/\.milkdown-view \{\s*--vault-secondary:[^}]*\}/)![0];
-  expect(vars).toMatch(/--vault-secondary: oklch\(from var\(--vault-accent\) l c calc\(h \+ 20\)\)/);
-  expect(vars).toMatch(/--vault-tertiary: oklch\(from var\(--vault-secondary\) l c calc\(h \+ 20\)\)/);
-  expect(vars).toMatch(/--vault-secondary-600: oklch\(from var\(--vault-accent-600\) l c calc\(h \+ 20\)\)/);
-  expect(vars).toMatch(/--vault-tertiary-600: oklch\(from var\(--vault-secondary-600\) l c calc\(h \+ 20\)\)/);
+  expect(vars).toMatch(/--vault-secondary: oklch\(from var\(--vault-accent\) l c calc\(h \+ 30\)\)/);
+  expect(vars).toMatch(/--vault-tertiary: oklch\(from var\(--vault-secondary\) l c calc\(h \+ 30\)\)/);
+  expect(vars).toMatch(/--vault-secondary-600: oklch\(from var\(--vault-accent-600\) l c calc\(h \+ 30\)\)/);
+  expect(vars).toMatch(/--vault-tertiary-600: oklch\(from var\(--vault-secondary-600\) l c calc\(h \+ 30\)\)/);
   expect(block).toBeTruthy();
 });

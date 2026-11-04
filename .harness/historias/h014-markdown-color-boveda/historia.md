@@ -376,3 +376,9 @@ así que el contraste no cambia (en HSL el amarillo o el naranja a +40° caían 
 Consecuencia: con secundario y terciario a solo 20° no hay otro matiz para separar la negrita-cursiva; pasa a ser un
 punto intermedio de luminosidad (`--md-strongem`: negrita 100 % > negrita-cursiva 70/60 % > cursiva 40 %). Requiere
 color relativo de CSS (Chrome 119, Safari 16.4, Firefox 128). Verificado en Chromium (3 bóvedas, claro y oscuro).
+
+## Enmienda 2026-11-04 (4): paso de 30° en lugar de 20°
+
+Carlos pidió que los vecinos estén a **30°**: secundario = primario +30° y terciario = secundario +30° (+60° del primario),
+misma rotación OKLCH de la enmienda (3). Los pisos de contraste y de separación de las pruebas se mantienen y se cumplen
+con 30° para los 17 colores, en claro y oscuro.

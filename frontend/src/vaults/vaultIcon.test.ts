@@ -166,8 +166,8 @@ test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro 
 });
 
 /**
- * H-014 (2026-11-04): secundario y terciario son el primario girado +20° y +40° en OKLCH (`editor.css`,
- * `oklch(from … l c calc(h + 20))`); aquí se repite esa rotación con el mapeo de gama del navegador
+ * H-014 (2026-11-04): secundario y terciario son el primario girado +30° y +60° en OKLCH (`editor.css`,
+ * `oklch(from … l c calc(h + 30))`); aquí se repite esa rotación con el mapeo de gama del navegador
  * (se reduce el croma hasta caber en sRGB) para medir contraste y separación con los 17 colores.
  */
 const s2l = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -207,13 +207,13 @@ function rotateHue(color: Rgba, degrees: number): Rgba {
   return [rgb[0], rgb[1], rgb[2], 1];
 }
 
-test("H-014 (2026-11-04): el secundario (+20°) y el terciario (+40°) son vecinos del primario y conservan su luminosidad", () => {
+test("H-014 (2026-11-04): el secundario (+30°) y el terciario (+60°) son vecinos del primario y conservan su luminosidad", () => {
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     for (const key of PALETTE) {
       const base = parse(vars[tokenOf(key)]);
       const [L0, , H0] = toOklch(base);
-      for (const [shift, rotated] of [[20, rotateHue(base, 20)], [40, rotateHue(base, 40)]] as const) {
+      for (const [shift, rotated] of [[30, rotateHue(base, 30)], [60, rotateHue(base, 60)]] as const) {
         const [L1, , H1] = toOklch(rotated);
         const diff = (((H1 - H0 + 540) % 360) - 180 + 360) % 360;
         expect(Math.abs(L1 - L0), `${mode} ${key} +${shift} luminosidad`).toBeLessThan(0.02);
@@ -235,7 +235,7 @@ test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1 primario 600, H2 secundari
     const ink = parse(vars["text-primary"]);
     for (const key of PALETTE) {
       const primary = shade(key, 600);
-      for (const [name, color] of [["h1", primary], ["h2", rotateHue(primary, 20)], ["h3", rotateHue(rotateHue(primary, 20), 20)]] as const) {
+      for (const [name, color] of [["h1", primary], ["h2", rotateHue(primary, 30)], ["h3", rotateHue(rotateHue(primary, 30), 30)]] as const) {
         expect(ratio(color, bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(2.7);
       }
       const h4 = mode === "dark" ? shade(key, 400) : ([0, 1, 2].map((i) => shade(key, 400)[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
@@ -261,8 +261,8 @@ test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y 
     const ink = parse(vars["text-primary"]);
     for (const key of PALETTE) {
       const primary = parse(vars[tokenOf(key)]);
-      const secondary = rotateHue(primary, 20);
-      const tertiary = rotateHue(secondary, 20);
+      const secondary = rotateHue(primary, 30);
+      const tertiary = rotateHue(secondary, 30);
       const dark = mode === "dark";
       const tones = {
         strong: dark ? secondary : mix(secondary, 0.85, ink),
