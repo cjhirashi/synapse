@@ -1,7 +1,9 @@
 # backend/app/
 
 Paquete principal de la aplicación FastAPI. Entrada: `main.py`, que monta los routers
-`auth`, `admin`, `agent_keys`, `vaults`, `notes`, `files` y `sync`.
+`auth`, `admin`, `agent_keys`, `vaults`, `notes`, `folders`, `files` y `sync`.
+H-039: `services/folder_service.py` (mover carpeta, `POST /folders/move`), `services/wikilink_rewrite_service.py` (reescritura
+de wikilinks tras mover o renombrar) y la regla pura `core/wikilink_rewrite.py`.
 
 Arquitectura hexagonal; las dependencias apuntan hacia `core/`:
 

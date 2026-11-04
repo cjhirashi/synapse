@@ -298,6 +298,14 @@ nota no cambia).
 - `If-Match` distinto del `ETag` vigente → `412` `precondition-failed` (otra escritura ganó:
   relee y repite).
 - Mismas reglas de `core/note_rules.py` que `POST` sobre los campos enviados → `422`.
+- **Cambiar `path` reescribe los wikilinks (H-039).** Antes de responder, el servidor corrige en las demás notas vivas
+  de la bóveda (y en la propia) los `[[destino]]` que apuntaban a la ruta vieja, conservando el alias (`|` o `\|` en
+  tablas), el `.md` presente o ausente y los espacios; no toca código (vallas, código en línea), enlaces markdown
+  ni la papelera, y sella `fecha_actualizacion` y un `ETag` nuevo solo en las notas tocadas. Los enlaces de **ruta
+  completa** siempre se reescriben; los de **solo nombre** (`[[Plan]]`) solo si cambia el nombre del archivo y el nombre
+  viejo era único entre las notas vivas (si no, se cuentan como `ambiguous`). Cabecera de la respuesta (solo cuando
+  cambió `path`): `X-Wikilinks-Rewritten: notes=3; links=5; ambiguous=0; pending=0` (`pending` = notas que siguieron
+  chocando por `_rev` tras 3 intentos y quedaron sin reescribir). El `ETag` devuelto es el vigente de la nota movida.
 
 ### 5. Borrar y restaurar una nota
 
@@ -319,10 +327,43 @@ If-Match: "<etag de la papelera>"
 papelera). El `ETag` de una nota borrada sale del listado (`GET …/notes?deleted=true`): un
 `GET` directo por `id` de una borrada es `404`.
 
+### 6. Mover o renombrar una carpeta (H-039)
+
+```http
+POST /vaults/{vault_id}/folders/move
+Content-Type: application/json
+
+{ "from": "Proyectos/2025", "to": "Archivo/Proyectos 2025" }
+```
+
+```json
+200 OK
+X-Wikilinks-Rewritten: notes=2; links=3; ambiguous=0; pending=0
+{ "from": "Proyectos/2025", "to": "Archivo/Proyectos 2025", "moved_notes": 4,
+  "rewrite": { "notes": 2, "links": 3, "ambiguous": 0, "pending": 0 } }
+```
+
+Reubica todas las notas **vivas** bajo `from/` a `to/` conservando la subestructura, con sus `INDICE.md`: el INDICE de
+cada carpeta viaja con ella y conserva su `descripcion` (si `to/…/INDICE.md` ya existe, manda el del destino y el del
+origen va a la papelera); no queda INDICE huérfano en el origen y se aseguran los INDICEs de los ancestros del destino.
+Después reescribe los wikilinks de la bóveda como el `PATCH` de nota (§4). Sin `If-Match` (una carpeta no tiene `_rev`).
+
+- `from`/`to` son rutas de carpeta normalizadas (sin `INDICE.md` ni nombre de archivo); vacías (raíz), mal formadas o con
+  `to` dentro de `from` → `422`.
+- Si alguna ruta destino la usa una nota viva ajena al movimiento → `409` `note-path-taken` **sin mover ni escribir nada**.
+- Ni `from` ni `to` tienen notas vivas → `404` `folder-not-found`; bóveda inexistente o en la papelera → `404` `vault-not-found`.
+- Una nota movida que siga cambiando durante la operación → `412` `wikilink-rewrite-conflict`: se repite la misma llamada.
+- **Idempotente y reparadora:** repetir `{from, to}` cuando `from` ya no tiene notas y `to` sí responde `200` con
+  `moved_notes: 0` y completa la reescritura de wikilinks que hubiera quedado pendiente. `from == to` → `200` sin cambios.
+- No es transaccional (CouchDB no tiene transacciones entre documentos): cada nota se escribe sobre su `_rev`; si el
+  proceso muere a medias, repetir la llamada converge. No muevas una carpeta por la API mientras la interfaz web edita la
+  misma bóveda (el canal de `/sync` no reescribe wikilinks).
+
 ### Resumen de endpoints
 
 | Método | Ruta | Credencial | Respuestas |
 |---|---|---|---|
+| `POST` | `/vaults/{vault_id}/folders/move` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`/`folder-not-found`) · `409` (`note-path-taken`) · `412` (`wikilink-rewrite-conflict`) · `422` · `503` |
 | `GET` | `/vaults/{vault_id}/notes` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`) · `422` · `503` |
 | `POST` | `/vaults/{vault_id}/notes` | cookie **o** `Bearer syn_ak_…` | `201` + `ETag` · `401` · `404` (`vault-not-found`) · `409` (`note-path-taken`) · `422` · `503` |
 | `GET` | `/vaults/{vault_id}/notes/{note_id}` | cookie **o** `Bearer syn_ak_…` | `200` · `401` · `404` (`vault-not-found`/`note-not-found`) · `503` |

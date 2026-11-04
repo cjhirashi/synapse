@@ -1,5 +1,47 @@
 components:
   schemas:
+    FolderMove:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{vault_id}/folders/move` (H-039): rutas
+        de carpeta, sin `INDICE.md` ni nombre de archivo.'
+      properties:
+        from:
+          examples:
+          - Proyectos/2025
+          title: From
+          type: string
+        to:
+          examples:
+          - Archivo/Proyectos 2025
+          title: To
+          type: string
+      required:
+      - from
+      - to
+      title: FolderMove
+      type: object
+    FolderMoveOut:
+      description: 'Resultado de mover una carpeta: notas movidas y wikilinks reescritos
+        en la bóveda.'
+      properties:
+        from:
+          title: From
+          type: string
+        moved_notes:
+          title: Moved Notes
+          type: integer
+        rewrite:
+          $ref: '#/components/schemas/WikilinkRewriteOut'
+        to:
+          title: To
+          type: string
+      required:
+      - from
+      - to
+      - moved_notes
+      - rewrite
+      title: FolderMoveOut
+      type: object
     NoteCreate:
       additionalProperties: false
       description: 'Cuerpo de `POST /vaults/{vault_id}/notes`; cualquier otro campo
@@ -222,11 +264,112 @@ components:
       - detail
       title: ProblemError
       type: object
+    WikilinkRewriteOut:
+      properties:
+        ambiguous:
+          title: Ambiguous
+          type: integer
+        links:
+          title: Links
+          type: integer
+        notes:
+          title: Notes
+          type: integer
+        pending:
+          title: Pending
+          type: integer
+      required:
+      - notes
+      - links
+      - ambiguous
+      - pending
+      title: WikilinkRewriteOut
+      type: object
 info:
   title: Synapse
   version: 0.1.0
 openapi: 3.1.0
 paths:
+  /vaults/{vault_id}/folders/move:
+    post:
+      operationId: move_folder_vaults__vault_id__folders_move_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FolderMove'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FolderMoveOut'
+          description: Successful Response
+          headers:
+            X-Wikilinks-Rewritten:
+              description: '`notes=<n>; links=<m>; ambiguous=<k>; pending=<p>`'
+              schema:
+                type: string
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found / Folder not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note path already in use
+        '412':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Wikilink rewrite conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Move Folder
+      tags:
+      - folders
   /vaults/{vault_id}/notes:
     get:
       operationId: list_notes_vaults__vault_id__notes_get
@@ -570,6 +713,11 @@ paths:
           headers:
             ETag:
               description: Versión de la nota; se envía en `If-Match`.
+              schema:
+                type: string
+            X-Wikilinks-Rewritten:
+              description: 'Solo si el PATCH cambió `path`: wikilinks reescritos en
+                la bóveda, `notes=<n>; links=<m>; ambiguous=<k>; pending=<p>`.'
               schema:
                 type: string
         '401':

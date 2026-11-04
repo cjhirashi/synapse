@@ -21,7 +21,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0004-api-problem-details": {"paths": (), "schemas": ("Problem",)},
     "0005-sync": {"paths": ("/sync",), "schemas": ()},
     "0013-acceso-agentes-api": {"paths": ("/auth/agent-keys",), "schemas": ()},
-    "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes",), "schemas": ()},
+    "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes", "/vaults/{vault_id}/folders"), "schemas": ()},
     # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
     # H-016 absorbe el contrato de H-015 (mismas rutas /files): un canon por hecho. Documentos, tipos y pantalla de archivos (lista, rename, delete por bóveda)

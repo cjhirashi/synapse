@@ -199,3 +199,12 @@ Decisiones abiertas (con recomendación de AIRA):
 - **Q-4 — Forma del reporte (C-9):** ¿cabecera `X-Wikilinks-Rewritten` basta o
   Carlos quiere un endpoint de "dry-run" que liste qué se reescribiría sin escribir?
   Recomendación: cabecera ahora; dry-run como historia futura si se necesita.
+
+## Avance (AIRA, 2026-11-04 17:50 CDMX)
+
+- Pasos 1-6 hechos y commiteados: regla pura + fixture (47 pruebas), errores, `WikilinkRewriteService` (reintento por `_rev`, `pending`),
+  PATCH con `X-Wikilinks-Rewritten`, `FolderService.move` y `POST /vaults/{id}/folders/move`; pruebas de servicio (doble en memoria) y de API
+  (CouchDB real). Cambios sobre el plan: detección de código por líneas de valla (no por paridad de comillas); la reparación de C-13 también
+  corre tras un movimiento parcial (notas ya bajo `to` se tratan como venidas de `from`); `check_vault_active` y `ensure_indexes` públicos en
+  `NoteContentService`. Decisiones Q-2..Q-4 aplicadas con la recomendación; Q-1 (canal de la interfaz y `/sync`) sigue abierta: NO reescribe.
+- Pendiente: suite completa, despliegue y prueba en producción; la herramienta `synapse_vault` del plugin aún no tiene acción para mover carpeta.
