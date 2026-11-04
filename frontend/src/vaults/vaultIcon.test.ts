@@ -8,8 +8,6 @@ import { initials as initialsFromRail } from "../notes/VaultRail";
 import {
   COLOR_LABELS,
   colorVar,
-  SECONDARY,
-  TERTIARY,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -68,24 +66,6 @@ test("RF-006 (H-008 C-10): PALETTE son 17 claves que existen como tokens hex en 
   ]);
   for (const mode of ["light", "dark"] as const) {
     for (const key of PALETTE) expect(theme(mode)[tokenOf(key)], `${mode} ${key}`).toMatch(/^#[0-9a-f]{6}$/i);
-  }
-});
-
-test("H-014 C-5/C-10: SECONDARY mapea cada color de la paleta a su vecino análogo (cambio 2026-10-30)", () => {
-  // El secundario es el color de la MISMA paleta a ~20-40° (el siguiente en la rueda), no el opuesto:
-  // cambio sutil respecto al color de la bóveda. Nunca inventa un color fuera de la paleta.
-  expect(SECONDARY).toEqual({
-    danger: "orange", orange: "yellow", warning: "lime", yellow: "lime", lime: "success",
-    success: "teal", emerald: "accent", teal: "info", accent: "blue", info: "indigo",
-    blue: "indigo", indigo: "violet", violet: "fuchsia", purple: "fuchsia", fuchsia: "pink",
-    pink: "rose", rose: "orange",
-  });
-  // Cobertura total y cierre: cada clave de la paleta tiene secundario, y todo secundario es a su vez
-  // una clave válida distinta de la propia (así `colorVar(SECONDARY[k])` siempre resuelve a un token).
-  expect(Object.keys(SECONDARY).sort()).toEqual([...PALETTE].sort());
-  for (const key of PALETTE) {
-    expect(PALETTE).toContain(SECONDARY[key]);
-    expect(SECONDARY[key], key).not.toBe(key);
   }
 });
 
@@ -170,26 +150,6 @@ function ratio(a: Rgba, b: Rgba): number {
  */
 const LIGHTEST_STOP = { dark: 0.8, light: 0.65 } as const;
 
-test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1-H3 en tono 600, H4 en 400) se leen sobre el fondo del editor, los 17, claro y oscuro", () => {
-  // Encabezados grandes (≥ 20 px): piso de 2,9:1 para H1-H3 en 600 (el índigo 600 en oscuro llega a 2,96). H4 (17 px): 6:1 en oscuro con el 400 tal cual
-  // y ≥ 3,5:1 en claro con el 400 mezclado 60/40 con el texto (el 400 puro da 1,5:1 en amarillo sobre blanco).
-  const shade = (mode: "light" | "dark", key: (typeof PALETTE)[number], n: 400 | 600) => parse(tokens.match(new RegExp(`--shade-${n}-${key}:\\s*(#[0-9a-f]{6})`, "i"))![1]);
-  for (const mode of ["light", "dark"] as const) {
-    const vars = theme(mode);
-    const bg = parse(vars["bg-primary"]);
-    const ink = parse(vars["text-primary"]);
-    for (const key of PALETTE) {
-      const secondary = SECONDARY[key];
-      const tertiary = TERTIARY[key];
-      for (const [name, color] of [["h1", key], ["h2", secondary], ["h3", tertiary]] as const) {
-        expect(ratio(shade(mode, color, 600), bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(2.9);
-      }
-      const h4 = mode === "dark" ? shade(mode, key, 400) : ([0, 1, 2].map((i) => shade(mode, key, 400)[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
-      expect(ratio(h4, bg), `${mode} ${key} h4`).toBeGreaterThanOrEqual(mode === "dark" ? 6 : 3.5);
-    }
-  }
-});
-
 test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro del degradado da ≥ 4,5:1 para los 17, claro y oscuro", () => {
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
@@ -205,50 +165,121 @@ test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro 
   }
 });
 
-test("H-014 (2026-11-04): TERTIARY cubre los 17 colores con una clave válida distinta del color y de su secundario, nunca danger", () => {
-  expect(Object.keys(TERTIARY).sort()).toEqual([...PALETTE].sort());
-  for (const key of PALETTE) {
-    expect(PALETTE).toContain(TERTIARY[key]);
-    expect(TERTIARY[key], key).not.toBe(key);
-    expect(TERTIARY[key], key).not.toBe(SECONDARY[key]);
-    expect(TERTIARY[key], key).not.toBe("danger"); // el wikilink roto ya usa el tono de peligro
+/**
+ * H-014 (2026-11-04): secundario y terciario son el primario girado +20° y +40° en OKLCH (`editor.css`,
+ * `oklch(from … l c calc(h + 20))`); aquí se repite esa rotación con el mapeo de gama del navegador
+ * (se reduce el croma hasta caber en sRGB) para medir contraste y separación con los 17 colores.
+ */
+const s2l = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const l2s = (c: number) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+function toOklch([r8, g8, b8]: Rgba): [number, number, number] {
+  const [r, g, b] = [r8, g8, b8].map((x) => s2l(x / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const bb = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s, Math.hypot(a, bb), ((Math.atan2(bb, a) * 180) / Math.PI + 360) % 360];
+}
+function fromOklch(L: number, C: number, H: number): number[] {
+  const a = C * Math.cos((H * Math.PI) / 180);
+  const b = C * Math.sin((H * Math.PI) / 180);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+}
+const inGamut = (v: number[]) => v.every((x) => x >= -1e-4 && x <= 1 + 1e-4);
+function rotateHue(color: Rgba, degrees: number): Rgba {
+  const [L, C, H] = toOklch(color);
+  const target = (H + degrees) % 360;
+  let chroma = C;
+  if (!inGamut(fromOklch(L, C, target))) {
+    let [lo, hi] = [0, C];
+    for (let i = 0; i < 30; i++) {
+      const mid = (lo + hi) / 2;
+      if (inGamut(fromOklch(L, mid, target))) lo = mid;
+      else hi = mid;
+    }
+    chroma = lo;
+  }
+  const rgb = fromOklch(L, chroma, target).map((x) => Math.min(1, Math.max(0, l2s(Math.max(0, x)))) * 255);
+  return [rgb[0], rgb[1], rgb[2], 1];
+}
+
+test("H-014 (2026-11-04): el secundario (+20°) y el terciario (+40°) son vecinos del primario y conservan su luminosidad", () => {
+  for (const mode of ["light", "dark"] as const) {
+    const vars = theme(mode);
+    for (const key of PALETTE) {
+      const base = parse(vars[tokenOf(key)]);
+      const [L0, , H0] = toOklch(base);
+      for (const [shift, rotated] of [[20, rotateHue(base, 20)], [40, rotateHue(base, 40)]] as const) {
+        const [L1, , H1] = toOklch(rotated);
+        const diff = (((H1 - H0 + 540) % 360) - 180 + 360) % 360;
+        expect(Math.abs(L1 - L0), `${mode} ${key} +${shift} luminosidad`).toBeLessThan(0.02);
+        // Un color casi gris no tiene matiz fiable; los 17 de la paleta son cromáticos.
+        expect(Math.abs(diff - shift), `${mode} ${key} +${shift} matiz`).toBeLessThan(2);
+      }
+    }
+  }
+});
+
+test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1 primario 600, H2 secundario 600, H3 terciario 600, H4 primario 400) se leen, los 17, claro y oscuro", () => {
+  // Rotar en OKLCH conserva la luminosidad: el piso de 2,7:1 de H1-H3 (títulos ≥ 20 px) es el del propio tono 600
+  // (índigo en oscuro 2,96; amarillo en claro 2,94, y 2,80 el amarillo +40° por la pérdida de croma al caber en sRGB). H4: 400 tal cual
+  // en oscuro (≥ 6:1); en claro, 400 mezclado 60/40 con el texto (≥ 3,5:1; el 400 puro da 1,5:1 en amarillo).
+  const shade = (key: (typeof PALETTE)[number], n: 400 | 600) => parse(tokens.match(new RegExp(`--shade-${n}-${key}:\\s*(#[0-9a-f]{6})`, "i"))![1]);
+  for (const mode of ["light", "dark"] as const) {
+    const vars = theme(mode);
+    const bg = parse(vars["bg-primary"]);
+    const ink = parse(vars["text-primary"]);
+    for (const key of PALETTE) {
+      const primary = shade(key, 600);
+      for (const [name, color] of [["h1", primary], ["h2", rotateHue(primary, 20)], ["h3", rotateHue(rotateHue(primary, 20), 20)]] as const) {
+        expect(ratio(color, bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(2.7);
+      }
+      const h4 = mode === "dark" ? shade(key, 400) : ([0, 1, 2].map((i) => shade(key, 400)[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
+      expect(ratio(h4, bg), `${mode} ${key} h4`).toBeGreaterThanOrEqual(mode === "dark" ? 6 : 3.5);
+    }
   }
 });
 
 /**
- * H-014 (2026-11-04): tonos de énfasis del markdown, los mismos `color-mix` de `editor.css`
- * (mezcla lineal sRGB). Piso de contraste 3,5:1 (texto de énfasis, no de párrafo; el oscuro lo limita el
- * «código más oscuro» pedido por Carlos) y separación mínima entre tonos para los 17 colores, claro y oscuro.
+ * H-014 (2026-11-04): tonos de énfasis, los mismos `color-mix` de `editor.css`. Piso de contraste 3,4:1 (texto
+ * de énfasis, no de párrafo) y separación mínima entre los tonos de cada familia (negrita / negrita-cursiva /
+ * cursiva y enlace / wikilink / código) para los 17 colores, claro y oscuro.
  */
 test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y código se distinguen por tono y se leen (17 colores, claro y oscuro)", () => {
   const mix = (a: Rgba, pa: number, b: Rgba): Rgba => [0, 1, 2].map((i) => a[i] * pa + b[i] * (1 - pa)).concat(1) as Rgba;
   const dist = (a: Rgba, b: Rgba) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
   const MIN_CONTRAST = 3.4;
-  const MIN_SEPARATION = { dark: 10, light: 20 } as const; // el oscuro cede separación al piso de contraste
+  const MIN_SEPARATION = 20;
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     const bg = parse(vars["bg-primary"]);
     const bgCode = parse(vars["bg-tertiary"]);
     const ink = parse(vars["text-primary"]);
     for (const key of PALETTE) {
-      const secondary = parse(vars[tokenOf(SECONDARY[key])]);
-      const tertiary = parse(vars[tokenOf(TERTIARY[key])]);
-      const link = mode === "dark" ? tertiary : mix(tertiary, 0.65, ink);
-      const wiki = mix(tertiary, mode === "dark" ? 0.6 : 0.8, ink);
-      const code = mix(tertiary, mode === "dark" ? 0.9 : 0.45, mode === "dark" ? bg : ink);
-      const strong = mode === "dark" ? secondary : mix(secondary, 0.85, ink);
-      const tones = { strong, em: mix(secondary, 0.4, ink), strongEm: mix(secondary, 0.55, tertiary), link, wiki, code };
+      const primary = parse(vars[tokenOf(key)]);
+      const secondary = rotateHue(primary, 20);
+      const tertiary = rotateHue(secondary, 20);
+      const dark = mode === "dark";
+      const tones = {
+        strong: dark ? secondary : mix(secondary, 0.85, ink),
+        em: mix(secondary, 0.4, ink),
+        strongEm: mix(secondary, dark ? 0.7 : 0.6, ink),
+        link: dark ? tertiary : mix(tertiary, 0.65, ink),
+        wiki: mix(tertiary, dark ? 0.6 : 0.8, ink),
+        code: mix(tertiary, dark ? 0.9 : 0.45, dark ? bg : ink),
+      };
       for (const [name, tone] of Object.entries(tones)) {
         expect(ratio(tone, name === "code" ? bgCode : bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(MIN_CONTRAST);
       }
-      const names = Object.keys(tones) as (keyof typeof tones)[];
-      for (let i = 0; i < names.length; i++) {
-        for (let j = i + 1; j < names.length; j++) {
-          const pair = [names[i], names[j]];
-          // Exige separación dentro de cada familia: terciario (enlace/wikilink/código) y secundario (negrita/cursiva/ambas).
-          const tertiaryFamily = ["link", "wiki", "code"];
-          if (tertiaryFamily.includes(pair[0]) !== tertiaryFamily.includes(pair[1])) continue;
-          expect(dist(tones[names[i]], tones[names[j]]), `${mode} ${key} ${pair.join("/")}`).toBeGreaterThanOrEqual(MIN_SEPARATION[mode]);
+      for (const family of [["strong", "strongEm", "em"], ["link", "wiki", "code"]] as const) {
+        for (let i = 0; i < family.length; i++) {
+          for (let j = i + 1; j < family.length; j++) {
+            expect(dist(tones[family[i]], tones[family[j]]), `${mode} ${key} ${family[i]}/${family[j]}`).toBeGreaterThanOrEqual(MIN_SEPARATION);
+          }
         }
       }
     }

@@ -155,11 +155,11 @@ test("H-014 C-1…C-4 (2026-11-04): H1 primario 600, H2 secundario 600, H3 terci
   expect(colorOf(css, ':root[data-theme="light"] .milkdown-view .ProseMirror h4')).toBe("color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary))");
 });
 
-test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secundario diluido en el texto; negrita-cursiva = secundario girado al terciario", () => {
+test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secundario diluido en el texto; negrita-cursiva = punto intermedio (--md-strongem)", () => {
   const css = editorCss();
   expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--md-strong)");
   expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-secondary) 40%, var(--text-primary))");
-  expect(css).toMatch(/\.milkdown-view \.ProseMirror strong em,\s*\.milkdown-view \.ProseMirror em strong\s*\{\s*color: color-mix\(in srgb, var\(--vault-secondary\) 55%, var\(--vault-tertiary\)\)/);
+  expect(css).toMatch(/\.milkdown-view \.ProseMirror strong em,\s*\.milkdown-view \.ProseMirror em strong\s*\{\s*color: var\(--md-strongem\)/);
 });
 
 test("H-014 C-10 (2026-11-04): enlace y wikilink resuelto en tonos del terciario y subrayados; el roto sigue en --danger-text", () => {
@@ -178,6 +178,7 @@ test("H-014 (2026-11-04): los tonos --md-link/--md-wikilink/--md-code salen del 
   for (const mode of ["dark", "light"]) {
     const block = rule(css, `:root[data-theme="${mode}"] .milkdown-view`);
     expect(block, `${mode} --md-strong`).toMatch(/--md-strong:[^;]*--vault-secondary/);
+    expect(block, `${mode} --md-strongem`).toMatch(/--md-strongem:[^;]*--vault-secondary/);
     for (const name of ["--md-link", "--md-wikilink", "--md-code"]) expect(block, `${mode} ${name}`).toMatch(new RegExp(`${name}:[^;]*--vault-tertiary`));
   }
 });
@@ -291,4 +292,15 @@ test("UX-H6: «…» de las migas, «Copiar código» y la casilla Sí/No amplí
 });
 test("UX-H6: el botón «…» de las migas lleva la clase note-crumb-more", () => {
   expect(read("../editor/NoteBreadcrumb.tsx")).toMatch(/className="note-crumb note-crumb-more"/);
+});
+
+test("H-014 (2026-11-04): el secundario es el primario girado +20° y el terciario el secundario girado +20° (OKLCH), también en los tonos 600", () => {
+  const block = rule(editorCss(), ".milkdown-view");
+  const css = editorCss();
+  const vars = css.match(/\.milkdown-view \{\s*--vault-secondary:[^}]*\}/)![0];
+  expect(vars).toMatch(/--vault-secondary: oklch\(from var\(--vault-accent\) l c calc\(h \+ 20\)\)/);
+  expect(vars).toMatch(/--vault-tertiary: oklch\(from var\(--vault-secondary\) l c calc\(h \+ 20\)\)/);
+  expect(vars).toMatch(/--vault-secondary-600: oklch\(from var\(--vault-accent-600\) l c calc\(h \+ 20\)\)/);
+  expect(vars).toMatch(/--vault-tertiary-600: oklch\(from var\(--vault-secondary-600\) l c calc\(h \+ 20\)\)/);
+  expect(block).toBeTruthy();
 });

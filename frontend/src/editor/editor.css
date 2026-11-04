@@ -939,6 +939,18 @@
   contain-intrinsic-size: auto 3em;
 }
 
+/* Color primario, secundario y terciario de la bóveda (cambio de Carlos 2026-11-04): vecinos a 20° en el círculo
+   cromático. `MilkdownView` publica el primario (`--vault-accent`, y sus tonos 600/400 de Tailwind); el
+   secundario es el primario girado +20° y el terciario el secundario girado +20° (+40° en total), en OKLCH,
+   que conserva la luminosidad y por tanto el contraste del primario. Antes eran vecinos elegidos de la paleta
+   de 17 colores, a 20-60° según el hueco. */
+.milkdown-view {
+  --vault-secondary: oklch(from var(--vault-accent) l c calc(h + 20));
+  --vault-tertiary: oklch(from var(--vault-secondary) l c calc(h + 20));
+  --vault-secondary-600: oklch(from var(--vault-accent-600) l c calc(h + 20));
+  --vault-tertiary-600: oklch(from var(--vault-secondary-600) l c calc(h + 20));
+}
+
 /* Foco del editor (T-049, M-1): el contorno va en el contenedor, que tiene aire (padding compensado con margen
    negativo para no mover el texto), y no pegado al texto del `.ProseMirror`. */
 .milkdown-view {
@@ -1012,13 +1024,13 @@
 }
 /* Cambio de Carlos 2026-11-04: negrita, cursiva y negrita-cursiva se separan por TONO, no solo por
    estilo. Negrita: el secundario (en claro, algo hacia el texto: el lima/naranja puros no llegan a 3:1). Cursiva: el secundario diluido en el texto (pálido, casi neutro).
-   Negrita-cursiva: el secundario girado hacia el terciario (otro matiz, vivo). */
+   Negrita-cursiva: un punto intermedio entre ambas (`--md-strongem`). Con secundario y terciario a solo 20° no hay otro matiz que girar: la separación es de luminosidad. */
 .milkdown-view .ProseMirror em {
   color: color-mix(in srgb, var(--vault-secondary) 40%, var(--text-primary));
 }
 .milkdown-view .ProseMirror strong em,
 .milkdown-view .ProseMirror em strong {
-  color: color-mix(in srgb, var(--vault-secondary) 55%, var(--vault-tertiary));
+  color: var(--md-strongem);
 }
 
 /* Tonos del terciario (cambio de Carlos 2026-11-04): enlace, wikilink y código en línea comparten el
@@ -1028,12 +1040,14 @@
    Los pisos de contraste y de separación entre tonos los fija `vaultIcon.test.ts` para los 17 colores. */
 :root[data-theme="dark"] .milkdown-view {
   --md-strong: var(--vault-secondary);
+  --md-strongem: color-mix(in srgb, var(--vault-secondary) 70%, var(--text-primary));
   --md-link: var(--vault-tertiary);
   --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 60%, var(--text-primary));
   --md-code: color-mix(in srgb, var(--vault-tertiary) 90%, var(--bg-primary));
 }
 :root[data-theme="light"] .milkdown-view {
   --md-strong: color-mix(in srgb, var(--vault-secondary) 85%, var(--text-primary));
+  --md-strongem: color-mix(in srgb, var(--vault-secondary) 60%, var(--text-primary));
   --md-link: color-mix(in srgb, var(--vault-tertiary) 65%, var(--text-primary));
   --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 80%, var(--text-primary));
   --md-code: color-mix(in srgb, var(--vault-tertiary) 45%, var(--text-primary));

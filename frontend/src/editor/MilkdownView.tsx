@@ -15,7 +15,7 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef, type CSSProperties } from "react";
-import { colorVar, SECONDARY, shadeVar, TERTIARY, type PaletteKey } from "../vaults/vaultIcon";
+import { colorVar, shadeVar, type PaletteKey } from "../vaults/vaultIcon";
 import { type CmdKey, Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
@@ -299,7 +299,7 @@ interface MilkdownViewProps {
   onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
   /**
    * Color de la bóveda abierta (H-014): el contenedor `.milkdown-view` lo publica como `--vault-accent`
-   * y su secundario (vía `SECONDARY`) como `--vault-secondary`, para que `editor.css` pinte con
+   * y sus tonos 600 y 400; el secundario y el terciario salen de él por rotación de matiz (+20° y +40°, OKLCH) en `editor.css`, que pinta con
    * `color-mix` los encabezados, la negrita, la cursiva, los enlaces, la cabecera de tabla y los
    * marcadores de lista del markdown renderizado. Por defecto `accent` (el cian de siempre).
    */
@@ -724,11 +724,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   // reglas de `editor.css` (`.milkdown-view .ProseMirror …`) las heredan y mezclan con `color-mix`.
   const vaultVars = {
     "--vault-accent": colorVar(vaultColor),
-    "--vault-secondary": colorVar(SECONDARY[vaultColor]),
-    "--vault-tertiary": colorVar(TERTIARY[vaultColor]),
     "--vault-accent-600": shadeVar(vaultColor, 600),
-    "--vault-secondary-600": shadeVar(SECONDARY[vaultColor], 600),
-    "--vault-tertiary-600": shadeVar(TERTIARY[vaultColor], 600),
     "--vault-accent-400": shadeVar(vaultColor, 400),
   } as CSSProperties;
   return <div className="milkdown-view" data-mode={readOnly ? "read" : "edit"} style={vaultVars} ref={host} />;

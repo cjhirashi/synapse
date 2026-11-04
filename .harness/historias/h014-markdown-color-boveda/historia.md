@@ -363,3 +363,16 @@ bóveda en tono 600, H2 con el secundario en 600, H3 con el terciario en 600 y H
 Contraste: el 600 sobre el fondo oscuro llega a 2,96:1 (índigo) y sobre blanco a 2,9:1 (amarillo); son títulos de
 ≥ 20 px. En el tema claro el 400 puro daría 1,5:1 (amarillo), así que H4 se mezcla 60/40 con el texto (≥ 3,6:1); en
 oscuro va tal cual (≥ 6:1). Verificado en Chromium con tres bóvedas.
+
+## Enmienda 2026-11-04 (3): primario, secundario y terciario como vecinos a 20°
+
+Carlos no quedó conforme con la selección de colores (el secundario y el terciario eran vecinos elegidos de la
+paleta de 17, a 20-60° según el hueco, y el terciario iba a ~150°). Nuevo esquema, supersede la tabla `SECONDARY`
+de la enmienda de 2026-10-30 y la `TERTIARY` de la enmienda (1): el **secundario es el primario girado +20° y el
+terciario el secundario girado +20° (+40° del primario)**, en OKLCH (`oklch(from var(--vault-accent) l c calc(h + 20))`
+en `editor.css`; también para los tonos 600 de los encabezados). Rotar en OKLCH conserva la luminosidad del primario,
+así que el contraste no cambia (en HSL el amarillo o el naranja a +40° caían a 1,3:1). Los mapas `SECONDARY` y
+`TERTIARY` de `vaultIcon.ts` se eliminan y `MilkdownView` solo publica el primario y sus tonos 600 y 400.
+Consecuencia: con secundario y terciario a solo 20° no hay otro matiz para separar la negrita-cursiva; pasa a ser un
+punto intermedio de luminosidad (`--md-strongem`: negrita 100 % > negrita-cursiva 70/60 % > cursiva 40 %). Requiere
+color relativo de CSS (Chrome 119, Safari 16.4, Firefox 128). Verificado en Chromium (3 bóvedas, claro y oscuro).

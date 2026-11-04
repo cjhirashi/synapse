@@ -71,22 +71,17 @@ describe("MilkdownView", () => {
     expect(screen.getByRole("textbox", { name: "Visual" })).toHaveAttribute("contenteditable", "true");
   });
 
-  // H-014: el contenedor `.milkdown-view` publica el color de la bóveda (`--vault-accent`) y su
-  // secundario (`--vault-secondary`, vía `SECONDARY`) como variables CSS; el `editor.css` las
-  // lee con `color-mix` para pintar encabezados, negrita, cursiva, enlaces, cabecera de tabla y marcadores.
-  it("H-014 C-11/C-5: publica --vault-accent y --vault-secondary en .milkdown-view según la bóveda", async () => {
+  // H-014: el contenedor `.milkdown-view` publica el color de la bóveda (`--vault-accent`) y sus tonos 600 y 400
+  // como variables CSS; el secundario y el terciario salen de él por rotación de matiz en `editor.css`.
+  it("H-014 C-11/C-5: publica --vault-accent y sus tonos 600/400 en .milkdown-view según la bóveda", async () => {
     const { container } = await mount({ value: "hola", vaultColor: "blue" });
     const host = container.querySelector<HTMLElement>(".milkdown-view")!;
     expect(host.style.getPropertyValue("--vault-accent")).toBe("var(--vault-blue)");
-    // blue → indigo (SECONDARY), indigo → token --vault-indigo.
-    expect(host.style.getPropertyValue("--vault-secondary")).toBe("var(--vault-indigo)");
-    // blue → orange (TERTIARY, 2026-11-04): el terciario de enlaces y código.
-    expect(host.style.getPropertyValue("--vault-tertiary")).toBe("var(--vault-orange)");
-    // Encabezados (2026-11-04): primario 600, secundario 600, terciario 600 y primario 400.
     expect(host.style.getPropertyValue("--vault-accent-600")).toBe("var(--shade-600-blue)");
-    expect(host.style.getPropertyValue("--vault-secondary-600")).toBe("var(--shade-600-indigo)");
-    expect(host.style.getPropertyValue("--vault-tertiary-600")).toBe("var(--shade-600-orange)");
     expect(host.style.getPropertyValue("--vault-accent-400")).toBe("var(--shade-400-blue)");
+    // El secundario y el terciario ya no se publican: los calcula editor.css (+20° y +40°).
+    expect(host.style.getPropertyValue("--vault-secondary")).toBe("");
+    expect(host.style.getPropertyValue("--vault-tertiary")).toBe("");
   });
 
   // H-014 C-8: cambiar de bóveda (nueva prop `vaultColor`) reasigna ambas variables sin recrear la vista
@@ -95,10 +90,8 @@ describe("MilkdownView", () => {
     const { container, rerender } = await mount({ value: "hola", vaultColor: "accent" });
     const host = () => container.querySelector<HTMLElement>(".milkdown-view")!;
     expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--accent)");
-    expect(host().style.getPropertyValue("--vault-secondary")).toBe("var(--vault-blue)"); // accent → blue
     rerender(<MilkdownView value="hola" readOnly={false} onChange={() => {}} label="Visual" vaultColor="rose" />);
     expect(host().style.getPropertyValue("--vault-accent")).toBe("var(--vault-rose)");
-    expect(host().style.getPropertyValue("--vault-secondary")).toBe("var(--vault-orange)"); // rose → orange
   });
 
   // RF-008
