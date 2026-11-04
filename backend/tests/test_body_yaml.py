@@ -87,6 +87,35 @@ class TestMerge:
         assert rep[0]["key"] == "fecha_creacion" and rep[0]["yaml_value"] == "ayer"
 
 
+class TestDateComoFechaCreacion:
+    def test_date_pasa_a_fecha_creacion(self):
+        data, _ = split_body_yaml("---\ndate: 2026-11-03\nauthor: Banzi\n---\nx")
+        fm, rep = merge_yaml_into_frontmatter({}, data)
+        assert fm == {"fecha_creacion": "2026-11-03", "author": "Banzi"} and rep == []
+        assert validate_general(fm) is None
+
+    def test_date_con_hora_se_recorta_a_la_fecha(self):
+        fm, _ = merge_yaml_into_frontmatter({}, {"date": "2026-11-03T10:00:00"})
+        assert fm == {"fecha_creacion": "2026-11-03"}
+
+    def test_date_no_fecha_se_reporta_y_no_queda_como_atributo(self):
+        fm, rep = merge_yaml_into_frontmatter({}, {"date": "ayer"})
+        assert fm == {} and rep[0]["key"] == "fecha_creacion" and rep[0]["yaml_value"] == "ayer"
+
+    def test_el_atributo_fecha_creacion_manda_y_el_date_se_reporta(self):
+        fm, rep = merge_yaml_into_frontmatter({"fecha_creacion": "2026-10-01"}, {"date": "2026-11-03"})
+        assert fm == {"fecha_creacion": "2026-10-01"}
+        assert [(r["key"], r["yaml_value"], r["attribute_value"]) for r in rep] == [("fecha_creacion", "2026-11-03", "2026-10-01")]
+
+    def test_si_el_yaml_trae_fecha_creacion_date_queda_libre(self):
+        fm, rep = merge_yaml_into_frontmatter({}, {"fecha_creacion": "2026-01-02", "date": "2026-11-03"})
+        assert fm == {"fecha_creacion": "2026-01-02", "date": "2026-11-03"} and rep == []
+
+    def test_el_alias_no_toca_un_atributo_date_ya_guardado(self):
+        fm, _ = merge_yaml_into_frontmatter({"date": "2026-01-01"}, {})
+        assert fm == {"date": "2026-01-01"}
+
+
 class TestPlanNote:
     def test_migrable(self):
         plan = plan_note(_doc("---\ntitle: T\ncustom: x\n---\n\nCuerpo", {"tags": ["a"]}))

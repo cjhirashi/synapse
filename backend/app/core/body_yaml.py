@@ -8,10 +8,24 @@ from datetime import date, datetime
 
 import yaml
 
-from app.core.attribute_rules import migrate_frontmatter_detailed, validate_general
+from app.core.attribute_rules import migrate_frontmatter_detailed, normalize_key, validate_general
 
 _BOM = "\ufeff"
 _CLOSERS = ("---", "...")
+# Alias que solo valen para un bloque YAML del cuerpo (no para los atributos ya guardados): `date` es la fecha de
+# creación de la nota (decisión de Carlos, 2026-11-04).
+YAML_ONLY_ALIASES = {"date": "fecha_creacion"}
+
+
+def apply_yaml_aliases(yaml_data: dict) -> dict:
+    """Renombra las claves de `YAML_ONLY_ALIASES`. Si el YAML ya trae la clave destino, el alias NO se renombra
+    (queda como atributo libre, así el dato no se pierde ni se pisa)."""
+    present = {normalize_key(k) for k in yaml_data}
+    out: dict = {}
+    for key, value in yaml_data.items():
+        target = YAML_ONLY_ALIASES.get(normalize_key(key) or "")
+        out[target if target and target not in present else key] = value
+    return out
 
 
 def _jsonable(value):
@@ -69,7 +83,7 @@ def merge_yaml_into_frontmatter(existing: dict, yaml_data: dict) -> tuple[dict, 
     un valor del YAML que no se guardó (conflicto con el atributo, o no cabe en su atributo).
     """
     merged, existing_dropped = migrate_frontmatter_detailed(existing)
-    from_yaml, yaml_dropped = migrate_frontmatter_detailed(yaml_data)
+    from_yaml, yaml_dropped = migrate_frontmatter_detailed(apply_yaml_aliases(yaml_data))
     reported: list[dict] = []
     for key, value in from_yaml.items():
         if key not in merged:
