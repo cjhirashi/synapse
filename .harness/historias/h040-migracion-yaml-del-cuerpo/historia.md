@@ -1,7 +1,7 @@
 ---
 id: H-040
 titulo: Migración del bloque YAML al inicio del cuerpo de las notas a atributos
-estado: in-progress # orden de Carlos 2026-11-04 (vía `main`): ensayo primero, migración real solo con confirmación
+estado: implemented # migración real aplicada en producción 2026-11-04 ~18:15 CDMX, autorizada por Carlos (vía `main`)
 covers:
   - backend/app/core/body_yaml.py
   - backend/app/core/attribute_rules.py
@@ -29,7 +29,7 @@ la migración real solo se ejecuta tras la confirmación de Carlos.
   regla horizontal, no un YAML; la regla estricta la deja en paz.)
 - **D-2 (mapeo de claves, el pedido por Carlos):** `title`/`titulo` → `titulo`; `description`/`descripcion` →
   `descripcion`; `tags`/`etiquetas` → `tags` (normalizadas con `normalize_tag`); `status`/`estado` → `estado`
-  (normalizado a minúsculas con `legacy_estado`); fechas y `ruta` según las reglas de H-029
+  (normalizado a minúsculas con `legacy_estado`); **`date` → `fecha_creacion`** (decisión de Carlos 2026-11-04; alias solo del bloque YAML, no de los atributos ya guardados; si el YAML ya trae `fecha_creacion`, `date` queda libre; si la nota ya tiene `fecha_creacion`, manda el atributo y el `date` se reporta); fechas y `ruta` según las reglas de H-029
   (`migrate_frontmatter_detailed`); cualquier otra clave se conserva como atributo libre con su valor.
   La clave `etiquetas`→`tags` también se aplica a las notas que la tengan ya como atributo.
 - **D-3 (conflicto con un atributo existente):** manda el atributo existente; el valor del YAML que difiera se reporta
@@ -70,7 +70,7 @@ la migración real solo se ejecuta tras la confirmación de Carlos.
 | C-6 | 3 | `test_migrate_body_yaml.py` (CouchDB real de pruebas) |
 | C-7 | 4, 5 | `test_migrate_body_yaml.py` |
 
-`[NEEDS CLARIFICATION] = 0`. Decisión abierta para Carlos: la clave `date` (ver informe de ensayo).
+`[NEEDS CLARIFICATION] = 0`. Decisión de Carlos 2026-11-04: `date` es la fecha de creación y se carga como `fecha_creacion`.
 
 ## Avance (AIRA, 2026-11-04 17:00 CDMX)
 
@@ -81,3 +81,18 @@ la migración real solo se ejecuta tras la confirmación de Carlos.
   conflictos. Otra empieza por `---` tras una línea en blanco (`Inglés / BITACORA.md`): regla horizontal, no migrable, no se toca.
   0 notas con atributo `etiquetas`, 0 conflictos de CouchDB. Decisión abierta para Carlos: `date` queda como atributo libre `date`
   (no `fecha_creacion`). Digest del plan: `e593ffcc…3551d`. `apply`/`backup`/`rollback` (pasos 4-5) NO implementados: esperan confirmación de Carlos.
+
+## Cierre (AIRA, 2026-11-04 ~18:15 CDMX)
+
+- **Cambios tras el ensayo:** alias `date` → `fecha_creacion` (`body_yaml.YAML_ONLY_ALIASES`, con pruebas) y modos `backup`, `apply`
+  (exige informe aprobado y respaldo del mismo plan; escribe con `_rev`; relee y verifica) y `rollback` (restaura solo notas que siguen
+  como las dejó la migración) en `scripts/migrate_body_yaml.py`. El sellado de fechas del servidor (H-029) no estorba: la migración escribe
+  directo en CouchDB sin sellar, y `stamp_dates` conserva un `fecha_creacion` válido en escrituras posteriores.
+- **Informe nuevo:** 1 nota con YAML, 1 migrable, 0 no migrables, 0 conflictos. Digest `e48d1e03…8105a`. `Inglés / BITACORA.md` (regla horizontal) fuera del plan.
+- **Producción:** respaldo previo, `apply` → 1 escrita, 0 409, 0 errores; verificación por API: cuerpo sin bloque YAML, `path`/`created_at`/`updated_at`/`deleted_at`
+  sin cambio, atributos `tags`, `fecha_creacion = 2026-11-03`, `author` (libre), `estado = borrador`. Segunda corrida en seco: 0 notas, digest vacío.
+- **Respaldo:** `.claude/worktrees/respaldos-h040/respaldo-h040-20261104.json` (600) junto al informe y resumen. Revertir:
+  `migrate_body_yaml.py --mode rollback --backup-file <respaldo>` (con `--dry-apply` primero).
+- Pruebas: 232 en verde (`test_body_yaml`, `test_migrate_body_yaml`, `test_attribute_rules`, `test_migrate_attributes`).
+
+* [x] **1-9.** Herramienta, pruebas, ensayo y migración real.

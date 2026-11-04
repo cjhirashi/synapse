@@ -40,3 +40,7 @@ paso, citando H-040.
 ## Ensayo en producción (AIRA, solo lectura)
 
 `docker cp` del código a `/tmp/h040` en `synapse-backend` y `--mode report` contra las 20 bases. El informe se entrega a Carlos/`main`; **`apply` no se ejecuta** hasta que lo confirmen.
+
+## Estado
+
+Pasos 1-9 hechos (2026-11-04). El plan original decía `apply` tras confirmación de Carlos: la dio vía `main` y se ejecutó.

@@ -71,6 +71,7 @@
 
 ## Cerradas
 
+- [x] H-040 — Migración del YAML del cuerpo de las notas a atributos → `historias/h040-migracion-yaml-del-cuerpo/historia.md`, `implemented` (2026-11-04); ensayo + migración real en producción (1 nota; `date`→`fecha_creacion`), respaldo y `rollback`; falta merge de la rama `feature/h040-migracion-yaml-cuerpo`
 - [x] H-009 — Sidebar de notas ocultable con botón: fija en tableta/escritorio, oculta por defecto y flotante en móvil → `historias/h009-sidebar-notas-responsive/historia.md`, `verified` (Carlos, 2026-10-30, confirmado en `synapse.cjhirashi.com` tras el fix de seguimiento §10 del tope de 24vh huérfano).
 
 (ver `.harness/specs/*/spec.md` para el historial previo a la migración — SPEC-0002 a SPEC-0011)
