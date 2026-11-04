@@ -227,9 +227,9 @@ test("H-014 C-7 (2026-11-04): el <hr> y los bordes de tabla usan var(--border) a
   expect(editorCss()).toMatch(/\.milkdown-view \.ProseMirror th,\s*\.milkdown-view \.ProseMirror td\s*\{[^}]*border: 1px solid var\(--border\)/);
 });
 
-test("RF-038 (2026-11-04): el código en línea usa --bg-tertiary, el tono --md-code del terciario y --radius-xs, y no toca el de los bloques", () => {
+test("RF-038 (2026-11-04): el código en línea usa --md-code-bg, el tono --md-code del terciario y --radius-xs, y no toca el de los bloques", () => {
   const inline = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror :not(pre) > code");
-  expect(inline).toMatch(/background: var\(--bg-tertiary\)/);
+  expect(inline).toMatch(/background: var\(--md-code-bg\)/);
   expect(inline).toMatch(/color: var\(--md-code\)/);
   expect(inline).toMatch(/border-radius: var\(--radius-xs\)/);
   expect(inline).toMatch(/padding: 2px 6px/);

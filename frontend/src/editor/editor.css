@@ -1046,7 +1046,8 @@
   --md-strongem: color-mix(in srgb, var(--vault-secondary) 70%, var(--text-primary));
   --md-link: var(--vault-tertiary);
   --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 60%, var(--text-primary));
-  --md-code: color-mix(in srgb, var(--vault-tertiary) 90%, var(--bg-primary));
+  --md-code: color-mix(in srgb, var(--vault-tertiary) 35%, var(--text-primary));
+  --md-code-bg: color-mix(in srgb, var(--text-primary) 14%, var(--bg-primary));
 }
 :root[data-theme="light"] .milkdown-view {
   --md-strong: color-mix(in srgb, var(--vault-secondary) 85%, var(--text-primary));
@@ -1054,6 +1055,7 @@
   --md-link: color-mix(in srgb, var(--vault-tertiary) 65%, var(--text-primary));
   --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 80%, var(--text-primary));
   --md-code: color-mix(in srgb, var(--vault-tertiary) 45%, var(--text-primary));
+  --md-code-bg: color-mix(in srgb, var(--text-primary) 10%, var(--bg-primary));
 }
 
 /* Enlaces normales del markdown (`[texto](url)`): el TERCIARIO de la bóveda al 100 % y subrayados (cambio de
@@ -1108,7 +1110,7 @@
 .milkdown-view .ProseMirror :not(pre) > code {
   padding: 2px 6px;
   border-radius: var(--radius-xs);
-  background: var(--bg-tertiary);
+  background: var(--md-code-bg);
   color: var(--md-code);
   font-family: var(--font-mono);
   font-size: 0.857em;

@@ -261,8 +261,8 @@ test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y 
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     const bg = parse(vars["bg-primary"]);
-    const bgCode = parse(vars["bg-tertiary"]);
     const ink = parse(vars["text-primary"]);
+    const bgCode = mix(ink, mode === "dark" ? 0.14 : 0.1, bg);
     for (const key of PALETTE) {
       const primary = parse(vars[tokenOf(key)]);
       const secondary = rotateHue(primary, 30);
@@ -274,7 +274,7 @@ test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y 
         strongEm: mix(secondary, dark ? 0.7 : 0.6, ink),
         link: dark ? tertiary : mix(tertiary, 0.65, ink),
         wiki: mix(tertiary, dark ? 0.6 : 0.8, ink),
-        code: mix(tertiary, dark ? 0.9 : 0.45, dark ? bg : ink),
+        code: dark ? mix(tertiary, 0.35, ink) : mix(tertiary, 0.45, ink),
       };
       for (const [name, tone] of Object.entries(tones)) {
         expect(ratio(tone, name === "code" ? bgCode : bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(MIN_CONTRAST);
