@@ -1055,7 +1055,7 @@
   --md-link: color-mix(in srgb, var(--vault-tertiary) 65%, var(--text-primary));
   --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 80%, var(--text-primary));
   --md-code: color-mix(in srgb, var(--vault-tertiary) 45%, var(--text-primary));
-  --md-code-bg: color-mix(in srgb, var(--text-primary) 10%, var(--bg-primary));
+  --md-code-bg: var(--bg-tertiary);
 }
 
 /* Enlaces normales del markdown (`[texto](url)`): el TERCIARIO de la bóveda al 100 % y subrayados (cambio de
