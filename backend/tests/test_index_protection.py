@@ -192,3 +192,12 @@ async def test_sync_root_index_is_never_deleted(push, vault):
     assert await push.push([root]) == []
     gone = _gone(root, "2-bbb")
     assert await push.push([gone]) == [_rejected(gone, "index-root:delete")]
+
+
+async def test_rest_reading_an_index_returns_the_generated_body(rest):
+    service, port = rest
+    _create(service, "A/Nota.md")
+    index = _by_path(port, "A/INDICE.md")
+    assert index["content"] == ""  # lo guardado sigue vacío
+    body = service.get(REST_VAULT, index["_id"].split(":")[2]).note.content
+    assert body.startswith("# A\n") and "[[A/Nota.md\\|Nota]]" in body and "[[INDICE.md\\|v]]" in body

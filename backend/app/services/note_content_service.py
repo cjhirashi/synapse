@@ -26,6 +26,7 @@ from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
+from app.core.index_body import render_body
 from app.core.index_rules import ancestor_folders, changed_keys, check_op, folder_of, index_path_for, is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
 from app.core.note_rules import check_content, check_frontmatter, check_path, path_key
@@ -118,7 +119,10 @@ class NoteContentService:
 
     def get(self, vault_id: str, note_id: str) -> Versioned:
         self._check_vault(vault_id)
-        return _versioned(self._load(vault_id, note_id, deleted=False))
+        doc = self._load(vault_id, note_id, deleted=False)
+        if is_index_path(doc["path"]):
+            doc = {**doc, "content": self._index_body(vault_id, doc["path"])}  # H-031: el cuerpo no se guarda, se genera
+        return _versioned(doc)
 
     # --- Escritura (H-004.2) ---
 
@@ -277,6 +281,18 @@ class NoteContentService:
 
     def _release(self, note_id: str, path: str) -> None:
         self._notes.release_path(note_id, path)
+
+    def _index_body(self, vault_id: str, index_path: str) -> str:
+        """Cuerpo del INDICE con las cinco columnas generales, desde las notas vivas de la bóveda."""
+        vault = self._port.get(self._db, f"vault:{vault_id}")
+        notes, after = [], None
+        while True:
+            page = self._port.list_notes(self._db, vault_id, False, 100, after)
+            notes += [{"path": d["path"], "frontmatter": d.get("frontmatter")} for d in page if not d.get("deleted_at")]
+            if len(page) < 100:
+                break
+            after = (page[-1]["created_at"], page[-1]["_id"])
+        return render_body(vault["name"], folder_of(index_path), notes)
 
     def _count_live_below(self, vault_id: str, index_path: str, index_doc_id: str) -> int:
         """Notas vivas de la bóveda por debajo de la carpeta del INDICE, sin contar el propio INDICE
