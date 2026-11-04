@@ -1,5 +1,12 @@
 # History — Synapse
 
+## [2026-11-04] H-031 corrección: Subcarpetas y Documentos del INDICE como lista, no tabla
+
+- **Pedido de Carlos (2026-11-04):** la tabla del INDICE no le gustó; quiere una lista.
+- **Hecho:** `core/index_body.py` y `notes/indexBody.ts` generan `- [[enlace]] — descripción · Estado: … · Tags: … · Actualizado: … · <clave extra>: …`, solo con las partes que tienen valor. Especificación compartida `indice_cuerpo.json` regenerada y revisada caso por caso; constante renombrada a `descripcion_max`. Cambia también lo que leen los agentes por API.
+- **Evidencia:** vitest 2557/2557, `tsc` limpio, pytest 216 de los tests de INDICE/contenido en verde (con `--ignore=tests/test_spa.py`, que necesita `dist/`), e2e H-031 2/2 a 1280 y 390 px con captura. Desplegado el 2026-11-04 (imagen previa `synapse-backend:pre-h031-lista`), `/health` 200.
+- **Modelos:** Sonnet (yo), sin subagentes.
+
 ## [2026-11-04] H-031 corrección: la carpeta (o Raíz) queda seleccionada mientras su INDICE está abierto
 
 - **Pedido de Carlos (2026-11-04):** el INDICE queda ligado a su carpeta y no se muestra como documento (se descartó la fila visible del INDICE que se había propuesto); la fila de la carpeta debe marcarse como seleccionada, igual que una nota abierta.
