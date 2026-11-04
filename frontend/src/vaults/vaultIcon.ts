@@ -208,6 +208,9 @@ const has = (map: object, key: string) => Object.prototype.hasOwnProperty.call(m
 /** `var(--token)` de un color de la paleta: el único valor de color que el chip pone en `style`. */
 export const colorVar = (key: PaletteKey): string => `var(${COLOR_TOKEN[key]})`;
 
+/** `var(--shade-<tono>-<color>)`: el color de la bóveda en el tono 400 o 600 de Tailwind, igual en los dos temas. */
+export const shadeVar = (key: PaletteKey, shade: 400 | 600): string => `var(--shade-${shade}-${key})`;
+
 export interface ParsedIcon {
   /** Id del glifo del catálogo, o `null` para mostrar las iniciales. */
   glyph: string | null;

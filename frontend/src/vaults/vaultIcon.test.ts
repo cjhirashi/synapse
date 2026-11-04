@@ -170,18 +170,22 @@ function ratio(a: Rgba, b: Rgba): number {
  */
 const LIGHTEST_STOP = { dark: 0.8, light: 0.65 } as const;
 
-test("H-014 C-4/C-9: H4 (color-mix bóveda 30% + texto 70%) ≥ 4,5:1 sobre el fondo del editor, los 17, claro y oscuro", () => {
-  // C-4 fija el único piso de contraste de la jerarquía: H4 es el tono más sutil (30% del color de la
-  // bóveda) y aun así debe leerse ≥ 4,5:1 sobre `--bg-primary` (el fondo del documento) en ambos temas.
-  // Mismo cálculo de `color-mix(in srgb, X 30%, --text-primary)` que usa `editor.css` (mezcla lineal sRGB).
+test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1-H3 en tono 600, H4 en 400) se leen sobre el fondo del editor, los 17, claro y oscuro", () => {
+  // Encabezados grandes (≥ 20 px): piso de 2,9:1 para H1-H3 en 600 (el índigo 600 en oscuro llega a 2,96). H4 (17 px): 6:1 en oscuro con el 400 tal cual
+  // y ≥ 3,5:1 en claro con el 400 mezclado 60/40 con el texto (el 400 puro da 1,5:1 en amarillo sobre blanco).
+  const shade = (mode: "light" | "dark", key: (typeof PALETTE)[number], n: 400 | 600) => parse(tokens.match(new RegExp(`--shade-${n}-${key}:\\s*(#[0-9a-f]{6})`, "i"))![1]);
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     const bg = parse(vars["bg-primary"]);
     const ink = parse(vars["text-primary"]);
     for (const key of PALETTE) {
-      const color = parse(vars[tokenOf(key)]);
-      const h4 = [0, 1, 2].map((i) => color[i] * 0.3 + ink[i] * 0.7).concat(1) as Rgba;
-      expect(ratio(h4, bg), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);
+      const secondary = SECONDARY[key];
+      const tertiary = TERTIARY[key];
+      for (const [name, color] of [["h1", key], ["h2", secondary], ["h3", tertiary]] as const) {
+        expect(ratio(shade(mode, color, 600), bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(2.9);
+      }
+      const h4 = mode === "dark" ? shade(mode, key, 400) : ([0, 1, 2].map((i) => shade(mode, key, 400)[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
+      expect(ratio(h4, bg), `${mode} ${key} h4`).toBeGreaterThanOrEqual(mode === "dark" ? 6 : 3.5);
     }
   }
 });

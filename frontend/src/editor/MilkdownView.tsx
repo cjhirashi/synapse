@@ -15,7 +15,7 @@
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
 import { useEffect, useRef, type CSSProperties } from "react";
-import { colorVar, SECONDARY, TERTIARY, type PaletteKey } from "../vaults/vaultIcon";
+import { colorVar, SECONDARY, shadeVar, TERTIARY, type PaletteKey } from "../vaults/vaultIcon";
 import { type CmdKey, Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
 import { history } from "@milkdown/plugin-history";
@@ -726,6 +726,10 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
     "--vault-accent": colorVar(vaultColor),
     "--vault-secondary": colorVar(SECONDARY[vaultColor]),
     "--vault-tertiary": colorVar(TERTIARY[vaultColor]),
+    "--vault-accent-600": shadeVar(vaultColor, 600),
+    "--vault-secondary-600": shadeVar(SECONDARY[vaultColor], 600),
+    "--vault-tertiary-600": shadeVar(TERTIARY[vaultColor], 600),
+    "--vault-accent-400": shadeVar(vaultColor, 400),
   } as CSSProperties;
   return <div className="milkdown-view" data-mode={readOnly ? "read" : "edit"} style={vaultVars} ref={host} />;
 }

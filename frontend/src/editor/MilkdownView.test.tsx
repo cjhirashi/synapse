@@ -82,6 +82,11 @@ describe("MilkdownView", () => {
     expect(host.style.getPropertyValue("--vault-secondary")).toBe("var(--vault-indigo)");
     // blue → orange (TERTIARY, 2026-11-04): el terciario de enlaces y código.
     expect(host.style.getPropertyValue("--vault-tertiary")).toBe("var(--vault-orange)");
+    // Encabezados (2026-11-04): primario 600, secundario 600, terciario 600 y primario 400.
+    expect(host.style.getPropertyValue("--vault-accent-600")).toBe("var(--shade-600-blue)");
+    expect(host.style.getPropertyValue("--vault-secondary-600")).toBe("var(--shade-600-indigo)");
+    expect(host.style.getPropertyValue("--vault-tertiary-600")).toBe("var(--shade-600-orange)");
+    expect(host.style.getPropertyValue("--vault-accent-400")).toBe("var(--shade-400-blue)");
   });
 
   // H-014 C-8: cambiar de bóveda (nueva prop `vaultColor`) reasigna ambas variables sin recrear la vista

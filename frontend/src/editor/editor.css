@@ -981,22 +981,25 @@
   font-weight: 600;
 }
 
-/* H-014 (C-1…C-4): jerarquía de color de los encabezados con el color de la bóveda (`--vault-accent`,
-   publicado por `MilkdownView` en `.milkdown-view`). Se jerarquiza con COLOR (pedido original): H1 es el ancla al 100 % y cada nivel se mezcla más con el texto normal (`--text-primary`)
-   al bajar, hasta H4 (30 %), el más sutil pero legible (≥ 4,5:1, ver `vaultIcon.test.ts`). El tamaño se añadió
-   el 2026-11-04 (más abajo). `color-mix`
-   nativo: se recalcula solo al cambiar de tema o de bóveda, sin JS. (El 2.º porcentaje omitido = resto.) */
+/* Color de los encabezados (cambio de Carlos 2026-11-04, supersede H-014 C-1…C-4): H1 con el primario de la
+   bóveda en tono 600, H2 con el secundario en 600, H3 con el terciario en 600 y H4 con el primario en 400.
+   Los tonos 400/600 de Tailwind (`--shade-*`, iguales en los dos temas) los publica `MilkdownView`. En el tema
+   claro el 400 es demasiado pálido sobre blanco (1,5:1 en amarillo), así que ahí H4 se mezcla 60/40 con el
+   texto para llegar a ≥ 3,6:1; en oscuro va tal cual. */
 .milkdown-view .ProseMirror h1 {
-  color: var(--vault-accent);
+  color: var(--vault-accent-600);
 }
 .milkdown-view .ProseMirror h2 {
-  color: color-mix(in srgb, var(--vault-accent) 85%, var(--text-primary));
+  color: var(--vault-secondary-600);
 }
 .milkdown-view .ProseMirror h3 {
-  color: color-mix(in srgb, var(--vault-accent) 55%, var(--text-primary));
+  color: var(--vault-tertiary-600);
 }
-.milkdown-view .ProseMirror h4 {
-  color: color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary));
+:root[data-theme="dark"] .milkdown-view .ProseMirror h4 {
+  color: var(--vault-accent-400);
+}
+:root[data-theme="light"] .milkdown-view .ProseMirror h4 {
+  color: color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary));
 }
 
 /* H-014 (C-5): negrita y cursiva con el color SECUNDARIO (análogo) de la bóveda (`--vault-secondary`), para

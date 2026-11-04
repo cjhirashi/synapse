@@ -113,4 +113,41 @@
   --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+/* Encabezados del markdown (cambio de Carlos 2026-11-04): los 17 colores de bóveda en los tonos 400 y 600 de
+   Tailwind, iguales en los dos temas (a diferencia de `--vault-*`, que cambia de tono con el tema). */
+  --shade-400-accent: #22d3ee;
+  --shade-400-info: #38bdf8;
+  --shade-400-success: #4ade80;
+  --shade-400-warning: #fbbf24;
+  --shade-400-danger: #f87171;
+  --shade-400-orange: #fb923c;
+  --shade-400-yellow: #facc15;
+  --shade-400-lime: #a3e635;
+  --shade-400-emerald: #34d399;
+  --shade-400-teal: #2dd4bf;
+  --shade-400-blue: #60a5fa;
+  --shade-400-indigo: #818cf8;
+  --shade-400-violet: #a78bfa;
+  --shade-400-purple: #c084fc;
+  --shade-400-fuchsia: #e879f9;
+  --shade-400-pink: #f472b6;
+  --shade-400-rose: #fb7185;
+  --shade-600-accent: #0891b2;
+  --shade-600-info: #0284c7;
+  --shade-600-success: #16a34a;
+  --shade-600-warning: #d97706;
+  --shade-600-danger: #dc2626;
+  --shade-600-orange: #ea580c;
+  --shade-600-yellow: #ca8a04;
+  --shade-600-lime: #65a30d;
+  --shade-600-emerald: #059669;
+  --shade-600-teal: #0d9488;
+  --shade-600-blue: #2563eb;
+  --shade-600-indigo: #4f46e5;
+  --shade-600-violet: #7c3aed;
+  --shade-600-purple: #9333ea;
+  --shade-600-fuchsia: #c026d3;
+  --shade-600-pink: #db2777;
+  --shade-600-rose: #e11d48;
 }

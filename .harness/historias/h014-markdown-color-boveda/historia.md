@@ -353,3 +353,13 @@ negrita-cursiva se veían del mismo tono. Cambios (`editor.css`, `vaultIcon.ts`,
   oscuro que en claro. `vaultIcon.test.ts` fija el piso de contraste y la separación para los 17 colores.
 - Supersede C-5 (cursiva 70 % + `--text-secondary`) y C-10 (enlaces en el secundario) y la regla «jerarquizar
   con color, no con tamaño». Verificado en Chromium real (tamaños y colores calculados, 3 bóvedas, oscuro y claro).
+
+## Enmienda 2026-11-04 (2): color de los encabezados en tonos 600/400
+
+Carlos no veía diferencia de tono entre encabezados. Nuevo esquema (supersede C-1…C-4): H1 con el primario de la
+bóveda en tono 600, H2 con el secundario en 600, H3 con el terciario en 600 y H4 con el primario en 400
+(tonos Tailwind, `--shade-400-*`/`--shade-600-*` en `tokens.css`, iguales en los dos temas; `shadeVar` en `vaultIcon.ts`;
+`MilkdownView` publica `--vault-accent-600`, `--vault-secondary-600`, `--vault-tertiary-600` y `--vault-accent-400`).
+Contraste: el 600 sobre el fondo oscuro llega a 2,96:1 (índigo) y sobre blanco a 2,9:1 (amarillo); son títulos de
+≥ 20 px. En el tema claro el 400 puro daría 1,5:1 (amarillo), así que H4 se mezcla 60/40 con el texto (≥ 3,6:1); en
+oscuro va tal cual (≥ 6:1). Verificado en Chromium con tres bóvedas.

@@ -145,13 +145,14 @@ const editorCss = () => read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g
 const colorOf = (css: string, selector: string) =>
   css.match(new RegExp(`${selector.replace(/[.[\]"=()*]/g, "\\$&")}\\s*\\{\\s*color:\\s*([^;]+);`))?.[1].trim();
 
-test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto normal según P-1", () => {
+test("H-014 C-1…C-4 (2026-11-04): H1 primario 600, H2 secundario 600, H3 terciario 600, H4 primario 400 (mezclado con el texto en claro)", () => {
   const css = editorCss();
   const h = (tag: string) => colorOf(css, `.milkdown-view .ProseMirror ${tag}`);
-  expect(h("h1")).toBe("var(--vault-accent)"); // C-1: 100%, sin mezclar
-  expect(h("h2")).toBe("color-mix(in srgb, var(--vault-accent) 85%, var(--text-primary))"); // C-2
-  expect(h("h3")).toBe("color-mix(in srgb, var(--vault-accent) 55%, var(--text-primary))"); // C-3
-  expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
+  expect(h("h1")).toBe("var(--vault-accent-600)");
+  expect(h("h2")).toBe("var(--vault-secondary-600)");
+  expect(h("h3")).toBe("var(--vault-tertiary-600)");
+  expect(colorOf(css, ':root[data-theme="dark"] .milkdown-view .ProseMirror h4')).toBe("var(--vault-accent-400)");
+  expect(colorOf(css, ':root[data-theme="light"] .milkdown-view .ProseMirror h4')).toBe("color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary))");
 });
 
 test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secundario diluido en el texto; negrita-cursiva = secundario girado al terciario", () => {
