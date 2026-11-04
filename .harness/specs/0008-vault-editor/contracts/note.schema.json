@@ -79,6 +79,9 @@
     "immutable-field:created_at",
     "delete-not-allowed",
     "vault-not-found",
-    "note-path-taken"
+    "note-path-taken",
+    "reserved-name:path",
+    "index-readonly:<path|content|attr|delete>",
+    "index-root:delete"
   ]
 }

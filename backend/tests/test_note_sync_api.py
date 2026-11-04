@@ -153,6 +153,32 @@ def test_rf_016_one_byte_over_the_limit_is_rejected_and_the_previous_revision_st
     assert (stored["_rev"], stored["content"]) == (note["_rev"], "v1")
 
 
+# --- Rechazos de INDICE (H-031): el servidor los informa, nunca responde 500 ---
+
+@pytest.mark.parametrize(("change", "reason"), [
+    ({"path": "Otra/INDICE.md"}, "index-readonly:path"),
+    ({"content": "texto"}, "index-readonly:content"),
+    ({"frontmatter": {"estado": "borrador"}}, "index-readonly:attr"),
+])
+def test_h031_a_rejected_index_change_is_reported_not_a_500(vault, ready_admin, change, reason):
+    index = note_doc(vault["id"], path="Carpeta/INDICE.md", content="")
+    assert push(ready_admin, [index]).json() == []
+    bad = child_of(index, **change)
+    ok = note_doc(vault["id"], path="Carpeta/Otra.md")
+    res = push(ready_admin, [bad, ok])
+    assert res.status_code == 201
+    assert res.json() == [rejection(bad, reason)]
+    assert couch_get(vault["db"], ok["_id"]).status_code == 200  # el resto del lote entra
+
+
+def test_h031_a_note_taking_the_reserved_name_is_reported_not_a_500(vault, ready_admin):
+    note = note_doc(vault["id"], path="Carpeta/Nota.md")
+    assert push(ready_admin, [note]).json() == []
+    renamed = child_of(note, path="Carpeta/INDICE.md")
+    res = push(ready_admin, [renamed])
+    assert res.status_code == 201 and res.json() == [rejection(renamed, "reserved-name:path")]
+
+
 # --- Tope del cuerpo de `_bulk_docs` (RF-016, P-6) ---
 
 def test_rf_016_bulk_docs_body_over_16_mib_is_413(ready_admin, couch_override):  # noqa: F811

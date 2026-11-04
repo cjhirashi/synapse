@@ -34,6 +34,10 @@ test.each([
   ["immutable-field:created_at", "La fecha de creación de la bóveda no se puede cambiar."],
   ["delete-not-allowed", "El servidor no admite eliminar la bóveda de forma definitiva."],
   ["invalid-id", "El identificador de la bóveda no es válido."],
+  ["reserved-name:path", "El nombre INDICE.md está reservado para el índice de cada carpeta."],
+  ["index-readonly:path", "Un INDICE no se puede renombrar, mover ni borrar, y sólo admite editar su descripción."],
+  ["index-readonly:attr", "Un INDICE no se puede renombrar, mover ni borrar, y sólo admite editar su descripción."],
+  ["index-root:delete", "El INDICE de la raíz de la bóveda no se puede borrar."],
   ["otro-motivo", "El servidor rechazó el cambio (otro-motivo)."],
   ["toString", "El servidor rechazó el cambio (toString)."],
 ])("motivo %s en español", (code, text) => {

@@ -192,10 +192,12 @@ class BulkDocsRequest(BaseModel):
     new_edits: Literal[False]
 
 
-# Códigos de rechazo del push (PLAN-0005 §2.3; `note-path-taken` y `vault-not-found`, PLAN-0008 §4).
+# Códigos de rechazo del push (PLAN-0005 §2.3; `note-path-taken` y `vault-not-found`, PLAN-0008 §4;
+# `reserved-name`, `index-readonly` e `index-root`, los INDICES de H-031: cada código que emite el servidor debe estar aquí).
 REJECTION_REASON = (
     r"^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken"
-    r"|note-path-taken|vault-not-found|delete-not-allowed|validation-error:.+|not-normalized:.+)$"
+    r"|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+"
+    r"|validation-error:.+|not-normalized:.+)$"
 )
 
 

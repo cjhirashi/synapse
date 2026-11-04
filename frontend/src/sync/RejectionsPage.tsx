@@ -26,6 +26,8 @@ const REASONS = new Map<string, string>([
   ["immutable-field:created_at", "La fecha de creación de la bóveda no se puede cambiar."],
   ["delete-not-allowed", "El servidor no admite eliminar la bóveda de forma definitiva."],
   ["invalid-id", "El identificador de la bóveda no es válido."],
+  ["reserved-name:path", "El nombre INDICE.md está reservado para el índice de cada carpeta."],
+  ["index-root:delete", "El INDICE de la raíz de la bóveda no se puede borrar."],
 ]);
 
 const MALFORMED = "La bóveda tiene datos con un formato no válido.";
@@ -42,6 +44,7 @@ export function reasonText(code: string): string {
   if (kind === "validation-error" && (field === "name" || field === "description" || field === "tags" || field === "icon")) {
     return FIELD_MESSAGES[field];
   }
+  if (kind === "index-readonly") return "Un INDICE no se puede renombrar, mover ni borrar, y sólo admite editar su descripción.";
   if (kind === "validation-error" || kind === "not-normalized") return MALFORMED;
   return `El servidor rechazó el cambio (${code}).`;
 }

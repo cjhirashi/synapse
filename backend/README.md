@@ -334,6 +334,9 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `immutable-field:created_at` | `created_at` distinto del de las demás hojas |
 | `vault-not-found` | (nota, también su lápida) su bóveda no existe, es de otro usuario o está en la papelera; la bóveda del mismo lote cuenta, y por eso las bóvedas se procesan antes que las notas |
 | `vault-name-taken` | otra bóveda activa del usuario tiene un nombre equivalente |
+| `reserved-name:path` | (H-031) una nota que no es el INDICE toma el nombre reservado `INDICE.md` |
+| `index-readonly:<path\|content\|attr\|delete>` | (H-031) renombrar o mover un INDICE, darle contenido, cambiar algo que no sea su `descripcion`, o borrarlo mientras su carpeta tiene notas vivas |
+| `index-root:delete` | (H-031) borrar el INDICE de la raíz de la bóveda |
 | `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 
 | Endpoint | Respuesta |

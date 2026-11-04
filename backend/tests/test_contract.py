@@ -131,5 +131,7 @@ def test_sync_contract_closes_the_push_schemas():
     for code in ("invalid-id", "validation-error:", "not-normalized:", "owner-mismatch",
                  "immutable-field:created_at", "vault-name-taken", "delete-not-allowed",
                  # SPEC-0008 (RF-004, RF-013): los dos códigos que añaden las notas.
-                 "note-path-taken", "vault-not-found"):
+                 "note-path-taken", "vault-not-found",
+                 # H-031: los códigos de los INDICES; sin ellos el servidor responde 500 al rechazar un cambio.
+                 "reserved-name:", "index-readonly:", "index-root:"):
         assert code in reason, code
