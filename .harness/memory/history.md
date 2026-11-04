@@ -1,5 +1,19 @@
 # History — Synapse
 
+## [2026-11-04] Sincronización: 67 cambios rechazados y estado oscilando entre «Sin conexión» y «Sincronizando»
+
+- **Reporte de Carlos (2026-11-04):** la barra de estado oscilaba y mostraba «67 cambios rechazados».
+- **Causas (tres, encadenadas):**
+  1. **Regresión de H-031 (la más grave):** `POST /sync/db/_bulk_docs` respondía **500** si rechazaba un cambio con `index-readonly:*`, `reserved-name:*` o `index-root:*`, porque `REJECTION_REASON` (`routers/sync.py`) no los incluía; el cliente reintentaba el lote entero sin fin. Corregido en el patrón, el contrato (`openapi.yaml`, `note.schema.json`), el README y con pruebas HTTP que reproducen el 500.
+  2. **`frontmatter: null`:** notas escritas por REST antes del sellado de H-029 (304 vivas) lo conservan; al moverlas el cliente lo reenviaba y el push lo rechazaba. Ahora `null` equivale a ausente (`sync_push._check_note_fields`).
+  3. **Mover el INDICE con su carpeta:** el cliente lo hace (decisión de H-031) pero el servidor rechazaba cualquier cambio de ruta de un INDICE (`index-readonly:path`); eso dejó carpetas sin INDICE. Ahora se admite entre rutas `INDICE.md` (sigue prohibido renombrarlo a otro nombre o que una nota tome `INDICE.md`).
+- **Cliente:** `notes/repush.ts` reintenta los rechazos de notas de **cualquier** motivo (antes sólo `vault-not-found`) al arrancar, al reconectar y al cambiar la bóveda, con las notas antes que los INDICES, y `RejectionsStore.resolve` limpia los que el servidor ya no repite (PouchDB no emite evento cuando ya tiene las revisiones). `RejectionsPage` traduce los códigos nuevos.
+- **Resultado en el navegador de Carlos:** 67 → 82 (al destapar el lote atascado) → 17 → 12 → 4 → 2. Los últimos fueron INDICES de carpetas viejas vaciadas por el movimiento y dos INDICES que yo había creado en la reparación del mismo día (colisionaban con los del cliente); retirados en el servidor con borrado lógico. No pude ver la cifra final en pantalla (el Chrome de Carlos se desconectó).
+- **Estado del servidor tras el cierre:** 0 carpetas sin INDICE, 0 rutas duplicadas, 0 errores 500.
+- **Evidencia:** vitest 2576/2576, `tsc` limpio, pytest de push de notas e INDICES 115/115 más 4 pruebas HTTP nuevas (fallan sin el arreglo). Imágenes previas: `pre-fm-null`, `pre-sync-reasons`, `pre-mover-indice`, `pre-rej-resolve`.
+- **Lección:** H-031 probó cliente y servidor por separado y nunca el caso «mover carpeta» de punta a punta ni la respuesta HTTP de un rechazo de INDICE. Pendiente: e2e de mover/renombrar carpeta con INDICE contra el servidor real.
+- **Modelos:** Sonnet (yo), sin subagentes.
+
 ## [2026-11-04] H-031 corrección: enlaces de los INDICES que llevaban a otro destino
 
 - **Reporte de Carlos (2026-11-04):** en «1 - Proyectos AIRA» el enlace de navegación al padre llevaba al INDICE hermano `00 - AG - SKILLS`, y desde ese el enlace al padre no llevaba a ninguna parte.
