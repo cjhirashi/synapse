@@ -3,8 +3,15 @@
   "rewrite": [
     {
       "name": "ruta-completa-con-md",
-      "renames": [["Proyectos/Plan.md", "Archivo/Plan.md"]],
-      "census": { "plan.md": 1 },
+      "renames": [
+        [
+          "Proyectos/Plan.md",
+          "Archivo/Plan.md"
+        ]
+      ],
+      "census": {
+        "plan.md": 1
+      },
       "content": "ver [[Proyectos/Plan.md|el plan]]",
       "expected": "ver [[Archivo/Plan.md|el plan]]",
       "links": 1,
@@ -12,8 +19,15 @@
     },
     {
       "name": "ruta-completa-sin-md",
-      "renames": [["Proyectos/Plan.md", "Archivo/Plan.md"]],
-      "census": { "plan.md": 1 },
+      "renames": [
+        [
+          "Proyectos/Plan.md",
+          "Archivo/Plan.md"
+        ]
+      ],
+      "census": {
+        "plan.md": 1
+      },
       "content": "ver [[Proyectos/Plan]]",
       "expected": "ver [[Archivo/Plan]]",
       "links": 1,
@@ -21,8 +35,15 @@
     },
     {
       "name": "ruta-completa-conserva-md-original",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/Nota.md]] y [[A/Nota]] otros",
       "expected": "[[B/Nota.md]] y [[B/Nota]] otros",
       "links": 2,
@@ -30,8 +51,15 @@
     },
     {
       "name": "solo-nombre-unico-cambia-archivo",
-      "renames": [["A/Nota.md", "A/Apunte.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "A/Apunte.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[Nota]] y [[nota.md]]",
       "expected": "[[Apunte]] y [[Apunte.md]]",
       "links": 2,
@@ -39,17 +67,33 @@
     },
     {
       "name": "solo-nombre-ambiguo-no-se-toca",
-      "renames": [["A/Nota.md", "A/Apunte.md"]],
-      "census": { "nota.md": 2 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "A/Apunte.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 2
+      },
       "content": "[[Nota]] [[A/Nota.md]]",
       "expected": "[[Nota]] [[A/Apunte.md]]",
       "links": 1,
-      "ambiguous": ["nota.md"]
+      "ambiguous": [
+        "nota.md"
+      ]
     },
     {
       "name": "mover-sin-renombrar-conserva-nombre",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[Nota]] [[A/Nota.md]]",
       "expected": "[[Nota]] [[B/Nota.md]]",
       "links": 1,
@@ -57,8 +101,15 @@
     },
     {
       "name": "tabla-escape-barra",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "| [[A/Nota.md\\|texto]] |",
       "expected": "| [[B/Nota.md\\|texto]] |",
       "links": 1,
@@ -66,8 +117,15 @@
     },
     {
       "name": "no-tocar-code-fence-tilde",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "antes\n~~~\n[[A/Nota.md]]\n~~~\ndespués",
       "expected": "antes\n~~~\n[[A/Nota.md]]\n~~~\ndespués",
       "links": 0,
@@ -75,8 +133,15 @@
     },
     {
       "name": "no-tocar-code-fence-backtick",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "antes\n```\n[[A/Nota.md]]\n```\ndespués",
       "expected": "antes\n```\n[[A/Nota.md]]\n```\ndespués",
       "links": 0,
@@ -84,8 +149,15 @@
     },
     {
       "name": "no-tocar-inline-code",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "`[[A/Nota.md]]` texto",
       "expected": "`[[A/Nota.md]]` texto",
       "links": 0,
@@ -93,8 +165,15 @@
     },
     {
       "name": "no-tocar-markdown-link",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[archivo](A/Nota.md) y [[A/Nota.md]] aquí",
       "expected": "[archivo](A/Nota.md) y [[B/Nota.md]] aquí",
       "links": 1,
@@ -102,8 +181,15 @@
     },
     {
       "name": "no-tocar-markdown-image",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "![alt](A/Nota.md) y [[A/Nota.md]]",
       "expected": "![alt](A/Nota.md) y [[B/Nota.md]]",
       "links": 1,
@@ -111,8 +197,15 @@
     },
     {
       "name": "extension-ajena-pdf-no-se-toca",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/documento.pdf]] y [[A/Nota.md]]",
       "expected": "[[A/documento.pdf]] y [[B/Nota.md]]",
       "links": 1,
@@ -120,8 +213,15 @@
     },
     {
       "name": "extension-ajena-png-no-se-toca",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/imagen.png]] enlace [[A/Nota.md]]",
       "expected": "[[A/imagen.png]] enlace [[B/Nota.md]]",
       "links": 1,
@@ -129,8 +229,15 @@
     },
     {
       "name": "alias-se-conserva",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "ver [[A/Nota.md|este es el alias]] aquí",
       "expected": "ver [[B/Nota.md|este es el alias]] aquí",
       "links": 1,
@@ -138,8 +245,15 @@
     },
     {
       "name": "espacios-alrededor-del-destino-se-conservan",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[ A/Nota.md | alias ]]",
       "expected": "[[ B/Nota.md | alias ]]",
       "links": 1,
@@ -147,8 +261,15 @@
     },
     {
       "name": "mayusculas-nfkc-coinciden",
-      "renames": [["A/NOTA.md", "B/NOTA.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/NOTA.md",
+          "B/NOTA.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[a/nota.md]] y [[A/NOTA.MD]]",
       "expected": "[[B/NOTA.md]] y [[B/NOTA.md]]",
       "links": 2,
@@ -156,8 +277,15 @@
     },
     {
       "name": "acentos-normalizados",
-      "renames": [["A/Nóta.md", "B/Nóta.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nóta.md",
+          "B/Nóta.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/Nóta.md]] y [[a/nóta]]",
       "expected": "[[B/Nóta.md]] y [[B/Nóta]]",
       "links": 2,
@@ -165,8 +293,20 @@
     },
     {
       "name": "multiples-renombres-carpeta-entera",
-      "renames": [["Proyectos/2025/Plan.md", "Archivo/Plan.md"], ["Proyectos/2025/Ideas.md", "Archivo/Ideas.md"]],
-      "census": { "plan.md": 1, "ideas.md": 1 },
+      "renames": [
+        [
+          "Proyectos/2025/Plan.md",
+          "Archivo/Plan.md"
+        ],
+        [
+          "Proyectos/2025/Ideas.md",
+          "Archivo/Ideas.md"
+        ]
+      ],
+      "census": {
+        "plan.md": 1,
+        "ideas.md": 1
+      },
       "content": "[[Proyectos/2025/Plan.md]] y [[Proyectos/2025/Ideas.md]]",
       "expected": "[[Archivo/Plan.md]] y [[Archivo/Ideas.md]]",
       "links": 2,
@@ -174,8 +314,15 @@
     },
     {
       "name": "idempotencia-dos-veces-igual",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[B/Nota.md]]",
       "expected": "[[B/Nota.md]]",
       "links": 0,
@@ -183,8 +330,15 @@
     },
     {
       "name": "sin-wikilinks",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "Este texto no tiene ningún wikilink",
       "expected": "Este texto no tiene ningún wikilink",
       "links": 0,
@@ -192,8 +346,15 @@
     },
     {
       "name": "wikilink-sin-cerrar",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/Nota.md sin cerrar",
       "expected": "[[A/Nota.md sin cerrar",
       "links": 0,
@@ -201,8 +362,15 @@
     },
     {
       "name": "alias-con-pipe-escape",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[A/Nota.md\\|alias con pipe]]",
       "expected": "[[B/Nota.md\\|alias con pipe]]",
       "links": 1,
@@ -210,8 +378,15 @@
     },
     {
       "name": "solo-nombre-cuando-cambia",
-      "renames": [["A/Nota.md", "A/Nuevo.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "A/Nuevo.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[Nota]] vemos que cambia",
       "expected": "[[Nuevo]] vemos que cambia",
       "links": 1,
@@ -219,8 +394,15 @@
     },
     {
       "name": "solo-nombre-sin-cambio-no-toca",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "[[Nota]] sin cambio de nombre",
       "expected": "[[Nota]] sin cambio de nombre",
       "links": 0,
@@ -228,8 +410,15 @@
     },
     {
       "name": "ruta-con-mayusculas-caja-nueva",
-      "renames": [["proyectos/Plan.md", "ARCHIVO/Plan.md"]],
-      "census": { "plan.md": 1 },
+      "renames": [
+        [
+          "proyectos/Plan.md",
+          "ARCHIVO/Plan.md"
+        ]
+      ],
+      "census": {
+        "plan.md": 1
+      },
       "content": "[[PROYECTOS/PLAN.MD]]",
       "expected": "[[ARCHIVO/Plan.md]]",
       "links": 1,
@@ -237,11 +426,114 @@
     },
     {
       "name": "codigo-fence-mixto",
-      "renames": [["A/Nota.md", "B/Nota.md"]],
-      "census": { "nota.md": 1 },
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
       "content": "antes [[A/Nota.md]]\n```\n[[A/Nota.md]]\n```\n[[A/Nota.md]] al final",
       "expected": "antes [[B/Nota.md]]\n```\n[[A/Nota.md]]\n```\n[[B/Nota.md]] al final",
       "links": 2,
+      "ambiguous": []
+    },
+    {
+      "name": "comilla-invertida-suelta-no-apaga-el-resto",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "no uses ` aqui\n\n[[A/Nota.md]]",
+      "expected": "no uses ` aqui\n\n[[B/Nota.md]]",
+      "links": 1,
+      "ambiguous": []
+    },
+    {
+      "name": "valla-tilde-dentro-de-valla-backtick",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "```\n~~~\n[[A/Nota.md]]\n~~~\n```\n[[A/Nota.md]]",
+      "expected": "```\n~~~\n[[A/Nota.md]]\n~~~\n```\n[[B/Nota.md]]",
+      "links": 1,
+      "ambiguous": []
+    },
+    {
+      "name": "valla-sin-cierre-protege-hasta-el-final",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "[[A/Nota.md]]\n```\n[[A/Nota.md]]",
+      "expected": "[[B/Nota.md]]\n```\n[[A/Nota.md]]",
+      "links": 1,
+      "ambiguous": []
+    },
+    {
+      "name": "valla-con-lenguaje-y-despues-enlace",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "```python\nx = '[[A/Nota.md]]'\n```\n\n[[A/Nota.md]]",
+      "expected": "```python\nx = '[[A/Nota.md]]'\n```\n\n[[B/Nota.md]]",
+      "links": 1,
+      "ambiguous": []
+    },
+    {
+      "name": "codigo-en-linea-doble-backtick",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "``[[A/Nota.md]]`` y [[A/Nota.md]]",
+      "expected": "``[[A/Nota.md]]`` y [[B/Nota.md]]",
+      "links": 1,
+      "ambiguous": []
+    },
+    {
+      "name": "extension-md-en-mayusculas",
+      "renames": [
+        [
+          "A/Nota.md",
+          "B/Nota.md"
+        ]
+      ],
+      "census": {
+        "nota.md": 1
+      },
+      "content": "[[A/Nota.MD]]",
+      "expected": "[[B/Nota.md]]",
+      "links": 1,
       "ambiguous": []
     }
   ]

@@ -17,7 +17,6 @@ from typing import NamedTuple
 import re
 
 from app.core.note_rules import path_key
-from app.core.index_rules import is_index_path
 
 
 class Rename(NamedTuple):
@@ -101,72 +100,44 @@ def plan_renames(renames: list[Rename], name_census: dict[str, int]) -> RewriteP
     )
 
 
-def _is_inside_code_fence(text: str, pos: int) -> bool:
-    """¿La posición `pos` está dentro de una valla de código (``` o ~~~)?"""
-    backtick_pattern = r"```"
-    tilde_pattern = r"~~~"
-
-    # Buscar todas las vallas de backtick
-    backtick_fences = []
-    for match in re.finditer(backtick_pattern, text):
-        backtick_fences.append(match.start())
-
-    # Buscar todas las vallas de tilde
-    tilde_fences = []
-    for match in re.finditer(tilde_pattern, text):
-        tilde_fences.append(match.start())
-
-    # Contar backticks: si pos está entre un nº impar de ``` a su izquierda, está dentro
-    backtick_count = sum(1 for start in backtick_fences if start < pos)
-    if backtick_count % 2 == 1:
-        return True
-
-    # Contar tildes: si pos está entre un nº impar de ~~~ a su izquierda, está dentro
-    tilde_count = sum(1 for start in tilde_fences if start < pos)
-    if tilde_count % 2 == 1:
-        return True
-
-    return False
+_FENCE_LINE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+_INLINE_CODE = re.compile(r"(?<!`)(`+)(?!`)(.+?)(?<!`)\1(?!`)", re.S)
 
 
-def _is_inside_inline_code(text: str, pos: int) -> bool:
-    """¿La posición `pos` está dentro de código en línea (`...`)?"""
-    # Buscar todos los backtick simples (no triple, no tilde)
-    # Usamos regex para encontrar ` que no sean ```
-    backticks = []
-    i = 0
-    while i < len(text):
-        if text[i] == "`":
-            # Verificar que no sea triple backtick
-            if not (i + 2 < len(text) and text[i:i+3] == "```"):
-                backticks.append(i)
-            i += 1
-        else:
-            i += 1
+def _protected_spans(text: str) -> list[tuple[int, int]]:
+    """Rangos `[ini, fin)` donde NO se reescribe: bloques de código vallados (``` o ~~~, abiertos al inicio de
+    línea y cerrados por una valla del mismo carácter y al menos igual de larga; sin cierre, hasta el final) y
+    código en línea (corridas de comillas invertidas iguales, sin línea en blanco dentro)."""
+    spans: list[tuple[int, int]] = []
+    pos = 0
+    outside_start = 0  # inicio del tramo fuera de valla aún sin revisar
+    fence: tuple[str, int, int] | None = None  # (carácter, longitud, inicio)
+    for line in text.splitlines(keepends=True):
+        match = _FENCE_LINE.match(line)
+        if fence is None:
+            if match:
+                run = match.group(1)
+                fence = (run[0], len(run), pos)
+                spans_inline = _inline_spans(text, outside_start, pos)
+                spans.extend(spans_inline)
+        elif match and match.group(1)[0] == fence[0] and len(match.group(1)) >= fence[1] and not line.strip().strip(fence[0]):
+            spans.append((fence[2], pos + len(line)))
+            fence = None
+            outside_start = pos + len(line)
+        pos += len(line)
+    if fence is not None:
+        spans.append((fence[2], len(text)))
+    else:
+        spans.extend(_inline_spans(text, outside_start, len(text)))
+    return spans
 
-    # Contar backticks simples a la izquierda de pos
-    count = sum(1 for b in backticks if b < pos)
-    # Si está entre un nº impar, está dentro de código en línea
-    return count % 2 == 1
+
+def _inline_spans(text: str, start: int, end: int) -> list[tuple[int, int]]:
+    return [(start + m.start(), start + m.end()) for m in _INLINE_CODE.finditer(text[start:end]) if "\n\n" not in m.group(0)]
 
 
-def _is_inside_markdown_link(text: str, wikilink_start: int, wikilink_end: int) -> bool:
-    """¿El wikilink está dentro de un enlace/imagen markdown [...](...) o ![](...)? """
-    # Patrón: ![](URL) o [](URL) donde el ( precede inmediatamente a )
-    # Buscamos [...](...) con su correspondencia
-    patterns = [
-        r"!\[([^\[\]]*)\]\(([^)]+)\)",  # Imagen ![...](...)
-        r"\[([^\[\]]*)\]\(([^)]+)\)",   # Enlace [...](...)
-    ]
-
-    for pattern in patterns:
-        for match in re.finditer(pattern, text):
-            # match.start() es el inicio del patrón completo
-            # match.end() es el final del patrón completo (after the )
-            if match.start() < wikilink_start and wikilink_end <= match.end():
-                return True
-
-    return False
+def _in_spans(spans: list[tuple[int, int]], pos: int) -> bool:
+    return any(a <= pos < b for a, b in spans)
 
 
 def rewrite_note(content: str, plan: RewritePlan) -> Rewrite:
@@ -193,15 +164,13 @@ def rewrite_note(content: str, plan: RewritePlan) -> Rewrite:
     links_rewritten = 0
     ambiguous_found = []
 
+    protected = _protected_spans(content)
     for match in re.finditer(wikilink_pattern, content):
         wikilink_start = match.start()
         wikilink_end = match.end()
 
-        # C-5: Si está dentro de code fence, inline code o markdown link, no tocar
-        if (_is_inside_code_fence(content, wikilink_start) or
-            _is_inside_inline_code(content, wikilink_start) or
-            _is_inside_markdown_link(content, wikilink_start, wikilink_end)):
-            # Dejar como está
+        # C-5: dentro de código (vallado o en línea) no se toca
+        if _in_spans(protected, wikilink_start):
             result.append(content[last_pos:wikilink_end])
             last_pos = wikilink_end
             continue
@@ -268,7 +237,7 @@ def rewrite_note(content: str, plan: RewritePlan) -> Rewrite:
             # Intentar por solo nombre (C-2, C-3, C-4)
             if "/" not in dest_trimmed:
                 # Es solo nombre. Calcular su clave normalizada (con .md forzado)
-                name_with_md = dest_trimmed if dest_trimmed.endswith(".md") else dest_trimmed + ".md"
+                name_with_md = dest_trimmed if dest_trimmed.lower().endswith(".md") else dest_trimmed + ".md"
                 name_key = path_key(name_with_md)
                 if name_key in plan.name_renames:
                     # Solo nombre único que cambia
