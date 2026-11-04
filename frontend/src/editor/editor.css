@@ -1089,10 +1089,10 @@
   margin: 0;
 }
 
-/* H-014 (C-6): el marcador de la lista (la viñeta o el número, no el texto del ítem) lleva el color de la
-   bóveda a la intensidad de H4 (el tinte más sutil, misma fórmula que P-1) — un acento estructural discreto. */
+/* Marcador de la lista (la viñeta de las desordenadas y el número de las ordenadas, no el texto del ítem) en el primario de la
+   bóveda en tono 600 (cambio de Carlos 2026-11-04; antes el primario al 30 % mezclado con el texto, H-014 C-6). */
 .milkdown-view .ProseMirror li::marker {
-  color: color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary));
+  color: var(--vault-accent-600);
 }
 
 .milkdown-view .ProseMirror pre {
@@ -1504,7 +1504,7 @@
   background: var(--accent-soft);
 }
 
-/* Tareas (SPEC-0010 RF-039; R-10): casilla de 16 × 16, borde de 2 px, marcada con el acento. En lectura es una
+/* Tareas (SPEC-0010 RF-039; R-10): casilla de 16 × 16, borde de 2 px y marcada en el primario de la bóveda en tono 600 (cambio de Carlos 2026-11-04; antes gris y cian). En lectura es una
    imagen sin foco; en Visual, un `input` con una zona de clic de ≥ 24 × 24. */
 .milkdown-view .ProseMirror li.note-task {
   display: flex;
@@ -1528,7 +1528,7 @@
   height: 16px;
   margin: 0;
   padding: 0;
-  border: 2px solid var(--text-secondary);
+  border: 2px solid var(--vault-accent-600);
   border-radius: var(--radius-xs);
   background: transparent;
   appearance: none;
@@ -1552,7 +1552,7 @@ input.note-task-mark {
 }
 
 input.note-task-mark:hover {
-  border-color: var(--accent);
+  border-color: var(--vault-accent-400);
 }
 
 input.note-task-mark:active {
@@ -1567,8 +1567,8 @@ input.note-task-mark::before {
 }
 
 li.note-task[data-checked="true"] .note-task-mark {
-  border-color: var(--accent);
-  background: var(--accent);
+  border-color: var(--vault-accent-600);
+  background: var(--vault-accent-600);
 }
 
 li.note-task[data-checked="true"] .note-task-mark::after {

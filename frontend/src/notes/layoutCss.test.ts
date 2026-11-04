@@ -202,8 +202,8 @@ test("H-014 C-11: la cabecera de tabla (th) usa fondo tenue y texto al 100 % del
   expect(th).toMatch(/color: var\(--vault-accent\)/);
 });
 
-test("H-014 C-6: el marcador de lista va al color de bóveda en la intensidad de H4 (el texto del ítem no cambia)", () => {
-  expect(colorOf(editorCss(), ".milkdown-view .ProseMirror li::marker")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))");
+test("H-014 C-6 (2026-11-04): el marcador de lista (viñeta o número) va en el primario 600 (el texto del ítem no cambia)", () => {
+  expect(colorOf(editorCss(), ".milkdown-view .ProseMirror li::marker")).toBe("var(--vault-accent-600)"); // 2026-11-04: primario 600
 });
 
 // SPEC-0010 RF-038, RF-039: código en línea y casillas de tarea (PLAN-0010 §2.3-g; R-6, R-10).
@@ -246,12 +246,15 @@ test("RF-026: el párrafo de una celda no tiene margen (causa de las filas de ~6
   expect(scroll).toMatch(/max-width: 100%/);
 });
 
-test("RF-039: la casilla de tarea mide 16 × 16 con borde de 2 px en --text-secondary y radio --radius-xs", () => {
+test("RF-039 (2026-11-04): la casilla de tarea mide 16 × 16 con borde de 2 px en el primario 600 y radio --radius-xs; marcada, relleno en el primario 600", () => {
   const mark = rule(read("../editor/editor.css"), ".note-task-mark");
   expect(mark).toMatch(/width: 16px/);
   expect(mark).toMatch(/height: 16px/);
-  expect(mark).toMatch(/border: 2px solid var\(--text-secondary\)/);
+  expect(mark).toMatch(/border: 2px solid var\(--vault-accent-600\)/);
   expect(mark).toMatch(/border-radius: var\(--radius-xs\)/);
+  const checked = rule(read("../editor/editor.css"), 'li.note-task[data-checked="true"] .note-task-mark');
+  expect(checked).toMatch(/border-color: var\(--vault-accent-600\)/);
+  expect(checked).toMatch(/background: var\(--vault-accent-600\)/);
 });
 
 // SPEC-0010 RNF-001 (PLAN-0010 §10.2): `content-visibility: auto` saca del pintado los bloques fuera

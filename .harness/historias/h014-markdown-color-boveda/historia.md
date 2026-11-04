@@ -416,3 +416,9 @@ Al 5 % el fondo casi no se veía; sube a **8 %**. Supersede la enmienda (8).
 ## Enmienda 2026-11-04 (10): cita redondeada y barra de 4 px
 
 La cita lleva las esquinas redondeadas (`--radius-sm`, 6 px) y la barra izquierda sube de 3 a **4 px**. Supersede el grosor de la enmienda (7).
+
+## Enmienda 2026-11-04 (11): marcadores de lista y casillas en el primario 600
+
+La viñeta de las listas desordenadas, el número de las ordenadas y las casillas de tarea (borde, hover en 400 y relleno
+al marcarse) van en el primario de la bóveda en tono 600 (`--vault-accent-600`). Supersede C-6 (marcador al 30 % con el
+texto) y el gris/cian de la casilla de SPEC-0010 RF-039. Verificado en Chromium.
