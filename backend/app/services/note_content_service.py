@@ -27,6 +27,7 @@ from app.core.errors import (
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
 from app.core.etag import etag_matches
+from app.core.wikilink_rewrite import Rename
 from app.core.index_body import render_body
 from app.core.index_rules import ancestor_folders, changed_keys, check_op, folder_of, index_path_for, is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
@@ -36,6 +37,7 @@ from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUp
 from app.core.timestamps import is_timestamp, utc_now
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.vault_service import is_canonical_uuid
+from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewriteService
 
 # --- Cursor de paginación: mismo esquema que `vault_service.encode_cursor`, con `vault_id`
 # como componente extra (`v`) — un cursor sólo vale para la bóveda y la lista con que se emitió.
@@ -92,6 +94,7 @@ class Versioned(NamedTuple):
 
     note: NoteOut
     etag: str
+    rewrite: RewriteReport | None = None  # H-039: solo en un PATCH que cambió `path`
 
 
 class NoteContentService:
@@ -207,6 +210,12 @@ class NoteContentService:
             self._release(doc["_id"], old_path)
             if self._auto_indexes:
                 self._ensure_indexes(vault_id, changes["path"])
+            # H-039: los wikilinks de las demás notas (y los de la propia) siguen a la nota movida.
+            report = WikilinkRewriteService(self._port, self._db).rewrite(
+                vault_id, {doc["_id"]: Rename(old_path, changes["path"])})
+            # La propia nota pudo reescribirse (enlace a sí misma): se devuelve su versión vigente.
+            current = self._port.get(self._db, doc["_id"]) or updated
+            return _versioned(current)._replace(rewrite=report)
         return _versioned(updated)
 
     def delete(self, vault_id: str, note_id: str, if_match: str | None) -> None:

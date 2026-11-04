@@ -41,8 +41,17 @@ def _with_etag(status_code: int) -> dict[int, dict]:
     return {status_code: {"headers": {"ETag": header}}}
 
 
+_REWRITTEN_HEADER = {
+    "description": ("Solo si el PATCH cambió `path`: wikilinks reescritos en la bóveda, "
+                    "`notes=<n>; links=<m>; ambiguous=<k>; pending=<p>`."),
+    "schema": {"type": "string"},
+}
+
+
 def _respond(result: Versioned, response: Response) -> NoteOut:
     response.headers["ETag"] = result.etag
+    if result.rewrite is not None:
+        response.headers["X-Wikilinks-Rewritten"] = result.rewrite.header()
     return result.note
 
 
@@ -102,7 +111,8 @@ def create_note(
 @router.patch(
     "/{note_id}",
     response_model=NoteOut,
-    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
+    responses={200: {"headers": {**_with_etag(200)[200]["headers"], "X-Wikilinks-Rewritten": _REWRITTEN_HEADER}}}
+    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
 )
 def update_note(
     vault_id: VaultId,
