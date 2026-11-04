@@ -412,3 +412,7 @@ El fondo de la cita (secundario 600) baja de 20 % a **5 %** de opacidad; la barr
 ## Enmienda 2026-11-04 (9): fondo de la cita al 8 %
 
 Al 5 % el fondo casi no se veía; sube a **8 %**. Supersede la enmienda (8).
+
+## Enmienda 2026-11-04 (10): cita redondeada y barra de 4 px
+
+La cita lleva las esquinas redondeadas (`--radius-sm`, 6 px) y la barra izquierda sube de 3 a **4 px**. Supersede el grosor de la enmienda (7).

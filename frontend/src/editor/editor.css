@@ -1381,7 +1381,8 @@
 .milkdown-view .ProseMirror blockquote {
   margin: var(--space-4) 0;
   padding: var(--space-2) var(--space-4);
-  border-left: 3px solid var(--vault-secondary-600);
+  border-left: 4px solid var(--vault-secondary-600);
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--vault-secondary-600) 8%, transparent);
   color: var(--text-secondary);
   font-style: italic;
