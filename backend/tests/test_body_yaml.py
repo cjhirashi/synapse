@@ -1,303 +1,120 @@
-"""H-040: Extracción y migración de YAML del cuerpo a atributos."""
+"""H-040: bloque YAML al inicio del cuerpo -> atributos (reglas puras)."""
 import pytest
 
-from app.core.body_yaml import split_body_yaml, merge_yaml_into_frontmatter, plan_note
 from app.core.attribute_rules import validate_general
+from app.core.body_yaml import merge_yaml_into_frontmatter, plan_note, split_body_yaml
+
+
+def _doc(content, frontmatter=None):
+    return {"_id": "note:v:n", "_rev": "1-a", "type": "note", "content": content, "frontmatter": frontmatter or {}}
 
 
 class TestSplitBodyYaml:
-    """C-1, C-2: Extracción de bloque YAML válido y detección de no migrables."""
-
-    def test_yaml_simple(self):
-        """Caso básico: YAML válido al inicio."""
-        content = """---
-titulo: Test
-tags:
-  - tag1
-  - tag2
----
-Resto del contenido"""
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test", "tags": ["tag1", "tag2"]}
-        assert rest == "Resto del contenido"
-
-    def test_yaml_with_bom(self):
-        """BOM al inicio."""
-        content = "﻿---\ntitulo: Test\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test"}
+    def test_simple(self):
+        data, rest = split_body_yaml("---\ntitulo: T\ntags:\n  - a\n  - b\n---\nResto")
+        assert data == {"titulo": "T", "tags": ["a", "b"]}
         assert rest == "Resto"
 
-    def test_yaml_with_crlf(self):
-        """Líneas con \\r\\n."""
-        content = "---\r\ntitulo: Test\r\n---\r\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test"}
-        assert rest == "Resto"
+    def test_bom(self):
+        assert split_body_yaml("﻿---\ntitulo: T\n---\nResto") == ({"titulo": "T"}, "Resto")
 
-    def test_yaml_with_dots_closure(self):
-        """Cierre con `...` en lugar de `---`."""
-        content = "---\ntitulo: Test\n...\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test"}
-        assert rest == "Resto"
+    def test_crlf_conserva_los_saltos_del_cuerpo(self):
+        data, rest = split_body_yaml("---\r\ntitulo: T\r\n---\r\n\r\nLinea 1\r\nLinea 2\r\n")
+        assert data == {"titulo": "T"}
+        assert rest == "Linea 1\r\nLinea 2\r\n"
 
-    def test_empty_yaml_block(self):
-        """Bloque YAML vacío."""
-        content = "---\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {}
-        assert rest == "Resto"
+    def test_cierre_con_puntos(self):
+        assert split_body_yaml("---\ntitulo: T\n...\nResto") == ({"titulo": "T"}, "Resto")
 
-    def test_yaml_list_not_map(self):
-        """Bloque que es una lista, no un mapeo."""
-        content = "---\n- item1\n- item2\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is None
-        # Motivo debe estar en rest
-        assert "no-es-mapeo" in rest
+    def test_bloque_vacio(self):
+        assert split_body_yaml("---\n---\nResto") == ({}, "Resto")
 
-    def test_invalid_yaml(self):
-        """YAML sintácticamente inválido."""
-        content = "---\n  : invalid\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is None
-        assert "yaml-invalido" in rest
+    def test_quita_lineas_en_blanco_entre_bloque_y_texto(self):
+        assert split_body_yaml("---\ntitulo: T\n---\n\n\n  \nResto\n\n") == ({"titulo": "T"}, "Resto\n\n")
 
-    def test_no_yaml_at_start(self):
-        """El contenido no empieza por `---`."""
-        content = "Contenido normal\n---\notro yaml"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is None
-        assert "no-empieza-por-yaml" in rest
+    def test_sin_texto_detras(self):
+        assert split_body_yaml("---\ntitulo: T\n---\n") == ({"titulo": "T"}, "")
 
-    def test_no_closing_delimiter(self):
-        """No hay cierre del bloque YAML."""
-        content = "---\ntitulo: Test\nNo hay cierre"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is None
-        assert "sin-cierre" in rest
+    @pytest.mark.parametrize("content,motivo", [
+        ("---\n- a\n- b\n---\nResto", "no-es-mapeo"),
+        ("---\nsolo texto\n---\nResto", "no-es-mapeo"),
+        ("---\na: [sin cerrar\n---\nResto", "yaml-invalido"),
+        ("---\ntitulo: T\nsin cierre", "sin-cierre"),
+        ("Texto\n---\ntitulo: T\n---", "no-empieza-por-yaml"),
+        ("\n---\ntitulo: T\n---\nResto", "no-empieza-por-yaml"),  # regla horizontal tras línea en blanco
+        ("----\ntitulo: T\n---\nResto", "no-empieza-por-yaml"),
+        ("---titulo\nx: 1\n---\n", "no-empieza-por-yaml"),
+        ("", "no-empieza-por-yaml"),
+    ])
+    def test_no_migrables(self, content, motivo):
+        assert split_body_yaml(content) == (None, motivo)
 
-    def test_yaml_with_blank_line_then_yaml_later(self):
-        """Regla horizontal (`---`) que NO es un bloque YAML: línea en blanco, luego `---`."""
-        content = "\n---\nContenido"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is None
-        assert "no-empieza-por-yaml" in rest
+    def test_fechas_y_claves_no_texto(self):
+        data, _ = split_body_yaml("---\nfecha: 2026-11-03\n7: siete\nlista: [2026-01-02]\n---\n")
+        assert data == {"fecha": "2026-11-03", "7": "siete", "lista": ["2026-01-02"]}
 
-    def test_yaml_dates_converted_to_strings(self):
-        """Fechas YAML se convierten a strings `AAAA-MM-DD`."""
-        content = "---\nfecha_creacion: 2026-11-03\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"fecha_creacion": "2026-11-03"}
-        assert rest == "Resto"
+    def test_datetime_y_conjuntos_son_json(self):
+        data, _ = split_body_yaml("---\nt: 2026-11-03 10:00:00\ns: !!set {a, b}\n---\n")
+        assert data["t"].startswith("2026-11-03") and sorted(data["s"]) == ["a", "b"]
 
-    def test_yaml_non_string_keys_converted(self):
-        """Claves numéricas se convierten a strings."""
-        content = "---\n123: valor\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        # Las claves numéricas de YAML se convierten a strings
-        assert "123" in yaml_data or yaml_data.get(123) is not None
-
-    def test_yaml_rest_without_leading_blank_lines(self):
-        """El `rest` no debe empezar por líneas en blanco."""
-        content = "---\ntitulo: Test\n---\n\n\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test"}
-        assert rest == "Resto"
-        assert not rest.startswith("\n")
-
-    def test_no_content_at_all(self):
-        """Bloque YAML pero sin contenido detrás."""
-        content = "---\ntitulo: Test\n---\n"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test"}
-        assert rest == ""
-
-    def test_yaml_with_nested_structure(self):
-        """YAML con estructura anidada (mapeo dentro de mapeo)."""
-        content = "---\ntitulo: Test\nmetadata:\n  autor: Alice\n---\nResto"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data == {"titulo": "Test", "metadata": {"autor": "Alice"}}
-        assert rest == "Resto"
+    def test_valor_anidado_se_conserva(self):
+        assert split_body_yaml("---\nm:\n  a: 1\n---\nx")[0] == {"m": {"a": 1}}
 
 
-class TestMergeYamlIntoFrontmatter:
-    """C-3, C-4, C-5: Fusión de YAML en frontmatter con conflicto."""
+class TestMerge:
+    def test_alias_y_normalizacion(self):
+        fm, rep = merge_yaml_into_frontmatter({}, {
+            "title": "T", "description": "D", "etiquetas": ["Uno Dos", "tres"], "status": "Active", "extra": 5})
+        assert fm == {"titulo": "T", "descripcion": "D", "tags": ["uno_dos", "tres"], "estado": "aprobado", "extra": 5}
+        assert rep == []
 
-    def test_merge_new_keys(self):
-        """Claves del YAML que no existen en frontmatter."""
-        existing = {}
-        yaml_data = {"titulo": "Test", "tags": ["tag1"]}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm == {"titulo": "Test", "tags": ["tag1"]}
-        assert reported == []
+    def test_atributo_existente_manda_y_se_reporta(self):
+        fm, rep = merge_yaml_into_frontmatter({"titulo": "Atributo"}, {"title": "YAML"})
+        assert fm == {"titulo": "Atributo"}
+        assert [(r["key"], r["yaml_value"], r["attribute_value"]) for r in rep] == [("titulo", "YAML", "Atributo")]
 
-    def test_merge_with_conflict_keeps_existing(self):
-        """Conflicto: clave ya existe con otro valor. El existente manda."""
-        existing = {"titulo": "Existente"}
-        yaml_data = {"titulo": "Del YAML"}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm == {"titulo": "Existente"}
-        assert len(reported) == 1
-        assert reported[0]["key"] == "titulo"
-        assert reported[0]["yaml_value"] == "Del YAML"
-        assert reported[0]["attribute_value"] == "Existente"
-        assert "conflict" in reported[0]["reason"].lower() or "existe" in reported[0]["reason"].lower()
+    def test_mismo_valor_no_es_conflicto(self):
+        fm, rep = merge_yaml_into_frontmatter({"tags": ["a", "b"]}, {"tags": ["A", "b"]})
+        assert fm == {"tags": ["a", "b"]} and rep == []
 
-    def test_merge_alias_title_to_titulo(self):
-        """Alias: `title` del YAML manda a `titulo`."""
-        existing = {}
-        yaml_data = {"title": "Test"}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        # Después de aplicar alias en body_yaml, `title` debe convertirse a `titulo`
-        assert new_fm.get("titulo") == "Test"
-        assert "title" not in new_fm
+    def test_etiquetas_existentes_pasan_a_tags(self):
+        fm, rep = merge_yaml_into_frontmatter({"etiquetas": ["Uno"]}, {})
+        assert fm == {"tags": ["uno"]} and rep == []
 
-    def test_merge_alias_description_to_descripcion(self):
-        """Alias: `description` del YAML manda a `descripcion`."""
-        existing = {}
-        yaml_data = {"description": "Desc"}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm.get("descripcion") == "Desc"
-        assert "description" not in new_fm
-
-    def test_merge_alias_etiquetas_to_tags(self):
-        """Alias: `etiquetas` del YAML manda a `tags` (normalizado)."""
-        existing = {}
-        yaml_data = {"etiquetas": ["etiq_1", "ETIQ_2"]}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        # Debe convertirse a `tags` (normalizado)
-        assert "tags" in new_fm
-        assert "etiquetas" not in new_fm
-        # Las etiquetas deben estar normalizadas
-        assert all(isinstance(t, str) for t in new_fm["tags"])
-
-    def test_merge_free_keys_preserved(self):
-        """Claves libres (no mapeadas) se conservan."""
-        existing = {}
-        yaml_data = {"custom_key": "value", "titulo": "Test"}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm.get("custom_key") == "value"
-        assert new_fm.get("titulo") == "Test"
-
-    def test_merge_multiple_conflicts(self):
-        """Múltiples conflictos reportados."""
-        existing = {"titulo": "Existing", "tags": ["old"]}
-        yaml_data = {"titulo": "New", "tags": ["new"]}
-        new_fm, reported = merge_yaml_into_frontmatter(existing, yaml_data)
-        assert new_fm == {"titulo": "Existing", "tags": ["old"]}
-        assert len(reported) == 2
+    def test_valor_del_yaml_invalido_se_reporta(self):
+        fm, rep = merge_yaml_into_frontmatter({}, {"fecha_creacion": "ayer"})
+        assert "fecha_creacion" not in fm
+        assert rep[0]["key"] == "fecha_creacion" and rep[0]["yaml_value"] == "ayer"
 
 
 class TestPlanNote:
-    """C-5, C-8: Plan completo de migración de una nota."""
+    def test_migrable(self):
+        plan = plan_note(_doc("---\ntitle: T\ncustom: x\n---\n\nCuerpo", {"tags": ["a"]}))
+        assert plan["ok"] and plan["tiene_yaml"]
+        assert plan["frontmatter_new"] == {"tags": ["a"], "titulo": "T", "custom": "x"}
+        assert plan["content_new"] == "Cuerpo"
+        assert validate_general(plan["frontmatter_new"]) is None
 
-    def test_plan_note_simple(self):
-        """Migración simple: YAML al inicio, sin conflictos."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {},
-            "content": "---\ntitulo: Test\n---\nResto",
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        assert plan is not None
-        assert plan["frontmatter_new"] == {"titulo": "Test"}
-        assert plan["content_new"] == "Resto"
-        assert plan["reportados"] == []
-        assert plan["validation_error"] is None
+    def test_sin_yaml_no_hay_plan(self):
+        assert plan_note(_doc("Texto", {"titulo": "T"})) is None
+        assert plan_note(_doc("", None)) is None
 
-    def test_plan_note_no_yaml(self):
-        """Sin YAML: no hay plan."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {"titulo": "Existing"},
-            "content": "Solo contenido",
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        assert plan is None
+    @pytest.mark.parametrize("content,motivo", [
+        ("---\na: [x\n---\n", "yaml-invalido"), ("---\nsin cierre", "sin-cierre"), ("---\n- a\n---\n", "no-es-mapeo")])
+    def test_no_migrable_deja_la_nota_intacta(self, content, motivo):
+        assert plan_note(_doc(content)) == {"ok": False, "motivo": motivo}
 
-    def test_plan_note_invalid_yaml(self):
-        """YAML inválido: no hay plan."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {},
-            "content": "---\n  : invalid\n---\nResto",
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        assert plan is None
+    def test_frontmatter_invalido_no_migra(self):
+        plan = plan_note(_doc("---\ntitulo: " + "x" * 300 + "\n---\nCuerpo"))
+        assert plan == {"ok": False, "motivo": "frontmatter-invalido:titulo"}
 
-    def test_plan_note_with_conflict(self):
-        """Conflicto de atributo: se reporta, plan sigue adelante."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {"titulo": "Existing"},
-            "content": "---\ntitulo: Del YAML\n---\nResto",
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        assert plan is not None
-        assert plan["frontmatter_new"]["titulo"] == "Existing"
-        assert len(plan["reportados"]) == 1
-        assert plan["content_new"] == "Resto"
+    def test_solo_atributo_etiquetas(self):
+        plan = plan_note(_doc("Cuerpo\n---\nno es yaml", {"etiquetas": ["Uno", "dos"], "titulo": "T"}))
+        assert plan["ok"] and not plan["tiene_yaml"]
+        assert plan["frontmatter_new"] == {"tags": ["uno", "dos"], "titulo": "T"}
+        assert plan["content_new"] == "Cuerpo\n---\nno es yaml"
 
-    def test_plan_note_validation_fails(self):
-        """Frontmatter resultante falla `validate_general`: no hay plan."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {},
-            "content": "---\ntitulo: " + "x" * 300 + "\n---\nResto",  # Título muy largo
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        assert plan is None
-
-    def test_plan_note_etiquetas_migrates_to_tags(self):
-        """C-5: atributo `etiquetas` migra a `tags` normalizado."""
-        doc = {
-            "_id": "note:1",
-            "_rev": "1-abc",
-            "type": "note",
-            "frontmatter": {"etiquetas": ["Tag_1", "TAG_2"]},
-            "content": "Contenido normal",
-            "created_at": "2026-07-06T00:00:00Z",
-            "updated_at": "2026-07-15T00:00:00Z",
-        }
-        plan = plan_note(doc)
-        # El plan debe contener `tags` normalizado (no `etiquetas`)
-        assert plan is not None or plan is None  # Depende de si plan_note actúa sobre frontmatter existente
-
-
-class TestIntegration:
-    """Integración: flujo completo de la migración."""
-
-    def test_full_migration_flow(self):
-        """Flujo completo: YAML → frontmatter, contenido limpio."""
-        content = "---\ntitulo: Migrando\ndescription: Una descripción\netiquetas:\n  - tag1\n---\n\n\nContenido limpio"
-        yaml_data, rest = split_body_yaml(content)
-        assert yaml_data is not None
-        assert "titulo" in yaml_data or "title" in yaml_data
-
-        existing_fm = {}
-        new_fm, reported = merge_yaml_into_frontmatter(existing_fm, yaml_data)
-        assert reported == []
-        assert validate_general(new_fm) is None
-        assert rest == "Contenido limpio"
+    def test_idempotente(self):
+        plan = plan_note(_doc("---\ntitle: T\n---\nCuerpo"))
+        again = plan_note(_doc(plan["content_new"], plan["frontmatter_new"]))
+        assert again is None

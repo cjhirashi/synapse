@@ -1,176 +1,111 @@
-"""H-040: Extracción y migración de YAML del cuerpo a atributos."""
+"""H-040: bloque YAML al inicio del cuerpo de una nota -> atributos (frontmatter).
+
+Reglas puras, sin E/S. El mapeo de claves (title/titulo, description/descripcion, tags/etiquetas,
+status/estado, fechas) lo hace `attribute_rules.migrate_frontmatter_detailed`.
+"""
+import math
+from datetime import date, datetime
+
 import yaml
-from datetime import date
-from typing import Optional
+
+from app.core.attribute_rules import migrate_frontmatter_detailed, validate_general
+
+_BOM = "\ufeff"
+_CLOSERS = ("---", "...")
+
+
+def _jsonable(value):
+    """Valor YAML -> valor JSON: fechas a texto (`AAAA-MM-DD`; con hora, ISO), claves a texto, lo no
+    representable (bytes, conjuntos, NaN/infinito) a texto."""
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(k): _jsonable(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return [_jsonable(v) for v in value]
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    return str(value)
 
 
 def split_body_yaml(content: str) -> tuple[dict, str] | tuple[None, str]:
-    """C-1, C-2: Extrae bloque YAML del inicio del contenido.
+    """`(mapeo, resto)` si `content` empieza por un bloque YAML válido (D-1); si no, `(None, motivo)` con
+    motivo en {`no-empieza-por-yaml`, `sin-cierre`, `yaml-invalido`, `no-es-mapeo`}.
 
-    Devuelve `(mapeo, resto)` si el contenido empieza por un bloque YAML válido
-    (cumple D-1), o `(None, motivo)` con motivo ∈ {`no-empieza-por-yaml`,
-    `sin-cierre`, `yaml-invalido`, `no-es-mapeo`}.
-
-    D-1: El bloque YAML:
-    - Empieza en el primer carácter (tras BOM opcional) con una línea `---`
-    - Termina en la siguiente línea `---` o `...`
-    - Lo de en medio es un mapeo YAML válido (yaml.safe_load)
-    - Un `---` que no está al inicio, o un bloque que no es mapeo o no se puede
-      leer, NO es migrable.
+    El bloque empieza en la primera línea (tras un BOM opcional), que debe ser exactamente `---`, y termina
+    en la siguiente línea `---` o `...`. `resto` conserva los saltos de línea originales y pierde el bloque
+    y las líneas en blanco que lo separaban del texto.
     """
-    # Remover BOM si está presente
-    text = content.lstrip("﻿")
-
-    # Remover \r de líneas (normalizar a \n)
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-
-    # Verificar que empiece con `---`
-    if not text.startswith("---"):
+    text = content[1:] if content.startswith(_BOM) else content
+    lines = text.splitlines(keepends=True)
+    if not lines or lines[0].rstrip() != "---":
         return None, "no-empieza-por-yaml"
-
-    # Buscar la línea de cierre (`---` o `...`)
-    lines = text.split("\n")
-    if len(lines) < 2:
+    closing = next((i for i in range(1, len(lines)) if lines[i].rstrip() in _CLOSERS), None)
+    if closing is None:
         return None, "sin-cierre"
-
-    # Primer `---` está en lines[0]
-    # Buscar el cierre a partir de lines[1]
-    closing_index = None
-    for i in range(1, len(lines)):
-        stripped = lines[i].strip()
-        if stripped == "---" or stripped == "...":
-            closing_index = i
-            break
-
-    if closing_index is None:
-        return None, "sin-cierre"
-
-    # Extraer el bloque YAML (entre las dos líneas delimitadoras)
-    yaml_lines = lines[1:closing_index]
-    yaml_text = "\n".join(yaml_lines)
-
-    # Parsear YAML
     try:
-        yaml_data = yaml.safe_load(yaml_text)
+        data = yaml.safe_load("".join(lines[1:closing]))
     except yaml.YAMLError:
         return None, "yaml-invalido"
-
-    # Si el YAML es None (bloque vacío), devolver mapeo vacío
-    if yaml_data is None:
-        yaml_data = {}
-
-    # Validar que sea un mapeo
-    if not isinstance(yaml_data, dict):
+    if data is None:
+        data = {}
+    if not isinstance(data, dict):
         return None, "no-es-mapeo"
-
-    # Convertir claves no-string a string, y fechas a strings AAAA-MM-DD
-    normalized_yaml = {}
-    for key, value in yaml_data.items():
-        # Convertir clave a string si no lo es
-        key_str = str(key) if not isinstance(key, str) else key
-
-        # Convertir fechas (date objects) a AAAA-MM-DD
-        if isinstance(value, date):
-            value = value.isoformat()
-
-        normalized_yaml[key_str] = value
-
-    # Construir el `rest` sin el bloque YAML ni líneas en blanco iniciales
-    rest_lines = lines[closing_index + 1 :]
-    # Remover líneas en blanco al inicio del rest
-    while rest_lines and rest_lines[0].strip() == "":
+    rest_lines = lines[closing + 1:]
+    while rest_lines and not rest_lines[0].strip():
         rest_lines.pop(0)
-    rest = "\n".join(rest_lines)
-
-    return normalized_yaml, rest
+    return _jsonable(data), "".join(rest_lines)
 
 
-def merge_yaml_into_frontmatter(
-    existing: dict, yaml_data: dict
-) -> tuple[dict, list[dict]]:
-    """C-3, C-4, C-5: Fusiona YAML en frontmatter.
+def merge_yaml_into_frontmatter(existing: dict, yaml_data: dict) -> tuple[dict, list[dict]]:
+    """Fusiona el YAML en los atributos. Ambos pasan por las reglas de atributos (alias y normalización), así
+    que se comparan ya normalizados. Si un atributo existe con otro valor, MANDA EL EXISTENTE.
 
-    El atributo existente manda; si hay conflicto de valor, se reporta.
-    Devuelve `(nuevo_frontmatter, reportados)`.
-
-    Cada reportado es `{"key", "yaml_value", "attribute_value", "reason"}`.
-    Aplica alias de claves: `title`→`titulo`, `description`→`descripcion`,
-    `etiquetas`→`tags`.
+    Devuelve `(nuevo_frontmatter, reportados)`; cada reportado es `{key, yaml_value, attribute_value, reason}`:
+    un valor del YAML que no se guardó (conflicto con el atributo, o no cabe en su atributo).
     """
-    from app.core.attribute_rules import migrate_frontmatter_detailed
-
-    new_fm = dict(existing)
-    reportados: list[dict] = []
-
-    # Mapeo de alias (YAML → atributo estándar)
-    alias_map = {
-        "title": "titulo",
-        "description": "descripcion",
-        "etiquetas": "tags",
-    }
-
-    # Procesar cada clave del YAML
-    for key, value in yaml_data.items():
-        # Aplicar alias
-        target_key = alias_map.get(key, key)
-
-        # Si el atributo ya existe, reportar conflicto (el existente manda)
-        if target_key in new_fm:
-            if new_fm[target_key] != value:
-                reportados.append(
-                    {
-                        "key": key,
-                        "yaml_value": value,
-                        "attribute_value": new_fm[target_key],
-                        "reason": f"Conflicto: atributo '{target_key}' ya existe con otro valor; se conserva el existente.",
-                    }
-                )
-            # El existente ya está en new_fm, no hacer nada
-        else:
-            # Agregar el atributo nuevo
-            new_fm[target_key] = value
-
-    # Aplicar reglas de migración de atributos
-    migrated_fm, dropped = migrate_frontmatter_detailed(new_fm)
-
-    # Fusionar los dropped con reportados si hay conflictos de validación
-    for item in dropped:
-        # Solo reportar si no es una conversión esperada
-        if item["reason"] != "la ruta ahora la calcula el sistema desde la ubicación de la nota":
-            reportados.append(item)
-
-    return migrated_fm, reportados
+    merged, existing_dropped = migrate_frontmatter_detailed(existing)
+    from_yaml, yaml_dropped = migrate_frontmatter_detailed(yaml_data)
+    reported: list[dict] = []
+    for key, value in from_yaml.items():
+        if key not in merged:
+            merged[key] = value
+        elif merged[key] != value:
+            reported.append({
+                "key": key, "yaml_value": value, "attribute_value": merged[key],
+                "reason": "el atributo ya existe con otro valor; se conserva el atributo",
+            })
+    for item in yaml_dropped:
+        reported.append({"key": item["key"], "yaml_value": item["value"], "attribute_value": None, "reason": item["reason"]})
+    for item in existing_dropped:
+        reported.append({"key": item["key"], "yaml_value": None, "attribute_value": item["value"],
+                         "reason": f"atributo existente descartado: {item['reason']}"})
+    return merged, reported
 
 
-def plan_note(doc: dict) -> Optional[dict]:
-    """C-5, C-8: Plan completo de migración de una nota.
+def plan_note(doc: dict) -> dict | None:
+    """Plan de migración de una nota, o `None` si nada que migrar (ni bloque YAML ni atributo `etiquetas`).
 
-    Devuelve un dict con `frontmatter_new`, `content_new`, `reportados`,
-    `validation_error`; o `None` si no hay YAML o la migración falla.
+    `{"ok": True, "frontmatter_new", "content_new", "reportados", "yaml_keys", "tiene_yaml"}` si es migrable, o
+    `{"ok": False, "motivo"}` si empieza por `---` pero no se puede migrar (la nota queda intacta).
     """
-    from app.core.attribute_rules import validate_general
-
-    content = doc.get("content", "")
-    frontmatter = doc.get("frontmatter", {})
-
-    # Intentar extraer YAML
-    yaml_data, rest = split_body_yaml(content)
-    if yaml_data is None:
-        # No hay YAML migrable
-        return None
-
-    # Fusionar YAML en frontmatter
-    new_fm, reportados = merge_yaml_into_frontmatter(frontmatter, yaml_data)
-
-    # Validar que el nuevo frontmatter sea válido
-    validation_error = validate_general(new_fm)
-    if validation_error:
-        # No hay plan: el frontmatter es inválido
-        return None
-
-    return {
-        "frontmatter_new": new_fm,
-        "content_new": rest,
-        "reportados": reportados,
-        "validation_error": None,
-    }
+    content = doc.get("content") or ""
+    existing = doc.get("frontmatter") or {}
+    data, rest = split_body_yaml(content)
+    has_yaml = data is not None
+    if data is None:
+        if rest != "no-empieza-por-yaml":
+            return {"ok": False, "motivo": rest}
+        if "etiquetas" not in existing:
+            return None
+        data, rest, has_yaml = {}, content, False  # C-5: solo hay que pasar el atributo `etiquetas` a `tags`
+    frontmatter, reported = merge_yaml_into_frontmatter(existing, data)
+    error = validate_general(frontmatter)
+    if error:
+        return {"ok": False, "motivo": f"frontmatter-invalido:{error}"}
+    return {"ok": True, "frontmatter_new": frontmatter, "content_new": rest, "reportados": reported,
+            "yaml_keys": list(data), "tiene_yaml": has_yaml}
