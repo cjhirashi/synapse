@@ -292,6 +292,33 @@ class NoteUpdate(BaseModel):
     frontmatter: dict | None = None
 
 
+class FolderMove(BaseModel):
+    """Cuerpo de `POST /vaults/{vault_id}/folders/move` (H-039): rutas de carpeta, sin `INDICE.md` ni nombre de archivo."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    from_: str = Field(alias="from", examples=["Proyectos/2025"])
+    to: str = Field(examples=["Archivo/Proyectos 2025"])
+
+
+class WikilinkRewriteOut(BaseModel):
+    notes: int
+    links: int
+    ambiguous: int
+    pending: int
+
+
+class FolderMoveOut(BaseModel):
+    """Resultado de mover una carpeta: notas movidas y wikilinks reescritos en la bóveda."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: str = Field(serialization_alias="from")
+    to: str
+    moved_notes: int
+    rewrite: WikilinkRewriteOut
+
+
 # --- API keys de agente (SPEC-0013) ---
 
 AgentKeyLabel = Annotated[

@@ -1,0 +1,150 @@
+"""Mover o renombrar una carpeta de una bóveda por la API (H-039).
+
+Fases (CouchDB no tiene transacciones entre documentos; ver `plan.md` §2 de H-039):
+1. Planificar, solo lectura: qué notas se mueven, a dónde, y si algo choca. Si algo falla aquí no se ha escrito nada.
+2. Mover nota por nota: reservar la ruta nueva, escribir sobre el `_rev` leído, liberar la vieja.
+3. Reescribir los wikilinks de la bóveda (`WikilinkRewriteService`).
+
+Reejecutar la misma operación es seguro: si `from` ya no tiene notas pero `to` sí, solo se completa la reescritura.
+"""
+from typing import NamedTuple
+
+from app.core.errors import (
+    FolderMoveInvalid, FolderNotFound, NotePathTaken as NotePathTakenProblem, RevisionConflict, ValidationFailed,
+    WikilinkRewriteConflict,
+)
+from app.core.index_rules import is_index_path
+from app.core.note_dates import stamp_dates, today_cdmx
+from app.core.note_rules import check_path, path_key
+from app.core.ports.vault_port import VaultPort
+from app.core.timestamps import utc_now
+from app.core.wikilink_rewrite import Rename
+from app.services.note_content_service import NoteContentService
+from app.services.note_service import NotePathTaken, NoteService
+from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewriteService
+
+_PAGE = 100
+
+
+class FolderMoveResult(NamedTuple):
+    from_: str
+    to: str
+    moved_notes: int
+    rewrite: RewriteReport
+
+
+def _segments(path: str) -> list[str]:
+    return path.split("/")
+
+
+def _under(path: str, folder: str) -> str | None:
+    """El resto de `path` por debajo de `folder` (comparando con `path_key` segmento a segmento), o `None`."""
+    n = len(_segments(folder))
+    parts = _segments(path)
+    if len(parts) > n and path_key("/".join(parts[:n])) == path_key(folder):
+        return "/".join(parts[n:])
+    return None
+
+
+class FolderService:
+    def __init__(self, port: VaultPort, db: str):
+        self._port = port
+        self._db = db
+        self._notes = NoteService(port, db)
+        self._contents = NoteContentService(port, db)
+
+    def move(self, vault_id: str, from_: str, to: str) -> FolderMoveResult:
+        self._contents.check_vault_active(vault_id)
+        for field, value in (("from", from_), ("to", to)):
+            if not value or check_path(f"{value}/INDICE.md") is not None:
+                raise FolderMoveInvalid(errors=[{"pointer": f"#/{field}", "detail": "validation-error:path"}])
+        if from_ == to:
+            return FolderMoveResult(from_, to, 0, RewriteReport())
+        if path_key(from_) != path_key(to) and _under(f"{to}/x", from_) is not None:
+            raise FolderMoveInvalid(errors=[{"pointer": "#/to", "detail": "folder-inside-itself"}])
+
+        live = self._live_notes(vault_id)
+        movers = [d for d in live if _under(d["path"], from_) is not None]
+        if not movers:
+            return self._repair(vault_id, live, from_, to)
+
+        mover_ids = {d["_id"] for d in movers}
+        taken = {path_key(d["path"]): d for d in live if d["_id"] not in mover_ids}
+        plan: list[tuple[dict, str | None]] = []  # (nota, ruta nueva; None = el INDICE sobrante se descarta)
+        for doc in movers:
+            new_path = f"{to}/{_under(doc['path'], from_)}"
+            if (code := check_path(new_path)) is not None:
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            holder = taken.get(path_key(new_path))
+            if holder is not None and is_index_path(new_path):
+                plan.append((doc, None))  # ya hay un INDICE en el destino: manda el del destino
+            elif holder is not None:
+                raise NotePathTakenProblem(f"{new_path!r} is already used by another note")
+            else:
+                plan.append((doc, new_path))
+
+        moved: dict[str, Rename] = {}
+        try:
+            for doc, new_path in plan:
+                if new_path is None:
+                    self._discard(doc)
+                    continue
+                self._move(doc, new_path)
+                moved[doc["_id"]] = Rename(doc["path"], new_path)
+        except NotePathTaken as error:
+            raise NotePathTakenProblem(str(error)) from None
+        except RevisionConflict as error:
+            raise WikilinkRewriteConflict(f"a moved note changed during the operation: {error}") from None
+
+        self._contents.ensure_indexes(vault_id, f"{to}/x.md")
+        # Notas que una corrida anterior interrumpida ya movió: sus enlaces se completan ahora.
+        moved_now = len(moved)
+        moved.update(self._already_moved(live, set(moved), from_, to))
+        report = WikilinkRewriteService(self._port, self._db).rewrite(vault_id, moved)
+        return FolderMoveResult(from_, to, moved_now, report)
+
+    def _live_notes(self, vault_id: str) -> list[dict]:
+        docs, after = [], None
+        while True:
+            page = self._port.list_notes(self._db, vault_id, False, _PAGE, after)
+            docs += [d for d in page if not d.get("deleted_at")]
+            if len(page) < _PAGE:
+                return docs
+            after = (page[-1]["created_at"], page[-1]["_id"])
+
+    @staticmethod
+    def _already_moved(live: list[dict], exclude: set[str], from_: str, to: str) -> dict[str, Rename]:
+        """Notas que ya están bajo `to` (no las movidas ahora), tratadas como si vinieran de `from`: reescribir
+        enlaces que ya apuntan a la ruta nueva no cambia nada, y los que seguían en la vieja se completan."""
+        return {
+            d["_id"]: Rename(f"{from_}/{rest}", d["path"])
+            for d in live
+            if d["_id"] not in exclude and not is_index_path(d["path"]) and (rest := _under(d["path"], to)) is not None
+        }
+
+    def _repair(self, vault_id: str, live: list[dict], from_: str, to: str) -> FolderMoveResult:
+        """`from` ya no tiene notas vivas: si `to` sí, se completa la reescritura que pudo quedar pendiente."""
+        moved = self._already_moved(live, set(), from_, to)
+        if not moved:
+            raise FolderNotFound(f"neither {from_!r} nor {to!r} has live notes")
+        report = WikilinkRewriteService(self._port, self._db).rewrite(vault_id, moved)
+        return FolderMoveResult(from_, to, 0, report)
+
+    def _move(self, doc: dict, new_path: str) -> None:
+        """Reserva la ruta nueva, escribe la nota sobre su `_rev` y libera la vieja."""
+        self._notes.reserve_path(doc["_id"], new_path)
+        try:
+            updated = {
+                **doc, "path": new_path, "updated_at": utc_now(),
+                "frontmatter": stamp_dates(doc.get("frontmatter"), today_cdmx(), doc.get("created_at")),
+            }
+            self._port.put(self._db, updated)
+        except RevisionConflict:
+            self._notes.release_path(doc["_id"], new_path)
+            raise
+        self._notes.release_path(doc["_id"], doc["path"])
+
+    def _discard(self, doc: dict) -> None:
+        """INDICE de origen cuyo destino ya tiene el suyo: va a la papelera."""
+        self._port.put(self._db, {**doc, "deleted_at": utc_now()})
+        self._notes.release_path(doc["_id"], doc["path"])

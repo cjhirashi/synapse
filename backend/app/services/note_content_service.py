@@ -258,6 +258,12 @@ class NoteContentService:
         if doc is None or doc.get("type") != "vault":
             raise VaultNotFound(f"vault:{vault_id} not found")
 
+    def check_vault_active(self, vault_id: str) -> None:
+        self._check_vault_active(vault_id)
+
+    def ensure_indexes(self, vault_id: str, path: str) -> None:
+        self._ensure_indexes(vault_id, path)
+
     def _check_vault_active(self, vault_id: str) -> None:
         """Como `_check_vault`, pero además exige que la bóveda no esté en la papelera
         (mismo chequeo que `sync_push.py::_check_vault_is_active`, C-10)."""
