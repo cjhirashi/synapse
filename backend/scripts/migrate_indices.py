@@ -40,14 +40,14 @@ def live_notes(port, db: str) -> dict[str, list[dict]]:
 
 
 def plan(port, db: str, doomed: set[str]) -> tuple[list[dict], dict[str, set[str]]]:
-    """(notas a borrar que siguen vivas, carpetas por bóveda que quedarán tras el borrado)."""
+    """(notas a borrar que siguen vivas, carpetas por bóveda). Las carpetas de las notas a borrar cuentan: tras la migración
+    cada una conserva su INDICE, así que ninguna carpeta desaparece al borrar sus README."""
     victims, folders = [], defaultdict(set)
     for vid, notes in live_notes(port, db).items():
         for doc in notes:
             if doc["_id"] in doomed:
                 victims.append(doc)
-            else:
-                folders[vid].add(folder_of(doc["path"]))
+            folders[vid].add(folder_of(doc["path"]))
     return victims, folders
 
 
@@ -63,8 +63,7 @@ def run(port, db: str, doomed: set[str], apply: bool) -> dict:
             service.delete(vid, nid, _etag(doc))
         except Exception as err:  # una nota no borrable no detiene el resto; queda en el informe
             report["rechazados"].append({"id": doc["_id"], "error": repr(err)})
-    _, remaining = plan(port, db, set())
-    for vid, notes_folders in remaining.items():
+    for vid, notes_folders in folders.items():
         for folder in notes_folders:
             service._ensure_indexes(vid, f"{folder}/x.md" if folder else "x.md")
     return report

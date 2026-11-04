@@ -25,7 +25,7 @@ def test_dry_run_reports_and_changes_nothing():
     port, docs = _setup()
     doomed = {docs["A/README.md"]["_id"], docs["B/README.md"]["_id"]}
     report = migrate.run(port, DB, doomed, apply=False)
-    assert report["a_borrar"] == 2 and report["carpetas"] == 2  # "" y "A" (B queda sin notas)
+    assert report["a_borrar"] == 2 and report["carpetas"] == 3  # "", "A" y "B" (B se conserva con su INDICE)
     assert len(_paths(port)) == 5
 
 
@@ -34,7 +34,7 @@ def test_apply_deletes_listed_notes_and_creates_one_index_per_folder():
     doomed = {docs["A/README.md"]["_id"], docs["B/README.md"]["_id"], docs["Sin título.md"]["_id"]}
     report = migrate.run(port, DB, doomed, apply=True)
     assert report["rechazados"] == []
-    assert _paths(port) == ["A/INDICE.md", "A/Nota.md", "INDICE.md", "Raiz.md"]
+    assert _paths(port) == ["A/INDICE.md", "A/Nota.md", "B/INDICE.md", "INDICE.md", "Raiz.md"]
     assert migrate.run(port, DB, set(), apply=True)["a_borrar"] == 0
     assert _paths(port).count("INDICE.md") == 1
 
