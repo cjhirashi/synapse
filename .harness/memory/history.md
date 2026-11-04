@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-11-04] H-031 corrección: enlaces de los INDICES que llevaban a otro destino
+
+- **Reporte de Carlos (2026-11-04):** en «1 - Proyectos AIRA» el enlace de navegación al padre llevaba al INDICE hermano `00 - AG - SKILLS`, y desde ese el enlace al padre no llevaba a ninguna parte.
+- **Causa:** `resolveWikiLink` resolvía un destino sin `/` (`INDICE.md`, o cualquier documento de la raíz) por nombre y devolvía el primero de la lista; el enlace a la raíz caía en el primer `INDICE.md` y, desde ese mismo índice, en sí mismo. Afectaba también a documentos de la raíz con homónimo en otra carpeta.
+- **Hecho:** `editor/wikilink.ts` da prioridad a la ruta completa exacta y nunca resuelve `INDICE.md` por nombre. Auditoría sobre los 1614 elementos de índice de producción (solo lectura) con el parser real del editor: 1 enlace roto por comillas invertidas en un nombre y 4 por carpetas sin INDICE. Los generadores (`index_body.py`, `indexBody.ts`) escapan ahora el Markdown de ruta y nombre (`\`, `` ` ``, `*`, `~`, `<`, `_` y `&` cuando hace falta) y emiten texto plano, sin enlace roto, cuando el nombre trae `[`, `]`, `|` en la ruta o `@`, `://`, `www.` (GFM los volvería autoenlace y el editor no reconocería el wikilink). Prueba nueva `notes/indexLinks.test.ts` (parser real, 3 órdenes de lista, nombres adversariales); falla con el resolutor anterior en 6 casos.
+- **Datos:** 4 carpetas sin INDICE (`02 PLANTILLAS` y `05 BITACORA` en Conocimientos de Carrera; `01 Plantillas` y `02 Bitácoras` en Carrera) creadas con `migrate_indices.py --ids []` (solo crea; 0 borrados); 0 carpetas sin INDICE y 0 rutas duplicadas después. **Causa de la ausencia no determinada** (se movieron notas a las 00:41 y 00:51 CDMX del 2026-11-04 y el registro del servidor de esa hora se perdió con el reinicio); sospecha: la creación del INDICE destino por el cliente fue rechazada al sincronizar (la cabecera de Carlos mostraba «67 cambios rechazados»). Pendiente de investigar.
+- **Aparte:** la bóveda `b758d434` (1 nota, otro usuario) no tiene INDICE raíz; no la toqué. Los e2e de H-025 (reproductor de YouTube) fallan también sin este cambio.
+- **Evidencia:** vitest 2567/2567, `tsc` limpio, pytest de índices 76/76, e2e H-031 2/2. Desplegado el 2026-11-04 (imagen previa `synapse-backend:pre-h031-enlaces`), `/health` 200.
+- **Modelos:** Sonnet (yo), sin subagentes.
+
 ## [2026-11-04] H-031 corrección: Subcarpetas y Documentos del INDICE como lista, no tabla
 
 - **Pedido de Carlos (2026-11-04):** la tabla del INDICE no le gustó; quiere una lista.
