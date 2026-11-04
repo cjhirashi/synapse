@@ -1062,3 +1062,23 @@ test("H-006 C-5: cambiar de bóveda (otra prop de color) actualiza el color de l
   expect(note).toHaveClass("note-tree-icon-note");
   expect(note.getAttribute("fill")).toBe("none");
 });
+
+test("H-031: al abrir el INDICE de una carpeta (o de la raíz) esa fila queda seleccionada y las demás no", async () => {
+  const { value, rerender, ui } = await setup(["Carpeta/Hoja.md", "Otra/X.md"], { indexes: true });
+  const indexOf = async (folder: string) => (await value.notes.list(VAULT)).find((n) => n.path === (folder ? `${folder}/INDICE.md` : "INDICE.md"))!;
+  const row = (name: string) => screen.findByRole("treeitem", { name });
+
+  rerender(ui(value, (await indexOf("Carpeta")).id));
+  expect(await row("Carpeta")).toHaveAttribute("aria-selected", "true");
+  expect(await row("Otra")).toHaveAttribute("aria-selected", "false");
+  expect(await row("Raíz")).toHaveAttribute("aria-selected", "false");
+
+  rerender(ui(value, (await indexOf("")).id));
+  expect(await row("Raíz")).toHaveAttribute("aria-selected", "true");
+  expect(await row("Carpeta")).toHaveAttribute("aria-selected", "false");
+
+  const hoja = (await value.notes.list(VAULT)).find((n) => n.path.endsWith("Hoja.md"))!;
+  rerender(ui(value, hoja.id));
+  expect(await row("Carpeta")).toHaveAttribute("aria-selected", "false");
+  expect(await row("Hoja")).toHaveAttribute("aria-selected", "true");
+});

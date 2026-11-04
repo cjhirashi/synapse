@@ -55,6 +55,12 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await expect(documents).toContainText("Doce propiedades");
     await expect(documents.getByRole("cell", { name: "Descripción", exact: true })).toBeVisible();
     await shot(page, `h031-${label}-1-indice`);
+    // La carpeta de su INDICE abierto queda seleccionada en el árbol, como una nota abierta.
+    await showSidebar(page);
+    await expect(tree(page).getByRole("treeitem", { name: "Propiedades", exact: true })).toHaveAttribute("aria-selected", "true");
+    await expect(tree(page).getByRole("treeitem", { name: "Mermaid", exact: true })).toHaveAttribute("aria-selected", "false");
+    await shot(page, `h031-${label}-1b-carpeta-seleccionada`);
+    await hideSidebar(page, size);
 
     // 3. Solo se edita la descripción, y se conserva tras recargar.
     const text = `Propiedades de ejemplo ${label}`;

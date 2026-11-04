@@ -29,7 +29,7 @@ import { useSync } from "../sync/useSync";
 import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
-import { indexPathFor } from "./indexRules";
+import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
@@ -238,6 +238,12 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     if (!open) return; // aún no llegó la lista: se reintenta con ella
     lastOpen.current = openId;
     setActiveFolder(parentFolder(open.path));
+  }, [items, openId]);
+
+  // Carpeta cuyo INDICE está abierto: su fila se marca como seleccionada, igual que la de una nota abierta.
+  const openIndexFolder = useMemo(() => {
+    const open = items?.find((item) => item.id === openId);
+    return open && isIndexPath(open.path) ? folderOf(open.path) : null;
   }, [items, openId]);
 
   const tree = useMemo(() => buildTree(items ?? []), [items]);
@@ -598,6 +604,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   type="button"
                   role="treeitem"
                   aria-expanded={open}
+                  aria-selected={openIndexFolder === node.path}
                   data-key={folderKey(node.path)}
                   tabIndex={tabbable === folderKey(node.path) ? 0 : -1}
                   onFocus={() => setFocusKey(folderKey(node.path))}
@@ -683,6 +690,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         tabIndex={tabbable === ROOT_KEY ? 0 : -1}
         onFocus={() => setFocusKey(ROOT_KEY)}
         aria-current={activeFolder === "" ? "true" : undefined}
+        aria-selected={openIndexFolder === ""}
         className="note-tree-row note-tree-folder note-tree-root"
         style={{ "--depth": 0 } as CSSProperties}
         data-drop-target={dropTargetKey === ROOT_KEY ? "true" : undefined}
