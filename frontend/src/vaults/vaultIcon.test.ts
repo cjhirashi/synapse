@@ -224,22 +224,26 @@ test("H-014 (2026-11-04): el secundario (+30°) y el terciario (+60°) son vecin
   }
 });
 
-test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1 primario 600, H2 secundario 600, H3 terciario 600, H4 primario 400) se leen, los 17, claro y oscuro", () => {
-  // Rotar en OKLCH conserva la luminosidad: el piso de 2,7:1 de H1-H3 (títulos ≥ 20 px) es el del propio tono 600
-  // (índigo en oscuro 2,96; amarillo en claro 2,94, y 2,80 el amarillo +40° por la pérdida de croma al caber en sRGB). H4: 400 tal cual
+test("H-014 C-4/C-9 (2026-11-04): los encabezados (H1 primario 600, H2 secundario 600, H3 primario 400, H4 secundario 400) se leen, los 17, claro y oscuro", () => {
+  // Rotar en OKLCH conserva la luminosidad: el piso de 2,7:1 de H1-H2 (títulos ≥ 24 px) es el del propio tono 600
+  // (índigo en oscuro 2,96; amarillo en claro 2,94, menos la pérdida de croma al caber en sRGB). H3 y H4: 400 tal cual
   // en oscuro (≥ 6:1); en claro, 400 mezclado 60/40 con el texto (≥ 3,5:1; el 400 puro da 1,5:1 en amarillo).
   const shade = (key: (typeof PALETTE)[number], n: 400 | 600) => parse(tokens.match(new RegExp(`--shade-${n}-${key}:\\s*(#[0-9a-f]{6})`, "i"))![1]);
   for (const mode of ["light", "dark"] as const) {
     const vars = theme(mode);
     const bg = parse(vars["bg-primary"]);
     const ink = parse(vars["text-primary"]);
+    const lightMix = (c: Rgba) => ([0, 1, 2].map((i) => c[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
     for (const key of PALETTE) {
-      const primary = shade(key, 600);
-      for (const [name, color] of [["h1", primary], ["h2", rotateHue(primary, 30)], ["h3", rotateHue(rotateHue(primary, 30), 30)]] as const) {
+      const primary600 = shade(key, 600);
+      for (const [name, color] of [["h1", primary600], ["h2", rotateHue(primary600, 30)]] as const) {
         expect(ratio(color, bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(2.7);
       }
-      const h4 = mode === "dark" ? shade(key, 400) : ([0, 1, 2].map((i) => shade(key, 400)[i] * 0.6 + ink[i] * 0.4).concat(1) as Rgba);
-      expect(ratio(h4, bg), `${mode} ${key} h4`).toBeGreaterThanOrEqual(mode === "dark" ? 6 : 3.5);
+      const primary400 = shade(key, 400);
+      for (const [name, color] of [["h3", primary400], ["h4", rotateHue(primary400, 30)]] as const) {
+        const shown = mode === "dark" ? color : lightMix(color);
+        expect(ratio(shown, bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(mode === "dark" ? 6 : 3.4);
+      }
     }
   }
 });

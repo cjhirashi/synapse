@@ -145,14 +145,16 @@ const editorCss = () => read("../editor/editor.css").replace(/\/\*[\s\S]*?\*\//g
 const colorOf = (css: string, selector: string) =>
   css.match(new RegExp(`${selector.replace(/[.[\]"=()*]/g, "\\$&")}\\s*\\{\\s*color:\\s*([^;]+);`))?.[1].trim();
 
-test("H-014 C-1…C-4 (2026-11-04): H1 primario 600, H2 secundario 600, H3 terciario 600, H4 primario 400 (mezclado con el texto en claro)", () => {
+test("H-014 C-1…C-4 (2026-11-04): H1 primario 600, H2 secundario 600, H3 primario 400, H4 secundario 400 (mezclados con el texto en claro)", () => {
   const css = editorCss();
   const h = (tag: string) => colorOf(css, `.milkdown-view .ProseMirror ${tag}`);
+  const themed = (mode: string, tag: string) => colorOf(css, `:root[data-theme="${mode}"] .milkdown-view .ProseMirror ${tag}`);
   expect(h("h1")).toBe("var(--vault-accent-600)");
   expect(h("h2")).toBe("var(--vault-secondary-600)");
-  expect(h("h3")).toBe("var(--vault-tertiary-600)");
-  expect(colorOf(css, ':root[data-theme="dark"] .milkdown-view .ProseMirror h4')).toBe("var(--vault-accent-400)");
-  expect(colorOf(css, ':root[data-theme="light"] .milkdown-view .ProseMirror h4')).toBe("color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary))");
+  expect(themed("dark", "h3")).toBe("var(--vault-accent-400)");
+  expect(themed("light", "h3")).toBe("color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary))");
+  expect(themed("dark", "h4")).toBe("var(--vault-secondary-400)");
+  expect(themed("light", "h4")).toBe("color-mix(in srgb, var(--vault-secondary-400) 60%, var(--text-primary))");
 });
 
 test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secundario diluido en el texto; negrita-cursiva = punto intermedio (--md-strongem)", () => {
@@ -294,13 +296,13 @@ test("UX-H6: el botón «…» de las migas lleva la clase note-crumb-more", () 
   expect(read("../editor/NoteBreadcrumb.tsx")).toMatch(/className="note-crumb note-crumb-more"/);
 });
 
-test("H-014 (2026-11-04): el secundario es el primario girado +30° y el terciario el secundario girado +30° (OKLCH), también en los tonos 600", () => {
+test("H-014 (2026-11-04): el secundario es el primario girado +30° y el terciario el secundario girado +30° (OKLCH), también en los tonos 600 y 400", () => {
   const block = rule(editorCss(), ".milkdown-view");
   const css = editorCss();
   const vars = css.match(/\.milkdown-view \{\s*--vault-secondary:[^}]*\}/)![0];
   expect(vars).toMatch(/--vault-secondary: oklch\(from var\(--vault-accent\) l c calc\(h \+ 30\)\)/);
   expect(vars).toMatch(/--vault-tertiary: oklch\(from var\(--vault-secondary\) l c calc\(h \+ 30\)\)/);
   expect(vars).toMatch(/--vault-secondary-600: oklch\(from var\(--vault-accent-600\) l c calc\(h \+ 30\)\)/);
-  expect(vars).toMatch(/--vault-tertiary-600: oklch\(from var\(--vault-secondary-600\) l c calc\(h \+ 30\)\)/);
+  expect(vars).toMatch(/--vault-secondary-400: oklch\(from var\(--vault-accent-400\) l c calc\(h \+ 30\)\)/);
   expect(block).toBeTruthy();
 });

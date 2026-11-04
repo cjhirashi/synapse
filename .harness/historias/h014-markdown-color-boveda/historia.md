@@ -382,3 +382,10 @@ color relativo de CSS (Chrome 119, Safari 16.4, Firefox 128). Verificado en Chro
 Carlos pidió que los vecinos estén a **30°**: secundario = primario +30° y terciario = secundario +30° (+60° del primario),
 misma rotación OKLCH de la enmienda (3). Los pisos de contraste y de separación de las pruebas se mantienen y se cumplen
 con 30° para los 17 colores, en claro y oscuro.
+
+## Enmienda 2026-11-04 (5): H3 primario 400 y H4 secundario 400
+
+Con la relación a 30° aprobada por Carlos, los encabezados quedan: H1 primario 600, H2 secundario 600, H3 primario 400 y
+H4 secundario 400 (el secundario es el primario girado +30° en OKLCH; `--vault-secondary-400` nuevo, `--vault-tertiary-600`
+retirado por sin uso). En el tema claro H3 y H4 se mezclan 60/40 con el texto (el 400 puro da 1,5:1 en amarillo); en oscuro van
+tal cual. El terciario sigue en enlaces, wikilinks y código. Verificado en Chromium (azul y naranja, claro y oscuro).

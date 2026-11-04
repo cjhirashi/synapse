@@ -948,7 +948,7 @@
   --vault-secondary: oklch(from var(--vault-accent) l c calc(h + 30));
   --vault-tertiary: oklch(from var(--vault-secondary) l c calc(h + 30));
   --vault-secondary-600: oklch(from var(--vault-accent-600) l c calc(h + 30));
-  --vault-tertiary-600: oklch(from var(--vault-secondary-600) l c calc(h + 30));
+  --vault-secondary-400: oklch(from var(--vault-accent-400) l c calc(h + 30));
 }
 
 /* Foco del editor (T-049, M-1): el contorno va en el contenedor, que tiene aire (padding compensado con margen
@@ -994,24 +994,27 @@
 }
 
 /* Color de los encabezados (cambio de Carlos 2026-11-04, supersede H-014 C-1…C-4): H1 con el primario de la
-   bóveda en tono 600, H2 con el secundario en 600, H3 con el terciario en 600 y H4 con el primario en 400.
-   Los tonos 400/600 de Tailwind (`--shade-*`, iguales en los dos temas) los publica `MilkdownView`. En el tema
-   claro el 400 es demasiado pálido sobre blanco (1,5:1 en amarillo), así que ahí H4 se mezcla 60/40 con el
-   texto para llegar a ≥ 3,6:1; en oscuro va tal cual. */
+   bóveda en tono 600, H2 con el secundario en 600, H3 con el primario en 400 y H4 con el secundario en 400.
+   Los tonos 400/600 de Tailwind (`--shade-*`, iguales en los dos temas) los publica `MilkdownView`; el
+   secundario es el primario girado +30°. En el tema claro el 400 es demasiado pálido sobre blanco (1,5:1 en
+   amarillo), así que ahí H3 y H4 se mezclan 60/40 con el texto para llegar a ≥ 3,5:1; en oscuro van tal cual. */
 .milkdown-view .ProseMirror h1 {
   color: var(--vault-accent-600);
 }
 .milkdown-view .ProseMirror h2 {
   color: var(--vault-secondary-600);
 }
-.milkdown-view .ProseMirror h3 {
-  color: var(--vault-tertiary-600);
-}
-:root[data-theme="dark"] .milkdown-view .ProseMirror h4 {
+:root[data-theme="dark"] .milkdown-view .ProseMirror h3 {
   color: var(--vault-accent-400);
 }
-:root[data-theme="light"] .milkdown-view .ProseMirror h4 {
+:root[data-theme="light"] .milkdown-view .ProseMirror h3 {
   color: color-mix(in srgb, var(--vault-accent-400) 60%, var(--text-primary));
+}
+:root[data-theme="dark"] .milkdown-view .ProseMirror h4 {
+  color: var(--vault-secondary-400);
+}
+:root[data-theme="light"] .milkdown-view .ProseMirror h4 {
+  color: color-mix(in srgb, var(--vault-secondary-400) 60%, var(--text-primary));
 }
 
 /* H-014 (C-5): negrita y cursiva con el color SECUNDARIO (análogo) de la bóveda (`--vault-secondary`), para
