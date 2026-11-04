@@ -80,7 +80,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `index-readonly:content|attr|path|delete`, `index-root:delete`). Un INDICE sólo admite editar `descripcion` y se borra
   únicamente con su carpeta; el de la raíz nunca. Las usan `note_content_service.py` y `sync_push.py`; las espeja
   `frontend/src/notes/indexRules.ts` sobre `tests/fixtures/indice_cuerpo.json`.
-- `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con tablas META):
+- `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.

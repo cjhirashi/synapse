@@ -1,328 +1,643 @@
 {
- "_doc": "H-031: especificación compartida de los INDICES automáticos. La implementan backend (Python) y frontend (TypeScript); ambos deben pasar TODOS estos casos. `generate` fija el cuerpo que se genera al leer un INDICE: entrada `{vault, folder, notes, extra?}` y salida `body_lines` (el cuerpo es `body_lines` unidas con salto de línea más un salto final). `notes` son TODAS las notas vivas de la bóveda (incluidos los INDICE.md), cada una `{path, frontmatter}`. `folder` es la ruta de la carpeta (`\"\"` = raíz de la bóveda). `reserved_names`, `titles` y `rules` fijan el nombre reservado, el título derivado y las reglas de protección.",
- "limits": {
-  "descripcion_celda_max": 80
- },
- "index_name": "INDICE.md",
- "generate_rules": [
-  "Nombre de la carpeta = último segmento de `folder`; en la raíz, el nombre de la bóveda. El cuerpo empieza con `# <nombre>`.",
-  "Secciones en este orden, cada una precedida de una línea en blanco: `## Navegación` (sólo si `folder` no es la raíz), `## Subcarpetas`, `## Documentos`.",
-  "Navegación: una línea `- [[<carpeta padre>/INDICE.md\\|<nombre del padre>]]`; si el padre es la raíz, el destino es `INDICE.md` y el nombre es el de la bóveda.",
-  "Subcarpetas: las carpetas hijas directas de `folder`. Una carpeta hija existe si hay al menos una nota viva en cualquier nivel por debajo de ella, tenga o no su INDICE.md. Se ordenan por la clave del nombre (NFKC + casefold) comparada por puntos de código. Sin hijas: la línea `_Sin subcarpetas._`.",
-  "Documentos: las notas que cuelgan directamente de `folder`, sin contar INDICE.md (clave NFKC + casefold igual a `indice.md`; `ÍNDICE.md` con acento sí cuenta como documento). Se ordenan por la clave del nombre de archivo sin `.md`, por puntos de código. Sin documentos: la línea `_Sin documentos._`.",
-  "Cada sección con filas es una tabla GFM: encabezado `| <Carpeta o Documento> | Descripción | Estado | Tags | Actualizado |` (más una columna por clave de `extra`, con la clave como encabezado), línea `|---|---|---|---|---|` (un `---` por columna) y una fila por elemento. Una fila es `|` más cada celda como espacio, contenido, espacio, separadas y cerradas por `|`; una celda vacía queda como dos espacios.",
-  "Primera celda: wikilink `[[<ruta completa con .md>\\|<texto>]]`. Texto de una carpeta = su nombre; texto de un documento = `frontmatter.titulo` si es texto no vacío, si no el nombre de archivo sin `.md`. Si la ruta o el texto contienen `[` o `]` no se emite wikilink: la celda es el texto plano.",
-  "Metadatos de una carpeta = frontmatter de su INDICE.md (vacíos si no existe). Metadatos de un documento = su frontmatter. Descripción = `descripcion` si es texto; Estado = `estado` si es texto; Tags = `tags` si es lista de textos, unidos con `, `; Actualizado = `fecha_actualizacion` si es texto. Un valor de otro tipo deja la celda vacía.",
-  "Columnas `extra` (sólo las pide la interfaz): texto tal cual, número con su forma decimal, booleano como `true`/`false`, lista de textos unida con `, `; cualquier otro tipo o clave ausente deja la celda vacía.",
-  "Toda celda: los espacios en blanco consecutivos (incluidos saltos de línea y tabuladores) pasan a un solo espacio y se recortan los extremos; `|` pasa a `\\|`. La descripción se corta a `descripcion_celda_max` puntos de código y, si era más larga, se le añade `…`.",
-  "Las notas no vivas (borradas) no llegan a la entrada: el generador no las filtra."
- ],
- "generate": [
-  {
-   "name": "raiz-con-hijos",
-   "vault": "Proyectos",
-   "folder": "",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {"descripcion": "Bóveda de proyectos de Carlos."}},
-    {"path": "Bienvenida.md", "frontmatter": {"titulo": "Bienvenida", "descripcion": "Primera nota", "estado": "aprobado", "tags": ["inicio", "guia"], "fecha_actualizacion": "2026-11-03"}},
-    {"path": "Synapse/INDICE.md", "frontmatter": {"descripcion": "Almacén de bóvedas"}},
-    {"path": "Synapse/Notas/INDICE.md", "frontmatter": {}},
-    {"path": "Synapse/Notas/Plan.md", "frontmatter": {}},
-    {"path": "Hira/INDICE.md", "frontmatter": {"descripcion": "SCADA moderno", "estado": "en implementación"}},
-    {"path": "Hira/Spec.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# Proyectos",
-    "",
-    "## Subcarpetas",
-    "",
-    "| Carpeta | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Hira/INDICE.md\\|Hira]] | SCADA moderno | en implementación |  |  |",
-    "| [[Synapse/INDICE.md\\|Synapse]] | Almacén de bóvedas |  |  |  |",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Bienvenida.md\\|Bienvenida]] | Primera nota | aprobado | inicio, guia | 2026-11-03 |"
-   ]
+  "_doc": "H-031: especificación compartida de los INDICES automáticos. La implementan backend (Python) y frontend (TypeScript); ambos deben pasar TODOS estos casos. `generate` fija el cuerpo que se genera al leer un INDICE: entrada `{vault, folder, notes, extra?}` y salida `body_lines` (el cuerpo es `body_lines` unidas con salto de línea más un salto final). `notes` son TODAS las notas vivas de la bóveda (incluidos los INDICE.md), cada una `{path, frontmatter}`. `folder` es la ruta de la carpeta (`\"\"` = raíz de la bóveda). `reserved_names`, `titles` y `rules` fijan el nombre reservado, el título derivado y las reglas de protección.",
+  "limits": {
+    "descripcion_max": 80
   },
-  {
-   "name": "carpeta-anidada-con-padre",
-   "vault": "Proyectos",
-   "folder": "Synapse/Notas",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "Synapse/INDICE.md", "frontmatter": {"descripcion": "Almacén de bóvedas"}},
-    {"path": "Synapse/Otra.md", "frontmatter": {}},
-    {"path": "Synapse/Notas/INDICE.md", "frontmatter": {"descripcion": "Notas del proyecto"}},
-    {"path": "Synapse/Notas/Plan.md", "frontmatter": {"titulo": "Plan de H-031", "descripcion": "Plan del slice", "estado": "borrador", "tags": ["h-031", "indices"], "fecha_actualizacion": "2026-11-03"}},
-    {"path": "Synapse/Notas/b.md", "frontmatter": {}},
-    {"path": "Synapse/Notas/A.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# Notas",
-    "",
-    "## Navegación",
-    "",
-    "- [[Synapse/INDICE.md\\|Synapse]]",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Synapse/Notas/A.md\\|A]] |  |  |  |  |",
-    "| [[Synapse/Notas/b.md\\|b]] |  |  |  |  |",
-    "| [[Synapse/Notas/Plan.md\\|Plan de H-031]] | Plan del slice | borrador | h-031, indices | 2026-11-03 |"
-   ]
-  },
-  {
-   "name": "carpeta-sin-documentos-ni-hijas",
-   "vault": "Proyectos",
-   "folder": "Vacia",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "Vacia/INDICE.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# Vacia",
-    "",
-    "## Navegación",
-    "",
-    "- [[INDICE.md\\|Proyectos]]",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "_Sin documentos._"
-   ]
-  },
-  {
-   "name": "raiz-sin-notas",
-   "vault": "Vacía",
-   "folder": "",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# Vacía",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "_Sin documentos._"
-   ]
-  },
-  {
-   "name": "acentos-espacios-y-orden-por-puntos-de-codigo",
-   "vault": "Inglés",
-   "folder": "",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "Zeta/INDICE.md", "frontmatter": {"descripcion": "Última"}},
-    {"path": "álgebra/INDICE.md", "frontmatter": {}},
-    {"path": "Beta uno/INDICE.md", "frontmatter": {}},
-    {"path": "Beta/x.md", "frontmatter": {}},
-    {"path": "Año nuevo.md", "frontmatter": {}},
-    {"path": "zorro.md", "frontmatter": {"titulo": "Zorro rápido"}},
-    {"path": "Ñandú.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# Inglés",
-    "",
-    "## Subcarpetas",
-    "",
-    "| Carpeta | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Beta/INDICE.md\\|Beta]] |  |  |  |  |",
-    "| [[Beta uno/INDICE.md\\|Beta uno]] |  |  |  |  |",
-    "| [[Zeta/INDICE.md\\|Zeta]] | Última |  |  |  |",
-    "| [[álgebra/INDICE.md\\|álgebra]] |  |  |  |  |",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Año nuevo.md\\|Año nuevo]] |  |  |  |  |",
-    "| [[zorro.md\\|Zorro rápido]] |  |  |  |  |",
-    "| [[Ñandú.md\\|Ñandú]] |  |  |  |  |"
-   ]
-  },
-  {
-   "name": "celdas-escapes-topes-y-tipos-invalidos",
-   "vault": "V",
-   "folder": "",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "Notas.md", "frontmatter": {"descripcion": "a | b\nsegunda línea", "estado": "en proceso"}},
-    {"path": "Tarea [x].md", "frontmatter": {}},
-    {"path": "Titulo.md", "frontmatter": {"titulo": "Mide 5 | 6"}},
-    {"path": "Largo80.md", "frontmatter": {"descripcion": "01234567890123456789012345678901234567890123456789012345678901234567890123456789"}},
-    {"path": "Largo81.md", "frontmatter": {"descripcion": "01234567890123456789012345678901234567890123456789012345678901234567890123456789X"}},
-    {"path": "Tipos.md", "frontmatter": {"descripcion": 5, "tags": "no-lista", "estado": 7}}
-   ],
-   "body_lines": [
-    "# V",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[Largo80.md\\|Largo80]] | 01234567890123456789012345678901234567890123456789012345678901234567890123456789 |  |  |  |",
-    "| [[Largo81.md\\|Largo81]] | 01234567890123456789012345678901234567890123456789012345678901234567890123456789… |  |  |  |",
-    "| [[Notas.md\\|Notas]] | a \\| b segunda línea | en proceso |  |  |",
-    "| Tarea [x] |  |  |  |  |",
-    "| [[Tipos.md\\|Tipos]] |  |  |  |  |",
-    "| [[Titulo.md\\|Mide 5 \\| 6]] |  |  |  |  |"
-   ]
-  },
-  {
-   "name": "columnas-extra-de-la-interfaz",
-   "vault": "V",
-   "folder": "",
-   "extra": ["prioridad", "dueno"],
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "A.md", "frontmatter": {"prioridad": "alta", "dueno": ["ana", "luis"]}},
-    {"path": "B.md", "frontmatter": {"prioridad": 3}},
-    {"path": "C.md", "frontmatter": {}},
-    {"path": "D.md", "frontmatter": {"prioridad": true}}
-   ],
-   "body_lines": [
-    "# V",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado | prioridad | dueno |",
-    "|---|---|---|---|---|---|---|",
-    "| [[A.md\\|A]] |  |  |  |  | alta | ana, luis |",
-    "| [[B.md\\|B]] |  |  |  |  | 3 |  |",
-    "| [[C.md\\|C]] |  |  |  |  |  |  |",
-    "| [[D.md\\|D]] |  |  |  |  | true |  |"
-   ]
-  },
-  {
-   "name": "indice-con-acento-es-documento-normal",
-   "vault": "V",
-   "folder": "",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "ÍNDICE.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# V",
-    "",
-    "## Subcarpetas",
-    "",
-    "_Sin subcarpetas._",
-    "",
-    "## Documentos",
-    "",
-    "| Documento | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[ÍNDICE.md\\|ÍNDICE]] |  |  |  |  |"
-   ]
-  },
-  {
-   "name": "hija-que-existe-solo-por-notas-profundas",
-   "vault": "V",
-   "folder": "A",
-   "notes": [
-    {"path": "INDICE.md", "frontmatter": {}},
-    {"path": "A/B/C/Nota.md", "frontmatter": {}}
-   ],
-   "body_lines": [
-    "# A",
-    "",
-    "## Navegación",
-    "",
-    "- [[INDICE.md\\|V]]",
-    "",
-    "## Subcarpetas",
-    "",
-    "| Carpeta | Descripción | Estado | Tags | Actualizado |",
-    "|---|---|---|---|---|",
-    "| [[A/B/INDICE.md\\|B]] |  |  |  |  |",
-    "",
-    "## Documentos",
-    "",
-    "_Sin documentos._"
-   ]
-  }
- ],
- "reserved_names": {
-  "rule": "Un nombre de archivo (último segmento de la ruta) está reservado si su clave NFKC + casefold (path_key) es `indice.md`. Aplica a cualquier carpeta; `ÍNDICE.md` con acento y los nombres que sólo contienen la palabra no están reservados.",
-  "cases": [
-   ["INDICE.md", true],
-   ["indice.md", true],
-   ["Indice.md", true],
-   ["INDICE.MD", true],
-   ["Synapse/Notas/INDICE.md", true],
-   ["ＩＮＤＩＣＥ.md", true],
-   ["ÍNDICE.md", false],
-   ["Mi INDICE.md", false],
-   ["INDICE.md.md", false],
-   ["INDICE", false],
-   ["INDICE.md/Nota.md", false],
-   ["README.md", false]
-  ]
- },
- "titles": {
-  "rule": "El título de un INDICE no se guarda: es el nombre de su carpeta (último segmento) o, en la raíz, el nombre de la bóveda.",
-  "cases": [
-   {"vault": "Proyectos", "path": "INDICE.md", "title": "Proyectos"},
-   {"vault": "Proyectos", "path": "Synapse/INDICE.md", "title": "Synapse"},
-   {"vault": "Proyectos", "path": "A/B c/INDICE.md", "title": "B c"}
-  ]
- },
- "rules": {
-  "_doc": "Reglas de protección (servidor y cliente). `other_live_below_after`: notas vivas, distintas del INDICE, que quedan por debajo de su carpeta al final de la operación. `changed`: claves del frontmatter que la operación cambia respecto de lo guardado; `content_changed`: si cambia el contenido. `code` es el rechazo (null si pasa). La creación y el borrado automáticos al crear o borrar la carpeta (op `system_create`) siempre pasa. Operaciones: `create_user` (REST: un agente o usuario crea la nota), `system_create` (el servidor o la app crean el INDICE de una carpeta), `rename_or_move` (`path` es la ruta actual y `to` la nueva), `edit`, `delete`.",
-  "codes": [
-   "reserved-name:path",
-   "index-readonly:content",
-   "index-readonly:attr",
-   "index-readonly:path",
-   "index-readonly:delete",
-   "index-root:delete"
+  "index_name": "INDICE.md",
+  "generate_rules": [
+    "Nombre de la carpeta = último segmento de `folder`; en la raíz, el nombre de la bóveda. El cuerpo empieza con `# <nombre>`.",
+    "Secciones en este orden, cada una precedida de una línea en blanco: `## Navegación` (sólo si `folder` no es la raíz), `## Subcarpetas`, `## Documentos`.",
+    "Navegación: una línea `- [[<carpeta padre>/INDICE.md\\|<nombre del padre>]]`; si el padre es la raíz, el destino es `INDICE.md` y el nombre es el de la bóveda.",
+    "Subcarpetas: las carpetas hijas directas de `folder`. Una carpeta hija existe si hay al menos una nota viva en cualquier nivel por debajo de ella, tenga o no su INDICE.md. Se ordenan por la clave del nombre (NFKC + casefold) comparada por puntos de código. Sin hijas: la línea `_Sin subcarpetas._`.",
+    "Documentos: las notas que cuelgan directamente de `folder`, sin contar INDICE.md (clave NFKC + casefold igual a `indice.md`; `ÍNDICE.md` con acento sí cuenta como documento). Se ordenan por la clave del nombre de archivo sin `.md`, por puntos de código. Sin documentos: la línea `_Sin documentos._`.",
+    "Cada sección con elementos es una lista de Markdown, un elemento por línea: `- ` más el enlace; si el elemento tiene partes con valor, a continuación ` — ` y las partes unidas con ` · `. Las partes, en este orden y sólo las que tienen valor: la descripción (sin etiqueta), `Estado: <valor>`, `Tags: <valor>`, `Actualizado: <valor>` y, por cada clave de `extra` en su orden, `<clave>: <valor>`. Un elemento sin ninguna parte es sólo `- <enlace>`.",
+    "Enlace: wikilink `[[<ruta completa con .md>\\|<texto>]]`. Texto de una carpeta = su nombre; texto de un documento = `frontmatter.titulo` si es texto no vacío, si no el nombre de archivo sin `.md`. Si la ruta o el texto contienen `[` o `]` no se emite wikilink: el enlace es el texto plano, sin escapar.",
+    "Metadatos de una carpeta = frontmatter de su INDICE.md (vacíos si no existe). Metadatos de un documento = su frontmatter. Descripción = `descripcion` si es texto; Estado = `estado` si es texto; Tags = `tags` si es lista de textos, unidos con `, `; Actualizado = `fecha_actualizacion` si es texto. Un valor de otro tipo omite la parte.",
+    "Partes `extra` de columnas `extra` (sólo las pide la interfaz): texto tal cual, número con su forma decimal, booleano como `true`/`false`, lista de textos unida con `, `; cualquier otro tipo o clave ausente omite la parte.",
+    "Todo valor: los espacios en blanco consecutivos (incluidos saltos de línea y tabuladores) pasan a un solo espacio y se recortan los extremos; un valor vacío tras ese recorte se omite. En el texto del enlace, `|` pasa a `\\|` (porque `\\|` separa ruta y texto); en las demás partes `|` se deja tal cual. La descripción se corta a `descripcion_max` puntos de código y, si era más larga, se le añade `…`.",
+    "Las notas no vivas (borradas) no llegan a la entrada: el generador no las filtra."
   ],
-  "cases": [
-   {"op": "create_user", "path": "INDICE.md", "code": "reserved-name:path"},
-   {"op": "create_user", "path": "Synapse/indice.md", "code": "reserved-name:path"},
-   {"op": "create_user", "path": "Synapse/ÍNDICE.md", "code": null},
-   {"op": "system_create", "path": "Synapse/INDICE.md", "code": null},
-   {"op": "rename_or_move", "path": "Synapse/Nota.md", "to": "Synapse/INDICE.md", "code": "reserved-name:path"},
-   {"op": "rename_or_move", "path": "Synapse/INDICE.md", "to": "Otra/INDICE.md", "code": "index-readonly:path"},
-   {"op": "rename_or_move", "path": "Synapse/Nota.md", "to": "Synapse/Nota2.md", "code": null},
-   {"op": "rename_or_move", "path": "INDICE.md", "to": "Raiz.md", "code": "index-readonly:path"},
-   {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["descripcion"], "content_changed": false, "code": null},
-   {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["descripcion", "estado"], "content_changed": false, "code": "index-readonly:attr"},
-   {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["titulo"], "content_changed": false, "code": "index-readonly:attr"},
-   {"op": "edit", "path": "Synapse/INDICE.md", "changed": ["tags"], "content_changed": false, "code": "index-readonly:attr"},
-   {"op": "edit", "path": "Synapse/INDICE.md", "changed": [], "content_changed": true, "code": "index-readonly:content"},
-   {"op": "edit", "path": "INDICE.md", "changed": ["descripcion"], "content_changed": false, "code": null},
-   {"op": "delete", "path": "Synapse/INDICE.md", "other_live_below_after": 3, "code": "index-readonly:delete"},
-   {"op": "delete", "path": "Synapse/INDICE.md", "other_live_below_after": 0, "code": null},
-   {"op": "delete", "path": "INDICE.md", "other_live_below_after": 0, "code": "index-root:delete"},
-   {"op": "delete", "path": "INDICE.md", "other_live_below_after": 5, "code": "index-root:delete"}
-  ]
- }
+  "generate": [
+    {
+      "name": "raiz-con-hijos",
+      "vault": "Proyectos",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {
+            "descripcion": "Bóveda de proyectos de Carlos."
+          }
+        },
+        {
+          "path": "Bienvenida.md",
+          "frontmatter": {
+            "titulo": "Bienvenida",
+            "descripcion": "Primera nota",
+            "estado": "aprobado",
+            "tags": [
+              "inicio",
+              "guia"
+            ],
+            "fecha_actualizacion": "2026-11-03"
+          }
+        },
+        {
+          "path": "Synapse/INDICE.md",
+          "frontmatter": {
+            "descripcion": "Almacén de bóvedas"
+          }
+        },
+        {
+          "path": "Synapse/Notas/INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Synapse/Notas/Plan.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Hira/INDICE.md",
+          "frontmatter": {
+            "descripcion": "SCADA moderno",
+            "estado": "en implementación"
+          }
+        },
+        {
+          "path": "Hira/Spec.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# Proyectos",
+        "",
+        "## Subcarpetas",
+        "",
+        "- [[Hira/INDICE.md\\|Hira]] — SCADA moderno · Estado: en implementación",
+        "- [[Synapse/INDICE.md\\|Synapse]] — Almacén de bóvedas",
+        "",
+        "## Documentos",
+        "",
+        "- [[Bienvenida.md\\|Bienvenida]] — Primera nota · Estado: aprobado · Tags: inicio, guia · Actualizado: 2026-11-03"
+      ]
+    },
+    {
+      "name": "carpeta-anidada-con-padre",
+      "vault": "Proyectos",
+      "folder": "Synapse/Notas",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Synapse/INDICE.md",
+          "frontmatter": {
+            "descripcion": "Almacén de bóvedas"
+          }
+        },
+        {
+          "path": "Synapse/Otra.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Synapse/Notas/INDICE.md",
+          "frontmatter": {
+            "descripcion": "Notas del proyecto"
+          }
+        },
+        {
+          "path": "Synapse/Notas/Plan.md",
+          "frontmatter": {
+            "titulo": "Plan de H-031",
+            "descripcion": "Plan del slice",
+            "estado": "borrador",
+            "tags": [
+              "h-031",
+              "indices"
+            ],
+            "fecha_actualizacion": "2026-11-03"
+          }
+        },
+        {
+          "path": "Synapse/Notas/b.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Synapse/Notas/A.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# Notas",
+        "",
+        "## Navegación",
+        "",
+        "- [[Synapse/INDICE.md\\|Synapse]]",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "- [[Synapse/Notas/A.md\\|A]]",
+        "- [[Synapse/Notas/b.md\\|b]]",
+        "- [[Synapse/Notas/Plan.md\\|Plan de H-031]] — Plan del slice · Estado: borrador · Tags: h-031, indices · Actualizado: 2026-11-03"
+      ]
+    },
+    {
+      "name": "carpeta-sin-documentos-ni-hijas",
+      "vault": "Proyectos",
+      "folder": "Vacia",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Vacia/INDICE.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# Vacia",
+        "",
+        "## Navegación",
+        "",
+        "- [[INDICE.md\\|Proyectos]]",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "_Sin documentos._"
+      ]
+    },
+    {
+      "name": "raiz-sin-notas",
+      "vault": "Vacía",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# Vacía",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "_Sin documentos._"
+      ]
+    },
+    {
+      "name": "acentos-espacios-y-orden-por-puntos-de-codigo",
+      "vault": "Inglés",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Zeta/INDICE.md",
+          "frontmatter": {
+            "descripcion": "Última"
+          }
+        },
+        {
+          "path": "álgebra/INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Beta uno/INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Beta/x.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Año nuevo.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "zorro.md",
+          "frontmatter": {
+            "titulo": "Zorro rápido"
+          }
+        },
+        {
+          "path": "Ñandú.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# Inglés",
+        "",
+        "## Subcarpetas",
+        "",
+        "- [[Beta/INDICE.md\\|Beta]]",
+        "- [[Beta uno/INDICE.md\\|Beta uno]]",
+        "- [[Zeta/INDICE.md\\|Zeta]] — Última",
+        "- [[álgebra/INDICE.md\\|álgebra]]",
+        "",
+        "## Documentos",
+        "",
+        "- [[Año nuevo.md\\|Año nuevo]]",
+        "- [[zorro.md\\|Zorro rápido]]",
+        "- [[Ñandú.md\\|Ñandú]]"
+      ]
+    },
+    {
+      "name": "celdas-escapes-topes-y-tipos-invalidos",
+      "vault": "V",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Notas.md",
+          "frontmatter": {
+            "descripcion": "a | b\nsegunda línea",
+            "estado": "en proceso"
+          }
+        },
+        {
+          "path": "Tarea [x].md",
+          "frontmatter": {}
+        },
+        {
+          "path": "Titulo.md",
+          "frontmatter": {
+            "titulo": "Mide 5 | 6"
+          }
+        },
+        {
+          "path": "Largo80.md",
+          "frontmatter": {
+            "descripcion": "01234567890123456789012345678901234567890123456789012345678901234567890123456789"
+          }
+        },
+        {
+          "path": "Largo81.md",
+          "frontmatter": {
+            "descripcion": "01234567890123456789012345678901234567890123456789012345678901234567890123456789X"
+          }
+        },
+        {
+          "path": "Tipos.md",
+          "frontmatter": {
+            "descripcion": 5,
+            "tags": "no-lista",
+            "estado": 7
+          }
+        }
+      ],
+      "body_lines": [
+        "# V",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "- [[Largo80.md\\|Largo80]] — 01234567890123456789012345678901234567890123456789012345678901234567890123456789",
+        "- [[Largo81.md\\|Largo81]] — 01234567890123456789012345678901234567890123456789012345678901234567890123456789…",
+        "- [[Notas.md\\|Notas]] — a | b segunda línea · Estado: en proceso",
+        "- Tarea [x]",
+        "- [[Tipos.md\\|Tipos]]",
+        "- [[Titulo.md\\|Mide 5 \\| 6]]"
+      ]
+    },
+    {
+      "name": "columnas-extra-de-la-interfaz",
+      "vault": "V",
+      "folder": "",
+      "extra": [
+        "prioridad",
+        "dueno"
+      ],
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "A.md",
+          "frontmatter": {
+            "prioridad": "alta",
+            "dueno": [
+              "ana",
+              "luis"
+            ]
+          }
+        },
+        {
+          "path": "B.md",
+          "frontmatter": {
+            "prioridad": 3
+          }
+        },
+        {
+          "path": "C.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "D.md",
+          "frontmatter": {
+            "prioridad": true
+          }
+        }
+      ],
+      "body_lines": [
+        "# V",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "- [[A.md\\|A]] — prioridad: alta · dueno: ana, luis",
+        "- [[B.md\\|B]] — prioridad: 3",
+        "- [[C.md\\|C]]",
+        "- [[D.md\\|D]] — prioridad: true"
+      ]
+    },
+    {
+      "name": "indice-con-acento-es-documento-normal",
+      "vault": "V",
+      "folder": "",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "ÍNDICE.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# V",
+        "",
+        "## Subcarpetas",
+        "",
+        "_Sin subcarpetas._",
+        "",
+        "## Documentos",
+        "",
+        "- [[ÍNDICE.md\\|ÍNDICE]]"
+      ]
+    },
+    {
+      "name": "hija-que-existe-solo-por-notas-profundas",
+      "vault": "V",
+      "folder": "A",
+      "notes": [
+        {
+          "path": "INDICE.md",
+          "frontmatter": {}
+        },
+        {
+          "path": "A/B/C/Nota.md",
+          "frontmatter": {}
+        }
+      ],
+      "body_lines": [
+        "# A",
+        "",
+        "## Navegación",
+        "",
+        "- [[INDICE.md\\|V]]",
+        "",
+        "## Subcarpetas",
+        "",
+        "- [[A/B/INDICE.md\\|B]]",
+        "",
+        "## Documentos",
+        "",
+        "_Sin documentos._"
+      ]
+    }
+  ],
+  "reserved_names": {
+    "rule": "Un nombre de archivo (último segmento de la ruta) está reservado si su clave NFKC + casefold (path_key) es `indice.md`. Aplica a cualquier carpeta; `ÍNDICE.md` con acento y los nombres que sólo contienen la palabra no están reservados.",
+    "cases": [
+      [
+        "INDICE.md",
+        true
+      ],
+      [
+        "indice.md",
+        true
+      ],
+      [
+        "Indice.md",
+        true
+      ],
+      [
+        "INDICE.MD",
+        true
+      ],
+      [
+        "Synapse/Notas/INDICE.md",
+        true
+      ],
+      [
+        "ＩＮＤＩＣＥ.md",
+        true
+      ],
+      [
+        "ÍNDICE.md",
+        false
+      ],
+      [
+        "Mi INDICE.md",
+        false
+      ],
+      [
+        "INDICE.md.md",
+        false
+      ],
+      [
+        "INDICE",
+        false
+      ],
+      [
+        "INDICE.md/Nota.md",
+        false
+      ],
+      [
+        "README.md",
+        false
+      ]
+    ]
+  },
+  "titles": {
+    "rule": "El título de un INDICE no se guarda: es el nombre de su carpeta (último segmento) o, en la raíz, el nombre de la bóveda.",
+    "cases": [
+      {
+        "vault": "Proyectos",
+        "path": "INDICE.md",
+        "title": "Proyectos"
+      },
+      {
+        "vault": "Proyectos",
+        "path": "Synapse/INDICE.md",
+        "title": "Synapse"
+      },
+      {
+        "vault": "Proyectos",
+        "path": "A/B c/INDICE.md",
+        "title": "B c"
+      }
+    ]
+  },
+  "rules": {
+    "_doc": "Reglas de protección (servidor y cliente). `other_live_below_after`: notas vivas, distintas del INDICE, que quedan por debajo de su carpeta al final de la operación. `changed`: claves del frontmatter que la operación cambia respecto de lo guardado; `content_changed`: si cambia el contenido. `code` es el rechazo (null si pasa). La creación y el borrado automáticos al crear o borrar la carpeta (op `system_create`) siempre pasa. Operaciones: `create_user` (REST: un agente o usuario crea la nota), `system_create` (el servidor o la app crean el INDICE de una carpeta), `rename_or_move` (`path` es la ruta actual y `to` la nueva), `edit`, `delete`.",
+    "codes": [
+      "reserved-name:path",
+      "index-readonly:content",
+      "index-readonly:attr",
+      "index-readonly:path",
+      "index-readonly:delete",
+      "index-root:delete"
+    ],
+    "cases": [
+      {
+        "op": "create_user",
+        "path": "INDICE.md",
+        "code": "reserved-name:path"
+      },
+      {
+        "op": "create_user",
+        "path": "Synapse/indice.md",
+        "code": "reserved-name:path"
+      },
+      {
+        "op": "create_user",
+        "path": "Synapse/ÍNDICE.md",
+        "code": null
+      },
+      {
+        "op": "system_create",
+        "path": "Synapse/INDICE.md",
+        "code": null
+      },
+      {
+        "op": "rename_or_move",
+        "path": "Synapse/Nota.md",
+        "to": "Synapse/INDICE.md",
+        "code": "reserved-name:path"
+      },
+      {
+        "op": "rename_or_move",
+        "path": "Synapse/INDICE.md",
+        "to": "Otra/INDICE.md",
+        "code": "index-readonly:path"
+      },
+      {
+        "op": "rename_or_move",
+        "path": "Synapse/Nota.md",
+        "to": "Synapse/Nota2.md",
+        "code": null
+      },
+      {
+        "op": "rename_or_move",
+        "path": "INDICE.md",
+        "to": "Raiz.md",
+        "code": "index-readonly:path"
+      },
+      {
+        "op": "edit",
+        "path": "Synapse/INDICE.md",
+        "changed": [
+          "descripcion"
+        ],
+        "content_changed": false,
+        "code": null
+      },
+      {
+        "op": "edit",
+        "path": "Synapse/INDICE.md",
+        "changed": [
+          "descripcion",
+          "estado"
+        ],
+        "content_changed": false,
+        "code": "index-readonly:attr"
+      },
+      {
+        "op": "edit",
+        "path": "Synapse/INDICE.md",
+        "changed": [
+          "titulo"
+        ],
+        "content_changed": false,
+        "code": "index-readonly:attr"
+      },
+      {
+        "op": "edit",
+        "path": "Synapse/INDICE.md",
+        "changed": [
+          "tags"
+        ],
+        "content_changed": false,
+        "code": "index-readonly:attr"
+      },
+      {
+        "op": "edit",
+        "path": "Synapse/INDICE.md",
+        "changed": [],
+        "content_changed": true,
+        "code": "index-readonly:content"
+      },
+      {
+        "op": "edit",
+        "path": "INDICE.md",
+        "changed": [
+          "descripcion"
+        ],
+        "content_changed": false,
+        "code": null
+      },
+      {
+        "op": "delete",
+        "path": "Synapse/INDICE.md",
+        "other_live_below_after": 3,
+        "code": "index-readonly:delete"
+      },
+      {
+        "op": "delete",
+        "path": "Synapse/INDICE.md",
+        "other_live_below_after": 0,
+        "code": null
+      },
+      {
+        "op": "delete",
+        "path": "INDICE.md",
+        "other_live_below_after": 0,
+        "code": "index-root:delete"
+      },
+      {
+        "op": "delete",
+        "path": "INDICE.md",
+        "other_live_below_after": 5,
+        "code": "index-root:delete"
+      }
+    ]
+  }
 }

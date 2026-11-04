@@ -50,10 +50,11 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await expect(view.getByRole("heading", { name: "Propiedades", level: 1 })).toBeVisible();
     await expect(view.getByRole("heading", { name: "Subcarpetas" })).toBeVisible();
     await expect(view.getByRole("heading", { name: "Documentos" })).toBeVisible();
-    const documents = view.getByRole("table").filter({ hasText: "Documento" });
-    await expect(documents).toContainText("Tipos de propiedad");
-    await expect(documents).toContainText("Doce propiedades");
-    await expect(documents.getByRole("cell", { name: "Descripción", exact: true })).toBeVisible();
+    // Subcarpetas y Documentos son listas, no tablas.
+    await expect(view.getByRole("table")).toHaveCount(0);
+    const documents = view.getByRole("listitem");
+    await expect(documents.filter({ hasText: "Tipos de propiedad" })).toHaveCount(1);
+    await expect(documents.filter({ hasText: "Doce propiedades" })).toHaveCount(1);
     await shot(page, `h031-${label}-1-indice`);
     // La carpeta de su INDICE abierto queda seleccionada en el árbol, como una nota abierta.
     await showSidebar(page);
@@ -95,7 +96,7 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await hideSidebar(page, size);
     await index(sub).getByText("Propiedades", { exact: true }).first().click();
     await expect(index("Propiedades")).toBeVisible();
-    await expect(index("Propiedades").getByRole("table").first()).toContainText(sub);
+    await expect(index("Propiedades").getByRole("listitem").filter({ hasText: sub })).toHaveCount(1);
 
     // 6. Un documento enlazado desde el INDICE se abre en el editor.
     await hideSidebar(page, size);

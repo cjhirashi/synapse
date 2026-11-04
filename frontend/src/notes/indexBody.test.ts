@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 import spec from "../../../backend/tests/fixtures/indice_cuerpo.json";
-import { DESCRIPCION_CELDA_MAX, indexBodyLines, renderIndexBody } from "./indexBody";
+import { DESCRIPCION_MAX, indexBodyLines, renderIndexBody } from "./indexBody";
 import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, INDEX_NAME, isIndexPath, type IndexOp } from "./indexRules";
 
 describe("especificación compartida de los INDICES", () => {
   it("coinciden el nombre y el tope", () => {
     expect(INDEX_NAME).toBe(spec.index_name);
-    expect(DESCRIPCION_CELDA_MAX).toBe(spec.limits.descripcion_celda_max);
+    expect(DESCRIPCION_MAX).toBe(spec.limits.descripcion_max);
   });
 
   it.each(spec.generate.map((c) => [c.name, c] as const))("cuerpo: %s", (_name, c) => {

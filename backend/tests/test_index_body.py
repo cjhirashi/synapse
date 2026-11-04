@@ -10,8 +10,8 @@ SPEC = json.loads((Path(__file__).parent / "fixtures" / "indice_cuerpo.json").re
 
 
 def test_limit_matches_the_spec():
-    from app.core.index_body import DESCRIPCION_CELDA_MAX
-    assert DESCRIPCION_CELDA_MAX == SPEC["limits"]["descripcion_celda_max"]
+    from app.core.index_body import DESCRIPCION_MAX
+    assert DESCRIPCION_MAX == SPEC["limits"]["descripcion_max"]
 
 
 @pytest.mark.parametrize("case", SPEC["generate"], ids=lambda c: c["name"])

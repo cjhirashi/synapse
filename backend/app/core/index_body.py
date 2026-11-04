@@ -6,11 +6,11 @@ from collections.abc import Iterable, Sequence
 from app.core.index_rules import INDEX_NAME, is_index_path
 from app.core.note_rules import path_key
 
-DESCRIPCION_CELDA_MAX = 80
+DESCRIPCION_MAX = 80
 
 
-def _cell(value: str) -> str:
-    return re.sub(r"\s+", " ", value).strip().replace("|", "\\|")
+def _flat(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
 
 
 def _text(frontmatter: dict, key: str) -> str:
@@ -31,28 +31,25 @@ def _extra(value: object) -> str:
 
 
 def _meta(frontmatter: dict, extra: Sequence[str]) -> list[str]:
-    description = re.sub(r"\s+", " ", _text(frontmatter, "descripcion")).strip()
-    if len(description) > DESCRIPCION_CELDA_MAX:
-        description = description[:DESCRIPCION_CELDA_MAX] + "…"
+    """Partes del elemento con valor, en orden: descripción, Estado, Tags, Actualizado y las columnas `extra`."""
+    description = _flat(_text(frontmatter, "descripcion"))
+    if len(description) > DESCRIPCION_MAX:
+        description = description[:DESCRIPCION_MAX] + "…"
     tags = frontmatter.get("tags")
     tags_text = ", ".join(tags) if isinstance(tags, list) and all(isinstance(t, str) for t in tags) else ""
-    cells = [description, _text(frontmatter, "estado"), tags_text, _text(frontmatter, "fecha_actualizacion")]
-    return [_cell(c) for c in cells] + [_cell(_extra(frontmatter.get(key))) for key in extra]
+    labeled = [("Estado", _text(frontmatter, "estado")), ("Tags", tags_text), ("Actualizado", _text(frontmatter, "fecha_actualizacion"))]
+    labeled += [(key, _extra(frontmatter.get(key))) for key in extra]
+    return ([description] if description else []) + [f"{label}: {_flat(value)}" for label, value in labeled if _flat(value)]
 
 
 def _link(path: str, text: str) -> str:
     if any(ch in path + text for ch in "[]"):
-        return _cell(text)
-    return f"[[{path}\\|{_cell(text)}]]"
+        return _flat(text)
+    return f"[[{path}\\|{_flat(text).replace('|', chr(92) + '|')}]]"
 
 
-def _row(cells: list[str]) -> str:
-    return "|" + "|".join(f" {c} " for c in cells) + "|"
-
-
-def _table(first: str, rows: list[list[str]], extra: Sequence[str]) -> list[str]:
-    head = [first, "Descripción", "Estado", "Tags", "Actualizado", *extra]
-    return [_row(head), "|" + "---|" * len(head), *(_row(r) for r in rows)]
+def _item(link: str, parts: list[str]) -> str:
+    return f"- {link} — {' · '.join(parts)}" if parts else f"- {link}"
 
 
 def body_lines(vault_name: str, folder: str, notes: Iterable[dict], extra: Sequence[str] = ()) -> list[str]:
@@ -77,21 +74,17 @@ def body_lines(vault_name: str, folder: str, notes: Iterable[dict], extra: Seque
             documents.append((path, parts[0][:-3]))
     lines += ["", "## Subcarpetas", ""]
     if subfolders:
-        rows = []
         for name in sorted(subfolders, key=path_key):
             index = prefix + name + "/" + INDEX_NAME
-            rows.append([_link(index, name), *_meta(by_path.get(index, {}), extra)])
-        lines += _table("Carpeta", rows, extra)
+            lines.append(_item(_link(index, name), _meta(by_path.get(index, {}), extra)))
     else:
         lines.append("_Sin subcarpetas._")
     lines += ["", "## Documentos", ""]
     if documents:
-        rows = []
         for path, base in sorted(documents, key=lambda d: path_key(d[1])):
             frontmatter = by_path[path]
             title = frontmatter.get("titulo") if isinstance(frontmatter.get("titulo"), str) and frontmatter.get("titulo") else base
-            rows.append([_link(path, title), *_meta(frontmatter, extra)])
-        lines += _table("Documento", rows, extra)
+            lines.append(_item(_link(path, title), _meta(frontmatter, extra)))
     else:
         lines.append("_Sin documentos._")
     return lines
