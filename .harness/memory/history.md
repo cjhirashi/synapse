@@ -1,5 +1,12 @@
 # History — Synapse
 
+## [2026-11-04] H-031 corrección: la carpeta (o Raíz) queda seleccionada mientras su INDICE está abierto
+
+- **Pedido de Carlos (2026-11-04):** el INDICE queda ligado a su carpeta y no se muestra como documento (se descartó la fila visible del INDICE que se había propuesto); la fila de la carpeta debe marcarse como seleccionada, igual que una nota abierta.
+- **Hecho:** `NoteSidebar.tsx` pone `aria-selected` en la carpeta (y en «Raíz») cuyo INDICE es la nota abierta; reutiliza el estilo existente de fila seleccionada. Prueba nueva en `NoteSidebar.test.tsx` y comprobación en el e2e `h031-indices.spec.ts`.
+- **Evidencia:** vitest 2557/2557, `tsc` limpio, e2e H-031 2/2 a 1280 y 390 px con captura. Commit `344f1a3`, desplegado el 2026-11-04 (imagen previa `synapse-backend:pre-h031-carpeta`), `/health` 200.
+- **Modelos:** Sonnet (yo) para este cambio; Haiku solo en el intento descartado de la fila visible.
+
 ## [2026-11-04] H-031 INDICES automáticos de carpeta — pasos 1 a 6 implementados; migración de producción pendiente
 - **Hecho (rama `feature/h031-indices-automaticos`):** especificación compartida (`indice_cuerpo.json`), reglas del servidor (`core/index_rules.py`, REST y sync con borrado diferido de INDICES), cuerpo generado al leer (`core/index_body.py` + espejo `indexBody.ts`), reglas y creación automática en el cliente (`indexRules.ts`, `noteStore.ts`, `noteTree.ts`), vista `IndexView.tsx` (descripción editable, columnas adicionales recordadas) y e2e `h031-indices.spec.ts` a 1280 y 390 px (pasa).
 - **Evidencia:** frontend 2556/2556; e2e H-031 2/2 a 1280 y 390 px. Backend: la suite completa tiene fallos previos de entorno (CouchDB/SQLite sin migrar), se compara contra la línea base.
