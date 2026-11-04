@@ -714,5 +714,7 @@ body.is-resizing {
 .index-view-description { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
 .index-view-description textarea { width: 100%; resize: vertical; font: inherit; }
 .index-view-description button { justify-self: start; }
-.index-view-columns { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin: 0 0 0.75rem; padding: 0.35rem 0.6rem; }
+.index-view-columns { margin: 0 0 0.75rem; }
+.index-view-columns summary { cursor: pointer; }
+.index-view-columns-list { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.4rem 0; max-height: 9rem; overflow-y: auto; }
 .index-view-columns label { display: inline-flex; align-items: center; gap: 0.3rem; }

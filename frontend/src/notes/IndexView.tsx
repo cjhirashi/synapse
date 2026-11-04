@@ -41,7 +41,7 @@ export interface IndexViewProps {
 
 export default function IndexView({ noteId, vault, notes, notesVersion, userId, vaultColor, noteRefs, onOpenWikilink, sidebarToggle }: IndexViewProps) {
   const [note, setNote] = useState<Note | null>(null);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState<string | null>(null);
   const [available, setAvailable] = useState<string[]>([]);
   const [shown, setShown] = useState<string[]>(() => readColumns(userId, vault.id));
   const [draft, setDraft] = useState<string | null>(null);
@@ -128,27 +128,31 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
             </button>
           </div>
           {available.length > 0 && (
-            <fieldset className="index-view-columns">
-              <legend>Columnas adicionales</legend>
-              {available.map((key) => (
-                <label key={key}>
-                  <input type="checkbox" checked={shown.includes(key)} onChange={() => toggleColumn(key)} />
-                  {key}
-                </label>
-              ))}
-            </fieldset>
+            <details className="index-view-columns">
+              <summary>Columnas adicionales ({shown.filter((key) => available.includes(key)).length} de {available.length})</summary>
+              <div className="index-view-columns-list" role="group" aria-label="Columnas adicionales">
+                {available.map((key) => (
+                  <label key={key}>
+                    <input type="checkbox" checked={shown.includes(key)} onChange={() => toggleColumn(key)} />
+                    {key}
+                  </label>
+                ))}
+              </div>
+            </details>
           )}
           <Suspense fallback={<p>Cargando el índice…</p>}>
-            <MilkdownView
-              key={`${noteId}:${body.length}:${shown.join(",")}`}
-              value={body}
-              onChange={() => undefined}
-              readOnly
-              label={label}
-              notes={noteRefs}
-              onWikilinkClick={onOpenWikilink}
-              vaultColor={vaultColor}
-            />
+            {body !== null && (
+              <MilkdownView
+                key={noteId}
+                value={body}
+                onChange={() => undefined}
+                readOnly
+                label={label}
+                notes={noteRefs}
+                onWikilinkClick={onOpenWikilink}
+                vaultColor={vaultColor}
+              />
+            )}
           </Suspense>
         </div>
       </div>
