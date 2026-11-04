@@ -62,6 +62,8 @@ export interface NoteSummary {
   /** Longitud de `content` (RNF-001, PLAN-0010 §10.5): el programador de precálculo elige candidatas
    *  sin leer los cuerpos. Se calcula al indexar (el índice ya lee el documento completo). */
   size: number;
+  /** Atributos de la nota (sin cuerpo): los INDICES los muestran sin releer cada documento (H-031). */
+  frontmatter?: Record<string, unknown>;
 }
 
 export interface NoteStoreOptions {
@@ -121,7 +123,7 @@ function toNote(doc: NoteDoc): Note {
 }
 
 function toSummary(doc: NoteDoc): NoteSummary {
-  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at, size: doc.content.length };
+  return { id: doc._id, path: doc.path, rev: doc._rev as string, updated_at: doc.updated_at, deleted_at: doc.deleted_at, size: doc.content.length, frontmatter: doc.frontmatter ?? {} };
 }
 
 function isStatus(err: unknown, status: number): boolean {
@@ -438,6 +440,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     async list(vaultId, { deleted = false } = {}) {
       return (await summaries(vaultId))
         .filter((note) => (note.deleted_at !== null) === deleted)
+        .filter((note) => !deleted || !isIndexPath(note.path)) // un INDICE no se restaura solo: vuelve con sus notas
         .sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     },
 

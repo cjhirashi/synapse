@@ -29,6 +29,8 @@ import { useSync } from "../sync/useSync";
 import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
+import { indexPathFor } from "./indexRules";
+import { pathKey } from "./noteRules";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -611,6 +613,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   onClick={() => {
                     toggle(node.path);
                     setActiveFolder(node.path);
+                    openIndexOf(node.path);
                   }}
                 >
                   {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
@@ -686,7 +689,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         onDragOver={(event) => onTargetDragOver(event, "", ROOT_KEY)}
         onDragLeave={() => onTargetDragLeave(ROOT_KEY)}
         onDrop={(event) => onTargetDrop(event, "")}
-        onClick={() => setActiveFolder("")}
+        onClick={() => {
+          setActiveFolder("");
+          openIndexOf("");
+        }}
       >
         <House size={14} aria-hidden="true" data-icon="house" className="note-tree-icon-root" />
         <span className="note-tree-name">Raíz</span>
@@ -701,8 +707,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
 
   /**
    * «Crear carpeta» (RF-004, RF-005, RF-042): valida el nombre (vacío/tramo/control) y que no exista ya
-   * en la carpeta activa; si es válido crea `{activa}/{nombre}/Sin título.md`, despliega la carpeta y
-   * abre la nota en edición. Una carpeta no se guarda por sí sola: existe por tener una nota dentro.
+   * en la carpeta activa; si es válido crea la carpeta con su INDICE (H-031), la despliega y abre ese INDICE.
    */
   async function submitFolder(event: FormEvent) {
     event.preventDefault();
@@ -718,13 +723,22 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       return;
     }
     const ok = await run(async () => {
-      const note = await notes.create(vaultId, "", joinPath(activeFolder, name));
+      const folder = joinPath(activeFolder, name);
+      await notes.createFolder(vaultId, folder);
       await reload();
       // La carpeta nueva queda activa; su despliegue lo hace el efecto de «nota abierta» al abrirla.
-      setActiveFolder(joinPath(activeFolder, name));
-      onOpen(note.id, { edit: true });
+      setActiveFolder(folder);
+      const index = (await notes.list(vaultId)).find((item) => pathKey(item.path) === pathKey(indexPathFor(folder)));
+      if (index) onOpen(index.id);
     });
     if (ok) closeFolderForm();
+  }
+
+  /** H-031: el nombre de una carpeta (o la raíz) abre su INDICE. */
+  function openIndexOf(folder: string) {
+    const key = pathKey(indexPathFor(folder));
+    const index = items?.find((item) => item.deleted_at === null && pathKey(item.path) === key);
+    if (index) onOpen(index.id);
   }
 
   /** Despliega una carpeta y sus antecesoras, la deja activa y la trae a la vista (RF-055). */

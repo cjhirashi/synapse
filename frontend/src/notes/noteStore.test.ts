@@ -97,7 +97,7 @@ describe("RF-001, RF-019: list y get", () => {
     await store.create(OTHER_VAULT, "B");
     const [item, ...rest] = await store.list(VAULT);
     expect(rest).toEqual([]);
-    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null, size: 0 });
+    expect(item).toEqual({ id: a.id, path: "A.md", rev: a.rev, updated_at: a.updated_at, deleted_at: null, size: 0, frontmatter: a.frontmatter });
     expect(item).not.toHaveProperty("content");
   });
 

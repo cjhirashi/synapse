@@ -5,6 +5,7 @@ import { createRef, type Ref } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
+import { createNoteStore } from "./noteStore";
 import type { SyncContextValue } from "../sync/useSync";
 import { PATH_INVALID, PATH_TAKEN } from "./messages";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
@@ -14,8 +15,9 @@ import { waitForCondition } from "../test-utils/waits";
 const VAULT = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 
-async function setup(paths: string[] = [], options: { confirmDelete?: () => Promise<boolean>; ref?: Ref<NoteSidebarHandle> } = {}) {
-  const { value } = syncValue({}, memoryDb());
+async function setup(paths: string[] = [], options: { confirmDelete?: () => Promise<boolean>; ref?: Ref<NoteSidebarHandle>; indexes?: boolean } = {}) {
+  const db = memoryDb();
+  const { value } = syncValue(options.indexes ? { notes: createNoteStore(db) } : {}, db); // H-031: por omisión sin INDICES, para las pruebas que cuentan notas
   for (const path of paths) await value.notes.create(VAULT, path);
   const onOpen = vi.fn();
   const onDeleted = vi.fn();
@@ -566,13 +568,26 @@ test("RF-004: enviar el nombre vacío muestra el error asociado al campo (role=a
 
 // --- SPEC-0010 RF-001/RF-003/RF-004/RF-042: carpeta activa y «Nueva carpeta» ---
 
-test("RF-042: «Nueva carpeta» crea una nota dentro y la abre en edición", async () => {
-  const { user, value, onOpen } = await setup();
+test("H-031: «Nueva carpeta» crea la carpeta con su INDICE (sin nota de relleno) y lo abre", async () => {
+  const { user, value, onOpen } = await setup([], { indexes: true });
   await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
   await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
-  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Sin título.md"));
-  expect(onOpen).toHaveBeenCalledWith(expect.any(String), { edit: true });
+  await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["INDICE.md", "Proyectos/INDICE.md"]));
+  const index = (await value.notes.list(VAULT)).find((n) => n.path === "Proyectos/INDICE.md")!;
+  await waitForCondition(() => expect(onOpen).toHaveBeenCalledWith(index.id));
+  expect(await screen.findByRole("treeitem", { name: "Proyectos" })).toBeInTheDocument();
+  expect(screen.queryByRole("treeitem", { name: /INDICE/ })).toBeNull(); // el INDICE no es una nota más del árbol
+});
+
+test("H-031: pulsar el nombre de una carpeta abre su INDICE y la Raíz abre el de la bóveda", async () => {
+  const { user, value, onOpen } = await setup(["Proyectos/Hoja.md"], { indexes: true });
+  const list = await value.notes.list(VAULT);
+  const idOf = (path: string) => list.find((n) => n.path === path)!.id;
+  await user.click(await screen.findByRole("treeitem", { name: "Proyectos" }));
+  expect(onOpen).toHaveBeenLastCalledWith(idOf("Proyectos/INDICE.md"));
+  await user.click(within(tree()).getByRole("treeitem", { name: "Raíz" }));
+  expect(onOpen).toHaveBeenLastCalledWith(idOf("INDICE.md"));
 });
 
 test("RF-004: «Nueva carpeta» duplicada muestra el error y no crea nada", async () => {
@@ -732,18 +747,17 @@ test("C-6: el drag & drop es aditivo; la fila es arrastrable y F2 sigue abriendo
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Dos.md"]));
 });
 
-test("C-8: arrastrar la última nota fuera de su carpeta deja un «Sin título» y la carpeta sigue en el árbol", async () => {
-  const { user, value } = await setup(["Carpeta/Sola.md"]);
+test("H-031: arrastrar la última nota fuera de su carpeta no deja relleno: la carpeta sigue por su INDICE", async () => {
+  const { user, value } = await setup(["Carpeta/Sola.md"], { indexes: true });
   await user.click(await screen.findByRole("treeitem", { name: "Carpeta" })); // despliega para ver «Sola»
   fireEvent.dragStart(await screen.findByRole("treeitem", { name: "Sola" }));
   const root = within(tree()).getByRole("treeitem", { name: "Raíz" });
   fireEvent.dragOver(root);
   fireEvent.drop(root);
   await waitForCondition(async () =>
-    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/Sin título.md", "Sola.md"]),
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Carpeta/INDICE.md", "INDICE.md", "Sola.md"]),
   );
   expect(screen.getByRole("treeitem", { name: "Carpeta" })).toBeInTheDocument();
-  expect(within(tree()).getByRole("treeitem", { name: "Sin título" })).toBeInTheDocument();
 });
 
 test("C-8: renombrar la última nota de una carpeta no la vacía: la carpeta sigue con la nota nueva", async () => {

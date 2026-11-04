@@ -6,6 +6,7 @@
  * `es` numérico y sin distinguir mayúsculas ni acentos. Una carpeta existe sólo mientras
  * tenga alguna nota dentro (no hay carpetas vacías: no se guardan, se derivan).
  */
+import { isIndexPath } from "./indexRules";
 
 export interface FolderNode<T> {
   kind: "folder";
@@ -65,6 +66,8 @@ export function buildTree<T extends { path: string }>(notes: T[]): TreeNode<T>[]
       }
       siblings = folder.children;
     }
+    // H-031: el INDICE no es una nota más del árbol (se abre desde el nombre de su carpeta), pero sí mantiene viva la carpeta.
+    if (isIndexPath(note.path)) continue;
     siblings.push({ kind: "note", name: displayName(file), note });
   }
 
