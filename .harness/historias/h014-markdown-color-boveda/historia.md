@@ -408,3 +408,7 @@ tal cual. El terciario sigue en enlaces, wikilinks y código. Verificado en Chro
 ## Enmienda 2026-11-04 (8): fondo de la cita al 5 %
 
 El fondo de la cita (secundario 600) baja de 20 % a **5 %** de opacidad; la barra izquierda no cambia. Supersede el 20 % de la enmienda (7).
+
+## Enmienda 2026-11-04 (9): fondo de la cita al 8 %
+
+Al 5 % el fondo casi no se veía; sube a **8 %**. Supersede la enmienda (8).

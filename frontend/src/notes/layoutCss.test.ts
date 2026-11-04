@@ -214,7 +214,7 @@ test("H-014 C-7 (2026-11-04): el <hr> y los bordes de tabla usan var(--border) a
   const css = read("../editor/editor.css");
   const quote = rule(css, ".milkdown-view .ProseMirror blockquote");
   expect(quote).toMatch(/border-left: 3px solid var\(--vault-secondary-600\)/); // cambio de Carlos 2026-11-04 (antes gris 1px)
-  expect(quote).toMatch(/background: color-mix\(in srgb, var\(--vault-secondary-600\) 5%, transparent\)/);
+  expect(quote).toMatch(/background: color-mix\(in srgb, var\(--vault-secondary-600\) 8%, transparent\)/);
   expect(quote).not.toMatch(/--accent/); // sin el cian fijo
   expect(quote).toMatch(/color: var\(--text-secondary\)/); // sigue tenue y en cursiva
   expect(quote).toMatch(/font-style: italic/);
