@@ -69,6 +69,22 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
     await rejections.resolve(docIds.filter((id) => !denied.has(id)));
   }
 
+  /**
+   * `delete-not-allowed` sobre una lápida cuya rama ya no es la ganadora local: la lápida cerraba una rama que el
+   * servidor nunca llegó a ver (p. ej. una versión rechazada que se resolvió en el cliente), y el servidor sólo admite
+   * lápidas que cierren una hoja suya. La rama no cuenta (la ganadora local es otra revisión), así que el rechazo
+   * no tiene nada que corregir y se descarta.
+   */
+  async function dropMootTombstones(items: { id: string; rev: string | null; reason: string }[]): Promise<void> {
+    const moot: string[] = [];
+    for (const item of items) {
+      if (item.reason !== "delete-not-allowed" || item.rev === null) continue;
+      const winner = await db.get<{ _rev: string }>(item.id).then((doc) => doc._rev, () => null);
+      if (winner !== null && winner !== item.rev) moot.push(item.id);
+    }
+    if (moot.length > 0) await rejections.resolve(moot);
+  }
+
   async function retry(vaultId: string): Promise<void> {
     if (closed) return;
     // El rechazo del mismo lote puede estar aún escribiéndose (RD-3): se lee la lista al día.
@@ -76,8 +92,10 @@ export function startRepush({ db, remote, status, rejections }: RepushDeps): Rep
     const prefix = `${NOTE_ID_PREFIX}${vaultId}:`;
     const mine = rejections.list().filter((item) => item.id.startsWith(prefix));
     if (mine.length === 0 || !(await vaultIsActive(db, vaultId))) return;
-    const notes = mine.filter((item) => !isIndexReason(item.reason)).map((item) => item.id);
-    const indexes = mine.filter((item) => isIndexReason(item.reason)).map((item) => item.id);
+    await dropMootTombstones(mine);
+    const pending = rejections.list().filter((item) => item.id.startsWith(prefix));
+    const notes = pending.filter((item) => !isIndexReason(item.reason)).map((item) => item.id);
+    const indexes = pending.filter((item) => isIndexReason(item.reason)).map((item) => item.id);
     if (notes.length > 0) await pushNotes(notes);
     if (indexes.length > 0) await pushNotes(indexes);
   }

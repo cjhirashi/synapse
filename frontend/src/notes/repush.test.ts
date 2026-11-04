@@ -394,6 +394,36 @@ describe("H-031: un rechazo que el servidor ya no repite se limpia", () => {
   });
 });
 
+describe("H-031: lápidas de una rama ajena al servidor", () => {
+  const putNote = async (id: string): Promise<string> => (await db.put({ _id: id, type: "note", path: "A.md", content: "", frontmatter: {}, created_at: T, updated_at: T, deleted_at: null })).rev;
+
+  it("un delete-not-allowed cuya revisión no es la ganadora local se descarta sin empujar nada", async () => {
+    await putNote(NOTE_1);
+    await rejections.handle({ type: "denied", id: NOTE_1, rev: "9-zzz", reason: "delete-not-allowed" });
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(rejections.list()).toEqual([]));
+    expect(toSpy).not.toHaveBeenCalled();
+  });
+
+  it("si la revisión rechazada es la ganadora local, el rechazo se conserva y se reintenta", async () => {
+    const rev = await putNote(NOTE_1);
+    await rejections.handle({ type: "denied", id: NOTE_1, rev, reason: "delete-not-allowed" });
+    toSpy.mockImplementationOnce((() => {
+      const replication = fakeReplication();
+      const done = Promise.resolve().then(() => {
+        handlers.denied?.({ id: NOTE_1, rev, reason: "delete-not-allowed" });
+        return replication;
+      });
+      return Object.assign(done, { on: replication.on });
+    }) as never);
+    await putVault(V);
+    await settle();
+    await waitForCondition(() => expect(toSpy).toHaveBeenCalledTimes(1));
+    expect(rejections.list().map((item) => item.id)).toEqual([NOTE_1]);
+  });
+});
+
 describe("RD-3: espera los rechazos en curso", () => {
   it("el reintento espera a rejections.settled() antes de leer la lista", async () => {
     const order: string[] = [];
