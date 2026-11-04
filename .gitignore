@@ -9,7 +9,7 @@ __pycache__/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
-node_modules/
+node_modules
 dist/
 .DS_Store
 test.db
