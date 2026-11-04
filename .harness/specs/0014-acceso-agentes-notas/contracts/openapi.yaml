@@ -52,6 +52,12 @@ components:
         etag:
           title: Etag
           type: string
+        frontmatter:
+          anyOf:
+          - additionalProperties: true
+            type: object
+          - type: 'null'
+          title: Frontmatter
         id:
           title: Id
           type: string
@@ -68,6 +74,7 @@ components:
       - id
       - vault_id
       - path
+      - frontmatter
       - created_at
       - updated_at
       - deleted_at
