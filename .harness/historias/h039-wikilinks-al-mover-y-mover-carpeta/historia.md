@@ -1,7 +1,7 @@
 ---
 id: H-039
 titulo: Al mover o renombrar una nota o una carpeta por la API, reescribir los wikilinks que apuntaban a la ruta vieja
-estado: in-progress # orden de Carlos 2026-11-04 (vía `main`); Q-2..Q-4 con la recomendación de AIRA; Q-1 (interfaz) pendiente de Carlos
+estado: implemented # desplegado y probado en producción 2026-11-04 17:05 CDMX; Q-1 (interfaz y /sync) pendiente de Carlos
 covers:
   - backend/app/core/wikilink_rewrite.py
   - backend/app/core/wikilink_rewrite_test.py          # si el proyecto ubica el unit test del core junto al módulo; si no, backend/tests/test_wikilink_rewrite.py
@@ -208,3 +208,9 @@ Decisiones abiertas (con recomendación de AIRA):
   corre tras un movimiento parcial (notas ya bajo `to` se tratan como venidas de `from`); `check_vault_active` y `ensure_indexes` públicos en
   `NoteContentService`. Decisiones Q-2..Q-4 aplicadas con la recomendación; Q-1 (canal de la interfaz y `/sync`) sigue abierta: NO reescribe.
 - Pendiente: suite completa, despliegue y prueba en producción; la herramienta `synapse_vault` del plugin aún no tiene acción para mover carpeta.
+
+- Suite completa: 2129 ok / 21 fallos ajenos (20 `test_brand_assets` necesitan `frontend/public`, no copiado a tmpfs; 1 `test_note_sync_api…index-readonly:path`
+  falla igual en la base). Desplegado 2026-11-04 17:00 CDMX (imagen previa `synapse-backend:pre-h039`, `/health` 200).
+- Prueba en producción (bóveda «Prueba», notas temporales ya a la papelera): PATCH que renombra una nota reescribió `[[ruta|alias]]`, `[[nombre]]` y `[[ruta sin .md]]` de otra
+  nota y dejó intacto el código en línea; `FolderService.move` (ejecutado dentro del contenedor, sin la capa HTTP, porque `synapse_vault` no tiene aún acción para
+  mover carpeta) movió 2 notas con su INDICE, reescribió 2 enlaces, creó el INDICE del ancestro del destino y no dejó INDICE huérfano en el origen. La capa HTTP está cubierta por `test_folder_move_api.py`.
