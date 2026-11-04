@@ -38,7 +38,7 @@ from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
 from app.core.errors import StorageUnavailable, VaultNameTaken
-from app.core.index_rules import changed_keys, check_op, is_index_path
+from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
 from app.core.note_rules import (
     NOTE_KEYS, NOTE_REQUIRED, check_content, check_frontmatter, check_path, path_key,
 )
@@ -191,17 +191,12 @@ class SyncPushService:
         self._uses_before: dict[str, dict[str, str]] = {}
         # Nombres o rutas reservados en este lote por documento (clave → etiqueta), para la liberación.
         self._reserved: dict[str, dict[str, str]] = {}
-        # H-031: INDICES con borrado diferido (posición → doc) para procesar al final
-        self._deferred_index_deletes: dict[int, dict] = {}
 
     async def push(self, docs: list[dict]) -> list[dict]:
         """Rechazos del lote, en su orden; `[]` si se aceptó todo (como responde CouchDB).
 
         Lanza `StorageUnavailable` si falla el almacén: nada del lote se da por escrito y el
         cliente lo reenvía entero (los pasos 2 y 7 son idempotentes).
-
-        H-031: los borrados de INDICES se difieren para procesar después de escribir
-        el resto del lote.
         """
         self._start_batch()
         # Dos pasadas (identidad; resto), con la posición de cada rechazo en el lote.
@@ -221,17 +216,12 @@ class SyncPushService:
 
         stored = await self._stored([doc for _, doc in candidates])
         accepted: list[dict] = []
+        deferred: list[tuple[int, dict]] = []
         for position, doc in candidates:
             if doc["_rev"] in stored.get(doc["_id"], set()):
                 continue  # paso 2: ya está, sin escribir ni reservar
-            # H-031: detectar borrados de INDICES para diferir
-            if (
-                doc["_id"].startswith(NOTE_PREFIX)
-                and not doc.get("_deleted")
-                and doc.get("deleted_at") is not None
-                and is_index_path(doc.get("path", ""))
-            ):
-                self._deferred_index_deletes[position] = doc
+            if _is_index_deletion(doc):
+                deferred.append((position, doc))  # H-031: se evalúa cuando el resto del lote ya está escrito
                 continue
             try:
                 await self._accept(doc)
@@ -244,28 +234,50 @@ class SyncPushService:
         if accepted:
             await self._write(accepted)
             await self._release_unused()
-
-        # H-031: procesar INDICES diferidos de más profundo a menos profundo
-        if self._deferred_index_deletes:
-            deferred_sorted = sorted(
-                self._deferred_index_deletes.items(),
-                key=lambda item: item[1]["path"].count("/"),
-                reverse=True,  # de mayor a menor profundidad
-            )
-            for position, doc in deferred_sorted:
-                try:
-                    await self._accept(doc)
-                except Rejected as rejected:
-                    rejections[position] = _rejection(doc, rejected.reason)
-                    continue
-                stored.setdefault(doc["_id"], set()).add(doc["_rev"])
-                accepted.append(doc)
-            if accepted or self._deferred_index_deletes:
-                # Escribir si hay aceptados o si los diferidos fueron aceptados
-                await self._write(accepted if accepted else [])
+        if deferred:
+            deleted_indexes = await self._push_index_deletions(deferred, rejections, stored)
+            if deleted_indexes:
+                await self._write(deleted_indexes)
                 await self._release_unused()
-
         return [rejections[position] for position in sorted(rejections)]
+
+    async def _push_index_deletions(
+            self, deferred: list[tuple[int, dict]], rejections: dict[int, dict],
+            stored: dict[str, set[str]]) -> list[dict]:
+        """H-031: borra un INDICE sólo si, con el lote ya escrito, no queda otra nota viva bajo su carpeta
+        (nunca el de la raíz). De la carpeta más profunda a la menos: borrar `A/B` y `A` en un mismo lote
+        funciona sin importar el orden en que lleguen. Devuelve las revisiones aceptadas."""
+        accepted: list[dict] = []
+        gone: set[str] = set()
+        for position, doc in sorted(deferred, key=lambda item: -item[1]["path"].count("/")):
+            try:
+                vault_id = doc["_id"].split(":")[1]
+                below = await self._live_below(vault_id, doc["path"], gone | {doc["_id"]})
+                if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
+                    raise Rejected(code)
+                await self._accept(doc)
+            except Rejected as rejected:
+                rejections[position] = _rejection(doc, rejected.reason)
+                continue
+            stored.setdefault(doc["_id"], set()).add(doc["_rev"])
+            gone.add(doc["_id"])
+            accepted.append(doc)
+        return accepted
+
+    async def _live_below(self, vault_id: str, index_path: str, excluded: set[str]) -> int:
+        """Notas vivas del servidor por debajo de la carpeta de `index_path` (en la raíz, todas), sin las
+        de `excluded`."""
+        folder = folder_of(index_path)
+        prefix = path_key(folder) + "/" if folder else ""
+        count, after = 0, None
+        while True:
+            page = await to_thread.run_sync(self._port.list_notes, self._db, vault_id, False, 100, after)
+            count += sum(
+                1 for note in page
+                if note["_id"] not in excluded and not note.get("deleted_at") and path_key(note["path"]).startswith(prefix))
+            if len(page) < 100:
+                return count
+            after = (page[-1]["created_at"], page[-1]["_id"])
 
     # --- Paso 1: id, `_rev`, `_revisions` ---
 
@@ -319,9 +331,8 @@ class SyncPushService:
             self._check_shape(doc, kind)
             kind.check_fields(doc)
             await kind.check_server(self, doc, leaves)
-            # H-031: validación de reglas de INDICES para notas
             if doc["_id"].startswith(NOTE_PREFIX):
-                await self._check_index_rules(doc, leaves)
+                self._check_index_rules(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
         if not tombstone and doc["deleted_at"] is None:
@@ -384,55 +395,23 @@ class SyncPushService:
             raise Rejected("validation-error:vault_id")
         _check_timestamps(doc, leaves)
 
-    async def _check_index_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
-        """H-031: validación de reglas de INDICES (paso 6, después de `_check_note_rules`).
-
-        Para borrados de INDICES (deleted_at != null), contar las notas vivas por debajo
-        usando la proyección del lote.
-        """
-        path = doc.get("path", "")
-
-        # Si es un INDICE
-        if is_index_path(path):
-            # El contenido debe ser vacío
-            if doc.get("content") != "":
-                raise Rejected("index-readonly:content")
-
-            # Con hoja previa
-            history = _history(doc)
-            prev_rev = history[1] if len(history) > 1 else None
-            prev_leaf = leaves.get(prev_rev) if prev_rev else None
-
-            if prev_leaf:
-                # Si el path cambió, rechazar
-                if prev_leaf.get("path") != path:
-                    raise Rejected("index-readonly:path")
-                # Cambios en atributos (sin `descripcion` está permitido)
-                prev_fm = prev_leaf.get("frontmatter") or {}
-                new_fm = doc.get("frontmatter") or {}
-                changed = changed_keys(prev_fm, new_fm)
-                if any(k != "descripcion" for k in changed):
-                    raise Rejected("index-readonly:attr")
-            else:
-                # Sin hoja previa: sólo permite `descripcion` en frontmatter
-                new_fm = doc.get("frontmatter") or {}
-                changed = changed_keys({}, new_fm)
-                if any(k != "descripcion" for k in changed):
-                    raise Rejected("index-readonly:attr")
-
-            # Si está siendo borrado (deleted_at != null), contar notas vivas debajo
-            if doc.get("deleted_at") is not None:
-                from app.core.index_rules import folder_of
-                vault_id = doc["_id"].split(":")[1]
-                folder = folder_of(path)
-                other_live_below = await self._count_live_below_index(vault_id, path, folder)
-                if (code := check_op("delete", path, other_live_below_after=other_live_below)) is not None:
-                    raise Rejected(code)
-
-        # Si la hoja previa era INDICE pero esta no
-        elif prev_leaf := (leaves.get(_history(doc)[1]) if len(_history(doc)) > 1 else None):
-            if is_index_path(prev_leaf.get("path", "")):
-                raise Rejected("index-readonly:path")
+    @staticmethod
+    def _check_index_rules(doc: dict, leaves: dict[str, dict]) -> None:
+        """H-031: un INDICE no se renombra, no lleva contenido y sólo admite cambiar su `descripcion`;
+        ninguna otra nota toma su nombre. El borrado se decide aparte (`_push_index_deletions`)."""
+        path = doc["path"]
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        if previous is not None and previous["path"] != path:
+            if (code := check_op("rename_or_move", previous["path"], to=path)) is not None:
+                raise Rejected(code)
+        if not is_index_path(path):
+            return
+        if doc["content"] != "":
+            raise Rejected("index-readonly:content")
+        changed = changed_keys(previous.get("frontmatter") if previous else None, doc.get("frontmatter"))
+        if (code := check_op("edit", path, changed=changed)) is not None:
+            raise Rejected(code)
 
     async def _check_vault_is_active(self, note_id: str) -> None:
         """Paso 6c (RF-004, RF-014): la bóveda de la nota tiene alguna hoja viva y activa.
@@ -468,47 +447,6 @@ class SyncPushService:
     async def _release_note_path(self, doc_id: str, path: str) -> None:
         await to_thread.run_sync(self._notes.release_path, doc_id, path)
 
-    async def _count_live_below_index(self, vault_id: str, index_path: str, folder: str) -> int:
-        """H-031: cuenta notas vivas por debajo de la carpeta, considerando la proyección del lote.
-
-        Incluye:
-        - Notas vivas del servidor (except el INDICE de la carpeta)
-        - Notas aceptadas del lote que quedarán vivas
-        """
-        from app.core.index_rules import folder_of, path_key
-        folder_key = path_key(folder) + "/" if folder else ""
-        count = 0
-
-        # Leer todas las notas del servidor
-        all_leaves = await to_thread.run_sync(
-            self._port.leaves, self._db, f"note:{vault_id}"  # Intenta el id de listado
-        )
-        # Pero en realidad, necesitamos listar todas las notas vivas de la bóveda
-        # usando `list_notes`. Vamos a usar un patrón simple: iterar sobre `_leaves`
-        # si está disponible (ya que hemos proyectado documentos) o leer desde el servidor.
-
-        # Las hojas proyectadas ya incluyen los cambios del lote
-        for doc_id in list(self._leaves.keys()):
-            if not doc_id.startswith(NOTE_PREFIX):
-                continue
-            vault_from_id = doc_id.split(":")[1]
-            if vault_from_id != vault_id:
-                continue
-            leaves = self._leaves[doc_id]
-            for leaf in leaves.values():
-                if not leaf.get("deleted_at"):
-                    path = leaf.get("path", "")
-                    # ¿Está por debajo de la carpeta y no es el INDICE?
-                    if path != index_path:
-                        path_normalized = path_key(path)
-                        if folder_key and path_normalized.startswith(folder_key):
-                            count += 1
-                        elif not folder_key and "/" not in path:
-                            # En la raíz, todas las notas vivas cuentan
-                            count += 1
-
-        return count
-
     # --- Pasos 8 y 9 ---
 
     async def _write(self, docs: list[dict]) -> None:
@@ -540,6 +478,13 @@ _KINDS = {
         SyncPushService._check_note_rules, SyncPushService._check_vault_is_active,
         _note_use, SyncPushService._reserve_note_path, SyncPushService._release_note_path),
 }
+
+
+def _is_index_deletion(doc: dict) -> bool:
+    """Revisión de nota con `deleted_at` cuya ruta es la de un INDICE (las lápidas `_deleted` no llevan ruta)."""
+    return (
+        doc["_id"].startswith(NOTE_PREFIX) and doc.get("_deleted") is not True
+        and doc.get("deleted_at") is not None and isinstance(doc.get("path"), str) and is_index_path(doc["path"]))
 
 
 def _rejection(doc: dict, reason: str) -> dict:
