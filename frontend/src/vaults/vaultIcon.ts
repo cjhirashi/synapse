@@ -153,6 +153,32 @@ export const SECONDARY: Readonly<Record<PaletteKey, PaletteKey>> = {
   rose: "orange",
 };
 
+/**
+ * Color TERCIARIO de cada color de bóveda (cambio de Carlos 2026-11-04): un color triádico/dividido, a
+ * ~120-170° del de la bóveda, para lo que debe separarse tanto de los encabezados (color de la bóveda) como
+ * de la negrita y la cursiva (secundario): enlaces, wikilinks y código en línea. Evita `danger` (el
+ * wikilink roto ya usa su tono). Cada valor es un `PaletteKey`, así existe como token en los dos temas.
+ */
+export const TERTIARY: Readonly<Record<PaletteKey, PaletteKey>> = {
+  danger: "success",
+  orange: "teal",
+  warning: "accent",
+  yellow: "info",
+  lime: "indigo",
+  success: "fuchsia",
+  emerald: "fuchsia",
+  teal: "pink",
+  accent: "rose",
+  info: "orange",
+  blue: "orange",
+  indigo: "warning",
+  violet: "yellow",
+  purple: "yellow",
+  fuchsia: "lime",
+  pink: "success",
+  rose: "success",
+};
+
 /** Nombre accesible en español de cada color (selector de RF-011; H-008 C-11). */
 export const COLOR_LABELS: Readonly<Record<PaletteKey, string>> = {
   accent: "Cian",

@@ -954,14 +954,37 @@
 
 .milkdown-view .ProseMirror h1,
 .milkdown-view .ProseMirror h2,
-.milkdown-view .ProseMirror h3 {
+.milkdown-view .ProseMirror h3,
+.milkdown-view .ProseMirror h4 {
   margin: var(--space-4) 0 var(--space-2);
+  line-height: 1.3;
+}
+
+/* Tamaño de los encabezados (cambio de Carlos 2026-11-04): escala estricta H1 > H2 > H3 > H4, y H4 aún
+   claramente mayor que el texto normal (14 px) para no confundirse con la negrita. En `em` sobre los
+   14 px del `.ProseMirror`: ≈ 29, 24, 20 y 17 px. Antes H2 (15 px global) quedaba MENOR que H3 (el 1,17 em
+   del navegador). */
+.milkdown-view .ProseMirror h1 {
+  font-size: 2.1em;
+  font-weight: 700;
+}
+.milkdown-view .ProseMirror h2 {
+  font-size: 1.7em;
+  font-weight: 700;
+}
+.milkdown-view .ProseMirror h3 {
+  font-size: 1.4em;
+  font-weight: 600;
+}
+.milkdown-view .ProseMirror h4 {
+  font-size: 1.2em;
+  font-weight: 600;
 }
 
 /* H-014 (C-1…C-4): jerarquía de color de los encabezados con el color de la bóveda (`--vault-accent`,
-   publicado por `MilkdownView` en `.milkdown-view`). Se jerarquiza con COLOR, no con tamaño (pedido
-   explícito): H1 es el ancla al 100 % y cada nivel se mezcla más con el texto normal (`--text-primary`)
-   al bajar, hasta H4 (30 %), el más sutil pero legible (≥ 4,5:1, ver `vaultIcon.test.ts`). `color-mix`
+   publicado por `MilkdownView` en `.milkdown-view`). Se jerarquiza con COLOR (pedido original): H1 es el ancla al 100 % y cada nivel se mezcla más con el texto normal (`--text-primary`)
+   al bajar, hasta H4 (30 %), el más sutil pero legible (≥ 4,5:1, ver `vaultIcon.test.ts`). El tamaño se añadió
+   el 2026-11-04 (más abajo). `color-mix`
    nativo: se recalcula solo al cambiar de tema o de bóveda, sin JS. (El 2.º porcentaje omitido = resto.) */
 .milkdown-view .ProseMirror h1 {
   color: var(--vault-accent);
@@ -981,16 +1004,46 @@
    que P-1: la negrita al 100 % (ancla del énfasis) y la cursiva mezclada con `--text-secondary` (más
    tenue, mismo color, distinta intensidad). */
 .milkdown-view .ProseMirror strong {
-  color: var(--vault-secondary);
+  color: var(--md-strong);
+  font-weight: 700;
 }
+/* Cambio de Carlos 2026-11-04: negrita, cursiva y negrita-cursiva se separan por TONO, no solo por
+   estilo. Negrita: el secundario (en claro, algo hacia el texto: el lima/naranja puros no llegan a 3:1). Cursiva: el secundario diluido en el texto (pálido, casi neutro).
+   Negrita-cursiva: el secundario girado hacia el terciario (otro matiz, vivo). */
 .milkdown-view .ProseMirror em {
-  color: color-mix(in srgb, var(--vault-secondary) 70%, var(--text-secondary));
+  color: color-mix(in srgb, var(--vault-secondary) 40%, var(--text-primary));
+}
+.milkdown-view .ProseMirror strong em,
+.milkdown-view .ProseMirror em strong {
+  color: color-mix(in srgb, var(--vault-secondary) 55%, var(--vault-tertiary));
 }
 
-/* H-014 (C-10): los enlaces normales del markdown (`[texto](url)`) van en el secundario al 100 %,
-   mismo tratamiento que la negrita (el wikilink resuelto repite este color más abajo; el roto no cambia). */
+/* Tonos del terciario (cambio de Carlos 2026-11-04): enlace, wikilink y código en línea comparten el
+   terciario de la bóveda pero se separan por tono. Oscuro: wikilink más claro (hacia el texto), enlace
+   puro, código más oscuro (hacia el fondo, casi negro; el piso de contraste del tema oscuro limita cuánto). Claro: enlace
+   y wikilink hacia el texto (más legibles) y código el más oscuro (casi todo texto).
+   Los pisos de contraste y de separación entre tonos los fija `vaultIcon.test.ts` para los 17 colores. */
+:root[data-theme="dark"] .milkdown-view {
+  --md-strong: var(--vault-secondary);
+  --md-link: var(--vault-tertiary);
+  --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 60%, var(--text-primary));
+  --md-code: color-mix(in srgb, var(--vault-tertiary) 90%, var(--bg-primary));
+}
+:root[data-theme="light"] .milkdown-view {
+  --md-strong: color-mix(in srgb, var(--vault-secondary) 85%, var(--text-primary));
+  --md-link: color-mix(in srgb, var(--vault-tertiary) 65%, var(--text-primary));
+  --md-wikilink: color-mix(in srgb, var(--vault-tertiary) 80%, var(--text-primary));
+  --md-code: color-mix(in srgb, var(--vault-tertiary) 45%, var(--text-primary));
+}
+
+/* Enlaces normales del markdown (`[texto](url)`): el TERCIARIO de la bóveda al 100 % y subrayados (cambio de
+   Carlos 2026-11-04; antes el secundario, igual que la negrita). El wikilink resuelto lo diluye más abajo y el
+   código en línea lo oscurece: los tres se distinguen por tono. */
 .milkdown-view .ProseMirror a {
-  color: var(--vault-secondary);
+  color: var(--md-link);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
 }
 
 /* Listas del markdown renderizado: listas de verdad (viñetas/números, sangría y ritmo compactos). */
@@ -1036,7 +1089,7 @@
   padding: 2px 6px;
   border-radius: var(--radius-xs);
   background: var(--bg-tertiary);
-  color: var(--accent-hover);
+  color: var(--md-code);
   font-family: var(--font-mono);
   font-size: 0.857em;
 }
@@ -1555,7 +1608,7 @@ li.note-task[data-checked="true"] .note-task-body {
    negrita, distinguible del texto (C-3). Roto (`data-broken`): color de peligro + subrayado punteado,
    visible pero marcado como inválido (H-014 NO lo cambia). Por defecto cursor de texto (en edición el clic sólo coloca el caret). */
 .milkdown-view .ProseMirror a.wikilink {
-  color: var(--vault-secondary);
+  color: var(--md-wikilink);
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;

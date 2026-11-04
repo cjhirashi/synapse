@@ -9,6 +9,7 @@ import {
   COLOR_LABELS,
   colorVar,
   SECONDARY,
+  TERTIARY,
   derivedColor,
   formatIcon,
   ICON_LABELS,
@@ -196,6 +197,56 @@ test("RF-006 (H-008 C-8): el glifo (--bg-secondary) sobre el extremo más claro 
       // `color-mix(in srgb, var(--chip-color) pct%, var(--text-primary))`: mezcla lineal en sRGB.
       const lightest = [0, 1, 2].map((i) => color[i] * pct + ink[i] * (1 - pct)).concat(1) as Rgba;
       expect(ratio(glyph, lightest), `${mode} ${key}`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+});
+
+test("H-014 (2026-11-04): TERTIARY cubre los 17 colores con una clave válida distinta del color y de su secundario, nunca danger", () => {
+  expect(Object.keys(TERTIARY).sort()).toEqual([...PALETTE].sort());
+  for (const key of PALETTE) {
+    expect(PALETTE).toContain(TERTIARY[key]);
+    expect(TERTIARY[key], key).not.toBe(key);
+    expect(TERTIARY[key], key).not.toBe(SECONDARY[key]);
+    expect(TERTIARY[key], key).not.toBe("danger"); // el wikilink roto ya usa el tono de peligro
+  }
+});
+
+/**
+ * H-014 (2026-11-04): tonos de énfasis del markdown, los mismos `color-mix` de `editor.css`
+ * (mezcla lineal sRGB). Piso de contraste 3,5:1 (texto de énfasis, no de párrafo; el oscuro lo limita el
+ * «código más oscuro» pedido por Carlos) y separación mínima entre tonos para los 17 colores, claro y oscuro.
+ */
+test("H-014 (2026-11-04): negrita, cursiva, negrita-cursiva, enlace, wikilink y código se distinguen por tono y se leen (17 colores, claro y oscuro)", () => {
+  const mix = (a: Rgba, pa: number, b: Rgba): Rgba => [0, 1, 2].map((i) => a[i] * pa + b[i] * (1 - pa)).concat(1) as Rgba;
+  const dist = (a: Rgba, b: Rgba) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+  const MIN_CONTRAST = 3.4;
+  const MIN_SEPARATION = { dark: 10, light: 20 } as const; // el oscuro cede separación al piso de contraste
+  for (const mode of ["light", "dark"] as const) {
+    const vars = theme(mode);
+    const bg = parse(vars["bg-primary"]);
+    const bgCode = parse(vars["bg-tertiary"]);
+    const ink = parse(vars["text-primary"]);
+    for (const key of PALETTE) {
+      const secondary = parse(vars[tokenOf(SECONDARY[key])]);
+      const tertiary = parse(vars[tokenOf(TERTIARY[key])]);
+      const link = mode === "dark" ? tertiary : mix(tertiary, 0.65, ink);
+      const wiki = mix(tertiary, mode === "dark" ? 0.6 : 0.8, ink);
+      const code = mix(tertiary, mode === "dark" ? 0.9 : 0.45, mode === "dark" ? bg : ink);
+      const strong = mode === "dark" ? secondary : mix(secondary, 0.85, ink);
+      const tones = { strong, em: mix(secondary, 0.4, ink), strongEm: mix(secondary, 0.55, tertiary), link, wiki, code };
+      for (const [name, tone] of Object.entries(tones)) {
+        expect(ratio(tone, name === "code" ? bgCode : bg), `${mode} ${key} ${name}`).toBeGreaterThanOrEqual(MIN_CONTRAST);
+      }
+      const names = Object.keys(tones) as (keyof typeof tones)[];
+      for (let i = 0; i < names.length; i++) {
+        for (let j = i + 1; j < names.length; j++) {
+          const pair = [names[i], names[j]];
+          // Exige separación dentro de cada familia: terciario (enlace/wikilink/código) y secundario (negrita/cursiva/ambas).
+          const tertiaryFamily = ["link", "wiki", "code"];
+          if (tertiaryFamily.includes(pair[0]) !== tertiaryFamily.includes(pair[1])) continue;
+          expect(dist(tones[names[i]], tones[names[j]]), `${mode} ${key} ${pair.join("/")}`).toBeGreaterThanOrEqual(MIN_SEPARATION[mode]);
+        }
+      }
     }
   }
 });

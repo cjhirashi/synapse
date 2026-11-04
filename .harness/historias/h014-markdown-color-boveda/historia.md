@@ -334,3 +334,22 @@ texto (amarillo 2,94, lima 3,09, verde 3,30, naranja 3,56, cian 3,68, verde azul
 azul cielo 4,10). Afecta igual al color primario de los encabezados y ya existía con el
 complementario. Pendiente: aclarar el texto de esos colores en tema claro (mezcla con
 `--text-primary`) si Carlos usa o va a usar el tema claro.
+
+## Enmienda 2026-11-04 (Carlos): escala de tamaños, tonos de énfasis y color terciario
+
+Carlos vio que H2 salía más chico que H3 (H2 heredaba 15 px del `h2` global y H3 el 1,17 em del navegador)
+y que los encabezados H2-H4 casi no se distinguían del texto ni de la negrita. También que negrita, cursiva y
+negrita-cursiva se veían del mismo tono. Cambios (`editor.css`, `vaultIcon.ts`, `MilkdownView.tsx`):
+
+- **Tamaño:** H1 2,1 em, H2 1,7 em, H3 1,4 em, H4 1,2 em sobre los 14 px del documento (≈ 29, 24, 20 y 17 px);
+  H1-H2 en peso 700 y H3-H4 en 600; interlineado 1,3. El color de H1-H4 no cambia.
+- **Terciario:** `TERTIARY` (17 claves, a ~120-170° del color de la bóveda, nunca `danger`) publicado como
+  `--vault-tertiary`. Lo usan enlaces, wikilinks resueltos y código en línea.
+- **Tonos** (`--md-*`, por tema): negrita = secundario (en claro 85 % + texto, para llegar a 3,4:1); cursiva =
+  secundario 40 % + texto; negrita-cursiva = secundario 55 % + terciario. Enlace URL (subrayado), wikilink
+  (más claro, subrayado) y código (más oscuro, chip `--bg-tertiary`) separados por tono.
+- **Límite conocido:** en el tema oscuro, oscurecer el código más allá de 90 % del terciario baja el contraste
+  bajo 3,4:1 (el chip es `--bg-tertiary`); por eso la separación entre enlace, wikilink y código es menor en
+  oscuro que en claro. `vaultIcon.test.ts` fija el piso de contraste y la separación para los 17 colores.
+- Supersede C-5 (cursiva 70 % + `--text-secondary`) y C-10 (enlaces en el secundario) y la regla «jerarquizar
+  con color, no con tamaño». Verificado en Chromium real (tamaños y colores calculados, 3 bóvedas, oscuro y claro).

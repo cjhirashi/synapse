@@ -154,17 +154,41 @@ test("H-014 C-1…C-4: H1-H4 llevan el color de la bóveda mezclado con el texto
   expect(h("h4")).toBe("color-mix(in srgb, var(--vault-accent) 30%, var(--text-primary))"); // C-4
 });
 
-test("H-014 C-5: negrita al 100 % del secundario; cursiva más tenue (70 % + --text-secondary)", () => {
+test("H-014 C-5 (2026-11-04): negrita = secundario (--md-strong); cursiva = secundario diluido en el texto; negrita-cursiva = secundario girado al terciario", () => {
   const css = editorCss();
-  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--vault-secondary)");
-  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-secondary) 70%, var(--text-secondary))");
+  expect(colorOf(css, ".milkdown-view .ProseMirror strong")).toBe("var(--md-strong)");
+  expect(colorOf(css, ".milkdown-view .ProseMirror em")).toBe("color-mix(in srgb, var(--vault-secondary) 40%, var(--text-primary))");
+  expect(css).toMatch(/\.milkdown-view \.ProseMirror strong em,\s*\.milkdown-view \.ProseMirror em strong\s*\{\s*color: color-mix\(in srgb, var\(--vault-secondary\) 55%, var\(--vault-tertiary\)\)/);
 });
 
-test("H-014 C-10: enlace normal y wikilink resuelto al 100 % del secundario; el roto sigue en --danger-text", () => {
+test("H-014 C-10 (2026-11-04): enlace y wikilink resuelto en tonos del terciario y subrayados; el roto sigue en --danger-text", () => {
   const css = editorCss();
-  expect(colorOf(css, ".milkdown-view .ProseMirror a")).toBe("var(--vault-secondary)");
-  expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink")).toBe("var(--vault-secondary)");
+  const link = rule(css, ".milkdown-view .ProseMirror a");
+  expect(link).toMatch(/color: var\(--md-link\)/);
+  expect(link).toMatch(/text-decoration: underline/);
+  const wiki = rule(css, ".milkdown-view .ProseMirror a.wikilink");
+  expect(wiki).toMatch(/color: var\(--md-wikilink\)/);
+  expect(wiki).toMatch(/text-decoration: underline/);
   expect(colorOf(css, ".milkdown-view .ProseMirror a.wikilink[data-broken]")).toBe("var(--danger-text)"); // estado de error, no de énfasis
+});
+
+test("H-014 (2026-11-04): los tonos --md-link/--md-wikilink/--md-code salen del terciario, distintos en oscuro y claro", () => {
+  const css = editorCss();
+  for (const mode of ["dark", "light"]) {
+    const block = rule(css, `:root[data-theme="${mode}"] .milkdown-view`);
+    expect(block, `${mode} --md-strong`).toMatch(/--md-strong:[^;]*--vault-secondary/);
+    for (const name of ["--md-link", "--md-wikilink", "--md-code"]) expect(block, `${mode} ${name}`).toMatch(new RegExp(`${name}:[^;]*--vault-tertiary`));
+  }
+});
+
+test("H-014 (2026-11-04): la escala de encabezados es estricta (H1 > H2 > H3 > H4 > texto) y H4 queda claramente sobre el texto normal", () => {
+  const css = editorCss();
+  const size = (tag: string) => Number(rule(css, `.milkdown-view .ProseMirror ${tag}`).match(/font-size: ([\d.]+)em/)![1]);
+  const [h1, h2, h3, h4] = ["h1", "h2", "h3", "h4"].map(size);
+  expect(h1).toBeGreaterThan(h2);
+  expect(h2).toBeGreaterThan(h3);
+  expect(h3).toBeGreaterThan(h4);
+  expect(h4).toBeGreaterThanOrEqual(1.15); // al menos 15 % sobre el texto de 14 px: no se confunde con la negrita
 });
 
 test("H-014 C-11: la cabecera de tabla (th) usa fondo tenue y texto al 100 % del color de la bóveda", () => {
@@ -196,10 +220,10 @@ test("H-014 C-7: la cita, el <hr> y los bordes de tabla usan var(--border) a 1px
   expect(editorCss()).toMatch(/\.milkdown-view \.ProseMirror th,\s*\.milkdown-view \.ProseMirror td\s*\{[^}]*border: 1px solid var\(--border\)/);
 });
 
-test("RF-038: el código en línea usa --bg-tertiary, --accent-hover y --radius-xs, y no toca el de los bloques", () => {
+test("RF-038 (2026-11-04): el código en línea usa --bg-tertiary, el tono --md-code del terciario y --radius-xs, y no toca el de los bloques", () => {
   const inline = rule(read("../editor/editor.css"), ".milkdown-view .ProseMirror :not(pre) > code");
   expect(inline).toMatch(/background: var\(--bg-tertiary\)/);
-  expect(inline).toMatch(/color: var\(--accent-hover\)/);
+  expect(inline).toMatch(/color: var\(--md-code\)/);
   expect(inline).toMatch(/border-radius: var\(--radius-xs\)/);
   expect(inline).toMatch(/padding: 2px 6px/);
   expect(inline).toMatch(/font-size: 0\.857em/);
