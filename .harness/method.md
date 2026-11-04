@@ -1,8 +1,8 @@
 ---
 titulo: Método del arnés — Slice Development
 tipo: metodo
-estado: piloto-v0.1
-version_arnes: 0.1
+estado: piloto-v0.2
+version_arnes: 0.2
 base: reemplaza a SDD Anchored v1.9 (`skills/sdd-anchored/references/method.md`)
   para los proyectos piloto synapse y design-html — ver §12 Procedencia
 ---
@@ -114,9 +114,9 @@ Al tomar `H-NNN` del backlog (nunca antes):
    CLARIFICATION] = 0` y el usuario confirma "así es".
 3. **Plan de ESA historia solamente** (no del proyecto, no de un épico): qué
    componentes del patrón de arquitectura tocar, contratos si aplica,
-   estrategia de prueba, pasos TDD ordenados (ver §4), y si toca documentación
-   del mapa (Art. 11) — igual que `plan.md §Impacto` de SDD Anchored, a
-   escala de historia.
+   estrategia de prueba, pasos TDD ordenados (ver §4), y **las rutas exactas de
+   los README/docs del mapa (Art. 11) que la historia deja obsoletos** —
+   cada ruta es un paso `[doc]` — o `no toca doc` explícito con su motivo.
 4. Fija `covers` en el front-matter de `historia.md`: globs de archivos que
    esta historia posee — mismo mecanismo de anclaje/drift de SDD Anchored,
    sin cambios.
@@ -173,10 +173,19 @@ Mismo mecanismo de SDD Anchored (`gate/check.sh`, §8), pero su alcance es
   solución de raíz, revisión humana por *git diff*, y solo tras aprobación
   se regeneran los pasos afectados. Prohibido el parche silencioso.
 
+### Regla 🔴 — todo cambio queda documentado (v0.2, 2026-11-04)
+
+Cada paso de la historia que cambia código actualiza, **en el mismo commit**, los
+README/docs del mapa (Art. 11) que deja obsoletos; si no toca ninguno, declara
+`Docs actualizadas: ninguna — <motivo>` (Session-End o mensaje del commit). El gate
+cierra la compuerta sin una de las dos cosas y el verificador comprueba que el
+contenido describa el comportamiento nuevo. Una historia con docs viejas no se
+cierra, aunque el resto esté en verde.
+
 ### Cierre de historia (Session-End)
 
-Idéntico formato de 5 partes de SDD Anchored (Claim/Evidencia/Línea
-base/Gaps/Riesgo residual/Próximo paso) en `memory/history.md`, a escala de
+Formato de 6 partes (Claim/Evidencia/Línea base/Gaps/**Docs actualizadas**/
+Riesgo residual/Próximo paso) en `memory/history.md`, a escala de
 historia. `estado:` de `historia.md` → `implemented`/`verified`.
 **Checkpoint demostrable:** antes de marcar `verified`, el usuario (o quien
 tenga autoridad delegada) vio o probó el resultado funcionando — no solo leyó
@@ -208,100 +217,29 @@ un **requisito** (qué / por qué), **no** pseudocódigo (cómo).
 
 ## §7 · Split de modelo (formalizado)
 
-Heredado de SDD Anchored §8, formalizado explícito para el ciclo de historia.
+Heredado de SDD Anchored §8, formalizado explícito para el ciclo de historia:
 
-### Ids explícitos, nunca alias
+- **Modelo fuerte (Opus):** grooming del backlog (si se delega) y
+  refinamiento de historia (§3) — es la fase de mayor juicio y la más cara
+  de deshacer si sale mal (una historia mal refinada contamina todo su
+  ciclo driver/navigator).
+- **Modelo rápido (default del proyecto):** rol Driver del ciclo §4 — es
+  mecánico, acotado a un paso TDD a la vez, y tiene su propio control
+  (test que debe fallar primero, Navigator vigilando).
+- **Navigator:** modelo del operador (humano) o AIRA con autoridad delegada
+  — no es una elección de modelo del proyecto, es un rol de vigilancia.
 
-Los alias cortos resuelven a versiones viejas. Medido con telemetría
-(`modelUsage` de `claude -p --output-format json`, 2026-10-30 CDMX):
-`sonnet` → `claude-sonnet-5`, `haiku` → `claude-haiku-4-5-20251001`,
-`opus` → `claude-opus-4-8`. Por eso **todo `model:` de este arnés lleva el id
-completo** y un `model: sonnet` cuenta como defecto de configuración.
-
-| Nivel | Id vigente | Para qué |
-|---|---|---|
-| Fuerte | `claude-opus-5` | Solo diseño, arquitectura y alto razonamiento |
-| Default | `claude-sonnet-5-5` | Razonamiento medio: coordinación, revisión adversarial, decisión |
-| Rápido | `claude-haiku-5-5` | Implementar sobre plan, ejecutar tests, lectura, búsqueda, mapeo, reporte mecánico |
-
-`claude-opus-5-5` todavía **no** se usa: devuelve HTTP 400 con el binario
-`claude` 2.1.197 que gana el PATH del Gateway (Opus 5.5 exige ≥ 2.1.280).
-Cuando esa instalación se actualice, sustituir `claude-opus-5` por
-`claude-opus-5-5` aquí y en `.claude/agents/`, y revalidar con telemetría, no
-por autorreporte del modelo.
-
-### Por rol del ciclo de historia
-
-- **`claude-opus-5`** — grooming del backlog (si se delega) y refinamiento de
-  historia (§3). Es la fase de mayor juicio y la más cara de deshacer si sale
-  mal: una historia mal refinada contamina todo su ciclo driver/navigator.
-  Son los dos únicos puntos del ciclo de historia que justifican Opus.
-- **`claude-haiku-5-5`** — rol Driver del ciclo §4, **declarado en la
-  llamada**. Ejecutar un plan ya escrito en `historia.md §6` con Gate 1
-  superado no es razonamiento: es mecánico, acotado a un paso TDD a la vez, y
-  tiene su propio control (test que debe fallar primero, Navigator vigilando).
-  **El ciclo §4 no se corre dentro de una sesión de operador que esté en
-  Opus.** Se despacha como subagente con `model: claude-haiku-5-5` explícito,
-  porque un subagente sin clave `model` hereda el modelo del padre. Medido
-  2026-10-30: nueve worktrees de historia se completaron al 100% en
-  `claude-opus-4-8` con el plan ya escrito y Gate 1 superado.
-- **`claude-sonnet-5-5`** — `revisor` (veredicto adversarial: juzgar si la tarea
-  está mal es razonamiento) y `orquestador`. El gate y los tests que el revisor
-  corre son mecánicos; lo que se decide es el veredicto.
-- **Navigator** — rol de vigilancia (humano, o AIRA con autoridad delegada).
-  No es una elección de modelo del proyecto.
-
-### Ciclo de escalamiento
-
-Quienes diseñan, especifican y planifican (`autor-de-spec`, `arquitecto`,
-`experto-ux-ui`, `orquestador`) usan modelo de razonamiento. Quienes implementan
-código y quienes ejecutan los tests usan `claude-haiku-5-5`, porque el plan ya trae
-el razonamiento hecho.
-
-Si Haiku no resuelve una falla (reporta `blocked`, o el test no pasa), el trabajo
-**vuelve a los diseñadores**: `arquitecto` (o `autor-de-spec` si el defecto está en
-el requisito) analiza la falla con su modelo de razonamiento y corrige
-`spec.md`/`plan.md`/`tasks.md`. Con el diseño resuelto, la tarea regresa a Haiku.
-`implementador` y los roles que ejecutan tests **nunca suben de modelo por su
-cuenta**.
-
-### Subagentes ad-hoc — regla dura
-
-Toda llamada `Task`/Agent que **no** invoque un rol con nombre de
-`.claude/agents/` **debe** declarar `model` explícito. Sin esa clave el
-subagente hereda el modelo de la sesión padre, y el modelo heredado casi nunca
-es el que la tarea pide. Ésta es la vía de fuga real: una tabla rol→modelo no
-la tapa, porque los roles con nombre sí declaran su modelo y las llamadas
-ad-hoc no.
-
-| Forma de la tarea ad-hoc | `model` obligatorio |
-|---|---|
-| Investigación read-only, búsqueda, mapeo de código, inventario de estado | `claude-haiku-5-5` |
-| Correr comandos dados y reportar su salida (diagnóstico, gate, tests, build) | `claude-haiku-5-5` |
-| Implementación, edición acotada, refactor mecánico, redacción sobre un plan ya escrito | `claude-haiku-5-5` |
-| Revisión adversarial, causa raíz con hipótesis abiertas | `claude-sonnet-5-5` |
-| Diseño de arquitectura, elección de patrón, trade-offs estructurales | `claude-opus-5` |
-
-**Si la tarea cabe en un rol con nombre, usa el rol, no una llamada ad-hoc:**
-`explorador` ya cubre entera la primera fila y corre en `claude-haiku-5-5`.
-Medido en la ventana 2026-10-23 → 2026-10-30: ~$146 de valoración a precio de
-lista de la API (22% del Opus de esa semana) se consumió en tareas de las dos
-primeras filas despachadas ad-hoc sin `model`. Es valoración comparativa entre
-tareas, no gasto facturado — la suscripción es de tarifa plana.
-
-### Por qué separar
-
-Iterar en refinamiento es barato comparado con el costo de un ciclo
-driver/navigator completo construido sobre una historia ambigua — mismo
-argumento que SDD Anchored usaba para Specify/Plan en Opus. La simetría
-importa en los dos sentidos: subir a Opus lo que ya está decidido no compra
-calidad, solo consumo.
+Por qué separar: iterar en refinamiento es barato comparado con el costo de
+un ciclo driver/navigator completo construido sobre una historia ambigua —
+mismo argumento que SDD Anchored usaba para Specify/Plan en Opus.
 
 ---
 
 ## §8 · La compuerta — `gate/check.sh`
 
-Mismo mecanismo de SDD Anchored §6, sin cambios de bloques fijos (integridad,
+Mismo mecanismo de SDD Anchored §6 (bloque «anclaje+docs+raíz» **bloqueante** para
+docs desde v0.2: código de producto cambiado sin doc del mapa tocado ni exención
+declarada = ❌), sin cambios de bloques fijos (integridad,
 trazabilidad, anclaje+docs+raíz, presupuesto) ni de bloques por perfil de
 arquitectura. El único ajuste: "Trazabilidad" verifica la tabla de cobertura
 de `historia.md` en vez de `tasks.md` — misma exigencia (100% de criterios
@@ -327,8 +265,8 @@ Constitución.
 ### Gate 2 — Converge de la historia (§5)
 Dos corridas consecutivas del verificador sin hallazgos nuevos · 0
 hallazgos Critical sin resolver · commits citan `H-NNN` · solución de raíz
-(sin *workarounds*, sin `TODO`/`FIXME` sin ticket) · docs sincronizadas si
-la historia tocó superficie observable · **checkpoint demostrable** cumplido
+(sin *workarounds*, sin `TODO`/`FIXME` sin ticket) · docs sincronizadas
+(contenido verificado contra el diff; exención declarada solo con motivo real) · **checkpoint demostrable** cumplido
 (el usuario vio/probó el resultado) · `memory/state.md`/`history.md`
 actualizados · aprobación humana del PR (o autoridad delegada explícita,
 "Modo 2").

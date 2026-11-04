@@ -118,10 +118,37 @@ fi
 DIFF_ADD="$(git diff -U0 -- . ':(exclude).harness/gate/' 2>/dev/null | grep -E '^\+[^+]' | grep -E '\b(TODO|FIXME|XXX|HACK)\b' | grep -Ev 'RF-[0-9]+|RNF-[0-9]+|ADR-[0-9]+' || true)"
 [ -n "$DIFF_ADD" ] && { err "TODO/FIXME sin ticket en los cambios — Art. 10"; echo "$DIFF_ADD" | sed 's/^/      /' | head -6; } \
                    || ok "sin TODO/FIXME sin ticket en los cambios"
-SURF="$(git diff --name-only 2>/dev/null | grep -E 'routes/|/api/|openapi|asyncapi|docker-compose|Caddyfile|caddy.json|\.env' || true)"
-DOCS_T="$(git diff --name-only 2>/dev/null | grep -E '^docs/|README' || true)"
-[ -n "$SURF" ] && [ -z "$DOCS_T" ] && warn "el diff toca superficie observable y ningún doc del mapa — revisa Art. 11" \
-                                   || ok "documentación: sin señal de obsolescencia"
+# --- Documentación al día (regla 🔴 "todo cambio queda documentado", Art. 11) ---
+# Revisa cambios sin commitear + commits de la rama sobre la base (en la rama
+# principal, el último commit): si cambia código de producto, debe cambiar un doc
+# (README, docs/, AGENTS.md, openapi) o declararse `docs: ninguna — <motivo>`.
+docs_base() {
+  local cur m
+  cur="$(git rev-parse --abbrev-ref HEAD 2>/dev/null)"
+  for m in origin/main origin/master main master; do
+    git rev-parse --verify -q "$m" >/dev/null 2>&1 || continue
+    [ "$cur" != "${m#origin/}" ] && { git merge-base HEAD "$m" 2>/dev/null && return; }
+    break
+  done
+  git rev-parse -q --verify HEAD~1 2>/dev/null || git rev-parse -q --verify HEAD 2>/dev/null || git hash-object -t tree /dev/null
+}
+DOC_BASE="$(docs_base)"
+DOC_CHANGED="$( { git diff --name-only "$DOC_BASE" 2>/dev/null; git ls-files --others --exclude-standard 2>/dev/null; } | sort -u )"
+DOC_NOCODE='^(\.harness|\.claude|\.archify|graphify-out|docs)/|(^|/)(README|CHANGELOG)[^/]*$|(^|/)(AGENTS|CLAUDE)\.md$|\.(md|txt|lock|svg|png|jpe?g|gif|ico)$|(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|poetry\.lock|\.gitignore)$|(^|/)(tests?|__tests__|e2e)/|\.(test|spec)\.[jt]sx?$|(^|/)test_[^/]*\.py$|_test\.py$'
+DOC_ISDOC='^docs/|(^|/)(README|CHANGELOG)[^/]*$|(^|/)(openapi|asyncapi)[^/]*\.ya?ml$|\.md$'
+DOC_CODE="$(echo "$DOC_CHANGED" | grep -Ev "$DOC_NOCODE" | grep . || true)"
+DOC_TOUCHED="$(echo "$DOC_CHANGED" | grep -Ev '^(\.harness|\.claude|graphify-out)/' | grep -E "$DOC_ISDOC" || true)"
+DOC_EXENTA="$( { git log --format=%B "$DOC_BASE"..HEAD 2>/dev/null
+                 git diff -U0 "$DOC_BASE" -- "$H" ":(exclude)$H/gate" ":(exclude)$H/**/_template/**" 2>/dev/null | grep -E '^\+[^+]'
+                 git ls-files --others --exclude-standard -- "$H" 2>/dev/null | grep -v '/_template/' | xargs -r cat; } \
+               | grep -Ei 'docs( actualizadas)?:[[:space:]]*ninguna[[:space:]]*(—|–|-)[[:space:]]*[^[:space:]]' | head -1 || true)"
+if [ -z "$DOC_CODE" ]; then ok "documentación: sin cambios de código de producto"
+elif [ -n "$DOC_TOUCHED" ]; then ok "documentación: el cambio tocó $(echo "$DOC_TOUCHED" | grep -c .) doc(s) del proyecto"
+elif [ -n "$DOC_EXENTA" ]; then ok "documentación: exenta declarada — $(echo "$DOC_EXENTA" | sed 's/^[^:]*://; s/^[[:space:]]*//' | cut -c1-90)"
+else
+  err "DOCUMENTACIÓN: $(echo "$DOC_CODE" | grep -c .) archivo(s) de código cambiaron y ningún README/doc del mapa (Art. 11) — actualiza el doc o declara 'Docs actualizadas: ninguna — <motivo>' en el Session-End/commit"
+  echo "$DOC_CODE" | sed 's/^/      /' | head -6
+fi
 
 # =============================================================================
 sec "4· Presupuesto de contexto"

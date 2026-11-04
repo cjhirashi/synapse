@@ -110,6 +110,12 @@ rutas:
 
 > Las decisiones **del arnés** van en `.harness/decisions/`, no aquí.
 
+**Regla 🔴 — todo cambio queda documentado.** Un cambio de código no está hecho hasta que los documentos
+de esta tabla que él deja obsoletos se actualizan **en el mismo commit**. Si no toca ninguno, se declara
+`Docs actualizadas: ninguna — <motivo>` (Session-End o mensaje del commit). `gate/check.sh` cierra la
+compuerta si cambia código de producto sin un doc tocado ni esa declaración; el verificador comprueba
+que el contenido es correcto.
+
 ## Artículo 12 · Anti-hipersistema
 
 1. **3 archivos por feature** (`spec.md`, `plan.md`, `tasks.md`) + `contracts/` si

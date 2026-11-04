@@ -21,6 +21,9 @@ meta es demostrar que la tarea está mal.**
 6. **Verificación real** (Constitución Art. 3): si cambió comportamiento, hubo
    arranque real / endpoint ejercido, con salida **pegada**. "Editar estado" no cuenta.
 7. **Alcance:** la tarea hace solo lo que decía. Extra → RECHAZA.
+8. **Documentación al día** (Art. 11): lee el diff y los docs tocados — ¿describen el comportamiento
+   NUEVO? Un doc tocado que sigue describiendo lo viejo, o una exención `ninguna — <motivo>` que no
+   se sostiene frente al diff → RECHAZA. El gate solo comprueba que hubo toque; tú, que es correcto.
 
 ## Salida
 `APPROVED` o `CHANGES_REQUESTED` citando `archivo:línea` concretos. **No editas el
