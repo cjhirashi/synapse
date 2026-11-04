@@ -1,7 +1,7 @@
 ---
 id: H-040
 titulo: Migración del bloque YAML al inicio del cuerpo de las notas a atributos
-estado: implemented # migración real aplicada en producción 2026-11-04 ~18:15 CDMX, autorizada por Carlos (vía `main`)
+estado: implemented # migración real aplicada en producción 2026-11-04 ~17:15 CDMX, autorizada por Carlos (vía `main`)
 covers:
   - backend/app/core/body_yaml.py
   - backend/app/core/attribute_rules.py
@@ -82,7 +82,7 @@ la migración real solo se ejecuta tras la confirmación de Carlos.
   0 notas con atributo `etiquetas`, 0 conflictos de CouchDB. Decisión abierta para Carlos: `date` queda como atributo libre `date`
   (no `fecha_creacion`). Digest del plan: `e593ffcc…3551d`. `apply`/`backup`/`rollback` (pasos 4-5) NO implementados: esperan confirmación de Carlos.
 
-## Cierre (AIRA, 2026-11-04 ~18:15 CDMX)
+## Cierre (AIRA, 2026-11-04 ~17:15 CDMX)
 
 - **Cambios tras el ensayo:** alias `date` → `fecha_creacion` (`body_yaml.YAML_ONLY_ALIASES`, con pruebas) y modos `backup`, `apply`
   (exige informe aprobado y respaldo del mismo plan; escribe con `_rev`; relee y verifica) y `rollback` (restaura solo notas que siguen
