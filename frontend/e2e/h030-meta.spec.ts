@@ -92,7 +92,8 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await shot(page, `h030meta-${label}-3-meta-plegada`);
     await head.click();
     await expect(head).toHaveAttribute("aria-expanded", "true");
-    await expect(meta().getByRole("treeitem")).toHaveCount(5);
+    // AG - SKILLS sigue abierta (paso 7) y muestra la skill de cajón que el servidor siembra con la bóveda (H-030b).
+    await expect(meta().getByRole("treeitem")).toHaveCount(6);
 
     // 8. Tras recargar, META sigue arriba (la agrupación sale de las rutas, no de un estado local). Se pliega antes
     // AG - SKILLS: la app recuerda las carpetas abiertas y sus hijos también son filas del grupo.
@@ -104,11 +105,13 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await hideSidebar(page, size);
     await page.reload();
     await waitForSynced(page);
+    // Tras recargar, la nota abierta (el INDICE de AG - SKILLS) vuelve a desplegar su carpeta y se ve la skill de cajón
+    // que el servidor siembra (H-030b): se comprueban las cinco reservadas sin contar ese hijo.
     await expect(async () => {
       await showSidebar(page);
-      await expect(meta().getByRole("treeitem")).toHaveCount(5, { timeout: 2000 });
+      await expect(meta().getByRole("treeitem", { name: "PLANTILLAS", exact: true })).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 30_000 });
-    expect(await meta().getByRole("treeitem").allTextContents()).toEqual(META_ORDER);
+    expect((await meta().getByRole("treeitem").allTextContents()).filter((name) => META_ORDER.includes(name))).toEqual(META_ORDER);
 
     await waitForSynced(page);
     await expect(page.getByText(/cambios? rechazados?/), "sin rechazos del push").toHaveCount(0);
