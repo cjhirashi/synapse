@@ -14,6 +14,9 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     ports:
       - "8000:8000"
+    volumes:
+      # H-030 E7: volcado de las conversaciones purgadas (se conserva 30 días). Carpeta 700 del usuario del servidor.
+      - ./.claude/worktrees/respaldos-purga:/backups/synapse-purga
     depends_on:
       - postgres
       - couchdb

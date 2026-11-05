@@ -75,9 +75,10 @@ def plan(port: VaultPort, db: str, vault_id: str, now: datetime) -> PurgePlan:
 
 
 def _dump(path: Path, owner_id: str, vault_id: str, candidate: Candidate) -> None:
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    # El volcado trae el contenido de mensajes: solo el propietario lo lee.
-    with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600), "a", encoding="utf-8") as handle:
+    # El contenedor corre como root: el aislamiento lo da la carpeta raíz del volcado en el host (700, del usuario
+    # del servidor); dentro, 755/644 para que ese usuario pueda leer y limpiar lo que escribe root.
+    path.parent.mkdir(mode=0o755, parents=True, exist_ok=True)
+    with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644), "a", encoding="utf-8") as handle:
         for doc in candidate.docs:
             handle.write(json.dumps({"owner_id": owner_id, "vault_id": vault_id, "conversation": candidate.folder,
                                      "doc": doc}, ensure_ascii=False) + "\n")
