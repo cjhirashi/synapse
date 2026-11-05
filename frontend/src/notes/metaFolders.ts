@@ -18,6 +18,18 @@ export function isMetaFolderPath(path: string): boolean {
   return META_ORDER.has(pathKey(path));
 }
 
+/** Nombre canónico de una carpeta reservada de la raíz, o `null` si `path` no es una. */
+export function canonicalMetaName(path: string): string | null {
+  // Solo las carpetas de la raíz (sin "/") pueden ser reservadas.
+  if (path.includes("/")) return null;
+  for (const name of META_FOLDERS) {
+    if (pathKey(name) === pathKey(path)) {
+      return name;
+    }
+  }
+  return null;
+}
+
 /** Separa el árbol de la raíz en las carpetas reservadas (en el orden de META) y el resto, sin tocar los hijos. */
 export function splitMeta<T>(tree: TreeNode<T>[]): { meta: FolderNode<T>[]; rest: TreeNode<T>[] } {
   const meta: FolderNode<T>[] = [];
