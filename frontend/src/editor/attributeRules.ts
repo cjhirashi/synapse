@@ -22,6 +22,9 @@ export const ESTADOS_ESTANDAR = [
 ] as const;
 export const RESERVED_KEYS = ["ruta"] as const;
 
+export const PLANTILLA_NAME_MAX = 64;
+export const PLANTILLA_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
 export const ESTADO_SYNONYMS: Record<string, string> = {
   "borrador": "borrador",
   "draft": "borrador",
@@ -133,6 +136,16 @@ export function validateGeneral(frontmatter: Record<string, unknown>): string | 
     const val = frontmatter.estado;
     if (typeof val !== "string" || normalizeEstado(val) !== val) {
       return "estado";
+    }
+  }
+  if ("plantilla" in frontmatter) {
+    const val = frontmatter.plantilla;
+    const valid =
+      typeof val === "string"
+      && val.length <= PLANTILLA_NAME_MAX
+      && PLANTILLA_NAME_RE.test(val);
+    if (!valid) {
+      return "plantilla";
     }
   }
   return null;
