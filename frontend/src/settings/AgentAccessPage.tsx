@@ -140,7 +140,7 @@ export default function AgentAccessPage() {
       {vaults !== null && vaults.length === 0 && <p>Aún no tienes bóvedas.</p>}
       {vaults !== null && vaults.length > 0 && (
         <label>
-          Bóveda
+          Bóveda a asignar
           <select value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
             {vaults.map((v) => (
               <option key={v.id} value={v.id}>
