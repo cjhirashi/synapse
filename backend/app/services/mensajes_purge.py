@@ -12,7 +12,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
 
-from app.core import ag_rules
+from app.core import ag_rules, conversation_rules
 from app.core.errors import RevisionConflict
 from app.core.index_rules import is_index_path
 from app.core.note_prefix import in_folder, view_key
@@ -56,13 +56,13 @@ def plan(port: VaultPort, db: str, vault_id: str, now: datetime) -> PurgePlan:
     for doc in _docs_under(port, db, vault_id, ag_rules.AG_MENSAJES):
         if doc.get("deleted_at"):
             continue
-        info = ag_rules.parse_mensaje_path(doc["path"])
+        info = conversation_rules.parse_mensaje_path(doc["path"])
         if info is None or info.kind != "cabecera":
             continue
         frontmatter = doc.get("frontmatter") or {}
         if frontmatter.get("estado") != "cerrada":
             continue
-        folder = ag_rules.conversation_folder(info.para, info.conversation)
+        folder = info.folder
         try:
             closed_at = parse_timestamp(frontmatter["cerrada_el"])
         except (KeyError, ValueError, TypeError):

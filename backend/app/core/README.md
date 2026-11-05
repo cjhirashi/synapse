@@ -81,9 +81,13 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   únicamente con su carpeta; el de la raíz nunca. Las usan `note_content_service.py` y `sync_push.py`; las espeja
   `frontend/src/notes/indexRules.ts` sobre `tests/fixtures/indice_cuerpo.json`.
 - `ag_rules.py` — reglas puras de las carpetas reservadas (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`,
-  `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`, formato de
-  `AG - MENSAJES` (`parse_mensaje_path`, `check_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `check_agent_mensaje_op`
-  de inmutabilidad). Códigos `reserved-name:path`, `meta-folder:*`, `ag-mensajes:*`. Las usan REST y `sync_push.py`.
+  `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`. Códigos
+  `reserved-name:path`, `meta-folder:*`. Las usan REST y `sync_push.py`.
+- `conversation_rules.py` — conversaciones de `AG - MENSAJES` (H-042): carpeta `<de> → <para> - <asunto> - <AAAA-MM-DD>`
+  (`parse_conversation`, `parse_mensaje_path`, `canonical_arrow` para la REST), cabecera creada por el servidor
+  (`new_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `merge_cabecera_update`), reglas de forma siempre activas
+  (`check_write`: la sesión humana no escribe, inmutabilidad, `ag-mensajes:*`) y reglas por agente bajo el interruptor
+  (`decide_mensaje`: remitente del nombre, quién abre, quién cierra; sin `is_admin` ni registro de `AG - AGENTES`).
   Desde H-030b `check_create` exige además la forma canónica en MAYÚSCULAS (`meta-folder:case`: `PLANTILLAS`, nunca `Plantillas`) y
   `check_folder_move(from, to)` solo deja pasar `Plantillas` → `PLANTILLAS`.
 - `meta_rules.py` — reglas de escritura de las carpetas META con lógica (H-030b), sin E/S: `BITACORA` de solo lectura para todos

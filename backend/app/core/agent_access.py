@@ -38,6 +38,15 @@ class Decision(NamedTuple):
     reason: str | None = None
 
 
+def identity(actor: Actor, *, honor_declared: bool) -> str | None:
+    """El agente que escribe (el de su clave; en sombra, el que declara una clave general), o `None`."""
+    if actor.kind == "agent":
+        return actor.agent_id
+    if actor.kind == "general" and honor_declared:
+        return actor.declared
+    return None
+
+
 def actor_of(principal) -> Actor:
     """El `Actor` de un `TokenPayload`."""
     if not principal.via_key:

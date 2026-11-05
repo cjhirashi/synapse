@@ -154,6 +154,10 @@ class ChangeLogService:
         self._tz_name: str | None = None
         self._dirty: dict[str, set[str]] = {}
 
+    @property
+    def owner_id(self) -> str:
+        return self._owner_id
+
     # --- Identidad y zona horaria (se leen una vez) ---
 
     def _owner(self) -> tuple[str, str]:

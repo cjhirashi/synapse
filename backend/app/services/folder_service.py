@@ -9,7 +9,7 @@ Reejecutar la misma operación es seguro: si `from` ya no tiene notas pero `to` 
 """
 from typing import NamedTuple
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
+from app.core import ag_rules, conversation_rules, doc_names, meta_rules, plantilla_rules, skill_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     FolderMoveInvalid, FolderNotFound, NotePathTaken as NotePathTakenProblem, RevisionConflict, ValidationFailed,
@@ -74,7 +74,7 @@ class FolderService:
             raise FolderMoveInvalid(errors=[{"pointer": "#/from", "detail": code}])
         if self._guard is not None:
             self._guard.check(vault_id, "folder-move", [f"{from_}/x.md", f"{to}/x.md"])
-        self._check_ag_targets_unmovable(from_)
+        self._check_ag_targets_unmovable(from_, to)
         if path_key(from_) != path_key(to) and _under(f"{to}/x", from_) is not None:
             raise FolderMoveInvalid(errors=[{"pointer": "#/to", "detail": "folder-inside-itself"}])
 
@@ -90,7 +90,7 @@ class FolderService:
             new_path = f"{to}/{_under(doc['path'], from_)}"
             if (code := check_path(new_path)) is not None:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
-            if (code := ag_rules.check_mensaje_path(new_path)) is not None:
+            if (code := conversation_rules.check_mensaje_path(new_path)) is not None:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
             if (code := ag_rules.check_create(new_path)) is not None:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
@@ -142,11 +142,15 @@ class FolderService:
         report = WikilinkRewriteService(self._port, self._db).rewrite(vault_id, moved)
         return FolderMoveResult(from_, to, moved_now, report)
 
-    def _check_ag_targets_unmovable(self, from_: str) -> None:
-        """Los mensajes son inmutables para un agente: no mueve nada bajo `AG - MENSAJES`."""
-        if (self._actor is not None and self._actor.kind == "agent"
-                and ag_rules.meta_folder_of(f"{from_}/x.md") == ag_rules.AG_MENSAJES):
-            raise FolderMoveInvalid(errors=[{"pointer": "#/from", "detail": "ag-mensajes:immutable"}])
+    def _check_ag_targets_unmovable(self, from_: str, to: str) -> None:
+        """H-042: nada se mueve desde ni hacia `AG - MENSAJES` (los mensajes son inmutables y la sesión humana no escribe ahí)."""
+        if self._actor is not None and self._actor.kind == "system":
+            return
+        if any(ag_rules.meta_folder_of(f"{folder}/x.md") == ag_rules.AG_MENSAJES for folder in (from_, to)):
+            human = self._actor is None or self._actor.kind == "human"
+            raise FolderMoveInvalid(errors=[{
+                "pointer": "#/from",
+                "detail": conversation_rules.AGENTS_ONLY if human else conversation_rules.IMMUTABLE}])
 
     def _live_notes(self, vault_id: str) -> list[dict]:
         docs, after = [], None

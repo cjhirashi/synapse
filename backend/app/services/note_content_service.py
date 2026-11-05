@@ -24,8 +24,8 @@ import json
 import uuid
 from typing import NamedTuple
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
-from app.core.agent_access import Actor, check_registration_frontmatter, parse_registration
+from app.core import ag_rules, conversation_rules, doc_names, meta_rules, plantilla_rules, skill_rules
+from app.core.agent_access import Actor, check_registration_frontmatter, identity, parse_registration
 from app.core.errors import (
     AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
@@ -156,7 +156,7 @@ class NoteContentService:
         # H-030: quién escribe (None = el sistema o una sesión humana) y el cumplimiento del registro de agentes.
         self._actor = actor
         self._guard = guard
-        self._mensajes = MensajesService(port, db)
+        self._mensajes = MensajesService(port, db, owner_id=changelog.owner_id if changelog is not None else None)
         # H-030b: registro de cambios (BITACORA automática); `None` en scripts y herramientas del sistema.
         self._changelog = changelog
 
@@ -230,6 +230,8 @@ class NoteContentService:
         path, name_code = doc_names.canonical_path(data.path)
         if name_code is not None:
             raise _field_error("path", name_code)
+        path = conversation_rules.canonical_arrow(path)  # H-042: ` -> ` se guarda como ` → ` (solo la REST)
+        self._mensajes_gate(path)
         self._check_system_lock(path, None, fields.get("frontmatter"))
         if (code := check_op("create_user", path)) is not None:
             raise _field_error("path", code)
@@ -238,7 +240,9 @@ class NoteContentService:
             raise _field_error("path", code)
         fields["frontmatter"] = self._skill_rules(vault_id, "create", None, path, fields.get("frontmatter"))
         fields["frontmatter"] = self._check_ag_target(vault_id, path, fields.get("frontmatter"), None, "create")
+        fields["frontmatter"] = self._check_mensajes(vault_id, "create", path, None, fields.get("frontmatter"))
         self._check_meta_write(vault_id, path, None, fields.get("frontmatter"), None)
+        self._ensure_cabecera(vault_id, path)  # H-042: el primer mensaje trae la cabecera de su conversación
         note_id = str(uuid.uuid4())
         doc_id = _doc_id(vault_id, note_id)
         now = utc_now()
@@ -291,6 +295,7 @@ class NoteContentService:
             if (code := check_frontmatter(changes["frontmatter"])) is not None:
                 raise _field_error("frontmatter", code)
         old_path = doc["path"]
+        self._mensajes_gate(old_path, changes.get("path"))
         renamed = "path" in changes and changes["path"] != old_path
         # `frontmatter: null` explícito borra las propiedades libres, pero las fechas de la nota se conservan
         # y se actualizan (H-029): cada escritura de un agente refresca `fecha_actualizacion`.
@@ -307,12 +312,14 @@ class NoteContentService:
         self._guard_check(vault_id, "move" if renamed else "update", [old_path, new_path] if renamed else [old_path])
         if renamed and (code := ag_rules.check_create(new_path)) is not None:
             raise _field_error("path", code)
+        content_changed = "content" in changes and changes["content"] != doc.get("content")
         if not is_index_path(new_path):
             base = self._check_ag_target(vault_id, new_path, base, doc, "rename_or_move" if renamed else "update", old=old)
+        base = self._check_mensajes(
+            vault_id, "rename_or_move" if renamed else "update", new_path, doc, base, content_changed=content_changed)
         base = self._skill_rules(vault_id, "move" if renamed else "update", doc, new_path, base)
         self._check_registry_exit(vault_id, doc, base, still_here=not renamed)
         self._check_meta_write(vault_id, new_path, old_path, base, doc, deleted=False)
-        content_changed = "content" in changes and changes["content"] != doc.get("content")
         if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
             raise _field_error("content" if code == "index-readonly:content" else "frontmatter", code)
         if renamed:
@@ -342,11 +349,12 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
         _check_precondition(doc, if_match)
+        self._mensajes_gate(doc["path"])
         self._check_system_lock(doc["path"], doc["path"], None, deleted=True)
         self._guard_check(vault_id, "delete", [doc["path"]])
         if (code := ag_rules.check_index_delete(doc["path"])) is not None:
             raise _field_error("path", code)
-        self._check_ag_delete(doc)
+        self._check_mensajes(vault_id, "delete", doc["path"], doc, None)
         self._skill_rules(vault_id, "delete", doc, doc["path"], None)
         self._check_registry_exit(vault_id, doc, None, still_here=False)
         if is_index_path(doc["path"]):
@@ -366,8 +374,10 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=True)
         _check_precondition(doc, if_match)
+        self._mensajes_gate(doc["path"])
         self._check_system_lock(doc["path"], None, doc.get("frontmatter"))
         self._guard_check(vault_id, "restore", [doc["path"]])
+        self._check_mensajes(vault_id, "restore", doc["path"], doc, doc.get("frontmatter"))
         self._skill_rules(vault_id, "restore", doc, doc["path"], doc.get("frontmatter"))
         self._check_meta_write(vault_id, doc["path"], None, doc.get("frontmatter"), None)
         restored = {**doc, "deleted_at": None}
@@ -390,57 +400,75 @@ class NoteContentService:
         if self._guard is not None:
             self._guard.check(vault_id, op, paths)
 
-    def _agent(self) -> tuple[str, bool] | None:
-        """`(agent_id, es_administrador)` si escribe una clave con identidad de agente; si no, `None`."""
-        if self._actor is not None and self._actor.kind == "agent":
-            return self._actor.agent_id, self._actor.is_admin
-        return None
-
     def _check_ag_target(
         self, vault_id: str, path: str, frontmatter: dict | None, prev_doc: dict | None, op: str,
         old: dict | None = None,
     ) -> dict | None:
-        """Formato de lo que se escribe en `AG - MENSAJES` y `AG - AGENTES`. Devuelve el frontmatter a
-        guardar (en una cabecera, con `cerrada_el` sellado por el servidor). La sesión humana no sufre las
-        reglas de inmutabilidad, solo las de formato."""
-        zone = ag_rules.meta_folder_of(path)
-        if zone == ag_rules.AG_AGENTES and not is_index_path(path):
+        """Formato del registro de `AG - AGENTES`. Devuelve el frontmatter a guardar. (`AG - MENSAJES`: `_check_mensajes`.)"""
+        if ag_rules.meta_folder_of(path) == ag_rules.AG_AGENTES and not is_index_path(path):
             if (code := check_registration_frontmatter(path, frontmatter)) is not None:
                 raise _field_error("frontmatter", code)
-            return frontmatter
-        if zone != ag_rules.AG_MENSAJES:
-            return frontmatter
-        info = ag_rules.parse_mensaje_path(path)
-        if info is None:
-            raise _field_error("path", "ag-mensajes:path")
-        agent = self._agent()
-        if info.kind == "cabecera":
-            if (code := ag_rules.check_cabecera(info, frontmatter)) is not None:
-                raise _field_error("frontmatter", code)
-            frontmatter = ag_rules.stamp_cabecera(old, frontmatter, utc_now())
-        elif info.kind == "mensaje":
-            if (code := ag_rules.check_mensaje_note(info, frontmatter)) is not None:
-                raise _field_error("frontmatter", code)
-            if op == "create" and self._mensajes.find_cabecera(vault_id, info.para, info.conversation) is None:
-                raise _field_error("path", "ag-mensajes:no-cabecera")
-        if agent is not None:
-            old_info = ag_rules.parse_mensaje_path(prev_doc["path"]) if prev_doc is not None else info
-            code = ag_rules.check_agent_mensaje_op(
-                op, old_info or info, agent_id=agent[0], is_admin=agent[1],
-                old_frontmatter=old, new_frontmatter=frontmatter)
-            if code is not None:
-                raise _field_error("path", code)
         return frontmatter
 
-    def _check_ag_delete(self, doc: dict) -> None:
-        """Un agente no borra mensajes ni cabeceras (la purga lo hace por su cuenta)."""
-        agent = self._agent()
-        if agent is None or ag_rules.meta_folder_of(doc["path"]) != ag_rules.AG_MENSAJES:
-            return
-        info = ag_rules.parse_mensaje_path(doc["path"])
-        if info is not None and (code := ag_rules.check_agent_mensaje_op(
-                "delete", info, agent_id=agent[0], is_admin=agent[1])) is not None:
+    # --- AG - MENSAJES: conversaciones entre agentes (H-042) ---
+
+    def _mensajes_gate(self, *paths: str | None) -> None:
+        """`AG - MENSAJES` es solo para agentes: la sesión humana no crea, edita, mueve, borra ni restaura nada ahí, ni
+        siquiera un INDICE. Siempre activa (no hay «modo sombra» para una persona)."""
+        if self._actor_kind() == "human" and any(
+                p is not None and ag_rules.meta_folder_of(p) == ag_rules.AG_MENSAJES for p in paths):
+            raise _field_error("path", conversation_rules.AGENTS_ONLY)
+
+    def _check_mensajes(
+        self, vault_id: str, op: str, path: str, prev_doc: dict | None, frontmatter: dict | None, *,
+        content_changed: bool = False,
+    ) -> dict | None:
+        """Formato e inmutabilidad de lo que un agente escribe en `AG - MENSAJES` y reglas por agente (remitente, quién
+        abre, quién cierra). Devuelve el frontmatter a guardar: en una cabecera solo cambia `estado` y `cerrada_el` lo
+        sella el servidor. El sistema no pasa por aquí."""
+        prev_path = prev_doc["path"] if prev_doc is not None else None
+        in_new = ag_rules.meta_folder_of(path) == ag_rules.AG_MENSAJES
+        in_old = prev_path is not None and ag_rules.meta_folder_of(prev_path) == ag_rules.AG_MENSAJES
+        if not (in_new or in_old) or self._actor_kind() == "system":
+            return frontmatter
+        info_old = conversation_rules.parse_mensaje_path(prev_path) if in_old else None
+        info_new = conversation_rules.parse_mensaje_path(path) if in_new else None
+        if (in_new and info_new is None) or (in_old and info_old is None):
+            raise _field_error("path", conversation_rules.PATH)
+        if op == "rename_or_move":
+            # Nada entra ni sale del buzón por un renombre; los INDICES los gobiernan las reglas de H-031.
+            if any(i is not None and i.kind != "indice" for i in (info_old, info_new)) or (in_new != in_old):
+                raise _field_error("path", conversation_rules.IMMUTABLE)
+            return frontmatter
+        info = info_new or info_old
+        old_fm = (prev_doc.get("frontmatter") or {}) if prev_doc is not None else None
+        if op == "update" and info.kind == "cabecera":
+            frontmatter = conversation_rules.merge_cabecera_update(old_fm or {}, frontmatter)
+            if (code := conversation_rules.check_cabecera(info, frontmatter)) is not None:
+                raise _field_error("frontmatter", code)
+        if (code := conversation_rules.check_write(
+                op, info, old_frontmatter=old_fm, new_frontmatter=frontmatter, content_changed=content_changed)) is not None:
             raise _field_error("path", code)
+        if op == "create" and info.kind == "mensaje" and (
+                code := conversation_rules.check_mensaje_note(info, frontmatter)) is not None:
+            raise _field_error("frontmatter", code)
+        self._guard_mensaje(vault_id, op, info)
+        if op == "update" and info.kind == "cabecera":
+            frontmatter = conversation_rules.stamp_cabecera(old_fm, frontmatter, utc_now())
+        return frontmatter
+
+    def _guard_mensaje(self, vault_id: str, op: str, info: conversation_rules.MensajePath) -> None:
+        """Reglas por agente bajo el interruptor de H-030 (sombra registra, `enforce` rechaza con 403)."""
+        if self._guard is None or not self._guard.active or info.kind == "indice" or op not in ("create", "update"):
+            return
+        first = op == "create" and not self._mensajes.has_messages(vault_id, info)
+        self._guard.check_mensaje(vault_id, op, info, first)
+
+    def _ensure_cabecera(self, vault_id: str, path: str) -> None:
+        """El servidor crea la cabecera con el primer mensaje: nadie más la crea y nunca queda un mensaje sin ella."""
+        info = conversation_rules.parse_mensaje_path(path)
+        if info is not None and info.kind == "mensaje" and self._actor_kind() != "human":
+            self._mensajes.ensure_cabecera(vault_id, info)
 
     # --- Reglas de BITACORA, PLANTILLAS y skill de cajón; registro de cambios (H-030b) ---
 
@@ -467,7 +495,7 @@ class NoteContentService:
             fm = dict(frontmatter or {})
             if agentic:
                 enforcing = self._guard is not None and self._guard.enforcing
-                who = skill_rules.identity(actor, honor_declared=not enforcing)
+                who = identity(actor, honor_declared=not enforcing)
                 fm = skill_rules.keep_owner(fm, old_fm) if was else skill_rules.seal_owner(fm, who)
             if (code := skill_rules.check_shape(fm)) is not None:
                 raise _field_error("frontmatter", code)
@@ -572,9 +600,9 @@ class NoteContentService:
                 if not is_index_path(path):
                     self._reconcile_guests(vault_id)
             elif zone == ag_rules.AG_MENSAJES:
-                info = ag_rules.parse_mensaje_path(path)
+                info = conversation_rules.parse_mensaje_path(path)
                 if info is not None and info.kind == "mensaje":
-                    self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
+                    self._mensajes.reopen_if_closed(vault_id, info)
 
     def _reconcile_guests(self, vault_id: str) -> None:
         """H-041 E4: tras escribir el registro, quien ya no es gestor se quita de `agentes` de las skills (mejor esfuerzo:
@@ -731,9 +759,10 @@ class NoteContentService:
             except NotePathTaken:
                 continue  # ya existe
             now = utc_now()
+            description = conversation_rules.folder_description(folder)  # H-042: la descripción de una conversación la pone el servidor
             doc = {
                 "_id": doc_id, "type": "note", "vault_id": vault_id, "path": index_path, "content": "",
-                "frontmatter": stamp_dates({}, today_cdmx(), now),
+                "frontmatter": stamp_dates({"descripcion": description} if description else {}, today_cdmx(), now),
                 "created_at": now, "updated_at": now, "deleted_at": None,
             }
             self._port.put(self._db, doc)

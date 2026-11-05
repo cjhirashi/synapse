@@ -338,7 +338,7 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `index-readonly:<path\|content\|attr\|delete>` | (H-031) renombrar un INDICE a otro nombre (moverlo de una carpeta a otra junto con su carpeta sí se admite), darle contenido, cambiar algo que no sea su `descripcion`, o borrarlo mientras su carpeta tiene notas vivas |
 | `index-root:delete` | (H-031) borrar el INDICE de la raíz de la bóveda |
 | `meta-folder:<rename\|index-delete>` | (H-030) mover el INDICE de una carpeta reservada con otra carpeta, o borrarlo |
-| `ag-mensajes:<path\|cabecera\|from-mismatch\|immutable\|forbidden>` | (H-030) ruta o metadatos fuera del formato de `AG - MENSAJES`, remitente que no es la clave, mensaje o cabecera que una clave de agente no puede cambiar, cierre por quien no participa |
+| `ag-mensajes:<agents-only\|path\|not-participant\|from-mismatch\|cabecera\|cabecera-server\|immutable>` | (H-042) la sesión humana escribe en `AG - MENSAJES`; ruta fuera del formato de conversación; `NNN-de-<id>.md` con un `<id>` que no participa; `de` que no es el del nombre; metadatos de la cabecera inválidos; crear la cabecera a mano; editar, mover o borrar un mensaje (de la cabecera solo cambia `estado`) |
 | `ag-agentes:registro` | (H-030) nota de `AG - AGENTES/` que no es un registro válido (`estado`, `carpetas`) |
 | `immutable-field:cerrada_el` | (H-030) la cabecera de una conversación trae un `cerrada_el` distinto del que tenía: lo sella el servidor |
 | `meta-folder:case` | (H-030b) una carpeta reservada escrita con otras mayúsculas (`Plantillas/…`) |

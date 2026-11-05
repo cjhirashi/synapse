@@ -6,9 +6,6 @@ from app.core.agent_access import (
     Actor, Registration, check_registration_frontmatter, decide, decide_files, parse_registration,
 )
 
-CAB = "AG - MENSAJES/liza/20261105-0930-revisar-h030/000-cabecera.md"
-MSG = "AG - MENSAJES/liza/20261105-0930-revisar-h030/001-de-aira.md"
-
 
 # --- Estructura reservada (E3) ---
 
@@ -38,81 +35,8 @@ def test_reserved_folder_is_not_moved_but_others_can_move_into_it():
 
 def test_index_of_a_reserved_folder_is_never_deleted():
     assert ag_rules.check_index_delete("AG - MENSAJES/INDICE.md") == "meta-folder:index-delete"
-    assert ag_rules.check_index_delete("AG - MENSAJES/liza/INDICE.md") is None
+    assert ag_rules.check_index_delete("AG - MENSAJES/aira → liza - x - 2026-11-05/INDICE.md") is None
     assert ag_rules.check_index_delete("Otra/INDICE.md") is None
-
-
-# --- Formato de AG - MENSAJES (E4) ---
-
-@pytest.mark.parametrize("path,kind", [
-    (CAB, "cabecera"), (MSG, "mensaje"), ("AG - MENSAJES/INDICE.md", "indice"),
-    ("AG - MENSAJES/liza/INDICE.md", "indice"), ("AG - MENSAJES/liza/20261105-0930-x/INDICE.md", "indice"),
-])
-def test_valid_mensajes_paths(path, kind):
-    assert ag_rules.parse_mensaje_path(path).kind == kind
-    assert ag_rules.check_mensaje_path(path) is None
-
-
-@pytest.mark.parametrize("path", [
-    "AG - MENSAJES/nota.md", "AG - MENSAJES/liza/nota.md", "AG - MENSAJES/Liza/20261105-0930-x/000-cabecera.md",
-    "AG - MENSAJES/liza/20261305-0930-x/000-cabecera.md",   # mes 13
-    "AG - MENSAJES/liza/20261105-0930-/000-cabecera.md",    # asunto vacío
-    "AG - MENSAJES/liza/20261105-0930-x/001-de-aira.txt", "AG - MENSAJES/liza/20261105-0930-x/000-de-aira.md",
-    "AG - MENSAJES/liza/20261105-0930-x/1-de-aira.md", "AG - MENSAJES/liza/20261105-0930-x/sub/001-de-aira.md",
-])
-def test_invalid_mensajes_paths(path):
-    assert ag_rules.check_mensaje_path(path) == "ag-mensajes:path"
-
-
-def test_other_folders_are_not_checked_by_mensajes_rules():
-    assert ag_rules.check_mensaje_path("Otra/nota.md") is None
-
-
-def test_cabecera_metadata():
-    info = ag_rules.parse_mensaje_path(CAB)
-    ok = {"de": "aira", "para": "liza", "estado": "abierta"}
-    assert ag_rules.check_cabecera(info, ok) is None
-    for bad in [None, {}, {**ok, "para": "emma"}, {**ok, "estado": "pendiente"}, {**ok, "de": "Aira"}, {**ok, "de": 1}]:
-        assert ag_rules.check_cabecera(info, bad) == "ag-mensajes:cabecera"
-
-
-def test_message_note_from_must_match_the_file_name():
-    info = ag_rules.parse_mensaje_path(MSG)
-    assert ag_rules.check_mensaje_note(info, {"de": "aira"}) is None
-    assert ag_rules.check_mensaje_note(info, None) is None
-    assert ag_rules.check_mensaje_note(info, {"de": "emma"}) == "ag-mensajes:from-mismatch"
-
-
-def test_server_stamps_cerrada_el():
-    now = "2026-11-05T10:00:00.000000Z"
-    opened = {"de": "a", "para": "b", "estado": "abierta", "cerrada_el": "2000-01-01T00:00:00.000000Z"}
-    assert "cerrada_el" not in ag_rules.stamp_cabecera(None, opened, now)  # el cliente no la fija
-    closed = {**opened, "estado": "cerrada"}
-    assert ag_rules.stamp_cabecera({"estado": "abierta"}, closed, now)["cerrada_el"] == now
-    already = {"estado": "cerrada", "cerrada_el": "2026-11-01T00:00:00.000000Z"}
-    assert ag_rules.stamp_cabecera(already, closed, now)["cerrada_el"] == "2026-11-01T00:00:00.000000Z"
-    assert "cerrada_el" not in ag_rules.stamp_cabecera(already, {**closed, "estado": "abierta"}, now)
-
-
-def test_agent_message_rules():
-    msg, cab = ag_rules.parse_mensaje_path(MSG), ag_rules.parse_mensaje_path(CAB)
-    kw = dict(agent_id="aira", is_admin=False)
-    old = {"de": "aira", "para": "liza", "estado": "abierta"}
-    assert ag_rules.check_agent_mensaje_op("create", msg, **kw) is None
-    assert ag_rules.check_agent_mensaje_op("create", ag_rules.parse_mensaje_path(MSG.replace("aira", "emma")), **kw) == "ag-mensajes:from-mismatch"
-    assert ag_rules.check_agent_mensaje_op("create", cab, new_frontmatter=old, **kw) is None
-    assert ag_rules.check_agent_mensaje_op("create", cab, new_frontmatter={**old, "de": "emma"}, **kw) == "ag-mensajes:from-mismatch"
-    for op in ("update", "delete", "rename_or_move"):
-        assert ag_rules.check_agent_mensaje_op(op, msg, **kw) == "ag-mensajes:immutable"
-    assert ag_rules.check_agent_mensaje_op("delete", cab, old_frontmatter=old, **kw) == "ag-mensajes:immutable"
-    closed = {**old, "estado": "cerrada"}
-    assert ag_rules.check_agent_mensaje_op("update", cab, old_frontmatter=old, new_frontmatter=closed, **kw) is None
-    assert ag_rules.check_agent_mensaje_op(
-        "update", cab, old_frontmatter=old, new_frontmatter={**closed, "titulo": "otro"}, **kw) == "ag-mensajes:immutable"
-    outsider = dict(agent_id="emma", is_admin=False)
-    assert ag_rules.check_agent_mensaje_op("update", cab, old_frontmatter=old, new_frontmatter=closed, **outsider) == "ag-mensajes:forbidden"
-    assert ag_rules.check_agent_mensaje_op("update", cab, old_frontmatter=old, new_frontmatter=closed, agent_id="emma", is_admin=True) is None
-    assert ag_rules.check_agent_mensaje_op("update", cab, old_frontmatter=old, new_frontmatter=closed, agent_id="liza", is_admin=False) is None
 
 
 # --- Registro y permisos (E6) ---
