@@ -1,5 +1,5 @@
 // H-030: la sección META agrupa las carpetas reservadas de la raíz encima de «Raíz».
-import { isMetaFolderPath, META_FOLDERS, splitMeta } from "./metaFolders";
+import { canonicalMetaName, isInBitacora, isMetaFolderPath, META_FOLDERS, splitMeta } from "./metaFolders";
 import { buildTree } from "./noteTree";
 
 const note = (path: string) => ({ id: `note:v:${path}`, path });
@@ -61,5 +61,22 @@ describe("H-030: splitMeta", () => {
     const { meta, rest } = splitMeta(buildTree([note("Plantillas/base.md"), note("Otra/x.md")]));
     expect(names(meta)).toEqual(["Plantillas"]);
     expect(names(rest)).toEqual(["Otra"]);
+  });
+});
+
+describe("H-030b: isInBitacora y canonicalMetaName", () => {
+  it("lo que cuelga de BITACORA (a cualquier profundidad, sin distinguir mayúsculas) es de solo lectura", () => {
+    expect(isInBitacora("BITACORA/2026-11")).toBe(true);
+    expect(isInBitacora("bitacora/2026-11/2026-11-05.md")).toBe(true);
+    expect(isInBitacora("BITACORA")).toBe(false); // la carpeta reservada en sí ya está protegida por META
+    expect(isInBitacora("BITACORA.md")).toBe(false);
+    expect(isInBitacora("Otra/BITACORA/x.md")).toBe(false);
+  });
+
+  it("el nombre canónico de una reservada es siempre el de MAYÚSCULAS", () => {
+    expect(canonicalMetaName("Plantillas")).toBe("PLANTILLAS");
+    expect(canonicalMetaName("ag - skills")).toBe("AG - SKILLS");
+    expect(canonicalMetaName("Proyectos/PLANTILLAS")).toBeNull();
+    expect(canonicalMetaName("Otra")).toBeNull();
   });
 });

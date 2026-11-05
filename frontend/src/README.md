@@ -284,4 +284,4 @@ sub-peticiones secuenciales; el servidor admite hasta 16 MiB por petición.
 **Pruebas:** `*.test.ts(x)` junto a cada módulo; integración con backend real en
 `notes/notes.integration.test.ts` (`npm run test:sync`) y rendimiento de RNF-001 en
 `notes/tree.perf.test.tsx` (`npm run test:perf`).
-
+- `notes/BitacoraView.tsx` (H-030b) — vista de solo lectura de un documento de `BITACORA/` (lo escribe el servidor); `VaultWorkspacePage` la usa en lugar del editor y `NoteSidebar` quita ⋮, arrastre, F2 y Supr a todo lo que cuelga de BITACORA (`isInBitacora` en `metaFolders.ts`). `metaRules.spec-fixture.test.ts` recorre `backend/tests/fixtures/plantilla_reglas.json` contra `metaRules.ts`.

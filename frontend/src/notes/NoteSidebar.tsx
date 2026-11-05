@@ -31,7 +31,7 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
-import { isMetaFolderPath, splitMeta, canonicalMetaName } from "./metaFolders";
+import { isMetaFolderPath, isInBitacora, splitMeta, canonicalMetaName } from "./metaFolders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -338,7 +338,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         if (inFlight.current) return; // misma guarda que los botones (`busy`)
         if (row.kind === "folder") {
           event.preventDefault();
-          if (isMetaFolderPath(row.path)) return; // H-030: la carpeta reservada no se renombra ni se borra
+          if (isMetaFolderPath(row.path) || isInBitacora(row.path)) return; // H-030: la reservada no se renombra ni se borra; la BITACORA solo la escribe el servidor
           if (event.key === "F2") startFolderRename(row.path);
           else askDeleteFolder(row.path);
           return;
@@ -346,6 +346,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
         if (!note) return;
         event.preventDefault();
+        if (isInBitacora(note.path)) return; // H-030b: los documentos de la bitácora son de solo lectura
         if (event.key === "F2") startNoteRename(note);
         else askDeleteNote(note);
         return;
@@ -675,7 +676,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   style={indent}
                   aria-current={activeFolder === node.path ? "true" : undefined}
                   aria-describedby={description ? descriptionId : undefined}
-                  draggable={!reserved}
+                  draggable={!reserved && !isInBitacora(node.path)}
                   data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
                   onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
                   onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
@@ -696,7 +697,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 </button>
               )}
               {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). */}
-              {!editing && !reserved && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+              {!editing && !reserved && !isInBitacora(node.path) && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
             </div>
             {description && (
               <p id={descriptionId} className="note-tree-meta-desc" title={description} aria-hidden="true">
@@ -734,7 +735,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 onPointerEnter={() => onPrefetch?.(note.id)}
                 className="note-tree-row note-tree-note"
                 style={indent}
-                draggable
+                draggable={!isInBitacora(note.path)}
                 onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
                 onClick={() => onOpen(note.id)}
               >
@@ -744,7 +745,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 </span>
               </button>
             )}
-            {!editing && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+            {!editing && !isInBitacora(note.path) && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
           </div>
         </li>
       );

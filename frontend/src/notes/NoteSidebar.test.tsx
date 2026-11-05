@@ -15,10 +15,11 @@ import { waitForCondition } from "../test-utils/waits";
 const VAULT = "11111111-1111-4111-8111-111111111111";
 const OTHER = "22222222-2222-4222-8222-222222222222";
 
-async function setup(paths: string[] = [], options: { confirmDelete?: () => Promise<boolean>; ref?: Ref<NoteSidebarHandle>; indexes?: boolean } = {}) {
+async function setup(paths: string[] = [], options: { confirmDelete?: () => Promise<boolean>; ref?: Ref<NoteSidebarHandle>; indexes?: boolean; seed?: (db: PouchDB.Database) => Promise<void> } = {}) {
   const db = memoryDb();
   const { value } = syncValue(options.indexes ? { notes: createNoteStore(db) } : {}, db); // H-031: por omisión sin INDICES, para las pruebas que cuentan notas
   for (const path of paths) await value.notes.create(VAULT, path);
+  await options.seed?.(db); // documentos que llegan por la réplica y el cliente no podría crear
   const onOpen = vi.fn();
   const onDeleted = vi.fn();
   const onShowTrash = vi.fn();
@@ -41,7 +42,7 @@ async function setup(paths: string[] = [], options: { confirmDelete?: () => Prom
   const utils = render(ui(value));
   // La primera lectura del árbol termina antes de que la prueba actúe (sin avisos de `act`).
   await waitFor(() => expect(screen.queryByText("Cargando…")).toBeNull());
-  return { ...utils, ui, value, onOpen, onDeleted, onShowTrash, user: userEvent.setup() };
+  return { ...utils, ui, value, db, onOpen, onDeleted, onShowTrash, user: userEvent.setup() };
 }
 
 /** Diálogo de borrado abierto (C-7) y su botón de confirmar, «Borrar» (no el de la barra). */
@@ -1187,14 +1188,43 @@ test("H-030: borrar la nota abierta dentro de META deja el foco en una fila que 
   expect(document.activeElement).not.toBe(document.body);
 });
 
-test("H-030b: carpeta reservada se muestra con nombre canónico en META", async () => {
-  // Verificar que las carpetas reservadas se muestran con su nombre canónico en META.
-  // La función canonicalMetaName garantiza la equivalencia NFKC + casefold.
-  const { user } = await setup(["AG - SKILLS/s.md"], { indexes: true });
-  // El árbol debe mostrar "AG - SKILLS" (nombre canónico) en la sección META.
-  const meta = screen.getByRole("treeitem", { name: "AG - SKILLS" });
-  expect(meta).toBeInTheDocument();
-  // Verificar que está en la sección META (dentro de la cabecera META).
-  const metaHeader = screen.getByRole("treeitem", { name: "META" });
-  expect(metaHeader).toBeInTheDocument();
+/** Documento de nota tal como llega por la réplica desde el servidor (sin pasar por las reglas del cliente). */
+async function replicate(db: PouchDB.Database, path: string, content = "x") {
+  const now = new Date().toISOString();
+  await db.put({
+    _id: `note:${VAULT}:${crypto.randomUUID()}`, type: "note", vault_id: VAULT, path, content, frontmatter: {},
+    created_at: now, updated_at: now, deleted_at: null,
+  } as never);
+}
+
+test("H-030b: una carpeta física «Plantillas» se muestra como PLANTILLAS (MAYÚSCULAS) dentro de META", async () => {
+  await setup(["Inicio.md"], { seed: (db) => replicate(db, "Plantillas/Documento Base.md") });
+  await waitFor(() => expect(treeNames()).toContain("PLANTILLAS"));
+  expect(treeNames()).not.toContain("Plantillas");
+  expect(within(screen.getByRole("group", { name: "META" })).getByRole("treeitem", { name: "PLANTILLAS" })).toBeInTheDocument();
+});
+
+test("H-030b: lo que hay dentro de BITACORA es de solo lectura (sin ⋮, sin arrastre, F2 y Supr inertes)", async () => {
+  const { user } = await setup(["Inicio.md"], {
+    seed: async (db) => {
+      await replicate(db, "BITACORA/2026-11/2026-11-05.md", "# Bitácora");
+      await replicate(db, "BITACORA/HISTORICO/Antigua.md", "x");
+    },
+  });
+  await waitFor(() => expect(treeNames()).toContain("BITACORA"));
+  await user.click(screen.getByRole("treeitem", { name: "BITACORA" }));
+  const month = await screen.findByRole("treeitem", { name: "2026-11" });
+  await user.click(month);
+  const day = await screen.findByRole("treeitem", { name: "2026-11-05" });
+  expect(screen.queryByRole("button", { name: "Acciones de 2026-11" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Acciones de 2026-11-05" })).toBeNull();
+  expect(month).toHaveAttribute("draggable", "false");
+  expect(day).toHaveAttribute("draggable", "false");
+  day.focus();
+  await user.keyboard("{F2}");
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la nota" })).toBeNull();
+  await user.keyboard("{Delete}");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+  // Una nota común sigue teniendo su menú.
+  expect(screen.getByRole("button", { name: "Acciones de Inicio" })).toBeInTheDocument();
 });

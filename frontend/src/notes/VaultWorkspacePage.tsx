@@ -29,6 +29,7 @@ import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
 import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
 import { isIndexPath } from "./indexRules";
+import { isInBitacora } from "./metaFolders";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
@@ -39,6 +40,7 @@ import "./notes.css";
 const loadEditor = () => import("../editor/NoteEditor");
 const NoteEditor = lazy(loadEditor);
 const IndexView = lazy(() => import("./IndexView"));
+const BitacoraView = lazy(() => import("./BitacoraView"));
 
 /**
  * Botón de alternar la barra de notas (H-009 C-1/C-8). Un único origen de marcado (icono, etiqueta,
@@ -466,6 +468,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
 
   // H-031: un INDICE se abre en su propia vista (cuerpo generado, sin editor).
   const openIsIndex = openId !== null && noteRefs.some((ref) => ref.id === openId && isIndexPath(ref.path));
+  // H-030b: un documento de la BITACORA lo escribe el servidor; se abre en una vista de solo lectura, sin editor.
+  const openIsBitacora = openId !== null && noteRefs.some((ref) => ref.id === openId && isInBitacora(ref.path) && !isIndexPath(ref.path));
 
   return (
     <div className="vault-workspace" onKeyDown={onKeyDown}>
@@ -530,6 +534,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             >
               {openIsIndex ? (
                 <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              ) : openIsBitacora ? (
+                <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
               ) : (
               <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
               )}

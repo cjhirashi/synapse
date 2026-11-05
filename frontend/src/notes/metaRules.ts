@@ -62,7 +62,8 @@ export function metaFolderOf(path: string): string | null {
 
 /** Código de rechazo por mayúsculas incorrectas (parte de `check_create` del servidor). */
 export function checkReservedCase(path: string): string | null {
-  if (!path.includes("/")) return null; // Ruta sin segmentos no tiene carpeta reservada.
+  // Una nota suelta en la raíz con el nombre de una carpeta reservada la taparía (`reserved-name:path`).
+  if (!path.includes("/")) return _META_KEYS.has(pathKey(path)) ? "reserved-name:path" : null;
   const first = path.split("/", 1)[0];
   const canonical = _META_KEYS.get(pathKey(first));
   if (canonical !== undefined && first !== canonical) {
@@ -95,14 +96,8 @@ export function checkNoteWrite(opts: {
 }): string | null {
   const { path, prevPath = null, deleted = false, frontmatter = null, actorKind = "human" } = opts;
 
-  // BITACORA es de solo lectura: no crear, editar, mover ni borrar (salvo INDICES que se generan automáticamente).
-  // El cliente nunca crea INDICES (eso lo hace el servidor), así que acá siempre rechaza.
-  // Sin embargo, los tests de NoteSidebar sí crean INDICES, así que solo rechazamos las notas normales.
-  const inBitacoraPath = _inBitacora(path);
-  const movingFromBitacora = _inBitacora(prevPath);
-  if ((inBitacoraPath && !deleted) || movingFromBitacora) {
-    return "bitacora:readonly";
-  }
+  // BITACORA es de solo lectura para todos (la escribe el servidor); sus INDICES siguen las reglas de H-031.
+  if (_inBitacora(path) || _inBitacora(prevPath)) return "bitacora:readonly";
 
   const skillCajon = `${AG_SKILLS}/skill-bovedas-synapse.md`;
   const isSkillCajon = (p: string | null) => p !== null && pathKey(p) === pathKey(skillCajon);
@@ -111,10 +106,9 @@ export function checkNoteWrite(opts: {
   }
 
   if (!deleted && isTemplateZone(path)) {
-    if ((checkDefinition(frontmatter)) !== null) return checkDefinition(frontmatter);
-    const err = checkPath(path);
-    if (err) return null; // Error de ruta general, será capturado en otro lado.
     if (templateName(path) === null) return "plantilla:path";
+    const code = checkDefinition(frontmatter);
+    if (code !== null) return code;
   }
 
   return null;

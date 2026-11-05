@@ -752,6 +752,9 @@ body.is-resizing {
 
 /* H-031: vista de un INDICE */
 .index-view-header { display: flex; align-items: center; gap: 0.5rem; }
+.bitacora-view-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.bitacora-view-title { margin: 0; font-size: 1rem; }
+.bitacora-view-badge { font-size: 0.75rem; opacity: 0.75; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
 .index-view-title { margin: 0; font-size: 1rem; }
 .index-view-description { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
 .index-view-description textarea { width: 100%; resize: vertical; font: inherit; }

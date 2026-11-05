@@ -18,6 +18,15 @@ export function isMetaFolderPath(path: string): boolean {
   return META_ORDER.has(pathKey(path));
 }
 
+/**
+ * ¿`path` está dentro de BITACORA (a cualquier profundidad)? Ahí el servidor es el único que escribe: nada se
+ * renombra, mueve, borra ni edita desde la app, ni por el usuario ni por un agente (`bitacora:readonly`).
+ */
+export function isInBitacora(path: string): boolean {
+  const first = path.split("/", 1)[0];
+  return path.includes("/") && pathKey(first) === pathKey("BITACORA");
+}
+
 /** Nombre canónico de una carpeta reservada de la raíz, o `null` si `path` no es una. */
 export function canonicalMetaName(path: string): string | null {
   // Solo las carpetas de la raíz (sin "/") pueden ser reservadas.
