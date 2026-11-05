@@ -31,7 +31,7 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
-import { isMetaFolderPath, splitMeta } from "./metaFolders";
+import { isMetaFolderPath, splitMeta, canonicalMetaName } from "./metaFolders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -690,7 +690,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   {open ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
                   {icon}
                   <span className="note-tree-name" title={node.name}>
-                    {node.name}
+                    {canonicalMetaName(node.path) ?? node.name}
                   </span>
                   {reserved && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
                 </button>
