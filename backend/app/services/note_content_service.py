@@ -31,6 +31,7 @@ from app.core.wikilink_rewrite import Rename
 from app.core.index_body import render_body
 from app.core.index_rules import ancestor_folders, changed_keys, check_op, folder_of, index_path_for, is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
+from app.core.note_prefix import check_prefix, in_folder, view_key
 from app.core.note_rules import check_content, check_frontmatter, check_path, path_key
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
@@ -86,6 +87,42 @@ def decode_cursor(cursor: str, vault_id: str, deleted: bool) -> tuple[str, str]:
     return created_at, note_id
 
 
+# --- Cursor del listado por carpeta (H-030 E1): ata el cursor a la carpeta y guarda la clave de vista ---
+
+_PREFIX_CURSOR_MAX_LENGTH = 4096
+
+
+def encode_prefix_cursor(vault_id: str, deleted: bool, prefix: str, key: str, note_id: str) -> str:
+    raw = json.dumps(
+        {"v": vault_id, "d": deleted, "p": prefix, "k": key, "i": note_id}, separators=(",", ":"))
+    return base64.urlsafe_b64encode(raw.encode()).decode().rstrip("=")
+
+
+def decode_prefix_cursor(cursor: str, vault_id: str, deleted: bool, prefix: str) -> tuple[str, str]:
+    """Devuelve `(clave de vista, note_id)` o lanza `InvalidCursor`: sólo vale el cursor emitido para
+    esta bóveda, esta lista y esta carpeta."""
+    if len(cursor) > _PREFIX_CURSOR_MAX_LENGTH:
+        raise InvalidCursor("cursor longer than any emitted one", errors=_CURSOR_ERROR)
+    try:
+        padded = cursor + "=" * (-len(cursor) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded.encode("ascii")))
+    except (UnicodeError, binascii.Error, ValueError):
+        raise InvalidCursor("undecodable cursor", errors=_CURSOR_ERROR) from None
+    if not (
+        isinstance(payload, dict)
+        and payload.get("v") == vault_id
+        and payload.get("d") is deleted
+        and payload.get("p") == prefix
+        and isinstance(payload.get("k"), str)
+        and isinstance(payload.get("i"), str)
+    ):
+        raise InvalidCursor("cursor of another list or malformed", errors=_CURSOR_ERROR)
+    key, note_id = payload["k"], payload["i"]
+    if not (is_canonical_uuid(note_id) and encode_prefix_cursor(vault_id, deleted, prefix, key, note_id) == cursor):
+        raise InvalidCursor("cursor not emitted by this server", errors=_CURSOR_ERROR)
+    return key, note_id
+
+
 # --- Servicio ---
 
 
@@ -106,8 +143,12 @@ class NoteContentService:
         self._notes = NoteService(port, db)
         self._auto_indexes = auto_indexes
 
-    def list(self, vault_id: str, deleted: bool, limit: int, cursor: str | None) -> NotePage:
+    def list(
+        self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None = None
+    ) -> NotePage:
         self._check_vault(vault_id)
+        if prefix is not None:
+            return self._list_prefix(vault_id, deleted, limit, cursor, prefix)
         after = None
         if cursor is not None:
             created_at, note_id = decode_cursor(cursor, vault_id, deleted)
@@ -120,6 +161,31 @@ class NoteContentService:
             last = page[-1]
             next_cursor = encode_cursor(vault_id, deleted, last["created_at"], _note_id(last))
         return NotePage(items=[_to_list_item(doc) for doc in page], next_cursor=next_cursor)
+
+    def _list_prefix(self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str) -> NotePage:
+        """Notas bajo la carpeta `prefix`, por ruta (H-030 E1). La vista da un superconjunto por el borde de
+        carpeta; se filtra con la equivalencia exacta `path_key` y se sigue leyendo hasta juntar `limit + 1`."""
+        prefix = prefix.rstrip("/")
+        if (code := check_prefix(prefix)) is not None:
+            raise _field_error("prefix", code)
+        key = view_key(prefix)
+        after = None
+        if cursor is not None:
+            last_key, note_id = decode_prefix_cursor(cursor, vault_id, deleted, prefix)
+            after = (last_key, _doc_id(vault_id, note_id))
+        kept: list[tuple[str, dict]] = []
+        while len(kept) < limit + 1:
+            docs = self._port.list_notes_by_prefix(self._db, vault_id, deleted, key, limit + 1, after)
+            kept += [(view_key(d["path"]), d) for d in docs if in_folder(d["path"], prefix)]
+            if len(docs) < limit + 1:
+                break
+            after = (view_key(docs[-1]["path"]), docs[-1]["_id"])
+        page = kept[:limit]
+        next_cursor = None
+        if len(kept) > limit:
+            last_key, last = page[-1]
+            next_cursor = encode_prefix_cursor(vault_id, deleted, prefix, last_key, _note_id(last))
+        return NotePage(items=[_to_list_item(doc) for _, doc in page], next_cursor=next_cursor)
 
     def get(self, vault_id: str, note_id: str) -> Versioned:
         self._check_vault(vault_id)

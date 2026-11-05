@@ -34,6 +34,19 @@ DESIGN_DOC_NOTES = {
     }
 }
 
+# H-030 E1: índice de notas por ruta, en un diseño aparte (`_design/notes_path`) para no invalidar el
+# índice `by_created` ya construido. Clave `[vault_id, borrada?1:0, ruta NFKC en minúsculas]`.
+DESIGN_DOC_NOTES_PATH = {
+    "views": {
+        "by_path": {
+            "map": (
+                'function (doc) { if (doc.type === "note" && typeof doc.path === "string") '
+                '{ emit([doc.vault_id, doc.deleted_at ? 1 : 0, doc.path.normalize("NFKC").toLowerCase()], null); } }'
+            )
+        }
+    }
+}
+
 
 def _json_param(value) -> str:
     return json.dumps(value, separators=(",", ":"))
@@ -61,6 +74,7 @@ class VaultRepository(VaultPort):
         # Bases cuyo `_design/vaults` (o `_design/notes`) ya se aseguró en este proceso.
         self._indexed: set[str] = set()
         self._notes_indexed: set[str] = set()
+        self._path_indexed: set[str] = set()
 
     def _request(self, method: str, path: str, expected: tuple[int, ...], **kwargs) -> httpx.Response:
         """Hace la petición; red caída o un estado fuera de `expected` → `StorageUnavailable`.
@@ -178,6 +192,39 @@ class VaultRepository(VaultPort):
                 "limit": limit + 1,
             }
         response = self._request("GET", f"/{db}/_design/notes/_view/by_created", (200,), params=params)
+        rows = response.json()["rows"]
+        if after is not None:
+            if rows and rows[0]["id"] == after_id:
+                rows = rows[1:]
+            rows = rows[:limit]
+        return [row["doc"] for row in rows]
+
+    # --- Listado de notas por carpeta (H-030 E1) ---
+
+    def _ensure_path_index(self, db: str) -> None:
+        if db in self._path_indexed:
+            return
+        self._request("PUT", f"/{db}/_design/notes_path", (201, 202, 409), json=DESIGN_DOC_NOTES_PATH)
+        self._path_indexed.add(db)
+
+    def list_notes_by_prefix(
+        self, db: str, vault_id: str, deleted: bool, prefix_key: str, limit: int, after: tuple[str, str] | None
+    ) -> list[dict]:
+        self._ensure_path_index(db)
+        d = 1 if deleted else 0
+        # Rango de la carpeta: todo lo que empieza por `prefix_key/`; `\ufff0` cierra el rango por arriba.
+        low = f"{prefix_key}/"
+        params = {"include_docs": "true", "endkey": _json_param([vault_id, d, low + "\ufff0"])}
+        if after is None:
+            params |= {"startkey": _json_param([vault_id, d, low]), "limit": limit}
+        else:
+            view_key, after_id = after
+            params |= {
+                "startkey": _json_param([vault_id, d, view_key]),
+                "startkey_docid": after_id,
+                "limit": limit + 1,
+            }
+        response = self._request("GET", f"/{db}/_design/notes_path/_view/by_path", (200,), params=params)
         rows = response.json()["rows"]
         if after is not None:
             if rows and rows[0]["id"] == after_id:

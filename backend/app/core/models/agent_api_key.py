@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, String, text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String, false, text
 from sqlalchemy.orm import relationship
 
 from app.adapters.database import Base
@@ -25,6 +25,10 @@ class AgentApiKey(Base):
     created_at = Column(DateTime, nullable=False)
     last_used_at = Column(DateTime, nullable=True)  # best-effort (RF-009)
     revoked_at = Column(DateTime, nullable=True)    # su fecha es a la vez marca y bitácora
+    # H-030 E5: identidad del agente que usa la clave (`NULL` = clave general, el comportamiento anterior) y
+    # si es de un agente administrador. Lo fija el dueño con sesión; una clave nunca cambia la suya.
+    agent_id = Column(String, nullable=True, index=True)
+    is_admin = Column(Boolean, nullable=False, default=False, server_default=false())
     owner = relationship("User")
 
     # P-10 (Gate 2): `label` único por dueño pero sólo entre keys vigentes — índice parcial,

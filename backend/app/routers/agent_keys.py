@@ -14,7 +14,7 @@ from app.core.dependencies import get_current_user
 from app.core.errors import AgentKeyLabelTaken, AgentKeyNotFound
 from app.core.json_body import DeepJsonRoute
 from app.core.problems import problem_responses
-from app.core.schemas import AgentKeyCreate, AgentKeyCreated, AgentKeyOut, TokenPayload
+from app.core.schemas import AgentKeyCreate, AgentKeyCreated, AgentKeyOut, AgentKeyUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.services.agent_key_service import AgentKeyService
 
@@ -42,9 +42,11 @@ def create_agent_key(
     current_user: TokenPayload = Depends(get_current_user),
     service: AgentKeyService = Depends(get_agent_key_service),
 ):
-    key, raw = service.create(current_user.sub, body.label)
+    key, raw = service.create(current_user.sub, body.label, agent_id=body.agent_id, is_admin=body.is_admin)
     # El valor plano se devuelve una única vez (RF-001); no se vuelve a poder consultar.
-    return AgentKeyCreated(id=key.id, label=key.label, key=raw, created_at=key.created_at)
+    return AgentKeyCreated(
+        id=key.id, label=key.label, key=raw, created_at=key.created_at,
+        agent_id=key.agent_id, is_admin=key.is_admin)
 
 
 @router.get("", response_model=list[AgentKeyOut])
@@ -53,6 +55,21 @@ def list_agent_keys(
     service: AgentKeyService = Depends(get_agent_key_service),
 ):
     return service.list(current_user.sub)
+
+
+@router.patch(
+    "/{key_id}",
+    response_model=AgentKeyOut,
+    responses=problem_responses(AgentKeyNotFound),
+)
+def update_agent_key(
+    body: AgentKeyUpdate,
+    key_id: str = Path(description="Id de la key a reasignar."),
+    current_user: TokenPayload = Depends(get_current_user),
+    service: AgentKeyService = Depends(get_agent_key_service),
+):
+    """Reasigna el agente de una key vigente y su indicador de administrador (H-030 E5). Solo cookie."""
+    return service.set_identity(current_user.sub, key_id, body.agent_id, body.is_admin)
 
 
 @router.delete(

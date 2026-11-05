@@ -52,6 +52,12 @@ class TokenPayload(BaseModel):
     role: str
     exp: int
     ver: int   # versión de credenciales (RF-021)
+    # H-030 E5: solo los rellena `get_current_principal` al resolver una API key (la cookie no los lleva).
+    agent_id: str | None = None      # agente que identifica la clave; None = clave general o sesión humana
+    agent_admin: bool = False
+    key_label: str | None = None
+    via_key: bool = False            # la petición llegó por API key (no por cookie)
+    declared_agent: str | None = None  # `X-Agent-Id` declarado (sin verificar): solo para el modo sombra
 
 
 # --- Bóvedas (SPEC-0003) ---
@@ -326,12 +332,28 @@ AgentKeyLabel = Annotated[
 ]
 
 
+# H-030 E5: id de agente = identificador corto en minúsculas (el mismo que usa OpenClaw: aira, liza, emma…).
+AgentId = Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]{0,31}$")]
+
+
 class AgentKeyCreate(BaseModel):
     """Cuerpo de `POST /auth/agent-keys`; cualquier otro campo → 422."""
 
     model_config = ConfigDict(extra="forbid")
 
     label: AgentKeyLabel
+    # Sin `agent_id` la key es general (comportamiento anterior). `is_admin` solo tiene sentido con agente.
+    agent_id: AgentId | None = None
+    is_admin: bool = False
+
+
+class AgentKeyUpdate(BaseModel):
+    """Cuerpo de `PATCH /auth/agent-keys/{id}`: reasigna el agente y/o el indicador de administrador."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    agent_id: AgentId | None = None
+    is_admin: bool = False
 
 
 class AgentKeyCreated(BaseModel):
@@ -341,6 +363,8 @@ class AgentKeyCreated(BaseModel):
     label: str
     key: str
     created_at: datetime
+    agent_id: str | None = None
+    is_admin: bool = False
 
 
 class AgentKeyOut(BaseModel):
@@ -353,6 +377,8 @@ class AgentKeyOut(BaseModel):
     created_at: datetime
     last_used_at: datetime | None
     revoked_at: datetime | None
+    agent_id: str | None = None
+    is_admin: bool = False
 
 
 # --- Archivos (H-015) ---

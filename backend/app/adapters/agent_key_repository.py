@@ -13,7 +13,8 @@ class AgentKeyRepository(AgentKeyPort):
         self.db = db
 
     def create(
-        self, key_id: str, owner_id: str, label: str, key_hash: str, created_at: datetime
+        self, key_id: str, owner_id: str, label: str, key_hash: str, created_at: datetime,
+        agent_id: str | None = None, is_admin: bool = False,
     ) -> AgentApiKey:
         key = AgentApiKey(
             id=key_id,
@@ -21,6 +22,8 @@ class AgentKeyRepository(AgentKeyPort):
             label=label,
             key_hash=key_hash,
             created_at=created_at,
+            agent_id=agent_id,
+            is_admin=is_admin,
         )
         self.db.add(key)
         self.db.flush()
@@ -49,6 +52,11 @@ class AgentKeyRepository(AgentKeyPort):
             .filter(AgentApiKey.id == key_id, AgentApiKey.owner_id == owner_id)
             .first()
         )
+
+    def set_identity(self, key: AgentApiKey, agent_id: str | None, is_admin: bool) -> None:
+        key.agent_id = agent_id
+        key.is_admin = is_admin
+        self.db.flush()
 
     def revoke(self, key: AgentApiKey, revoked_at: datetime) -> None:
         key.revoked_at = revoked_at

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
-    PreconditionRequired, StorageUnavailable, VaultNotFound,
+    PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
 from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
@@ -67,16 +67,20 @@ _CONDITIONAL = (NoteNotFound, PreconditionRequired, PreconditionFailed, StorageU
 @router.get(
     "",
     response_model=NotePage,
-    responses=problem_responses(InvalidCursor, VaultNotFound, StorageUnavailable),
+    responses=problem_responses(InvalidCursor, ValidationFailed, VaultNotFound, StorageUnavailable),
 )
 def list_notes(
     vault_id: VaultId,
     limit: int = Query(50, ge=1, le=200),
     cursor: str | None = None,
     deleted: bool = False,
+    prefix: Annotated[str | None, Query(
+        max_length=300,
+        description=("Carpeta (sin barra final): lista solo las notas bajo ella, ordenadas por ruta. "
+                     "Sin `prefix` el orden es por fecha de creación descendente."))] = None,
     service: NoteContentService = Depends(get_note_content_service),
 ):
-    return service.list(vault_id, deleted=deleted, limit=limit, cursor=cursor)
+    return service.list(vault_id, deleted=deleted, limit=limit, cursor=cursor, prefix=prefix)
 
 
 @router.get(

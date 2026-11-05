@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 
 import jwt
@@ -19,6 +20,7 @@ from app.services.agent_key_service import AgentKeyService
 # usan `.sub`/`.role`), pero se fija a un futuro coherente. La caducidad real de una key es su
 # **revocación**, no este `exp`.
 _AGENT_PRINCIPAL_TTL = timedelta(hours=24)
+AGENT_ID_PATTERN = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
 
 def _principal_from_cookie(request: Request, db: Session) -> TokenPayload | None:
@@ -45,6 +47,13 @@ def _bearer_key(request: Request) -> str | None:
         return None
     scheme, _, value = header.partition(" ")
     return value if scheme.lower() == "bearer" and value else None
+
+
+def _declared_agent(request: Request) -> str | None:
+    """`X-Agent-Id`: el agente que dice ser quien usa una clave general. No es una credencial: solo alimenta la
+    bitácora del modo sombra (H-030 E6). Valor ilegible o ausente → `None`."""
+    value = request.headers.get("x-agent-id")
+    return value if value and AGENT_ID_PATTERN.fullmatch(value) else None
 
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> TokenPayload:
@@ -78,6 +87,12 @@ def get_current_principal(request: Request, db: Session = Depends(get_db)) -> To
         role=owner.role.name,
         ver=owner.token_version,
         exp=int((datetime.utcnow() + _AGENT_PRINCIPAL_TTL).timestamp()),
+        agent_id=key.agent_id,
+        agent_admin=bool(key.agent_id and key.is_admin),
+        key_label=key.label,
+        via_key=True,
+        # Solo una clave general puede declarar agente (modo sombra); la de un agente ya lo identifica.
+        declared_agent=_declared_agent(request) if key.agent_id is None else None,
     )
 
 

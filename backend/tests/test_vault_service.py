@@ -228,6 +228,19 @@ class InMemoryVaultPort(VaultPort):
             notes = [d for d in notes if (d["created_at"], d["_id"]) < after]
         return copy.deepcopy(notes[:limit])
 
+    def list_notes_by_prefix(self, db, vault_id, deleted, prefix_key, limit, after):
+        # H-030 E1: mismo contrato que la vista `by_path` (superconjunto por borde de carpeta).
+        from app.core.note_prefix import view_key
+        notes = [
+            d for d in self.docs.get(db, {}).values()
+            if d.get("type") == "note" and d.get("vault_id") == vault_id
+            and bool(d.get("deleted_at")) is deleted and view_key(d["path"]).startswith(prefix_key + "/")
+        ]
+        notes.sort(key=lambda d: (view_key(d["path"]), d["_id"]))
+        if after is not None:
+            notes = [d for d in notes if (view_key(d["path"]), d["_id"]) > after]
+        return copy.deepcopy(notes[:limit])
+
 
 DB = "synapse_user_owner"
 OWNER = "7d1c9a8e-0000-4000-8000-000000000001"

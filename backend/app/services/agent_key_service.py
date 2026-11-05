@@ -19,7 +19,9 @@ class AgentKeyService:
     def __init__(self, repo: AgentKeyPort):
         self.repo = repo
 
-    def create(self, owner_id: str, label: str) -> tuple[AgentApiKey, str]:
+    def create(
+        self, owner_id: str, label: str, agent_id: str | None = None, is_admin: bool = False,
+    ) -> tuple[AgentApiKey, str]:
         """Genera, hashea y persiste una key; devuelve el valor plano **una sola vez** (RF-001).
 
         Revalida el label contra las keys vigentes del dueño con un mensaje de dominio claro
@@ -30,7 +32,8 @@ class AgentKeyService:
         raw = generate_api_key()
         try:
             key = self.repo.create(
-                str(uuid.uuid4()), owner_id, label, hash_api_key(raw), datetime.utcnow()
+                str(uuid.uuid4()), owner_id, label, hash_api_key(raw), datetime.utcnow(),
+                agent_id=agent_id, is_admin=is_admin,
             )
             self.repo.commit()
         except IntegrityError as exc:
@@ -56,6 +59,15 @@ class AgentKeyService:
     def list(self, owner_id: str) -> list[AgentApiKey]:
         """Todas las keys del dueño (incluidas las revocadas, con su fecha), scoped (RF-004)."""
         return self.repo.list_by_owner(owner_id)
+
+    def set_identity(self, owner_id: str, key_id: str, agent_id: str | None, is_admin: bool) -> AgentApiKey:
+        """Cambia el agente y el indicador de administrador de una key vigente propia (H-030 E5)."""
+        key = self.repo.get_owned(owner_id, key_id)
+        if key is None or key.revoked_at is not None:
+            raise AgentKeyNotFound()
+        self.repo.set_identity(key, agent_id, is_admin)
+        self.repo.commit()
+        return key
 
     def revoke(self, owner_id: str, key_id: str) -> None:
         """Revoca una key propia; una ajena o inexistente → `AgentKeyNotFound` (RF-005, P3)."""

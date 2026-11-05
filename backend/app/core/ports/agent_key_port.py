@@ -13,7 +13,8 @@ class AgentKeyPort(ABC):
 
     @abstractmethod
     def create(
-        self, key_id: str, owner_id: str, label: str, key_hash: str, created_at: datetime
+        self, key_id: str, owner_id: str, label: str, key_hash: str, created_at: datetime,
+        agent_id: str | None = None, is_admin: bool = False,
     ) -> AgentApiKey:
         """Inserta (flush) sin confirmar; el llamante hace commit o rollback."""
 
@@ -27,6 +28,10 @@ class AgentKeyPort(ABC):
     @abstractmethod
     def get_owned(self, owner_id: str, key_id: str) -> AgentApiKey | None:
         """La key `key_id` sólo si es de `owner_id`; `None` en cualquier otro caso (P3)."""
+
+    @abstractmethod
+    def set_identity(self, key: AgentApiKey, agent_id: str | None, is_admin: bool) -> None:
+        """Cambia (flush) el agente y el indicador de administrador de una key."""
 
     @abstractmethod
     def revoke(self, key: AgentApiKey, revoked_at: datetime) -> None: ...

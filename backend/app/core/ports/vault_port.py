@@ -54,3 +54,15 @@ class VaultPort(ABC):
         0014), con `vault_id` como primer componente de la clave: nunca mezcla notas de
         bóvedas distintas.
         """
+
+    @abstractmethod
+    def list_notes_by_prefix(
+        self, db: str, vault_id: str, deleted: bool, prefix_key: str, limit: int, after: tuple[str, str] | None
+    ) -> list[dict]:
+        """Hasta `limit` notas de `vault_id` cuya ruta está bajo la carpeta `prefix_key` (H-030 E1).
+
+        `prefix_key` es la clave de vista de la carpeta (`core.note_prefix.view_key`, sin barra final).
+        Orden: clave de vista de la ruta ascendente y, a igual clave, `_id` ascendente. `after` es la
+        `(clave de vista, _id)` de la última nota ya vista. Es un superconjunto estricto por el borde de
+        carpeta; el servicio filtra con la clave exacta (`path_key`).
+        """
