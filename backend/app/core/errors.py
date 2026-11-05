@@ -318,6 +318,16 @@ class AgentAccessDenied(DomainError):
     detail = "This agent may not write there"
 
 
+class AgentOwnsSkills(DomainError):
+    """Quitar o suspender a un gestor que todavía es propietario de skills activas (H-041 E4): una skill activa nunca
+    queda sin propietario. Antes hay que resolver cada una (asignarla a un invitado, eliminarla o archivarla)."""
+
+    slug = "agent-owns-skills"
+    title = "Agent owns skills"
+    status = 409
+    detail = "The agent still owns active skills in this vault"
+
+
 # --- Archivos (H-015) ---
 
 class FileNotFound(DomainError):

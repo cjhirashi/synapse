@@ -424,6 +424,56 @@ class AgentAccessKeyOut(BaseModel):
     is_admin: bool
 
 
+class SkillOut(BaseModel):
+    """Una skill de bóveda (H-041 E4): quién la posee, a quién invita y en qué estado está."""
+
+    note_id: str
+    path: str
+    titulo: str | None
+    propietario: str | None  # ausente solo si está archivada
+    agentes: list[str]
+    estado: str | None
+
+
+class SkillListOut(BaseModel):
+    skills: list[SkillOut]
+
+
+class SkillAssign(BaseModel):
+    """Cuerpo de `POST /vaults/{id}/skills/{note_id}/assign`: el gestor que pasa a ser propietario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    propietario: Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]{0,31}$")]
+
+
+class SkillResolution(BaseModel):
+    """Qué hacer con una skill de un gestor que sale: `assign` (a `a`, uno de sus invitados), `delete` o `archive`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    note_id: str
+    accion: Literal["assign", "delete", "archive"]
+    a: Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9-]{0,31}$")] | None = None
+
+
+class AgentLeave(BaseModel):
+    """Cuerpo de `POST /vaults/{id}/agent-access/{agent_id}/leave`: quitar o suspender al gestor resolviendo antes
+    cada skill de la que es propietario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    modo: Literal["quitar", "suspender"]
+    skills: Annotated[list[SkillResolution], Field(max_length=200)] = []
+
+
+class AgentLeaveOut(BaseModel):
+    asignadas: int
+    eliminadas: int
+    archivadas: int
+    invitaciones_quitadas: int
+
+
 class AgentAccessEntryOut(BaseModel):
     agent_id: str
     estado: str

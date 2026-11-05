@@ -95,6 +95,51 @@ components:
       - carpetas
       title: AgentAccessPut
       type: object
+    AgentLeave:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{id}/agent-access/{agent_id}/leave`: quitar
+        o suspender al gestor resolviendo antes
+
+        cada skill de la que es propietario.'
+      properties:
+        modo:
+          enum:
+          - quitar
+          - suspender
+          title: Modo
+          type: string
+        skills:
+          default: []
+          items:
+            $ref: '#/components/schemas/SkillResolution'
+          maxItems: 200
+          title: Skills
+          type: array
+      required:
+      - modo
+      title: AgentLeave
+      type: object
+    AgentLeaveOut:
+      properties:
+        archivadas:
+          title: Archivadas
+          type: integer
+        asignadas:
+          title: Asignadas
+          type: integer
+        eliminadas:
+          title: Eliminadas
+          type: integer
+        invitaciones_quitadas:
+          title: Invitaciones Quitadas
+          type: integer
+      required:
+      - asignadas
+      - eliminadas
+      - archivadas
+      - invitaciones_quitadas
+      title: AgentLeaveOut
+      type: object
     Problem:
       additionalProperties: false
       description: 'RFC 9457 Problem Details: body of every API error response.'
@@ -242,6 +287,95 @@ components:
       - counts
       - recent_denies
       title: ShadowReportOut
+      type: object
+    SkillAssign:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{id}/skills/{note_id}/assign`: el gestor
+        que pasa a ser propietario.'
+      properties:
+        propietario:
+          pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+          title: Propietario
+          type: string
+      required:
+      - propietario
+      title: SkillAssign
+      type: object
+    SkillListOut:
+      properties:
+        skills:
+          items:
+            $ref: '#/components/schemas/SkillOut'
+          title: Skills
+          type: array
+      required:
+      - skills
+      title: SkillListOut
+      type: object
+    SkillOut:
+      description: 'Una skill de bóveda (H-041 E4): quién la posee, a quién invita
+        y en qué estado está.'
+      properties:
+        agentes:
+          items:
+            type: string
+          title: Agentes
+          type: array
+        estado:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Estado
+        note_id:
+          title: Note Id
+          type: string
+        path:
+          title: Path
+          type: string
+        propietario:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Propietario
+        titulo:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Titulo
+      required:
+      - note_id
+      - path
+      - titulo
+      - propietario
+      - agentes
+      - estado
+      title: SkillOut
+      type: object
+    SkillResolution:
+      additionalProperties: false
+      description: 'Qué hacer con una skill de un gestor que sale: `assign` (a `a`,
+        uno de sus invitados), `delete` o `archive`.'
+      properties:
+        a:
+          anyOf:
+          - pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+            type: string
+          - type: 'null'
+          title: A
+        accion:
+          enum:
+          - assign
+          - delete
+          - archive
+          title: Accion
+          type: string
+        note_id:
+          title: Note Id
+          type: string
+      required:
+      - note_id
+      - accion
+      title: SkillResolution
       type: object
 info:
   title: Synapse
@@ -398,6 +532,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Note not found / Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent owns skills
         '422':
           content:
             application/problem+json:
@@ -475,7 +615,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Note path already in use
+          description: Note path already in use / Agent owns skills
         '422':
           content:
             application/problem+json:
@@ -495,5 +635,227 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Put Agent Access
+      tags:
+      - agent-access
+  /vaults/{vault_id}/agent-access/{agent_id}/leave:
+    post:
+      description: 'Quita o suspende a un gestor resolviendo antes cada skill de la
+        que es propietario (solo sesión humana, H-041 E4):
+
+        con invitados, asignarla a uno de ellos o eliminarla; sin invitados, eliminarla
+        o archivarla. También lo quita de
+
+        `agentes` de las skills que lo invitan. Si falta alguna resolución, 409 `agent-owns-skills`
+        y no se toca nada.'
+      operationId: agent_leaves_vaults__vault_id__agent_access__agent_id__leave_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - description: Id del agente.
+        in: path
+        name: agent_id
+        required: true
+        schema:
+          description: Id del agente.
+          pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+          title: Agent Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentLeave'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentLeaveOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found / Note not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent owns skills
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Agent Leaves
+      tags:
+      - agent-access
+  /vaults/{vault_id}/skills:
+    get:
+      description: 'Las skills de la bóveda con su propietario, sus invitados y su
+        estado (H-041 E4). Las archivadas no tienen
+
+        propietario; los documentos de sistema no se listan.'
+      operationId: list_skills_vaults__vault_id__skills_get
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillListOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: List Skills
+      tags:
+      - agent-access
+  /vaults/{vault_id}/skills/{note_id}/assign:
+    post:
+      description: 'Asigna la skill a un gestor activo (solo sesión humana): pasa
+        a ser su propietario, sale de `agentes` si estaba y
+
+        una skill archivada vuelve a `en revisión` (H-041 E4).'
+      operationId: assign_skill_vaults__vault_id__skills__note_id__assign_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - description: Id de la nota de la skill.
+        in: path
+        name: note_id
+        required: true
+        schema:
+          description: Id de la nota de la skill.
+          title: Note Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillAssign'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found / Note not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Assign Skill
       tags:
       - agent-access

@@ -42,10 +42,10 @@ def _body(agent_id: str, carpetas: list[str], estado: str, key_labels: list[str]
 
 
 class AgentRegistryService:
-    def __init__(self, port: VaultPort, db: str):
+    def __init__(self, port: VaultPort, db: str, actor=None, changelog=None):
         self._port = port
         self._db = db
-        self._contents = NoteContentService(port, db)
+        self._contents = NoteContentService(port, db, actor=actor, changelog=changelog)
 
     def entries(self, vault_id: str) -> dict[str, RegistryEntry]:
         """Registros válidos de la bóveda por id de agente (lectura directa, sin caché)."""

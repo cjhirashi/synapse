@@ -3,14 +3,21 @@ import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import {
   AgentKeyInfo,
+  SkillInfo,
+  SkillResolution,
   VaultAgentAccess,
   VaultOption,
+  assignSkill,
   deleteAgentRegistration,
   getVaultAgentAccess,
+  leaveAgent,
+  listSkills,
   listVaultOptions,
   parseFolders,
   putAgentRegistration,
+  skillName,
 } from "./agentAccess";
+import LeaveDialog from "./LeaveDialog";
 
 const MODE_TEXT: Record<string, string> = {
   off: "Cumplimiento apagado: nada se evalúa.",
@@ -25,6 +32,9 @@ function keyNames(keys: AgentKeyInfo[]): string {
 interface RowProps {
   agentId: string;
   keys: AgentKeyInfo[];
+  /** Skills activas que posee y skills a las que está invitado (H-041 E4). */
+  owns: number;
+  invitedTo: number;
   initialFolders: string[];
   initialEstado: string;
   registered: boolean;
@@ -34,7 +44,7 @@ interface RowProps {
 }
 
 /** Una fila del registro: el agente con el nombre de su clave, sus carpetas (una por línea) y su estado. */
-function Row({ agentId, keys, initialFolders, initialEstado, registered, busy, onSave, onRemove }: RowProps) {
+function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, registered, busy, onSave, onRemove }: RowProps) {
   const [folders, setFolders] = useState(initialFolders.join("\n"));
   const [estado, setEstado] = useState(initialEstado === "suspendido" ? "suspendido" : "activo");
   return (
@@ -42,6 +52,11 @@ function Row({ agentId, keys, initialFolders, initialEstado, registered, busy, o
       <h2>
         {agentId} <small>· clave: {keyNames(keys)}</small>
       </h2>
+      {registered && (
+        <p>
+          Skills: posee {owns} activa{owns === 1 ? "" : "s"} · invitado en {invitedTo}
+        </p>
+      )}
       <label>
         Carpetas con escritura (una por línea; * = toda la bóveda salvo las reservadas)
         <textarea rows={3} value={folders} onChange={(e) => setFolders(e.target.value)} />
@@ -77,11 +92,19 @@ export default function AgentAccessPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [newAgent, setNewAgent] = useState("");
+  const [skills, setSkills] = useState<SkillInfo[]>([]);
+  /** H-041 E4: quitar o suspender a un gestor que posee skills activas abre la ventana de resolución. */
+  const [leaving, setLeaving] = useState<{ agentId: string; modo: "quitar" | "suspender" } | null>(null);
+  const [assignTo, setAssignTo] = useState<Record<string, string>>({});
   const navigate = useNavigate();
 
   const fail = useCallback(
     (err: unknown, fallback: string) => {
       if (err instanceof ApiError && err.status === 401) return navigate("/login", { replace: true });
+      if (err instanceof ApiError && err.status === 409) {
+        setError("Ese agente todavía es propietario de skills activas: resuelve antes qué pasa con cada una.");
+        return;
+      }
       setError(err instanceof ApiError && err.status === 422 ? "Las carpetas no son válidas (revisa los nombres)." : fallback);
     },
     [navigate],
@@ -100,7 +123,9 @@ export default function AgentAccessPage() {
     async (id: string) => {
       setAccess(null);
       try {
-        setAccess(await getVaultAgentAccess(id));
+        const [loaded, loadedSkills] = await Promise.all([getVaultAgentAccess(id), listSkills(id).catch(() => [] as SkillInfo[])]);
+        setAccess(loaded);
+        setSkills(loadedSkills);
       } catch (err) {
         fail(err, "No se pudo cargar la asignación de esta bóveda.");
       }
@@ -125,9 +150,32 @@ export default function AgentAccessPage() {
     }
   }
 
-  const save = (agentId: string, folders: string[], estado: "activo" | "suspendido") =>
-    run(() => putAgentRegistration(vaultId, agentId, folders, estado), `No se pudo guardar ${agentId}.`);
-  const remove = (agentId: string) => run(() => deleteAgentRegistration(vaultId, agentId), `No se pudo quitar ${agentId}.`);
+  const ownedBy = (agentId: string) => skills.filter((s) => s.propietario === agentId && s.estado !== "archivado");
+  const invitedTo = (agentId: string) => skills.filter((s) => s.agentes.includes(agentId)).length;
+
+  const save = (agentId: string, folders: string[], estado: "activo" | "suspendido") => {
+    const current = access?.agents.find((a) => a.agent_id === agentId);
+    if (estado === "suspendido" && current?.estado === "activo" && ownedBy(agentId).length > 0) {
+      setLeaving({ agentId, modo: "suspender" });
+      return Promise.resolve();
+    }
+    return run(() => putAgentRegistration(vaultId, agentId, folders, estado), `No se pudo guardar ${agentId}.`);
+  };
+  const remove = (agentId: string) => {
+    if (ownedBy(agentId).length > 0) {
+      setLeaving({ agentId, modo: "quitar" });
+      return Promise.resolve();
+    }
+    return run(() => deleteAgentRegistration(vaultId, agentId), `No se pudo quitar ${agentId}.`);
+  };
+  async function confirmLeave(resolutions: SkillResolution[]) {
+    if (leaving === null) return;
+    const { agentId, modo } = leaving;
+    await run(() => leaveAgent(vaultId, agentId, modo, resolutions), `No se pudo ${modo} ${agentId}.`);
+    setLeaving(null);
+  }
+  const archived = skills.filter((s) => s.estado === "archivado");
+  const managers = (access?.agents ?? []).filter((a) => a.estado === "activo").map((a) => a.agent_id);
 
   return (
     <section className="agent-access-page">
@@ -154,8 +202,8 @@ export default function AgentAccessPage() {
         <>
           <p>{MODE_TEXT[access.mode] ?? access.mode}</p>
           <p>
-            Un agente registrado y activo lee toda la bóveda y escribe en sus carpetas, en su carpeta de AG - SKILLS y en
-            AG - MENSAJES. Uno no registrado solo escribe en AG - MENSAJES.
+            Un agente registrado y activo (gestor) lee toda la bóveda y escribe en sus carpetas y en AG - MENSAJES; en AG - SKILLS
+            solo edita las skills de las que es propietario. Uno no registrado solo escribe en AG - MENSAJES.
           </p>
           {access.agents.length === 0 && <p>Ningún agente está registrado en esta bóveda.</p>}
           <ul className="card-list">
@@ -164,6 +212,8 @@ export default function AgentAccessPage() {
                 key={`${vaultId}-${a.agent_id}-${a.note_id}`}
                 agentId={a.agent_id}
                 keys={a.keys}
+                owns={ownedBy(a.agent_id).length}
+                invitedTo={invitedTo(a.agent_id)}
                 initialFolders={a.carpetas}
                 initialEstado={a.estado}
                 registered
@@ -177,6 +227,8 @@ export default function AgentAccessPage() {
                 key={`${vaultId}-new-${id}`}
                 agentId={id}
                 keys={access.unregistered_keys.filter((k) => k.label.includes(id))}
+                owns={0}
+                invitedTo={0}
                 initialFolders={[]}
                 initialEstado="activo"
                 registered={false}
@@ -186,6 +238,41 @@ export default function AgentAccessPage() {
               />
             ))}
           </ul>
+          {archived.length > 0 && (
+            <section aria-label="Skills sin propietario" className="agent-orphan-skills">
+              <h2>Skills sin propietario</h2>
+              <p>Están archivadas: inactivas, en su carpeta, sin propietario ni invitados. Asigna cada una a un gestor para reactivarla (vuelve a «en revisión»).</p>
+              <ul className="card-list">
+                {archived.map((skill) => {
+                  const name = skillName(skill);
+                  const target = assignTo[skill.note_id] ?? managers[0] ?? "";
+                  return (
+                    <li key={skill.note_id} aria-label={`Skill archivada ${name}`}>
+                      <h3>{name}</h3>
+                      <label>
+                        Asignar {name} a
+                        <select value={target} disabled={managers.length === 0} onChange={(e) => setAssignTo((cur) => ({ ...cur, [skill.note_id]: e.target.value }))}>
+                          {managers.map((id) => (
+                            <option key={id} value={id}>
+                              {id}
+                            </option>
+                          ))}
+                          {managers.length === 0 && <option value="">Sin gestores activos</option>}
+                        </select>
+                      </label>
+                      <button
+                        type="button"
+                        disabled={busy || target === ""}
+                        onClick={() => void run(() => assignSkill(vaultId, skill.note_id, target), `No se pudo asignar ${name}.`)}
+                      >
+                        Asignar {name}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
           <form
             className="card-form"
             onSubmit={(e) => {
@@ -206,6 +293,16 @@ export default function AgentAccessPage() {
             </button>
           </form>
         </>
+      )}
+      {leaving !== null && (
+        <LeaveDialog
+          agentId={leaving.agentId}
+          modo={leaving.modo}
+          owned={ownedBy(leaving.agentId)}
+          busy={busy}
+          onConfirm={(resolutions) => void confirmLeave(resolutions)}
+          onCancel={() => setLeaving(null)}
+        />
       )}
     </section>
   );

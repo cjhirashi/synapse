@@ -584,6 +584,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Note not found / Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent owns skills
         '412':
           content:
             application/problem+json:
@@ -756,7 +762,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Note path already in use
+          description: Note path already in use / Agent owns skills
         '412':
           content:
             application/problem+json:

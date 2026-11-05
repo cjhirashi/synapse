@@ -450,6 +450,21 @@ en `AG - SKILLS` (antes solo en `AG - SKILLS/<su-id>/`). En `/sync` no se puede 
 propietario correcto. Mover una carpeta hacia `AG - SKILLS` exige que sus notas ya sean skills válidas (`skill:propietario`).
 Especificación compartida de la forma: `backend/tests/fixtures/skills_reglas.json`.
 
+**El gestor que sale y las skills archivadas (H-041 E4).** Hoy un gestor se quita borrando su ficha `AG - AGENTES/<id>.md` o poniéndola
+`suspendido`, desde `/settings/agent-access` (`DELETE` y `PUT /vaults/{id}/agent-access/{id}`, solo sesión humana) o editando la nota a
+mano; los agentes no pueden (`registry-readonly`). **Una skill activa nunca queda sin propietario:** mientras el agente sea
+propietario de skills activas, esas tres vías responden `409 agent-owns-skills` (por `/sync`, `ag-agentes:owns-skills`) y no cambian nada.
+`GET /vaults/{id}/skills` lista las skills (`note_id`, `path`, `titulo`, `propietario`, `agentes`, `estado`; sin documentos de sistema ni
+INDICE). `POST /vaults/{id}/agent-access/{agent_id}/leave` (solo sesión humana) con `{modo: "quitar"|"suspender", skills: [{note_id,
+accion: "assign"|"delete"|"archive", a?}]}` resuelve cada skill activa del agente: con invitados, `assign` (a uno de ellos) o `delete`; sin
+invitados, `delete` o `archive`; falta alguna → `409 agent-owns-skills` sin tocar nada; una resolución no permitida → `422` con
+`#/skills/<i>/accion|a|note_id` (`leave:accion`, `leave:a`, `leave:skill`). Después lo quita de `agentes` de las skills que lo invitan y
+quita o suspende su registro; responde `{asignadas, eliminadas, archivadas, invitaciones_quitadas}`. **Archivada:** `estado: archivado`,
+sin propietario ni invitados, en su carpeta; no la purga nada. `POST /vaults/{id}/skills/{note_id}/assign` `{propietario}` (solo sesión
+humana) la asigna a un gestor activo (`422 skill:propietario` si no lo es): el nuevo propietario sale de `agentes` si estaba y una
+archivada vuelve a `en revisión`. **Quien deja de ser gestor por cualquier vía** (también al editar su ficha) se quita de `agentes` de todas
+las skills tras la escritura del registro (idempotente). Cada cambio consta en la BITACORA a nombre del usuario.
+
 ## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
 
 Cada bóveda tiene cinco carpetas reservadas **en la raíz**: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`

@@ -21,6 +21,7 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   `_rev` en `/sync`, y genera los documentos diarios `BITACORA/AAAA-MM/AAAA-MM-DD.md` en la zona horaria del propietario; `rebuild`
   los regenera desde la tabla). Lo usan `note_content_service.py`, `sync_push.py` y `folder_service.py`; si el registro no se puede
   escribir, la escritura no se hace (503). `BITACORA_DOCS=false` apaga los documentos (no el registro).
+- H-041 E4: `skill_service.py` (`SkillService`: listado de skills, asignar propietario, el flujo del gestor que sale `leave` —resuelve cada skill, lo quita de los invitados y quita o suspende el registro— y `reconcile_guests`, que quita de `agentes` a quien ya no es gestor tras cualquier escritura del registro). Lo usan `routers/agent_access.py`, `note_content_service.py` y `sync_push.py`.
 - H-041: `system_docs_service.py` (`SystemDocsService`: publicador de los documentos de sistema, `plan`/`apply`/`revert` por bóveda como `Actor("system")` por `NoteContentService`, conservando el id de la nota; `sync_all` recorre las bóvedas de todos los usuarios y `sync_all_in_background` lo corre al arrancar con `SYSTEM_DOCS_SYNC`). `ensure_ag_folders` publica estos documentos al crear la bóveda; sustituye a la siembra de la skill de cajón (H-030b).
 - `note_content_service.py` (`NoteContentService`, historia 0014): contenido de notas vía REST para agentes
   sobre la base CouchDB del usuario (a través de `VaultPort`). Cursor opaco ligado a la bóveda, `ETag` =

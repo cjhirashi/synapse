@@ -349,6 +349,8 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `skill:propietario` | (H-041 E3) skill activa sin propietario o con uno mal formado, o propietario que el usuario introduce y no es gestor |
 | `skill:agentes` | (H-041 E3) invitados mal formados, repetidos, más de 20, que incluyen al propietario, o que el usuario introduce y no son gestores |
 | `skill:estado` | (H-041 E3) skill archivada con propietario o con invitados |
+| `agent-owns-skills` (409) / `ag-agentes:owns-skills` | (H-041 E4) quitar, suspender o editar la ficha de un gestor que todavía es propietario de skills activas |
+| `leave:skill`, `leave:accion`, `leave:a` | (H-041 E4) resolución inválida al quitar o suspender un gestor (skill ajena o repetida, acción no permitida, asignar a quien no es invitado) |
 | `skill:path` | (H-041 E2) una skill en una subcarpeta de `AG - SKILLS` |
 | `sistema:reserved` | (H-041) una nota que no es de sistema trae el atributo `sistema` |
 | `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |

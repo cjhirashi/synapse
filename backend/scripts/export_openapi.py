@@ -22,7 +22,8 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "0005-sync": {"paths": ("/sync",), "schemas": ()},
     "0013-acceso-agentes-api": {"paths": ("/auth/agent-keys",), "schemas": ()},
     # H-030: registro de agentes por bóveda e informe del modo sombra.
-    "h030-carpetas-ag": {"paths": ("/vaults/{vault_id}/agent-access", "/agent-access"), "schemas": ()},
+    # H-041 E4: las skills de bóveda (listado y asignar) viven con el registro de agentes.
+    "h030-carpetas-ag": {"paths": ("/vaults/{vault_id}/agent-access", "/agent-access", "/vaults/{vault_id}/skills"), "schemas": ()},
     "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes", "/vaults/{vault_id}/folders"), "schemas": ()},
     # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).

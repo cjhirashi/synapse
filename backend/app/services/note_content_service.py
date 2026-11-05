@@ -25,9 +25,9 @@ import uuid
 from typing import NamedTuple
 
 from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
-from app.core.agent_access import Actor, check_registration_frontmatter
+from app.core.agent_access import Actor, check_registration_frontmatter, parse_registration
 from app.core.errors import (
-    InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
+    AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
 )
 from app.core.etag import etag_matches
@@ -310,6 +310,7 @@ class NoteContentService:
         if not is_index_path(new_path):
             base = self._check_ag_target(vault_id, new_path, base, doc, "rename_or_move" if renamed else "update", old=old)
         base = self._skill_rules(vault_id, "move" if renamed else "update", doc, new_path, base)
+        self._check_registry_exit(vault_id, doc, base, still_here=not renamed)
         self._check_meta_write(vault_id, new_path, old_path, base, doc, deleted=False)
         content_changed = "content" in changes and changes["content"] != doc.get("content")
         if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
@@ -347,6 +348,7 @@ class NoteContentService:
             raise _field_error("path", code)
         self._check_ag_delete(doc)
         self._skill_rules(vault_id, "delete", doc, doc["path"], None)
+        self._check_registry_exit(vault_id, doc, None, still_here=False)
         if is_index_path(doc["path"]):
             below = self._count_live_below(vault_id, doc["path"], doc["_id"])
             if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
@@ -475,6 +477,21 @@ class NoteContentService:
             self._guard.check_skill(vault_id, op if was else "create", new_path if becomes else old_path, old_fm, fm if becomes else None)
         return fm
 
+    def _check_registry_exit(self, vault_id: str, doc: dict, new_fm: dict | None, *, still_here: bool) -> None:
+        """H-041 E4: un gestor que deja de serlo (su ficha se borra, se mueve o pasa a otro estado) no puede ser propietario
+        de skills activas: una skill activa nunca queda sin propietario. Antes hay que resolverlas (`SkillService.leave`)."""
+        if ag_rules.meta_folder_of(doc["path"]) != ag_rules.AG_AGENTES or is_index_path(doc["path"]):
+            return
+        registration = parse_registration(doc["path"], doc.get("frontmatter"))
+        if registration is None or registration.estado != "activo":
+            return
+        if still_here and new_fm is not None and new_fm.get("estado") == "activo":
+            return
+        from app.services.skill_service import SkillService
+
+        if SkillService(self._port, self._db).owned_active(vault_id, registration.agent_id):
+            raise AgentOwnsSkills(f"{registration.agent_id} owns active skills in {vault_id}")
+
     def _check_system_lock(self, path: str, prev_path: str | None, frontmatter: object, deleted: bool = False) -> None:
         """H-041: un documento de sistema no lo toca nadie desde la plataforma. Va antes que el registro de agentes
         para que la respuesta sea siempre `sistema:readonly`, con cualquier modo de cumplimiento."""
@@ -552,10 +569,24 @@ class NoteContentService:
             zone = ag_rules.meta_folder_of(path)
             if zone == ag_rules.AG_AGENTES:
                 invalidate_registry(self._db, vault_id)
+                if not is_index_path(path):
+                    self._reconcile_guests(vault_id)
             elif zone == ag_rules.AG_MENSAJES:
                 info = ag_rules.parse_mensaje_path(path)
                 if info is not None and info.kind == "mensaje":
                     self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
+
+    def _reconcile_guests(self, vault_id: str) -> None:
+        """H-041 E4: tras escribir el registro, quien ya no es gestor se quita de `agentes` de las skills (mejor esfuerzo:
+        la ficha ya está escrita, y la siguiente escritura del registro lo reintenta)."""
+        from app.services.skill_service import SkillService
+
+        try:
+            SkillService(self._port, self._db, changelog=self._changelog).reconcile_guests(vault_id)
+        except Exception:  # noqa: BLE001
+            import logging
+
+            logging.getLogger(__name__).warning("reconcile_guests failed for %s", vault_id, exc_info=True)
 
     def ensure_ag_folders(self, vault_id: str, dry_run: bool = False, owner_id: str | None = None) -> list[str]:
         """Crea, si faltan, el INDICE de cada carpeta reservada (con su descripción) y el de la raíz, y publica los

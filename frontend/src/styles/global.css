@@ -397,3 +397,65 @@ button:focus-visible {
     }
   }
 }
+
+/* --- Gestor que sale (H-041 E4): ventana de resolución de sus skills --- */
+.agent-leave-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.agent-leave-dialog {
+  width: min(560px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: 0;
+}
+
+.agent-leave-skills {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.agent-leave-skills fieldset {
+  display: grid;
+  gap: var(--space-2);
+  margin: var(--space-2) 0 0;
+}
+
+.agent-leave-dialog fieldset label {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  font-size: 14px;
+}
+
+.agent-leave-dialog fieldset input[type="radio"] {
+  width: auto;
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.agent-leave-dialog fieldset select {
+  width: auto;
+  min-width: 6rem;
+}
+
+.agent-leave-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.agent-orphan-skills {
+  margin-top: var(--space-4);
+}

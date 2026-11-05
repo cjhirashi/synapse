@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
-    AgentAccessDenied, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
+    AgentAccessDenied, AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
     PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
 from app.core.json_body import DeepJsonRoute
@@ -123,7 +123,7 @@ def create_note(
     "/{note_id}",
     response_model=NoteOut,
     responses={200: {"headers": {**_with_etag(200)[200]["headers"], "X-Wikilinks-Rewritten": _REWRITTEN_HEADER}}}
-    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied),
+    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, AgentOwnsSkills),
 )
 def update_note(
     vault_id: VaultId,
@@ -140,7 +140,7 @@ def update_note(
     "/{note_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    responses=problem_responses(*_CONDITIONAL, VaultNotFound, AgentAccessDenied),
+    responses=problem_responses(*_CONDITIONAL, VaultNotFound, AgentAccessDenied, AgentOwnsSkills),
 )
 def delete_note(
     vault_id: VaultId,

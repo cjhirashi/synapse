@@ -15,18 +15,23 @@ from app.adapters.agent_key_repository import AgentKeyRepository
 from app.adapters.database import get_db
 from app.core.config import settings
 from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
-from app.core.errors import NoteNotFound, NotePathTaken, PasswordChangeRequired, StorageUnavailable, ValidationFailed, VaultNotFound
+from app.core.errors import (
+    AgentOwnsSkills, NoteNotFound, NotePathTaken, PasswordChangeRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
+)
 from app.core.json_body import DeepJsonRoute
 from app.core.models.agent_access_log import AgentAccessLog
 from app.core.problems import problem_responses
+from app.core.agent_access import actor_of
 from app.core.schemas import (
-    AgentAccessEntryOut, AgentAccessKeyOut, AgentAccessOut, AgentAccessPut, ShadowCountOut, ShadowDenyOut,
-    ShadowReportOut, TokenPayload,
+    AgentAccessEntryOut, AgentAccessKeyOut, AgentAccessOut, AgentAccessPut, AgentLeave, AgentLeaveOut, ShadowCountOut,
+    ShadowDenyOut, ShadowReportOut, SkillAssign, SkillListOut, SkillOut, TokenPayload,
 )
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.core.ports.vault_port import VaultPort
 from app.services.agent_registry_service import AgentRegistryService
+from app.services.change_log_service import ChangeLogService
+from app.services.skill_service import SkillInfo, SkillService
 
 router = APIRouter(
     route_class=DeepJsonRoute,
@@ -80,7 +85,7 @@ def get_agent_access(
 @router.put(
     "/vaults/{vault_id}/agent-access/{agent_id}",
     response_model=AgentAccessEntryOut,
-    responses=problem_responses(VaultNotFound, ValidationFailed, NotePathTaken, StorageUnavailable),
+    responses=problem_responses(VaultNotFound, ValidationFailed, NotePathTaken, AgentOwnsSkills, StorageUnavailable),
 )
 def put_agent_access(
     vault_id: VaultId,
@@ -104,7 +109,7 @@ def put_agent_access(
     "/vaults/{vault_id}/agent-access/{agent_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    responses=problem_responses(NoteNotFound, VaultNotFound, StorageUnavailable),
+    responses=problem_responses(NoteNotFound, VaultNotFound, AgentOwnsSkills, StorageUnavailable),
 )
 def delete_agent_access(
     vault_id: VaultId,
@@ -114,6 +119,80 @@ def delete_agent_access(
 ):
     """Quita el registro de un agente en la bóveda (solo sesión humana)."""
     _registry(port, user).remove(vault_id, agent_id)
+
+
+def _skills(port: VaultPort, user: TokenPayload, with_log: bool = False) -> SkillService:
+    """El servicio de skills con el actor de quien llama; con `with_log`, sus cambios constan en la BITACORA."""
+    db = f"synapse_user_{user.sub}"
+    actor = actor_of(user)
+    return SkillService(port, db, actor=actor, changelog=ChangeLogService(port, db, user.sub, actor) if with_log else None)
+
+
+def _skill_out(skill: SkillInfo) -> SkillOut:
+    return SkillOut(
+        note_id=skill.note_id, path=skill.path, titulo=skill.titulo, propietario=skill.propietario,
+        agentes=skill.agentes, estado=skill.estado)
+
+
+@router.get(
+    "/vaults/{vault_id}/skills",
+    response_model=SkillListOut,
+    responses=problem_responses(VaultNotFound, StorageUnavailable),
+)
+def list_skills(
+    vault_id: VaultId,
+    user: TokenPayload = Depends(get_current_principal),
+    port: VaultPort = Depends(get_vault_port),
+):
+    """Las skills de la bóveda con su propietario, sus invitados y su estado (H-041 E4). Las archivadas no tienen
+    propietario; los documentos de sistema no se listan."""
+    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+        raise VaultNotFound(f"vault:{vault_id} not found")
+    return SkillListOut(skills=[_skill_out(s) for s in _skills(port, user).list_skills(vault_id)])
+
+
+@router.post(
+    "/vaults/{vault_id}/skills/{note_id}/assign",
+    response_model=SkillOut,
+    responses=problem_responses(VaultNotFound, NoteNotFound, ValidationFailed, StorageUnavailable),
+)
+def assign_skill(
+    vault_id: VaultId,
+    body: SkillAssign,
+    note_id: str = Path(description="Id de la nota de la skill."),
+    user: TokenPayload = Depends(get_current_user),
+    port: VaultPort = Depends(get_vault_port),
+):
+    """Asigna la skill a un gestor activo (solo sesión humana): pasa a ser su propietario, sale de `agentes` si estaba y
+    una skill archivada vuelve a `en revisión` (H-041 E4)."""
+    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+        raise VaultNotFound(f"vault:{vault_id} not found")
+    return _skill_out(_skills(port, user, with_log=True).assign(vault_id, note_id, body.propietario))
+
+
+@router.post(
+    "/vaults/{vault_id}/agent-access/{agent_id}/leave",
+    response_model=AgentLeaveOut,
+    responses=problem_responses(VaultNotFound, NoteNotFound, ValidationFailed, AgentOwnsSkills, StorageUnavailable),
+)
+def agent_leaves(
+    vault_id: VaultId,
+    body: AgentLeave,
+    agent_id: str = _AGENT_ID,
+    user: TokenPayload = Depends(get_current_user),
+    port: VaultPort = Depends(get_vault_port),
+    db: Session = Depends(get_db),
+):
+    """Quita o suspende a un gestor resolviendo antes cada skill de la que es propietario (solo sesión humana, H-041 E4):
+    con invitados, asignarla a uno de ellos o eliminarla; sin invitados, eliminarla o archivarla. También lo quita de
+    `agentes` de las skills que lo invitan. Si falta alguna resolución, 409 `agent-owns-skills` y no se toca nada."""
+    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+        raise VaultNotFound(f"vault:{vault_id} not found")
+    labels = [k.label for k in _active_keys(db, user.sub) if k.agent_id == agent_id]
+    done = _skills(port, user, with_log=True).leave(vault_id, agent_id, body.modo, body.skills, labels)
+    return AgentLeaveOut(
+        asignadas=done.asignadas, eliminadas=done.eliminadas, archivadas=done.archivadas,
+        invitaciones_quitadas=done.invitaciones_quitadas)
 
 
 @router.get("/agent-access/shadow-report", response_model=ShadowReportOut)

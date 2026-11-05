@@ -51,6 +51,51 @@ export async function deleteAgentRegistration(vaultId: string, agentId: string):
   await request(`/vaults/${encodeURIComponent(vaultId)}/agent-access/${encodeURIComponent(agentId)}`, init);
 }
 
+/** Una skill de bóveda (H-041 E4): su propietario (ausente si está archivada), sus invitados y su estado. */
+export interface SkillInfo {
+  note_id: string;
+  path: string;
+  titulo: string | null;
+  propietario: string | null;
+  agentes: string[];
+  estado: string | null;
+}
+
+export async function listSkills(vaultId: string): Promise<SkillInfo[]> {
+  return ((await (await request(`/vaults/${encodeURIComponent(vaultId)}/skills`)).json()) as { skills: SkillInfo[] }).skills;
+}
+
+/** Qué hacer con una skill de un gestor que sale: asignarla a uno de sus invitados, eliminarla o archivarla. */
+export interface SkillResolution {
+  note_id: string;
+  accion: "assign" | "delete" | "archive";
+  a?: string;
+}
+
+export interface LeaveResult {
+  asignadas: number;
+  eliminadas: number;
+  archivadas: number;
+  invitaciones_quitadas: number;
+}
+
+/** Quita o suspende a un gestor resolviendo antes cada skill de la que es propietario (409 si falta alguna). */
+export async function leaveAgent(vaultId: string, agentId: string, modo: "quitar" | "suspender", skills: SkillResolution[]): Promise<LeaveResult> {
+  const init = { method: "POST", body: JSON.stringify({ modo, skills }) };
+  return (await request(`/vaults/${encodeURIComponent(vaultId)}/agent-access/${encodeURIComponent(agentId)}/leave`, init)).json();
+}
+
+/** Asigna una skill (por ejemplo, una archivada) a un gestor activo. */
+export async function assignSkill(vaultId: string, noteId: string, propietario: string): Promise<SkillInfo> {
+  const init = { method: "POST", body: JSON.stringify({ propietario }) };
+  return (await request(`/vaults/${encodeURIComponent(vaultId)}/skills/${encodeURIComponent(noteId)}/assign`, init)).json();
+}
+
+/** Nombre de la skill: el de su nota sin carpeta ni extensión. */
+export function skillName(skill: Pick<SkillInfo, "path">): string {
+  return (skill.path.split("/").pop() ?? skill.path).replace(/\.md$/i, "");
+}
+
 /** Carpetas escritas una por línea → lista limpia (sin vacías, sin barras finales). */
 export function parseFolders(text: string): string[] {
   return text

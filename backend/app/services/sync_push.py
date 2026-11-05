@@ -39,7 +39,7 @@ from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
 from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
-from app.core.agent_access import Actor, check_registration_frontmatter
+from app.core.agent_access import parse_registration, Actor, check_registration_frontmatter
 from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
 from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
@@ -282,6 +282,10 @@ class SyncPushService:
                 vault_id = doc["_id"].split(":")[1]
                 if zone == ag_rules.AG_AGENTES:
                     invalidate_registry(self._db, vault_id)
+                    if not is_index_path(doc["path"]):
+                        from app.services.skill_service import SkillService
+
+                        SkillService(self._port, self._db, changelog=self._changelog).reconcile_guests(vault_id)
                 elif zone == ag_rules.AG_MENSAJES and doc.get("deleted_at") is None:
                     info = ag_rules.parse_mensaje_path(doc["path"])
                     if info is None:
@@ -575,6 +579,7 @@ class SyncPushService:
         previous = leaves.get(history[1]) if len(history) > 1 else None
         prev_path = previous["path"] if previous else None
         deleted = doc["deleted_at"] is not None
+        await self._check_registry_exit(doc, previous, deleted)
         was = skill_rules.is_skill_path(prev_path)
         becomes = not deleted and skill_rules.is_skill_path(doc["path"])
         actor = self._actor
@@ -601,6 +606,25 @@ class SyncPushService:
                 self._guard.evaluate_skill, vault_id, op, doc["path"] if becomes else prev_path, old_fm, fm if becomes else None)
             if not allowed and self._guard.enforcing:
                 raise Rejected("agent-access-denied")
+
+    async def _check_registry_exit(self, doc: dict, previous: dict | None, deleted: bool) -> None:
+        """H-041 E4: la ficha de un gestor que es propietario de skills activas no se borra, se mueve ni se suspende
+        por la réplica; el usuario resuelve antes sus skills (página de asignación de agentes)."""
+        if previous is None or ag_rules.meta_folder_of(previous["path"]) != ag_rules.AG_AGENTES or is_index_path(previous["path"]):
+            return
+        registration = parse_registration(previous["path"], previous.get("frontmatter"))
+        if registration is None or registration.estado != "activo":
+            return
+        still_active = (not deleted and doc["path"] == previous["path"]
+                        and (doc.get("frontmatter") or {}).get("estado") == "activo")
+        if still_active:
+            return
+        from app.services.skill_service import SkillService
+
+        vault_id = doc["_id"].split(":")[1]
+        owned = await to_thread.run_sync(SkillService(self._port, self._db).owned_active, vault_id, registration.agent_id)
+        if owned:
+            raise Rejected("ag-agentes:owns-skills")
 
     async def _check_agent_access(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-030 E6: una clave de agente solo escribe donde su registro de `AG - AGENTES` lo permite. En modo
