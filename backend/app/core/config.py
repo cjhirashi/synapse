@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # H-030 E6: `shadow` (por defecto) solo registra lo que el registro de `AG - AGENTES` decidiría; `enforce`
     # rechaza con 403; `off` ni evalúa. El corte (E9) es pasar a `enforce`.
     AGENT_ACCESS_MODE: str = "shadow"
+    # H-030 E3: las bóvedas nuevas nacen con las carpetas reservadas (INDICES de `AG - *`, BITACORA y
+    # PLANTILLAS). Interruptor para desactivarlo sin tocar código; la suite de pruebas lo apaga por defecto.
+    SEED_AG_FOLDERS: bool = True
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

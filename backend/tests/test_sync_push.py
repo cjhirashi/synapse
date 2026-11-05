@@ -188,6 +188,20 @@ class InMemoryCouch(VaultPort, ReplicationPort):
             notes = [d for d in notes if (d["created_at"], d["_id"]) < after]
         return notes[:limit]
 
+    def list_notes_by_prefix(self, db, vault_id, deleted, prefix_key, limit, after):
+        from app.core.note_prefix import view_key
+        self._enter("list_notes", "")
+        notes = [
+            doc for doc_id in self.trees.get(db, {})
+            if (doc := self.get(db, doc_id)) and doc.get("type") == "note"
+            and doc.get("vault_id") == vault_id and bool(doc.get("deleted_at")) is deleted
+            and view_key(doc["path"]).startswith(prefix_key + "/")
+        ]
+        notes.sort(key=lambda d: (view_key(d["path"]), d["_id"]))
+        if after is not None:
+            notes = [d for d in notes if (view_key(d["path"]), d["_id"]) > after]
+        return notes[:limit]
+
     # --- ReplicationPort ---
 
     async def revs_diff(self, db, body):

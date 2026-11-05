@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.adapters.file_repository import FileRepository
 from app.adapters.vault_repository import VaultRepository
 from app.adapters.database import get_db
+from app.core.config import settings
 from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
@@ -91,6 +92,8 @@ def create_vault(
 def _seed_ag_folders(vault_id: str, owner_id: str) -> None:
     """H-030 E3: toda bóveda nueva nace con las carpetas reservadas. De mejor esfuerzo: si CouchDB falla aquí la
     bóveda ya existe y la herramienta de carga (`scripts/ensure_ag_folders.py`) completa lo que falte."""
+    if not settings.SEED_AG_FOLDERS:
+        return
     try:
         NoteContentService(get_vault_port(), f"synapse_user_{owner_id}").ensure_ag_folders(vault_id)
     except Exception:  # noqa: BLE001

@@ -40,6 +40,7 @@ from pydantic import TypeAdapter, ValidationError
 
 from app.core import ag_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
+from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
 from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
 from app.core.note_rules import (
@@ -262,7 +263,7 @@ class SyncPushService:
         from app.services.note_content_service import NoteContentService
 
         try:
-            for vault_id in self._new_vaults:
+            for vault_id in self._new_vaults if settings.SEED_AG_FOLDERS else ():
                 NoteContentService(self._port, self._db).ensure_ag_folders(vault_id)
             for doc in accepted:
                 if not doc["_id"].startswith(NOTE_PREFIX) or doc.get("_deleted") is True:
@@ -516,7 +517,7 @@ class SyncPushService:
         paths = [doc["path"]] + ([previous["path"]] if previous and previous["path"] != doc["path"] else [])
         allowed, _ = await to_thread.run_sync(
             self._guard.evaluate, doc["_id"].split(":")[1], "sync-write", paths)
-        if not allowed and self._guard._mode == "enforce":
+        if not allowed and self._guard.enforcing:
             raise Rejected("agent-access-denied")
 
     async def _check_vault_is_active(self, note_id: str) -> None:

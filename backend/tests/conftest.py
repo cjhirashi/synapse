@@ -9,6 +9,8 @@ os.environ.setdefault("JWT_SECRET", "test-secret-not-for-production")
 os.environ.setdefault("ADMIN_EMAIL", "cjhirashi@gmail.com")
 os.environ.setdefault("ADMIN_PASSWORD", "admin1234")
 # H-015: credenciales de MinIO de prueba (NO las reales del `.env` del checkout principal).
+# H-030: las bóvedas de prueba nacen vacías (las pruebas de H-030 activan el sembrado donde lo necesitan).
+os.environ.setdefault("SEED_AG_FOLDERS", "false")
 os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
 os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 

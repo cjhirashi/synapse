@@ -84,6 +84,10 @@ class AgentAccessGuard:
         self._sink = sink
 
     @property
+    def enforcing(self) -> bool:
+        return self._mode == "enforce"
+
+    @property
     def active(self) -> bool:
         """¿Hay algo que evaluar? Sesión humana o modo `off`: no."""
         return self._actor.kind != "human" and self._mode in ("shadow", "enforce")
