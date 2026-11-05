@@ -1,5 +1,14 @@
 # History — Synapse
 
+## [2026-11-04] H-030: sección META visual del árbol (corrección de la entrega anterior)
+
+- **Fecha/hora:** 2026-11-04 22:30 a 22:55 CDMX. Fase: Implement + deploy (solo cliente). Motivo: H-030 pedía una sección META **fuera de la raíz y encima de ella**; la entrega del 19:46 CDMX dejó las carpetas reservadas en la raíz y no hizo la agrupación visual. Corregido sin cambiar permisos, rutas ni datos.
+- **Qué:** `frontend/src/notes/metaFolders.ts` (`splitMeta`, espejo de `META_FOLDERS` de `core/ag_rules.py`) y `NoteSidebar.tsx`: cabecera `META` (treeitem plegable, estado en `synapse.metaOpen`) **encima de «Raíz»** con `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA` y `PLANTILLAS` (en ese orden, si existen), cada una con candado y la descripción de su INDICE; no se repiten dentro de la raíz; sin ⋮, sin arrastre y F2/Supr inertes sobre ellas (el servidor ya rechaza renombrar, mover y borrar su INDICE). Sus subcarpetas y notas se comportan como siempre.
+- **Decisión (se mantiene):** la ruta física sigue en la **raíz** de la bóveda (`AG - SKILLS/…`, sin carpeta `META/`); META es **agrupación visual** por prefijo. No migré a `META/` porque obliga a mover datos reales y las instrucciones de agentes citan estas rutas, sin ganancia visible (el cliente muestra lo mismo).
+- **Verificación:** 7 pruebas de `metaFolders` y 8 nuevas de `NoteSidebar`; suite del frontend 116 archivos, 2606 pruebas, 0 fallos; e2e `h030-meta.spec.ts` en Chromium real a 1280 y 390 px (2/2) con capturas revisadas. Los e2e vecinos que ya fallaban en la base (`h025` a 390 px, `h029-meta`/`h029-tipos` a 390 px, `regression`, `workspace-visual` por un selector `Código` ambiguo) fallan igual sin este cambio.
+- **Despliegue:** 2026-11-04 22:53 CDMX, solo cambia el bundle del frontend (la imagen lo lleva); backend sin cambios, `AGENT_ACCESS_MODE=shadow` intacto, `/health` 200. Imagen previa: `synapse-backend:pre-h030-meta`.
+- **Docs actualizadas:** `frontend/src/README.md`.
+
 ## [2026-11-04] H-030 (carpetas AG): E1, E3 a E7 desplegadas en modo sombra; E2 es contrato; sin corte
 
 - **Fecha/hora:** 2026-11-04 18:00 a 20:00 CDMX (despliegue 19:46 CDMX). Fase: Implement + deploy. Decisiones de Carlos (vía `main`): Q1 BITACORA y PLANTILLAS solo reservan nombre (lógica en H-030b); Q3 asignaciones reasignables por Carlos (interfaz + `AG - AGENTES`); Q4 claves `op-<agente>`, la general NO se elimina, nunca sin acceso, corte lo confirma `main`; Q5 volcado 30 días; Q6 escribir en una conversación cerrada la reabre. Q2 (administrador) sin decidir: solo existe el flag `is_admin` en la key.
