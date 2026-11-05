@@ -172,7 +172,10 @@ def make_template(client, vault_id, name="base", **fm):
 
 def test_template_format_is_validated(ready_admin):
     vault_id = vault_of(ready_admin)
-    assert detail(post_note(ready_admin, vault_id, "PLANTILLAS/base.md", "", TEMPLATE)) == "plantilla:path"
+    # H-041 E2: un nombre sin el prefijo `plantilla-` ya no se rechaza: el servidor lo estructura.
+    structured = post_note(ready_admin, vault_id, "PLANTILLAS/base.md", "", TEMPLATE)
+    assert structured.status_code == 201 and structured.json()["path"] == "PLANTILLAS/plantilla-base.md"
+    ready_admin.delete(f"/vaults/{vault_id}/notes/{structured.json()['id']}", headers={"If-Match": structured.headers["ETag"]})
     assert detail(post_note(ready_admin, vault_id, "PLANTILLAS/sub/plantilla-a.md", "", TEMPLATE)) == "plantilla:path"
     assert detail(make_template(ready_admin, vault_id, alcance=[])) == "plantilla:alcance"
     assert detail(make_template(ready_admin, vault_id, estilo={"pdf": {"x": 1}})) == "plantilla:estilo"

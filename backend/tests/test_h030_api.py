@@ -141,7 +141,10 @@ def test_reserved_folder_cannot_be_renamed_but_content_can_move_into_it(ready_ad
     res = ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "AG - SKILLS", "to": "Skills"})
     assert res.status_code == 422 and detail(res) == "meta-folder:rename"
     assert post_note(ready_admin, vault_id, "Viejo/skill-b.md").status_code == 201
-    assert ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Viejo", "to": "AG - SKILLS/viejo"}).status_code == 200
+    # H-041: `AG - SKILLS` es plana: no admite una subcarpeta como destino, pero sí recibir las notas directamente.
+    res = ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Viejo", "to": "AG - SKILLS/viejo"})
+    assert res.status_code == 422 and detail(res) == "skill:path"
+    assert ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Viejo", "to": "AG - SKILLS"}).status_code == 200
 
 
 # --- AG - MENSAJES (E4) ---

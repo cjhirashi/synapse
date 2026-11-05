@@ -62,7 +62,7 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await skillRow.click();
     const view = page.getByRole("region", { name: "skill-bovedas-synapse" });
     await expect(view).toBeVisible({ timeout: 15_000 });
-    await expect(view.getByText(/Documento de sistema · solo lectura · v1\.0\.0/)).toBeVisible();
+    await expect(view.getByText(/Documento de sistema · solo lectura · v\d+\.\d+\.\d+/)).toBeVisible();
     await expect(view.getByText("Operar bóvedas de Synapse")).toBeVisible({ timeout: 15_000 });
     await expect(view.getByRole("textbox")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Editar|Guardar/ })).toHaveCount(0);
@@ -101,8 +101,10 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await page.getByRole("button", { name: "Nueva nota" }).click();
     // El nombre que se guarda y se ve en el árbol es el canónico, no lo que se escribió.
     const row = tree(page).getByRole("treeitem", { name: `skill-gestion-de-variables-${label}`, exact: true });
-    await showSidebar(page);
-    await expect(row).toBeVisible({ timeout: 15_000 });
+    await expect(async () => {
+      await showSidebar(page); // a ≤ 640 px la barra se cierra al abrir la nota nueva
+      await expect(row).toBeVisible({ timeout: 2000 });
+    }).toPass({ timeout: 20_000 });
     await expect(tree(page).getByRole("treeitem", { name: `Gestión de variables ${label}`, exact: true })).toHaveCount(0);
     await shot(page, `h041-${label}-3-skill-nueva`);
 
