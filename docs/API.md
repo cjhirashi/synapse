@@ -393,8 +393,25 @@ rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plan
 plantilla con documentos vivos que la citen no se borra, renombra ni saca de `PLANTILLAS` (`plantilla:in-use`). Otros códigos:
 `plantilla:path|alcance|atributos|estilo`.
 
-**Skill de cajón.** `AG - SKILLS/skill-bovedas-synapse.md` solo se crea, edita, mueve o borra desde una sesión humana (cookie); una
-clave de API, aunque sea del dueño, recibe `skill-cajon:human-only`. Se siembra al crear la bóveda (y con `scripts/ensure_ag_folders.py` en las que no la tienen) desde `backend/app/core/skill_cajon.md`, y **nunca** se sobrescribe sola: actualizarla en una bóveda ya sembrada es una orden explícita del dueño.
+**Documentos de sistema (H-041).** Dos documentos los publica Synapse en toda bóveda, existente y nueva: la skill global
+`AG - SKILLS/skill-bovedas-synapse.md` (para todo agente; sin propietario ni invitados) y la plantilla
+`PLANTILLAS/plantilla-skill.md` (estructura de una skill de OpenClaw). Su fuente es el repositorio
+(`backend/app/system_docs/`: `manifest.json` con ruta, metadatos y versión; un `.md` por cuerpo). Llevan el atributo
+`sistema: true` y la etiqueta `sistema`; **«es de sistema» se decide por la ruta**, no por el atributo. **Nadie los modifica desde la
+plataforma** (ni un agente, ni `main`, ni el usuario por la app o la API), con cualquier valor de `AGENT_ACCESS_MODE`:
+crear en esa ruta, editar contenido o metadatos, renombrar o mover desde o hacia ella, borrar, restaurar una copia vieja de la
+papelera, mover una carpeta que los afecte (`POST /folders/move`) y cualquier revisión por `/sync` → `422 sistema:readonly`
+(`#/path`; en `/sync`, `reason: sistema:readonly`). El atributo `sistema` es reservado: una nota que no es de sistema y lo
+trae (cualquier valor) → `422 sistema:reserved` (`#/frontmatter`); una plantilla de usuario no puede declararlo (`plantilla:atributos`).
+La purga solo recorre `AG - MENSAJES`; borrar una bóveda tampoco los toca. **Publicación:** al crear la bóveda
+(`ensure_ag_folders`, por REST y por `/sync`); al arrancar el backend, en segundo plano e idempotente (`SYSTEM_DOCS_SYNC`,
+por defecto activo); y con `python scripts/sync_system_docs.py` (`--check` informa la deriva sin escribir; `--apply [--report f]`
+replica; `--revert f` deshace; `--stamp` recalcula las huellas del manifiesto; `--email`/`--vault` acotan). Una copia que difiere
+(cuerpo o metadatos, sin `fecha_*`) se actualiza **en sitio, conservando el id de la nota**; una copia en la papelera no estorba
+y una nota viva con la misma ruta en otras mayúsculas se informa como conflicto sin tocarla. Cada publicación consta en la
+BITACORA con autor `sistema`. **Versionado:** `version` (semver) en el manifiesto; una prueba exige que la huella guardada
+(`sha256` de cuerpo y metadatos) coincida con el contenido, así que cambiar el texto obliga a correr `--stamp` y subir la versión.
+Revertir un despliegue vuelve al texto de la imagen anterior. Reemplaza la «skill de cajón» de H-030b (`skill-cajon:human-only` ya no se emite).
 
 ## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
 

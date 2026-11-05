@@ -344,7 +344,8 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `meta-folder:case` | (H-030b) una carpeta reservada escrita con otras mayúsculas (`Plantillas/…`) |
 | `bitacora:readonly` | (H-030b) escribir, mover o borrar una nota de `BITACORA/` (solo la escribe el servidor) |
 | `plantilla:<path\|alcance\|atributos\|estilo\|in-use\|unknown>` | (H-030b) plantilla mal ubicada o mal definida; en uso por algún documento; plantilla citada que no existe |
-| `skill-cajon:human-only` | (H-030b) una clave de API intenta modificar la skill de cajón |
+| `sistema:readonly` | (H-041) crear, editar, mover, renombrar, borrar o restaurar un documento de sistema (la skill global o `plantilla-skill`), con cualquier actor y modo |
+| `sistema:reserved` | (H-041) una nota que no es de sistema trae el atributo `sistema` |
 | `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |
 | `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 

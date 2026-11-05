@@ -87,8 +87,9 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   Desde H-030b `check_create` exige además la forma canónica en MAYÚSCULAS (`meta-folder:case`: `PLANTILLAS`, nunca `Plantillas`) y
   `check_folder_move(from, to)` solo deja pasar `Plantillas` → `PLANTILLAS`.
 - `meta_rules.py` — reglas de escritura de las carpetas META con lógica (H-030b), sin E/S: `BITACORA` de solo lectura para todos
-  (`bitacora:readonly`), `PLANTILLAS` solo `plantilla-<nombre>.md` planas con definición válida (`plantilla:*`) y la skill de cajón
-  `AG - SKILLS/skill-bovedas-synapse.md` solo desde sesión humana (`skill-cajon:human-only`). `plantilla_rules.py` — nombre, ruta y
+  (`bitacora:readonly`), `PLANTILLAS` solo `plantilla-<nombre>.md` planas con definición válida (`plantilla:*`) y, desde H-041, los documentos de
+  sistema intocables para todo actor menos el publicador (`check_system_write`: `sistema:readonly`, `sistema:reserved`; `Actor("system")`).
+  `system_docs.py` — registro de los documentos de sistema (carga `app/system_docs/manifest.json` y sus `.md`), `content_hash` y `stamp`. `plantilla_rules.py` — nombre, ruta y
   definición (`alcance`, `atributos`, `estilo`) de una plantilla y su alcance por carpeta. `bitacora_rules.py` — qué cambios se
   registran (`classify`: no INDICES ni la propia BITACORA ni cambios solo de `fecha_actualizacion`), día local por zona horaria,
   `day_path` (`BITACORA/AAAA-MM/AAAA-MM-DD.md`) y el texto del día (`render_day`). Las usan REST, `sync_push.py` y `folder_service.py`.
