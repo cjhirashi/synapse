@@ -89,7 +89,8 @@ export function noteReasonText(code: string): string {
   if (code === "meta-folder:rename") return "Una carpeta reservada (AG - SKILLS, AG - MENSAJES, AG - AGENTES, BITACORA, PLANTILLAS) no se renombra ni se mueve.";
   if (code === "meta-folder:index-delete") return "El INDICE de una carpeta reservada no se puede borrar.";
   if (code === "bitacora:readonly") return "La bitácora la escribe solo el servidor: no se puede editar, mover ni borrar.";
-  if (code === "skill-cajon:human-only") return "La skill de cajón solo se modifica desde la app, no con una clave de API.";
+  if (code === "sistema:readonly") return "Documento de sistema: no se puede editar, mover ni borrar. Se actualiza con cada versión de Synapse.";
+  if (code === "sistema:reserved") return "El atributo «sistema» es reservado: solo lo ponen los documentos que publica Synapse.";
   if (code === "plantilla:path") return "Las plantillas van en PLANTILLAS/, planas y con nombre plantilla-<nombre>.md.";
   if (code === "plantilla:alcance") return "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda).";
   if (code === "plantilla:atributos") return "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos.";

@@ -13,10 +13,17 @@ import {
   appliesTo,
   checkRef,
   isMetaFolder,
+  isSystemPath,
   isTemplateZone,
+  SYSTEM_PATHS,
 } from "./metaRules";
+import systemFixture from "../../../backend/tests/fixtures/sistema_reglas.json";
 
 describe("metaRules", () => {
+  it("las rutas de sistema son las del manifiesto del servidor (fixture compartido)", () => {
+    expect([...SYSTEM_PATHS]).toEqual(systemFixture.paths);
+  });
+
   describe("checkReservedCase", () => {
     it("rechaza mayúsculas incorrectas en carpetas reservadas", () => {
       expect(checkReservedCase("plantillas/x.md")).toBe("meta-folder:case");
@@ -57,16 +64,25 @@ describe("metaRules", () => {
       expect(checkNoteWrite({ path: "Otra/x.md", prevPath: "BITACORA/y.md", deleted: false })).toBe("bitacora:readonly");
     });
 
-    it("rechaza modificar skill de cajón desde agente", () => {
-      expect(
-        checkNoteWrite({ path: "AG - SKILLS/skill-bovedas-synapse.md", deleted: false, actorKind: "agent" })
-      ).toBe("skill-cajon:human-only");
+    it("rechaza modificar un documento de sistema a cualquier actor menos al publicador", () => {
+      for (const path of SYSTEM_PATHS) {
+        for (const actorKind of ["human", "agent", "general"] as const) {
+          expect(checkNoteWrite({ path, prevPath: path, actorKind })).toBe("sistema:readonly");
+          expect(checkNoteWrite({ path, deleted: true, actorKind })).toBe("sistema:readonly");
+        }
+        expect(checkNoteWrite({ path, prevPath: path, actorKind: "system", frontmatter: { sistema: true, alcance: ["*"] } })).toBeNull();
+      }
     });
 
-    it("permite modificar skill de cajón desde usuario", () => {
-      expect(
-        checkNoteWrite({ path: "AG - SKILLS/skill-bovedas-synapse.md", deleted: false, actorKind: "human" })
-      ).toBeNull();
+    it("el atributo sistema es reservado en una nota que no es de sistema", () => {
+      expect(checkNoteWrite({ path: "Notas/a.md", frontmatter: { sistema: true } })).toBe("sistema:reserved");
+      expect(checkNoteWrite({ path: "Notas/a.md", frontmatter: { titulo: "a" } })).toBeNull();
+    });
+
+    it("reconoce la ruta de sistema sin importar mayúsculas", () => {
+      expect(isSystemPath("ag - skills/SKILL-bovedas-synapse.md")).toBe(true);
+      expect(isSystemPath("AG - SKILLS/skill-otra.md")).toBe(false);
+      expect(isSystemPath(null)).toBe(false);
     });
   });
 

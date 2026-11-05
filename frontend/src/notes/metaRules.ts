@@ -7,7 +7,7 @@
  *
  * Espejos: `backend/app/core/ag_rules.py::check_create` (parte case),
  * `backend/app/core/ag_rules.py::check_folder_move`, `backend/app/core/meta_rules.py::check_note_write`,
- * `backend/app/core/plantilla_rules.py`.
+ * `backend/app/core/plantilla_rules.py`, `backend/app/core/system_docs.py` (H-041).
  */
 import { pathKey, checkPath } from "./noteRules";
 import { isIndexPath, folderOf } from "./indexRules";
@@ -45,8 +45,23 @@ const NOT_EXTRA = new Set([
   "fecha_creacion",
   "fecha_actualizacion",
   "plantilla",
+  "sistema",
   "ruta", // RESERVED_KEYS del servidor
 ]);
+
+/**
+ * Documentos de sistema (H-041): los publica Synapse en todas las bóvedas y nadie los modifica desde la app. Se
+ * deciden por la ruta (igual que el servidor); `sistema: true` en los metadatos solo los marca para quien los lee.
+ * La lista debe coincidir con `backend/app/system_docs/manifest.json` (lo verifica `systemDocs.test.ts`).
+ */
+export const SYSTEM_PATHS = ["AG - SKILLS/skill-bovedas-synapse.md", "PLANTILLAS/plantilla-skill.md"] as const;
+export const SYSTEM_ATTR = "sistema";
+const _SYSTEM_KEYS = new Set<string>(SYSTEM_PATHS.map((path) => pathKey(path)));
+
+/** ¿`path` es la ruta de un documento de sistema? */
+export function isSystemPath(path: string | null | undefined): boolean {
+  return path !== null && path !== undefined && _SYSTEM_KEYS.has(pathKey(path));
+}
 
 /** ¿`path` es exactamente una carpeta reservada de la raíz (sin subcarpetas)? */
 export function isMetaFolder(path: string): boolean {
@@ -92,17 +107,17 @@ export function checkNoteWrite(opts: {
   prevPath?: string | null;
   deleted?: boolean;
   frontmatter?: unknown;
-  actorKind?: "human" | "agent" | "general";
+  actorKind?: "human" | "agent" | "general" | "system";
 }): string | null {
   const { path, prevPath = null, deleted = false, frontmatter = null, actorKind = "human" } = opts;
 
   // BITACORA es de solo lectura para todos (la escribe el servidor); sus INDICES siguen las reglas de H-031.
   if (_inBitacora(path) || _inBitacora(prevPath)) return "bitacora:readonly";
 
-  const skillCajon = `${AG_SKILLS}/skill-bovedas-synapse.md`;
-  const isSkillCajon = (p: string | null) => p !== null && pathKey(p) === pathKey(skillCajon);
-  if (actorKind !== "human" && (isSkillCajon(path) || isSkillCajon(prevPath))) {
-    return "skill-cajon:human-only";
+  // H-041: un documento de sistema no lo modifica nadie desde la plataforma; el atributo `sistema` es reservado.
+  if (actorKind !== "system") {
+    if (isSystemPath(path) || isSystemPath(prevPath)) return "sistema:readonly";
+    if (!deleted && typeof frontmatter === "object" && frontmatter !== null && SYSTEM_ATTR in frontmatter) return "sistema:reserved";
   }
 
   if (!deleted && isTemplateZone(path)) {

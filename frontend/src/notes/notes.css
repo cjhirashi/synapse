@@ -736,6 +736,12 @@ body.is-resizing {
 .bitacora-view-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .bitacora-view-title { margin: 0; font-size: 1rem; }
 .bitacora-view-badge { font-size: 0.75rem; opacity: 0.75; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
+.system-doc-view-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.system-doc-view-title { margin: 0; font-size: 1rem; overflow-wrap: anywhere; }
+.system-doc-view-badge { font-size: 0.75rem; opacity: 0.75; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
+.system-doc-view-definition { display: grid; grid-template-columns: max-content 1fr; gap: 0.15rem 0.75rem; margin: 0 0 1rem; font-size: 0.85rem; }
+.system-doc-view-definition dt { opacity: 0.7; }
+.system-doc-view-definition dd { margin: 0; overflow-wrap: anywhere; }
 .template-view-header { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
 .template-view-title { margin: 0; font-size: 1rem; flex: 1 1 auto; }
 .template-view-form { display: grid; gap: 0.9rem; }

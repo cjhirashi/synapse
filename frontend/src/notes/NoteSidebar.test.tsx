@@ -1231,6 +1231,29 @@ test("H-030b: lo que hay dentro de BITACORA es de solo lectura (sin ⋮, sin arr
   expect(screen.getByRole("button", { name: "Acciones de Inicio" })).toBeInTheDocument();
 });
 
+test("H-041: un documento de sistema lleva candado y es de solo lectura (sin ⋮, sin arrastre, F2 y Supr inertes)", async () => {
+  const { user } = await setup(["Inicio.md"], {
+    seed: async (db) => {
+      await replicate(db, "AG - SKILLS/skill-bovedas-synapse.md", "# Operar bóvedas", { titulo: "skill-bovedas-synapse", sistema: true });
+      await replicate(db, "AG - SKILLS/skill-propia.md", "# Propia", { titulo: "skill-propia" });
+    },
+  });
+  await waitFor(() => expect(treeNames()).toContain("AG - SKILLS"));
+  await user.click(screen.getByRole("treeitem", { name: "AG - SKILLS" }));
+  const system = await screen.findByRole("treeitem", { name: "skill-bovedas-synapse" });
+  const own = await screen.findByRole("treeitem", { name: "skill-propia" });
+  expect(system.querySelector('[data-icon="lock"]')).not.toBeNull();
+  expect(own.querySelector('[data-icon="lock"]')).toBeNull();
+  expect(screen.queryByRole("button", { name: "Acciones de skill-bovedas-synapse" })).toBeNull();
+  expect(screen.getByRole("button", { name: "Acciones de skill-propia" })).toBeInTheDocument();
+  expect(system).toHaveAttribute("draggable", "false");
+  system.focus();
+  await user.keyboard("{F2}");
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la nota" })).toBeNull();
+  await user.keyboard("{Delete}");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
 const TEMPLATE_FM = { titulo: "Acta", alcance: ["Proyectos"], atributos: [{ nombre: "cliente", tipo: "texto", valor: "Acme" }], estilo: { publicar: {}, pdf: {} } };
 
 test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activa y la nota nace de la elegida", async () => {

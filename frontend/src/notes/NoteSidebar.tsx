@@ -32,6 +32,7 @@ import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
 import { isMetaFolderPath, isInBitacora, splitMeta, canonicalMetaName } from "./metaFolders";
+import { isSystemPath } from "./metaRules";
 import { appliesTo, templateName } from "./metaRules";
 import { NoteValidationError } from "./errors";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
@@ -356,7 +357,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
         if (!note) return;
         event.preventDefault();
-        if (isInBitacora(note.path)) return; // H-030b: los documentos de la bitácora son de solo lectura
+        if (isInBitacora(note.path) || isSystemPath(note.path)) return; // H-030b/H-041: la bitácora y los documentos de sistema son de solo lectura
         if (event.key === "F2") startNoteRename(note);
         else askDeleteNote(note);
         return;
@@ -731,6 +732,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       const note = node.note;
       const editing = inlineRename?.kind === "note" && inlineRename.note.id === note.id;
       const icon = <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />;
+      const system = isSystemPath(note.path);
       return (
         <li key={note.id} role="none">
           <div className="note-tree-line">
@@ -750,17 +752,18 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 onPointerEnter={() => onPrefetch?.(note.id)}
                 className="note-tree-row note-tree-note"
                 style={indent}
-                draggable={!isInBitacora(note.path)}
+                draggable={!isInBitacora(note.path) && !system}
                 onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
                 onClick={() => onOpen(note.id)}
               >
                 {icon}
-                <span className="note-tree-name" title={node.name}>
+                <span className="note-tree-name" title={system ? `${node.name} · documento de sistema (solo lectura)` : node.name}>
                   {node.name}
                 </span>
+                {system && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
               </button>
             )}
-            {!editing && !isInBitacora(note.path) && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+            {!editing && !isInBitacora(note.path) && !system && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
           </div>
         </li>
       );
