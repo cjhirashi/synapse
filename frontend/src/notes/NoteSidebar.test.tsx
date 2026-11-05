@@ -1082,3 +1082,79 @@ test("H-031: al abrir el INDICE de una carpeta (o de la raíz) esa fila queda se
   expect(await row("Carpeta")).toHaveAttribute("aria-selected", "false");
   expect(await row("Hoja")).toHaveAttribute("aria-selected", "true");
 });
+
+// --- H-030: sección META (carpetas reservadas encima de «Raíz») ---
+
+const treeNames = () => within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem").map((el) => el.textContent);
+
+test("H-030: las carpetas reservadas van en la sección META, en su orden y encima de «Raíz»; no se repiten en la raíz", async () => {
+  await setup(["Zeta/z.md", "PLANTILLAS/plantilla-a.md", "AG - AGENTES/aira.md", "AG - MENSAJES/m.md", "AG - SKILLS/skill-x.md", "BITACORA/b.md", "Inicio.md"]);
+  expect(treeNames()).toEqual(["AG - SKILLS", "AG - MENSAJES", "AG - AGENTES", "BITACORA", "PLANTILLAS", "Raíz", "Zeta", "Inicio"]);
+  const meta = screen.getByRole("group", { name: "META" });
+  expect(within(meta).getAllByRole("treeitem")).toHaveLength(5);
+  const root = screen.getByRole("treeitem", { name: "Raíz" });
+  expect(meta.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem", { name: "BITACORA" })).toHaveLength(1);
+});
+
+test("H-030: sin carpetas reservadas no hay sección META", async () => {
+  await setup(["Carpeta/a.md", "BITACORA.md"]);
+  expect(screen.queryByRole("group", { name: "META" })).toBeNull();
+  expect(treeNames()).toEqual(["Raíz", "Carpeta", "BITACORA"]);
+});
+
+test("H-030: la carpeta reservada no ofrece ⋮ (renombrar, mover o borrar) ni se arrastra; sus subcarpetas y notas sí", async () => {
+  const { user } = await setup(["AG - SKILLS/aira/skill-a.md", "Otra/b.md"]);
+  const reserved = screen.getByRole("treeitem", { name: "AG - SKILLS" });
+  expect(reserved).toHaveAttribute("draggable", "false");
+  expect(screen.queryByRole("button", { name: "Acciones de AG - SKILLS" })).toBeNull();
+  expect(menuButton("Otra")).toBeInTheDocument();
+  await user.click(reserved);
+  expect(menuButton("aira")).toBeInTheDocument();
+  expect(screen.getByRole("treeitem", { name: "aira" })).toHaveAttribute("draggable", "true");
+});
+
+test("H-030: F2 y Supr sobre la carpeta reservada no hacen nada", async () => {
+  const { user } = await setup(["AG - MENSAJES/m.md"]);
+  const reserved = screen.getByRole("treeitem", { name: "AG - MENSAJES" });
+  reserved.focus();
+  await user.keyboard("{F2}");
+  expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la carpeta" })).toBeNull();
+  await user.keyboard("{Delete}");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
+test("H-030: el teclado recorre META y después «Raíz»", async () => {
+  const { user } = await setup(["AG - SKILLS/s.md", "BITACORA/b.md", "Otra/o.md"]);
+  screen.getByRole("treeitem", { name: "AG - SKILLS" }).focus();
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "BITACORA" })).toHaveFocus();
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
+  await user.keyboard("{ArrowUp}{Home}");
+  expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).toHaveFocus();
+});
+
+test("H-030: cada carpeta reservada muestra la descripción de su INDICE y su nombre abre ese INDICE", async () => {
+  const { value, user, onOpen, rerender, ui } = await setup(["AG - SKILLS/skill-a.md"], { indexes: true });
+  const index = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/INDICE.md");
+  if (!index) throw new Error("falta el INDICE de la carpeta reservada");
+  const doc = await value.notes.get(index.id);
+  await value.notes.save(index.id, "", doc.rev, { ...doc.frontmatter, descripcion: "Skills para los agentes de la bóveda." });
+  rerender(ui({ ...value, notesVersion: value.notesVersion + 1 })); // la sincronización avisa que cambió una nota
+  expect(await screen.findByText("Skills para los agentes de la bóveda.")).toBeInTheDocument();
+  expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).toHaveAccessibleDescription("Skills para los agentes de la bóveda.");
+  onOpen.mockClear();
+  await user.click(screen.getByRole("treeitem", { name: "AG - SKILLS" }));
+  expect(onOpen).toHaveBeenCalledWith(index.id);
+});
+
+test("H-030: borrar la nota abierta dentro de META deja el foco en una fila que existe", async () => {
+  const { user } = await setup(["AG - SKILLS/skill-a.md", "Otra/o.md"]);
+  await user.click(screen.getByRole("treeitem", { name: "AG - SKILLS" }));
+  await user.click(menuButton("skill-a"));
+  await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
+  await user.click(confirmButton());
+  await waitFor(() => expect(screen.queryByRole("treeitem", { name: "skill-a" })).toBeNull());
+  expect(document.activeElement).not.toBe(document.body);
+});

@@ -23,7 +23,7 @@
  * padre, Inicio/Fin saltan a los extremos.
  */
 import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, ReactNode, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
 import { folderNameMessage, noteErrorMessage } from "./messages";
@@ -31,6 +31,7 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
+import { isMetaFolderPath, splitMeta } from "./metaFolders";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -246,8 +247,23 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     return open && isIndexPath(open.path) ? folderOf(open.path) : null;
   }, [items, openId]);
 
-  const tree = useMemo(() => buildTree(items ?? []), [items]);
-  const rows = useMemo(() => [{ key: ROOT_KEY, kind: "root" as const, path: "", parent: null }, ...visibleRows(tree, expanded)], [tree, expanded]);
+  // H-030: las carpetas reservadas van en la sección META, encima de «Raíz», y no se repiten dentro de ella.
+  const { meta, rest: tree } = useMemo(() => splitMeta(buildTree(items ?? [])), [items]);
+  const rows = useMemo(
+    () => [...visibleRows(meta, expanded), { key: ROOT_KEY, kind: "root" as const, path: "", parent: null }, ...visibleRows(tree, expanded)],
+    [meta, tree, expanded],
+  );
+
+  /** Descripción del INDICE de cada carpeta reservada (la que el servidor siembra y el usuario puede editar). */
+  const metaDescriptions = useMemo(() => {
+    const byPath = new Map((items ?? []).filter((item) => item.deleted_at === null).map((item) => [pathKey(item.path), item]));
+    return new Map(
+      meta.map((folder) => {
+        const description = byPath.get(pathKey(indexPathFor(folder.path)))?.frontmatter?.descripcion;
+        return [folder.path, typeof description === "string" ? description.trim() : ""];
+      }),
+    );
+  }, [items, meta]);
 
   /** Fila con el foco del teclado (la única con `tabindex=0`); si desaparece, la primera. */
   const [focusKey, setFocusKey] = useState<string | null>(null);
@@ -297,6 +313,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         if (inFlight.current) return; // misma guarda que los botones (`busy`)
         if (row.kind === "folder") {
           event.preventDefault();
+          if (isMetaFolderPath(row.path)) return; // H-030: la carpeta reservada no se renombra ni se borra
           if (event.key === "F2") startFolderRename(row.path);
           else askDeleteFolder(row.path);
           return;
@@ -445,7 +462,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
    * siguiente que sobreviva, si no la anterior, si no «Nueva nota». Así no cae en una carpeta que desaparece.
    */
   function focusAfterRemoval(index: number, list: NoteSummary[]): string {
-    const surviving = new Set(visibleRows(buildTree(list), expanded).map((row) => row.key));
+    const { meta: metaAfter, rest: restAfter } = splitMeta(buildTree(list));
+    const surviving = new Set([...visibleRows(metaAfter, expanded), ...visibleRows(restAfter, expanded)].map((row) => row.key));
     const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
     const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
     return next?.key ?? previous?.key ?? NEW_NOTE;
@@ -582,12 +600,18 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     }
   }
 
-  /** `depth`: nivel de carpetas; la sangría de cada fila sale de él (`--depth`, ver notes.css). */
-  function renderNodes(nodes: TreeNode<NoteSummary>[], depth = 0) {
+  /**
+   * `depth`: nivel de carpetas; la sangría de cada fila sale de él (`--depth`, ver notes.css).
+   * `reserved` (H-030): las filas de este nivel son las carpetas reservadas de META; sólo ellas, no sus hijos.
+   */
+  function renderNodes(nodes: TreeNode<NoteSummary>[], depth = 0, reserved = false) {
     const indent = { "--depth": depth } as CSSProperties;
     return nodes.map((node) => {
       if (node.kind === "folder") {
         const open = expanded.has(node.path);
+        const description = reserved ? metaDescriptions.get(node.path) : "";
+        // Un id con espacios no es una referencia válida para `aria-describedby` (lista separada por espacios).
+        const descriptionId = `${uid}-meta-${node.path.replace(/[^a-z0-9]/gi, "-")}`;
         const editing = inlineRename?.kind === "folder" && inlineRename.path === node.path;
         const icon = open ? (
           <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
@@ -611,7 +635,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   className="note-tree-row note-tree-folder"
                   style={indent}
                   aria-current={activeFolder === node.path ? "true" : undefined}
-                  draggable
+                  aria-describedby={description ? descriptionId : undefined}
+                  draggable={!reserved}
                   data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
                   onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
                   onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
@@ -628,10 +653,17 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   <span className="note-tree-name" title={node.name}>
                     {node.name}
                   </span>
+                  {reserved && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
                 </button>
               )}
-              {!editing && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+              {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). */}
+              {!editing && !reserved && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
             </div>
+            {description && (
+              <p id={descriptionId} className="note-tree-meta-desc" title={description} aria-hidden="true">
+                {description}
+              </p>
+            )}
             {open && (
               <ul role="group" className="note-tree-group">
                 {renderNodes(node.children, depth + 1)}
@@ -871,6 +903,16 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         ) : (
           <>
             <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
+              {meta.length > 0 && (
+                <li role="none" className="note-tree-meta">
+                  <span className="note-tree-meta-label" aria-hidden="true">
+                    META
+                  </span>
+                  <ul role="group" aria-label="META" className="note-tree-group">
+                    {renderNodes(meta, 0, true)}
+                  </ul>
+                </li>
+              )}
               {rootRow}
               {renderNodes(tree)}
             </ul>
