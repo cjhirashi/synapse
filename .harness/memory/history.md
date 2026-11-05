@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-11-04] H-030 (carpetas AG): E1, E3 a E7 desplegadas en modo sombra; E2 es contrato; sin corte
+
+- **Fecha/hora:** 2026-11-04 18:00 a 20:00 CDMX (despliegue 19:46 CDMX). Fase: Implement + deploy. Decisiones de Carlos (vía `main`): Q1 BITACORA y PLANTILLAS solo reservan nombre (lógica en H-030b); Q3 asignaciones reasignables por Carlos (interfaz + `AG - AGENTES`); Q4 claves `op-<agente>`, la general NO se elimina, nunca sin acceso, corte lo confirma `main`; Q5 volcado 30 días; Q6 escribir en una conversación cerrada la reabre. Q2 (administrador) sin decidir: solo existe el flag `is_admin` en la key.
+- **Qué quedó:** `GET /vaults/{id}/notes?prefix=` con vista `by_path` en un diseño aparte (`_design/notes_path`, no invalida el índice existente); keys con `agent_id`/`is_admin` (migración 008, aditiva) y `PATCH /auth/agent-keys/{id}`; carpetas reservadas (`core/ag_rules.py`) en REST y `/sync`; formato de `AG - MENSAJES` con `cerrada_el` sellado por el servidor (en `/sync`, una revisión posterior) y reapertura al escribir; registro `AG - AGENTES/<id>.md` con API (`/vaults/{id}/agent-access`) y pantalla `/settings/agent-access`; modo sombra (`AGENT_ACCESS_MODE=shadow`, tabla `agent_access_log`, informe `/agent-access/shadow-report`); purga (`scripts/purge_mensajes.py`, `purge_log`, volcado 30 días); herramientas de carga, sembrado y claves. Cumplimiento (`enforce`) probado en pruebas, apagado en producción.
+- **Datos reales:** respaldo previo (Postgres + todos los documentos de CouchDB) en `.claude/worktrees/respaldos-h030/`; imagen previa `synapse-backend:pre-h030`; ensayo completo en copia (3201 notas de Carlos) antes de producción; 43 INDICES creados en las 11 bóvedas, 0 colisiones (5 avisos informativos: carpetas `Plantillas` ya existentes en Personal y Carrera, que coinciden por mayúsculas con la reservada PLANTILLAS); registro sembrado según Q3.
+- **Lección del ensayo:** las pruebas locales corren en Python 3.14 y la imagen en 3.11; `def list` dentro de `NoteContentService` sombreaba `list[str]` en anotaciones y solo falló en el contenedor. Corregido con `from __future__ import annotations`; ahora las pruebas de H-030 se corren también dentro de la imagen.
+- **Pendiente para el corte (E9, no ejecutado):** `main` cambia el plugin (key por agente según id confiable de sesión, `X-Agent-Id` mientras tanto); 24 a 48 h de sombra; decidir Q2; activar `enforce` y revocar la key general (ventana ~13 s medida). Autorización de Carlos/`main` para instalar la tarea diaria de purga en el crontab del host. Skill de cajón y migración de flujos (E8) y agrupación visual META del árbol quedan fuera.
+- **Docs actualizadas:** `docs/API.md`, `backend/README.md`, `backend/app/{core,services,routers}/README.md`, `frontend/src/README.md`, contratos OpenAPI (`h030-carpetas-ag`, 0005, 0013, 0014, h016) y `note.schema.json`.
+
+
 ## [2026-11-04] Sincronización: 67 cambios rechazados y estado oscilando entre «Sin conexión» y «Sincronizando»
 
 - **Reporte de Carlos (2026-11-04):** la barra de estado oscilaba y mostraba «67 cambios rechazados».

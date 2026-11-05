@@ -449,7 +449,14 @@ AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/001-de-<id>.md      # u
 
 Contrato máquina: `.harness/specs/h030-carpetas-ag/contracts/openapi.yaml`. Herramientas (dentro del contenedor, `backend/scripts/`):
 `ensure_ag_folders.py` (carga en las bóvedas existentes; sin `--apply` es informe en seco), `seed_agent_registry.py`
-(sembrado del registro), `create_agent_keys.py` (claves `op-<agente>` a un archivo 600) y `purge_mensajes.py`.
+(sembrado del registro), `create_agent_keys.py` (claves `op-<agente>` a un archivo 600; no sobrescribe uno existente) y
+`purge_mensajes.py`. Programación de la purga en el host (03:30 CDMX = 09:30 UTC, volcados en
+`.claude/worktrees/respaldos-purga/`, montada en el contenedor como `/backups/synapse-purga`):
+`30 9 * * * docker exec synapse-backend python scripts/purge_mensajes.py --apply >> /mnt/disco2/cjhirashi-data/proyectos/synapse/.claude/worktrees/respaldos-purga/purga.log 2>&1`.
+
+**Corte (activar el cumplimiento):** poner `AGENT_ACCESS_MODE=enforce` en `.env`, `docker compose up -d backend` (~13 s de ventana
+medida) y revocar la key general. Antes, revisar `GET /agent-access/shadow-report` (o la tabla `agent_access_log`) de 24 a 48 h
+con las keys por agente en uso. Revertir: `AGENT_ACCESS_MODE=shadow` y el mismo `up -d`.
 
 ## Archivos: carpeta opcional (H-025)
 
