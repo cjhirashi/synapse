@@ -13,10 +13,14 @@ const BASE = "Sin título";
 /**
  * @param existingKeys `pathKey` de las rutas ocupadas de la bóveda (notas activas).
  * @param folder Carpeta destino (`""` = raíz, SPEC-0010 RF-001/RF-003): el nombre libre se busca por carpeta.
+ * @param finalPath Ruta con la que se guardará un candidato (H-041: en `AG - SKILLS` el nombre se estructura, y
+ *   `Sin título 2` ocuparía `skill-sin-titulo-2.md`): la ocupación se decide sobre esa ruta final. Por omisión, la misma.
  */
-export function nextUntitledPath(existingKeys: ReadonlySet<string>, folder = ""): string {
+export function nextUntitledPath(
+  existingKeys: ReadonlySet<string>, folder = "", finalPath: (path: string) => string = (path) => path,
+): string {
   const name = (n: number) => (n === 1 ? `${BASE}.md` : `${BASE} ${n}.md`);
   let n = 1;
-  for (; existingKeys.has(nameKey(joinPath(folder, name(n)))); n += 1);
+  for (; existingKeys.has(nameKey(finalPath(joinPath(folder, name(n))))); n += 1);
   return joinPath(folder, name(n));
 }

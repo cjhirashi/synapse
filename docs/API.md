@@ -413,6 +413,21 @@ BITACORA con autor `sistema`. **Versionado:** `version` (semver) en el manifiest
 (`sha256` de cuerpo y metadatos) coincida con el contenido, así que cambiar el texto obliga a correr `--stamp` y subir la versión.
 Revertir un despliegue vuelve al texto de la imagen anterior. Reemplaza la «skill de cajón» de H-030b (`skill-cajon:human-only` ya no se emite).
 
+**Nombres de skills y plantillas (H-041 E2).** Todo documento de `AG - SKILLS` se llama `skill-<nombre>.md` y está **directamente**
+en esa carpeta (sin subcarpetas: `422 skill:path`); todo documento de `PLANTILLAS`, `plantilla-<nombre>.md`. El nombre va en
+minúsculas, sin acentos ni espacios (solo `a-z`, `0-9` y `-`). **El servidor lo estructura**: `POST`/`PATCH` con
+`AG - SKILLS/Gestión de variables` crean (o renombran a) `AG - SKILLS/skill-gestion-de-variables.md` y la respuesta (`path`)
+trae la ruta final. Reglas: se quita `.md` y se vuelve a poner; NFKD sin marcas (`ñ`→`n`, `é`→`e`), `ß`→`ss`, `æ`→`ae`, `œ`→`oe`,
+`ø`→`o`, `ł`→`l`…; cualquier otro símbolo (y los alfabetos no latinos) pasa a `-`, los guiones se colapsan y recortan; si el nombre ya
+empieza por el prefijo no se duplica (`skill-x`, `Skill - X` → `skill-x`; `skills de x` → `skill-skills-de-x`); el prefijo solo
+(`skill`) o un nombre sin letras ni dígitos (`!!!`, `漢字`) → `422 skill:name` (`plantilla:path` en PLANTILLAS); largo máximo: 64
+caracteres con el prefijo en una skill (`422 skill:name` si pasa) y 64 sin el prefijo en una plantilla. **Colisiones:** dos nombres que
+dan el mismo resultado chocan (`409 note-path-taken`); nunca se añade un sufijo. Se aplica al crear y al renombrar o mover una nota
+hacia esas carpetas (sacarla no cambia su nombre); un `PATCH` que solo cambia contenido o metadatos no toca la ruta, así que lo anterior
+a H-041 se tolera hasta que se renombre. **`/sync` y `POST /folders/move` no reescriben**: una nota nueva o movida a `AG - SKILLS` con un nombre
+no canónico se rechaza (`skill:name`, `skill:path`), porque el cliente ya lo estructuró (`notes/docNames.ts`). Especificación compartida:
+`backend/tests/fixtures/nombres_reglas.json`.
+
 ## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
 
 Cada bóveda tiene cinco carpetas reservadas **en la raíz**: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`

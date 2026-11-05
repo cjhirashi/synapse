@@ -21,7 +21,8 @@ import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, isI
 import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
-import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName } from "./metaRules";
+import { canonicalBase, canonicalPath, isCanonical } from "./docNames";
+import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName, PLANTILLA_NAME_MAX, TEMPLATE_PREFIX } from "./metaRules";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
 export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError, TemplateInUseError };
@@ -399,11 +400,17 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (users > 0) throw new TemplateInUseError(users);
   }
 
-  /** Renombra/mueve una nota (la comparte `rename` y `moveFolder`): misma regla de ruta y unicidad. */
-  async function renameDoc(id: string, path: string, rev: string): Promise<Note> {
-    const normalized = titleToPath(path);
+  /**
+   * Renombra/mueve una nota (la comparte `rename` y `moveFolder`): misma regla de ruta y unicidad. H-041: en
+   * `AG - SKILLS` y `PLANTILLAS` el nombre se estructura (`skill-…`, `plantilla-…`); al mover una carpeta (`strict`) no se
+   * reescribe nada, como el servidor: un nombre que no es canónico se rechaza.
+   */
+  async function renameDoc(id: string, path: string, rev: string, strict = false): Promise<Note> {
+    const typed = titleToPath(path);
+    const [normalized, nameCode] = strict ? [typed, isCanonical(typed)] : canonicalPath(typed);
     if (
-      checkPath(normalized) !== null
+      nameCode !== null
+      || checkPath(normalized) !== null
       || checkReservedCase(normalized) !== null
     ) {
       throw new NoteValidationError(["path"]);
@@ -453,7 +460,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       const key = pathKey(titleToPath(path));
       if (active.some((note) => !movingIds.has(note.id) && pathKey(note.path) === key)) throw new NotePathTakenError();
     }
-    for (const { note, path } of targets) await renameDoc(note.id, path, note.rev);
+    for (const { note, path } of targets) await renameDoc(note.id, path, note.rev, true);
   }
 
   /** Crea una nota y el INDICE de su carpeta si falta (H-031): sin título usa «Sin título n» de la carpeta. */
@@ -463,11 +470,15 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (requested === "") {
       // RF-012: sin título, el menor «Sin título n» libre entre las activas de ESA carpeta.
       const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
-      path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))), folder);
+      path = nextUntitledPath(new Set(active.map((note) => pathKey(note.path))), folder, (candidate) => canonicalPath(candidate)[0]);
     } else {
       // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
       path = titleToPath(joinPath(folder, requested));
     }
+    // H-041: en `AG - SKILLS` y `PLANTILLAS` el nombre se estructura (`skill-gestion-de-variables`).
+    const [canonical, nameCode] = canonicalPath(path);
+    if (nameCode !== null) throw new NoteValidationError(["path"]);
+    path = canonical;
     if (
       checkPath(path) !== null
       || checkIndexOp("create_user", path) !== null
@@ -519,9 +530,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     },
 
     async createTemplate(vaultId, name) {
-      const slug = name.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56);
-      if (!isValidTemplateName(slug)) throw new NoteValidationError(["path"]);
-      const path = templatePath(slug);
+      const base = canonicalBase(name.trim(), TEMPLATE_PREFIX, PLANTILLA_NAME_MAX); // misma regla que el servidor (H-041)
+      if (base === null || !isValidTemplateName(base.slice(TEMPLATE_PREFIX.length))) throw new NoteValidationError(["path"]);
+      const path = templatePath(base.slice(TEMPLATE_PREFIX.length));
       const frontmatter = { titulo: name.trim(), descripcion: "", alcance: ["*"], atributos: [], estilo: { publicar: {}, pdf: {} } };
       if (checkPath(path) !== null || checkNoteWrite({ path, prevPath: null, deleted: false, frontmatter, actorKind: "human" }) !== null) {
         throw new NoteValidationError(["path"]);

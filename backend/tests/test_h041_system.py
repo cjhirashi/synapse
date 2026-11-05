@@ -101,7 +101,8 @@ def test_a_new_vault_gets_both_system_docs_marked_and_readable(ready_admin, seed
         item = find(ready_admin, vault_id, path)
         assert item is not None
         fm = item["frontmatter"]
-        assert fm["sistema"] is True and fm["version"] == "1.0.0" and "sistema" in fm["tags"]
+        assert fm["sistema"] is True and "sistema" in fm["tags"]
+        assert fm["version"] == next(d.frontmatter["version"] for d in system_docs.DOCS if d.path == path)
         assert "agentes" not in fm or path == TEMPLATE  # la convención antigua `agentes: ["todos"]` ya no existe
         assert "skill" not in fm
         body = ready_admin.get(f"/vaults/{vault_id}/notes/{item['id']}").json()["content"]
@@ -254,7 +255,8 @@ def test_publisher_updates_an_old_copy_in_place_keeping_its_id_and_can_revert(re
     updated = ready_admin.get(f"/vaults/{vault_id}/notes/{legacy_id}").json()
     assert updated["content"] == system_docs.DOCS[0].content
     fm = updated["frontmatter"]
-    assert fm["sistema"] is True and fm["version"] == "1.0.0" and "skill" not in fm and "agentes" not in fm
+    assert fm["sistema"] is True and fm["version"] == system_docs.DOCS[0].frontmatter["version"]
+    assert "skill" not in fm and "agentes" not in fm
     assert fm["fecha_creacion"] == done[0].before["frontmatter"]["fecha_creacion"]  # conserva la de la copia anterior
     assert [a.action for a in service.plan(vault_id)] == [OK, OK]
     # Revertir con el informe: texto y metadatos anteriores, y retira lo creado.

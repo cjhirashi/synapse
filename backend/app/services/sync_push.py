@@ -38,7 +38,7 @@ from typing import NamedTuple
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
-from app.core import ag_rules, meta_rules, plantilla_rules
+from app.core import ag_rules, doc_names, meta_rules, plantilla_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
@@ -501,6 +501,9 @@ class SyncPushService:
         previous = leaves.get(history[1]) if len(history) > 1 else None
         prev_path = previous["path"] if previous else None
         if prev_path != path and (code := ag_rules.check_create(path)) is not None:
+            raise Rejected(code)
+        # H-041 E2: una skill nueva o movida llega ya con el nombre canónico (el cliente lo estructuró).
+        if prev_path != path and doc["deleted_at"] is None and (code := doc_names.is_canonical(path)) is not None:
             raise Rejected(code)
         if prev_path is not None and prev_path != path and is_index_path(prev_path):
             folder = folder_of(prev_path)

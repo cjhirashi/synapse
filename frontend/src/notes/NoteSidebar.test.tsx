@@ -1110,10 +1110,10 @@ test("H-030: sin carpetas reservadas no hay sección META", async () => {
 });
 
 test("H-030: la carpeta reservada no ofrece ⋮ (renombrar, mover o borrar) ni se arrastra; sus subcarpetas y notas sí", async () => {
-  const { user } = await setup(["AG - SKILLS/aira/skill-a.md", "Otra/b.md"]);
-  const reserved = screen.getByRole("treeitem", { name: "AG - SKILLS" });
+  const { user } = await setup(["AG - MENSAJES/aira/m.md", "Otra/b.md"]);
+  const reserved = screen.getByRole("treeitem", { name: "AG - MENSAJES" });
   expect(reserved).toHaveAttribute("draggable", "false");
-  expect(screen.queryByRole("button", { name: "Acciones de AG - SKILLS" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Acciones de AG - MENSAJES" })).toBeNull();
   expect(menuButton("Otra")).toBeInTheDocument();
   await user.click(reserved);
   expect(menuButton("aira")).toBeInTheDocument();

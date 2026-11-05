@@ -1,0 +1,356 @@
+{
+ "_doc": "H-041 E2: especificación compartida de los nombres canónicos de skills y plantillas. La implementan backend (core/doc_names.py) y frontend (notes/docNames.ts); ambos deben pasar TODOS estos casos. `names`: lo que escribe quien asigna el nombre y el nombre canónico (sin .md) para una skill y para una plantilla (null = sin nombre válido). `paths`: ruta de entrada, ruta canónica y código de rechazo de la REST. `canonical`: rechazo de una ruta que llega ya formada (sync, carpeta movida).",
+ "limits": {
+  "skill_base_max": 64,
+  "plantilla_rest_max": 64
+ },
+ "names": [
+  {
+   "raw": "gestión de variables",
+   "skill": "skill-gestion-de-variables",
+   "plantilla": "plantilla-gestion-de-variables"
+  },
+  {
+   "raw": "Gestión de Variables.md",
+   "skill": "skill-gestion-de-variables",
+   "plantilla": "plantilla-gestion-de-variables"
+  },
+  {
+   "raw": "GESTIÓN DE VARIABLES.MD",
+   "skill": "skill-gestion-de-variables",
+   "plantilla": "plantilla-gestion-de-variables"
+  },
+  {
+   "raw": "skill-gestion",
+   "skill": "skill-gestion",
+   "plantilla": "plantilla-skill-gestion"
+  },
+  {
+   "raw": "Skill - Gestión",
+   "skill": "skill-gestion",
+   "plantilla": "plantilla-skill-gestion"
+  },
+  {
+   "raw": "SKILL_Gestión",
+   "skill": "skill-gestion",
+   "plantilla": "plantilla-skill-gestion"
+  },
+  {
+   "raw": "plantilla-acta",
+   "skill": "skill-plantilla-acta",
+   "plantilla": "plantilla-acta"
+  },
+  {
+   "raw": "Plantilla Acta Final",
+   "skill": "skill-plantilla-acta-final",
+   "plantilla": "plantilla-acta-final"
+  },
+  {
+   "raw": "skills de variables",
+   "skill": "skill-skills-de-variables",
+   "plantilla": "plantilla-skills-de-variables"
+  },
+  {
+   "raw": "skill skill",
+   "skill": "skill-skill",
+   "plantilla": "plantilla-skill-skill"
+  },
+  {
+   "raw": "diseño ñandú",
+   "skill": "skill-diseno-nandu",
+   "plantilla": "plantilla-diseno-nandu"
+  },
+  {
+   "raw": "straße",
+   "skill": "skill-strasse",
+   "plantilla": "plantilla-strasse"
+  },
+  {
+   "raw": "Æsir Œuvre Øl Łódź",
+   "skill": "skill-aesir-oeuvre-ol-lodz",
+   "plantilla": "plantilla-aesir-oeuvre-ol-lodz"
+  },
+  {
+   "raw": "¿Qué hago?",
+   "skill": "skill-que-hago",
+   "plantilla": "plantilla-que-hago"
+  },
+  {
+   "raw": "  espacios   ",
+   "skill": "skill-espacios",
+   "plantilla": "plantilla-espacios"
+  },
+  {
+   "raw": "ÁÉÍÓÚ ÜÑ",
+   "skill": "skill-aeiou-un",
+   "plantilla": "plantilla-aeiou-un"
+  },
+  {
+   "raw": "café_au_lait",
+   "skill": "skill-cafe-au-lait",
+   "plantilla": "plantilla-cafe-au-lait"
+  },
+  {
+   "raw": "x.y.z",
+   "skill": "skill-x-y-z",
+   "plantilla": "plantilla-x-y-z"
+  },
+  {
+   "raw": "1 2 3",
+   "skill": "skill-1-2-3",
+   "plantilla": "plantilla-1-2-3"
+  },
+  {
+   "raw": "ﬁnal",
+   "skill": "skill-final",
+   "plantilla": "plantilla-final"
+  },
+  {
+   "raw": "Ⅻ",
+   "skill": "skill-xii",
+   "plantilla": "plantilla-xii"
+  },
+  {
+   "raw": "a",
+   "skill": "skill-a",
+   "plantilla": "plantilla-a"
+  },
+  {
+   "raw": "a---b",
+   "skill": "skill-a-b",
+   "plantilla": "plantilla-a-b"
+  },
+  {
+   "raw": "---a---",
+   "skill": "skill-a",
+   "plantilla": "plantilla-a"
+  },
+  {
+   "raw": "漢字",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "!!!",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "   ",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "skill",
+   "skill": null,
+   "plantilla": "plantilla-skill"
+  },
+  {
+   "raw": "skill-",
+   "skill": null,
+   "plantilla": "plantilla-skill"
+  },
+  {
+   "raw": "skill--",
+   "skill": null,
+   "plantilla": "plantilla-skill"
+  },
+  {
+   "raw": "plantilla",
+   "skill": "skill-plantilla",
+   "plantilla": null
+  },
+  {
+   "raw": "plantilla-",
+   "skill": "skill-plantilla",
+   "plantilla": null
+  },
+  {
+   "raw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": "skill-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "plantilla": "plantilla-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "raw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": null,
+   "plantilla": "plantilla-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "raw": "skill-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": "skill-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "plantilla": "plantilla-skill-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "raw": "skill-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": null,
+   "plantilla": "plantilla-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "raw": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": null,
+   "plantilla": null
+  },
+  {
+   "raw": "plantilla-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "skill": null,
+   "plantilla": "plantilla-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+ ],
+ "paths": [
+  {
+   "path": "AG - SKILLS/gestión de variables.md",
+   "expected": "AG - SKILLS/skill-gestion-de-variables.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS/Gestión de Variables",
+   "expected": "AG - SKILLS/skill-gestion-de-variables.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS/skill-ya-canonica.md",
+   "expected": "AG - SKILLS/skill-ya-canonica.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "expected": "AG - SKILLS/skill-bovedas-synapse.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS/INDICE.md",
+   "expected": "AG - SKILLS/INDICE.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS/sub/x.md",
+   "expected": "AG - SKILLS/sub/x.md",
+   "error": "skill:path"
+  },
+  {
+   "path": "AG - SKILLS/sub/skill-x.md",
+   "expected": "AG - SKILLS/sub/skill-x.md",
+   "error": "skill:path"
+  },
+  {
+   "path": "AG - SKILLS/漢字.md",
+   "expected": "AG - SKILLS/漢字.md",
+   "error": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill.md",
+   "expected": "AG - SKILLS/skill.md",
+   "error": "skill:name"
+  },
+  {
+   "path": "PLANTILLAS/Acta Final.md",
+   "expected": "PLANTILLAS/plantilla-acta-final.md",
+   "error": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-acta.md",
+   "expected": "PLANTILLAS/plantilla-acta.md",
+   "error": null
+  },
+  {
+   "path": "PLANTILLAS/INDICE.md",
+   "expected": "PLANTILLAS/INDICE.md",
+   "error": null
+  },
+  {
+   "path": "PLANTILLAS/sub/plantilla-acta.md",
+   "expected": "PLANTILLAS/sub/plantilla-acta.md",
+   "error": "plantilla:path"
+  },
+  {
+   "path": "PLANTILLAS/!!!.md",
+   "expected": "PLANTILLAS/!!!.md",
+   "error": "plantilla:path"
+  },
+  {
+   "path": "BITACORA/2026-11/Hoy.md",
+   "expected": "BITACORA/2026-11/Hoy.md",
+   "error": null
+  },
+  {
+   "path": "Notas/Gestión de variables.md",
+   "expected": "Notas/Gestión de variables.md",
+   "error": null
+  },
+  {
+   "path": "Gestión.md",
+   "expected": "Gestión.md",
+   "error": null
+  },
+  {
+   "path": "AG - SKILLS.md",
+   "expected": "AG - SKILLS.md",
+   "error": null
+  },
+  {
+   "path": "AG - MENSAJES/liza/20261105-0930-x/001-de-aira.md",
+   "expected": "AG - MENSAJES/liza/20261105-0930-x/001-de-aira.md",
+   "error": null
+  }
+ ],
+ "canonical": [
+  {
+   "path": "AG - SKILLS/skill-gestion-de-variables.md",
+   "expected": null
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "expected": null
+  },
+  {
+   "path": "AG - SKILLS/gestion.md",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill-Gestion.md",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill-gestión.md",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill-con espacios.md",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill-sin-extension",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/skill-x.txt",
+   "expected": "skill:name"
+  },
+  {
+   "path": "AG - SKILLS/sub/skill-x.md",
+   "expected": "skill:path"
+  },
+  {
+   "path": "AG - SKILLS/INDICE.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/Acta.md",
+   "expected": null
+  },
+  {
+   "path": "Notas/Cualquier Cosa.md",
+   "expected": null
+  }
+ ]
+}

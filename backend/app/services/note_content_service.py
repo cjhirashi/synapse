@@ -24,7 +24,7 @@ import json
 import uuid
 from typing import NamedTuple
 
-from app.core import ag_rules, meta_rules, plantilla_rules
+from app.core import ag_rules, doc_names, meta_rules, plantilla_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
@@ -225,14 +225,19 @@ class NoteContentService:
         fields = data.model_dump(exclude_unset=True)
         _check_rules(
             data.path, data.content, fields.get("frontmatter"), frontmatter_set="frontmatter" in fields)
-        self._check_system_lock(data.path, None, fields.get("frontmatter"))
-        if (code := check_op("create_user", data.path)) is not None:
+        # H-041 E2: en `AG - SKILLS` y `PLANTILLAS` el servidor estructura el nombre (`skill-…`, `plantilla-…`) y
+        # devuelve la ruta final; el resto del flujo (bloqueo de sistema, registro de agentes, reserva) usa esa ruta.
+        path, name_code = doc_names.canonical_path(data.path)
+        if name_code is not None:
+            raise _field_error("path", name_code)
+        self._check_system_lock(path, None, fields.get("frontmatter"))
+        if (code := check_op("create_user", path)) is not None:
             raise _field_error("path", code)
-        self._guard_check(vault_id, "create", [data.path])
-        if (code := ag_rules.check_create(data.path)) is not None:
+        self._guard_check(vault_id, "create", [path])
+        if (code := ag_rules.check_create(path)) is not None:
             raise _field_error("path", code)
-        fields["frontmatter"] = self._check_ag_target(vault_id, data.path, fields.get("frontmatter"), None, "create")
-        self._check_meta_write(vault_id, data.path, None, fields.get("frontmatter"), None)
+        fields["frontmatter"] = self._check_ag_target(vault_id, path, fields.get("frontmatter"), None, "create")
+        self._check_meta_write(vault_id, path, None, fields.get("frontmatter"), None)
         note_id = str(uuid.uuid4())
         doc_id = _doc_id(vault_id, note_id)
         now = utc_now()
@@ -240,7 +245,7 @@ class NoteContentService:
             "_id": doc_id,
             "type": "note",
             "vault_id": vault_id,
-            "path": data.path,
+            "path": path,
             "content": data.content,
             "created_at": now,
             "updated_at": now,
@@ -252,13 +257,13 @@ class NoteContentService:
         # Si este `put` falla, la reserva queda huérfana (su nota no existe) y no se libera:
         # un fallo de red puede ocultar un `put` que sí entró (mismo riesgo que `VaultService.create`).
         def write() -> str:
-            self._reserve(doc_id, data.path)
+            self._reserve(doc_id, path)
             return self._port.put(self._db, doc)
 
         doc["_rev"] = self._logged_write(vault_id, None, doc, write)
         if self._auto_indexes:
-            self._ensure_indexes(vault_id, data.path)
-        self._after_write(vault_id, data.path)
+            self._ensure_indexes(vault_id, path)
+        self._after_write(vault_id, path)
         self._flush_log()
         return _versioned(doc)
 
@@ -274,6 +279,10 @@ class NoteContentService:
         if "path" in changes:
             if (code := check_path(changes["path"])) is not None:
                 raise _field_error("path", code)
+            # H-041 E2: renombrar o mover hacia `AG - SKILLS` / `PLANTILLAS` estructura el nombre igual que al crear.
+            changes["path"], name_code = doc_names.canonical_path(changes["path"])
+            if name_code is not None:
+                raise _field_error("path", name_code)
         if "content" in changes:
             if (code := check_content(changes["content"])) is not None:
                 raise _field_error("content", code)
