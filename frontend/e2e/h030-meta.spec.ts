@@ -29,18 +29,6 @@ async function workspace(browser: Parameters<typeof newSession>[0], seeded: Seed
   return { context, page };
 }
 
-/** Crea `Carpeta/título` desde la raíz con «Nueva nota» (la carpeta nace con su INDICE). */
-async function createInRoot(page: Page, title: string, size: Size) {
-  await showSidebar(page);
-  await tree(page).getByRole("treeitem", { name: "Raíz", exact: true }).click();
-  // A ≤ 640 px el bloque de creación es un disclosure («Crear…»).
-  const create = page.getByRole("button", { name: "Crear…" });
-  if (size.width <= 640 && (await create.getAttribute("aria-expanded")) !== "true") await create.click();
-  await page.getByLabel("Título de la nota nueva (opcional)").fill(title);
-  await page.getByRole("button", { name: "Nueva nota" }).click();
-  await waitForSynced(page);
-}
-
 for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900 } }, { label: "390", size: MOBILE }]) {
   test(`H-030: sección META del árbol a ${label} px`, async ({ browser, content }) => {
     const { context, page } = await workspace(browser, content, size);
@@ -49,26 +37,23 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     page.on("console", (m) => m.type() === "error" && errors.push(m.text().slice(0, 150)));
     const meta = () => tree(page).getByRole("group", { name: "META" });
 
-    // 1. Las tres carpetas AG nacen con la bóveda (las siembra el servidor y llegan por la réplica).
+    // 1. Las cinco carpetas reservadas nacen con la bóveda (las siembra el servidor con su INDICE y llegan por la
+    // réplica); BITACORA y PLANTILLAS sólo reservan el nombre, pero se muestran igual.
     await expect(async () => {
       await showSidebar(page);
-      await expect(meta().getByRole("treeitem")).toHaveCount(3, { timeout: 2000 });
+      await expect(meta().getByRole("treeitem")).toHaveCount(5, { timeout: 2000 });
     }).toPass({ timeout: 30_000 });
-
-    // 2. BITACORA y PLANTILLAS sólo reservan el nombre: aparecen en cuanto existen.
-    await createInRoot(page, "BITACORA/demo", size);
-    await createInRoot(page, "PLANTILLAS/plantilla-demo", size);
-    await showSidebar(page);
-    await expect(meta().getByRole("treeitem")).toHaveCount(5);
     expect(await meta().getByRole("treeitem").allTextContents()).toEqual(META_ORDER);
 
     // 3. META va ENCIMA de «Raíz» (posición real en pantalla) y es una sección propia con su rótulo.
     const metaBox = (await meta().boundingBox())!;
     const rootBox = (await tree(page).getByRole("treeitem", { name: "Raíz", exact: true }).boundingBox())!;
     expect(metaBox.y + metaBox.height, "META termina antes de «Raíz»").toBeLessThanOrEqual(rootBox.y);
-    await expect(tree(page).getByText("META", { exact: true })).toBeVisible();
-    const first = tree(page).getByRole("treeitem").first();
-    await expect(first).toHaveText("AG - SKILLS");
+    const head = tree(page).getByRole("treeitem", { name: "META", exact: true });
+    await expect(head).toBeVisible();
+    await expect(head).toHaveAttribute("aria-expanded", "true");
+    await expect(tree(page).getByRole("treeitem").first()).toHaveText("META");
+    await expect(tree(page).getByRole("treeitem").nth(1)).toHaveText("AG - SKILLS");
 
     // 4. No se repiten dentro de la raíz: cada nombre aparece una sola vez en todo el árbol.
     for (const name of META_ORDER) await expect(tree(page).getByRole("treeitem", { name, exact: true })).toHaveCount(1);
@@ -99,11 +84,22 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await expect(tree(page).getByRole("treeitem", { name: "AG - SKILLS", exact: true })).toHaveAttribute("aria-selected", "true");
     await shot(page, `h030meta-${label}-2-indice-abierto`);
 
+    // 7b. La cabecera pliega la sección entera (deja «Raíz» a la vista) y se recuerda al recargar.
+    await showSidebar(page);
+    await head.click();
+    await expect(head).toHaveAttribute("aria-expanded", "false");
+    await expect(meta()).toHaveCount(0);
+    await shot(page, `h030meta-${label}-3-meta-plegada`);
+    await head.click();
+    await expect(head).toHaveAttribute("aria-expanded", "true");
+    await expect(meta().getByRole("treeitem")).toHaveCount(5);
+
     // 8. Tras recargar, META sigue arriba (la agrupación sale de las rutas, no de un estado local). Se pliega antes
     // AG - SKILLS: la app recuerda las carpetas abiertas y sus hijos también son filas del grupo.
     await showSidebar(page);
     const skills = tree(page).getByRole("treeitem", { name: "AG - SKILLS", exact: true });
     if ((await skills.getAttribute("aria-expanded")) === "true") await skills.click();
+    await showSidebar(page); // a ≤ 640 px abrir el INDICE cierra la barra flotante
     await expect(skills).toHaveAttribute("aria-expanded", "false");
     await hideSidebar(page, size);
     await page.reload();

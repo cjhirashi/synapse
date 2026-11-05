@@ -415,13 +415,13 @@
   border-bottom: 1px solid var(--border);
 }
 
-.note-tree-meta-label {
-  display: block;
-  padding: var(--space-2) var(--space-4) 0;
+/* Cabecera plegable de META: rótulo en versalitas, más baja que una fila de carpeta. */
+.note-tree-meta-head,
+.note-tree-meta-head:not([type="submit"]) {
+  height: 24px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--text-secondary);
 }
 
 /* El candado avisa que la carpeta no se renombra, mueve ni borra (no hay ⋮ en su fila). */
@@ -436,8 +436,9 @@
   width: 0;
   min-width: 100%;
   box-sizing: border-box;
-  margin: 0;
-  padding: 0 var(--space-4) var(--space-1) calc(var(--space-4) + 12px + var(--space-2) + 13px + var(--space-2));
+  margin: 0 0 var(--space-1);
+  /* El margen inferior va FUERA del recorte: con `padding-bottom` se asomaría la tercera línea. */
+  padding: 0 var(--space-4) 0 calc(var(--space-4) + 12px + var(--space-2) + 13px + var(--space-2));
   font-size: 11px;
   line-height: 1.35;
   color: var(--text-secondary);

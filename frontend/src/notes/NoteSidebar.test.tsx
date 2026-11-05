@@ -1085,15 +1085,18 @@ test("H-031: al abrir el INDICE de una carpeta (o de la raíz) esa fila queda se
 
 // --- H-030: sección META (carpetas reservadas encima de «Raíz») ---
 
+beforeEach(() => localStorage.removeItem("synapse.metaOpen"));
+
 const treeNames = () => within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem").map((el) => el.textContent);
 
 test("H-030: las carpetas reservadas van en la sección META, en su orden y encima de «Raíz»; no se repiten en la raíz", async () => {
   await setup(["Zeta/z.md", "PLANTILLAS/plantilla-a.md", "AG - AGENTES/aira.md", "AG - MENSAJES/m.md", "AG - SKILLS/skill-x.md", "BITACORA/b.md", "Inicio.md"]);
-  expect(treeNames()).toEqual(["AG - SKILLS", "AG - MENSAJES", "AG - AGENTES", "BITACORA", "PLANTILLAS", "Raíz", "Zeta", "Inicio"]);
+  expect(treeNames()).toEqual(["META", "AG - SKILLS", "AG - MENSAJES", "AG - AGENTES", "BITACORA", "PLANTILLAS", "Raíz", "Zeta", "Inicio"]);
   const meta = screen.getByRole("group", { name: "META" });
   expect(within(meta).getAllByRole("treeitem")).toHaveLength(5);
   const root = screen.getByRole("treeitem", { name: "Raíz" });
   expect(meta.compareDocumentPosition(root) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByRole("treeitem", { name: "META" })).toHaveAttribute("aria-expanded", "true");
   expect(within(screen.getByRole("tree", { name: "Notas" })).getAllByRole("treeitem", { name: "BITACORA" })).toHaveLength(1);
 });
 
@@ -1126,13 +1129,38 @@ test("H-030: F2 y Supr sobre la carpeta reservada no hacen nada", async () => {
 
 test("H-030: el teclado recorre META y después «Raíz»", async () => {
   const { user } = await setup(["AG - SKILLS/s.md", "BITACORA/b.md", "Otra/o.md"]);
-  screen.getByRole("treeitem", { name: "AG - SKILLS" }).focus();
+  screen.getByRole("treeitem", { name: "META" }).focus();
+  await user.keyboard("{ArrowDown}");
+  expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).toHaveFocus();
   await user.keyboard("{ArrowDown}");
   expect(screen.getByRole("treeitem", { name: "BITACORA" })).toHaveFocus();
   await user.keyboard("{ArrowDown}");
   expect(screen.getByRole("treeitem", { name: "Raíz" })).toHaveFocus();
-  await user.keyboard("{ArrowUp}{Home}");
+  await user.keyboard("{ArrowUp}{ArrowUp}{ArrowUp}");
+  expect(screen.getByRole("treeitem", { name: "META" })).toHaveFocus();
+  await user.keyboard("{End}{Home}");
+  expect(screen.getByRole("treeitem", { name: "META" })).toHaveFocus();
+});
+
+test("H-030: la cabecera META se pliega y despliega con el ratón y con ←/→, y se recuerda por dispositivo", async () => {
+  const { user, unmount } = await setup(["AG - SKILLS/s.md", "Otra/o.md"]);
+  const head = screen.getByRole("treeitem", { name: "META" });
+  await user.click(head);
+  expect(head).toHaveAttribute("aria-expanded", "false");
+  expect(screen.queryByRole("treeitem", { name: "AG - SKILLS" })).toBeNull();
+  expect(screen.getByRole("treeitem", { name: "Raíz" })).toBeInTheDocument();
+  head.focus();
+  await user.keyboard("{ArrowRight}");
+  expect(head).toHaveAttribute("aria-expanded", "true");
+  await user.keyboard("{ArrowRight}");
   expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).toHaveFocus();
+  await user.keyboard("{ArrowLeft}"); // un hijo sube a su cabecera
+  expect(head).toHaveFocus();
+  await user.keyboard("{ArrowLeft}");
+  expect(head).toHaveAttribute("aria-expanded", "false");
+  unmount();
+  await setup(["AG - SKILLS/s.md"]);
+  expect(screen.getByRole("treeitem", { name: "META" })).toHaveAttribute("aria-expanded", "false");
 });
 
 test("H-030: cada carpeta reservada muestra la descripción de su INDICE y su nombre abre ese INDICE", async () => {

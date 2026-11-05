@@ -68,11 +68,27 @@ interface NoteSidebarProps {
   onExpandedChange?: (expanded: string[]) => void;
 }
 
+function readMetaOpen(): boolean {
+  try {
+    return localStorage.getItem(META_OPEN_STORAGE) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function writeMetaOpen(open: boolean): void {
+  try {
+    localStorage.setItem(META_OPEN_STORAGE, open ? "1" : "0");
+  } catch {
+    // Sin almacenamiento (modo privado): se recuerda sólo mientras la pestaña siga abierta.
+  }
+}
+
 /** Fila visible del árbol, en orden de pantalla (lo que recorre el teclado). */
 interface Row {
-  /** `root` para la fila «Raíz», `f:{ruta}` para carpetas, `n:{id}` para notas. */
+  /** `meta` para la cabecera de META, `root` para la fila «Raíz», `f:{ruta}` para carpetas, `n:{id}` para notas. */
   key: string;
-  kind: "root" | "folder" | "note";
+  kind: "meta" | "root" | "folder" | "note";
   /** Ruta de la carpeta (sólo carpetas). */
   path: string;
   /** Clave de la carpeta que la contiene (`null` en la raíz). */
@@ -80,6 +96,10 @@ interface Row {
 }
 
 const ROOT_KEY = "root";
+/** H-030: cabecera plegable de la sección META (primera fila del árbol cuando hay carpetas reservadas). */
+const META_KEY = "meta";
+/** H-030: META abierta o plegada, recordada por dispositivo (no por bóveda: es una preferencia de pantalla). */
+const META_OPEN_STORAGE = "synapse.metaOpen";
 const folderKey = (path: string) => `f:${path}`;
 const noteKey = (id: string) => `n:${id}`;
 /** Destino de foco: el botón «Nueva nota» (cuando no queda ninguna fila). */
@@ -249,9 +269,14 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
 
   // H-030: las carpetas reservadas van en la sección META, encima de «Raíz», y no se repiten dentro de ella.
   const { meta, rest: tree } = useMemo(() => splitMeta(buildTree(items ?? [])), [items]);
+  const [metaOpen, setMetaOpen] = useState(() => readMetaOpen());
   const rows = useMemo(
-    () => [...visibleRows(meta, expanded), { key: ROOT_KEY, kind: "root" as const, path: "", parent: null }, ...visibleRows(tree, expanded)],
-    [meta, tree, expanded],
+    () => [
+      ...(meta.length > 0 ? [{ key: META_KEY, kind: "meta" as const, path: "", parent: null }, ...(metaOpen ? visibleRows(meta, expanded, META_KEY) : [])] : []),
+      { key: ROOT_KEY, kind: "root" as const, path: "", parent: null },
+      ...visibleRows(tree, expanded),
+    ],
+    [meta, metaOpen, tree, expanded],
   );
 
   /** Descripción del INDICE de cada carpeta reservada (la que el servidor siembra y el usuario puede editar). */
@@ -293,7 +318,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     const index = rows.findIndex((row) => row.key === key);
     if (index < 0) return; // el teclado de un campo o de una acción no es del árbol
     const row = rows[index];
-    const open = row.kind === "folder" && expanded.has(row.path);
+    const open = row.kind === "meta" ? metaOpen : row.kind === "folder" && expanded.has(row.path);
     let target: string | undefined;
     switch (event.key) {
       case "ArrowDown":
@@ -326,12 +351,12 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         return;
       }
       case "ArrowRight":
-        if (row.kind !== "folder") return;
-        if (!open) toggle(row.path);
+        if (row.kind !== "folder" && row.kind !== "meta") return;
+        if (!open) toggleRow(row);
         else target = rows[index + 1]?.parent === row.key ? rows[index + 1].key : undefined;
         break;
       case "ArrowLeft":
-        if (open) toggle(row.path);
+        if (open) toggleRow(row);
         else target = row.parent ?? undefined;
         break;
       default:
@@ -340,6 +365,19 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     // Las flechas y Inicio/Fin no deben desplazar la página.
     event.preventDefault();
     if (target !== undefined) focusRow(target);
+  }
+
+  /** Pliega o despliega una fila con hijos: una carpeta o la cabecera de META. */
+  function toggleRow(row: Row) {
+    if (row.kind === "meta") toggleMeta();
+    else toggle(row.path);
+  }
+
+  function toggleMeta() {
+    setMetaOpen((open) => {
+      writeMetaOpen(!open);
+      return !open;
+    });
   }
 
   function toggle(path: string) {
@@ -463,7 +501,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
    */
   function focusAfterRemoval(index: number, list: NoteSummary[]): string {
     const { meta: metaAfter, rest: restAfter } = splitMeta(buildTree(list));
-    const surviving = new Set([...visibleRows(metaAfter, expanded), ...visibleRows(restAfter, expanded)].map((row) => row.key));
+    const metaRows = metaAfter.length > 0 ? [{ key: META_KEY }, ...(metaOpen ? visibleRows(metaAfter, expanded) : [])] : [];
+    const surviving = new Set([...metaRows, ...visibleRows(restAfter, expanded)].map((row) => row.key));
     const next = rows.slice(index + 1).find((row) => surviving.has(row.key));
     const previous = rows.slice(0, Math.max(index, 0)).reverse().find((row) => surviving.has(row.key));
     return next?.key ?? previous?.key ?? NEW_NOTE;
@@ -905,12 +944,25 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             <ul ref={treeRef} role="tree" aria-label="Notas" className="note-tree" onKeyDown={onTreeKeyDown}>
               {meta.length > 0 && (
                 <li role="none" className="note-tree-meta">
-                  <span className="note-tree-meta-label" aria-hidden="true">
-                    META
-                  </span>
-                  <ul role="group" aria-label="META" className="note-tree-group">
-                    {renderNodes(meta, 0, true)}
-                  </ul>
+                  <button
+                    type="button"
+                    role="treeitem"
+                    aria-expanded={metaOpen}
+                    data-key={META_KEY}
+                    tabIndex={tabbable === META_KEY ? 0 : -1}
+                    onFocus={() => setFocusKey(META_KEY)}
+                    className="note-tree-row note-tree-meta-head"
+                    style={{ "--depth": 0 } as CSSProperties}
+                    onClick={toggleMeta}
+                  >
+                    {metaOpen ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
+                    <span className="note-tree-name">META</span>
+                  </button>
+                  {metaOpen && (
+                    <ul role="group" aria-label="META" className="note-tree-group">
+                      {renderNodes(meta, 0, true)}
+                    </ul>
+                  )}
                 </li>
               )}
               {rootRow}
