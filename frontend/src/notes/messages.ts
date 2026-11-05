@@ -5,7 +5,7 @@
  */
 import { STORAGE_FULL } from "../vaults/errors";
 import { StorageFullError } from "../sync/vaultStore";
-import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
+import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, TemplateInUseError } from "./errors";
 
 export const PATH_INVALID =
   "La ruta debe tener entre 1 y 300 caracteres, sin caracteres de control ni carpetas sin nombre.";
@@ -66,6 +66,9 @@ export function noteErrorMessage(err: unknown): string {
     return err.fields.includes("content") ? CONTENT_INVALID : PATH_INVALID;
   }
   if (err instanceof NotePathTakenError) return PATH_TAKEN;
+  if (err instanceof TemplateInUseError) {
+    return `No se puede borrar, renombrar ni mover la plantilla: ${err.users === 1 ? "1 documento la usa" : `${err.users} documentos la usan`}. Quita la plantilla de esos documentos primero.`;
+  }
   if (err instanceof NoteChangedError) return NOTE_CHANGED;
   if (err instanceof NoteNotFoundError) return NOTE_NOT_FOUND;
   if (err instanceof StorageFullError) return STORAGE_FULL;

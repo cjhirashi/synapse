@@ -755,6 +755,19 @@ body.is-resizing {
 .bitacora-view-header { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .bitacora-view-title { margin: 0; font-size: 1rem; }
 .bitacora-view-badge { font-size: 0.75rem; opacity: 0.75; border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.5rem; }
+.template-view-header { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.template-view-title { margin: 0; font-size: 1rem; flex: 1 1 auto; }
+.template-view-form { display: grid; gap: 0.9rem; }
+.template-view-general, .template-view-section { display: grid; gap: 0.4rem; }
+.template-view-general label, .template-view-section label { display: grid; gap: 0.2rem; }
+.template-view-section { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 0.6rem 0.8rem; }
+.template-view-section legend { font-weight: 600; padding: 0 0.3rem; }
+.template-view-section > label:has(input[type="radio"]), .template-view-folders label { display: flex; align-items: center; gap: 0.4rem; }
+.template-view-folders { display: grid; gap: 0.2rem; max-height: 12rem; overflow-y: auto; padding-left: 1.2rem; }
+.template-view-attr { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) auto; gap: 0.4rem; align-items: center; }
+.template-view-hint { margin: 0; font-size: 0.85rem; opacity: 0.8; }
+.template-view-structure { width: 100%; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; }
+@media (max-width: 640px) { .template-view-attr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .index-view-title { margin: 0; font-size: 1rem; }
 .index-view-description { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
 .index-view-description textarea { width: 100%; resize: vertical; font: inherit; }

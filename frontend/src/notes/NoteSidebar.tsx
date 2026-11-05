@@ -32,6 +32,8 @@ import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
 import { isMetaFolderPath, isInBitacora, splitMeta, canonicalMetaName } from "./metaFolders";
+import { appliesTo, templateName } from "./metaRules";
+import { NoteValidationError } from "./errors";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { ConfirmDelete } from "./ConfirmDelete";
@@ -162,8 +164,27 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(initialExpanded ?? []));
   const [title, setTitle] = useState("");
+  // H-030b: plantilla elegida para la nota nueva ("" = sin plantilla).
+  const [templateId, setTemplateId] = useState("");
   /** Carpeta activa (`""` = raíz): dónde se crea lo nuevo. Estado visual del árbol (RF-043). */
   const [activeFolder, setActiveFolder] = useState("");
+  // H-030b: en la carpeta PLANTILLAS se crean plantillas; en las demás, la nota puede nacer de una que aplique ahí.
+  const inTemplatesFolder = pathKey(activeFolder) === pathKey("PLANTILLAS");
+  const templateOptions = useMemo(() => {
+    if (inTemplatesFolder) return [];
+    return (items ?? []).flatMap((item) => {
+      const name = item.deleted_at === null ? templateName(item.path) : null;
+      const scope = item.frontmatter?.alcance;
+      if (name === null || !Array.isArray(scope) || !scope.every((a): a is string => typeof a === "string")) return [];
+      if (!appliesTo(scope, activeFolder)) return [];
+      const titulo = item.frontmatter?.titulo;
+      return [{ id: item.id, label: typeof titulo === "string" && titulo ? titulo : name }];
+    });
+  }, [items, activeFolder, inTemplatesFolder]);
+  // Una plantilla elegida que ya no aplica en la carpeta activa se descarta.
+  useEffect(() => {
+    if (templateId !== "" && !templateOptions.some((option) => option.id === templateId)) setTemplateId("");
+  }, [templateId, templateOptions]);
   /** Formulario «Nueva carpeta» abierto, su texto y su mensaje de error (`null` = sin error). */
   const [folderForm, setFolderForm] = useState<{ name: string; message: string | null } | null>(null);
   /** A ≤ 640 px el bloque de creación es un disclosure («Crear…»): la barra lateral no empuja al editor fuera de la pantalla. */
@@ -413,8 +434,22 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     await run(async () => {
       // RF-001/RF-003: la nota nueva nace en la carpeta activa (`""` = raíz). La carpeta se despliega
       // sola al abrirse la nota (efecto de «nota abierta»); no se toca `expanded` aquí (robaría el foco).
-      const note = await notes.create(vaultId, title, activeFolder);
+      let note;
+      if (inTemplatesFolder) {
+        // En PLANTILLAS se crean plantillas, con su definición vacía; se completa en su formulario.
+        if (title.trim() === "") throw new NoteValidationError(["path"]);
+        note = await notes.createTemplate(vaultId, title);
+      } else if (templateId !== "") {
+        const template = await notes.get(templateId);
+        const atributos = Array.isArray(template.frontmatter.atributos) ? template.frontmatter.atributos : [];
+        note = await notes.create(vaultId, title, activeFolder, {
+          name: templateName(template.path) ?? "", content: template.content, atributos,
+        });
+      } else {
+        note = await notes.create(vaultId, title, activeFolder);
+      }
       setTitle("");
+      setTemplateId("");
       await reload();
       onOpen(note.id, { edit: true });
     });
@@ -877,12 +912,25 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         )}
         <div id={fieldsId} className="note-create-fields" hidden={compact && !createOpen}>
         <label>
-          Título de la nota nueva (opcional)
+          {inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
           <input value={title} onChange={(event) => setTitle(event.target.value)} aria-describedby={`${createInId} ${hintId}`} />
         </label>
+        {templateOptions.length > 0 && (
+          <label>
+            Plantilla
+            <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+              <option value="">Sin plantilla</option>
+              {templateOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <button ref={newNoteRef} type="submit" disabled={busy}>
           <Plus size={14} aria-hidden="true" />
-          Nueva nota
+          {inTemplatesFolder ? "Nueva plantilla" : "Nueva nota"}
         </button>
         <button
           ref={newFolderRef}

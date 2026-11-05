@@ -30,6 +30,7 @@ import { useSidebarWidth } from "./useSidebarWidth";
 import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
 import { isIndexPath } from "./indexRules";
 import { isInBitacora } from "./metaFolders";
+import { templateName } from "./metaRules";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
@@ -41,6 +42,7 @@ const loadEditor = () => import("../editor/NoteEditor");
 const NoteEditor = lazy(loadEditor);
 const IndexView = lazy(() => import("./IndexView"));
 const BitacoraView = lazy(() => import("./BitacoraView"));
+const TemplateView = lazy(() => import("./TemplateView"));
 
 /**
  * Botón de alternar la barra de notas (H-009 C-1/C-8). Un único origen de marcado (icono, etiqueta,
@@ -469,6 +471,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-031: un INDICE se abre en su propia vista (cuerpo generado, sin editor).
   const openIsIndex = openId !== null && noteRefs.some((ref) => ref.id === openId && isIndexPath(ref.path));
   // H-030b: un documento de la BITACORA lo escribe el servidor; se abre en una vista de solo lectura, sin editor.
+  // H-030b: una plantilla se edita con su formulario de cuatro secciones, no con el editor de documentos.
+  const openIsTemplate = openId !== null && noteRefs.some((ref) => ref.id === openId && templateName(ref.path) !== null);
   const openIsBitacora = openId !== null && noteRefs.some((ref) => ref.id === openId && isInBitacora(ref.path) && !isIndexPath(ref.path));
 
   return (
@@ -534,6 +538,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             >
               {openIsIndex ? (
                 <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              ) : openIsTemplate ? (
+                <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
               ) : openIsBitacora ? (
                 <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
               ) : (

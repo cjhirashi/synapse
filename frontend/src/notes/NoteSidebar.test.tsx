@@ -1189,10 +1189,10 @@ test("H-030: borrar la nota abierta dentro de META deja el foco en una fila que 
 });
 
 /** Documento de nota tal como llega por la réplica desde el servidor (sin pasar por las reglas del cliente). */
-async function replicate(db: PouchDB.Database, path: string, content = "x") {
+async function replicate(db: PouchDB.Database, path: string, content = "x", frontmatter: Record<string, unknown> = {}) {
   const now = new Date().toISOString();
   await db.put({
-    _id: `note:${VAULT}:${crypto.randomUUID()}`, type: "note", vault_id: VAULT, path, content, frontmatter: {},
+    _id: `note:${VAULT}:${crypto.randomUUID()}`, type: "note", vault_id: VAULT, path, content, frontmatter,
     created_at: now, updated_at: now, deleted_at: null,
   } as never);
 }
@@ -1227,4 +1227,31 @@ test("H-030b: lo que hay dentro de BITACORA es de solo lectura (sin ⋮, sin arr
   expect(screen.queryByRole("alertdialog")).toBeNull();
   // Una nota común sigue teniendo su menú.
   expect(screen.getByRole("button", { name: "Acciones de Inicio" })).toBeInTheDocument();
+});
+
+const TEMPLATE_FM = { titulo: "Acta", alcance: ["Proyectos"], atributos: [{ nombre: "cliente", tipo: "texto", valor: "Acme" }], estilo: { publicar: {}, pdf: {} } };
+
+test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activa y la nota nace de la elegida", async () => {
+  const { user, value } = await setup(["Proyectos/Uno.md", "Otros/Dos.md"], {
+    seed: (db) => replicate(db, "PLANTILLAS/plantilla-acta.md", "# Acuerdos\n", TEMPLATE_FM),
+  });
+  // En la raíz la plantilla (solo para «Proyectos») no se ofrece.
+  expect(screen.queryByRole("combobox", { name: "Plantilla" })).toBeNull();
+  await user.click(screen.getByRole("treeitem", { name: "Proyectos" }));
+  const select = await screen.findByRole("combobox", { name: "Plantilla" });
+  await user.selectOptions(select, "Acta");
+  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Reunión");
+  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await waitFor(async () => {
+    const created = (await value.notes.list(VAULT)).find((n) => n.path === "Proyectos/Reunión.md");
+    expect(created?.frontmatter).toMatchObject({ plantilla: "acta", cliente: "Acme" });
+  });
+});
+
+test("H-030b: dentro de PLANTILLAS el formulario crea plantillas", async () => {
+  const { user, value } = await setup(["Inicio.md"], { seed: (db) => replicate(db, "PLANTILLAS/plantilla-acta.md", "x", TEMPLATE_FM) });
+  await user.click(await screen.findByRole("treeitem", { name: "PLANTILLAS" }));
+  await user.type(screen.getByLabelText("Nombre de la plantilla nueva"), "Informe");
+  await user.click(screen.getByRole("button", { name: "Nueva plantilla" }));
+  await waitFor(async () => expect((await value.notes.list(VAULT)).some((n) => n.path === "PLANTILLAS/plantilla-informe.md")).toBe(true));
 });

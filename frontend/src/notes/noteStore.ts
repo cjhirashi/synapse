@@ -15,16 +15,16 @@
 import { child } from "../sync/conflicts";
 import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
-import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError } from "./errors";
+import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, TemplateInUseError } from "./errors";
 import { nextUntitledPath } from "./untitled";
 import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
-import { checkReservedCase, checkNoteWrite, checkFolderMove } from "./metaRules";
+import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName } from "./metaRules";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
-export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
+export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError, TemplateInUseError };
 
 /** Documento de nota tal como se guarda (mismas claves que `note.schema.json`). */
 interface NoteDoc {
@@ -53,6 +53,22 @@ export interface Note {
   rev: string;
 }
 
+/** Lo que hace falta de una plantilla para crear una nota desde ella (H-030b). */
+export interface TemplateSeed {
+  name: string;
+  content: string;
+  atributos: ReadonlyArray<{ nombre: string; tipo: string; valor?: unknown }>;
+}
+
+/** Valor con que nace un atributo de plantilla: su valor inicial o uno vacío del tipo (P3: los nuevos aparecen vacíos). */
+function seedValue(attr: { tipo: string; valor?: unknown }): unknown {
+  if (attr.valor !== undefined && attr.valor !== null) return attr.valor;
+  if (attr.tipo === "texto") return "";
+  if (attr.tipo === "lista") return [];
+  if (attr.tipo === "booleano") return false;
+  return undefined; // numero y fecha sin valor inicial no se escriben
+}
+
 /** Lo que muestra el árbol: sin `content` (puede pesar hasta 2 MiB por nota). */
 export interface NoteSummary {
   id: string;
@@ -79,7 +95,10 @@ export interface NoteStoreOptions {
 export interface NoteStore {
   list(vaultId: string, options?: { deleted?: boolean }): Promise<NoteSummary[]>;
   get(id: string): Promise<Note>;
-  create(vaultId: string, title?: string, folder?: string): Promise<Note>;
+  /** Con `template` (H-030b) la nota nace con el cuerpo de la plantilla, sus atributos y `plantilla: <nombre>`. */
+  create(vaultId: string, title?: string, folder?: string, template?: TemplateSeed): Promise<Note>;
+  /** Crea `PLANTILLAS/plantilla-<nombre>.md` con una definición vacía (alcance toda la bóveda). */
+  createTemplate(vaultId: string, name: string): Promise<Note>;
   rename(id: string, path: string, rev: string): Promise<Note>;
   /**
    * Mueve la carpeta `from` bajo `to` (`""` = raíz): reubica todas sus notas activas al nuevo
@@ -365,6 +384,21 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (doc._rev !== rev) throw new NoteChangedError();
   }
 
+  /** Documentos vivos de la bóveda que citan la plantilla `name` (H-030b), sin contar `excludeId`. */
+  async function templateUsers(vaultId: string, name: string, excludeId: string): Promise<number> {
+    return (await summaries(vaultId)).filter(
+      (note) => note.deleted_at === null && note.id !== excludeId && note.frontmatter?.plantilla === name,
+    ).length;
+  }
+
+  /** Una plantilla en uso no sale de su nombre (renombrar, mover o borrar): `plantilla:in-use` del servidor. */
+  async function assertTemplateFree(doc: NoteDoc, newPath: string | null): Promise<void> {
+    const name = templateName(doc.path);
+    if (name === null || (newPath !== null && templateName(newPath) === name)) return;
+    const users = await templateUsers(doc.vault_id, name, doc._id);
+    if (users > 0) throw new TemplateInUseError(users);
+  }
+
   /** Renombra/mueve una nota (la comparte `rename` y `moveFolder`): misma regla de ruta y unicidad. */
   async function renameDoc(id: string, path: string, rev: string): Promise<Note> {
     const normalized = titleToPath(path);
@@ -379,6 +413,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (checkNoteWrite({ path: normalized, prevPath: doc.path, deleted: false, frontmatter: doc.frontmatter, actorKind: "human" }) !== null) {
       throw new NoteValidationError(["path"]);
     }
+    await assertTemplateFree(doc, normalized);
     await assertPathFree(doc.vault_id, normalized, doc._id);
     return write({ ...doc, path: normalized, updated_at: now() });
   }
@@ -393,6 +428,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (checkNoteWrite({ path: doc.path, prevPath: doc.path, deleted: true, actorKind: "human" }) !== null) {
       throw new NoteValidationError(["path"]);
     }
+    await assertTemplateFree(doc, null);
     const timestamp = now();
     return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
   }
@@ -421,7 +457,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
   }
 
   /** Crea una nota y el INDICE de su carpeta si falta (H-031): sin título usa «Sin título n» de la carpeta. */
-  async function createNote(vaultId: string, title: string | undefined, folder = ""): Promise<Note> {
+  async function createNote(vaultId: string, title: string | undefined, folder = "", template?: TemplateSeed): Promise<Note> {
     const requested = title?.trim() ?? "";
     let path: string;
     if (requested === "") {
@@ -442,14 +478,22 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     }
     await assertPathFree(vaultId, path, null);
     const timestamp = now();
-    const stampedFrontmatter = stampDates({}, { today: localDay(timestamp) });
+    const seeded: Record<string, unknown> = {};
+    if (template !== undefined) {
+      for (const attr of template.atributos) {
+        const value = seedValue(attr);
+        if (value !== undefined) seeded[attr.nombre] = value;
+      }
+      seeded.plantilla = template.name;
+    }
+    const stampedFrontmatter = stampDates(seeded, { today: localDay(timestamp) });
     const created = await write({
       _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
       type: "note",
       vault_id: vaultId,
       path,
       frontmatter: stampedFrontmatter,
-      content: "",
+      content: template?.content ?? "",
       created_at: timestamp,
       updated_at: timestamp,
       deleted_at: null,
@@ -470,8 +514,33 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       return toNote(await load(id, false));
     },
 
-    async create(vaultId, title, folder = "") {
-      return createNote(vaultId, title, folder);
+    async create(vaultId, title, folder = "", template) {
+      return createNote(vaultId, title, folder, template);
+    },
+
+    async createTemplate(vaultId, name) {
+      const slug = name.trim().toLowerCase().normalize("NFD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 56);
+      if (!isValidTemplateName(slug)) throw new NoteValidationError(["path"]);
+      const path = templatePath(slug);
+      const frontmatter = { titulo: name.trim(), descripcion: "", alcance: ["*"], atributos: [], estilo: { publicar: {}, pdf: {} } };
+      if (checkPath(path) !== null || checkNoteWrite({ path, prevPath: null, deleted: false, frontmatter, actorKind: "human" }) !== null) {
+        throw new NoteValidationError(["path"]);
+      }
+      await assertPathFree(vaultId, path, null);
+      const timestamp = now();
+      const created = await write({
+        _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
+        type: "note",
+        vault_id: vaultId,
+        path,
+        frontmatter: stampDates(frontmatter, { today: localDay(timestamp) }),
+        content: "# Estructura base\n\n",
+        created_at: timestamp,
+        updated_at: timestamp,
+        deleted_at: null,
+      });
+      await ensureIndexFor(vaultId, [path]);
+      return created;
     },
 
     async rename(id, path, rev) {
