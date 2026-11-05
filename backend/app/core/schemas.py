@@ -405,3 +405,60 @@ class FileVisibilityUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     visibility: Literal["private", "public"]
+
+
+# --- Registro de agentes por bóveda (H-030 E5) ---
+
+class AgentAccessPut(BaseModel):
+    """Cuerpo de `PUT /vaults/{id}/agent-access/{agent_id}`: carpetas con escritura (`*` = toda la bóveda salvo
+    las reservadas) y estado del registro."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    carpetas: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=300)]], Field(max_length=50)]
+    estado: Literal["activo", "suspendido"] = "activo"
+
+
+class AgentAccessKeyOut(BaseModel):
+    label: str
+    is_admin: bool
+
+
+class AgentAccessEntryOut(BaseModel):
+    agent_id: str
+    estado: str
+    carpetas: list[str]
+    note_id: str
+    keys: list[AgentAccessKeyOut]  # claves vigentes de ese agente (nombre `op-…`)
+
+
+class AgentAccessOut(BaseModel):
+    mode: str
+    agents: list[AgentAccessEntryOut]
+    unregistered_keys: list[AgentAccessKeyOut]  # claves con agente que aún no tienen registro en esta bóveda
+    unregistered_agent_ids: list[str]
+
+
+class ShadowCountOut(BaseModel):
+    agent_id: str | None
+    decision: str
+    reason: str | None
+    declared: bool
+    count: int
+
+
+class ShadowDenyOut(BaseModel):
+    at: datetime
+    vault_id: str | None
+    agent_id: str | None
+    op: str
+    paths: list[str]
+    reason: str | None
+
+
+class ShadowReportOut(BaseModel):
+    mode: str
+    hours: int
+    total: int
+    counts: list[ShadowCountOut]
+    recent_denies: list[ShadowDenyOut]

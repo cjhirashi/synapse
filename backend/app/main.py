@@ -6,6 +6,7 @@ from app.adapters.database import SessionLocal
 from app.bootstrap import run_bootstrap
 from app.core.problems import install_problem_handlers, install_problem_openapi
 from app.routers.admin import router as admin_router
+from app.routers.agent_access import router as agent_access_router
 from app.routers.agent_keys import router as agent_keys_router
 from app.routers.auth import router as auth_router
 from app.routers.files import router as files_router
@@ -32,6 +33,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(agent_keys_router)
 app.include_router(vaults_router)
+app.include_router(agent_access_router)
 app.include_router(notes_router)
 app.include_router(folders_router)
 app.include_router(files_router)

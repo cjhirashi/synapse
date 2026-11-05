@@ -1,0 +1,17 @@
+{
+  "_comentario": "Sembrado inicial del registro de agentes por bóveda (Carlos, 2026-11-04). La clave es el nombre de la bóveda; cada agente lleva sus carpetas ('*' = toda la bóveda salvo las reservadas). Carlos puede reasignar en cualquier momento desde la interfaz de asignaciones o editando AG - AGENTES. OpenClaw y Prueba quedan sin sembrar (administrador pendiente, Q2).",
+  "bóvedas": {
+    "Proyectos": {
+      "aira": ["1 - Proyectos AIRA", "00- BITACORA", "01 - PLANTILLAS", "00 - AG - SKILLS"],
+      "tukey": ["2 - Proyectos Tukey"],
+      "banzi": ["3 - Proyectos Banzi"]
+    },
+    "Inglés": {"emma": ["*"]},
+    "Arquitectura de la Consciencia": {"varela": ["*"]},
+    "Conocimientos de Oriente": {"salomon": ["*"]},
+    "Conocimientos de Carrera": {"turing": ["*"]},
+    "Carrera": {"paulina": ["*"]},
+    "Personal": {"liza": ["*"]},
+    "Negocios": {"liza": ["*"]}
+  }
+}

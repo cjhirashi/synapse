@@ -44,9 +44,22 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_agent_access_log_at'), 'agent_access_log', ['at'], unique=False)
     op.create_index(op.f('ix_agent_access_log_decision'), 'agent_access_log', ['decision'], unique=False)
+    op.create_table('purge_log',
+        sa.Column('id', sa.String(), nullable=False),
+        sa.Column('ran_at', sa.DateTime(), nullable=False),
+        sa.Column('owner_id', sa.String(), nullable=False),
+        sa.Column('vault_id', sa.String(), nullable=False),
+        sa.Column('conversation', sa.String(), nullable=False),
+        sa.Column('notes_deleted', sa.Integer(), nullable=False),
+        sa.Column('dump_file', sa.String(), nullable=False),
+        sa.PrimaryKeyConstraint('id'),
+    )
+    op.create_index(op.f('ix_purge_log_ran_at'), 'purge_log', ['ran_at'], unique=False)
 
 
 def downgrade() -> None:
+    op.drop_index(op.f('ix_purge_log_ran_at'), table_name='purge_log')
+    op.drop_table('purge_log')
     op.drop_index(op.f('ix_agent_access_log_decision'), table_name='agent_access_log')
     op.drop_index(op.f('ix_agent_access_log_at'), table_name='agent_access_log')
     op.drop_table('agent_access_log')
