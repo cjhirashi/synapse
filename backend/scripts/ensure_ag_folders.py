@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """H-030 E3: crea en cada bóveda existente las carpetas reservadas (INDICE de `AG - SKILLS`, `AG - MENSAJES`,
-`AG - AGENTES`, `BITACORA` y `PLANTILLAS`, más el de la raíz si faltara). Idempotente.
+`AG - AGENTES`, `BITACORA` y `PLANTILLAS`, más el de la raíz si faltara) y la skill de cajón si la bóveda no la tiene
+(H-030b: nunca la sobrescribe). Idempotente.
 
 Sin `--apply` solo informa (en seco, solo lectura): por bóveda, los INDICES que crearía y las colisiones con
 contenido que ya existe (notas con el nombre de una carpeta reservada, rutas de `AG - MENSAJES` fuera de formato,
@@ -19,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from h030_common import active_vaults, user_dbs
 
 from app.adapters.vault_repository import VaultRepository
-from app.core import ag_rules
+from app.core import ag_rules, meta_rules
 from app.core.agent_access import parse_registration
 from app.core.index_rules import is_index_path
 from app.core.note_rules import path_key
@@ -38,8 +39,9 @@ def collisions(notes: list[dict]) -> list[str]:
             found.append(f"ruta fuera del formato de AG - MENSAJES: {path}")
         if zone == ag_rules.AG_AGENTES and not is_index_path(path) and parse_registration(path, note.get("frontmatter")) is None:
             found.append(f"nota de AG - AGENTES que no es un registro válido: {path}")
-        if zone in (ag_rules.BITACORA, ag_rules.PLANTILLAS) and not is_index_path(path):
-            found.append(f"contenido previo en carpeta reservada {zone}: {path}")
+        if zone == ag_rules.PLANTILLAS and (code := meta_rules.check_note_write(
+                path=path, frontmatter=note.get("frontmatter"))) is not None:
+            found.append(f"nota de PLANTILLAS que no es una plantilla válida ({code}): {path}")
     return found
 
 
