@@ -26,6 +26,13 @@ class Settings(BaseSettings):
     # PLANTILLAS). Interruptor para desactivarlo sin tocar código; la suite de pruebas lo apaga por defecto.
     SEED_AG_FOLDERS: bool = True
 
+    # H-030b: genera los documentos diarios de BITACORA a partir del registro de cambios. El registro (`change_log`)
+    # se escribe siempre; esto solo apaga los documentos (la suite de pruebas los apaga por defecto, como el sembrado).
+    BITACORA_DOCS: bool = True
+    # H-030b: zona horaria de respaldo del propietario (hora de la bitácora y corte de día). Cada usuario tiene la suya
+    # en `users.timezone`; esta solo se usa si la suya falta o es inválida.
+    DEFAULT_TIMEZONE: str = "America/Mexico_City"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

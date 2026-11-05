@@ -13,6 +13,7 @@ from app.core.schemas import FolderMove, FolderMoveOut, TokenPayload, WikilinkRe
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
+from app.services.change_log_service import ChangeLogService
 from app.services.folder_service import FolderService
 
 router = APIRouter(
@@ -30,7 +31,9 @@ def get_folder_service(
 ) -> FolderService:
     db = f"synapse_user_{current_user.sub}"
     actor = actor_of(current_user)
-    return FolderService(port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor))
+    return FolderService(
+        port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),
+        changelog=ChangeLogService(port, db, current_user.sub, actor))
 
 
 @router.post(

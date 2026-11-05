@@ -16,6 +16,8 @@ class User(Base):
     role_id = Column(String, ForeignKey("roles.id"), nullable=False)
     couchdb_name = Column(String, unique=True)  # synapse_user_{id}
     created_at = Column(DateTime, nullable=False)
+    # Zona horaria del propietario (H-030b): hora de la bitácora y corte de día. Nombre IANA.
+    timezone = Column(String, nullable=False, default="America/Mexico_City", server_default="America/Mexico_City")
     role = relationship("Role", back_populates="users")
 
     # Unicidad case-insensitive (RF-013); la crea la migración 003.

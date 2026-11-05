@@ -11,6 +11,8 @@ os.environ.setdefault("ADMIN_PASSWORD", "admin1234")
 # H-015: credenciales de MinIO de prueba (NO las reales del `.env` del checkout principal).
 # H-030: las bóvedas de prueba nacen vacías (las pruebas de H-030 activan el sembrado donde lo necesitan).
 os.environ.setdefault("SEED_AG_FOLDERS", "false")
+# H-030b: sin documentos diarios de BITACORA en las pruebas (el registro sí se escribe); las de H-030b los activan.
+os.environ.setdefault("BITACORA_DOCS", "false")
 os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
 os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 

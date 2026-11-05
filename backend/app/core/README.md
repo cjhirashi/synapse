@@ -84,6 +84,14 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`, formato de
   `AG - MENSAJES` (`parse_mensaje_path`, `check_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `check_agent_mensaje_op`
   de inmutabilidad). Códigos `reserved-name:path`, `meta-folder:*`, `ag-mensajes:*`. Las usan REST y `sync_push.py`.
+  Desde H-030b `check_create` exige además la forma canónica en MAYÚSCULAS (`meta-folder:case`: `PLANTILLAS`, nunca `Plantillas`) y
+  `check_folder_move(from, to)` solo deja pasar `Plantillas` → `PLANTILLAS`.
+- `meta_rules.py` — reglas de escritura de las carpetas META con lógica (H-030b), sin E/S: `BITACORA` de solo lectura para todos
+  (`bitacora:readonly`), `PLANTILLAS` solo `plantilla-<nombre>.md` planas con definición válida (`plantilla:*`) y la skill de cajón
+  `AG - SKILLS/skill-bovedas-synapse.md` solo desde sesión humana (`skill-cajon:human-only`). `plantilla_rules.py` — nombre, ruta y
+  definición (`alcance`, `atributos`, `estilo`) de una plantilla y su alcance por carpeta. `bitacora_rules.py` — qué cambios se
+  registran (`classify`: no INDICES ni la propia BITACORA ni cambios solo de `fecha_actualizacion`), día local por zona horaria,
+  `day_path` (`BITACORA/AAAA-MM/AAAA-MM-DD.md`) y el texto del día (`render_day`). Las usan REST, `sync_push.py` y `folder_service.py`.
 - `agent_access.py` — permisos de escritura de los agentes (H-030 E6), sin E/S: `Actor`, `parse_registration` del registro
   `AG - AGENTES/<id>.md`, `decide`/`decide_files`. `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):

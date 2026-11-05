@@ -16,6 +16,9 @@ ESTADO_MAX_LEN = 32
 ESTADOS_ESTANDAR = ("borrador", "en proceso", "en revisión", "aprobado", "en implementación", "implementado")
 # `ruta` es del sistema (se calcula desde la ubicación de la nota): no se guarda en el frontmatter.
 RESERVED_KEYS = ("ruta",)
+# `plantilla` (H-030b): nombre de la plantilla de la que nació el documento, sin el prefijo `plantilla-`.
+PLANTILLA_NAME_MAX = 64
+PLANTILLA_NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 
 # Valor de estado ya normalizado para comparar (ver `_estado_lookup`) -> estado estándar o traducción.
 ESTADO_SYNONYMS = {
@@ -100,6 +103,10 @@ def validate_general(frontmatter: dict) -> str | None:
     if "estado" in frontmatter and (
             not isinstance(frontmatter["estado"], str) or normalize_estado(frontmatter["estado"]) != frontmatter["estado"]):
         return "estado"
+    plantilla = frontmatter.get("plantilla")
+    if "plantilla" in frontmatter and (
+            not isinstance(plantilla, str) or len(plantilla) > PLANTILLA_NAME_MAX or not PLANTILLA_NAME_RE.fullmatch(plantilla)):
+        return "plantilla"
     return None
 
 

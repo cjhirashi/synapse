@@ -341,6 +341,10 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `ag-mensajes:<path\|cabecera\|from-mismatch\|immutable\|forbidden>` | (H-030) ruta o metadatos fuera del formato de `AG - MENSAJES`, remitente que no es la clave, mensaje o cabecera que una clave de agente no puede cambiar, cierre por quien no participa |
 | `ag-agentes:registro` | (H-030) nota de `AG - AGENTES/` que no es un registro válido (`estado`, `carpetas`) |
 | `immutable-field:cerrada_el` | (H-030) la cabecera de una conversación trae un `cerrada_el` distinto del que tenía: lo sella el servidor |
+| `meta-folder:case` | (H-030b) una carpeta reservada escrita con otras mayúsculas (`Plantillas/…`) |
+| `bitacora:readonly` | (H-030b) escribir, mover o borrar una nota de `BITACORA/` (solo la escribe el servidor) |
+| `plantilla:<path\|alcance\|atributos\|estilo\|in-use\|unknown>` | (H-030b) plantilla mal ubicada o mal definida; en uso por algún documento; plantilla citada que no existe |
+| `skill-cajon:human-only` | (H-030b) una clave de API intenta modificar la skill de cajón |
 | `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |
 | `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 

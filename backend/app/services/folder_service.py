@@ -9,7 +9,7 @@ Reejecutar la misma operación es seguro: si `from` ya no tiene notas pero `to` 
 """
 from typing import NamedTuple
 
-from app.core import ag_rules
+from app.core import ag_rules, meta_rules, plantilla_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     FolderMoveInvalid, FolderNotFound, NotePathTaken as NotePathTakenProblem, RevisionConflict, ValidationFailed,
@@ -22,6 +22,7 @@ from app.core.ports.vault_port import VaultPort
 from app.core.timestamps import utc_now
 from app.core.wikilink_rewrite import Rename
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.change_log_service import ChangeLogService
 from app.services.note_content_service import NoteContentService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewriteService
@@ -50,13 +51,17 @@ def _under(path: str, folder: str) -> str | None:
 
 
 class FolderService:
-    def __init__(self, port: VaultPort, db: str, actor: Actor | None = None, guard: AgentAccessGuard | None = None):
+    def __init__(
+        self, port: VaultPort, db: str, actor: Actor | None = None, guard: AgentAccessGuard | None = None,
+        changelog: ChangeLogService | None = None,
+    ):
         self._port = port
         self._db = db
         self._notes = NoteService(port, db)
         self._contents = NoteContentService(port, db)
         self._actor = actor
         self._guard = guard
+        self._changelog = changelog  # H-030b: cada nota movida consta en la BITACORA
 
     def move(self, vault_id: str, from_: str, to: str) -> FolderMoveResult:
         self._contents.check_vault_active(vault_id)
@@ -65,7 +70,7 @@ class FolderService:
                 raise FolderMoveInvalid(errors=[{"pointer": f"#/{field}", "detail": "validation-error:path"}])
         if from_ == to:
             return FolderMoveResult(from_, to, 0, RewriteReport())
-        if (code := ag_rules.check_folder_move(from_)) is not None:
+        if (code := ag_rules.check_folder_move(from_, to)) is not None:
             raise FolderMoveInvalid(errors=[{"pointer": "#/from", "detail": code}])
         if self._guard is not None:
             self._guard.check(vault_id, "folder-move", [f"{from_}/x.md", f"{to}/x.md"])
@@ -87,6 +92,16 @@ class FolderService:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
             if (code := ag_rules.check_mensaje_path(new_path)) is not None:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            if (code := ag_rules.check_create(new_path)) is not None:
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            if (code := meta_rules.check_note_write(
+                    path=new_path, prev_path=doc["path"], frontmatter=doc.get("frontmatter"),
+                    actor_kind=self._actor.kind if self._actor else "human")) is not None:
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            name = plantilla_rules.template_name(doc["path"])
+            if (name is not None and plantilla_rules.template_name(new_path) != name
+                    and self._contents.count_template_users(vault_id, name) > 0):
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": "plantilla:in-use"}])
             if (ag_rules.meta_folder_of(new_path) == ag_rules.AG_AGENTES and not is_index_path(new_path)
                     and (code := check_registration_frontmatter(new_path, doc.get("frontmatter"))) is not None):
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
@@ -113,6 +128,8 @@ class FolderService:
 
         self._contents.ensure_indexes(vault_id, f"{to}/x.md")
         invalidate_registry(self._db, vault_id)
+        if self._changelog is not None:
+            self._changelog.flush()
         # Notas que una corrida anterior interrumpida ya movió: sus enlaces se completan ahora.
         moved_now = len(moved)
         moved.update(self._already_moved(live, set(moved), from_, to))
@@ -160,7 +177,15 @@ class FolderService:
                 **doc, "path": new_path, "updated_at": utc_now(),
                 "frontmatter": stamp_dates(doc.get("frontmatter"), today_cdmx(), doc.get("created_at")),
             }
-            self._port.put(self._db, updated)
+            pending = self._changelog.begin(doc["vault_id"], doc, updated) if self._changelog is not None else None
+            try:
+                rev = self._port.put(self._db, updated)
+            except RevisionConflict:
+                if self._changelog is not None:
+                    self._changelog.fail(pending)
+                raise
+            if self._changelog is not None:
+                self._changelog.confirm(pending, rev)
         except RevisionConflict:
             self._notes.release_path(doc["_id"], new_path)
             raise

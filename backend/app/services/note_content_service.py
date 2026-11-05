@@ -24,7 +24,7 @@ import json
 import uuid
 from typing import NamedTuple
 
-from app.core import ag_rules
+from app.core import ag_rules, meta_rules, plantilla_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
@@ -41,6 +41,7 @@ from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.change_log_service import ChangeLogService, Pending
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.vault_service import is_canonical_uuid
@@ -146,6 +147,7 @@ class NoteContentService:
     def __init__(
         self, port: VaultPort, db: str, auto_indexes: bool = True,
         actor: Actor | None = None, guard: AgentAccessGuard | None = None,
+        changelog: ChangeLogService | None = None,
     ):
         self._port = port
         self._db = db
@@ -155,6 +157,8 @@ class NoteContentService:
         self._actor = actor
         self._guard = guard
         self._mensajes = MensajesService(port, db)
+        # H-030b: registro de cambios (BITACORA automática); `None` en scripts y herramientas del sistema.
+        self._changelog = changelog
 
     def list(
         self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None = None
@@ -227,10 +231,10 @@ class NoteContentService:
         if (code := ag_rules.check_create(data.path)) is not None:
             raise _field_error("path", code)
         fields["frontmatter"] = self._check_ag_target(vault_id, data.path, fields.get("frontmatter"), None, "create")
+        self._check_meta_write(vault_id, data.path, None, fields.get("frontmatter"), None)
         note_id = str(uuid.uuid4())
         doc_id = _doc_id(vault_id, note_id)
         now = utc_now()
-        self._reserve(doc_id, data.path)
         doc = {
             "_id": doc_id,
             "type": "note",
@@ -246,10 +250,15 @@ class NoteContentService:
         doc["frontmatter"] = stamp_dates(fields.get("frontmatter"), today_cdmx(), now)
         # Si este `put` falla, la reserva queda huérfana (su nota no existe) y no se libera:
         # un fallo de red puede ocultar un `put` que sí entró (mismo riesgo que `VaultService.create`).
-        doc["_rev"] = self._port.put(self._db, doc)
+        def write() -> str:
+            self._reserve(doc_id, data.path)
+            return self._port.put(self._db, doc)
+
+        doc["_rev"] = self._logged_write(vault_id, None, doc, write)
         if self._auto_indexes:
             self._ensure_indexes(vault_id, data.path)
         self._after_write(vault_id, data.path)
+        self._flush_log()
         return _versioned(doc)
 
     def update(self, vault_id: str, note_id: str, data: NoteUpdate, if_match: str | None) -> Versioned:
@@ -288,6 +297,7 @@ class NoteContentService:
             raise _field_error("path", code)
         if not is_index_path(new_path):
             base = self._check_ag_target(vault_id, new_path, base, doc, "rename_or_move" if renamed else "update", old=old)
+        self._check_meta_write(vault_id, new_path, old_path, base, doc, deleted=False)
         content_changed = "content" in changes and changes["content"] != doc.get("content")
         if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
             raise _field_error("content" if code == "index-readonly:content" else "frontmatter", code)
@@ -295,8 +305,9 @@ class NoteContentService:
             self._reserve(doc["_id"], changes["path"])
         updated = {**doc, **changes, "updated_at": utc_now()}
         updated["frontmatter"] = stamp_dates(base, today_cdmx(), doc.get("created_at"))
-        updated["_rev"] = self._write(updated)
+        updated["_rev"] = self._logged_write(vault_id, doc, updated, lambda: self._write(updated))
         self._after_write(vault_id, old_path, new_path)
+        self._flush_log()
         if renamed:
             self._release(doc["_id"], old_path)
             if self._auto_indexes:
@@ -325,9 +336,12 @@ class NoteContentService:
             below = self._count_live_below(vault_id, doc["path"], doc["_id"])
             if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
                 raise _field_error("path", code)
-        self._write({**doc, "deleted_at": utc_now()})
+        self._check_meta_write(vault_id, doc["path"], doc["path"], doc.get("frontmatter"), doc, deleted=True)
+        deleted = {**doc, "deleted_at": utc_now()}
+        self._logged_write(vault_id, doc, deleted, lambda: self._write(deleted))
         self._release(doc["_id"], doc["path"])
         self._after_write(vault_id, doc["path"])
+        self._flush_log()
 
     def restore(self, vault_id: str, note_id: str, if_match: str | None) -> Versioned:
         """Restaura una nota de la papelera: vuelve a reservar `path` (mismo patrón que
@@ -336,12 +350,18 @@ class NoteContentService:
         doc = self._load(vault_id, note_id, deleted=True)
         _check_precondition(doc, if_match)
         self._guard_check(vault_id, "restore", [doc["path"]])
-        self._reserve(doc["_id"], doc["path"])
+        self._check_meta_write(vault_id, doc["path"], None, doc.get("frontmatter"), None)
         restored = {**doc, "deleted_at": None}
-        restored["_rev"] = self._write(restored)
+
+        def write() -> str:
+            self._reserve(doc["_id"], doc["path"])
+            return self._write(restored)
+
+        restored["_rev"] = self._logged_write(vault_id, doc, restored, write)
         if self._auto_indexes:
             self._ensure_indexes(vault_id, doc["path"])
         self._after_write(vault_id, doc["path"])
+        self._flush_log()
         return _versioned(restored)
 
     # --- Carpetas reservadas, mensajes y registro de agentes (H-030) ---
@@ -402,6 +422,73 @@ class NoteContentService:
         if info is not None and (code := ag_rules.check_agent_mensaje_op(
                 "delete", info, agent_id=agent[0], is_admin=agent[1])) is not None:
             raise _field_error("path", code)
+
+    # --- Reglas de BITACORA, PLANTILLAS y skill de cajón; registro de cambios (H-030b) ---
+
+    def _actor_kind(self) -> str:
+        return self._actor.kind if self._actor is not None else "human"
+
+    def _check_meta_write(
+        self, vault_id: str, path: str, prev_path: str | None, frontmatter: object, prev_doc: dict | None,
+        deleted: bool = False,
+    ) -> None:
+        """Reglas de las carpetas META con lógica y las que necesitan datos de la bóveda: plantilla inexistente
+        o en uso. `prev_doc`: la nota antes de escribir (`None` al crear o restaurar)."""
+        code = meta_rules.check_note_write(
+            path=path, prev_path=prev_path, deleted=deleted, frontmatter=frontmatter, actor_kind=self._actor_kind())
+        if code is not None:
+            raise _field_error("frontmatter" if code.startswith("plantilla:") and code != "plantilla:path" else "path", code)
+        old_fm = (prev_doc or {}).get("frontmatter") or {}
+        ref = frontmatter.get("plantilla") if isinstance(frontmatter, dict) else None
+        if not deleted and ref is not None and ref != old_fm.get("plantilla") and not self._template_exists(vault_id, ref):
+            raise _field_error("frontmatter", "plantilla:unknown")
+        # Una plantilla con documentos que la usan no se renombra, no se mueve fuera de PLANTILLAS ni se borra.
+        if prev_doc is not None and not prev_doc.get("deleted_at"):
+            name = plantilla_rules.template_name(prev_doc["path"])
+            gone = deleted or plantilla_rules.template_name(path) != name
+            if name is not None and gone and self._count_template_users(vault_id, name, prev_doc["_id"]) > 0:
+                raise _field_error("path", "plantilla:in-use")
+
+    def _template_exists(self, vault_id: str, name: str) -> bool:
+        path = plantilla_rules.template_path(name)
+        after = None
+        while True:
+            docs = self._port.list_notes_by_prefix(
+                self._db, vault_id, False, view_key(ag_rules.PLANTILLAS), 100, after)
+            if any(path_key(d["path"]) == path_key(path) for d in docs):
+                return True
+            if len(docs) < 100:
+                return False
+            after = (view_key(docs[-1]["path"]), docs[-1]["_id"])
+
+    def count_template_users(self, vault_id: str, name: str) -> int:
+        return self._count_template_users(vault_id, name, None)
+
+    def _count_template_users(self, vault_id: str, name: str, exclude_id: str | None) -> int:
+        """Notas vivas de la bóveda cuyo atributo `plantilla` es `name`."""
+        return sum(
+            1 for d in self._live_paths(vault_id)
+            if d["_id"] != exclude_id and (d.get("frontmatter") or {}).get("plantilla") == name)
+
+    def _logged_write(self, vault_id: str, old: dict | None, new: dict, write) -> str:
+        """Registra el cambio antes de escribir la nota y confirma (o marca) el registro según el resultado."""
+        pending: Pending | None = None
+        if self._changelog is not None:
+            pending = self._changelog.begin(vault_id, old, new)
+        try:
+            rev = write()
+        except (RevisionConflict, PreconditionFailed, NotePathTakenProblem):
+            if self._changelog is not None:
+                self._changelog.fail(pending)
+                self._changelog.flush()
+            raise
+        if self._changelog is not None:
+            self._changelog.confirm(pending, rev)
+        return rev
+
+    def _flush_log(self) -> None:
+        if self._changelog is not None:
+            self._changelog.flush()
 
     def _after_write(self, vault_id: str, *paths: str) -> None:
         """Efectos tras escribir: el registro de agentes cambió (se descarta su caché) o se escribió en una

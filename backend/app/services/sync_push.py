@@ -38,7 +38,7 @@ from typing import NamedTuple
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
-from app.core import ag_rules
+from app.core import ag_rules, meta_rules, plantilla_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
@@ -51,6 +51,7 @@ from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultAttributes, VaultDescription, VaultIcon, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.change_log_service import ChangeLogService
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
@@ -182,7 +183,8 @@ class SyncPushService:
     """Valida y escribe un lote del replicador en la base de un usuario (una instancia por petición)."""
 
     def __init__(self, vaults: VaultService, notes: NoteService, port: VaultPort,
-                 replication: ReplicationPort, db: str, owner_id: str, actor: Actor | None = None):
+                 replication: ReplicationPort, db: str, owner_id: str, actor: Actor | None = None,
+                 changelog: ChangeLogService | None = None):
         self._vaults = vaults
         self._notes = notes
         self._port = port
@@ -193,6 +195,8 @@ class SyncPushService:
         self._actor = actor
         self._guard = AgentAccessGuard(port, db, owner_id, actor) if actor is not None else None
         self._mensajes = MensajesService(port, db)
+        # H-030b: registro de cambios (BITACORA automática); se escribe antes que las notas del lote.
+        self._changelog = changelog
         self._start_batch()
 
     def _start_batch(self) -> None:
@@ -205,6 +209,8 @@ class SyncPushService:
         self._reserved: dict[str, dict[str, str]] = {}
         # H-030: bóvedas nuevas del lote (reciben sus carpetas reservadas) y notas aceptadas por revisar.
         self._new_vaults: set[str] = set()
+        # H-030b: (revisión aceptada, la que sustituye) de cada nota del lote, para el registro de cambios.
+        self._log_items: list[tuple[dict, dict | None]] = []
 
     async def push(self, docs: list[dict]) -> list[dict]:
         """Rechazos del lote, en su orden; `[]` si se aceptó todo (como responde CouchDB).
@@ -246,7 +252,9 @@ class SyncPushService:
             accepted.append(doc)
 
         if accepted:
+            pendings = await to_thread.run_sync(self._log_begin)
             await self._write(accepted)
+            await to_thread.run_sync(self._log_confirm, pendings)
             await self._release_unused()
             await to_thread.run_sync(self._after_write, accepted)
         if deferred:
@@ -262,6 +270,8 @@ class SyncPushService:
         y reapertura de las conversaciones cerradas en las que se escribió."""
         from app.services.note_content_service import NoteContentService
 
+        if self._changelog is not None:
+            self._changelog.flush()
         try:
             for vault_id in self._new_vaults if settings.SEED_AG_FOLDERS else ():
                 NoteContentService(self._port, self._db).ensure_ag_folders(vault_id)
@@ -282,6 +292,22 @@ class SyncPushService:
                         self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
         except Exception:  # noqa: BLE001
             logging.getLogger(__name__).warning("post-push effects failed", exc_info=True)
+
+    def _log_begin(self) -> list:
+        """Registra en `change_log`, antes de escribir el lote, el cambio de cada nota aceptada (idempotente por
+        `_rev`: el reintento de un lote no duplica). Si no se puede registrar, el lote no se escribe (503)."""
+        if self._changelog is None:
+            return []
+        out = []
+        for doc, previous in self._log_items:
+            pending = self._changelog.begin(doc["vault_id"], previous, doc, rev=doc["_rev"])
+            if pending is not None:
+                out.append((pending, doc["_rev"]))
+        return out
+
+    def _log_confirm(self, pendings: list) -> None:
+        for pending, rev in pendings:
+            self._changelog.confirm(pending, rev)
 
     async def _push_index_deletions(
             self, deferred: list[tuple[int, dict]], rejections: dict[int, dict],
@@ -378,6 +404,7 @@ class SyncPushService:
             if doc["_id"].startswith(NOTE_PREFIX):
                 self._check_index_rules(doc, leaves)
                 self._check_ag_rules(doc, leaves)
+                await self._check_meta_rules(doc, leaves)
                 await self._check_agent_access(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
@@ -387,6 +414,9 @@ class SyncPushService:
             await kind.reserve(self, doc)
             key, label = kind.use(doc)
             self._reserved.setdefault(doc["_id"], {})[key] = label
+        if doc["_id"].startswith(NOTE_PREFIX) and not tombstone:
+            history = _history(doc)
+            self._log_items.append((doc, leaves.get(history[1]) if len(history) > 1 else None))
         self._project(doc, leaves)
 
     async def _projected(self, doc_id: str) -> dict[str, dict]:
@@ -506,6 +536,32 @@ class SyncPushService:
         if zone == ag_rules.AG_AGENTES and not deleted and not is_index_path(path):
             if (code := check_registration_frontmatter(path, doc.get("frontmatter"))) is not None:
                 raise Rejected(code)
+
+    async def _check_meta_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """H-030b: BITACORA de solo lectura, forma de las plantillas, skill de cajón solo para la sesión humana y
+        plantilla en uso (no se borra, renombra ni saca de PLANTILLAS mientras algún documento la use).
+
+        La existencia de la plantilla que cita un documento no se comprueba aquí (un cliente sin conexión puede
+        crear la plantilla y el documento en lotes distintos); la protege el borrado de plantillas en uso."""
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        prev_path = previous["path"] if previous else None
+        deleted = doc["deleted_at"] is not None
+        kind = self._actor.kind if self._actor is not None else "human"
+        if (code := meta_rules.check_note_write(
+                path=doc["path"], prev_path=prev_path, deleted=deleted, frontmatter=doc.get("frontmatter"),
+                actor_kind=kind)) is not None:
+            raise Rejected(code)
+        name = plantilla_rules.template_name(prev_path) if prev_path else None
+        if name is not None and previous is not None and not previous.get("deleted_at") and (
+                deleted or plantilla_rules.template_name(doc["path"]) != name):
+            from app.services.note_content_service import NoteContentService
+
+            vault_id = doc["_id"].split(":")[1]
+            users = await to_thread.run_sync(
+                NoteContentService(self._port, self._db)._count_template_users, vault_id, name, doc["_id"])
+            if users > 0:
+                raise Rejected("plantilla:in-use")
 
     async def _check_agent_access(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-030 E6: una clave de agente solo escribe donde su registro de `AG - AGENTES` lo permite. En modo

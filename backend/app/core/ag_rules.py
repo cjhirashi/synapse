@@ -3,9 +3,10 @@
 Las usan la REST (`services/note_content_service.py`, `folder_service.py`) y la sincronización
 (`services/sync_push.py`). Los códigos de rechazo son texto fijo del catálogo (nunca el valor enviado).
 
-Carpetas reservadas, siempre en la raíz de la bóveda: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES` y, solo
-como nombre (su lógica es de H-030b), `BITACORA` y `PLANTILLAS`. No se renombran, no se mueven y su INDICE no
-se borra. La equivalencia de nombres es la de `path_key` (NFKC + casefold), como en `INDICE.md`.
+Carpetas reservadas, siempre en la raíz de la bóveda: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`
+y `PLANTILLAS` (la lógica de las dos últimas es de H-030b: `core/meta_rules.py`). No se renombran, no se mueven
+y su INDICE no se borra. La equivalencia de nombres es la de `path_key` (NFKC + casefold), como en `INDICE.md`,
+pero siempre se escriben en su forma canónica, en MAYÚSCULAS (`meta-folder:case`).
 """
 import re
 from datetime import datetime
@@ -28,8 +29,8 @@ FOLDER_DESCRIPTIONS = {
     AG_SKILLS: "Skills para los agentes que usan esta bóveda: cómo navegarla y trabajar en cada una de sus secciones.",
     AG_MENSAJES: "Buzón entre agentes: una carpeta por destinatario y conversación, con una nota por mensaje.",
     AG_AGENTES: "Registro de los agentes que gestionan esta bóveda y las carpetas en las que pueden escribir.",
-    BITACORA: "Bitácora diaria de cambios de la bóveda (reservada; su lógica llega con H-030b).",
-    PLANTILLAS: "Plantillas para crear documentos nuevos en la bóveda (reservada; su lógica llega con H-030b).",
+    BITACORA: "Bitácora automática: un documento por día con cada cambio de la bóveda (qué, cuándo, quién). Solo lectura.",
+    PLANTILLAS: "Plantillas para crear documentos nuevos: dónde se usan, sus atributos, su estilo y su estructura base.",
 }
 
 _META_KEYS = {path_key(name): name for name in META_FOLDERS}
@@ -70,14 +71,27 @@ def is_meta_folder(folder: str) -> bool:
 # --- Estructura (E3) ---
 
 def check_create(path: str) -> str | None:
-    """Creación o destino de un renombre: ninguna nota toma el nombre de una carpeta reservada."""
-    return "reserved-name:path" if is_reserved_name(path) else None
+    """Creación o destino de un renombre: ninguna nota toma el nombre de una carpeta reservada, y la carpeta
+    reservada se escribe siempre en su forma canónica (MAYÚSCULAS: `PLANTILLAS`, nunca `Plantillas`)."""
+    if is_reserved_name(path):
+        return "reserved-name:path"
+    if "/" in path:
+        first = first_segment(path)
+        canonical = _META_KEYS.get(path_key(first))
+        if canonical is not None and first != canonical:
+            return "meta-folder:case"
+    return None
 
 
-def check_folder_move(from_: str) -> str | None:
+def check_folder_move(from_: str, to: str | None = None) -> str | None:
     """Mover o renombrar una carpeta: la reservada no se mueve. Mover otra carpeta *hacia* una reservada
-    (fusionarla en ella) sí se admite; el formato de lo que cae dentro lo validan las reglas de cada nota."""
-    return "meta-folder:rename" if is_meta_folder(from_) else None
+    (fusionarla en ella) sí se admite; el formato de lo que cae dentro lo validan las reglas de cada nota.
+    Única excepción: una carpeta reservada escrita con otras mayúsculas (`Plantillas`) puede pasar a su forma
+    canónica (`PLANTILLAS`)."""
+    if not is_meta_folder(from_):
+        return None
+    canonical = _META_KEYS[path_key(from_)]
+    return None if from_ != canonical and to == canonical else "meta-folder:rename"
 
 
 def check_index_delete(path: str) -> str | None:

@@ -374,10 +374,33 @@ Después reescribe los wikilinks de la bóveda como el `PATCH` de nota (§4). Si
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
 
+## BITACORA automática y PLANTILLAS (H-030b)
+
+**BITACORA.** El servidor registra cada cambio de cada documento (crear, editar, renombrar, mover, borrar, restaurar), sea del
+usuario, de un agente o de una carga del sistema, **antes** de escribirlo (si no puede registrarlo, la escritura falla con `503`).
+Desde ese registro genera una nota por día, `BITACORA/AAAA-MM/AAAA-MM-DD.md`, con una línea por cambio: hora, autor (correo,
+agente o clave general), operación, título y ruta (en renombres y movimientos, la anterior y la actual). El día y la hora son los de
+la zona horaria del propietario (`users.timezone`, por defecto `America/Mexico_City`). **Solo lectura para todos**
+(`bitacora:readonly`); se consulta como cualquier nota (`GET …/notes?prefix=BITACORA/2026-11`). No se registran los INDICES
+automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los cambios que solo tocan `fecha_actualizacion`. Una línea
+`[sin confirmar]` es un cambio registrado cuya escritura no se confirmó; `[no se aplicó]`, uno que se sabe que falló.
+
+**PLANTILLAS.** Cada plantilla es `PLANTILLAS/plantilla-<nombre>.md` (plana; `<nombre>` en minúsculas, dígitos y guiones,
+≤ 64). Frontmatter de la definición: `alcance` (lista de carpetas o `["*"]`), `atributos` (`[{nombre, tipo, valor?}]`, `tipo`:
+`texto|numero|fecha|lista|booleano`) y `estilo` (`{publicar: {}, pdf: {}}`, reservado para H-035/H-036). El cuerpo es la
+estructura Markdown base. Un documento creado desde una plantilla guarda su nombre en el atributo general `plantilla`; se
+rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plantilla no toca los documentos que la usan; una
+plantilla con documentos vivos que la citen no se borra, renombra ni saca de `PLANTILLAS` (`plantilla:in-use`). Otros códigos:
+`plantilla:path|alcance|atributos|estilo`.
+
+**Skill de cajón.** `AG - SKILLS/skill-bovedas-synapse.md` solo se crea, edita, mueve o borra desde una sesión humana (cookie); una
+clave de API, aunque sea del dueño, recibe `skill-cajon:human-only`.
+
 ## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
 
-Cada bóveda tiene cinco carpetas reservadas **en la raíz**: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES` y, solo
-como nombre (su lógica llega con H-030b), `BITACORA` y `PLANTILLAS`. Nacen con la bóveda (REST y `/sync`), cada una con
+Cada bóveda tiene cinco carpetas reservadas **en la raíz**: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`
+y `PLANTILLAS` (las dos últimas, H-030b: ver «BITACORA automática y PLANTILLAS»). Sus nombres se escriben siempre en
+**MAYÚSCULAS** (`meta-folder:case` rechaza `Plantillas/…`). Nacen con la bóveda (REST y `/sync`), cada una con
 su `INDICE.md` y su `descripcion`; no se renombran ni se mueven, su INDICE no se borra y ninguna nota toma su nombre
 (`meta-folder:rename`, `meta-folder:index-delete`, `reserved-name:path`). Mover otra carpeta *hacia* una reservada sí se admite.
 
@@ -423,7 +446,7 @@ escritura; `*` = toda la bóveda salvo las reservadas). Una nota de esa carpeta 
 
 Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
 `activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo
-`AG - MENSAJES`. `AG - AGENTES` lo escribe solo el humano o el administrador; `BITACORA` y `PLANTILLAS` (que equivale a una carpeta `Plantillas` ya existente: la comparación no distingue mayúsculas) solo reservan su nombre hasta H-030b y se escriben como cualquier carpeta.
+`AG - MENSAJES`. `AG - AGENTES` lo escribe solo el humano o el administrador; `BITACORA` nadie la escribe (solo el servidor) y `PLANTILLAS` se rige por `carpetas` como cualquier carpeta de contenido, con su formato propio (H-030b).
 Un renombre o movimiento exige permiso en la ruta de origen **y** en la de destino. Archivos (`/files`): basta ser un
 agente registrado y activo en la bóveda. Modos (`AGENT_ACCESS_MODE`): `shadow` (por defecto) solo registra lo que haría
 en la tabla `agent_access_log`; `enforce` rechaza con `403` `agent-access-denied` (REST) o `reason: agent-access-denied`

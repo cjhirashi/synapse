@@ -15,6 +15,7 @@ from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, TokenPay
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
+from app.services.change_log_service import ChangeLogService
 from app.services.note_content_service import NoteContentService, Versioned
 
 router = APIRouter(
@@ -36,7 +37,9 @@ def get_note_content_service(
     # base resuelta sólo del principal (RF-014 de 0003; RF-002/RF-006 de 0013).
     db = f"synapse_user_{current_user.sub}"
     actor = actor_of(current_user)
-    return NoteContentService(port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor))
+    return NoteContentService(
+        port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),
+        changelog=ChangeLogService(port, db, current_user.sub, actor))
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:

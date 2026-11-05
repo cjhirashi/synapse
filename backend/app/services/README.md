@@ -17,6 +17,10 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
 - H-030: `agent_access_guard.py` (cumplimiento del registro `AG - AGENTES`: modo sombra/`enforce`, caché del registro y bitácora
   `agent_access_log`), `agent_registry_service.py` (lee y escribe el registro), `mensajes_service.py` (reabrir conversaciones,
   sellar `cerrada_el` de cabeceras llegadas por `/sync`) y `mensajes_purge.py` (purga de cerradas > 15 días con volcado a 30 días).
+- H-030b: `change_log_service.py` (`ChangeLogService`: registra cada cambio de nota en `change_log` ANTES de escribirla, idempotente por
+  `_rev` en `/sync`, y genera los documentos diarios `BITACORA/AAAA-MM/AAAA-MM-DD.md` en la zona horaria del propietario; `rebuild`
+  los regenera desde la tabla). Lo usan `note_content_service.py`, `sync_push.py` y `folder_service.py`; si el registro no se puede
+  escribir, la escritura no se hace (503). `BITACORA_DOCS=false` apaga los documentos (no el registro).
 - `note_content_service.py` (`NoteContentService`, historia 0014): contenido de notas vía REST para agentes
   sobre la base CouchDB del usuario (a través de `VaultPort`). Cursor opaco ligado a la bóveda, `ETag` =
   `_rev` entre comillas, y escritura que reusa `core/note_rules.py`, `core/attribute_rules.py` y

@@ -82,7 +82,7 @@ def _covers(carpeta: str, path: str) -> bool:
 def _decide_path(actor_id: str, registration: Registration | None, path: str) -> Decision:
     zone = meta_folder_of(path)
     if zone not in (AG_MENSAJES, AG_AGENTES, AG_SKILLS):
-        zone = None  # BITACORA y PLANTILLAS solo reservan su nombre hasta H-030b: se escriben como cualquier carpeta
+        zone = None  # BITACORA (nadie escribe: `meta_rules`) y PLANTILLAS (formato propio) se rigen por `carpetas`
     if zone == AG_MENSAJES:
         return Decision(True)
     if registration is None:

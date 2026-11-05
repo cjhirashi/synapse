@@ -36,6 +36,7 @@ from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
 from app.services import sync_filter
 from app.services.note_service import NoteService
+from app.services.change_log_service import ChangeLogService
 from app.services.sync_push import SyncPushService
 from app.services.vault_service import VaultService
 
@@ -156,9 +157,10 @@ def get_push_service(
     vault_port: VaultPort = Depends(get_vault_port),
     replication: ReplicationPort = Depends(get_replication_port),
 ) -> SyncPushService:
+    actor = actor_of(current_user)
     return SyncPushService(
         VaultService(vault_port, db), NoteService(vault_port, db), vault_port, replication, db,
-        current_user.sub, actor_of(current_user))
+        current_user.sub, actor, ChangeLogService(vault_port, db, current_user.sub, actor, via="sync"))
 
 
 Db = Annotated[str, Depends(get_sync_db)]
@@ -200,6 +202,8 @@ REJECTION_REASON = (
     r"|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+"
     # H-030: carpetas reservadas, formato de AG - MENSAJES / AG - AGENTES y registro de agentes.
     r"|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied"
+    # H-030b: BITACORA de solo lectura, plantillas y skill de cajón.
+    r"|bitacora:.+|plantilla:.+|skill-cajon:.+"
     r"|validation-error:.+|not-normalized:.+)$"
 )
 
