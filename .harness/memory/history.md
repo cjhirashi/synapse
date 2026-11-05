@@ -1,5 +1,12 @@
 # History — Synapse
 
+## [2026-11-05] H-030c: el árbol muestra cada carpeta en una sola línea (solo cliente)
+
+- **Fecha/hora:** 2026-11-05 09:35 a 10:05 CDMX. Fase: Implement + verify. Encargo de Carlos vía `main`: quitar la descripción del INDICE bajo cada fila de carpeta del árbol (META y comunes, cabecera META y raíz). La descripción sigue dentro del INDICE.
+- **Qué cambió:** `frontend/src/notes/NoteSidebar.tsx` (se quita el `<p className="note-tree-meta-desc">`, el `useMemo` de `metaDescriptions` y el `aria-describedby` de la fila); `frontend/src/notes/notes.css` (regla `.note-tree-meta-desc` eliminada); pruebas `NoteSidebar.test.tsx` y `e2e/h030-meta.spec.ts`; `frontend/src/README.md`. Sin cambios de datos, API, `note_list`, `AGENT_ACCESS_MODE`, claves ni migraciones.
+- **Verificación:** vitest 120 archivos / 2721 pruebas sin fallos; `tsc` limpio; e2e `h030-meta`, `h030b` y `h031-indices` en Chromium a 1280 y 390 px (6/6). Las specs `regression`, `h029-meta`, `h029-tipos` y `workspace-visual` dan el mismo resultado en base y con el cambio (fallos preexistentes: selector «Código» ambiguo y datos de catálogo). `h025-enlaces` a 390 px (imagen YouTube existente) es intermitente también en base (3 de 4 fallos en base, 2 de 4 con el cambio): preexistente, no se tocó.
+- **Modelos:** claude-haiku-5-5 (sesión única), sin subagentes.
+
 ## [2026-11-05] H-030b: BITACORA automática, PLANTILLAS, skill de cajón y nombres META en MAYÚSCULAS (desplegado en 3 entregas)
 
 - **Fecha/hora:** 2026-11-04 22:30 a 2026-11-05 00:30 CDMX. Fase: Implement + deploy. Orden de Carlos vía `main` (se fue a dormir; quiere verlo aplicado): terminar META visual, nombres de las carpetas META en MAYÚSCULAS, H-030b con las recomendaciones P1 a P10 de la ronda 1, migrar lo existente (P4) con informe en seco, respaldo y reescritura de wikilinks. **No se ejecutó el corte de H-030 (sigue `AGENT_ACCESS_MODE=shadow` y la clave general vigente).**
