@@ -1164,15 +1164,17 @@ test("H-030: la cabecera META se pliega y despliega con el ratón y con ←/→,
   expect(screen.getByRole("treeitem", { name: "META" })).toHaveAttribute("aria-expanded", "false");
 });
 
-test("H-030: cada carpeta reservada muestra la descripción de su INDICE y su nombre abre ese INDICE", async () => {
+test("H-030: el árbol no muestra la descripción del INDICE de una carpeta reservada y su nombre abre ese INDICE", async () => {
   const { value, user, onOpen, rerender, ui } = await setup(["AG - SKILLS/skill-a.md"], { indexes: true });
   const index = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/INDICE.md");
   if (!index) throw new Error("falta el INDICE de la carpeta reservada");
   const doc = await value.notes.get(index.id);
   await value.notes.save(index.id, "", doc.rev, { ...doc.frontmatter, descripcion: "Skills para los agentes de la bóveda." });
+  await value.notes.create(VAULT, "Llegó");
   rerender(ui({ ...value, notesVersion: value.notesVersion + 1 })); // la sincronización avisa que cambió una nota
-  expect(await screen.findByText("Skills para los agentes de la bóveda.")).toBeInTheDocument();
-  expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).toHaveAccessibleDescription("Skills para los agentes de la bóveda.");
+  expect(await screen.findByRole("treeitem", { name: "Llegó" })).toBeInTheDocument(); // el árbol ya se volvió a leer
+  expect(screen.queryByText("Skills para los agentes de la bóveda.")).toBeNull();
+  expect(screen.getByRole("treeitem", { name: "AG - SKILLS" })).not.toHaveAccessibleDescription();
   onOpen.mockClear();
   await user.click(screen.getByRole("treeitem", { name: "AG - SKILLS" }));
   expect(onOpen).toHaveBeenCalledWith(index.id);

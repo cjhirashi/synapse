@@ -300,17 +300,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     [meta, metaOpen, tree, expanded],
   );
 
-  /** Descripción del INDICE de cada carpeta reservada (la que el servidor siembra y el usuario puede editar). */
-  const metaDescriptions = useMemo(() => {
-    const byPath = new Map((items ?? []).filter((item) => item.deleted_at === null).map((item) => [pathKey(item.path), item]));
-    return new Map(
-      meta.map((folder) => {
-        const description = byPath.get(pathKey(indexPathFor(folder.path)))?.frontmatter?.descripcion;
-        return [folder.path, typeof description === "string" ? description.trim() : ""];
-      }),
-    );
-  }, [items, meta]);
-
   /** Fila con el foco del teclado (la única con `tabindex=0`); si desaparece, la primera. */
   const [focusKey, setFocusKey] = useState<string | null>(null);
   const tabbable = rows.some((row) => row.key === focusKey) ? focusKey : (rows[0]?.key ?? null);
@@ -684,9 +673,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     return nodes.map((node) => {
       if (node.kind === "folder") {
         const open = expanded.has(node.path);
-        const description = reserved ? metaDescriptions.get(node.path) : "";
-        // Un id con espacios no es una referencia válida para `aria-describedby` (lista separada por espacios).
-        const descriptionId = `${uid}-meta-${node.path.replace(/[^a-z0-9]/gi, "-")}`;
         const editing = inlineRename?.kind === "folder" && inlineRename.path === node.path;
         const icon = open ? (
           <FolderOpen size={13} aria-hidden="true" data-icon="folder-open" className="note-tree-icon-folder" />
@@ -710,7 +696,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   className="note-tree-row note-tree-folder"
                   style={indent}
                   aria-current={activeFolder === node.path ? "true" : undefined}
-                  aria-describedby={description ? descriptionId : undefined}
                   draggable={!reserved && !isInBitacora(node.path)}
                   data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
                   onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
@@ -734,11 +719,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
               {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). */}
               {!editing && !reserved && !isInBitacora(node.path) && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
             </div>
-            {description && (
-              <p id={descriptionId} className="note-tree-meta-desc" title={description} aria-hidden="true">
-                {description}
-              </p>
-            )}
             {open && (
               <ul role="group" className="note-tree-group">
                 {renderNodes(node.children, depth + 1)}

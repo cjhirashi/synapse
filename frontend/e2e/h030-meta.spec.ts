@@ -68,18 +68,19 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await page.keyboard.press("Delete");
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
 
-    // 6. Cada carpeta muestra la descripción de su INDICE.
-    await expect(meta().getByText(/Skills para los agentes/)).toBeVisible();
-    await expect(meta().getByText(/Buzón entre agentes/)).toBeVisible();
-    await expect(meta().getByText(/Registro de los agentes/)).toBeVisible();
+    // 6. Cada fila de carpeta es una sola línea: el árbol no muestra la descripción de su INDICE.
+    await expect(meta().getByText(/Skills para los agentes/)).toHaveCount(0);
+    await expect(meta().getByText(/Buzón entre agentes/)).toHaveCount(0);
+    await expect(meta().getByText(/Registro de los agentes/)).toHaveCount(0);
     await shot(page, `h030meta-${label}-1-arbol`);
 
-    // 7. El nombre de la carpeta reservada abre su INDICE.
+    // 7. El nombre de la carpeta reservada abre su INDICE, que sigue mostrando la descripción.
     await expect(async () => {
       await showSidebar(page);
       await tree(page).getByRole("treeitem", { name: "AG - SKILLS", exact: true }).click();
       await expect(page.getByRole("region", { name: "Índice de AG - SKILLS" })).toBeVisible({ timeout: 2000 });
     }).toPass({ timeout: 30_000 });
+    await expect(page.getByRole("region", { name: "Índice de AG - SKILLS" }).getByLabel("Descripción", { exact: true })).toHaveValue(/Skills para los agentes/);
     await showSidebar(page);
     await expect(tree(page).getByRole("treeitem", { name: "AG - SKILLS", exact: true })).toHaveAttribute("aria-selected", "true");
     await shot(page, `h030meta-${label}-2-indice-abierto`);

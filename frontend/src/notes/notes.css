@@ -430,25 +430,6 @@
   color: var(--text-secondary);
 }
 
-/* Descripción de la carpeta reservada, bajo su fila. `width: 0` + `min-width: 100%` la saca del cálculo del ancho
-   de la columna del árbol (que es el de la fila más ancha): sin esto un texto largo ensancharía todo el árbol. */
-.note-tree-meta-desc {
-  width: 0;
-  min-width: 100%;
-  box-sizing: border-box;
-  margin: 0 0 var(--space-1);
-  /* El margen inferior va FUERA del recorte: con `padding-bottom` se asomaría la tercera línea. */
-  padding: 0 var(--space-4) 0 calc(var(--space-4) + 12px + var(--space-2) + 13px + var(--space-2));
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-secondary);
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-}
-
 /* El foco queda dentro de la fila: el árbol recorta lo que sobresale (T-049, M-4). */
 .note-tree-row:focus-visible {
   outline-offset: -2px;
