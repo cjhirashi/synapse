@@ -172,3 +172,49 @@ def test_plantilla_reference_attribute():
     assert validate_general({"plantilla": "base"}) is None
     for bad in ("Base", "a_b", "", 3, None, "x" * 65, "-a"):
         assert validate_general({"plantilla": bad}) == "plantilla", bad
+
+
+# --- Especificación compartida con el cliente (tests/fixtures/plantilla_reglas.json) ---
+
+import json
+from pathlib import Path
+
+SPEC = json.loads((Path(__file__).parent / "fixtures" / "plantilla_reglas.json").read_text())
+
+
+@pytest.mark.parametrize("case", SPEC["definition"], ids=lambda c: c["name"])
+def test_spec_definition(case):
+    assert pl.check_definition(case["frontmatter"]) == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["template_name"], ids=lambda c: c["path"])
+def test_spec_template_name(case):
+    assert pl.template_name(case["path"]) == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["plantilla_ref"], ids=lambda c: repr(c["value"])[:20])
+def test_spec_plantilla_ref(case):
+    assert validate_general({"plantilla": case["value"]}) == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["reserved_case"], ids=lambda c: c["path"])
+def test_spec_reserved_case(case):
+    assert ag_rules.check_create(case["path"]) == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["folder_move"], ids=lambda c: f'{c["from"]}->{c["to"]}')
+def test_spec_folder_move(case):
+    assert ag_rules.check_folder_move(case["from"], case["to"]) == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["note_write"], ids=lambda c: f'{c["path"]}|{c["actor"]}|{c["deleted"]}')
+def test_spec_note_write(case):
+    got = meta_rules.check_note_write(
+        path=case["path"], prev_path=case["prev_path"], deleted=case["deleted"], frontmatter=case["frontmatter"],
+        actor_kind=case["actor"])
+    assert got == case["expected"]
+
+
+@pytest.mark.parametrize("case", SPEC["applies_to"], ids=lambda c: f'{c["alcance"]}|{c["folder"]}')
+def test_spec_applies_to(case):
+    assert pl.applies_to(case["alcance"], case["folder"]) == case["expected"]

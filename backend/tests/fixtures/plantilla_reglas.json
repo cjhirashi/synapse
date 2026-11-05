@@ -1,0 +1,764 @@
+{
+ "_doc": "H-030b: especificación compartida de las reglas de PLANTILLAS, BITACORA, skill de cajón y nombres canónicos. La implementan backend (core/plantilla_rules.py, core/meta_rules.py, core/ag_rules.py) y frontend (notes/metaRules.ts); ambos deben pasar TODOS estos casos. Los códigos son los del push de /sync.",
+ "limits": {
+  "name_max": 64,
+  "alcance_max": 50,
+  "atributos_max": 30,
+  "tipos": [
+   "texto",
+   "numero",
+   "fecha",
+   "lista",
+   "booleano"
+  ],
+  "estilo_keys": [
+   "publicar",
+   "pdf"
+  ],
+  "all_folders": "*",
+  "prefix": "plantilla-"
+ },
+ "definition": [
+  {
+   "name": "completa válida",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "solo alcance",
+   "frontmatter": {
+    "alcance": [
+     "Proyectos/Notas",
+     "Otra"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "name": "alcance vacío",
+   "frontmatter": {
+    "alcance": [],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:alcance"
+  },
+  {
+   "name": "alcance mezcla * y carpeta",
+   "frontmatter": {
+    "alcance": [
+     "*",
+     "A"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:alcance"
+  },
+  {
+   "name": "alcance no lista",
+   "frontmatter": {
+    "alcance": "*",
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:alcance"
+  },
+  {
+   "name": "alcance ruta inválida",
+   "frontmatter": {
+    "alcance": [
+     "A//B"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:alcance"
+  },
+  {
+   "name": "alcance repetido",
+   "frontmatter": {
+    "alcance": [
+     "A",
+     "A"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:alcance"
+  },
+  {
+   "name": "atributo mayúsculas",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "Cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
+   "name": "atributo general",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "titulo",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
+   "name": "atributo tipo inválido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "otro"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
+   "name": "atributo valor de otro tipo",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "numero",
+      "valor": "x"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
+   "name": "atributos repetidos",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "texto"
+     },
+     {
+      "nombre": "a",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
+   "name": "atributo con valor texto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "texto",
+      "valor": "x"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "atributo fecha válida",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "fecha",
+      "valor": "2026-11-05"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "atributo lista",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "lista",
+      "valor": [
+       "x",
+       "y"
+      ]
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "atributo booleano",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "booleano",
+      "valor": true
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "atributo valor null",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "a",
+      "tipo": "texto",
+      "valor": null
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "estilo con contenido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {
+      "tema": "x"
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "estilo clave extra",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "otro": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "estilo no objeto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": []
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "sin estilo ni atributos",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "name": "no objeto",
+   "frontmatter": null,
+   "expected": "plantilla:alcance"
+  }
+ ],
+ "template_name": [
+  {
+   "path": "PLANTILLAS/plantilla-base.md",
+   "expected": "base"
+  },
+  {
+   "path": "PLANTILLAS/plantilla-mi-doc-2.md",
+   "expected": "mi-doc-2"
+  },
+  {
+   "path": "PLANTILLAS/base.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/sub/plantilla-base.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-Base.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-a_b.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-base.txt",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/INDICE.md",
+   "expected": null
+  },
+  {
+   "path": "Otra/plantilla-base.md",
+   "expected": null
+  }
+ ],
+ "plantilla_ref": [
+  {
+   "value": "base",
+   "expected": null
+  },
+  {
+   "value": "mi-doc-2",
+   "expected": null
+  },
+  {
+   "value": "Base",
+   "expected": "plantilla"
+  },
+  {
+   "value": "a_b",
+   "expected": "plantilla"
+  },
+  {
+   "value": "",
+   "expected": "plantilla"
+  },
+  {
+   "value": "-a",
+   "expected": "plantilla"
+  },
+  {
+   "value": "a-",
+   "expected": "plantilla"
+  },
+  {
+   "value": "a--b",
+   "expected": "plantilla"
+  },
+  {
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "expected": null
+  },
+  {
+   "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+   "expected": "plantilla"
+  }
+ ],
+ "reserved_case": [
+  {
+   "path": "Plantillas/x.md",
+   "expected": "meta-folder:case"
+  },
+  {
+   "path": "plantillas/x.md",
+   "expected": "meta-folder:case"
+  },
+  {
+   "path": "ag - skills/x.md",
+   "expected": "meta-folder:case"
+  },
+  {
+   "path": "Ag - Mensajes/x.md",
+   "expected": "meta-folder:case"
+  },
+  {
+   "path": "Bitacora/a.md",
+   "expected": "meta-folder:case"
+  },
+  {
+   "path": "PLANTILLAS/x.md",
+   "expected": null
+  },
+  {
+   "path": "BITACORA/x.md",
+   "expected": null
+  },
+  {
+   "path": "AG - SKILLS/x.md",
+   "expected": null
+  },
+  {
+   "path": "Plantillas.md",
+   "expected": null
+  },
+  {
+   "path": "Otra/Plantillas/x.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS-2/x.md",
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS",
+   "expected": "reserved-name:path"
+  }
+ ],
+ "folder_move": [
+  {
+   "from": "Plantillas",
+   "to": "PLANTILLAS",
+   "expected": null
+  },
+  {
+   "from": "Plantillas",
+   "to": "Otra",
+   "expected": "meta-folder:rename"
+  },
+  {
+   "from": "PLANTILLAS",
+   "to": "Otra",
+   "expected": "meta-folder:rename"
+  },
+  {
+   "from": "PLANTILLAS",
+   "to": "PLANTILLAS",
+   "expected": "meta-folder:rename"
+  },
+  {
+   "from": "Cualquiera",
+   "to": "Otra",
+   "expected": null
+  }
+ ],
+ "note_write": [
+  {
+   "path": "BITACORA/2026-11/2026-11-05.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "bitacora:readonly"
+  },
+  {
+   "path": "BITACORA/2026-11/2026-11-05.md",
+   "prev_path": null,
+   "deleted": true,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": "bitacora:readonly"
+  },
+  {
+   "path": "Otra/x.md",
+   "prev_path": "BITACORA/2026-11/2026-11-05.md",
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "bitacora:readonly"
+  },
+  {
+   "path": "BITACORA/2026-11/INDICE.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "BITACORA.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "prev_path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "prev_path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": "skill-cajon:human-only"
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "prev_path": null,
+   "deleted": true,
+   "actor": "general",
+   "frontmatter": null,
+   "expected": "skill-cajon:human-only"
+  },
+  {
+   "path": "ag - skills/SKILL-bovedas-synapse.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": "skill-cajon:human-only"
+  },
+  {
+   "path": "AG - SKILLS/skill-otra.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-base.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-base.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {},
+   "expected": "plantilla:alcance"
+  },
+  {
+   "path": "PLANTILLAS/base.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "cliente",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:path"
+  },
+  {
+   "path": "PLANTILLAS/plantilla-base.md",
+   "prev_path": null,
+   "deleted": true,
+   "actor": "human",
+   "frontmatter": {},
+   "expected": null
+  },
+  {
+   "path": "PLANTILLAS/INDICE.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {},
+   "expected": null
+  }
+ ],
+ "applies_to": [
+  {
+   "alcance": [
+    "*"
+   ],
+   "folder": "Cualquiera/Sub",
+   "expected": true
+  },
+  {
+   "alcance": [
+    "Proyectos"
+   ],
+   "folder": "Proyectos",
+   "expected": true
+  },
+  {
+   "alcance": [
+    "Proyectos"
+   ],
+   "folder": "proyectos/Sub",
+   "expected": true
+  },
+  {
+   "alcance": [
+    "Proyectos"
+   ],
+   "folder": "Otros",
+   "expected": false
+  },
+  {
+   "alcance": [
+    "Proyectos"
+   ],
+   "folder": "",
+   "expected": false
+  }
+ ]
+}
