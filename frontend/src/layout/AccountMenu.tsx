@@ -54,6 +54,9 @@ export default function AccountMenu() {
           <Link to={API_KEYS_PATH} onClick={() => setOpen(false)}>
             API keys
           </Link>
+          <Link to="/settings/agent-access" onClick={() => setOpen(false)}>
+            Agentes por bóveda
+          </Link>
           <button
             type="button"
             className="account-menu-logout"

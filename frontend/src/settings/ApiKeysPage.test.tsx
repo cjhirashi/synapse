@@ -152,3 +152,36 @@ test("C-6: el campo recibe el foco al abrir y la confirmación se cierra con Esc
   await user.keyboard("{Escape}");
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
 });
+
+test("H-030: muestra el agente de cada key y permite crearla con agente y administrador", async () => {
+  vi.spyOn(api, "listAgentKeys")
+    .mockResolvedValueOnce([{ ...ACTIVE, agent_id: "aira", is_admin: true }, { ...REVOKED, id: "k3", label: "OpenClaw", revoked_at: null }])
+    .mockResolvedValue([]);
+  const create = vi.spyOn(api, "createAgentKey").mockResolvedValue({
+    id: "k9", label: "op-liza", key: "syn_ak_x", created_at: "2026-11-05T10:00:00Z", agent_id: "liza", is_admin: false,
+  });
+  const user = setup();
+
+  expect(await screen.findByText("aira")).toBeInTheDocument();
+  expect(screen.getByText(/Administrador/)).toBeInTheDocument();
+  expect(screen.getByText(/Agente: general/)).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Crear API key" }));
+  await user.type(screen.getByLabelText("Nombre de la key"), "op-liza");
+  await user.type(screen.getByLabelText(/Agente \(opcional/), "liza");
+  await user.click(screen.getByRole("button", { name: "Crear" }));
+  expect(create).toHaveBeenCalledWith("op-liza", { agent_id: "liza", is_admin: false });
+});
+
+test("H-030: un id de agente inválido se rechaza antes de llamar al servidor", async () => {
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([]);
+  const create = vi.spyOn(api, "createAgentKey");
+  const user = setup();
+
+  await user.click(await screen.findByRole("button", { name: "Crear API key" }));
+  await user.type(screen.getByLabelText("Nombre de la key"), "x");
+  await user.type(screen.getByLabelText(/Agente \(opcional/), "Aira Mayus");
+  await user.click(screen.getByRole("button", { name: "Crear" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(/id corto en minúsculas/i);
+  expect(create).not.toHaveBeenCalled();
+});

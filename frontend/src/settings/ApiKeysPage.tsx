@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import { PROBLEM } from "../api/problems";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
@@ -7,6 +7,8 @@ import { AgentKey, CreatedAgentKey, createAgentKey, listAgentKeys, revokeAgentKe
 
 // El backend limita el `label` a 1-64 caracteres (AgentKeyLabel); se valida también en cliente.
 const MAX_LABEL = 64;
+// Mismo patrón que el servidor (`AgentId`): id corto en minúsculas, p. ej. «aira».
+const AGENT_ID = /^[a-z0-9][a-z0-9-]{0,31}$/;
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString("es", { year: "numeric", month: "short", day: "numeric" });
@@ -23,6 +25,8 @@ export default function ApiKeysPage() {
   const [loadError, setLoadError] = useState(false);
   const [creating, setCreating] = useState(false);
   const [label, setLabel] = useState("");
+  const [agentId, setAgentId] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedAgentKey | null>(null);
   const [copied, setCopied] = useState(false);
@@ -63,13 +67,19 @@ export default function ApiKeysPage() {
     const trimmed = label.trim();
     if (!trimmed) return setCreateError("Escribe un nombre para la key.");
     if (trimmed.length > MAX_LABEL) return setCreateError(`El nombre no puede superar los ${MAX_LABEL} caracteres.`);
+    const agent = agentId.trim();
+    if (agent && !AGENT_ID.test(agent)) {
+      return setCreateError("El agente debe ser un id corto en minúsculas, números o guiones (p. ej. aira).");
+    }
     setBusy(true);
     try {
-      const key = await createAgentKey(trimmed);
+      const key = await (agent ? createAgentKey(trimmed, { agent_id: agent, is_admin: isAdmin }) : createAgentKey(trimmed));
       setCreated(key);
       setCopied(false);
       setCreating(false);
       setLabel("");
+      setAgentId("");
+      setIsAdmin(false);
       await load();
     } catch (err) {
       if (onUnauthorized(err)) return;
@@ -114,6 +124,7 @@ export default function ApiKeysPage() {
     <section className="api-keys-page">
       <div className="page-header">
         <h1>API keys</h1>
+        <Link to="/settings/agent-access">Asignación de agentes a bóvedas</Link>
         {!creating && (
           <button
             type="button"
@@ -154,6 +165,14 @@ export default function ApiKeysPage() {
             Nombre de la key
             <input autoFocus value={label} maxLength={MAX_LABEL} onChange={(e) => setLabel(e.target.value)} />
           </label>
+          <label>
+            Agente (opcional; sin agente la key es general)
+            <input value={agentId} maxLength={32} placeholder="aira" onChange={(e) => setAgentId(e.target.value)} />
+          </label>
+          <label>
+            <input type="checkbox" checked={isAdmin} disabled={!agentId.trim()} onChange={(e) => setIsAdmin(e.target.checked)} />{" "}
+            Agente administrador
+          </label>
           <div className="api-key-form-actions">
             <button type="submit" disabled={busy}>
               Crear
@@ -165,6 +184,8 @@ export default function ApiKeysPage() {
                 setCreating(false);
                 setCreateError(null);
                 setLabel("");
+                setAgentId("");
+                setIsAdmin(false);
               }}
             >
               Cancelar
@@ -195,6 +216,9 @@ export default function ApiKeysPage() {
                 Creada el {fmtDate(k.created_at)}
                 {" · "}
                 Último uso: {k.last_used_at ? fmtDate(k.last_used_at) : "nunca"}
+                {" · "}
+                Agente: {k.agent_id ? <code>{k.agent_id}</code> : "general"}
+                {k.is_admin && <strong> · Administrador</strong>}
                 {" · "}
                 <span className={k.revoked_at ? "api-key-revoked" : "api-key-active"}>
                   {k.revoked_at ? "Revocada" : "Activa"}

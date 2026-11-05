@@ -5,6 +5,7 @@ import RequireAuth, { useMe, useRefreshMe } from "./auth/RequireAuth";
 import AppLayout from "./layout/AppLayout";
 import FilesPage from "./files/FilesPage";
 import VaultWorkspacePage from "./notes/VaultWorkspacePage";
+import AgentAccessPage from "./settings/AgentAccessPage";
 import ApiKeysPage from "./settings/ApiKeysPage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ConflictView from "./sync/ConflictView";
@@ -79,6 +80,8 @@ export default function App({ syncEnv }: Props) {
         <Route path="/settings/password" element={<ChangePasswordRoute />} />
         {/* Gestión de API keys de agente (SPEC-0013 / H-002.5): sólo la UI sobre `/auth/agent-keys`. */}
         <Route path="/settings/api-keys" element={<ApiKeysPage />} />
+        {/* H-030: qué agente escribe en qué carpetas de cada bóveda (registro de AG - AGENTES). */}
+        <Route path="/settings/agent-access" element={<AgentAccessPage />} />
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}
         <Route path="/vaults" element={<VaultListPage />} />
         <Route path="/vaults/new" element={<VaultForm />} />
