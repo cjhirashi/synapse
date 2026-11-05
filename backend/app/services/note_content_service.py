@@ -16,6 +16,8 @@ Exige la bóveda **activa** (no sólo existente) para escribir, igual que
 `sync_push.py::_check_vault_is_active` (RF-004/RF-014 de 0008): una bóveda borrada congela sus
 notas también por REST — ningún atajo nuevo (C-10).
 """
+from __future__ import annotations
+
 import base64
 import binascii
 import json
