@@ -354,3 +354,18 @@ def test_prefix_listing_for_the_inbox(ready_admin):
     assert CAB in paths and MSG1 in paths and all(p.startswith("AG - MENSAJES/liza/") for p in paths)
     cab = next(i for i in inbox if i["path"] == CAB)
     assert cab["frontmatter"]["estado"] == "abierta"  # la bandeja filtra por estado en el cliente
+
+
+def test_shadow_mode_never_breaks_a_write_when_the_registry_cannot_be_read(ready_admin, monkeypatch):
+    monkeypatch.setattr(settings, "AGENT_ACCESS_MODE", "shadow")
+    vault_id = vault_of(ready_admin)
+    aira = agent_client(ready_admin, "aira")
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("couch down")
+
+    monkeypatch.setattr(agent_access_guard, "read_registry", boom)
+    assert post_note(aira, vault_id, "X/a.md").status_code == 201
+    monkeypatch.setattr(settings, "AGENT_ACCESS_MODE", "enforce")
+    with pytest.raises(RuntimeError):
+        post_note(aira, vault_id, "X/b.md")

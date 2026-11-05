@@ -100,7 +100,13 @@ class AgentAccessGuard:
         if not self.active:
             return True, None
         enforce = self._mode == "enforce"
-        registry = read_registry(self._port, self._db, vault_id)
+        try:
+            registry = read_registry(self._port, self._db, vault_id)
+        except Exception:  # noqa: BLE001
+            if enforce:
+                raise  # con cumplimiento activo no se escribe sin poder consultar el registro (cierra en falso)
+            logger.warning("agent registry unreadable in shadow mode; write allowed", exc_info=True)
+            return True, "registry-unreadable"
         verdict = (decide_files(self._actor, registry, honor_declared=not enforce) if files
                    else decide(self._actor, registry, paths, honor_declared=not enforce))
         identified = self._actor.kind == "agent" or (not enforce and self._actor.declared is not None)
