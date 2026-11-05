@@ -394,7 +394,7 @@ plantilla con documentos vivos que la citen no se borra, renombra ni saca de `PL
 `plantilla:path|alcance|atributos|estilo`.
 
 **Skill de cajón.** `AG - SKILLS/skill-bovedas-synapse.md` solo se crea, edita, mueve o borra desde una sesión humana (cookie); una
-clave de API, aunque sea del dueño, recibe `skill-cajon:human-only`.
+clave de API, aunque sea del dueño, recibe `skill-cajon:human-only`. Se siembra al crear la bóveda (y con `scripts/ensure_ag_folders.py` en las que no la tienen) desde `backend/app/core/skill_cajon.md`, y **nunca** se sobrescribe sola: actualizarla en una bóveda ya sembrada es una orden explícita del dueño.
 
 ## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
 

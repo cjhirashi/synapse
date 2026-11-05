@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.models.change_log import ChangeLog
 from app.services import agent_access_guard
 from app.services.change_log_service import ChangeLogStore
+from tests.test_vaults_api import user_db
 from tests.test_h030_api import agent_client, detail, find, patch, post_note, vault_of
 from tests.test_note_sync_api import note_doc, push, vault  # noqa: F401
 from tests.test_sync_api import child_of
@@ -232,3 +233,22 @@ def test_the_cajon_skill_is_editable_only_from_a_human_session(ready_admin):
     assert detail(patch(aira, vault_id, current, content="v3")) == "skill-cajon:human-only"
     assert aira.delete(f"/vaults/{vault_id}/notes/{current['id']}", headers={"If-Match": current["etag"]}).status_code == 422
     assert post_note(aira, vault_id, "AG - SKILLS/skill-propia.md", "ok").status_code == 201  # las demás skills, libres
+
+
+# --- Siembra de la skill de cajón (P9) ---
+
+def test_the_cajon_skill_is_seeded_once_and_never_overwritten(ready_admin, db, monkeypatch):
+    from app.core.meta_rules import SKILL_CAJON
+    from app.routers.vaults import get_vault_port
+    from app.services.note_content_service import NoteContentService
+
+    monkeypatch.setattr(settings, "SEED_AG_FOLDERS", True)
+    vault_id = vault_of(ready_admin)
+    skill = find(ready_admin, vault_id, SKILL_CAJON)
+    assert skill is not None and skill["frontmatter"]["skill"] == "skill-bovedas-synapse"
+    # El dueño la edita desde la app; volver a correr la herramienta de carga no la pisa.
+    assert patch(ready_admin, vault_id, skill, content="texto del dueño").status_code == 200
+    db_name = user_db(db)
+    assert NoteContentService(get_vault_port(), db_name).ensure_ag_folders(vault_id) == []
+    again = find(ready_admin, vault_id, SKILL_CAJON)
+    assert ready_admin.get(f"/vaults/{vault_id}/notes/{again['id']}").json()["content"] == "texto del dueño"

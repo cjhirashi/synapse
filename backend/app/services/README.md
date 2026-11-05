@@ -21,6 +21,7 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   `_rev` en `/sync`, y genera los documentos diarios `BITACORA/AAAA-MM/AAAA-MM-DD.md` en la zona horaria del propietario; `rebuild`
   los regenera desde la tabla). Lo usan `note_content_service.py`, `sync_push.py` y `folder_service.py`; si el registro no se puede
   escribir, la escritura no se hace (503). `BITACORA_DOCS=false` apaga los documentos (no el registro).
+- `skill_cajon.py` — texto canónico y metadatos de la skill de cajón (`core/skill_cajon.md`); `ensure_ag_folders` la siembra si falta, nunca la sobrescribe (H-030b, P9).
 - `note_content_service.py` (`NoteContentService`, historia 0014): contenido de notas vía REST para agentes
   sobre la base CouchDB del usuario (a través de `VaultPort`). Cursor opaco ligado a la bóveda, `ETag` =
   `_rev` entre comillas, y escritura que reusa `core/note_rules.py`, `core/attribute_rules.py` y

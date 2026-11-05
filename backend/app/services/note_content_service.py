@@ -505,8 +505,8 @@ class NoteContentService:
     def ensure_ag_folders(self, vault_id: str, dry_run: bool = False) -> list[str]:
         """Crea, si faltan, el INDICE de cada carpeta reservada (con su descripción) y el de la raíz. Idempotente.
 
-        Devuelve las rutas de INDICE creadas (o que se crearían con `dry_run`). `AG - MENSAJES` nace vacía:
-        solo su INDICE.
+        Devuelve las rutas creadas (o que se crearían con `dry_run`): INDICES y, si falta, la skill de cajón.
+        `AG - MENSAJES` nace vacía: solo su INDICE.
         """
         self._check_vault_active(vault_id)
         existing = {path_key(d["path"]) for d in self._live_paths(vault_id)}
@@ -518,12 +518,31 @@ class NoteContentService:
         if path_key("INDICE.md") not in existing and todo:
             todo.append("INDICE.md")
         if dry_run:
-            return todo
+            return todo + self._seed_skill_cajon(vault_id, existing, True)
         for index_path in todo:
             folder = folder_of(index_path)
             frontmatter = {"descripcion": ag_rules.FOLDER_DESCRIPTIONS[folder]} if folder else {}
             self._create_index(vault_id, index_path, frontmatter)
-        return todo
+        return todo + self._seed_skill_cajon(vault_id, existing, dry_run)
+
+    def _seed_skill_cajon(self, vault_id: str, existing: set[str], dry_run: bool) -> list[str]:
+        """Siembra la skill de cajón si la bóveda no la tiene (nunca la sobrescribe, P9)."""
+        from app.services import skill_cajon
+
+        if path_key(meta_rules.SKILL_CAJON) in existing:
+            return []
+        if not dry_run:
+            doc_id = _doc_id(vault_id, str(uuid.uuid4()))
+            try:
+                self._notes.reserve_path(doc_id, meta_rules.SKILL_CAJON)
+            except NotePathTaken:
+                return []
+            now = utc_now()
+            self._port.put(self._db, {
+                "_id": doc_id, "type": "note", "vault_id": vault_id, "path": meta_rules.SKILL_CAJON,
+                "content": skill_cajon.CONTENT, "created_at": now, "updated_at": now, "deleted_at": None,
+                "frontmatter": stamp_dates(skill_cajon.FRONTMATTER, today_cdmx(), now)})
+        return [meta_rules.SKILL_CAJON]
 
     def _live_paths(self, vault_id: str) -> list[dict]:
         docs, after = [], None

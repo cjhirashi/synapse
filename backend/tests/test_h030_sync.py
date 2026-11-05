@@ -30,7 +30,7 @@ def test_a_vault_pushed_by_sync_is_born_with_the_reserved_folders(ready_admin, d
     assert push(ready_admin, [doc]).json() == []
     vault_id = doc["_id"].removeprefix("vault:")
     paths = {i["path"] for i in ready_admin.get(f"/vaults/{vault_id}/notes", params={"limit": 200}).json()["items"]}
-    assert "AG - MENSAJES/INDICE.md" in paths and "INDICE.md" in paths and len(paths) == 6
+    assert "AG - MENSAJES/INDICE.md" in paths and "INDICE.md" in paths and len(paths) == 7
 
 
 def test_reserved_names_and_reserved_indexes_are_protected_in_the_push(vault, ready_admin):
