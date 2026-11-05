@@ -72,7 +72,7 @@ test("quitar un agente y cambiar de bóveda", async () => {
 
   await user.click(await screen.findByRole("button", { name: "Quitar aira" }));
   expect(del).toHaveBeenCalledWith("v1", "aira");
-  await user.selectOptions(screen.getByLabelText("Bóveda"), "v2");
+  await user.selectOptions(screen.getByLabelText("Bóveda a asignar"), "v2");
   expect(get).toHaveBeenLastCalledWith("v2");
 });
 
