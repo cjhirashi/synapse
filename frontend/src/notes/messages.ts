@@ -82,9 +82,21 @@ export function noteReasonText(code: string): string {
   if (code === "vault-not-found") return VAULT_NOT_FOUND;
   if (code === "agent-access-denied") return "El registro de AG - AGENTES no permite a esta clave escribir ahí.";
   if (code === "immutable-field:cerrada_el") return "La hora de cierre de una conversación la fija el servidor.";
+  if (code === "meta-folder:case") return "Las carpetas reservadas se escriben en MAYÚSCULAS, por ejemplo PLANTILLAS.";
+  if (code === "meta-folder:rename") return "Una carpeta reservada (AG - SKILLS, AG - MENSAJES, AG - AGENTES, BITACORA, PLANTILLAS) no se renombra ni se mueve.";
+  if (code === "meta-folder:index-delete") return "El INDICE de una carpeta reservada no se puede borrar.";
+  if (code === "bitacora:readonly") return "La bitácora la escribe solo el servidor: no se puede editar, mover ni borrar.";
+  if (code === "skill-cajon:human-only") return "La skill de cajón solo se modifica desde la app, no con una clave de API.";
+  if (code === "plantilla:path") return "Las plantillas van en PLANTILLAS/, planas y con nombre plantilla-<nombre>.md.";
+  if (code === "plantilla:alcance") return "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda).";
+  if (code === "plantilla:atributos") return "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos.";
+  if (code === "plantilla:estilo") return "El estilo de una plantilla debe estar vacío (reservado para web/PDF).";
+  if (code === "plantilla:in-use") return "No se puede borrar, renombrar ni mover una plantilla mientras algún documento la use.";
+  if (code === "plantilla:unknown") return "La plantilla referida en el documento no existe.";
   if (code.startsWith("meta-folder:")) return "Las carpetas reservadas (AG - …, BITACORA, PLANTILLAS) no se renombran y su INDICE no se borra.";
   if (code.startsWith("ag-mensajes:")) return "La nota no respeta el formato de AG - MENSAJES o es un mensaje que no se puede cambiar.";
   if (code.startsWith("ag-agentes:")) return "Un registro de AG - AGENTES necesita un estado (activo o suspendido) y la lista de carpetas.";
+  if (code.startsWith("plantilla:")) return "La plantilla tiene un problema: consulta con el administrador.";
   const [kind, field] = code.split(":", 2);
   if (kind === "validation-error" || kind === "not-normalized") {
     if (field === "path") return PATH_INVALID;
