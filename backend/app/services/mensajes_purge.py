@@ -7,7 +7,8 @@ son tombstones de CouchDB, sin papelera: la réplica los propaga a los clientes.
 encuentra lo ya purgado.
 """
 import json
-from datetime import datetime, timedelta
+import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import NamedTuple
 
@@ -80,7 +81,6 @@ def _dump(path: Path, owner_id: str, vault_id: str, candidate: Candidate) -> Non
             handle.write(json.dumps({"owner_id": owner_id, "vault_id": vault_id, "conversation": candidate.folder,
                                      "doc": doc}, ensure_ascii=False) + "\n")
         handle.flush()
-        import os
         os.fsync(handle.fileno())
 
 
@@ -129,7 +129,7 @@ def prune_dumps(root: Path, now: datetime) -> list[str]:
         return removed
     for folder in sorted(root.iterdir()):
         try:
-            day = datetime.strptime(folder.name, "%Y%m%d")
+            day = datetime.strptime(folder.name, "%Y%m%d").replace(tzinfo=UTC)
         except ValueError:
             continue
         if now - day > DUMP_KEEP and folder.is_dir():

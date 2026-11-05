@@ -4,6 +4,16 @@ components:
       additionalProperties: false
       description: Cuerpo de `POST /auth/agent-keys`; cualquier otro campo → 422.
       properties:
+        agent_id:
+          anyOf:
+          - pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+            type: string
+          - type: 'null'
+          title: Agent Id
+        is_admin:
+          default: false
+          title: Is Admin
+          type: boolean
         label:
           maxLength: 64
           minLength: 1
@@ -17,6 +27,11 @@ components:
       description: 'Respuesta de la creación: el valor plano (`key`) viaja **sólo
         aquí** (RF-001).'
       properties:
+        agent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Agent Id
         created_at:
           format: date-time
           title: Created At
@@ -24,6 +39,10 @@ components:
         id:
           title: Id
           type: string
+        is_admin:
+          default: false
+          title: Is Admin
+          type: boolean
         key:
           title: Key
           type: string
@@ -40,6 +59,11 @@ components:
     AgentKeyOut:
       description: 'Elemento del listado: sin `key` ni `key_hash` (RF-004/RNF-002).'
       properties:
+        agent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Agent Id
         created_at:
           format: date-time
           title: Created At
@@ -47,6 +71,10 @@ components:
         id:
           title: Id
           type: string
+        is_admin:
+          default: false
+          title: Is Admin
+          type: boolean
         label:
           title: Label
           type: string
@@ -69,6 +97,23 @@ components:
       - last_used_at
       - revoked_at
       title: AgentKeyOut
+      type: object
+    AgentKeyUpdate:
+      additionalProperties: false
+      description: 'Cuerpo de `PATCH /auth/agent-keys/{id}`: reasigna el agente y/o
+        el indicador de administrador.'
+      properties:
+        agent_id:
+          anyOf:
+          - pattern: ^[a-z0-9][a-z0-9-]{0,31}$
+            type: string
+          - type: 'null'
+          title: Agent Id
+        is_admin:
+          default: false
+          title: Is Admin
+          type: boolean
+      title: AgentKeyUpdate
       type: object
     Problem:
       additionalProperties: false
@@ -237,5 +282,58 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Internal Server Error
       summary: Revoke Agent Key
+      tags:
+      - auth
+    patch:
+      description: Reasigna el agente de una key vigente y su indicador de administrador
+        (H-030 E5). Solo cookie.
+      operationId: update_agent_key_auth_agent_keys__key_id__patch
+      parameters:
+      - description: Id de la key a reasignar.
+        in: path
+        name: key_id
+        required: true
+        schema:
+          description: Id de la key a reasignar.
+          title: Key Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AgentKeyUpdate'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AgentKeyOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent key not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Update Agent Key
       tags:
       - auth

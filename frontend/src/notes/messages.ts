@@ -80,6 +80,11 @@ export function noteErrorMessage(err: unknown): string {
 export function noteReasonText(code: string): string {
   if (code === "note-path-taken") return PATH_TAKEN;
   if (code === "vault-not-found") return VAULT_NOT_FOUND;
+  if (code === "agent-access-denied") return "El registro de AG - AGENTES no permite a esta clave escribir ahí.";
+  if (code === "immutable-field:cerrada_el") return "La hora de cierre de una conversación la fija el servidor.";
+  if (code.startsWith("meta-folder:")) return "Las carpetas reservadas (AG - …, BITACORA, PLANTILLAS) no se renombran y su INDICE no se borra.";
+  if (code.startsWith("ag-mensajes:")) return "La nota no respeta el formato de AG - MENSAJES o es un mensaje que no se puede cambiar.";
+  if (code.startsWith("ag-agentes:")) return "Un registro de AG - AGENTES necesita un estado (activo o suspendido) y la lista de carpetas.";
   const [kind, field] = code.split(":", 2);
   if (kind === "validation-error" || kind === "not-normalized") {
     if (field === "path") return PATH_INVALID;

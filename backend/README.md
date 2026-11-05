@@ -337,6 +337,11 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `reserved-name:path` | (H-031) una nota que no es el INDICE toma el nombre reservado `INDICE.md` |
 | `index-readonly:<path\|content\|attr\|delete>` | (H-031) renombrar un INDICE a otro nombre (moverlo de una carpeta a otra junto con su carpeta sí se admite), darle contenido, cambiar algo que no sea su `descripcion`, o borrarlo mientras su carpeta tiene notas vivas |
 | `index-root:delete` | (H-031) borrar el INDICE de la raíz de la bóveda |
+| `meta-folder:<rename\|index-delete>` | (H-030) mover el INDICE de una carpeta reservada con otra carpeta, o borrarlo |
+| `ag-mensajes:<path\|cabecera\|from-mismatch\|immutable\|forbidden>` | (H-030) ruta o metadatos fuera del formato de `AG - MENSAJES`, remitente que no es la clave, mensaje o cabecera que una clave de agente no puede cambiar, cierre por quien no participa |
+| `ag-agentes:registro` | (H-030) nota de `AG - AGENTES/` que no es un registro válido (`estado`, `carpetas`) |
+| `immutable-field:cerrada_el` | (H-030) la cabecera de una conversación trae un `cerrada_el` distinto del que tenía: lo sella el servidor |
+| `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |
 | `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 
 | Endpoint | Respuesta |

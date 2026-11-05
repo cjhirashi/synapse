@@ -28,6 +28,11 @@ const REASONS = new Map<string, string>([
   ["invalid-id", "El identificador de la bóveda no es válido."],
   ["reserved-name:path", "El nombre INDICE.md está reservado para el índice de cada carpeta."],
   ["index-root:delete", "El INDICE de la raíz de la bóveda no se puede borrar."],
+  ["meta-folder:rename", "Una carpeta reservada (AG - SKILLS, AG - MENSAJES, AG - AGENTES, BITACORA, PLANTILLAS) no se renombra ni se mueve."],
+  ["meta-folder:index-delete", "El INDICE de una carpeta reservada no se puede borrar."],
+  ["ag-agentes:registro", "Un registro de AG - AGENTES necesita un estado (activo o suspendido) y la lista de carpetas."],
+  ["immutable-field:cerrada_el", "La hora de cierre de una conversación la fija el servidor."],
+  ["agent-access-denied", "El registro de AG - AGENTES no permite a esta clave escribir ahí."],
 ]);
 
 const MALFORMED = "La bóveda tiene datos con un formato no válido.";

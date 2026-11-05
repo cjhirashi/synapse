@@ -82,6 +82,11 @@
     "note-path-taken",
     "reserved-name:path",
     "index-readonly:<path|content|attr|delete>",
-    "index-root:delete"
+    "index-root:delete",
+    "meta-folder:<rename|index-delete>",
+    "ag-mensajes:<path|cabecera|from-mismatch|immutable|forbidden>",
+    "ag-agentes:registro",
+    "immutable-field:cerrada_el",
+    "agent-access-denied"
   ]
 }

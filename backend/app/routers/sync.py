@@ -194,10 +194,12 @@ class BulkDocsRequest(BaseModel):
 
 
 # Códigos de rechazo del push (PLAN-0005 §2.3; `note-path-taken` y `vault-not-found`, PLAN-0008 §4;
-# `reserved-name`, `index-readonly` e `index-root`, los INDICES de H-031: cada código que emite el servidor debe estar aquí).
+# `reserved-name`, `index-readonly` e `index-root`, los INDICES de H-031; `meta-folder`, `ag-*`, `immutable-field:cerrada_el` y `agent-access-denied`, H-030: cada código que emite el servidor debe estar aquí).
 REJECTION_REASON = (
     r"^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken"
     r"|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+"
+    # H-030: carpetas reservadas, formato de AG - MENSAJES / AG - AGENTES y registro de agentes.
+    r"|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied"
     r"|validation-error:.+|not-normalized:.+)$"
 )
 

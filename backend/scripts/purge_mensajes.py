@@ -10,7 +10,7 @@ Uso (dentro del contenedor): python scripts/purge_mensajes.py [--apply] [--dump-
 """
 import argparse
 import sys
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -29,7 +29,7 @@ def main() -> int:
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--dump-dir", default="/backups/synapse-purga")
     args = parser.parse_args()
-    now = datetime.utcnow()
+    now = datetime.now(UTC)
     dump_root = Path(args.dump_dir)
     port = VaultRepository()
     total = 0
@@ -47,7 +47,7 @@ def main() -> int:
                 dump_path = dump_root / f"{now:%Y%m%d}" / f"{vault_id}.jsonl"
                 deleted = mensajes_purge.execute(port, db, user_id, vault_id, candidate, dump_path)
                 with SessionLocal() as session:
-                    session.add(PurgeLog(ran_at=now, owner_id=user_id, vault_id=vault_id,
+                    session.add(PurgeLog(ran_at=now.replace(tzinfo=None), owner_id=user_id, vault_id=vault_id,
                                          conversation=candidate.folder, notes_deleted=deleted, dump_file=str(dump_path)))
                     session.commit()
                 print(f"purgada {label}: {deleted} documentos; volcado {dump_path}")
@@ -57,7 +57,7 @@ def main() -> int:
             print(f"volcado de {removed} eliminado (más de 30 días)")
         with SessionLocal() as session:
             cutoff = now - timedelta(days=30)
-            count = session.query(AgentAccessLog).filter(AgentAccessLog.at < cutoff).delete()
+            count = session.query(AgentAccessLog).filter(AgentAccessLog.at < cutoff.replace(tzinfo=None)).delete()
             session.commit()
             print(f"bitácora del modo sombra: {count} filas de más de 30 días eliminadas")
     print(f"# conversaciones {'purgadas' if args.apply else 'por purgar'}: {total if args.apply else '(ver líneas)'}")

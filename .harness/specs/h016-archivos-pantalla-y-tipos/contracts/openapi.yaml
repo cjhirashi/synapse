@@ -186,6 +186,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -245,6 +251,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -351,6 +363,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
         '404':
           content:
             application/problem+json:

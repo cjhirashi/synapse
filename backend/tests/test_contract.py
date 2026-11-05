@@ -133,5 +133,7 @@ def test_sync_contract_closes_the_push_schemas():
                  # SPEC-0008 (RF-004, RF-013): los dos códigos que añaden las notas.
                  "note-path-taken", "vault-not-found",
                  # H-031: los códigos de los INDICES; sin ellos el servidor responde 500 al rechazar un cambio.
-                 "reserved-name:", "index-readonly:", "index-root:"):
+                 "reserved-name:", "index-readonly:", "index-root:",
+                 # H-030: carpetas reservadas, buzón de mensajes, registro de agentes y modo de cumplimiento.
+                 "meta-folder:", "ag-mensajes:", "ag-agentes:", "immutable-field:cerrada_el", "agent-access-denied"):
         assert code in reason, code

@@ -330,7 +330,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -405,6 +405,19 @@ paths:
           default: false
           title: Deleted
           type: boolean
+      - description: 'Carpeta (sin barra final): lista solo las notas bajo ella, ordenadas
+          por ruta. Sin `prefix` el orden es por fecha de creación descendente.'
+        in: query
+        name: prefix
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 300
+            type: string
+          - type: 'null'
+          description: 'Carpeta (sin barra final): lista solo las notas bajo ella,
+            ordenadas por ruta. Sin `prefix` el orden es por fecha de creación descendente.'
+          title: Prefix
       responses:
         '200':
           content:
@@ -490,7 +503,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -564,7 +577,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -731,7 +744,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
@@ -826,7 +839,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Agent access denied
         '404':
           content:
             application/problem+json:
