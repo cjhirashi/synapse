@@ -1254,6 +1254,40 @@ test("H-041: un documento de sistema lleva candado y es de solo lectura (sin ⋮
   expect(screen.queryByRole("alertdialog")).toBeNull();
 });
 
+test("H-041: en AG - SKILLS el formulario pide el propietario entre los gestores activos y la skill nace de él", async () => {
+  const { user, value } = await setup(["Inicio.md"], {
+    seed: async (db) => {
+      await replicate(db, "AG - AGENTES/aira.md", "# aira", { estado: "activo", carpetas: ["*"] });
+      await replicate(db, "AG - AGENTES/emma.md", "# emma", { estado: "activo", carpetas: ["*"] });
+      await replicate(db, "AG - AGENTES/paused.md", "# paused", { estado: "suspendido", carpetas: ["*"] });
+      await replicate(db, "AG - SKILLS/skill-otra.md", "x", { propietario: "aira" });
+    },
+  });
+  await user.click(await screen.findByRole("treeitem", { name: "AG - SKILLS" }));
+  const owner = await screen.findByRole("combobox", { name: "Propietario de la skill" });
+  expect(within(owner).getAllByRole("option").map((o) => o.textContent)).toEqual(["aira", "emma"]);
+  await user.selectOptions(owner, "emma");
+  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Revisión final");
+  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await waitFor(async () => {
+    const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-revision-final.md");
+    expect(created?.frontmatter).toMatchObject({ propietario: "emma" });
+  });
+});
+
+test("H-041: sin gestores, la skill nueva nace archivada", async () => {
+  const { user, value } = await setup(["Inicio.md"], { seed: (db) => replicate(db, "AG - SKILLS/skill-otra.md", "x", { propietario: "aira" }) });
+  await user.click(await screen.findByRole("treeitem", { name: "AG - SKILLS" }));
+  const owner = await screen.findByRole("combobox", { name: "Propietario de la skill" });
+  expect(within(owner).getByRole("option", { name: "Sin gestores: nace archivada" })).toBeInTheDocument();
+  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Sin dueño");
+  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await waitFor(async () => {
+    const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-sin-dueno.md");
+    expect(created?.frontmatter).toMatchObject({ estado: "archivado" });
+  });
+});
+
 const TEMPLATE_FM = { titulo: "Acta", alcance: ["Proyectos"], atributos: [{ nombre: "cliente", tipo: "texto", valor: "Acme" }], estilo: { publicar: {}, pdf: {} } };
 
 test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activa y la nota nace de la elegida", async () => {

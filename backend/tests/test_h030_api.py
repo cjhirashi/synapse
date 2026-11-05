@@ -137,10 +137,10 @@ def test_reserved_index_cannot_be_deleted_or_renamed_and_names_cannot_be_taken(r
 
 def test_reserved_folder_cannot_be_renamed_but_content_can_move_into_it(ready_admin, seeded):
     vault_id = vault_of(ready_admin)
-    assert post_note(ready_admin, vault_id, "AG - SKILLS/skill-a.md").status_code == 201
+    assert post_note(ready_admin, vault_id, "AG - SKILLS/skill-a.md", "", {"estado": "archivado"}).status_code == 201
     res = ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "AG - SKILLS", "to": "Skills"})
     assert res.status_code == 422 and detail(res) == "meta-folder:rename"
-    assert post_note(ready_admin, vault_id, "Viejo/skill-b.md").status_code == 201
+    assert post_note(ready_admin, vault_id, "Viejo/skill-b.md", "", {"estado": "archivado"}).status_code == 201
     # H-041: `AG - SKILLS` es plana: no admite una subcarpeta como destino, pero sí recibir las notas directamente.
     res = ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Viejo", "to": "AG - SKILLS/viejo"})
     assert res.status_code == 422 and detail(res) == "skill:path"

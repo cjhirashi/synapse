@@ -24,7 +24,7 @@ import json
 import uuid
 from typing import NamedTuple
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules
+from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
@@ -40,7 +40,7 @@ from app.core.note_rules import check_content, check_frontmatter, check_path, pa
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
-from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry, read_registry
 from app.services.change_log_service import ChangeLogService, Pending
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
@@ -236,6 +236,7 @@ class NoteContentService:
         self._guard_check(vault_id, "create", [path])
         if (code := ag_rules.check_create(path)) is not None:
             raise _field_error("path", code)
+        fields["frontmatter"] = self._skill_rules(vault_id, "create", None, path, fields.get("frontmatter"))
         fields["frontmatter"] = self._check_ag_target(vault_id, path, fields.get("frontmatter"), None, "create")
         self._check_meta_write(vault_id, path, None, fields.get("frontmatter"), None)
         note_id = str(uuid.uuid4())
@@ -308,6 +309,7 @@ class NoteContentService:
             raise _field_error("path", code)
         if not is_index_path(new_path):
             base = self._check_ag_target(vault_id, new_path, base, doc, "rename_or_move" if renamed else "update", old=old)
+        base = self._skill_rules(vault_id, "move" if renamed else "update", doc, new_path, base)
         self._check_meta_write(vault_id, new_path, old_path, base, doc, deleted=False)
         content_changed = "content" in changes and changes["content"] != doc.get("content")
         if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
@@ -344,6 +346,7 @@ class NoteContentService:
         if (code := ag_rules.check_index_delete(doc["path"])) is not None:
             raise _field_error("path", code)
         self._check_ag_delete(doc)
+        self._skill_rules(vault_id, "delete", doc, doc["path"], None)
         if is_index_path(doc["path"]):
             below = self._count_live_below(vault_id, doc["path"], doc["_id"])
             if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
@@ -363,6 +366,7 @@ class NoteContentService:
         _check_precondition(doc, if_match)
         self._check_system_lock(doc["path"], None, doc.get("frontmatter"))
         self._guard_check(vault_id, "restore", [doc["path"]])
+        self._skill_rules(vault_id, "restore", doc, doc["path"], doc.get("frontmatter"))
         self._check_meta_write(vault_id, doc["path"], None, doc.get("frontmatter"), None)
         restored = {**doc, "deleted_at": None}
 
@@ -440,6 +444,36 @@ class NoteContentService:
 
     def _actor_kind(self) -> str:
         return self._actor.kind if self._actor is not None else "human"
+
+    def _skill_rules(self, vault_id: str, op: str, old_doc: dict | None, new_path: str, frontmatter: dict | None) -> dict | None:
+        """H-041 E3: propietario, invitados y estado de una skill de `AG - SKILLS`. Devuelve los metadatos a guardar.
+
+        *Siempre:* el propietario lo fija el servidor (el agente que crea; un agente no lo cambia), la forma y la
+        coherencia (`skill:*`) y que el usuario solo introduzca gestores. *Bajo el interruptor de H-030:* que un agente
+        toque una skill que no es suya o invite a quien no es gestor (`AgentAccessGuard.check_skill`).
+        """
+        old_path = old_doc["path"] if old_doc is not None else None
+        was = skill_rules.is_skill_path(old_path)
+        becomes = op != "delete" and skill_rules.is_skill_path(new_path)
+        actor = self._actor
+        if (not was and not becomes) or (actor is not None and actor.kind == "system"):
+            return frontmatter
+        agentic = actor is not None and actor.kind in ("agent", "general")
+        old_fm = (old_doc.get("frontmatter") or {}) if was else None
+        fm = frontmatter
+        if becomes:
+            fm = dict(frontmatter or {})
+            if agentic:
+                enforcing = self._guard is not None and self._guard.enforcing
+                who = skill_rules.identity(actor, honor_declared=not enforcing)
+                fm = skill_rules.keep_owner(fm, old_fm) if was else skill_rules.seal_owner(fm, who)
+            if (code := skill_rules.check_shape(fm)) is not None:
+                raise _field_error("frontmatter", code)
+            if not agentic and (code := skill_rules.check_people(fm, read_registry(self._port, self._db, vault_id), old_fm)) is not None:
+                raise _field_error("frontmatter", code)
+        if agentic and self._guard is not None:
+            self._guard.check_skill(vault_id, op if was else "create", new_path if becomes else old_path, old_fm, fm if becomes else None)
+        return fm
 
     def _check_system_lock(self, path: str, prev_path: str | None, frontmatter: object, deleted: bool = False) -> None:
         """H-041: un documento de sistema no lo toca nadie desde la plataforma. Va antes que el registro de agentes

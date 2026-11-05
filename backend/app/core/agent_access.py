@@ -3,7 +3,7 @@
 Quién escribe dónde sale del registro `AG - AGENTES/<id>.md` de cada bóveda (frontmatter `carpetas` y
 `estado`). La sesión humana (cookie) no tiene restricción. Un agente administrador (flag `is_admin` de su
 clave, que vive en la base de control y no en notas) tampoco. Un agente registrado y activo escribe en las
-carpetas de su registro, en `AG - SKILLS/<su-id>/` y en `AG - MENSAJES`; uno no registrado o suspendido solo
+carpetas de su registro, en `AG - SKILLS` (qué skill toca cada uno lo decide la propiedad: `skill_rules`) y en `AG - MENSAJES`; uno no registrado o suspendido solo
 en `AG - MENSAJES`. Leer no se restringe. `*` en `carpetas` = toda la bóveda salvo las carpetas reservadas.
 """
 from typing import NamedTuple
@@ -79,7 +79,7 @@ def _covers(carpeta: str, path: str) -> bool:
     return path_key(path).startswith(path_key(carpeta) + "/")
 
 
-def _decide_path(actor_id: str, registration: Registration | None, path: str) -> Decision:
+def _decide_path(registration: Registration | None, path: str) -> Decision:
     zone = meta_folder_of(path)
     if zone not in (AG_MENSAJES, AG_AGENTES, AG_SKILLS):
         zone = None  # BITACORA (nadie escribe: `meta_rules`) y PLANTILLAS (formato propio) se rigen por `carpetas`
@@ -92,7 +92,7 @@ def _decide_path(actor_id: str, registration: Registration | None, path: str) ->
     if zone == AG_AGENTES:
         return Decision(False, "registry-readonly")
     if zone == AG_SKILLS:
-        return Decision(True) if _covers(f"{AG_SKILLS}/{actor_id}", path) else Decision(False, "skills-own-folder")
+        return Decision(True)  # H-041: un gestor escribe en AG - SKILLS; qué skill puede tocar lo decide la propiedad (`skill_rules`)
     if ALL_FOLDERS in registration.carpetas or any(_covers(c, path) for c in registration.carpetas):
         return Decision(True)
     return Decision(False, "folder-not-assigned")
@@ -107,14 +107,9 @@ def decide(actor: Actor, registry: dict[str, Registration], paths: list[str], *,
     if actor.kind == "human" or (actor.kind == "agent" and actor.is_admin):
         return Decision(True)
     agent_id = actor.agent_id if actor.kind == "agent" else (actor.declared if honor_declared else None)
-    if agent_id is None:
-        registration = None
-        who = "general-key"
-    else:
-        registration = registry.get(agent_id)
-        who = agent_id
+    registration = registry.get(agent_id) if agent_id is not None else None
     for path in paths:
-        verdict = _decide_path(who, registration, path)
+        verdict = _decide_path(registration, path)
         if not verdict.allowed:
             return verdict if agent_id is not None else Decision(False, "general-key")
     return Decision(True)

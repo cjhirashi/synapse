@@ -22,6 +22,7 @@ import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
 import { canonicalBase, canonicalPath, isCanonical } from "./docNames";
+import { ARCHIVED, checkShape as checkSkillShape, isSkillPath } from "./skillRules";
 import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName, PLANTILLA_NAME_MAX, TEMPLATE_PREFIX } from "./metaRules";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
@@ -97,7 +98,11 @@ export interface NoteStore {
   list(vaultId: string, options?: { deleted?: boolean }): Promise<NoteSummary[]>;
   get(id: string): Promise<Note>;
   /** Con `template` (H-030b) la nota nace con el cuerpo de la plantilla, sus atributos y `plantilla: <nombre>`. */
-  create(vaultId: string, title?: string, folder?: string, template?: TemplateSeed): Promise<Note>;
+  /**
+   * Crea una nota. `seed` (H-041): metadatos con los que nace, sobre los de la plantilla. En `AG - SKILLS`, con
+   * `propietario` la skill nace de ese gestor; sin él, nace archivada (una skill activa nunca queda sin propietario).
+   */
+  create(vaultId: string, title?: string, folder?: string, template?: TemplateSeed, seed?: Record<string, unknown>): Promise<Note>;
   /** Crea `PLANTILLAS/plantilla-<nombre>.md` con una definición vacía (alcance toda la bóveda). */
   createTemplate(vaultId: string, name: string): Promise<Note>;
   rename(id: string, path: string, rev: string): Promise<Note>;
@@ -464,7 +469,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
   }
 
   /** Crea una nota y el INDICE de su carpeta si falta (H-031): sin título usa «Sin título n» de la carpeta. */
-  async function createNote(vaultId: string, title: string | undefined, folder = "", template?: TemplateSeed): Promise<Note> {
+  async function createNote(
+    vaultId: string, title: string | undefined, folder = "", template?: TemplateSeed, seed?: Record<string, unknown>,
+  ): Promise<Note> {
     const requested = title?.trim() ?? "";
     let path: string;
     if (requested === "") {
@@ -497,6 +504,16 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       }
       seeded.plantilla = template.name;
     }
+    if (seed !== undefined) Object.assign(seeded, seed);
+    if (isSkillPath(path)) {
+      // H-041 E3: la skill nace de un gestor o archivada; el servidor lo exige (`skill:propietario`).
+      if (typeof seeded.propietario !== "string" || seeded.propietario === "") {
+        delete seeded.propietario;
+        delete seeded.agentes;
+        seeded.estado = ARCHIVED;
+      }
+      if (checkSkillShape(seeded) !== null) throw new NoteValidationError(["frontmatter"]);
+    }
     const stampedFrontmatter = stampDates(seeded, { today: localDay(timestamp) });
     const created = await write({
       _id: `${NOTE_ID_PREFIX}${vaultId}:${newId()}`,
@@ -525,8 +542,8 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       return toNote(await load(id, false));
     },
 
-    async create(vaultId, title, folder = "", template) {
-      return createNote(vaultId, title, folder, template);
+    async create(vaultId, title, folder = "", template, seed) {
+      return createNote(vaultId, title, folder, template, seed);
     },
 
     async createTemplate(vaultId, name) {

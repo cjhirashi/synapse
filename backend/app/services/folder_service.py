@@ -9,7 +9,7 @@ Reejecutar la misma operación es seguro: si `from` ya no tiene notas pero `to` 
 """
 from typing import NamedTuple
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules
+from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     FolderMoveInvalid, FolderNotFound, NotePathTaken as NotePathTakenProblem, RevisionConflict, ValidationFailed,
@@ -95,6 +95,10 @@ class FolderService:
             if (code := ag_rules.check_create(new_path)) is not None:
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
             if (code := doc_names.is_canonical(new_path)) is not None:  # H-041 E2: una carpeta movida no renombra notas
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            # H-041 E3: una nota que pasa a ser skill necesita su propietario (o estar archivada): mover no lo inventa.
+            if (skill_rules.is_skill_path(new_path) and not skill_rules.is_skill_path(doc["path"])
+                    and (code := skill_rules.check_shape(dict(doc.get("frontmatter") or {}))) is not None):
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
             if (code := meta_rules.check_note_write(
                     path=new_path, prev_path=doc["path"], frontmatter=doc.get("frontmatter"),

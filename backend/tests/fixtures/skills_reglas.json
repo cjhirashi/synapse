@@ -1,0 +1,210 @@
+{
+ "_doc": "H-041 E3: especificación compartida de la forma de una skill de bóveda (propietario, agentes, estado). La implementan backend (core/skill_rules.py) y frontend (notes/skillRules.ts). `shape`: metadatos y código de rechazo; `paths`: qué rutas son una skill.",
+ "shape": [
+  {
+   "frontmatter": {
+    "propietario": "aira"
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "emma"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": []
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {},
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "estado": "borrador"
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": ""
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": 3
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": "Aira"
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": "emma"
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "emma",
+     "emma"
+    ]
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "aira"
+    ]
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "todos y todas"
+    ]
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "a0",
+     "a1",
+     "a2",
+     "a3",
+     "a4",
+     "a5",
+     "a6",
+     "a7",
+     "a8",
+     "a9",
+     "a10",
+     "a11",
+     "a12",
+     "a13",
+     "a14",
+     "a15",
+     "a16",
+     "a17",
+     "a18",
+     "a19",
+     "a20"
+    ]
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "propietario": "aira",
+    "agentes": [
+     "a0",
+     "a1",
+     "a2",
+     "a3",
+     "a4",
+     "a5",
+     "a6",
+     "a7",
+     "a8",
+     "a9",
+     "a10",
+     "a11",
+     "a12",
+     "a13",
+     "a14",
+     "a15",
+     "a16",
+     "a17",
+     "a18",
+     "a19"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "estado": "archivado"
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "estado": "archivado",
+    "agentes": []
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "estado": "archivado",
+    "propietario": "aira"
+   },
+   "expected": "skill:estado"
+  },
+  {
+   "frontmatter": {
+    "estado": "archivado",
+    "agentes": [
+     "emma"
+    ]
+   },
+   "expected": "skill:estado"
+  }
+ ],
+ "paths": [
+  {
+   "path": "AG - SKILLS/skill-a.md",
+   "expected": true
+  },
+  {
+   "path": "ag - skills/skill-a.md",
+   "expected": true
+  },
+  {
+   "path": "AG - SKILLS/INDICE.md",
+   "expected": false
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "expected": false
+  },
+  {
+   "path": "AG - SKILLS/sub/skill-a.md",
+   "expected": false
+  },
+  {
+   "path": "Notas/skill-a.md",
+   "expected": false
+  },
+  {
+   "path": "AG - SKILLS",
+   "expected": false
+  },
+  {
+   "path": "PLANTILLAS/plantilla-skill.md",
+   "expected": false
+  }
+ ]
+}

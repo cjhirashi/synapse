@@ -346,6 +346,9 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `plantilla:<path\|alcance\|atributos\|estilo\|in-use\|unknown>` | (H-030b) plantilla mal ubicada o mal definida; en uso por algún documento; plantilla citada que no existe |
 | `sistema:readonly` | (H-041) crear, editar, mover, renombrar, borrar o restaurar un documento de sistema (la skill global o `plantilla-skill`), con cualquier actor y modo |
 | `skill:name` | (H-041 E2) una skill sin nombre válido (sin letras ni dígitos, solo el prefijo, o de más de 64 caracteres con el prefijo); en `/sync`, un nombre que no es canónico |
+| `skill:propietario` | (H-041 E3) skill activa sin propietario o con uno mal formado, o propietario que el usuario introduce y no es gestor |
+| `skill:agentes` | (H-041 E3) invitados mal formados, repetidos, más de 20, que incluyen al propietario, o que el usuario introduce y no son gestores |
+| `skill:estado` | (H-041 E3) skill archivada con propietario o con invitados |
 | `skill:path` | (H-041 E2) una skill en una subcarpeta de `AG - SKILLS` |
 | `sistema:reserved` | (H-041) una nota que no es de sistema trae el atributo `sistema` |
 | `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |

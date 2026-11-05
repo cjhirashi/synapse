@@ -90,6 +90,11 @@ export function noteReasonText(code: string): string {
   if (code === "meta-folder:index-delete") return "El INDICE de una carpeta reservada no se puede borrar.";
   if (code === "bitacora:readonly") return "La bitácora la escribe solo el servidor: no se puede editar, mover ni borrar.";
   if (code === "sistema:readonly") return "Documento de sistema: no se puede editar, mover ni borrar. Se actualiza con cada versión de Synapse.";
+  if (code === "skill:propietario") return "Una skill activa necesita un propietario que sea gestor de la bóveda (o estar archivada).";
+  if (code === "skill:agentes") return "Los invitados de una skill deben ser gestores de la bóveda, sin repetirse y sin incluir al propietario.";
+  if (code === "skill:estado") return "Una skill archivada no tiene propietario ni invitados.";
+  if (code === "skill:name") return "El nombre de la skill necesita letras o dígitos y, con el prefijo skill-, no pasar de 64 caracteres.";
+  if (code === "skill:path") return "Las skills van directamente en AG - SKILLS, sin subcarpetas.";
   if (code === "sistema:reserved") return "El atributo «sistema» es reservado: solo lo ponen los documentos que publica Synapse.";
   if (code === "plantilla:path") return "Las plantillas van en PLANTILLAS/, planas y con nombre plantilla-<nombre>.md.";
   if (code === "plantilla:alcance") return "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda).";

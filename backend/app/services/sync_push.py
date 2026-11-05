@@ -38,7 +38,7 @@ from typing import NamedTuple
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules
+from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
 from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
@@ -50,7 +50,7 @@ from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultAttributes, VaultDescription, VaultIcon, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
-from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry, read_registry
 from app.services.change_log_service import ChangeLogService
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
@@ -405,6 +405,7 @@ class SyncPushService:
                 self._check_index_rules(doc, leaves)
                 self._check_ag_rules(doc, leaves)
                 await self._check_meta_rules(doc, leaves)
+                await self._check_skill_rules(doc, leaves)
                 await self._check_agent_access(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
@@ -565,6 +566,41 @@ class SyncPushService:
                 NoteContentService(self._port, self._db)._count_template_users, vault_id, name, doc["_id"])
             if users > 0:
                 raise Rejected("plantilla:in-use")
+
+    async def _check_skill_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """H-041 E3: propietario, invitados y estado de una skill de `AG - SKILLS`. A diferencia de la REST, aquí no se
+        puede sellar el propietario (la revisión viaja tal cual): una clave de agente debe traerlo ya correcto. La sesión
+        humana solo introduce gestores; las reglas por agente (propiedad, invitados) las gobierna el interruptor de H-030."""
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        prev_path = previous["path"] if previous else None
+        deleted = doc["deleted_at"] is not None
+        was = skill_rules.is_skill_path(prev_path)
+        becomes = not deleted and skill_rules.is_skill_path(doc["path"])
+        actor = self._actor
+        if (not was and not becomes) or (actor is not None and actor.kind == "system"):
+            return
+        agentic = actor is not None and actor.kind in ("agent", "general")
+        old_fm = (previous.get("frontmatter") or {}) if was and previous is not None else None
+        fm = doc.get("frontmatter") or {}
+        vault_id = doc["_id"].split(":")[1]
+        if becomes:
+            if (code := skill_rules.check_shape(fm)) is not None:
+                raise Rejected(code)
+            if agentic and not was:
+                who = skill_rules.identity(actor, honor_declared=not (self._guard is not None and self._guard.enforcing))
+                if who is None or skill_rules.owner_of(fm) != who:
+                    raise Rejected(skill_rules.SKILL_OWNER)  # el propietario lo fija quien crea; aquí no se puede sellar
+            if not agentic:
+                registry = await to_thread.run_sync(read_registry, self._port, self._db, vault_id)
+                if (code := skill_rules.check_people(fm, registry, old_fm)) is not None:
+                    raise Rejected(code)
+        if agentic and self._guard is not None and self._guard.active:
+            op = "create" if not was else "delete" if not becomes else "move" if prev_path != doc["path"] else "update"
+            allowed, _reason = await to_thread.run_sync(
+                self._guard.evaluate_skill, vault_id, op, doc["path"] if becomes else prev_path, old_fm, fm if becomes else None)
+            if not allowed and self._guard.enforcing:
+                raise Rejected("agent-access-denied")
 
     async def _check_agent_access(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-030 E6: una clave de agente solo escribe donde su registro de `AG - AGENTES` lo permite. En modo

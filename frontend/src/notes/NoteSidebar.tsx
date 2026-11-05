@@ -34,6 +34,7 @@ import { pathKey } from "./noteRules";
 import { isMetaFolderPath, isInBitacora, splitMeta, canonicalMetaName } from "./metaFolders";
 import { isSystemPath } from "./metaRules";
 import { appliesTo, templateName } from "./metaRules";
+import { managersOf } from "./skillRules";
 import { NoteValidationError } from "./errors";
 import { buildTree, displayName, type TreeNode } from "./noteTree";
 import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
@@ -171,6 +172,13 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const [activeFolder, setActiveFolder] = useState("");
   // H-030b: en la carpeta PLANTILLAS se crean plantillas; en las demás, la nota puede nacer de una que aplique ahí.
   const inTemplatesFolder = pathKey(activeFolder) === pathKey("PLANTILLAS");
+  // H-041 E3: una skill nueva nace de un gestor de la bóveda (el propietario) o, si no hay, archivada.
+  const inSkillsFolder = pathKey(activeFolder) === pathKey("AG - SKILLS");
+  const managers = useMemo(() => managersOf(items ?? []), [items]);
+  const [skillOwner, setSkillOwner] = useState("");
+  useEffect(() => {
+    if (!managers.includes(skillOwner)) setSkillOwner(managers[0] ?? "");
+  }, [managers, skillOwner]);
   const templateOptions = useMemo(() => {
     if (inTemplatesFolder) return [];
     return (items ?? []).flatMap((item) => {
@@ -434,9 +442,9 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         const atributos = Array.isArray(template.frontmatter.atributos) ? template.frontmatter.atributos : [];
         note = await notes.create(vaultId, title, activeFolder, {
           name: templateName(template.path) ?? "", content: template.content, atributos,
-        });
+        }, inSkillsFolder ? { propietario: skillOwner } : undefined);
       } else {
-        note = await notes.create(vaultId, title, activeFolder);
+        note = await notes.create(vaultId, title, activeFolder, undefined, inSkillsFolder ? { propietario: skillOwner } : undefined);
       }
       setTitle("");
       setTemplateId("");
@@ -898,6 +906,19 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           {inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
           <input value={title} onChange={(event) => setTitle(event.target.value)} aria-describedby={`${createInId} ${hintId}`} />
         </label>
+        {inSkillsFolder && (
+          <label>
+            Propietario de la skill
+            <select value={skillOwner} onChange={(event) => setSkillOwner(event.target.value)}>
+              {managers.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+              {managers.length === 0 && <option value="">Sin gestores: nace archivada</option>}
+            </select>
+          </label>
+        )}
         {templateOptions.length > 0 && (
           <label>
             Plantilla

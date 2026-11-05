@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable
 
 from app.core.ag_rules import AG_AGENTES
+from app.core import skill_rules
 from app.core.agent_access import Actor, Registration, decide, decide_files, parse_registration
 from app.core.config import settings
 from app.core.errors import AgentAccessDenied
@@ -126,3 +127,44 @@ class AgentAccessGuard:
         allowed, reason = self.evaluate(vault_id, op, paths, files=files)
         if not allowed and self._mode == "enforce":
             raise AgentAccessDenied(f"{self._actor.agent_id or 'general'} denied: {reason} {paths[:3]}")
+
+    # --- Skills de bóveda (H-041 E3): propietario, invitados y gestores ---
+
+    def read_registry(self, vault_id: str) -> dict[str, Registration]:
+        return read_registry(self._port, self._db, vault_id)
+
+    def evaluate_skill(
+        self, vault_id: str, op: str, path: str, old: dict | None, new: dict | None,
+    ) -> tuple[bool, str | None]:
+        """Reglas por agente de una skill (`skill_rules.decide_skill`); mismo interruptor que el resto: en sombra solo
+        registra (`op` = `skill-<op>`), con `enforce` el llamador rechaza. La sesión humana no se evalúa."""
+        if not self.active:
+            return True, None
+        enforce = self._mode == "enforce"
+        try:
+            registry = read_registry(self._port, self._db, vault_id)
+        except Exception:  # noqa: BLE001
+            if enforce:
+                raise
+            logger.warning("agent registry unreadable in shadow mode; skill write allowed", exc_info=True)
+            return True, "registry-unreadable"
+        verdict = skill_rules.decide_skill(self._actor, registry, op, old, new, honor_declared=not enforce)
+        identified = self._actor.kind == "agent" or (not enforce and self._actor.declared is not None)
+        self._sink({
+            "owner_id": self._owner_id, "vault_id": vault_id,
+            "agent_id": self._actor.agent_id or (self._actor.declared if not enforce else None),
+            "key_label": self._actor.key_label,
+            "declared": self._actor.kind == "general" and self._actor.declared is not None,
+            "op": f"skill-{op}", "paths": json.dumps([path], ensure_ascii=False),
+            "decision": ("allow" if verdict.allowed else "deny") if identified else
+                        ("allow" if verdict.allowed else "deny-general"),
+            "reason": verdict.reason, "mode": self._mode,
+        })
+        return verdict.allowed, verdict.reason
+
+    def check_skill(self, vault_id: str, op: str, path: str, old: dict | None, new: dict | None) -> None:
+        allowed, reason = self.evaluate_skill(vault_id, op, path, old, new)
+        if not allowed and self._mode == "enforce":
+            detail = skill_rules.PUBLIC_DETAIL.get(reason or "")
+            raise AgentAccessDenied(
+                f"{self._actor.agent_id or 'general'} denied: {reason} {path}", **({"detail": detail} if detail else {}))
