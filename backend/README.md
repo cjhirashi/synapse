@@ -22,7 +22,7 @@ backend/
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
-├── scripts/          # export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py
+├── scripts/          # export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py; H-030b: h030b_migrate.py (rutas heredadas -> BITACORA/PLANTILLAS, en seco/aplicar/revertir), rebuild_bitacora.py
 ├── tests/
 ├── Dockerfile        # Multi-stage: compila la SPA (Node) y la copia a la imagen (contexto = raíz)
 └── requirements.txt

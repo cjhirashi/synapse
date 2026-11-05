@@ -28,7 +28,7 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
 - **INDICES (H-031):** `test_index_rules.py` y `test_index_body.py` (sobre `fixtures/indice_cuerpo.json`, que el cliente también recorre) y `test_index_protection.py` (REST y sync) y `test_migrate_indices.py` (herramienta `scripts/migrate_indices.py`: en seco por defecto, `--apply` borra la lista de `--ids` a la papelera y crea el INDICE de cada carpeta).
 - **H-030b:** `test_h030b_rules.py` (reglas puras: nombres en MAYÚSCULAS, qué se registra, día por zona horaria, texto del día, plantillas,
   skill de cajón) y `test_h030b_api.py` (REST y `/sync` con CouchDB real: registro antes de escribir, 503 sin registro, idempotencia por
-  `_rev`, documentos diarios, BITACORA de solo lectura, plantilla inexistente y en uso, skill de cajón). `conftest.py` apaga
+  `_rev`, documentos diarios, BITACORA de solo lectura, plantilla inexistente y en uso, skill de cajón). `test_h030b_migrate.py` (herramienta `scripts/h030b_migrate.py`: conversión de plantillas heredadas, en seco, aplicar y revertir). `conftest.py` apaga
   `BITACORA_DOCS` (los documentos diarios); el módulo de H-030b los activa.
 - **Notas (SPEC-0008):** `test_note_rules.py` (reglas puras sobre la batería compartida
   `fixtures/note_rules_cases.json`, que el cliente también recorre), `test_note_contract.py`

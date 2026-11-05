@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.core import bitacora_rules as rules
+from app.core.ag_rules import BITACORA
 from app.core.agent_access import Actor
 from app.core.config import settings
 from app.core.errors import RevisionConflict, StorageUnavailable
@@ -283,3 +284,16 @@ class ChangeLogService:
             "created_at": now, "updated_at": now, "deleted_at": None,
         })
         NoteContentService(self._port, self._db).ensure_indexes(vault_id, path)
+        self._describe_month(vault_id, date[:7])
+
+    def _describe_month(self, vault_id: str, month: str) -> None:
+        """El INDICE de la carpeta del mes lo crea el servidor sin descripción: se le pone la suya (norma de H-031)."""
+        doc = self._find(vault_id, f"{BITACORA}/{month}/INDICE.md")
+        if doc is None or (doc.get("frontmatter") or {}).get("descripcion"):
+            return
+        try:
+            self._port.put(self._db, {**doc, "updated_at": utc_now(), "frontmatter": stamp_dates(
+                {**(doc.get("frontmatter") or {}), "descripcion": f"Bitácora de {month}: un documento por día con los cambios de la bóveda."},
+                today_cdmx(), doc.get("created_at"))})
+        except RevisionConflict:
+            pass  # otro proceso lo escribió a la vez; no es esencial
