@@ -274,6 +274,31 @@ export async function seedContent(): Promise<SeededContent> {
   };
 }
 
+/** H-042: usuario con una bóveda que ya trae una conversación del buzón entre agentes (la escribieron los agentes: aquí se siembra en CouchDB). */
+export const BUZON_CONVERSATION = "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05";
+
+export async function seedBuzon(): Promise<Seeded> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Buzón", "folder-heart:accent");
+  const stamp = "2026-11-05T09:00:00.000000Z";
+  const index = (path: string, descripcion: string) => noteDoc(vaultId, { path, frontmatter: { descripcion }, content: "" }, stamp);
+  await bulkDocs(user.cookie, [
+    index("INDICE.md", "Bóveda de prueba del buzón"),
+    index("AG - MENSAJES/INDICE.md", "Buzón entre agentes"),
+    index(`${BUZON_CONVERSATION}/INDICE.md`, "Conversación de aira para liza: Revisar el plan. Iniciada el 2026-11-05."),
+    noteDoc(vaultId, {
+      path: `${BUZON_CONVERSATION}/000-cabecera.md`,
+      frontmatter: { titulo: "aira → liza - Revisar el plan", estado: "abierta", de: "aira", para: "liza", asunto: "Revisar el plan", inicio: "2026-11-05" },
+      content: "Conversación de aira para liza.",
+    }, stamp),
+    noteDoc(vaultId, { path: `${BUZON_CONVERSATION}/001-de-aira.md`, frontmatter: {}, content: "Necesito que revises el plan de H-042." }, stamp),
+    noteDoc(vaultId, { path: `${BUZON_CONVERSATION}/002-de-liza.md`, frontmatter: {}, content: "Revisado: todo en orden." }, stamp),
+    noteDoc(vaultId, { path: "Ideas/Una nota normal.md", frontmatter: {}, content: "Texto" }, stamp),
+    index("Ideas/INDICE.md", "Ideas"),
+  ]);
+  return { email: user.email, password: user.password, vaults: [{ id: vaultId, name: "Buzón", icon: "folder-heart:accent" }], longNoteName: LONG_NOTE_NAME };
+}
+
 /** Usuario sembrado con el banco de 200 notas de rendimiento (§10.8): las 3 grandes + 197 pequeñas. */
 export interface SeededContentPerf extends Seeded {
   notes: ContentNote[];
@@ -480,7 +505,13 @@ export function expectExact(key: string, label: string, got: string, target: str
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf; buzon: Seeded }>({
+  buzon: [
+    async ({}, use) => {
+      await use(await seedBuzon());
+    },
+    { scope: "worker" },
+  ],
   content: [
     async ({}, use) => {
       await use(await seedContent());

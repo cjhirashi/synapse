@@ -775,3 +775,6 @@ body.is-resizing {
 .index-view-columns summary { cursor: pointer; }
 .index-view-columns-list { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.4rem 0; max-height: 9rem; overflow-y: auto; }
 .index-view-columns label { display: inline-flex; align-items: center; gap: 0.3rem; }
+/* H-042: el buzón entre agentes es solo para agentes; el usuario lo lee. */
+.note-sidebar-readonly { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.5rem; padding: 0.4rem 0.6rem; font-size: 0.8rem; opacity: 0.85; border: 1px dashed currentColor; border-radius: 6px; }
+.mensaje-view-facts { margin-bottom: 0.75rem; }

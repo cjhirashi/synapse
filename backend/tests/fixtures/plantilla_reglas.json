@@ -794,6 +794,110 @@
     "sistema": true
    },
    "expected": "sistema:reserved"
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "ag-mensajes:agents-only"
+  },
+  {
+   "path": "AG - MENSAJES/INDICE.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "ag-mensajes:agents-only"
+  },
+  {
+   "path": "Otra/x.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "ag-mensajes:agents-only"
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": true,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "ag-mensajes:agents-only"
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - MENSAJES/INDICE.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "Otra/x.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": true,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "general",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - MENSAJES/INDICE.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "general",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "Otra/x.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": false,
+   "actor": "general",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "prev_path": "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "deleted": true,
+   "actor": "general",
+   "frontmatter": null,
+   "expected": null
+  },
+  {
+   "path": "Otra/AG - MENSAJES/x.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": null
   }
  ],
  "applies_to": [

@@ -27,6 +27,14 @@ export function isInBitacora(path: string): boolean {
   return path.includes("/") && pathKey(first) === pathKey("BITACORA");
 }
 
+/**
+ * ¿`path` es `AG - MENSAJES` o está dentro (a cualquier profundidad)? Es el buzón entre agentes (H-042): solo lo escriben
+ * los agentes, el usuario únicamente lo lee (`ag-mensajes:agents-only`). Sirve igual para la ruta de una carpeta o de una nota.
+ */
+export function isInMensajes(path: string): boolean {
+  return pathKey(path.split("/", 1)[0]) === pathKey("AG - MENSAJES");
+}
+
 /** Nombre canónico de una carpeta reservada de la raíz, o `null` si `path` no es una. */
 export function canonicalMetaName(path: string): string | null {
   // Solo las carpetas de la raíz (sin "/") pueden ser reservadas.

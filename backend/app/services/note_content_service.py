@@ -415,8 +415,7 @@ class NoteContentService:
     def _mensajes_gate(self, *paths: str | None) -> None:
         """`AG - MENSAJES` es solo para agentes: la sesión humana no crea, edita, mueve, borra ni restaura nada ahí, ni
         siquiera un INDICE. Siempre activa (no hay «modo sombra» para una persona)."""
-        if self._actor_kind() == "human" and any(
-                p is not None and ag_rules.meta_folder_of(p) == ag_rules.AG_MENSAJES for p in paths):
+        if self._actor_kind() == "human" and any(meta_rules.in_mensajes(p) for p in paths):
             raise _field_error("path", conversation_rules.AGENTS_ONLY)
 
     def _check_mensajes(

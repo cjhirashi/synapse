@@ -17,6 +17,7 @@ import { StorageFullError, isQuotaError, utcNow } from "../sync/vaultStore";
 import { NOTE_ID_PREFIX, checkContent, checkFrontmatter, checkPath, normalizePath, pathKey } from "./noteRules";
 import { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, TemplateInUseError } from "./errors";
 import { nextUntitledPath } from "./untitled";
+import { isInMensajes } from "./metaFolders";
 import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
@@ -280,6 +281,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     let created = 0;
     for (const path of paths) {
       for (const folder of ancestorFolders(path)) {
+        if (isInMensajes(folder)) continue; // H-042: los INDICES del buzón los crea el servidor; la sesión del usuario no escribe ahí
         const indexPath = indexPathFor(folder);
         if (present.has(pathKey(indexPath))) continue;
         const timestamp = now();

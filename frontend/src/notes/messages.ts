@@ -88,6 +88,7 @@ export function noteReasonText(code: string): string {
   if (code === "meta-folder:case") return "Las carpetas reservadas se escriben en MAYÚSCULAS, por ejemplo PLANTILLAS.";
   if (code === "meta-folder:rename") return "Una carpeta reservada (AG - SKILLS, AG - MENSAJES, AG - AGENTES, BITACORA, PLANTILLAS) no se renombra ni se mueve.";
   if (code === "meta-folder:index-delete") return "El INDICE de una carpeta reservada no se puede borrar.";
+  if (code === "ag-mensajes:agents-only") return "El buzón entre agentes es solo para agentes: aquí solo puedes leer.";
   if (code === "bitacora:readonly") return "La bitácora la escribe solo el servidor: no se puede editar, mover ni borrar.";
   if (code === "sistema:readonly") return "Documento de sistema: no se puede editar, mover ni borrar. Se actualiza con cada versión de Synapse.";
   if (code === "skill:propietario") return "Una skill activa necesita un propietario que sea gestor de la bóveda (o estar archivada).";

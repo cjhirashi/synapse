@@ -144,3 +144,22 @@ def test_agent_rules_and_the_general_key():
 
 def test_a_human_is_not_evaluated_by_the_agent_rules():
     assert c.decide_mensaje(Actor("human"), "create", c.parse_mensaje_path(MSG), first_message=True, honor_declared=True).allowed
+
+
+# --- Espejo del cliente: los mismos casos recorre `frontend/src/notes/conversation.test.ts` ---
+
+def _fixture():
+    import json
+    from pathlib import Path
+
+    return json.loads((Path(__file__).parent / "fixtures" / "conversaciones_reglas.json").read_text(encoding="utf-8"))["paths"]
+
+
+@pytest.mark.parametrize("case", _fixture(), ids=lambda c: c["path"][:60])
+def test_the_shared_fixture_of_paths(case):
+    info = c.parse_mensaje_path(case["path"])
+    if case["kind"] is None:
+        assert info is None
+        return
+    assert (info.kind, info.de, info.para, info.asunto, info.inicio, info.sender, info.number) == (
+        case["kind"], case["de"], case["para"], case["asunto"], case["inicio"], case["sender"], case["number"])
