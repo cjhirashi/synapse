@@ -308,6 +308,16 @@ class AgentKeyLabelTaken(DomainError):
     detail = "Agent key label already in use"
 
 
+class AgentAccessDenied(DomainError):
+    """Un agente escribe fuera de lo que su registro de `AG - AGENTES` permite (H-030 E6, solo con
+    cumplimiento activo). El `detail` público es fijo: no revela el registro de la bóveda."""
+
+    slug = "agent-access-denied"
+    title = "Agent access denied"
+    status = 403
+    detail = "This agent may not write there"
+
+
 # --- Archivos (H-015) ---
 
 class FileNotFound(DomainError):

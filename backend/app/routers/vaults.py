@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 from typing import Annotated
 
@@ -17,6 +18,7 @@ from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate, FileMetaOut
 from app.routers.auth import SESSION_ERRORS
+from app.services.note_content_service import NoteContentService
 from app.services.vault_service import Versioned, VaultService
 from sqlalchemy.orm import Session
 
@@ -81,7 +83,18 @@ def create_vault(
     current_user: TokenPayload = Depends(get_current_principal),
     service: VaultService = Depends(get_vault_service),
 ):
-    return _respond(service.create(body, owner_id=current_user.sub), response)
+    result = service.create(body, owner_id=current_user.sub)
+    _seed_ag_folders(result.vault.id, current_user.sub)
+    return _respond(result, response)
+
+
+def _seed_ag_folders(vault_id: str, owner_id: str) -> None:
+    """H-030 E3: toda bóveda nueva nace con las carpetas reservadas. De mejor esfuerzo: si CouchDB falla aquí la
+    bóveda ya existe y la herramienta de carga (`scripts/ensure_ag_folders.py`) completa lo que falte."""
+    try:
+        NoteContentService(get_vault_port(), f"synapse_user_{owner_id}").ensure_ag_folders(vault_id)
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).warning("ensure_ag_folders failed for %s", vault_id, exc_info=True)
 
 
 # `vault_id` se declara `str` (no `UUID`) e `If-Match` opcional: un id que no es UUID da

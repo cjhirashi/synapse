@@ -2,9 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
 
+from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
-    InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
+    AgentAccessDenied, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
     PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
 from app.core.json_body import DeepJsonRoute
@@ -13,6 +14,7 @@ from app.core.problems import problem_responses
 from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
+from app.services.agent_access_guard import AgentAccessGuard
 from app.services.note_content_service import NoteContentService, Versioned
 
 router = APIRouter(
@@ -32,7 +34,9 @@ def get_note_content_service(
 ) -> NoteContentService:
     # Mismo repositorio compartido por proceso que vaults.py (`get_vault_port`) y la misma
     # base resuelta sólo del principal (RF-014 de 0003; RF-002/RF-006 de 0013).
-    return NoteContentService(port, f"synapse_user_{current_user.sub}")
+    db = f"synapse_user_{current_user.sub}"
+    actor = actor_of(current_user)
+    return NoteContentService(port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor))
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:
@@ -101,7 +105,7 @@ def get_note(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=NoteOut,
-    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, StorageUnavailable),
+    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, AgentAccessDenied, StorageUnavailable),
 )
 def create_note(
     vault_id: VaultId,
@@ -116,7 +120,7 @@ def create_note(
     "/{note_id}",
     response_model=NoteOut,
     responses={200: {"headers": {**_with_etag(200)[200]["headers"], "X-Wikilinks-Rewritten": _REWRITTEN_HEADER}}}
-    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
+    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied),
 )
 def update_note(
     vault_id: VaultId,
@@ -133,7 +137,7 @@ def update_note(
     "/{note_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    responses=problem_responses(*_CONDITIONAL, VaultNotFound),
+    responses=problem_responses(*_CONDITIONAL, VaultNotFound, AgentAccessDenied),
 )
 def delete_note(
     vault_id: VaultId,
@@ -147,7 +151,7 @@ def delete_note(
 @router.post(
     "/{note_id}/restore",
     response_model=NoteOut,
-    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken),
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied),
 )
 def restore_note(
     vault_id: VaultId,

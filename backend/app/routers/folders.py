@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends, Response
 
+from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
-    FolderMoveInvalid, FolderNotFound, NotePathTaken, PasswordChangeRequired, StorageUnavailable, VaultNotFound,
+    AgentAccessDenied, FolderMoveInvalid, FolderNotFound, NotePathTaken, PasswordChangeRequired, StorageUnavailable, VaultNotFound,
     WikilinkRewriteConflict,
 )
 from app.core.json_body import DeepJsonRoute
@@ -11,6 +12,7 @@ from app.core.problems import problem_responses
 from app.core.schemas import FolderMove, FolderMoveOut, TokenPayload, WikilinkRewriteOut
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
+from app.services.agent_access_guard import AgentAccessGuard
 from app.services.folder_service import FolderService
 
 router = APIRouter(
@@ -26,7 +28,9 @@ def get_folder_service(
     current_user: TokenPayload = Depends(get_current_principal),
     port: VaultPort = Depends(get_vault_port),
 ) -> FolderService:
-    return FolderService(port, f"synapse_user_{current_user.sub}")
+    db = f"synapse_user_{current_user.sub}"
+    actor = actor_of(current_user)
+    return FolderService(port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor))
 
 
 @router.post(
@@ -36,7 +40,7 @@ def get_folder_service(
     responses={200: {"headers": {"X-Wikilinks-Rewritten": {
         "description": "`notes=<n>; links=<m>; ambiguous=<k>; pending=<p>`", "schema": {"type": "string"}}}}}
     | problem_responses(VaultNotFound, FolderNotFound, FolderMoveInvalid, NotePathTaken, WikilinkRewriteConflict,
-                        StorageUnavailable),
+                        AgentAccessDenied, StorageUnavailable),
 )
 def move_folder(
     vault_id: VaultId,

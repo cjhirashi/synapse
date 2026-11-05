@@ -19,6 +19,10 @@ class Settings(BaseSettings):
     MINIO_ROOT_PASSWORD: str
     MINIO_BUCKET: str = "synapse-files"
 
+    # H-030 E6: `shadow` (por defecto) solo registra lo que el registro de `AG - AGENTES` decidiría; `enforce`
+    # rechaza con 403; `off` ni evalúa. El corte (E9) es pasar a `enforce`.
+    AGENT_ACCESS_MODE: str = "shadow"
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

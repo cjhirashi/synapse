@@ -22,6 +22,8 @@ import json
 import uuid
 from typing import NamedTuple
 
+from app.core import ag_rules
+from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
     PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
@@ -36,6 +38,8 @@ from app.core.note_rules import check_content, check_frontmatter, check_path, pa
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
+from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.vault_service import is_canonical_uuid
 from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewriteService
@@ -137,11 +141,18 @@ class Versioned(NamedTuple):
 class NoteContentService:
     """Notas de una bóveda sobre la base de un usuario (una instancia por petición)."""
 
-    def __init__(self, port: VaultPort, db: str, auto_indexes: bool = True):
+    def __init__(
+        self, port: VaultPort, db: str, auto_indexes: bool = True,
+        actor: Actor | None = None, guard: AgentAccessGuard | None = None,
+    ):
         self._port = port
         self._db = db
         self._notes = NoteService(port, db)
         self._auto_indexes = auto_indexes
+        # H-030: quién escribe (None = el sistema o una sesión humana) y el cumplimiento del registro de agentes.
+        self._actor = actor
+        self._guard = guard
+        self._mensajes = MensajesService(port, db)
 
     def list(
         self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None = None
@@ -210,6 +221,10 @@ class NoteContentService:
             data.path, data.content, fields.get("frontmatter"), frontmatter_set="frontmatter" in fields)
         if (code := check_op("create_user", data.path)) is not None:
             raise _field_error("path", code)
+        self._guard_check(vault_id, "create", [data.path])
+        if (code := ag_rules.check_create(data.path)) is not None:
+            raise _field_error("path", code)
+        fields["frontmatter"] = self._check_ag_target(vault_id, data.path, fields.get("frontmatter"), None, "create")
         note_id = str(uuid.uuid4())
         doc_id = _doc_id(vault_id, note_id)
         now = utc_now()
@@ -232,6 +247,7 @@ class NoteContentService:
         doc["_rev"] = self._port.put(self._db, doc)
         if self._auto_indexes:
             self._ensure_indexes(vault_id, data.path)
+        self._after_write(vault_id, data.path)
         return _versioned(doc)
 
     def update(self, vault_id: str, note_id: str, data: NoteUpdate, if_match: str | None) -> Versioned:
@@ -264,6 +280,12 @@ class NoteContentService:
         # Se comprueba antes de reservar la ruta nueva para no dejar una reserva huérfana.
         if renamed and (code := check_op("rename_or_move", old_path, to=changes["path"])) is not None:
             raise _field_error("path", code)
+        new_path = changes["path"] if renamed else old_path
+        self._guard_check(vault_id, "move" if renamed else "update", [old_path, new_path] if renamed else [old_path])
+        if renamed and (code := ag_rules.check_create(new_path)) is not None:
+            raise _field_error("path", code)
+        if not is_index_path(new_path):
+            base = self._check_ag_target(vault_id, new_path, base, doc, "rename_or_move" if renamed else "update", old=old)
         content_changed = "content" in changes and changes["content"] != doc.get("content")
         if (code := check_op("edit", old_path, changed=changed_keys(old, base), content_changed=content_changed)) is not None:
             raise _field_error("content" if code == "index-readonly:content" else "frontmatter", code)
@@ -272,6 +294,7 @@ class NoteContentService:
         updated = {**doc, **changes, "updated_at": utc_now()}
         updated["frontmatter"] = stamp_dates(base, today_cdmx(), doc.get("created_at"))
         updated["_rev"] = self._write(updated)
+        self._after_write(vault_id, old_path, new_path)
         if renamed:
             self._release(doc["_id"], old_path)
             if self._auto_indexes:
@@ -292,12 +315,17 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
         _check_precondition(doc, if_match)
+        self._guard_check(vault_id, "delete", [doc["path"]])
+        if (code := ag_rules.check_index_delete(doc["path"])) is not None:
+            raise _field_error("path", code)
+        self._check_ag_delete(doc)
         if is_index_path(doc["path"]):
             below = self._count_live_below(vault_id, doc["path"], doc["_id"])
             if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
                 raise _field_error("path", code)
         self._write({**doc, "deleted_at": utc_now()})
         self._release(doc["_id"], doc["path"])
+        self._after_write(vault_id, doc["path"])
 
     def restore(self, vault_id: str, note_id: str, if_match: str | None) -> Versioned:
         """Restaura una nota de la papelera: vuelve a reservar `path` (mismo patrón que
@@ -305,12 +333,130 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=True)
         _check_precondition(doc, if_match)
+        self._guard_check(vault_id, "restore", [doc["path"]])
         self._reserve(doc["_id"], doc["path"])
         restored = {**doc, "deleted_at": None}
         restored["_rev"] = self._write(restored)
         if self._auto_indexes:
             self._ensure_indexes(vault_id, doc["path"])
+        self._after_write(vault_id, doc["path"])
         return _versioned(restored)
+
+    # --- Carpetas reservadas, mensajes y registro de agentes (H-030) ---
+
+    def _guard_check(self, vault_id: str, op: str, paths: list[str]) -> None:
+        """Cumplimiento del registro de `AG - AGENTES`: solo evalúa a un agente o clave general (E6)."""
+        if self._guard is not None:
+            self._guard.check(vault_id, op, paths)
+
+    def _agent(self) -> tuple[str, bool] | None:
+        """`(agent_id, es_administrador)` si escribe una clave con identidad de agente; si no, `None`."""
+        if self._actor is not None and self._actor.kind == "agent":
+            return self._actor.agent_id, self._actor.is_admin
+        return None
+
+    def _check_ag_target(
+        self, vault_id: str, path: str, frontmatter: dict | None, prev_doc: dict | None, op: str,
+        old: dict | None = None,
+    ) -> dict | None:
+        """Formato de lo que se escribe en `AG - MENSAJES` y `AG - AGENTES`. Devuelve el frontmatter a
+        guardar (en una cabecera, con `cerrada_el` sellado por el servidor). La sesión humana no sufre las
+        reglas de inmutabilidad, solo las de formato."""
+        zone = ag_rules.meta_folder_of(path)
+        if zone == ag_rules.AG_AGENTES and not is_index_path(path):
+            if (code := check_registration_frontmatter(path, frontmatter)) is not None:
+                raise _field_error("frontmatter", code)
+            return frontmatter
+        if zone != ag_rules.AG_MENSAJES:
+            return frontmatter
+        info = ag_rules.parse_mensaje_path(path)
+        if info is None:
+            raise _field_error("path", "ag-mensajes:path")
+        agent = self._agent()
+        if info.kind == "cabecera":
+            if (code := ag_rules.check_cabecera(info, frontmatter)) is not None:
+                raise _field_error("frontmatter", code)
+            frontmatter = ag_rules.stamp_cabecera(old, frontmatter, utc_now())
+        elif info.kind == "mensaje":
+            if (code := ag_rules.check_mensaje_note(info, frontmatter)) is not None:
+                raise _field_error("frontmatter", code)
+            if op == "create" and self._mensajes.find_cabecera(vault_id, info.para, info.conversation) is None:
+                raise _field_error("path", "ag-mensajes:no-cabecera")
+        if agent is not None:
+            old_info = ag_rules.parse_mensaje_path(prev_doc["path"]) if prev_doc is not None else info
+            code = ag_rules.check_agent_mensaje_op(
+                op, old_info or info, agent_id=agent[0], is_admin=agent[1],
+                old_frontmatter=old, new_frontmatter=frontmatter)
+            if code is not None:
+                raise _field_error("path", code)
+        return frontmatter
+
+    def _check_ag_delete(self, doc: dict) -> None:
+        """Un agente no borra mensajes ni cabeceras (la purga lo hace por su cuenta)."""
+        agent = self._agent()
+        if agent is None or ag_rules.meta_folder_of(doc["path"]) != ag_rules.AG_MENSAJES:
+            return
+        info = ag_rules.parse_mensaje_path(doc["path"])
+        if info is not None and (code := ag_rules.check_agent_mensaje_op(
+                "delete", info, agent_id=agent[0], is_admin=agent[1])) is not None:
+            raise _field_error("path", code)
+
+    def _after_write(self, vault_id: str, *paths: str) -> None:
+        """Efectos tras escribir: el registro de agentes cambió (se descarta su caché) o se escribió en una
+        conversación (si estaba cerrada se reabre, Q6)."""
+        for path in paths:
+            zone = ag_rules.meta_folder_of(path)
+            if zone == ag_rules.AG_AGENTES:
+                invalidate_registry(self._db, vault_id)
+            elif zone == ag_rules.AG_MENSAJES:
+                info = ag_rules.parse_mensaje_path(path)
+                if info is not None and info.kind == "mensaje":
+                    self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
+
+    def ensure_ag_folders(self, vault_id: str, dry_run: bool = False) -> list[str]:
+        """Crea, si faltan, el INDICE de cada carpeta reservada (con su descripción) y el de la raíz. Idempotente.
+
+        Devuelve las rutas de INDICE creadas (o que se crearían con `dry_run`). `AG - MENSAJES` nace vacía:
+        solo su INDICE.
+        """
+        self._check_vault_active(vault_id)
+        existing = {path_key(d["path"]) for d in self._live_paths(vault_id)}
+        todo = []
+        for folder in ag_rules.META_FOLDERS:
+            index_path = index_path_for(folder)
+            if path_key(index_path) not in existing:
+                todo.append(index_path)
+        if path_key("INDICE.md") not in existing and todo:
+            todo.append("INDICE.md")
+        if dry_run:
+            return todo
+        for index_path in todo:
+            folder = folder_of(index_path)
+            frontmatter = {"descripcion": ag_rules.FOLDER_DESCRIPTIONS[folder]} if folder else {}
+            self._create_index(vault_id, index_path, frontmatter)
+        return todo
+
+    def _live_paths(self, vault_id: str) -> list[dict]:
+        docs, after = [], None
+        while True:
+            page = self._port.list_notes(self._db, vault_id, False, 100, after)
+            docs += [d for d in page if not d.get("deleted_at")]
+            if len(page) < 100:
+                return docs
+            after = (page[-1]["created_at"], page[-1]["_id"])
+
+    def _create_index(self, vault_id: str, index_path: str, frontmatter: dict) -> None:
+        doc_id = _doc_id(vault_id, str(uuid.uuid4()))
+        try:
+            self._notes.reserve_path(doc_id, index_path)
+        except NotePathTaken:
+            return  # ya existe
+        now = utc_now()
+        self._port.put(self._db, {
+            "_id": doc_id, "type": "note", "vault_id": vault_id, "path": index_path, "content": "",
+            "frontmatter": stamp_dates(frontmatter, today_cdmx(), now),
+            "created_at": now, "updated_at": now, "deleted_at": None,
+        })
 
     # --- Internos ---
 

@@ -58,7 +58,7 @@ def test_rf_001_plaintext_never_reappears_in_listing(ready_admin):
 def test_rf_004_list_exposes_only_safe_fields(ready_admin):
     create_agent_key(ready_admin, "aira")
     item = ready_admin.get("/auth/agent-keys").json()[0]
-    assert set(item) == {"id", "label", "created_at", "last_used_at", "revoked_at"}
+    assert set(item) == {"id", "label", "created_at", "last_used_at", "revoked_at", "agent_id", "is_admin"}
     assert item["last_used_at"] is None and item["revoked_at"] is None
 
 

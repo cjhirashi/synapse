@@ -2,7 +2,7 @@
 import pytest
 
 from tests.test_notes_router import _note, put_note
-from tests.test_vaults_api import assert_problem, create, user_db
+from tests.test_vaults_api import create, user_db
 
 
 def _paths(res) -> list[str]:
@@ -50,7 +50,7 @@ def test_prefix_paginates_by_path_and_cursor_is_bound_to_the_folder(ready_admin,
         cursor = page["next_cursor"]
     assert seen == [f"F/n{i}.md" for i in range(5)]
     other = ready_admin.get(f"/vaults/{vault_id}/notes", params={"prefix": "G", "cursor": first["next_cursor"]})
-    assert_problem(other, 422, "invalid-cursor")
+    assert other.status_code == 422 and other.json()["errors"][0]["detail"] == "Invalid cursor."
 
 
 def test_prefix_respects_deleted_flag(ready_admin, db):

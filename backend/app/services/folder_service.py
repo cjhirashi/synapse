@@ -9,6 +9,8 @@ Reejecutar la misma operación es seguro: si `from` ya no tiene notas pero `to` 
 """
 from typing import NamedTuple
 
+from app.core import ag_rules
+from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import (
     FolderMoveInvalid, FolderNotFound, NotePathTaken as NotePathTakenProblem, RevisionConflict, ValidationFailed,
     WikilinkRewriteConflict,
@@ -19,6 +21,7 @@ from app.core.note_rules import check_path, path_key
 from app.core.ports.vault_port import VaultPort
 from app.core.timestamps import utc_now
 from app.core.wikilink_rewrite import Rename
+from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
 from app.services.note_content_service import NoteContentService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewriteService
@@ -47,11 +50,13 @@ def _under(path: str, folder: str) -> str | None:
 
 
 class FolderService:
-    def __init__(self, port: VaultPort, db: str):
+    def __init__(self, port: VaultPort, db: str, actor: Actor | None = None, guard: AgentAccessGuard | None = None):
         self._port = port
         self._db = db
         self._notes = NoteService(port, db)
         self._contents = NoteContentService(port, db)
+        self._actor = actor
+        self._guard = guard
 
     def move(self, vault_id: str, from_: str, to: str) -> FolderMoveResult:
         self._contents.check_vault_active(vault_id)
@@ -60,6 +65,11 @@ class FolderService:
                 raise FolderMoveInvalid(errors=[{"pointer": f"#/{field}", "detail": "validation-error:path"}])
         if from_ == to:
             return FolderMoveResult(from_, to, 0, RewriteReport())
+        if (code := ag_rules.check_folder_move(from_)) is not None:
+            raise FolderMoveInvalid(errors=[{"pointer": "#/from", "detail": code}])
+        if self._guard is not None:
+            self._guard.check(vault_id, "folder-move", [f"{from_}/x.md", f"{to}/x.md"])
+        self._check_ag_targets_unmovable(from_)
         if path_key(from_) != path_key(to) and _under(f"{to}/x", from_) is not None:
             raise FolderMoveInvalid(errors=[{"pointer": "#/to", "detail": "folder-inside-itself"}])
 
@@ -74,6 +84,11 @@ class FolderService:
         for doc in movers:
             new_path = f"{to}/{_under(doc['path'], from_)}"
             if (code := check_path(new_path)) is not None:
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            if (code := ag_rules.check_mensaje_path(new_path)) is not None:
+                raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
+            if (ag_rules.meta_folder_of(new_path) == ag_rules.AG_AGENTES and not is_index_path(new_path)
+                    and (code := check_registration_frontmatter(new_path, doc.get("frontmatter"))) is not None):
                 raise ValidationFailed(errors=[{"pointer": "#/to", "detail": code}])
             holder = taken.get(path_key(new_path))
             if holder is not None and is_index_path(new_path):
@@ -97,11 +112,18 @@ class FolderService:
             raise WikilinkRewriteConflict(f"a moved note changed during the operation: {error}") from None
 
         self._contents.ensure_indexes(vault_id, f"{to}/x.md")
+        invalidate_registry(self._db, vault_id)
         # Notas que una corrida anterior interrumpida ya movió: sus enlaces se completan ahora.
         moved_now = len(moved)
         moved.update(self._already_moved(live, set(moved), from_, to))
         report = WikilinkRewriteService(self._port, self._db).rewrite(vault_id, moved)
         return FolderMoveResult(from_, to, moved_now, report)
+
+    def _check_ag_targets_unmovable(self, from_: str) -> None:
+        """Los mensajes son inmutables para un agente: no mueve nada bajo `AG - MENSAJES`."""
+        if (self._actor is not None and self._actor.kind == "agent"
+                and ag_rules.meta_folder_of(f"{from_}/x.md") == ag_rules.AG_MENSAJES):
+            raise FolderMoveInvalid(errors=[{"pointer": "#/from", "detail": "ag-mensajes:immutable"}])
 
     def _live_notes(self, vault_id: str) -> list[dict]:
         docs, after = [], None

@@ -17,9 +17,10 @@ from sqlalchemy.orm import Session
 from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
 from app.adapters.minio_adapter import MinioObjectStorage
+from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal
 from app.core.errors import (
-    FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType, VaultNotFound,
+    AgentAccessDenied, FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType, VaultNotFound,
 )
 from app.core.file_safety import SVG, HTML
 from app.core.ports.object_storage_port import ObjectStoragePort
@@ -28,6 +29,7 @@ from app.core.problems import problem_responses
 from app.core.schemas import FileMetaOut, FileVisibilityUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
+from app.services.agent_access_guard import AgentAccessGuard
 from app.services.file_service import MAX_FILE_SIZE, MAX_FILE_SIZE_DOCUMENT, FileService
 from app.services.vault_service import VaultService
 
@@ -98,6 +100,14 @@ def get_object_storage() -> ObjectStoragePort:
     return MinioObjectStorage()
 
 
+def get_file_guard(
+    principal: TokenPayload = Depends(get_current_principal),
+    vault_port: VaultPort = Depends(get_vault_port),
+) -> AgentAccessGuard:
+    db = f"synapse_user_{principal.sub}"
+    return AgentAccessGuard(vault_port, db, principal.sub, actor_of(principal))
+
+
 def get_file_service(
     principal: TokenPayload = Depends(get_current_principal),
     db: Session = Depends(get_db),
@@ -120,7 +130,7 @@ def get_file_service(
     status_code=status.HTTP_201_CREATED,
     response_model=FileMetaOut,
     responses=problem_responses(
-        *SESSION_ERRORS, VaultNotFound, FileTooLarge, UnsupportedFileType, UnsafeSvg, StorageUnavailable
+        *SESSION_ERRORS, VaultNotFound, FileTooLarge, UnsupportedFileType, UnsafeSvg, AgentAccessDenied, StorageUnavailable
     ),
 )
 def upload_file(
@@ -128,10 +138,12 @@ def upload_file(
     file: Annotated[UploadFile, File()],
     folder: Annotated[str | None, Form()] = None,
     service: FileService = Depends(get_file_service),
+    guard: AgentAccessGuard = Depends(get_file_guard),
 ):
     # Se lee el archivo con tope por tipo (5 MB imágenes, 25 MB resto). El servicio decide el
     # límite basado en la extensión (C-2/C-11). El handler es síncrono → corre en el threadpool,
     # así la lectura y la subida a MinIO (que bloquean) no frenan el bucle de eventos.
+    guard.check(vault_id, "file-upload", [file.filename or "archivo"], files=True)
     data = file.file.read(MAX_FILE_SIZE_DOCUMENT + 1)
     return service.create(vault_id=vault_id, filename=file.filename or "archivo", data=data, folder=folder)
 
@@ -165,15 +177,17 @@ def get_file(
 @router.patch(
     "/{file_id}",
     response_model=FileMetaOut,
-    responses=problem_responses(*SESSION_ERRORS, FileNotFound, UnsupportedFileType, StorageUnavailable),
+    responses=problem_responses(*SESSION_ERRORS, FileNotFound, UnsupportedFileType, AgentAccessDenied, StorageUnavailable),
 )
 def update_file(
     file_id: str,
     body: FileUpdate,
     service: FileService = Depends(get_file_service),
+    guard: AgentAccessGuard = Depends(get_file_guard),
 ):
     """Actualizar name y/o visibility del archivo (C-5). Solo el dueño."""
     record = service.get_record(file_id)
+    guard.check(record.vault_id, "file-update", [record.name], files=True)
 
     if body.name is not None:
         record = service.set_name(file_id, body.name)
@@ -186,11 +200,13 @@ def update_file(
 @router.delete(
     "/{file_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=problem_responses(*SESSION_ERRORS, FileNotFound, StorageUnavailable),
+    responses=problem_responses(*SESSION_ERRORS, FileNotFound, AgentAccessDenied, StorageUnavailable),
 )
 def delete_file(
     file_id: str,
     service: FileService = Depends(get_file_service),
+    guard: AgentAccessGuard = Depends(get_file_guard),
 ):
     """Borra el archivo (objeto + registro) solo si es del dueño (C-6)."""
+    guard.check(service.get_record(file_id).vault_id, "file-delete", [file_id], files=True)
     service.delete(file_id)

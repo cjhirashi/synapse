@@ -21,6 +21,7 @@ from starlette.types import Message, Receive
 
 from app.adapters.database import SessionLocal
 from app.adapters.replication_repository import ReplicationRepository
+from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
     CheckpointNotFound, InvalidSyncRequest, PasswordChangeRequired, PayloadTooLarge,
@@ -157,7 +158,7 @@ def get_push_service(
 ) -> SyncPushService:
     return SyncPushService(
         VaultService(vault_port, db), NoteService(vault_port, db), vault_port, replication, db,
-        current_user.sub)
+        current_user.sub, actor_of(current_user))
 
 
 Db = Annotated[str, Depends(get_sync_db)]

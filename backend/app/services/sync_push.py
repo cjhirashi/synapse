@@ -30,6 +30,7 @@ nombre (o su ruta); por eso se reserva cada revisión viva y activa antes de esc
 El puerto de bóvedas y los servicios son síncronos: sus llamadas corren en un hilo
 (`anyio.to_thread`) para no bloquear el bucle de eventos; el de replicación es async.
 """
+import logging
 import re
 from collections.abc import Awaitable, Callable
 from typing import NamedTuple
@@ -37,6 +38,8 @@ from typing import NamedTuple
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
+from app.core import ag_rules
+from app.core.agent_access import Actor, check_registration_frontmatter
 from app.core.errors import StorageUnavailable, VaultNameTaken
 from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
 from app.core.note_rules import (
@@ -46,6 +49,8 @@ from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import VaultAttributes, VaultDescription, VaultIcon, VaultName, VaultTags
 from app.core.timestamps import is_timestamp
+from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry
+from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
 from app.services.vault_service import VaultService, name_key
@@ -176,13 +181,17 @@ class SyncPushService:
     """Valida y escribe un lote del replicador en la base de un usuario (una instancia por petición)."""
 
     def __init__(self, vaults: VaultService, notes: NoteService, port: VaultPort,
-                 replication: ReplicationPort, db: str, owner_id: str):
+                 replication: ReplicationPort, db: str, owner_id: str, actor: Actor | None = None):
         self._vaults = vaults
         self._notes = notes
         self._port = port
         self._replication = replication
         self._db = db
         self._owner_id = owner_id
+        # H-030: quién empuja (None = sesión humana) y el cumplimiento del registro de agentes (E6).
+        self._actor = actor
+        self._guard = AgentAccessGuard(port, db, owner_id, actor) if actor is not None else None
+        self._mensajes = MensajesService(port, db)
         self._start_batch()
 
     def _start_batch(self) -> None:
@@ -193,6 +202,8 @@ class SyncPushService:
         self._uses_before: dict[str, dict[str, str]] = {}
         # Nombres o rutas reservados en este lote por documento (clave → etiqueta), para la liberación.
         self._reserved: dict[str, dict[str, str]] = {}
+        # H-030: bóvedas nuevas del lote (reciben sus carpetas reservadas) y notas aceptadas por revisar.
+        self._new_vaults: set[str] = set()
 
     async def push(self, docs: list[dict]) -> list[dict]:
         """Rechazos del lote, en su orden; `[]` si se aceptó todo (como responde CouchDB).
@@ -236,12 +247,40 @@ class SyncPushService:
         if accepted:
             await self._write(accepted)
             await self._release_unused()
+            await to_thread.run_sync(self._after_write, accepted)
         if deferred:
             deleted_indexes = await self._push_index_deletions(deferred, rejections, stored)
             if deleted_indexes:
                 await self._write(deleted_indexes)
                 await self._release_unused()
         return [rejections[position] for position in sorted(rejections)]
+
+    def _after_write(self, accepted: list[dict]) -> None:
+        """Efectos de H-030 tras escribir el lote (mejor esfuerzo: la revisión ya está aceptada y escrita):
+        carpetas reservadas de las bóvedas nuevas, caché del registro de agentes, `cerrada_el` de las cabeceras
+        y reapertura de las conversaciones cerradas en las que se escribió."""
+        from app.services.note_content_service import NoteContentService
+
+        try:
+            for vault_id in self._new_vaults:
+                NoteContentService(self._port, self._db).ensure_ag_folders(vault_id)
+            for doc in accepted:
+                if not doc["_id"].startswith(NOTE_PREFIX) or doc.get("_deleted") is True:
+                    continue
+                zone = ag_rules.meta_folder_of(doc["path"])
+                vault_id = doc["_id"].split(":")[1]
+                if zone == ag_rules.AG_AGENTES:
+                    invalidate_registry(self._db, vault_id)
+                elif zone == ag_rules.AG_MENSAJES and doc.get("deleted_at") is None:
+                    info = ag_rules.parse_mensaje_path(doc["path"])
+                    if info is None:
+                        continue
+                    if info.kind == "cabecera":
+                        self._mensajes.settle(doc["_id"])
+                    elif info.kind == "mensaje" and doc["_revisions"]["start"] == 1:
+                        self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
+        except Exception:  # noqa: BLE001
+            logging.getLogger(__name__).warning("post-push effects failed", exc_info=True)
 
     async def _push_index_deletions(
             self, deferred: list[tuple[int, dict]], rejections: dict[int, dict],
@@ -255,6 +294,8 @@ class SyncPushService:
             try:
                 vault_id = doc["_id"].split(":")[1]
                 below = await self._live_below(vault_id, doc["path"], gone | {doc["_id"]})
+                if (code := ag_rules.check_index_delete(doc["path"])) is not None:
+                    raise Rejected(code)
                 if (code := check_op("delete", doc["path"], other_live_below_after=below)) is not None:
                     raise Rejected(code)
                 await self._accept(doc)
@@ -335,8 +376,12 @@ class SyncPushService:
             await kind.check_server(self, doc, leaves)
             if doc["_id"].startswith(NOTE_PREFIX):
                 self._check_index_rules(doc, leaves)
+                self._check_ag_rules(doc, leaves)
+                await self._check_agent_access(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
+        if doc["_id"].startswith(VAULT_PREFIX) and not tombstone and doc["deleted_at"] is None and not leaves:
+            self._new_vaults.add(doc["_id"].removeprefix(VAULT_PREFIX))
         if not tombstone and doc["deleted_at"] is None:
             await kind.reserve(self, doc)
             key, label = kind.use(doc)
@@ -417,6 +462,62 @@ class SyncPushService:
         changed = changed_keys(previous.get("frontmatter") if previous else None, doc.get("frontmatter"))
         if (code := check_op("edit", path, changed=changed)) is not None:
             raise Rejected(code)
+
+    def _check_ag_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """H-030: carpetas reservadas, formato de `AG - MENSAJES` y registro de `AG - AGENTES`."""
+        path = doc["path"]
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        prev_path = previous["path"] if previous else None
+        if prev_path != path and (code := ag_rules.check_create(path)) is not None:
+            raise Rejected(code)
+        if prev_path is not None and prev_path != path and is_index_path(prev_path):
+            folder = folder_of(prev_path)
+            if folder and ag_rules.is_meta_folder(folder):
+                raise Rejected("meta-folder:rename")  # un INDICE reservado no se mueve con una carpeta renombrada
+        deleted = doc["deleted_at"] is not None
+        zone = ag_rules.meta_folder_of(path)
+        prev_zone = ag_rules.meta_folder_of(prev_path) if prev_path else None
+        agent = self._actor if self._actor is not None and self._actor.kind == "agent" else None
+        if ag_rules.AG_MENSAJES in (zone, prev_zone) and not is_index_path(path):
+            info = ag_rules.parse_mensaje_path(path)
+            if not deleted:
+                if info is None:
+                    raise Rejected("ag-mensajes:path")
+                frontmatter = doc.get("frontmatter")
+                check = ag_rules.check_cabecera if info.kind == "cabecera" else ag_rules.check_mensaje_note
+                if (code := check(info, frontmatter)) is not None:
+                    raise Rejected(code)
+                previous_frontmatter = (previous or {}).get("frontmatter") or {}
+                if info.kind == "cabecera" and (frontmatter or {}).get("cerrada_el") != previous_frontmatter.get("cerrada_el"):
+                    raise Rejected("immutable-field:cerrada_el")  # lo sella el servidor
+            if agent is not None:
+                old_info = ag_rules.parse_mensaje_path(prev_path) if prev_path else info
+                target = old_info or info
+                if target is not None:
+                    op = "create" if previous is None else "delete" if deleted else \
+                        "rename_or_move" if prev_path != path else "update"
+                    code = ag_rules.check_agent_mensaje_op(
+                        op, target, agent_id=agent.agent_id, is_admin=agent.is_admin,
+                        old_frontmatter=(previous or {}).get("frontmatter"), new_frontmatter=doc.get("frontmatter"))
+                    if code is not None:
+                        raise Rejected(code)
+        if zone == ag_rules.AG_AGENTES and not deleted and not is_index_path(path):
+            if (code := check_registration_frontmatter(path, doc.get("frontmatter"))) is not None:
+                raise Rejected(code)
+
+    async def _check_agent_access(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """H-030 E6: una clave de agente solo escribe donde su registro de `AG - AGENTES` lo permite. En modo
+        sombra solo registra; con cumplimiento activo rechaza la revisión."""
+        if self._guard is None or not self._guard.active:
+            return
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        paths = [doc["path"]] + ([previous["path"]] if previous and previous["path"] != doc["path"] else [])
+        allowed, _ = await to_thread.run_sync(
+            self._guard.evaluate, doc["_id"].split(":")[1], "sync-write", paths)
+        if not allowed and self._guard._mode == "enforce":
+            raise Rejected("agent-access-denied")
 
     async def _check_vault_is_active(self, note_id: str) -> None:
         """Paso 6c (RF-004, RF-014): la bóveda de la nota tiene alguna hoja viva y activa.
