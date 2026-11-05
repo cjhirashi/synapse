@@ -113,7 +113,7 @@ def test_load_tool_reports_collisions_in_dry_run():
     module = util.module_from_spec(spec)
     spec.loader.exec_module(module)
     notes = [
-        {"path": "AG - SKILLS"}, {"path": "AG - MENSAJES/suelta.md"}, {"path": "AG - MENSAJES/INDICE.md"},
+        {"path": "AG - SKILLS"}, {"path": "BITACORA.md"}, {"path": "AG - MENSAJES/suelta.md"}, {"path": "AG - MENSAJES/INDICE.md"},
         {"path": "AG - AGENTES/aira.md", "frontmatter": {"estado": "raro"}},
         {"path": "AG - AGENTES/emma.md", "frontmatter": {"estado": "activo", "carpetas": ["*"]}},
         {"path": "BITACORA/2026-11.md"}, {"path": "Normal/nota.md"},

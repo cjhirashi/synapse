@@ -22,7 +22,7 @@ def test_meta_folder_of(path, zone):
 
 
 @pytest.mark.parametrize("path,reserved", [
-    ("AG - SKILLS", True), ("ag - skills.md", True), ("BITACORA.md", True), ("AG - SKILLS/x.md", False),
+    ("AG - SKILLS", True), ("ag - skills.md", False), ("BITACORA", True), ("BITACORA.md", False), ("AG - SKILLS/x.md", False),
     ("Otra.md", False), ("sub/BITACORA.md", False),
 ])
 def test_a_note_cannot_take_a_reserved_folder_name(path, reserved):
@@ -142,7 +142,8 @@ def _agent(agent_id, admin=False):
     ("aira", "AG - SKILLS/skill-boveda.md", False, "skills-own-folder"),
     ("aira", "AG - AGENTES/aira.md", False, "registry-readonly"),
     ("aira", "AG - MENSAJES/liza/20261105-0930-x/001-de-aira.md", True, None),
-    ("aira", "BITACORA/x.md", False, "reserved-folder"),
+    ("aira", "BITACORA/x.md", False, "folder-not-assigned"),
+    ("emma", "Plantillas/x.md", True, None),
     ("emma", "cualquier/cosa.md", True, None),
     ("emma", "AG - AGENTES/emma.md", False, "registry-readonly"),
     ("emma", "AG - SKILLS/skill-x.md", False, "skills-own-folder"),

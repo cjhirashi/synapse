@@ -57,9 +57,9 @@ def meta_folder_of(path: str) -> str | None:
 
 
 def is_reserved_name(path: str) -> bool:
-    """¿Una nota de la raíz se llama como una carpeta reservada (con o sin `.md`)? Taparía a la carpeta."""
-    key = path_key(path)
-    return "/" not in path and any(key in (name, name + ".md") for name in _META_KEYS)
+    """¿Una nota de la raíz se llama exactamente como una carpeta reservada? Taparía a la carpeta. Un
+    `BITACORA.md` (con extensión) no choca con la carpeta `BITACORA/` y se admite."""
+    return "/" not in path and path_key(path) in _META_KEYS
 
 
 def is_meta_folder(folder: str) -> bool:

@@ -129,8 +129,9 @@ def test_reserved_index_cannot_be_deleted_or_renamed_and_names_cannot_be_taken(r
     res = ready_admin.delete(f"/vaults/{vault_id}/notes/{index['id']}", headers={"If-Match": index["etag"]})
     assert res.status_code == 422 and detail(res) == "meta-folder:index-delete"
     assert patch(ready_admin, vault_id, index, path="Otra/INDICE.md").status_code == 422
-    res = post_note(ready_admin, vault_id, "AG - SKILLS.md")
+    res = post_note(ready_admin, vault_id, "AG - SKILLS")
     assert res.status_code == 422 and detail(res) == "reserved-name:path"
+    assert post_note(ready_admin, vault_id, "BITACORA.md").status_code == 201
 
 
 def test_reserved_folder_cannot_be_renamed_but_content_can_move_into_it(ready_admin, seeded):

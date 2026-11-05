@@ -81,6 +81,8 @@ def _covers(carpeta: str, path: str) -> bool:
 
 def _decide_path(actor_id: str, registration: Registration | None, path: str) -> Decision:
     zone = meta_folder_of(path)
+    if zone not in (AG_MENSAJES, AG_AGENTES, AG_SKILLS):
+        zone = None  # BITACORA y PLANTILLAS solo reservan su nombre hasta H-030b: se escriben como cualquier carpeta
     if zone == AG_MENSAJES:
         return Decision(True)
     if registration is None:
@@ -91,8 +93,6 @@ def _decide_path(actor_id: str, registration: Registration | None, path: str) ->
         return Decision(False, "registry-readonly")
     if zone == AG_SKILLS:
         return Decision(True) if _covers(f"{AG_SKILLS}/{actor_id}", path) else Decision(False, "skills-own-folder")
-    if zone is not None:  # BITACORA / PLANTILLAS: reservadas hasta H-030b
-        return Decision(False, "reserved-folder")
     if ALL_FOLDERS in registration.carpetas or any(_covers(c, path) for c in registration.carpetas):
         return Decision(True)
     return Decision(False, "folder-not-assigned")

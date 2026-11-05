@@ -423,7 +423,7 @@ escritura; `*` = toda la bóveda salvo las reservadas). Una nota de esa carpeta 
 
 Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
 `activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo
-`AG - MENSAJES`. `AG - AGENTES` lo escribe solo el humano o el administrador; `BITACORA`/`PLANTILLAS` están reservadas.
+`AG - MENSAJES`. `AG - AGENTES` lo escribe solo el humano o el administrador; `BITACORA` y `PLANTILLAS` (que equivale a una carpeta `Plantillas` ya existente: la comparación no distingue mayúsculas) solo reservan su nombre hasta H-030b y se escriben como cualquier carpeta.
 Un renombre o movimiento exige permiso en la ruta de origen **y** en la de destino. Archivos (`/files`): basta ser un
 agente registrado y activo en la bóveda. Modos (`AGENT_ACCESS_MODE`): `shadow` (por defecto) solo registra lo que haría
 en la tabla `agent_access_log`; `enforce` rechaza con `403` `agent-access-denied` (REST) o `reason: agent-access-denied`
