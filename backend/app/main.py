@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.adapters.database import SessionLocal
 from app.bootstrap import run_bootstrap
+from app.core.config import settings
 from app.core.problems import install_problem_handlers, install_problem_openapi
 from app.routers.admin import router as admin_router
 from app.routers.agent_access import router as agent_access_router
@@ -13,13 +14,17 @@ from app.routers.files import router as files_router
 from app.routers.folders import router as folders_router
 from app.routers.notes import router as notes_router
 from app.routers.sync import router as sync_router
-from app.routers.vaults import router as vaults_router
+from app.routers.vaults import get_vault_port, router as vaults_router
+from app.services.system_docs_service import sync_all_in_background
 from app.spa import install_spa
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     run_bootstrap(app.state.session_factory)
+    if settings.SYSTEM_DOCS_SYNC:
+        # H-041: publica los documentos de sistema en las bóvedas existentes, sin bloquear el arranque.
+        sync_all_in_background(get_vault_port())
     yield
 
 

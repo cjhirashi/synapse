@@ -47,6 +47,8 @@ SYSTEM = Author("system", "sistema")
 
 def author_of(actor: Actor | None, owner_email: str) -> Author:
     """Quién consta como autor de un cambio. `None` = sesión humana del propietario."""
+    if actor is not None and actor.kind == "system":
+        return SYSTEM
     if actor is None or actor.kind == "human":
         return Author("human", owner_email)
     if actor.kind == "agent":

@@ -1,27 +1,35 @@
-"""Reglas de escritura de las carpetas META con lógica (H-030b): BITACORA, PLANTILLAS y la skill de cajón.
+"""Reglas de escritura de las carpetas META con lógica (H-030b) y de los documentos de sistema (H-041).
 Puras, sin E/S; las llaman por igual la REST, la sincronización y la carpeta movida por la API.
 
 - `BITACORA` es de solo lectura para todos (usuario y agentes): la escribe únicamente el servidor desde su
   registro de cambios, sin pasar por estas reglas. Sus INDICES siguen las reglas de H-031.
 - `PLANTILLAS` solo admite `plantilla-<nombre>.md` planas con una definición válida (ver `plantilla_rules`).
-- La skill de cajón (`AG - SKILLS/skill-bovedas-synapse.md`) solo la modifica una sesión humana, nunca una
-  clave de API (aunque sea del dueño).
+- Un documento de sistema (`core/system_docs.py`) no lo modifica nadie desde la plataforma: ni agentes, ni el
+  usuario, ni por REST ni por sincronización. Solo el publicador, como `actor_kind == "system"`. El atributo
+  `sistema` está reservado: una nota que no es de sistema no puede traerlo. Es independiente de shadow/enforce.
 """
-from app.core import plantilla_rules
-from app.core.ag_rules import AG_SKILLS, BITACORA, meta_folder_of
+from app.core import plantilla_rules, system_docs
+from app.core.ag_rules import BITACORA, meta_folder_of
 from app.core.index_rules import is_index_path
-from app.core.note_rules import path_key
-
-SKILL_CAJON = f"{AG_SKILLS}/skill-bovedas-synapse.md"
-_CAJON_KEY = path_key(SKILL_CAJON)
-
-
-def is_skill_cajon(path: str | None) -> bool:
-    return path is not None and path_key(path) == _CAJON_KEY
 
 
 def _in_bitacora(path: str | None) -> bool:
     return path is not None and meta_folder_of(path) == BITACORA and not is_index_path(path)
+
+
+def check_system_write(
+    *, path: str, prev_path: str | None = None, deleted: bool = False, frontmatter: object = None,
+    actor_kind: str = "human",
+) -> str | None:
+    """Código de rechazo por tocar un documento de sistema o usar su atributo reservado, o `None` (H-041).
+    Aplica a todo actor menos al publicador (`system`) y a todo modo (`off`, shadow, enforce)."""
+    if actor_kind == "system":
+        return None
+    if system_docs.is_system_path(path) or system_docs.is_system_path(prev_path):
+        return "sistema:readonly"
+    if not deleted and isinstance(frontmatter, dict) and system_docs.ATTR in frontmatter:
+        return "sistema:reserved"
+    return None
 
 
 def check_note_write(
@@ -31,13 +39,15 @@ def check_note_write(
     """Código de rechazo de escribir una nota (crear, editar, mover, borrar o restaurar) o `None`.
 
     `path`: ruta tras la escritura; `prev_path`: ruta antes (`None` al crear). `actor_kind`: `human` (sesión
-    de la app), `agent` o `general` (clave de API). No valida lo que depende de otros documentos (plantilla en
-    uso, plantilla inexistente): eso lo hace el servicio con acceso a los datos.
+    de la app), `agent` o `general` (clave de API) o `system` (el publicador, solo dentro del proceso). No valida lo
+    que depende de otros documentos (plantilla en uso, plantilla inexistente): eso lo hace el servicio con acceso a
+    los datos.
     """
     if _in_bitacora(path) or _in_bitacora(prev_path):
         return "bitacora:readonly"
-    if actor_kind != "human" and (is_skill_cajon(path) or is_skill_cajon(prev_path)):
-        return "skill-cajon:human-only"
+    if (code := check_system_write(
+            path=path, prev_path=prev_path, deleted=deleted, frontmatter=frontmatter, actor_kind=actor_kind)) is not None:
+        return code
     if not deleted and plantilla_rules.is_template_zone(path):
         if (code := plantilla_rules.check_path(path)) is not None:
             return code

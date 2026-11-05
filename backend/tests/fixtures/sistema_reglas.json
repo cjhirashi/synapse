@@ -1,0 +1,7 @@
+{
+ "_doc": "H-041: rutas de los documentos de sistema, espejo de backend/app/system_docs/manifest.json. El backend comprueba que coincide con el manifiesto (test_h041_rules.py) y el frontend (notes/metaRules.ts) con esta lista.",
+ "paths": [
+  "AG - SKILLS/skill-bovedas-synapse.md",
+  "PLANTILLAS/plantilla-skill.md"
+ ]
+}

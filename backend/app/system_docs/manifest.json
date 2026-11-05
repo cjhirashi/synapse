@@ -1,0 +1,60 @@
+{
+  "documents": [
+    {
+      "path": "AG - SKILLS/skill-bovedas-synapse.md",
+      "body": "skill-bovedas-synapse.md",
+      "frontmatter": {
+        "titulo": "skill-bovedas-synapse",
+        "descripcion": "Al leer, escribir, ordenar o subir archivos en una bóveda de Synapse con synapse_vault, o al crear skills y plantillas: permisos, metadatos, ÍNDICES, errores.",
+        "tags": [
+          "skill",
+          "synapse",
+          "boveda",
+          "sistema"
+        ],
+        "estado": "aprobado",
+        "version": "1.0.0"
+      },
+      "sha256": "454d02d3239b46b89af8e27fd4592eddef27754e4dc1ba414b250417edc7134e"
+    },
+    {
+      "path": "PLANTILLAS/plantilla-skill.md",
+      "body": "plantilla-skill.md",
+      "frontmatter": {
+        "titulo": "plantilla-skill",
+        "descripcion": "Al crear una skill de agente en AG - SKILLS: disparadores primero, pasos con criterio de cierre, referencias, y los atributos propietario y agentes.",
+        "tags": [
+          "plantilla",
+          "skill",
+          "sistema"
+        ],
+        "estado": "aprobado",
+        "version": "1.0.0",
+        "alcance": [
+          "AG - SKILLS"
+        ],
+        "atributos": [
+          {
+            "nombre": "propietario",
+            "tipo": "texto"
+          },
+          {
+            "nombre": "agentes",
+            "tipo": "lista",
+            "valor": []
+          },
+          {
+            "nombre": "version",
+            "tipo": "texto",
+            "valor": "0.1.0"
+          }
+        ],
+        "estilo": {
+          "publicar": {},
+          "pdf": {}
+        }
+      },
+      "sha256": "e4b4a3d57e7f36ac6f4d60b352805631f79f36a4ff5ae64f67cff540e1d61277"
+    }
+  ]
+}

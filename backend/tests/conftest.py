@@ -13,6 +13,8 @@ os.environ.setdefault("ADMIN_PASSWORD", "admin1234")
 os.environ.setdefault("SEED_AG_FOLDERS", "false")
 # H-030b: sin documentos diarios de BITACORA en las pruebas (el registro sí se escribe); las de H-030b los activan.
 os.environ.setdefault("BITACORA_DOCS", "false")
+# H-041: sin replicación de documentos de sistema al arrancar (las pruebas que la ejercitan llaman al publicador).
+os.environ.setdefault("SYSTEM_DOCS_SYNC", "false")
 os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
 os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 

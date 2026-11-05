@@ -105,7 +105,8 @@ def test_new_vault_is_born_with_the_reserved_folders(ready_admin, seeded):
     items = ready_admin.get(f"/vaults/{vault_id}/notes", params={"limit": 200}).json()["items"]
     assert {i["path"] for i in items} == {
         "INDICE.md", "AG - SKILLS/INDICE.md", "AG - MENSAJES/INDICE.md", "AG - AGENTES/INDICE.md",
-        "BITACORA/INDICE.md", "PLANTILLAS/INDICE.md", "AG - SKILLS/skill-bovedas-synapse.md"}  # H-030b: más la skill de cajón
+        "BITACORA/INDICE.md", "PLANTILLAS/INDICE.md",
+        "AG - SKILLS/skill-bovedas-synapse.md", "PLANTILLAS/plantilla-skill.md"}  # H-041: documentos de sistema
     skills = next(i for i in items if i["path"] == "AG - SKILLS/INDICE.md")
     assert "Skills para los agentes" in skills["frontmatter"]["descripcion"]
 
@@ -117,10 +118,10 @@ def test_ensure_ag_folders_is_idempotent_and_dry_run_writes_nothing(ready_admin,
     vault_id = vault_of(ready_admin)
     service = NoteContentService(get_vault_port(), user_db(db))
     would = service.ensure_ag_folders(vault_id, dry_run=True)
-    assert len(would) == 7 and ready_admin.get(f"/vaults/{vault_id}/notes").json()["items"] == []
+    assert len(would) == 8 and ready_admin.get(f"/vaults/{vault_id}/notes").json()["items"] == []
     assert sorted(service.ensure_ag_folders(vault_id)) == sorted(would)
     assert service.ensure_ag_folders(vault_id) == []
-    assert len(ready_admin.get(f"/vaults/{vault_id}/notes", params={"limit": 200}).json()["items"]) == 7
+    assert len(ready_admin.get(f"/vaults/{vault_id}/notes", params={"limit": 200}).json()["items"]) == 8
 
 
 def test_reserved_index_cannot_be_deleted_or_renamed_and_names_cannot_be_taken(ready_admin, seeded):

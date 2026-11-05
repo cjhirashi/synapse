@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # PLANTILLAS). Interruptor para desactivarlo sin tocar código; la suite de pruebas lo apaga por defecto.
     SEED_AG_FOLDERS: bool = True
 
+    # H-041: al arrancar, replica en segundo plano los documentos de sistema (la skill global y `plantilla-skill`) en
+    # todas las bóvedas. Idempotente (solo escribe lo que difiere del repositorio); la suite de pruebas lo apaga.
+    SYSTEM_DOCS_SYNC: bool = True
+
     # H-030b: genera los documentos diarios de BITACORA a partir del registro de cambios. El registro (`change_log`)
     # se escribe siempre; esto solo apaga los documentos (la suite de pruebas los apaga por defecto, como el sembrado).
     BITACORA_DOCS: bool = True

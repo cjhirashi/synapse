@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """H-030 E3: crea en cada bóveda existente las carpetas reservadas (INDICE de `AG - SKILLS`, `AG - MENSAJES`,
-`AG - AGENTES`, `BITACORA` y `PLANTILLAS`, más el de la raíz si faltara) y la skill de cajón si la bóveda no la tiene
-(H-030b: nunca la sobrescribe). Idempotente.
+`AG - AGENTES`, `BITACORA` y `PLANTILLAS`, más el de la raíz si faltara) y publica los documentos de sistema
+(H-041: la skill global y `plantilla-skill`; ver también `sync_system_docs.py`). Idempotente.
 
 Sin `--apply` solo informa (en seco, solo lectura): por bóveda, los INDICES que crearía y las colisiones con
 contenido que ya existe (notas con el nombre de una carpeta reservada, rutas de `AG - MENSAJES` fuera de formato,
@@ -40,7 +40,7 @@ def collisions(notes: list[dict]) -> list[str]:
         if zone == ag_rules.AG_AGENTES and not is_index_path(path) and parse_registration(path, note.get("frontmatter")) is None:
             found.append(f"nota de AG - AGENTES que no es un registro válido: {path}")
         if zone == ag_rules.PLANTILLAS and (code := meta_rules.check_note_write(
-                path=path, frontmatter=note.get("frontmatter"))) is not None:
+                path=path, frontmatter=note.get("frontmatter"), actor_kind="system")) is not None:
             found.append(f"nota de PLANTILLAS que no es una plantilla válida ({code}): {path}")
     return found
 

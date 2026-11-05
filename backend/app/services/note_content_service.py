@@ -225,6 +225,7 @@ class NoteContentService:
         fields = data.model_dump(exclude_unset=True)
         _check_rules(
             data.path, data.content, fields.get("frontmatter"), frontmatter_set="frontmatter" in fields)
+        self._check_system_lock(data.path, None, fields.get("frontmatter"))
         if (code := check_op("create_user", data.path)) is not None:
             raise _field_error("path", code)
         self._guard_check(vault_id, "create", [data.path])
@@ -292,6 +293,7 @@ class NoteContentService:
         if renamed and (code := check_op("rename_or_move", old_path, to=changes["path"])) is not None:
             raise _field_error("path", code)
         new_path = changes["path"] if renamed else old_path
+        self._check_system_lock(new_path, old_path, base)
         self._guard_check(vault_id, "move" if renamed else "update", [old_path, new_path] if renamed else [old_path])
         if renamed and (code := ag_rules.check_create(new_path)) is not None:
             raise _field_error("path", code)
@@ -328,6 +330,7 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
         _check_precondition(doc, if_match)
+        self._check_system_lock(doc["path"], doc["path"], None, deleted=True)
         self._guard_check(vault_id, "delete", [doc["path"]])
         if (code := ag_rules.check_index_delete(doc["path"])) is not None:
             raise _field_error("path", code)
@@ -349,6 +352,7 @@ class NoteContentService:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=True)
         _check_precondition(doc, if_match)
+        self._check_system_lock(doc["path"], None, doc.get("frontmatter"))
         self._guard_check(vault_id, "restore", [doc["path"]])
         self._check_meta_write(vault_id, doc["path"], None, doc.get("frontmatter"), None)
         restored = {**doc, "deleted_at": None}
@@ -428,6 +432,14 @@ class NoteContentService:
     def _actor_kind(self) -> str:
         return self._actor.kind if self._actor is not None else "human"
 
+    def _check_system_lock(self, path: str, prev_path: str | None, frontmatter: object, deleted: bool = False) -> None:
+        """H-041: un documento de sistema no lo toca nadie desde la plataforma. Va antes que el registro de agentes
+        para que la respuesta sea siempre `sistema:readonly`, con cualquier modo de cumplimiento."""
+        code = meta_rules.check_system_write(
+            path=path, prev_path=prev_path, deleted=deleted, frontmatter=frontmatter, actor_kind=self._actor_kind())
+        if code is not None:
+            raise _field_error("frontmatter" if code == "sistema:reserved" else "path", code)
+
     def _check_meta_write(
         self, vault_id: str, path: str, prev_path: str | None, frontmatter: object, prev_doc: dict | None,
         deleted: bool = False,
@@ -502,11 +514,12 @@ class NoteContentService:
                 if info is not None and info.kind == "mensaje":
                     self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
 
-    def ensure_ag_folders(self, vault_id: str, dry_run: bool = False) -> list[str]:
-        """Crea, si faltan, el INDICE de cada carpeta reservada (con su descripción) y el de la raíz. Idempotente.
+    def ensure_ag_folders(self, vault_id: str, dry_run: bool = False, owner_id: str | None = None) -> list[str]:
+        """Crea, si faltan, el INDICE de cada carpeta reservada (con su descripción) y el de la raíz, y publica los
+        documentos de sistema (H-041: la skill global y `plantilla-skill`). Idempotente.
 
-        Devuelve las rutas creadas (o que se crearían con `dry_run`): INDICES y, si falta, la skill de cajón.
-        `AG - MENSAJES` nace vacía: solo su INDICE.
+        Devuelve las rutas creadas o actualizadas (o que lo serían con `dry_run`). `AG - MENSAJES` nace vacía: solo
+        su INDICE. Con `owner_id` la publicación de los documentos de sistema consta en la BITACORA.
         """
         self._check_vault_active(vault_id)
         existing = {path_key(d["path"]) for d in self._live_paths(vault_id)}
@@ -518,31 +531,20 @@ class NoteContentService:
         if path_key("INDICE.md") not in existing and todo:
             todo.append("INDICE.md")
         if dry_run:
-            return todo + self._seed_skill_cajon(vault_id, existing, True)
+            return todo + self._publish_system_docs(vault_id, True, owner_id)
         for index_path in todo:
             folder = folder_of(index_path)
             frontmatter = {"descripcion": ag_rules.FOLDER_DESCRIPTIONS[folder]} if folder else {}
             self._create_index(vault_id, index_path, frontmatter)
-        return todo + self._seed_skill_cajon(vault_id, existing, dry_run)
+        return todo + self._publish_system_docs(vault_id, False, owner_id)
 
-    def _seed_skill_cajon(self, vault_id: str, existing: set[str], dry_run: bool) -> list[str]:
-        """Siembra la skill de cajón si la bóveda no la tiene (nunca la sobrescribe, P9)."""
-        from app.services import skill_cajon
+    def _publish_system_docs(self, vault_id: str, dry_run: bool, owner_id: str | None) -> list[str]:
+        """Crea o actualiza en sitio los documentos de sistema que faltan o difieren del repositorio."""
+        from app.services.system_docs_service import CREATE, UPDATE, SystemDocsService
 
-        if path_key(meta_rules.SKILL_CAJON) in existing:
-            return []
-        if not dry_run:
-            doc_id = _doc_id(vault_id, str(uuid.uuid4()))
-            try:
-                self._notes.reserve_path(doc_id, meta_rules.SKILL_CAJON)
-            except NotePathTaken:
-                return []
-            now = utc_now()
-            self._port.put(self._db, {
-                "_id": doc_id, "type": "note", "vault_id": vault_id, "path": meta_rules.SKILL_CAJON,
-                "content": skill_cajon.CONTENT, "created_at": now, "updated_at": now, "deleted_at": None,
-                "frontmatter": stamp_dates(skill_cajon.FRONTMATTER, today_cdmx(), now)})
-        return [meta_rules.SKILL_CAJON]
+        service = SystemDocsService(self._port, self._db, owner_id)
+        actions = service.plan(vault_id) if dry_run else service.apply(vault_id)
+        return [a.path for a in actions if a.action in (CREATE, UPDATE)]
 
     def _live_paths(self, vault_id: str) -> list[dict]:
         docs, after = [], None

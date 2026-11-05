@@ -112,14 +112,13 @@ def test_bitacora_is_read_only_for_everyone():
     assert meta_rules.check_note_write(path="BITACORA.md") is None
 
 
-def test_skill_cajon_is_only_editable_by_a_human_session():
-    path = "AG - SKILLS/skill-bovedas-synapse.md"
-    assert meta_rules.check_note_write(path=path, prev_path=path, actor_kind="human") is None
-    for kind in ("agent", "general"):
-        assert meta_rules.check_note_write(path=path, prev_path=path, actor_kind=kind) == "skill-cajon:human-only"
-        assert meta_rules.check_note_write(path=path, deleted=True, actor_kind=kind) == "skill-cajon:human-only"
+def test_system_docs_are_read_only_for_every_actor_but_the_publisher():
+    for path in ("AG - SKILLS/skill-bovedas-synapse.md", "PLANTILLAS/plantilla-skill.md"):
+        for kind in ("human", "agent", "general"):
+            assert meta_rules.check_note_write(path=path, prev_path=path, actor_kind=kind) == "sistema:readonly"
+            assert meta_rules.check_note_write(path=path, deleted=True, actor_kind=kind) == "sistema:readonly"
     assert meta_rules.check_note_write(path="AG - SKILLS/skill-otra.md", actor_kind="agent") is None
-    assert meta_rules.check_note_write(path="ag - skills/SKILL-bovedas-synapse.md", actor_kind="agent") == "skill-cajon:human-only"
+    assert meta_rules.check_note_write(path="ag - skills/SKILL-bovedas-synapse.md", actor_kind="agent") == "sistema:readonly"
 
 
 GOOD = {"alcance": ["*"], "atributos": [{"nombre": "cliente", "tipo": "texto"}], "estilo": {"publicar": {}, "pdf": {}}}

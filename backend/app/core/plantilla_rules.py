@@ -25,7 +25,8 @@ TIPOS = ("texto", "numero", "fecha", "lista", "booleano")
 ESTILO_KEYS = ("publicar", "pdf")
 # Claves que ya son atributos generales (o del sistema): una plantilla no las redefine como extra.
 NOT_EXTRA = {
-    "titulo", "descripcion", "tags", "estado", "fecha_creacion", "fecha_actualizacion", "plantilla", *RESERVED_KEYS,
+    "titulo", "descripcion", "tags", "estado", "fecha_creacion", "fecha_actualizacion", "plantilla", "sistema",
+    *RESERVED_KEYS,
 }
 
 

@@ -1,5 +1,5 @@
 {
- "_doc": "H-030b: especificación compartida de las reglas de PLANTILLAS, BITACORA, skill de cajón y nombres canónicos. La implementan backend (core/plantilla_rules.py, core/meta_rules.py, core/ag_rules.py) y frontend (notes/metaRules.ts); ambos deben pasar TODOS estos casos. Los códigos son los del push de /sync.",
+ "_doc": "H-030b: especificación compartida de las reglas de PLANTILLAS, BITACORA, documentos de sistema (H-041) y nombres canónicos. La implementan backend (core/plantilla_rules.py, core/meta_rules.py, core/ag_rules.py) y frontend (notes/metaRules.ts); ambos deben pasar TODOS estos casos. Los códigos son los del push de /sync.",
  "limits": {
   "name_max": 64,
   "alcance_max": 50,
@@ -621,7 +621,7 @@
    "deleted": false,
    "actor": "human",
    "frontmatter": null,
-   "expected": null
+   "expected": "sistema:readonly"
   },
   {
    "path": "AG - SKILLS/skill-bovedas-synapse.md",
@@ -629,7 +629,7 @@
    "deleted": false,
    "actor": "agent",
    "frontmatter": null,
-   "expected": "skill-cajon:human-only"
+   "expected": "sistema:readonly"
   },
   {
    "path": "AG - SKILLS/skill-bovedas-synapse.md",
@@ -637,7 +637,7 @@
    "deleted": true,
    "actor": "general",
    "frontmatter": null,
-   "expected": "skill-cajon:human-only"
+   "expected": "sistema:readonly"
   },
   {
    "path": "ag - skills/SKILL-bovedas-synapse.md",
@@ -645,7 +645,7 @@
    "deleted": false,
    "actor": "agent",
    "frontmatter": null,
-   "expected": "skill-cajon:human-only"
+   "expected": "sistema:readonly"
   },
   {
    "path": "AG - SKILLS/skill-otra.md",
@@ -722,6 +722,78 @@
    "actor": "human",
    "frontmatter": {},
    "expected": null
+  },
+  {
+   "path": "PLANTILLAS/plantilla-skill.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "sistema:readonly"
+  },
+  {
+   "path": "PLANTILLAS/plantilla-skill.md",
+   "prev_path": "PLANTILLAS/plantilla-skill.md",
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": null,
+   "expected": "sistema:readonly"
+  },
+  {
+   "path": "PLANTILLAS/plantilla-skill.md",
+   "prev_path": "PLANTILLAS/plantilla-skill.md",
+   "deleted": true,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "sistema:readonly"
+  },
+  {
+   "path": "Otra/x.md",
+   "prev_path": "PLANTILLAS/plantilla-skill.md",
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "sistema:readonly"
+  },
+  {
+   "path": "AG - SKILLS/skill-bovedas-synapse.md",
+   "prev_path": "Otra/skill-bovedas-synapse.md",
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": null,
+   "expected": "sistema:readonly"
+  },
+  {
+   "path": "Notas/doc.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {
+    "titulo": "x",
+    "sistema": true
+   },
+   "expected": "sistema:reserved"
+  },
+  {
+   "path": "Notas/doc.md",
+   "prev_path": "Notas/doc.md",
+   "deleted": false,
+   "actor": "agent",
+   "frontmatter": {
+    "titulo": "x",
+    "sistema": false
+   },
+   "expected": "sistema:reserved"
+  },
+  {
+   "path": "AG - SKILLS/skill-otra.md",
+   "prev_path": null,
+   "deleted": false,
+   "actor": "human",
+   "frontmatter": {
+    "sistema": true
+   },
+   "expected": "sistema:reserved"
   }
  ],
  "applies_to": [

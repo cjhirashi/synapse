@@ -221,34 +221,12 @@ def test_a_malformed_template_is_rejected_over_sync(vault, ready_admin):
 
 # --- Skill de cajón ---
 
-def test_the_cajon_skill_is_editable_only_from_a_human_session(ready_admin):
+def test_a_system_doc_path_cannot_be_written_by_anyone(ready_admin):
     vault_id = vault_of(ready_admin)
     path = "AG - SKILLS/skill-bovedas-synapse.md"
-    created = post_note(ready_admin, vault_id, path, "v1")
-    assert created.status_code == 201
-    note = {"id": created.json()["id"], "etag": created.headers["ETag"]}
-    assert patch(ready_admin, vault_id, note, content="v2").status_code == 200
+    assert detail(post_note(ready_admin, vault_id, path, "v1")) == "sistema:readonly"
     aira = agent_client(ready_admin, "aira", admin_flag=True)
-    current = find(aira, vault_id, path)
-    assert detail(patch(aira, vault_id, current, content="v3")) == "skill-cajon:human-only"
-    assert aira.delete(f"/vaults/{vault_id}/notes/{current['id']}", headers={"If-Match": current["etag"]}).status_code == 422
+    assert detail(post_note(aira, vault_id, path, "v1")) == "sistema:readonly"
     assert post_note(aira, vault_id, "AG - SKILLS/skill-propia.md", "ok").status_code == 201  # las demás skills, libres
 
 
-# --- Siembra de la skill de cajón (P9) ---
-
-def test_the_cajon_skill_is_seeded_once_and_never_overwritten(ready_admin, db, monkeypatch):
-    from app.core.meta_rules import SKILL_CAJON
-    from app.routers.vaults import get_vault_port
-    from app.services.note_content_service import NoteContentService
-
-    monkeypatch.setattr(settings, "SEED_AG_FOLDERS", True)
-    vault_id = vault_of(ready_admin)
-    skill = find(ready_admin, vault_id, SKILL_CAJON)
-    assert skill is not None and skill["frontmatter"]["skill"] == "skill-bovedas-synapse"
-    # El dueño la edita desde la app; volver a correr la herramienta de carga no la pisa.
-    assert patch(ready_admin, vault_id, skill, content="texto del dueño").status_code == 200
-    db_name = user_db(db)
-    assert NoteContentService(get_vault_port(), db_name).ensure_ag_folders(vault_id) == []
-    again = find(ready_admin, vault_id, SKILL_CAJON)
-    assert ready_admin.get(f"/vaults/{vault_id}/notes/{again['id']}").json()["content"] == "texto del dueño"
