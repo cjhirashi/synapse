@@ -41,7 +41,8 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
 | `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): subir, renombrar, visibilidad, borrar |
-| `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente |
+| `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente (con agente y administrador, H-030) |
+| `/settings/agent-access` | `settings/AgentAccessPage.tsx` — H-030: qué agente escribe en qué carpetas de cada bóveda (registro `AG - AGENTES`), con el nombre de su clave |
 | `/settings/password` | `settings/ChangePasswordPage.tsx` — cambiar contraseña |
 | `/rejections` | `sync/RejectionsPage.tsx` — cambios que el servidor rechazó, con el motivo y «Corregir» |
 | `/conflicts` | `sync/ConflictView.tsx` — conflictos que el usuario elige o combina |

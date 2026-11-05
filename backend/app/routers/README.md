@@ -4,6 +4,8 @@ Adaptadores primarios — reciben HTTP requests y delegan a `services/`.
 
 Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
 
+- `agent_access.py` (H-030): registro de agentes por bóveda (`/vaults/{id}/agent-access`) e informe del modo sombra
+  (`/agent-access/shadow-report`); escribir solo con cookie.
 - `agent_keys.py` (SPEC-0013): gestión `/auth/agent-keys` de las API keys de agente (crear,
   listar, revocar). Router propio (no dentro de `auth.py`, P-9) y **sólo cookie** por
   construcción (`dependencies=[Depends(get_current_user)]`): una `Bearer` key no acuña ni

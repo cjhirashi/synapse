@@ -17,12 +17,12 @@ backend/
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
 │   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, reservations.py, sync_*.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, vaults.py, notes.py, files.py, sync.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, files.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
-├── scripts/          # export_openapi.py
+├── scripts/          # export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py
 ├── tests/
 ├── Dockerfile        # Multi-stage: compila la SPA (Node) y la copia a la imagen (contexto = raíz)
 └── requirements.txt

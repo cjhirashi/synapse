@@ -80,6 +80,12 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `index-readonly:content|attr|path|delete`, `index-root:delete`). Un INDICE sólo admite editar `descripcion` y se borra
   únicamente con su carpeta; el de la raíz nunca. Las usan `note_content_service.py` y `sync_push.py`; las espeja
   `frontend/src/notes/indexRules.ts` sobre `tests/fixtures/indice_cuerpo.json`.
+- `ag_rules.py` — reglas puras de las carpetas reservadas (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`,
+  `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`, formato de
+  `AG - MENSAJES` (`parse_mensaje_path`, `check_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `check_agent_mensaje_op`
+  de inmutabilidad). Códigos `reserved-name:path`, `meta-folder:*`, `ag-mensajes:*`. Las usan REST y `sync_push.py`.
+- `agent_access.py` — permisos de escritura de los agentes (H-030 E6), sin E/S: `Actor`, `parse_registration` del registro
+  `AG - AGENTES/<id>.md`, `decide`/`decide_files`. `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su

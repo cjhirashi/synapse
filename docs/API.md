@@ -178,6 +178,7 @@ ajena o inexistente → `404` `agent-key-not-found` (mismo cuerpo, no revela exi
 |---|---|---|---|
 | `POST` | `/auth/agent-keys` | cookie | `201` · `401` · `409` · `422` |
 | `GET` | `/auth/agent-keys` | cookie | `200` · `401` |
+| `PATCH` | `/auth/agent-keys/{id}` | cookie | `200` · `401` · `404` · `422` (H-030: reasigna `agent_id`/`is_admin`) |
 | `DELETE` | `/auth/agent-keys/{id}` | cookie | `204` · `401` · `404` |
 | cualquiera | `/vaults/**`, `/sync/**` | cookie **o** `Bearer syn_ak_…` | según la ruta; `401`/`503` por la key |
 
@@ -372,6 +373,83 @@ Después reescribe los wikilinks de la bóveda como el `PATCH` de nota (§4). Si
 | `POST` | `/vaults/{vault_id}/notes/{note_id}/restore` | cookie **o** `Bearer syn_ak_…` | `200` + `ETag` · `401` · `404` · `409` · `412` · `428` · `503` |
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
+
+## Carpetas reservadas, buzón entre agentes y registro de agentes (H-030)
+
+Cada bóveda tiene cinco carpetas reservadas **en la raíz**: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES` y, solo
+como nombre (su lógica llega con H-030b), `BITACORA` y `PLANTILLAS`. Nacen con la bóveda (REST y `/sync`), cada una con
+su `INDICE.md` y su `descripcion`; no se renombran ni se mueven, su INDICE no se borra y ninguna nota toma su nombre
+(`meta-folder:rename`, `meta-folder:index-delete`, `reserved-name:path`). Mover otra carpeta *hacia* una reservada sí se admite.
+
+### 1. Listar una carpeta: `prefix`
+
+```http
+GET /vaults/{vault_id}/notes?prefix=AG%20-%20MENSAJES%2Fliza&limit=200
+```
+
+Solo las notas bajo esa carpeta (sin barra final; comparación por segmentos con la equivalencia de rutas NFKC + casefold),
+**ordenadas por ruta**; sin `prefix` el orden es el de siempre (creación descendente). Mismo cuerpo, `etag` y `frontmatter`
+por ítem. El `next_cursor` solo vale para la misma bóveda, lista y carpeta. `prefix` inválido → `422`. Con `deleted=true`
+lista la papelera de esa carpeta. Para la bandeja: `prefix=AG - MENSAJES/<mi-id>` y filtrar `frontmatter.estado == "abierta"`
+de las notas `.../000-cabecera.md` en el cliente (no hay filtro por estado en el servidor).
+
+### 2. Identidad del agente en cada petición
+
+Una key puede llevar `agent_id` (id corto en minúsculas: `aira`, `liza`…) e `is_admin`:
+
+```http
+POST /auth/agent-keys   {"label": "op-aira", "agent_id": "aira", "is_admin": false}      (cookie)
+PATCH /auth/agent-keys/{id}   {"agent_id": "aira", "is_admin": false}                    (cookie; key vigente)
+```
+
+El listado (`GET /auth/agent-keys`) y la creación devuelven `agent_id` e `is_admin`. Una key **sin** `agent_id` es general
+(el comportamiento anterior). **Contrato para el plugin:** cada agente usa **su** key (`Authorization: Bearer syn_ak_…`); el
+servidor deduce quién escribe de la key, no de lo que el agente diga. Mientras se use la key general, el plugin puede
+declarar `X-Agent-Id: <id>` en cada petición: **no es una credencial**, solo alimenta la bitácora del modo sombra (se ignora
+con cumplimiento activo y con keys que ya tienen agente). Una key nunca crea, reasigna ni revoca keys, ni cambia el registro.
+
+### 3. Registro de agentes por bóveda: `AG - AGENTES`
+
+Una nota por agente, `AG - AGENTES/<id>.md`, con `estado` (`activo` | `suspendido`) y `carpetas` (lista de carpetas con
+escritura; `*` = toda la bóveda salvo las reservadas). Una nota de esa carpeta que no sea un registro válido se rechaza
+(`ag-agentes:registro`). Se edita como cualquier nota (sesión humana o agente administrador) o con:
+
+| Método | Ruta | Credencial | Respuestas |
+|---|---|---|---|
+| `GET` | `/vaults/{id}/agent-access` | cookie o key | `200` `{mode, agents[{agent_id, estado, carpetas, note_id, keys[{label,is_admin}]}], unregistered_keys, unregistered_agent_ids}` |
+| `PUT` | `/vaults/{id}/agent-access/{agent_id}` `{carpetas, estado}` | cookie | `200` · `404` · `422` |
+| `DELETE` | `/vaults/{id}/agent-access/{agent_id}` | cookie | `204` · `404` |
+| `GET` | `/agent-access/shadow-report?hours=48` | cookie | `200` decisiones del modo sombra por agente y últimas denegadas |
+
+Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
+`activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo
+`AG - MENSAJES`. `AG - AGENTES` lo escribe solo el humano o el administrador; `BITACORA`/`PLANTILLAS` están reservadas.
+Un renombre o movimiento exige permiso en la ruta de origen **y** en la de destino. Archivos (`/files`): basta ser un
+agente registrado y activo en la bóveda. Modos (`AGENT_ACCESS_MODE`): `shadow` (por defecto) solo registra lo que haría
+en la tabla `agent_access_log`; `enforce` rechaza con `403` `agent-access-denied` (REST) o `reason: agent-access-denied`
+(`/sync`); `off` no evalúa. Cambios en el registro rigen de inmediato.
+
+### 4. Buzón: `AG - MENSAJES`
+
+```
+AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/000-cabecera.md     # de, para, estado: abierta|cerrada, cerrada_el
+AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/001-de-<id>.md      # un mensaje por nota: 001, 002, …
+```
+
+- Cualquier agente escribe a cualquier otro, aunque no esté registrado en la bóveda. Toda ruta debajo de `AG - MENSAJES/`
+  debe seguir este formato (`ag-mensajes:path`); los INDICES de cada nivel los genera el servidor.
+- Para una key con agente: el `de` de la cabecera y el `<id>` del nombre del mensaje son su `agent_id` (`ag-mensajes:from-mismatch`);
+  los mensajes no se editan, mueven ni borran, y de la cabecera solo cambia `estado` (`ag-mensajes:immutable`); cerrar o reabrir
+  solo lo hacen `de`, `para` o un administrador (`ag-mensajes:forbidden`). Un mensaje exige que exista la cabecera
+  (`ag-mensajes:no-cabecera`, solo REST). La sesión humana puede corregir mensajes.
+- **`cerrada_el` lo sella el servidor** (UTC) al pasar a `cerrada` y desaparece al reabrir; lo que el cliente envíe se ignora
+  en REST y se rechaza en `/sync` (`immutable-field:cerrada_el`). Escribir un mensaje en una conversación cerrada **la reabre sola**.
+- Purga: una conversación `cerrada` con `cerrada_el` de más de 15 días se elimina físicamente (carpeta, notas e INDICE, sin papelera);
+  antes se vuelca a JSONL, que se conserva 30 días (`scripts/purge_mensajes.py`, tabla `purge_log`).
+
+Contrato máquina: `.harness/specs/h030-carpetas-ag/contracts/openapi.yaml`. Herramientas (dentro del contenedor, `backend/scripts/`):
+`ensure_ag_folders.py` (carga en las bóvedas existentes; sin `--apply` es informe en seco), `seed_agent_registry.py`
+(sembrado del registro), `create_agent_keys.py` (claves `op-<agente>` a un archivo 600) y `purge_mensajes.py`.
 
 ## Archivos: carpeta opcional (H-025)
 

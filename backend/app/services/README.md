@@ -14,6 +14,9 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   usuario, el tamaño (5 MB imágenes, 25 MB documentos), el tipo por **firma de bytes** (nunca por el
   `Content-Type` del cliente), sanea SVG y valida el nombre y la carpeta. Opera sobre el repositorio de
   metadatos y el puerto de almacenamiento de objetos; no conoce HTTP.
+- H-030: `agent_access_guard.py` (cumplimiento del registro `AG - AGENTES`: modo sombra/`enforce`, caché del registro y bitácora
+  `agent_access_log`), `agent_registry_service.py` (lee y escribe el registro), `mensajes_service.py` (reabrir conversaciones,
+  sellar `cerrada_el` de cabeceras llegadas por `/sync`) y `mensajes_purge.py` (purga de cerradas > 15 días con volcado a 30 días).
 - `note_content_service.py` (`NoteContentService`, historia 0014): contenido de notas vía REST para agentes
   sobre la base CouchDB del usuario (a través de `VaultPort`). Cursor opaco ligado a la bóveda, `ETag` =
   `_rev` entre comillas, y escritura que reusa `core/note_rules.py`, `core/attribute_rules.py` y
