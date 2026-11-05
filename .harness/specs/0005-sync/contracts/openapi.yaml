@@ -13,7 +13,7 @@ components:
           $ref: '#/components/schemas/JsonValue'
           description: '`_id` tal como lo envió el cliente.'
         reason:
-          pattern: ^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied|bitacora:.+|plantilla:.+|skill-cajon:.+|validation-error:.+|not-normalized:.+)$
+          pattern: ^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied|bitacora:.+|plantilla:.+|sistema:.+|skill:.+|validation-error:.+|not-normalized:.+)$
           title: Reason
           type: string
         rev:

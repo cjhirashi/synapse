@@ -119,6 +119,7 @@ def test_load_tool_reports_collisions_in_dry_run():
         {"path": "BITACORA/2026-11.md"}, {"path": "Normal/nota.md"},
     ]
     found = module.collisions(notes)
-    assert len(found) == 4
+    # BITACORA ya no choca (H-030b: es del servidor, y `BITACORA.md` con extensión no tapa la carpeta).
+    assert len(found) == 3
     assert any("nombre reservado" in f for f in found) and any("fuera del formato" in f for f in found)
-    assert any("no es un registro válido" in f for f in found) and any("carpeta reservada BITACORA" in f for f in found)
+    assert any("no es un registro válido" in f for f in found)
