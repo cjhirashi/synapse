@@ -56,6 +56,7 @@ from tests.test_note_sync_api import note_doc, push, vault  # noqa: E402,F401
 from tests.test_vaults_api import user_db  # noqa: E402
 
 SK = "AG - SKILLS"
+ARCH = {"estado": "archivado"}  # el usuario sin gestores en la bóveda solo puede crear skills archivadas (E3)
 
 
 def paths_of(client, vault_id) -> set[str]:
@@ -64,11 +65,11 @@ def paths_of(client, vault_id) -> set[str]:
 
 def test_rest_structures_the_skill_name_and_returns_the_final_path(ready_admin):
     vault_id = vault_of(ready_admin)
-    created = post_note(ready_admin, vault_id, f"{SK}/Gestión de variables", "# Paso 1")
+    created = post_note(ready_admin, vault_id, f"{SK}/Gestión de variables", "# Paso 1", ARCH)
     assert created.status_code == 201 and created.json()["path"] == f"{SK}/skill-gestion-de-variables.md"
     assert f"{SK}/skill-gestion-de-variables.md" in paths_of(ready_admin, vault_id)
     # El prefijo no se duplica y el espacio, los acentos y las mayúsculas se normalizan.
-    assert post_note(ready_admin, vault_id, f"{SK}/Skill - Revisión Final.MD", "x").json()["path"] == f"{SK}/skill-revision-final.md"
+    assert post_note(ready_admin, vault_id, f"{SK}/Skill - Revisión Final.MD", "x", ARCH).json()["path"] == f"{SK}/skill-revision-final.md"
     # El agente recibe lo mismo (la normalización es del servidor, no del cliente que escribe).
     aira = agent_client(ready_admin, "aira")
     assert post_note(aira, vault_id, f"{SK}/Diseño ñandú", "x").json()["path"] == f"{SK}/skill-diseno-nandu.md"
@@ -76,9 +77,9 @@ def test_rest_structures_the_skill_name_and_returns_the_final_path(ready_admin):
 
 def test_a_name_that_collides_after_normalizing_is_rejected_not_suffixed(ready_admin):
     vault_id = vault_of(ready_admin)
-    assert post_note(ready_admin, vault_id, f"{SK}/Gestión de variables", "x").status_code == 201
+    assert post_note(ready_admin, vault_id, f"{SK}/Gestión de variables", "x", ARCH).status_code == 201
     for spelling in ("gestion-de-variables", "GESTIÓN   DE   VARIABLES", "skill-gestion-de-variables.md"):
-        assert post_note(ready_admin, vault_id, f"{SK}/{spelling}", "x").status_code == 409, spelling
+        assert post_note(ready_admin, vault_id, f"{SK}/{spelling}", "x", ARCH).status_code == 409, spelling
     assert sorted(i for i in paths_of(ready_admin, vault_id) if "/" in i and i.startswith(SK) and "INDICE" not in i) == [
         f"{SK}/skill-gestion-de-variables.md"]
 
@@ -93,7 +94,7 @@ def test_invalid_skill_names_and_subfolders_are_rejected(ready_admin, path, code
 
 def test_a_skill_name_at_the_limit_is_accepted(ready_admin):
     vault_id = vault_of(ready_admin)
-    res = post_note(ready_admin, vault_id, f"{SK}/" + "a" * 58, "x")
+    res = post_note(ready_admin, vault_id, f"{SK}/" + "a" * 58, "x", ARCH)
     assert res.status_code == 201 and len(res.json()["path"].split("/")[1][:-3]) == 64
 
 
@@ -107,7 +108,7 @@ def test_rest_structures_the_template_name_too(ready_admin):
 
 def test_renaming_or_moving_into_skills_structures_the_name_and_leaving_does_not(ready_admin):
     vault_id = vault_of(ready_admin)
-    note = post_note(ready_admin, vault_id, "Notas/Mi doc.md", "x")
+    note = post_note(ready_admin, vault_id, "Notas/Mi doc.md", "x", ARCH)
     item = {"id": note.json()["id"], "etag": note.headers["ETag"]}
     moved = patch(ready_admin, vault_id, item, path=f"{SK}/Mi doc.md")
     assert moved.status_code == 200 and moved.json()["path"] == f"{SK}/skill-mi-doc.md"
@@ -148,16 +149,16 @@ def test_sync_rejects_skills_that_are_not_canonical(vault, ready_admin):
     assert reasons(push(ready_admin, [note_doc(vault_id, path=f"{SK}/skill-Gestion.md")])) == ["skill:name"]
     assert reasons(push(ready_admin, [note_doc(vault_id, path=f"{SK}/skill-gestión.md")])) == ["skill:name"]
     assert reasons(push(ready_admin, [note_doc(vault_id, path=f"{SK}/sub/skill-a.md")])) == ["skill:path"]
-    assert push(ready_admin, [note_doc(vault_id, path=f"{SK}/skill-gestion.md")]).json() == []
+    assert push(ready_admin, [note_doc(vault_id, path=f"{SK}/skill-gestion.md", frontmatter=ARCH)]).json() == []
     assert push(ready_admin, [note_doc(vault_id, path=f"{SK}/INDICE.md", content="")]).json() == []
     assert push(ready_admin, [note_doc(vault_id, path="Notas/Cualquier Nombre.md")]).json() == []
 
 
 def test_a_folder_move_into_skills_does_not_rename_notes_so_it_rejects_non_canonical_names(ready_admin):
     vault_id = vault_of(ready_admin)
-    assert post_note(ready_admin, vault_id, "Pendiente/Mi doc.md", "x").status_code == 201
+    assert post_note(ready_admin, vault_id, "Pendiente/Mi doc.md", "x", ARCH).status_code == 201
     res = ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Pendiente", "to": SK})
     assert res.status_code == 422 and detail(res) == "skill:name"
-    assert post_note(ready_admin, vault_id, "Listas/skill-ok.md", "x").status_code == 201
+    assert post_note(ready_admin, vault_id, "Listas/skill-ok.md", "x", ARCH).status_code == 201
     assert ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Listas", "to": SK}).status_code == 200
     assert f"{SK}/skill-ok.md" in paths_of(ready_admin, vault_id)
