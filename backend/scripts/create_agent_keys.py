@@ -33,6 +33,8 @@ def main() -> int:
     parser.add_argument("--admin", default="", help="ids que se crean con is_admin (Q2 pendiente: vacío por defecto)")
     parser.add_argument("--suffix", default="", help="sufijo del nombre, p. ej. -2 para una rotación")
     args = parser.parse_args()
+    if os.path.exists(args.out):
+        raise SystemExit(f"{args.out} ya existe: no se sobrescribe (los valores de claves anteriores no se pueden recuperar)")
     [(owner_id, _email, _db)] = user_dbs(args.email)
     admins = {a for a in args.admin.split(",") if a}
     lines, report = [], []
@@ -47,7 +49,7 @@ def main() -> int:
             _key, raw = service.create(owner_id, label, agent_id=agent_id, is_admin=agent_id in admins)
             lines.append(f"SYNAPSE_KEY_{agent_id.upper().replace('-', '_')}{args.suffix.upper().replace('-', '_')}={raw}")
             report.append(f"{label}: creada (agente {agent_id}{', administrador' if agent_id in admins else ''})")
-    fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    fd = os.open(args.out, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     with os.fdopen(fd, "w") as handle:
         handle.write("\n".join(lines) + ("\n" if lines else ""))
     os.chmod(args.out, 0o600)
