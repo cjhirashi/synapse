@@ -21,6 +21,7 @@ import { ancestorFolders, changedKeys, checkIndexOp, folderOf, indexPathFor, isI
 import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
+import { checkReservedCase, checkNoteWrite, checkFolderMove } from "./metaRules";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
 export { NoteChangedError, NoteNotFoundError, NotePathTakenError, NoteValidationError, StorageFullError };
@@ -367,9 +368,17 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
   /** Renombra/mueve una nota (la comparte `rename` y `moveFolder`): misma regla de ruta y unicidad. */
   async function renameDoc(id: string, path: string, rev: string): Promise<Note> {
     const normalized = titleToPath(path);
-    if (checkPath(normalized) !== null) throw new NoteValidationError(["path"]);
+    if (
+      checkPath(normalized) !== null
+      || checkReservedCase(normalized) !== null
+    ) {
+      throw new NoteValidationError(["path"]);
+    }
     const doc = await load(id, false);
     assertCurrent(doc, rev);
+    if (checkNoteWrite({ path: normalized, prevPath: doc.path, deleted: false, frontmatter: doc.frontmatter, actorKind: "human" }) !== null) {
+      throw new NoteValidationError(["path"]);
+    }
     await assertPathFree(doc.vault_id, normalized, doc._id);
     return write({ ...doc, path: normalized, updated_at: now() });
   }
@@ -381,6 +390,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     // renombrarse antes de borrarla; no se opera sobre ella con la ruta rota.
     if (checkPath(doc.path) !== null) throw new NoteValidationError(["path"]);
     assertCurrent(doc, rev);
+    if (checkNoteWrite({ path: doc.path, prevPath: doc.path, deleted: true, actorKind: "human" }) !== null) {
+      throw new NoteValidationError(["path"]);
+    }
     const timestamp = now();
     return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
   }
@@ -391,6 +403,9 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
    * una nota ajena al lote, rechaza antes de escribir ninguna.
    */
   async function relocateFolder(vaultId: string, from: string, dest: string): Promise<void> {
+    // Validar que la carpeta no sea reservada o que sea el cambio de mayúsculas permitido.
+    if (checkFolderMove(from, dest) !== null) throw new NoteValidationError(["path"]);
+
     const prefix = `${from}/`;
     const active = (await summaries(vaultId)).filter((note) => note.deleted_at === null);
     const moving = active.filter((note) => note.path.startsWith(prefix));
@@ -417,7 +432,14 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
       // El título es relativo a la carpeta destino (RF-001/RF-003); `/` anida.
       path = titleToPath(joinPath(folder, requested));
     }
-    if (checkPath(path) !== null || checkIndexOp("create_user", path) !== null) throw new NoteValidationError(["path"]);
+    if (
+      checkPath(path) !== null
+      || checkIndexOp("create_user", path) !== null
+      || checkReservedCase(path) !== null
+      || checkNoteWrite({ path, prevPath: null, deleted: false, frontmatter: {}, actorKind: "human" }) !== null
+    ) {
+      throw new NoteValidationError(["path"]);
+    }
     await assertPathFree(vaultId, path, null);
     const timestamp = now();
     const stampedFrontmatter = stampDates({}, { today: localDay(timestamp) });
