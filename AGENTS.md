@@ -45,6 +45,8 @@ Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 - **Errores API:** RFC 9457 (Problem Details). Servicios y dependencias lanzan errores de dominio (`core/errors.py`), nunca `HTTPException`; sólo `core/problems.py` los traduce a HTTP (SPEC-0004).
 - 🔴 **Docs en el mismo commit:** todo cambio de código actualiza los README/docs que deja obsoletos
   (mapa de documentación) o declara `Docs actualizadas: ninguna — <motivo>`. El gate lo exige.
+- 🔴 **Skill global al día:** un cambio que altera lo que un agente ve o hace con `synapse_vault` actualiza
+  `backend/app/system_docs/skill-bovedas-synapse.md` (versión + `--stamp`) en la misma entrega.
 
 ## 🔴 Regla Crítica — History Actualizado
 
