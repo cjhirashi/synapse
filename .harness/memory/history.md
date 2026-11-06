@@ -2056,3 +2056,8 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Docs:** exención declarada: ninguna doc describe estos componentes; el comportamiento queda en los comentarios y pruebas.
 - **Verificación:** suite completa 125 archivos / 2851 tests, 0 fallos; typecheck limpio.
 - **Lección:** todo aviso o menú flotante se revisa en el borde de la ventana (última fila, lista larga) antes de entregarse; la prueba en jsdom no mide geometría, hay que verla en el navegador real.
+
+## 2026-11-06 — Rediseño visual de las confirmaciones (`ConfirmDialog`) (prompt directo, Gate 0)
+- **Qué:** por orden de Carlos («muy feas»), el modal pasó de una banda compacta a una tarjeta: icono de tono (peligro/aviso/neutro) en círculo, título, texto de apoyo (`body`), y abajo a la derecha los botones (secundario primero, acción al final: `btn-danger` rojo sólido para borrar/revocar, `btn-primary` para guardar/confirmar). Capa con desenfoque, animación suave, lista de afectados con scroll acotado, botones apilados en pantallas ≤ 480 px. Nuevas props `tone`, `glyph` (no `icon`: la prueba `iconSafety` reserva esa palabra para `VaultChip`) y `body`; migrados los 11 usos (bóvedas, árbol, Archivos ×3, API keys, editor ×3). El orden de los botones del editor (Guardar primero) se conserva porque RF-008 fija el foco inicial en el primer botón.
+- **Docs:** exención declarada: ninguna doc describe estos componentes.
+- **Verificación:** suite completa 126 archivos / 2856 tests, 0 fallos; typecheck limpio; revisión visual en navegador real (abajo).

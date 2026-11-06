@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
@@ -94,13 +95,16 @@ export default function VaultListPage() {
         <ConfirmDialog
           titleId="confirm-delete-title"
           title={`¿Mover «${confirming.name}» a la papelera?`}
+          tone="danger"
+          glyph={Trash2}
+          body="Podrás restaurarla desde la papelera."
           onCancel={() => setConfirming(null)}
         >
-          <button type="button" onClick={() => void confirmDelete(confirming)} disabled={busy}>
-            Mover a la papelera
-          </button>
           <button type="button" data-autofocus onClick={() => setConfirming(null)} disabled={busy}>
             Cancelar
+          </button>
+          <button type="button" className="btn-danger" onClick={() => void confirmDelete(confirming)} disabled={busy}>
+            Mover a la papelera
           </button>
         </ConfirmDialog>
       )}

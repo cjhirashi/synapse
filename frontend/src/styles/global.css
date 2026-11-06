@@ -398,7 +398,7 @@ button:focus-visible {
   }
 }
 
-/* --- Confirmación modal: capa fija sobre la ventana, siempre a la vista --- */
+/* --- Confirmación modal (ConfirmDialog): capa fija sobre la ventana, siempre a la vista --- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -407,16 +407,146 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   padding: var(--space-4);
-  background: rgb(0 0 0 / 0.55);
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(3px);
+  animation: fadeIn var(--dur-base) var(--ease-out);
 }
 
-.modal-backdrop > [role="alertdialog"] {
-  width: min(420px, 100%);
+.modal-backdrop > .confirm-dialog {
+  --tone: var(--accent);
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  column-gap: var(--space-4);
+  width: min(460px, 100%);
+  max-height: calc(100vh - 2 * var(--space-4));
+  overflow-y: auto;
   margin: 0;
   padding: var(--space-6);
   background: var(--bg-secondary);
-  box-shadow: var(--shadow-panel);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.45);
+  animation: fadeSlideUp var(--dur-base) var(--ease-out);
+}
+
+.confirm-dialog-danger {
+  --tone: var(--danger-text);
+}
+
+.confirm-dialog-warning {
+  --tone: var(--warning-text);
+}
+
+.confirm-dialog-neutral {
+  --tone: var(--info-text);
+}
+
+.confirm-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 15%, transparent);
+}
+
+.confirm-dialog-content {
+  min-width: 0;
+}
+
+.confirm-dialog-title {
+  margin: 0;
+  padding-top: 8px;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog-body {
+  margin-top: var(--space-2);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog-body p {
+  margin: 0;
+}
+
+.confirm-dialog-body p + p,
+.confirm-dialog-body p + ul {
+  margin-top: var(--space-2);
+}
+
+.confirm-dialog-body ul {
+  max-height: 160px;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-6);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.confirm-dialog-body input {
+  width: 100%;
+}
+
+.confirm-dialog-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.confirm-dialog-actions button {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.confirm-dialog-actions .btn-primary {
+  background: var(--accent);
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.confirm-dialog-actions .btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: transparent;
+}
+
+.confirm-dialog-actions .btn-danger {
+  background: #dc2626;
+  border: 1px solid transparent;
+  color: #fff;
+}
+
+.confirm-dialog-actions .btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+  border-color: transparent;
+}
+
+.confirm-dialog-actions .btn-danger:focus-visible {
+  outline-color: #dc2626;
+}
+
+/* Pantallas angostas: botones apilados a ancho completo, en el mismo orden que al teclado. */
+@media (max-width: 480px) {
+  .confirm-dialog-actions {
+    flex-direction: column;
+  }
+
+  .confirm-dialog-actions button {
+    width: 100%;
+  }
 }
 
 /* --- Gestor que sale (H-041 E4): ventana de resolución de sus skills --- */

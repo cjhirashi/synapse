@@ -1246,8 +1246,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </Notice>
           )}
           {pendingId !== null && (
-            <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." onCancel={keepEditing}>
-              <button type="button" onClick={() => void saveAndOpen()} disabled={saving}>
+            <ConfirmDialog titleId="note-switch-title" title="Esta nota tiene cambios sin guardar." tone="warning" onCancel={keepEditing}>
+              <button type="button" className="btn-primary" onClick={() => void saveAndOpen()} disabled={saving}>
                 Guardar y abrir
               </button>
               <button type="button" onClick={discardAndOpen}>
@@ -1260,8 +1260,8 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           )}
 
           {blocker.state === "blocked" && (
-            <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." onCancel={() => blocker.reset()}>
-              <button type="button" onClick={() => void saveAndLeave()} disabled={saving}>
+            <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." tone="warning" onCancel={() => blocker.reset()}>
+              <button type="button" className="btn-primary" onClick={() => void saveAndLeave()} disabled={saving}>
                 Guardar y salir
               </button>
               <button type="button" onClick={() => blocker.proceed()}>
@@ -1274,12 +1274,12 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           )}
 
           {discardAsk !== null && (
-            <ConfirmDialog titleId="note-discard-title" title="Esta nota tiene cambios sin guardar." onCancel={() => answerDiscard(false)}>
-              <button type="button" onClick={() => answerDiscard(true)}>
-                Borrar y descartar cambios
-              </button>
+            <ConfirmDialog titleId="note-discard-title" title="Esta nota tiene cambios sin guardar." tone="danger" onCancel={() => answerDiscard(false)}>
               <button type="button" data-autofocus onClick={() => answerDiscard(false)}>
                 Seguir editando
+              </button>
+              <button type="button" className="btn-danger" onClick={() => answerDiscard(true)}>
+                Borrar y descartar cambios
               </button>
             </ConfirmDialog>
           )}

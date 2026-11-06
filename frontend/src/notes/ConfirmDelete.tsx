@@ -3,6 +3,7 @@
  * papelera tras confirmar. Cancelar es la respuesta enfocada y la de Esc, para que un Enter o un Esc
  * reflejo nunca borre nada.
  */
+import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 
 type ConfirmDeleteProps = {
@@ -15,12 +16,18 @@ type ConfirmDeleteProps = {
 export function ConfirmDelete(props: ConfirmDeleteProps) {
   const detail = describeTrash(props);
   return (
-    <ConfirmDialog titleId="tree-delete-title" title={`¿Borrar «${props.name}»?`} onCancel={props.onCancel}>
-      <p>{detail}</p>
+    <ConfirmDialog
+      titleId="tree-delete-title"
+      title={`¿Borrar «${props.name}»?`}
+      tone="danger"
+      glyph={Trash2}
+      body={<p>{detail}</p>}
+      onCancel={props.onCancel}
+    >
       <button type="button" data-autofocus onClick={props.onCancel}>
         Cancelar
       </button>
-      <button type="button" onClick={props.onConfirm}>
+      <button type="button" className="btn-danger" onClick={props.onConfirm}>
         Borrar
       </button>
     </ConfirmDialog>

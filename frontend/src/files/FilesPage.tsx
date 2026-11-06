@@ -14,6 +14,7 @@ import {
 } from "./uploadFile";
 import { scanFileReferences, type FileRef } from "./fileReferences";
 import { htmlEmbedMarkup } from "./embed";
+import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import "./files.css";
 
@@ -57,13 +58,20 @@ function formatSize(bytes: number): string {
 
 function getFileTypeName(contentType: string): string {
   if (contentType.includes("pdf")) return "PDF";
-  if (contentType.includes("word") || contentType.includes("wordprocessingml")) return "Word";
-  if (contentType.includes("excel") || contentType.includes("spreadsheet")) return "Excel";
-  if (contentType.includes("powerpoint") || contentType.includes("presentation")) return "PowerPoint";
+  if (contentType.includes("word") || contentType.includes("wordprocessingml"))
+    return "Word";
+  if (contentType.includes("excel") || contentType.includes("spreadsheet"))
+    return "Excel";
+  if (
+    contentType.includes("powerpoint") ||
+    contentType.includes("presentation")
+  )
+    return "PowerPoint";
   if (contentType.includes("html")) return "HTML";
   if (contentType.includes("csv")) return "CSV";
   if (contentType.includes("zip")) return "ZIP";
-  if (contentType.includes("text") || contentType.includes("json")) return "Texto";
+  if (contentType.includes("text") || contentType.includes("json"))
+    return "Texto";
   if (contentType.startsWith("image/")) return "Imagen";
   return contentType;
 }
@@ -76,17 +84,26 @@ export default function FilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<Status>("loading");
-  const [notice, setNotice] = useState<{ kind: "status" | "alert"; text: string } | null>(null);
+  const [notice, setNotice] = useState<{
+    kind: "status" | "alert";
+    text: string;
+  } | null>(null);
 
   // Diálogos
   const [renameDialog, setRenameDialog] = useState<RenameDialog | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(null);
-  const [visibilityConfirm, setVisibilityConfirm] = useState<VisibilityConfirm | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(
+    null,
+  );
+  const [visibilityConfirm, setVisibilityConfirm] =
+    useState<VisibilityConfirm | null>(null);
   const [renameTmp, setRenameTmp] = useState("");
 
   // Referencias desde los documentos de la bóveda (C-9), calculadas en la réplica local.
   const [refMap, setRefMap] = useState<Map<string, FileRef[]>>(new Map());
-  const filesWithReferences = files.map((file) => ({ ...file, references_count: refMap.get(file.id)?.length ?? 0 }));
+  const filesWithReferences = files.map((file) => ({
+    ...file,
+    references_count: refMap.get(file.id)?.length ?? 0,
+  }));
 
   function handleOpen(file: VaultFile) {
     window.open(fileUrl(file.id), "_blank", "noopener");
@@ -132,20 +149,28 @@ export default function FilesPage() {
     try {
       const updated = await renameFile(renameDialog.fileId, renameTmp);
       setFiles((prev) =>
-        prev.map((f) => (f.id === renameDialog.fileId ? { ...f, name: updated.name } : f))
+        prev.map((f) =>
+          f.id === renameDialog.fileId ? { ...f, name: updated.name } : f,
+        ),
       );
-      setNotice({ kind: "status", text: `Archivo renombrado a "${updated.name}".` });
+      setNotice({
+        kind: "status",
+        text: `Archivo renombrado a "${updated.name}".`,
+      });
       setRenameDialog(null);
       setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "No se pudo renombrar el archivo.";
+      const msg =
+        err instanceof Error ? err.message : "No se pudo renombrar el archivo.";
       setNotice({ kind: "alert", text: msg });
     }
   }
 
   async function handleVisibilityClick(file: VaultFile) {
     const newVisibility = file.visibility === "private" ? "public" : "private";
-    const refs = file.vault_id ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? []) : [];
+    const refs = file.vault_id
+      ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? [])
+      : [];
 
     // Si cambiar a público, SIEMPRE pedir confirmación (C-8)
     // Si cambiar a privado y está en uso, pedir confirmación (C-9)
@@ -163,11 +188,16 @@ export default function FilesPage() {
     }
   }
 
-  async function handleVisibilityConfirm(fileId: string, newVisibility: "private" | "public") {
+  async function handleVisibilityConfirm(
+    fileId: string,
+    newVisibility: "private" | "public",
+  ) {
     try {
       const updated = await setFileVisibility(fileId, newVisibility);
       setFiles((prev) =>
-        prev.map((f) => (f.id === fileId ? { ...f, visibility: updated.visibility } : f))
+        prev.map((f) =>
+          f.id === fileId ? { ...f, visibility: updated.visibility } : f,
+        ),
       );
       setNotice({
         kind: "status",
@@ -176,13 +206,18 @@ export default function FilesPage() {
       setVisibilityConfirm(null);
       setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "No se pudo cambiar la visibilidad.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "No se pudo cambiar la visibilidad.";
       setNotice({ kind: "alert", text: msg });
     }
   }
 
   async function handleDeleteClick(file: VaultFile) {
-    const refs = file.vault_id ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? []) : [];
+    const refs = file.vault_id
+      ? ((await scanFileReferences(notes, file.vault_id)).get(file.id) ?? [])
+      : [];
     setDeleteConfirm({
       fileId: file.id,
       fileName: file.name,
@@ -199,7 +234,8 @@ export default function FilesPage() {
       setDeleteConfirm(null);
       setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "No se pudo borrar el archivo.";
+      const msg =
+        err instanceof Error ? err.message : "No se pudo borrar el archivo.";
       setNotice({ kind: "alert", text: msg });
     }
   }
@@ -262,7 +298,9 @@ export default function FilesPage() {
         const data = await listVaultFiles(selectedVaultId);
         setFiles(data);
         setStatus("ready");
-        void scanFileReferences(notes, selectedVaultId).then(setRefMap, () => setRefMap(new Map()));
+        void scanFileReferences(notes, selectedVaultId).then(setRefMap, () =>
+          setRefMap(new Map()),
+        );
       } catch (err) {
         setStatus("error");
       }
@@ -308,7 +346,8 @@ export default function FilesPage() {
             type="button"
             className="btn-primary files-upload"
             onClick={() => {
-              const input = document.querySelector<HTMLInputElement>("#file-upload-input");
+              const input =
+                document.querySelector<HTMLInputElement>("#file-upload-input");
               input?.click();
             }}
           >
@@ -325,8 +364,15 @@ export default function FilesPage() {
       )}
 
       {status === "loading" && <p>Cargando…</p>}
-      {status === "error" && <div role="alert">No se pudo cargar la lista.</div>}
-      {status === "ready" && files.length === 0 && <p className="files-empty">Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí.</p>}
+      {status === "error" && (
+        <div role="alert">No se pudo cargar la lista.</div>
+      )}
+      {status === "ready" && files.length === 0 && (
+        <p className="files-empty">
+          Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos
+          aquí.
+        </p>
+      )}
 
       {status === "ready" && filesWithReferences.length > 0 && (
         <>
@@ -342,84 +388,98 @@ export default function FilesPage() {
           </div>
 
           <div className="files-table-wrap">
-          <table className="files-table">
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Tipo</th>
-                <th>Tamaño</th>
-                <th>Fecha</th>
-                <th>Referencias</th>
-                <th><span className="files-sr">Acciones</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filesWithReferences
-                .filter((file) => file.name.toLowerCase().includes(searchQuery.toLowerCase()))
-                .map((file) => (
-                  <tr key={file.id}>
-                    <td className="files-name" data-label="Nombre">{file.name}</td>
-                    <td data-label="Tipo">{getFileTypeName(file.content_type)}</td>
-                    <td data-label="Tamaño">{formatSize(file.size)}</td>
-                    <td data-label="Fecha">{DATE_FORMAT.format(parseUtc(file.created_at))}</td>
-                    <td data-label="Usado en">{file.references_count ?? 0}</td>
-                    <td className="files-actions">
-                      <button
-                        type="button"
-                        aria-label={`Abrir ${file.name}`}
-                        onClick={() => handleOpen(file)}
-                      >
-                        Abrir
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Descargar ${file.name}`}
-                        onClick={() => handleDownload(file)}
-                      >
-                        Descargar
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Copiar link de ${file.name}`}
-                        onClick={() => void handleCopyLink(file)}
-                      >
-                        Link
-                      </button>
-                      {file.content_type === "text/html" && (
+            <table className="files-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Tamaño</th>
+                  <th>Fecha</th>
+                  <th>Referencias</th>
+                  <th>
+                    <span className="files-sr">Acciones</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filesWithReferences
+                  .filter((file) =>
+                    file.name.toLowerCase().includes(searchQuery.toLowerCase()),
+                  )
+                  .map((file) => (
+                    <tr key={file.id}>
+                      <td className="files-name" data-label="Nombre">
+                        {file.name}
+                      </td>
+                      <td data-label="Tipo">
+                        {getFileTypeName(file.content_type)}
+                      </td>
+                      <td data-label="Tamaño">{formatSize(file.size)}</td>
+                      <td data-label="Fecha">
+                        {DATE_FORMAT.format(parseUtc(file.created_at))}
+                      </td>
+                      <td data-label="Usado en">
+                        {file.references_count ?? 0}
+                      </td>
+                      <td className="files-actions">
                         <button
                           type="button"
-                          aria-label={`Copiar incrustado de ${file.name}`}
-                          onClick={() => void handleCopyEmbed(file)}
+                          aria-label={`Abrir ${file.name}`}
+                          onClick={() => handleOpen(file)}
                         >
-                          Incrustado
+                          Abrir
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        aria-label={`Renombrar ${file.name}`}
-                        onClick={() => handleRenameClick(file)}
-                      >
-                        Renombrar
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Cambiar visibilidad de ${file.name}`}
-                        onClick={() => void handleVisibilityClick(file)}
-                      >
-                        {file.visibility === "private" ? "Privado" : "Público"}
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Borrar ${file.name}`}
-                        onClick={() => void handleDeleteClick(file)}
-                      >
-                        Borrar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
+                        <button
+                          type="button"
+                          aria-label={`Descargar ${file.name}`}
+                          onClick={() => handleDownload(file)}
+                        >
+                          Descargar
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Copiar link de ${file.name}`}
+                          onClick={() => void handleCopyLink(file)}
+                        >
+                          Link
+                        </button>
+                        {file.content_type === "text/html" && (
+                          <button
+                            type="button"
+                            aria-label={`Copiar incrustado de ${file.name}`}
+                            onClick={() => void handleCopyEmbed(file)}
+                          >
+                            Incrustado
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          aria-label={`Renombrar ${file.name}`}
+                          onClick={() => handleRenameClick(file)}
+                        >
+                          Renombrar
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Cambiar visibilidad de ${file.name}`}
+                          onClick={() => void handleVisibilityClick(file)}
+                        >
+                          {file.visibility === "private"
+                            ? "Privado"
+                            : "Público"}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Borrar ${file.name}`}
+                          onClick={() => void handleDeleteClick(file)}
+                        >
+                          Borrar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
           </div>
         </>
       )}
@@ -429,20 +489,27 @@ export default function FilesPage() {
         <ConfirmDialog
           titleId="rename-dialog-title"
           title={`Renombrar "${renameDialog.currentName}"`}
+          glyph={Pencil}
+          body={
+            <input
+              autoFocus
+              type="text"
+              value={renameTmp}
+              onChange={(e) => setRenameTmp(e.target.value)}
+              placeholder="Nuevo nombre…"
+            />
+          }
           onCancel={() => setRenameDialog(null)}
         >
-          <input
-            autoFocus
-            type="text"
-            value={renameTmp}
-            onChange={(e) => setRenameTmp(e.target.value)}
-            placeholder="Nuevo nombre…"
-          />
-          <button type="button" onClick={() => void handleRenameSave()}>
-            Guardar
-          </button>
           <button type="button" onClick={() => setRenameDialog(null)}>
             Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => void handleRenameSave()}
+          >
+            Guardar
           </button>
         </ConfirmDialog>
       )}
@@ -452,26 +519,39 @@ export default function FilesPage() {
         <ConfirmDialog
           titleId="delete-dialog-title"
           title={`¿Borrar "${deleteConfirm.fileName}"?`}
+          tone="danger"
+          glyph={Trash2}
+          body={
+            deleteConfirm.references.length > 0 && (
+              <>
+                <p>
+                  <strong>Advertencia:</strong> Este archivo está en uso en{" "}
+                  {deleteConfirm.references.length} documento(s). Si lo borra,
+                  quedarán con enlace roto:
+                </p>
+                <ul>
+                  {deleteConfirm.references.map((ref) => (
+                    <li key={ref.id}>{ref.path}</li>
+                  ))}
+                </ul>
+              </>
+            )
+          }
           onCancel={() => setDeleteConfirm(null)}
         >
-          {deleteConfirm.references.length > 0 && (
-            <div>
-              <p>
-                <strong>Advertencia:</strong> Este archivo está en uso en {deleteConfirm.references.length}{" "}
-                documento(s). Si lo borra, quedarán con enlace roto:
-              </p>
-              <ul>
-                {deleteConfirm.references.map((ref) => (
-                  <li key={ref.id}>{ref.path}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <button type="button" onClick={() => void handleDeleteConfirm()} data-autofocus>
-            Borrar
-          </button>
-          <button type="button" onClick={() => setDeleteConfirm(null)}>
+          <button
+            type="button"
+            data-autofocus
+            onClick={() => setDeleteConfirm(null)}
+          >
             Cancelar
+          </button>
+          <button
+            type="button"
+            className="btn-danger"
+            onClick={() => void handleDeleteConfirm()}
+          >
+            Borrar
           </button>
         </ConfirmDialog>
       )}
@@ -481,33 +561,51 @@ export default function FilesPage() {
         <ConfirmDialog
           titleId="visibility-dialog-title"
           title={`¿Cambiar a ${visibilityConfirm.newVisibility === "public" ? "público" : "privado"}?`}
+          tone="warning"
+          body={
+            (visibilityConfirm.newVisibility === "public" ||
+              visibilityConfirm.references.length > 0) && (
+              <>
+                {visibilityConfirm.newVisibility === "public" && (
+                  <p>
+                    Este archivo será visible para cualquiera con el enlace.
+                  </p>
+                )}
+                {visibilityConfirm.newVisibility === "private" &&
+                  visibilityConfirm.references.length > 0 && (
+                    <>
+                      <p>
+                        <strong>Advertencia:</strong> Este archivo está en uso
+                        en {visibilityConfirm.references.length} documento(s).
+                        Si lo marca como privado, dejarán de poder acceder:
+                      </p>
+                      <ul>
+                        {visibilityConfirm.references.map((ref) => (
+                          <li key={ref.id}>{ref.path}</li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+              </>
+            )
+          }
           onCancel={() => setVisibilityConfirm(null)}
         >
-          {visibilityConfirm.newVisibility === "public" && (
-            <p>Este archivo será visible para cualquiera con el enlace.</p>
-          )}
-          {visibilityConfirm.newVisibility === "private" && visibilityConfirm.references.length > 0 && (
-            <div>
-              <p>
-                <strong>Advertencia:</strong> Este archivo está en uso en {visibilityConfirm.references.length}{" "}
-                documento(s). Si lo marca como privado, dejarán de poder acceder:
-              </p>
-              <ul>
-                {visibilityConfirm.references.map((ref) => (
-                  <li key={ref.id}>{ref.path}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <button type="button" onClick={() => setVisibilityConfirm(null)}>
+            Cancelar
+          </button>
           <button
             type="button"
-            onClick={() => void handleVisibilityConfirm(visibilityConfirm.fileId, visibilityConfirm.newVisibility)}
+            className="btn-primary"
+            onClick={() =>
+              void handleVisibilityConfirm(
+                visibilityConfirm.fileId,
+                visibilityConfirm.newVisibility,
+              )
+            }
             data-autofocus={visibilityConfirm.newVisibility === "public"}
           >
             Confirmar
-          </button>
-          <button type="button" onClick={() => setVisibilityConfirm(null)}>
-            Cancelar
           </button>
         </ConfirmDialog>
       )}

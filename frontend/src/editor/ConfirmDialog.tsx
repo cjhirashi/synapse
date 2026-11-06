@@ -1,14 +1,19 @@
 /**
  * Diálogo de confirmación (`alertdialog`) modal: capa fija centrada en la ventana, por portal en `document.body`
  * (nunca queda al final de una lista larga ni dentro de un panel con scroll). Clic fuera = la respuesta segura.
- * Gestión de foco del patrón WAI-ARIA
- * (U-1, PLAN-0008 §17): foco inicial en su primer botón (o en el que lleve `data-autofocus`, E-5:
- * en el diálogo de borrado, la respuesta segura y no la acción destructiva), Tab atrapado dentro, Escape = la
- * respuesta segura (`onCancel`, «Seguir editando») y, al cerrarse, el foco vuelve a donde estaba
- * al abrirse (el disparador: un botón, un enlace del riel, la fila del árbol…).
+ *
+ * Diseño: icono de tono (peligro / aviso / neutro), título, texto de apoyo (`body`) y, abajo a la derecha, los
+ * botones en este orden: la respuesta segura (secundaria) primero y la acción principal al final; la destructiva
+ * lleva `btn-danger` y la constructiva `btn-primary`.
+ *
+ * Gestión de foco del patrón WAI-ARIA (U-1, PLAN-0008 §17): foco inicial en su primer botón (o en el que lleve
+ * `data-autofocus`, E-5: en el diálogo de borrado, la respuesta segura y no la acción destructiva), Tab atrapado
+ * dentro, Escape = la respuesta segura (`onCancel`) y, al cerrarse, el foco vuelve a donde estaba al abrirse
+ * (el disparador: un botón, un enlace del riel, la fila del árbol…).
  */
-import { KeyboardEvent, MouseEvent, ReactNode, useEffect, useRef } from "react";
+import { KeyboardEvent, MouseEvent, ReactNode, useEffect, useId, useRef } from "react";
 import { createPortal } from "react-dom";
+import { Info, TriangleAlert, type LucideIcon } from "lucide-react";
 
 interface ConfirmDialogProps {
   /** `id` del texto que da nombre al diálogo (`aria-labelledby`). */
@@ -16,14 +21,22 @@ interface ConfirmDialogProps {
   title: string;
   /** Escape: la respuesta que no hace nada irreversible. */
   onCancel: () => void;
+  /** Color del icono: `danger` (borrar, revocar), `warning` (cambios sin guardar) o `neutral`. */
+  tone?: "danger" | "warning" | "neutral";
+  /** Icono del encabezado (`glyph`); por defecto, uno propio del tono. */
+  glyph?: LucideIcon;
+  /** Texto de apoyo bajo el título (consecuencias, lista de afectados, un campo). */
+  body?: ReactNode;
   /** Los botones, en orden de tabulación; recibe el foco el marcado con `data-autofocus` o, si no, el primero. */
   children: ReactNode;
 }
 
-const FOCUSABLE = "button:not([disabled])";
+const FOCUSABLE = "button:not([disabled]), input:not([disabled])";
 
-export function ConfirmDialog({ titleId, title, onCancel, children }: ConfirmDialogProps) {
+export function ConfirmDialog({ titleId, title, onCancel, tone = "neutral", glyph, body, children }: ConfirmDialogProps) {
   const root = useRef<HTMLDivElement>(null);
+  const bodyId = useId();
+  const Icon = glyph ?? (tone === "neutral" ? Info : TriangleAlert);
 
   useEffect(() => {
     // El elemento enfocado ANTES de abrir: a él se vuelve al cerrar.
@@ -69,11 +82,24 @@ export function ConfirmDialog({ titleId, title, onCancel, children }: ConfirmDia
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="note-editor-confirm"
+        aria-describedby={body ? bodyId : undefined}
+        className={`confirm-dialog confirm-dialog-${tone}`}
         onKeyDown={onKeyDown}
       >
-        <p id={titleId}>{title}</p>
-        {children}
+        <span className="confirm-dialog-icon" aria-hidden="true">
+          <Icon size={20} />
+        </span>
+        <div className="confirm-dialog-content">
+          <p id={titleId} className="confirm-dialog-title">
+            {title}
+          </p>
+          {body && (
+            <div id={bodyId} className="confirm-dialog-body">
+              {body}
+            </div>
+          )}
+        </div>
+        <div className="confirm-dialog-actions">{children}</div>
       </div>
     </div>,
     document.body,

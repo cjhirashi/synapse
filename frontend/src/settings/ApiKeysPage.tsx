@@ -237,14 +237,16 @@ export default function ApiKeysPage() {
       {revoking && (
         <ConfirmDialog
           titleId="revoke-key-title"
-          title={`¿Revocar la API key «${revoking.label}»? Un agente que la use perderá el acceso y no se puede deshacer.`}
+          title={`¿Revocar la API key «${revoking.label}»?`}
+          tone="danger"
+          body="Un agente que la use perderá el acceso. No se puede deshacer."
           onCancel={() => setRevoking(null)}
         >
-          <button type="button" disabled={busy} onClick={() => void confirmRevoke(revoking)}>
-            Revocar
-          </button>
           <button type="button" data-autofocus disabled={busy} onClick={() => setRevoking(null)}>
             Cancelar
+          </button>
+          <button type="button" className="btn-danger" disabled={busy} onClick={() => void confirmRevoke(revoking)}>
+            Revocar
           </button>
         </ConfirmDialog>
       )}
