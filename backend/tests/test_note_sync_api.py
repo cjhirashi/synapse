@@ -156,7 +156,7 @@ def test_rf_016_one_byte_over_the_limit_is_rejected_and_the_previous_revision_st
 # --- Rechazos de INDICE (H-031): el servidor los informa, nunca responde 500 ---
 
 @pytest.mark.parametrize(("change", "reason"), [
-    ({"path": "Otra/INDICE.md"}, "index-readonly:path"),
+    ({"path": "Carpeta/Otra.md"}, "index-readonly:path"),  # un INDICE solo se mueve a otra ruta de INDICE, con su carpeta
     ({"content": "texto"}, "index-readonly:content"),
     ({"frontmatter": {"estado": "borrador"}}, "index-readonly:attr"),
 ])
