@@ -23,10 +23,13 @@ logger = logging.getLogger(__name__)
 
 
 class MensajesService:
-    def __init__(self, port: VaultPort, db: str, owner_id: str | None = None):
+    def __init__(self, port: VaultPort, db: str, owner_id: str | None = None,
+                 author_from: ChangeLogService | None = None):
         self._port = port
         self._db = db
         self._owner_id = owner_id
+        # Quien consta como autor de los efectos del servidor (cabecera, reapertura, cierre): quien escribió, no `sistema`.
+        self._author_from = author_from
         self._notes = NoteService(port, db)
 
     # --- Lectura ---
@@ -132,8 +135,11 @@ class MensajesService:
         return True
 
     def _put(self, vault_id: str, old: dict | None, new: dict) -> None:
-        """Escribe `new` registrando antes el cambio en la BITACORA (autor `sistema`) cuando se conoce al dueño."""
-        changelog = (ChangeLogService(self._port, self._db, self._owner_id, None, via="system", author=SYSTEM)
+        """Escribe `new` registrando antes el cambio en la BITACORA cuando se conoce al dueño. Es un efecto de la
+        escritura de alguien: consta ese autor (el agente que abrió la conversación, la persona que cambió el registro);
+        `sistema` solo si no hay quien la causó."""
+        author = self._author_from.author() if self._author_from is not None else SYSTEM
+        changelog = (ChangeLogService(self._port, self._db, self._owner_id, None, via="system", author=author)
                      if self._owner_id is not None else None)
         pending = changelog.begin(vault_id, old, new) if changelog is not None else None
         try:

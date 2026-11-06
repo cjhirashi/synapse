@@ -194,7 +194,7 @@ class SyncPushService:
         # H-030: quién empuja (None = sesión humana) y el cumplimiento del registro de agentes (E6).
         self._actor = actor
         self._guard = AgentAccessGuard(port, db, owner_id, actor) if actor is not None else None
-        self._mensajes = MensajesService(port, db, owner_id)
+        self._mensajes = MensajesService(port, db, owner_id, author_from=changelog)
         # H-030b: registro de cambios (BITACORA automática); se escribe antes que las notas del lote.
         self._changelog = changelog
         self._start_batch()

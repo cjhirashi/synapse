@@ -156,7 +156,8 @@ class NoteContentService:
         # H-030: quién escribe (None = el sistema o una sesión humana) y el cumplimiento del registro de agentes.
         self._actor = actor
         self._guard = guard
-        self._mensajes = MensajesService(port, db, owner_id=changelog.owner_id if changelog is not None else None)
+        self._mensajes = MensajesService(
+            port, db, owner_id=changelog.owner_id if changelog is not None else None, author_from=changelog)
         # H-030b: registro de cambios (BITACORA automática); `None` en scripts y herramientas del sistema.
         self._changelog = changelog
 

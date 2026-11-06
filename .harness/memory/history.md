@@ -2087,3 +2087,9 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Lección (regla):** antes de desplegar, comparar la imagen en producción con la rama que se construye (`docker run … cat app/system_docs/manifest.json`, `git branch --contains` del último commit desplegado). Una rama de trabajo desplegada y no fusionada se pierde en el siguiente despliegue.
 - **Pendiente conocido:** `inbox` del plugin aún lee el formato anterior (devuelve vacío); `test_note_sync_api::test_h031_a_rejected_index_change…[change0]` falla desde antes de este cambio (sin relación).
 - **Verificación:** backend 4 fragmentos: 2631 tests, 1 fallo preexistente (el de arriba); frontend 128 archivos / 2899 tests; typecheck limpio.
+
+## 2026-11-06 — BITACORA: los efectos del servidor constan a nombre de quien los causó (prompt directo, Gate 0)
+- **Qué:** Carlos vio en la BITACORA entradas de agentes como «sistema». Las escrituras de agentes ya llevaban su nombre (clave por agente); lo que salía como `sistema` eran los efectos que el servidor escribe por cuenta de una escritura: la cabecera `000-cabecera.md` que se crea con el primer mensaje, su reapertura al escribir en una conversación cerrada y el cierre por baja del gestor. `MensajesService._put` fijaba `SYSTEM`; ahora toma el autor del `ChangeLogService` de la petición (`author_from`), también en `/sync`. `sistema` queda solo para lo que Synapse publica por su cuenta (skills de sistema, migraciones).
+- **Archivos:** `services/mensajes_service.py`, `services/note_content_service.py`, `services/sync_push.py`, prueba nueva en `tests/test_h042_mensajes.py` (falla sin el arreglo), skill global 1.3.3 (una frase en 7 quater).
+- **Docs:** skill global actualizada; ninguna otra doc describe el autor de estas entradas.
+- **Verificación:** backend en 4 fragmentos, 2671 pruebas, 0 fallos.

@@ -6,6 +6,7 @@ import pytest
 
 from app.core.config import settings
 from app.core.models.agent_access_log import AgentAccessLog
+from app.core.models.change_log import ChangeLog
 from app.services import agent_access_guard
 from tests.test_agent_api_key_access import _bearer_client
 from tests.test_h030_api import (
@@ -84,6 +85,17 @@ def test_the_first_message_creates_the_header_and_the_indexes(ready_admin):
     index = find(ready_admin, vault_id, f"{CONV}/INDICE.md")
     assert index["frontmatter"]["descripcion"] == "Conversación de aira para liza: Revisar el plan. Iniciada el 2026-11-05."
     assert find(ready_admin, vault_id, "AG - MENSAJES/INDICE.md") is not None
+
+
+def test_the_header_the_server_creates_is_logged_with_the_agent_who_opened_the_conversation(ready_admin, db):
+    """BITACORA: la cabecera y los INDICES que nacen del primer mensaje constan a nombre de quien escribió, no de `sistema`."""
+    vault_id = vault_of(ready_admin)
+    start(ready_admin, vault_id)
+    db.expire_all()
+    rows = db.query(ChangeLog).filter(ChangeLog.vault_id == vault_id).all()
+    header = [r for r in rows if r.path == CAB]
+    assert len(header) == 1 and (header[0].author_kind, header[0].author) == ("agent", "aira")
+    assert not [r for r in rows if r.author_kind == "system" and r.path.startswith("AG - MENSAJES/")]
 
 
 def test_a_second_message_does_not_duplicate_the_header(ready_admin):

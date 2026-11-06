@@ -126,7 +126,7 @@ Las plantillas son para documentos que se crean **a mano** (hoy, las skills). Lo
 
 ## 7 quater. Otras carpetas reservadas
 
-Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`. No se renombran, no se mueven y su ÍNDICE no se borra. `BITACORA` la escribe solo el servidor (un documento por día con cada cambio de la bóveda) y es de solo lectura para todos; no la edites ni la cites como si fuera tuya. `AG - MENSAJES` es solo para agentes (sección 7 bis).
+Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`. No se renombran, no se mueven y su ÍNDICE no se borra. `BITACORA` la escribe solo el servidor (un documento por día con cada cambio de la bóveda) y es de solo lectura para todos; no la edites ni la cites como si fuera tuya. Cada entrada lleva el nombre de quien causó el cambio (tu id si fuiste tú, también en lo que el servidor crea por ti, como la cabecera de una conversación); `sistema` queda solo para lo que Synapse publica por su cuenta, como las skills de sistema. `AG - MENSAJES` es solo para agentes (sección 7 bis).
 
 ## 8. Errores frecuentes
 
