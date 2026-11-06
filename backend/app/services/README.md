@@ -55,3 +55,4 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   `sync_push.py` valida por tipo de documento (`_KINDS`), procesa las bóvedas antes que las
   notas, comprueba que la bóveda de la nota exista y esté activa (`vault-not-found`) y reserva
   o libera la ruta (`note-path-taken`).
+- `wikilink_rewrite_service.py` (`WikilinkRewriteService`, H-039): reescribe los wikilinks de una bóveda tras mover o renombrar notas o carpetas. CouchDB no tiene transacciones entre documentos: cada nota se escribe sobre el `_rev` leído y, ante un conflicto de revisión, se relee y reintenta. Los mensajes de `AG - MENSAJES` (históricos) no se tocan.

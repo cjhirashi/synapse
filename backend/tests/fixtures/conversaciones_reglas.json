@@ -1,0 +1,215 @@
+{
+ "_doc": "H-042: casos del formato de las rutas de AG - MENSAJES. `kind` null = la ruta no encaja en el formato. Los recorren el servidor (test_h042_rules.py) y el cliente (conversation.test.ts).",
+ "paths": [
+  {
+   "path": "AG - MENSAJES/INDICE.md",
+   "kind": "indice",
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05/INDICE.md",
+   "kind": "indice",
+   "de": "aira",
+   "para": "liza",
+   "asunto": "Revisar el plan",
+   "inicio": "2026-11-05",
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05/000-cabecera.md",
+   "kind": "cabecera",
+   "de": "aira",
+   "para": "liza",
+   "asunto": "Revisar el plan",
+   "inicio": "2026-11-05",
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05/001-de-aira.md",
+   "kind": "mensaje",
+   "de": "aira",
+   "para": "liza",
+   "asunto": "Revisar el plan",
+   "inicio": "2026-11-05",
+   "sender": "aira",
+   "number": 1
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05/002-de-liza.md",
+   "kind": "mensaje",
+   "de": "aira",
+   "para": "liza",
+   "asunto": "Revisar el plan",
+   "inicio": "2026-11-05",
+   "sender": "liza",
+   "number": 2
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - a → b - 2026-01-01 - 2026-11-05/999-de-liza.md",
+   "kind": "mensaje",
+   "de": "aira",
+   "para": "liza",
+   "asunto": "a → b - 2026-01-01",
+   "inicio": "2026-11-05",
+   "sender": "liza",
+   "number": 999
+  },
+  {
+   "path": "AG - MENSAJES/a1 → b-2 - Asunto - 2026-02-28/001-de-b-2.md",
+   "kind": "mensaje",
+   "de": "a1",
+   "para": "b-2",
+   "asunto": "Asunto",
+   "inicio": "2026-02-28",
+   "sender": "b-2",
+   "number": 1
+  },
+  {
+   "path": "AG - MENSAJES/nota.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/liza/20261105-0930-x/000-cabecera.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira -> liza - x - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → aira - x - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/Aira → liza - x - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza -  - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-02-30/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 20261105/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/000-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/1000-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/sub/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "AG - MENSAJES/aira → liza - x - 2026-11-05/otra.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  },
+  {
+   "path": "Otra/aira → liza - x - 2026-11-05/001-de-aira.md",
+   "kind": null,
+   "de": null,
+   "para": null,
+   "asunto": null,
+   "inicio": null,
+   "sender": null,
+   "number": null
+  }
+ ]
+}

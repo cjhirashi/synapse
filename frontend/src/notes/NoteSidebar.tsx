@@ -31,7 +31,7 @@ import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
 import { folderOf, indexPathFor, isIndexPath } from "./indexRules";
 import { pathKey } from "./noteRules";
-import { isMetaFolderPath, isInBitacora, splitMeta, canonicalMetaName } from "./metaFolders";
+import { isMetaFolderPath, isInBitacora, isInMensajes, splitMeta, canonicalMetaName } from "./metaFolders";
 import { isSystemPath } from "./metaRules";
 import { appliesTo, templateName } from "./metaRules";
 import { managersOf } from "./skillRules";
@@ -144,6 +144,7 @@ function inlineRowKey(edit: InlineRename): string {
  * sobre un descendiente suyo, o ya directamente dentro del destino.
  */
 function canDrop(drag: DragItem, dest: string): boolean {
+  if (isInMensajes(dest)) return false; // H-042: nada se suelta en el buzón entre agentes
   if (drag.kind === "note") return parentFolder(drag.path) !== dest;
   if (drag.path === dest || dest.startsWith(`${drag.path}/`)) return false;
   return parentFolder(drag.path) !== dest;
@@ -174,6 +175,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const inTemplatesFolder = pathKey(activeFolder) === pathKey("PLANTILLAS");
   // H-041 E3: una skill nueva nace de un gestor de la bóveda (el propietario) o, si no hay, archivada.
   const inSkillsFolder = pathKey(activeFolder) === pathKey("AG - SKILLS");
+  // H-042: el buzón entre agentes es solo para agentes; el usuario lo lee y no crea nada ahí.
+  const inMensajes = isInMensajes(activeFolder);
   const managers = useMemo(() => managersOf(items ?? []), [items]);
   const [skillOwner, setSkillOwner] = useState("");
   useEffect(() => {
@@ -357,7 +360,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         if (inFlight.current) return; // misma guarda que los botones (`busy`)
         if (row.kind === "folder") {
           event.preventDefault();
-          if (isMetaFolderPath(row.path) || isInBitacora(row.path)) return; // H-030: la reservada no se renombra ni se borra; la BITACORA solo la escribe el servidor
+          if (isMetaFolderPath(row.path) || isInBitacora(row.path) || isInMensajes(row.path)) return; // H-030: la reservada no se renombra ni se borra; la BITACORA solo la escribe el servidor; el buzón (H-042) solo los agentes
           if (event.key === "F2") startFolderRename(row.path);
           else askDeleteFolder(row.path);
           return;
@@ -365,7 +368,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         const note = row.kind === "note" ? items?.find((item) => noteKey(item.id) === row.key) : undefined;
         if (!note) return;
         event.preventDefault();
-        if (isInBitacora(note.path) || isSystemPath(note.path)) return; // H-030b/H-041: la bitácora y los documentos de sistema son de solo lectura
+        if (isInBitacora(note.path) || isInMensajes(note.path) || isSystemPath(note.path)) return; // H-030b/H-041/H-042: la bitácora, el buzón y los documentos de sistema son de solo lectura
         if (event.key === "F2") startNoteRename(note);
         else askDeleteNote(note);
         return;
@@ -705,7 +708,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   className="note-tree-row note-tree-folder"
                   style={indent}
                   aria-current={activeFolder === node.path ? "true" : undefined}
-                  draggable={!reserved && !isInBitacora(node.path)}
+                  draggable={!reserved && !isInBitacora(node.path) && !isInMensajes(node.path)}
                   data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
                   onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
                   onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
@@ -726,7 +729,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 </button>
               )}
               {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). */}
-              {!editing && !reserved && !isInBitacora(node.path) && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+              {!editing && !reserved && !isInBitacora(node.path) && !isInMensajes(node.path) && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
             </div>
             {open && (
               <ul role="group" className="note-tree-group">
@@ -741,6 +744,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       const editing = inlineRename?.kind === "note" && inlineRename.note.id === note.id;
       const icon = <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />;
       const system = isSystemPath(note.path);
+      const readOnlyNote = system || isInMensajes(note.path); // H-041 documentos de sistema; H-042 buzón entre agentes
       return (
         <li key={note.id} role="none">
           <div className="note-tree-line">
@@ -760,7 +764,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 onPointerEnter={() => onPrefetch?.(note.id)}
                 className="note-tree-row note-tree-note"
                 style={indent}
-                draggable={!isInBitacora(note.path) && !system}
+                draggable={!isInBitacora(note.path) && !readOnlyNote}
                 onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
                 onClick={() => onOpen(note.id)}
               >
@@ -771,7 +775,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 {system && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
               </button>
             )}
-            {!editing && !isInBitacora(note.path) && !system && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+            {!editing && !isInBitacora(note.path) && !readOnlyNote && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
           </div>
         </li>
       );
@@ -888,6 +892,12 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       // cambiar de bóveda sólo cambia este valor.
       style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties}
     >
+      {inMensajes ? (
+        <p className="note-sidebar-readonly" role="note">
+          <Lock size={12} aria-hidden="true" data-icon="lock" />
+          Buzón entre agentes: solo lectura
+        </p>
+      ) : (
       <form className="note-sidebar-new" onSubmit={create}>
         <p id={createInId} className="note-create-in" aria-live="polite" aria-atomic="true">
           {activeFolder === "" ? <House size={14} aria-hidden="true" /> : <FolderOpen size={14} aria-hidden="true" />}
@@ -952,7 +962,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         </p>
         </div>
       </form>
-      {folderForm !== null && (
+      )}
+      {folderForm !== null && !inMensajes && (
           <form
             className="note-sidebar-new note-sidebar-folder"
             onSubmit={submitFolder}

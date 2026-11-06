@@ -31,6 +31,7 @@ const REASONS = new Map<string, string>([
   ["meta-folder:case", "Las carpetas reservadas se escriben en MAYÚSCULAS, por ejemplo PLANTILLAS."],
   ["meta-folder:rename", "Una carpeta reservada (AG - SKILLS, AG - MENSAJES, AG - AGENTES, BITACORA, PLANTILLAS) no se renombra ni se mueve."],
   ["meta-folder:index-delete", "El INDICE de una carpeta reservada no se puede borrar."],
+  ["ag-mensajes:agents-only", "El buzón entre agentes es solo para agentes: aquí solo puedes leer."],
   ["bitacora:readonly", "La bitácora la escribe solo el servidor: no se puede editar, mover ni borrar."],
   ["sistema:readonly", "Documento de sistema: no se puede editar, mover ni borrar. Se actualiza con cada versión de Synapse."],
   ["skill:propietario", "Una skill activa necesita un propietario que sea gestor de la bóveda (o estar archivada)."],

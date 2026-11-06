@@ -294,7 +294,7 @@ nota no cambia).
 
 - Sin `If-Match` → `428` `precondition-required`.
 - `If-Match` acepta el `ETag` tal como llegó, **fuerte (`"1-abc"`) o débil (`W/"1-abc"`)**: el servidor
-  compara el valor sin el prefijo `W/` (un intermediario como Cloudflare puede debilitar el `ETag` al
+  compara el valor sin el prefijo `W/` (un intermediario puede debilitar el `ETag` al
   comprimir). Aplica igual a notas y bóvedas.
 - `If-Match` distinto del `ETag` vigente → `412` `precondition-failed` (otra escritura ganó:
   relee y repite).
@@ -521,28 +521,39 @@ agente registrado y activo en la bóveda. Modos (`AGENT_ACCESS_MODE`): `shadow` 
 en la tabla `agent_access_log`; `enforce` rechaza con `403` `agent-access-denied` (REST) o `reason: agent-access-denied`
 (`/sync`); `off` no evalúa. Cambios en el registro rigen de inmediato.
 
-### 4. Buzón: `AG - MENSAJES`
+### 4. Buzón: `AG - MENSAJES` (H-042)
+
+Solo para agentes. **Una conversación es una carpeta** con el nombre `<de> → <para> - <asunto> - <AAAA-MM-DD>` (la flecha es
+`→`, U+2192) y un documento por mensaje; el receptor responde con otro documento en la misma carpeta.
 
 ```
-AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/000-cabecera.md     # de, para, estado: abierta|cerrada, cerrada_el
-AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/001-de-<id>.md      # un mensaje por nota: 001, 002, …
+AG - MENSAJES/<de> → <para> - <asunto> - <AAAA-MM-DD>/001-de-<de>.md       # el mensaje que solicita (lo escribe quien abre)
+AG - MENSAJES/<de> → <para> - <asunto> - <AAAA-MM-DD>/002-de-<para>.md     # la respuesta; 003, 004, … hasta 999
+AG - MENSAJES/<de> → <para> - <asunto> - <AAAA-MM-DD>/000-cabecera.md      # la crea el SERVIDOR con el primer mensaje; estado: abierta|cerrada
 ```
 
-- Cualquier agente escribe a cualquier otro, aunque no esté registrado en la bóveda. Toda ruta debajo de `AG - MENSAJES/`
-  debe seguir este formato (`ag-mensajes:path`); los INDICES de cada nivel los genera el servidor.
-- Para una key con agente: el `de` de la cabecera y el `<id>` del nombre del mensaje son su `agent_id` (`ag-mensajes:from-mismatch`);
-  los mensajes no se editan, mueven ni borran, y de la cabecera solo cambia `estado` (`ag-mensajes:immutable`); cerrar o reabrir
-  solo lo hacen `de`, `para` o un administrador (`ag-mensajes:forbidden`). Un mensaje exige que exista la cabecera
-  (`ag-mensajes:no-cabecera`, solo REST). La sesión humana puede corregir mensajes.
-- **`cerrada_el` lo sella el servidor** (UTC) al pasar a `cerrada` y desaparece al reabrir; lo que el cliente envíe se ignora
-  en REST y se rechaza en `/sync` (`immutable-field:cerrada_el`). Escribir un mensaje en una conversación cerrada **la reabre sola**.
-- Purga: una conversación `cerrada` con `cerrada_el` de más de 15 días se elimina físicamente (carpeta, notas e INDICE, sin papelera);
-  antes se vuelca a JSONL, que se conserva 30 días (`scripts/purge_mensajes.py`, tabla `purge_log`).
+- `<de>` y `<para>`: ids de agente `[a-z0-9][a-z0-9-]{0,31}`, distintos; `<asunto>`: de 1 a 100 caracteres; `<AAAA-MM-DD>`: fecha real
+  (la pone el agente). La REST acepta ` -> ` y guarda `→` (la respuesta trae la ruta final en `path`); `/sync` no reescribe, rechaza.
+- **Abrir** = `POST /vaults/{id}/notes` del primer mensaje; **responder** = el siguiente número; **cerrar o reabrir** = `PATCH` de la
+  cabecera con `frontmatter: {estado: "cerrada"|"abierta"}` (basta `estado`: el servidor conserva el resto y sella `cerrada_el`, que
+  desaparece al reabrir). Escribir un mensaje en una conversación cerrada **la reabre sola**.
+- **Siempre (422, también en `/sync`):** `ag-mensajes:agents-only` (la sesión humana no escribe nada aquí: ni mensajes, ni INDICES, ni
+  mover carpetas), `ag-mensajes:path` (la ruta no encaja), `ag-mensajes:not-participant` (`NNN-de-<id>.md` con un `<id>` que no es `de` ni
+  `para`), `ag-mensajes:from-mismatch` (el `de` de los metadatos no es el del nombre), `ag-mensajes:cabecera` (metadatos de la cabecera),
+  `ag-mensajes:cabecera-server` (nadie crea la cabecera a mano), `ag-mensajes:immutable` (los mensajes no se editan, mueven ni borran; de la
+  cabecera solo cambia `estado`; nada entra ni sale del buzón por un renombre) y `409 note-path-taken` (ese número ya existe: reintenta con el siguiente).
+- **Bajo `AGENT_ACCESS_MODE`** (sombra: se registra en `agent_access_log` como `mensaje-create`/`mensaje-update` y se permite; `enforce`:
+  `403 agent-access-denied` con un `detail` fijo): el `<id>` del nombre es el agente de la clave, el primer mensaje lo escribe quien abre y solo
+  los dos participantes cierran o reabren. `is_admin` no interviene. El sistema **no** valida el receptor ni mira `AG - AGENTES`: un agente de
+  solo lectura puede abrir y responder conversaciones (la skill enseña a dirigirse solo a gestores).
+- **Fin (hoy):** una conversación `cerrada` con `cerrada_el` de más de 15 días se elimina físicamente (carpeta, notas e INDICE, sin papelera);
+  antes se vuelca a JSONL, que se conserva 30 días (`scripts/purge_mensajes.py`, tabla `purge_log`). Una abierta no caduca. **Pendiente (H-042 E3):**
+  pasar a 30 días sin mensajes nuevos (`MENSAJES_PURGE_DAYS`), abierta o cerrada, y cerrar las conversaciones dirigidas a un agente que deja de ser gestor.
 
 Contrato máquina: `.harness/specs/h030-carpetas-ag/contracts/openapi.yaml`. Herramientas (dentro del contenedor, `backend/scripts/`):
 `ensure_ag_folders.py` (carga en las bóvedas existentes; sin `--apply` es informe en seco), `seed_agent_registry.py`
 (sembrado del registro), `create_agent_keys.py` (claves `op-<agente>` a un archivo 600; no sobrescribe uno existente) y
-`purge_mensajes.py`. Programación de la purga en el host (03:30 CDMX = 09:30 UTC, volcados en
+`purge_mensajes.py` y `h042_migrate.py` (H-042: descripción del INDICE de `AG - MENSAJES`; en seco por defecto). Programación de la purga en el host (03:30 CDMX = 09:30 UTC, volcados en
 `.claude/worktrees/respaldos-purga/`, montada en el contenedor como `/backups/synapse-purga`):
 `30 9 * * * docker exec synapse-backend python scripts/purge_mensajes.py --apply >> /mnt/disco2/cjhirashi-data/proyectos/synapse/.claude/worktrees/respaldos-purga/purga.log 2>&1`.
 

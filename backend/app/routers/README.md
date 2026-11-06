@@ -23,6 +23,7 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
 - `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campo opcional `folder`), `GET /files/{id}`
   (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
   `PATCH /files/{id}` (nombre y visibilidad) y `DELETE /files/{id}`. MinIO nunca se expone directo.
+- `folders.py` (H-039): `POST /vaults/{id}/folders/move` mueve una carpeta entera (cambia el `path` de cada nota bajo ella) y reescribe los wikilinks que la apuntaban; respeta las carpetas reservadas y los documentos de sistema (`meta-folder:*`, `sistema:readonly`).
 - `sync.py` (SPEC-0005): canal `/sync` para PouchDB. La base sale del token
   (`get_sync_db`); sólo existe el subconjunto del protocolo que usa el replicador y una ruta
   comodín final responde `SyncEndpointNotFound` a todo lo demás (también a métodos no

@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from h030_common import active_vaults, user_dbs
 
 from app.adapters.vault_repository import VaultRepository
-from app.core import ag_rules, meta_rules
+from app.core import ag_rules, conversation_rules, meta_rules
 from app.core.agent_access import parse_registration
 from app.core.index_rules import is_index_path
 from app.core.note_rules import path_key
@@ -35,7 +35,7 @@ def collisions(notes: list[dict]) -> list[str]:
             found.append(f"nota con nombre reservado: {path}")
             continue
         zone = ag_rules.meta_folder_of(path)
-        if zone == ag_rules.AG_MENSAJES and not is_index_path(path) and ag_rules.parse_mensaje_path(path) is None:
+        if zone == ag_rules.AG_MENSAJES and not is_index_path(path) and conversation_rules.parse_mensaje_path(path) is None:
             found.append(f"ruta fuera del formato de AG - MENSAJES: {path}")
         if zone == ag_rules.AG_AGENTES and not is_index_path(path) and parse_registration(path, note.get("frontmatter")) is None:
             found.append(f"nota de AG - AGENTES que no es un registro válido: {path}")

@@ -29,7 +29,7 @@ import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
 import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
 import { isIndexPath } from "./indexRules";
-import { isInBitacora } from "./metaFolders";
+import { isInBitacora, isInMensajes } from "./metaFolders";
 import { isSystemPath } from "./metaRules";
 import { templateName } from "./metaRules";
 import { useMediaQuery } from "../layout/useMediaQuery";
@@ -43,6 +43,7 @@ const loadEditor = () => import("../editor/NoteEditor");
 const NoteEditor = lazy(loadEditor);
 const IndexView = lazy(() => import("./IndexView"));
 const BitacoraView = lazy(() => import("./BitacoraView"));
+const MensajeView = lazy(() => import("./MensajeView"));
 const SystemDocView = lazy(() => import("./SystemDocView"));
 const TemplateView = lazy(() => import("./TemplateView"));
 
@@ -476,6 +477,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-030b: una plantilla se edita con su formulario de cuatro secciones, no con el editor de documentos.
   const openIsTemplate = openId !== null && noteRefs.some((ref) => ref.id === openId && templateName(ref.path) !== null);
   const openIsBitacora = openId !== null && noteRefs.some((ref) => ref.id === openId && isInBitacora(ref.path) && !isIndexPath(ref.path));
+  // H-042: un documento del buzón entre agentes (mensaje o cabecera) lo escriben solo los agentes; el usuario lo lee sin editor.
+  const openIsMensaje = openId !== null && noteRefs.some((ref) => ref.id === openId && isInMensajes(ref.path) && !isIndexPath(ref.path));
   // H-041: un documento de sistema (la skill global, `plantilla-skill`) se abre de solo lectura; va antes que la plantilla.
   const openIsSystem = openId !== null && noteRefs.some((ref) => ref.id === openId && isSystemPath(ref.path));
 
@@ -548,6 +551,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
               ) : openIsBitacora ? (
                 <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
+              ) : openIsMensaje ? (
+                <MensajeView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
               ) : (
               <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
               )}

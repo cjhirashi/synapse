@@ -17,12 +17,12 @@ backend/
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
 │   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, reservations.py, sync_*.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, files.py, sync.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, folders.py, files.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
-├── scripts/          # export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py; H-030b: h030b_migrate.py (rutas heredadas -> BITACORA/PLANTILLAS, en seco/aplicar/revertir), rebuild_bitacora.py
+├── scripts/          # ver `scripts/README.md`. Resumen: export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py; H-030b: h030b_migrate.py (rutas heredadas -> BITACORA/PLANTILLAS, en seco/aplicar/revertir), rebuild_bitacora.py
 ├── tests/
 ├── Dockerfile        # Multi-stage: compila la SPA (Node) y la copia a la imagen (contexto = raíz)
 └── requirements.txt
@@ -30,8 +30,8 @@ backend/
 
 ## Entorno
 
-Toda la configuración sensible viene del entorno; **no hay valores por defecto** y el
-backend no arranca si falta alguna (ver `.env.example` en la raíz):
+La configuración sensible viene del entorno; **no tiene valores por defecto** y el
+backend no arranca si falta alguna de las obligatorias (ver `.env.example` en la raíz). Los interruptores de abajo sí traen un valor por defecto:
 
 | Variable | Uso |
 |---|---|
@@ -40,6 +40,11 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `JWT_SECRET` | Firma HS256 de los JWT |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO (archivos subidos). Obligatorias. `MINIO_ENDPOINT` (`synapse-minio:9000`) y `MINIO_BUCKET` (`synapse-files`) tienen valor por defecto |
+| `AGENT_ACCESS_MODE` | Permisos por agente (H-030): `shadow` (por defecto) registra lo que rechazaría el registro de `AG - AGENTES` sin bloquear; `enforce` rechaza con 403; `off` no evalúa. Los valores por defecto de las siguientes sí existen |
+| `SEED_AG_FOLDERS` (`true`) | Las bóvedas nuevas nacen con las carpetas reservadas (`AG - *`, `BITACORA`, `PLANTILLAS`) |
+| `SYSTEM_DOCS_SYNC` (`true`) | Al arrancar replica en segundo plano la skill global y `plantilla-skill` en todas las bóvedas (idempotente) |
+| `BITACORA_DOCS` (`true`) | Genera los documentos diarios de `BITACORA/` desde el registro de cambios (`change_log`, que se escribe siempre) |
+| `DEFAULT_TIMEZONE` (`America/Mexico_City`) | Zona horaria de respaldo del propietario para la bitácora y las fechas selladas; cada usuario tiene la suya en `users.timezone` |
 
 ## Sirve la SPA (SPEC-0007)
 
@@ -59,40 +64,19 @@ El `Dockerfile` (multi-stage, contexto = raíz del repo) compila la SPA con Node
 `/app/static`; `FRONTEND_DIST` apunta ahí. En dev sin build la app arranca como API pura
 (RF-006) y la SPA la sirve Vite en el host.
 
-## Despliegue: proxy inverso externo
+## Despliegue: requisitos de red
 
-El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). En producción lo
-pone el **Caddy externo**, que reenvía al backend (8000) —ahora **la SPA la sirve el propio
-backend**, el Caddy ya no la monta—. API y SPA van en el **mismo origen**: las cookies de
-sesión (`HttpOnly`, `SameSite`) y la réplica PouchDB (`origin + "/sync/db"`,
-`credentials: "include"`) no funcionan entre orígenes distintos.
-
-Requisitos del canal de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
+El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). El backend (8000)
+sirve la API y **la SPA**, en el **mismo origen**: las cookies de sesión (`HttpOnly`, `SameSite`)
+y la réplica PouchDB (`origin + "/sync/db"`, `credentials: "include"`) no funcionan entre
+orígenes distintos. Si se coloca un proxy delante, debe respetar esto y los requisitos del canal
+de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
 
 | Requisito | Motivo |
 |---|---|
 | `/sync` y `/sync/*` van al backend, en el mismo origen que la SPA | La ruta comodín del backend responde 404 a todo lo que no es el subconjunto del canal; `/sync` no es ruta de la SPA. |
-| Sin búfer de respuesta (`flush_interval -1`) | `_changes` responde en streaming; con búfer, los cambios y los latidos no llegan hasta cerrar la respuesta. |
-| Ningún tiempo límite de respuesta menor de 90 s (`timeouts` del servidor y `read_timeout`/`response_header_timeout` del transporte) | Un `longpoll` de `_changes` puede retener la conexión hasta 60 s (`MAX_WAIT_MS` en `services/sync_filter.py`); el margen cubre la latencia. |
-
-Ejemplo orientativo (el dominio y la dirección del backend son del despliegue):
-
-```caddyfile
-synapse.example.com {
-	@sync path /sync /sync/*
-	handle @sync {
-		reverse_proxy backend:8000 {
-			# Streaming de `_changes`: sin búfer.
-			flush_interval -1
-		}
-	}
-	# … todo lo demás (API `/auth`,`/admin`,`/vaults` y la SPA) lo sirve el backend.
-	reverse_proxy backend:8000
-}
-```
-
-Caddy no impone tiempo límite de respuesta por defecto; si el despliegue define `timeouts`
-o un `transport http` con `read_timeout`, deben ser de 90 s o más.
+| Sin búfer de respuesta | `_changes` responde en streaming; con búfer, los cambios y los latidos no llegan hasta cerrar la respuesta. |
+| Ningún tiempo límite de respuesta menor de 90 s (del servidor y del transporte hacia el backend) | Un `longpoll` de `_changes` puede retener la conexión hasta 60 s (`MAX_WAIT_MS` en `services/sync_filter.py`); el margen cubre la latencia. |
 
 ## Autenticación (SPEC-0002)
 
@@ -338,7 +322,7 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `index-readonly:<path\|content\|attr\|delete>` | (H-031) renombrar un INDICE a otro nombre (moverlo de una carpeta a otra junto con su carpeta sí se admite), darle contenido, cambiar algo que no sea su `descripcion`, o borrarlo mientras su carpeta tiene notas vivas |
 | `index-root:delete` | (H-031) borrar el INDICE de la raíz de la bóveda |
 | `meta-folder:<rename\|index-delete>` | (H-030) mover el INDICE de una carpeta reservada con otra carpeta, o borrarlo |
-| `ag-mensajes:<path\|cabecera\|from-mismatch\|immutable\|forbidden>` | (H-030) ruta o metadatos fuera del formato de `AG - MENSAJES`, remitente que no es la clave, mensaje o cabecera que una clave de agente no puede cambiar, cierre por quien no participa |
+| `ag-mensajes:<agents-only\|path\|not-participant\|from-mismatch\|cabecera\|cabecera-server\|immutable>` | (H-042) la sesión humana escribe en `AG - MENSAJES`; ruta fuera del formato de conversación; `NNN-de-<id>.md` con un `<id>` que no participa; `de` que no es el del nombre; metadatos de la cabecera inválidos; crear la cabecera a mano; editar, mover o borrar un mensaje (de la cabecera solo cambia `estado`) |
 | `ag-agentes:registro` | (H-030) nota de `AG - AGENTES/` que no es un registro válido (`estado`, `carpetas`) |
 | `immutable-field:cerrada_el` | (H-030) la cabecera de una conversación trae un `cerrada_el` distinto del que tenía: lo sella el servidor |
 | `meta-folder:case` | (H-030b) una carpeta reservada escrita con otras mayúsculas (`Plantillas/…`) |
@@ -368,7 +352,7 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `GET /sync/db/_local/{id}` | 200 · 404 `checkpoint-not-found` · 503 |
 | `PUT /sync/db/_local/{id}` | 201 `{ok, id, rev}` · 413 · 422 · 503 |
 
-Todas pueden responder además 401 y 403. Requisitos del proxy inverso: ver "Despliegue".
+Todas pueden responder además 401 y 403. Requisitos de red: ver "Despliegue".
 Contrato completo: `.harness/specs/0005-sync/contracts/openapi.yaml`.
 
 ## Notas (SPEC-0008)

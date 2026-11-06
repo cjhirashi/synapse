@@ -38,8 +38,8 @@ from typing import NamedTuple
 from anyio import to_thread
 from pydantic import TypeAdapter, ValidationError
 
-from app.core import ag_rules, doc_names, meta_rules, plantilla_rules, skill_rules
-from app.core.agent_access import parse_registration, Actor, check_registration_frontmatter
+from app.core import ag_rules, conversation_rules, doc_names, meta_rules, plantilla_rules, skill_rules
+from app.core.agent_access import parse_registration, Actor, check_registration_frontmatter, identity
 from app.core.config import settings
 from app.core.errors import StorageUnavailable, VaultNameTaken
 from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
@@ -194,7 +194,7 @@ class SyncPushService:
         # H-030: quién empuja (None = sesión humana) y el cumplimiento del registro de agentes (E6).
         self._actor = actor
         self._guard = AgentAccessGuard(port, db, owner_id, actor) if actor is not None else None
-        self._mensajes = MensajesService(port, db)
+        self._mensajes = MensajesService(port, db, owner_id)
         # H-030b: registro de cambios (BITACORA automática); se escribe antes que las notas del lote.
         self._changelog = changelog
         self._start_batch()
@@ -287,13 +287,14 @@ class SyncPushService:
 
                         SkillService(self._port, self._db, changelog=self._changelog).reconcile_guests(vault_id)
                 elif zone == ag_rules.AG_MENSAJES and doc.get("deleted_at") is None:
-                    info = ag_rules.parse_mensaje_path(doc["path"])
+                    info = conversation_rules.parse_mensaje_path(doc["path"])
                     if info is None:
                         continue
                     if info.kind == "cabecera":
                         self._mensajes.settle(doc["_id"])
                     elif info.kind == "mensaje" and doc["_revisions"]["start"] == 1:
-                        self._mensajes.reopen_if_closed(vault_id, info.para, info.conversation)
+                        self._mensajes.ensure_cabecera(vault_id, info)  # H-042: la cabecera la crea el servidor
+                        self._mensajes.reopen_if_closed(vault_id, info)
         except Exception:  # noqa: BLE001
             logging.getLogger(__name__).warning("post-push effects failed", exc_info=True)
 
@@ -410,6 +411,7 @@ class SyncPushService:
                 self._check_ag_rules(doc, leaves)
                 await self._check_meta_rules(doc, leaves)
                 await self._check_skill_rules(doc, leaves)
+                await self._check_mensajes_agent(doc, leaves)
                 await self._check_agent_access(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
@@ -517,33 +519,74 @@ class SyncPushService:
         deleted = doc["deleted_at"] is not None
         zone = ag_rules.meta_folder_of(path)
         prev_zone = ag_rules.meta_folder_of(prev_path) if prev_path else None
-        agent = self._actor if self._actor is not None and self._actor.kind == "agent" else None
-        if ag_rules.AG_MENSAJES in (zone, prev_zone) and not is_index_path(path):
-            info = ag_rules.parse_mensaje_path(path)
-            if not deleted:
-                if info is None:
-                    raise Rejected("ag-mensajes:path")
-                frontmatter = doc.get("frontmatter")
-                check = ag_rules.check_cabecera if info.kind == "cabecera" else ag_rules.check_mensaje_note
-                if (code := check(info, frontmatter)) is not None:
-                    raise Rejected(code)
-                previous_frontmatter = (previous or {}).get("frontmatter") or {}
-                if info.kind == "cabecera" and (frontmatter or {}).get("cerrada_el") != previous_frontmatter.get("cerrada_el"):
-                    raise Rejected("immutable-field:cerrada_el")  # lo sella el servidor
-            if agent is not None:
-                old_info = ag_rules.parse_mensaje_path(prev_path) if prev_path else info
-                target = old_info or info
-                if target is not None:
-                    op = "create" if previous is None else "delete" if deleted else \
-                        "rename_or_move" if prev_path != path else "update"
-                    code = ag_rules.check_agent_mensaje_op(
-                        op, target, agent_id=agent.agent_id, is_admin=agent.is_admin,
-                        old_frontmatter=(previous or {}).get("frontmatter"), new_frontmatter=doc.get("frontmatter"))
-                    if code is not None:
-                        raise Rejected(code)
+        if ag_rules.AG_MENSAJES in (zone, prev_zone):
+            self._check_mensajes_form(doc, previous, prev_path, zone, prev_zone, deleted)
         if zone == ag_rules.AG_AGENTES and not deleted and not is_index_path(path):
             if (code := check_registration_frontmatter(path, doc.get("frontmatter"))) is not None:
                 raise Rejected(code)
+
+    def _check_mensajes_form(
+        self, doc: dict, previous: dict | None, prev_path: str | None, zone: str | None, prev_zone: str | None,
+        deleted: bool,
+    ) -> None:
+        """H-042: `AG - MENSAJES` es solo para agentes (la sesión humana no escribe nada ahí) y lo que escriben ellos sigue el
+        formato de la conversación y es inmutable. Reglas de forma, siempre activas; las que dependen de quién es el agente
+        van en `_check_mensajes_agent`. El sistema no pasa por aquí."""
+        kind = self._actor.kind if self._actor is not None else "human"
+        if kind == "system":
+            return
+        if kind == "human":
+            raise Rejected(conversation_rules.AGENTS_ONLY)
+        path = doc["path"]
+        info_new = conversation_rules.parse_mensaje_path(path) if zone == ag_rules.AG_MENSAJES else None
+        info_old = conversation_rules.parse_mensaje_path(prev_path) if prev_zone == ag_rules.AG_MENSAJES and prev_path else None
+        if (zone == ag_rules.AG_MENSAJES and not deleted and info_new is None) or (
+                prev_zone == ag_rules.AG_MENSAJES and info_old is None):
+            raise Rejected(conversation_rules.PATH)
+        if previous is not None and prev_path != path:
+            # Nada entra ni sale del buzón por un renombre; los INDICES los gobiernan las reglas de H-031.
+            if any(i is not None and i.kind != "indice" for i in (info_old, info_new)) or (zone != prev_zone):
+                raise Rejected(conversation_rules.IMMUTABLE)
+            return
+        info = info_new or info_old
+        if info is None:
+            return
+        frontmatter = doc.get("frontmatter")
+        previous_frontmatter = (previous or {}).get("frontmatter") or {}
+        if not deleted and info.kind == "cabecera":
+            if (code := conversation_rules.check_cabecera(info, frontmatter)) is not None:
+                raise Rejected(code)
+            if (frontmatter or {}).get("cerrada_el") != previous_frontmatter.get("cerrada_el"):
+                raise Rejected("immutable-field:cerrada_el")  # lo sella el servidor
+        if not deleted and info.kind == "mensaje" and previous is None and (
+                code := conversation_rules.check_mensaje_note(info, frontmatter)) is not None:
+            raise Rejected(code)
+        op = "create" if previous is None else "delete" if deleted else "update"
+        content_changed = previous is not None and doc.get("content") != previous.get("content")
+        if (code := conversation_rules.check_write(
+                op, info, old_frontmatter=previous_frontmatter, new_frontmatter=frontmatter,
+                content_changed=content_changed)) is not None:
+            raise Rejected(code)
+
+    async def _check_mensajes_agent(self, doc: dict, leaves: dict[str, dict]) -> None:
+        """H-042: reglas por agente de una conversación (quién escribe cada mensaje, quién abre, quién cierra). Mismo
+        interruptor que el resto: en sombra solo registra; con `enforce` rechaza la revisión."""
+        guard = self._guard
+        if guard is None or not guard.active or doc.get("deleted_at") is not None:
+            return
+        info = conversation_rules.parse_mensaje_path(doc["path"]) if ag_rules.meta_folder_of(doc["path"]) == ag_rules.AG_MENSAJES else None
+        if info is None or info.kind == "indice":
+            return
+        history = _history(doc)
+        previous = leaves.get(history[1]) if len(history) > 1 else None
+        op = "create" if previous is None else "update"
+        if (op == "create") != (info.kind == "mensaje"):
+            return
+        vault_id = doc["_id"].split(":")[1]
+        first = op == "create" and not await to_thread.run_sync(self._mensajes.has_messages, vault_id, info)
+        allowed, _reason = await to_thread.run_sync(guard.evaluate_mensaje, vault_id, op, info, first)
+        if not allowed and guard.enforcing:
+            raise Rejected("agent-access-denied")
 
     async def _check_meta_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-030b: BITACORA de solo lectura, forma de las plantillas, skill de cajón solo para la sesión humana y
@@ -593,7 +636,7 @@ class SyncPushService:
             if (code := skill_rules.check_shape(fm)) is not None:
                 raise Rejected(code)
             if agentic and not was:
-                who = skill_rules.identity(actor, honor_declared=not (self._guard is not None and self._guard.enforcing))
+                who = identity(actor, honor_declared=not (self._guard is not None and self._guard.enforcing))
                 if who is None or skill_rules.owner_of(fm) != who:
                     raise Rejected(skill_rules.SKILL_OWNER)  # el propietario lo fija quien crea; aquí no se puede sellar
             if not agentic:

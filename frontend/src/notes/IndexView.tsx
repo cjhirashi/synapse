@@ -6,6 +6,7 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { renderIndexBody } from "./indexBody";
 import { folderOf } from "./indexRules";
+import { isInMensajes } from "./metaFolders";
 import { noteErrorMessage } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
 import type { NoteRef } from "../editor/wikilink";
@@ -80,6 +81,8 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
     [userId, vault.id],
   );
 
+  // H-042: el INDICE del buzón entre agentes lo mantiene el servidor; el usuario no edita ni su descripción.
+  const readOnly = note !== null && isInMensajes(note.path);
   const saved = typeof note?.frontmatter.descripcion === "string" ? note.frontmatter.descripcion : "";
   const text = draft ?? saved;
   const dirty = draft !== null && draft !== saved;
@@ -121,11 +124,14 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
               value={text}
               maxLength={DESCRIPCION_MAX}
               rows={2}
+              readOnly={readOnly}
               onChange={(event) => setDraft(event.target.value)}
             />
-            <button type="button" onClick={() => void save()} disabled={!dirty || saving}>
-              {saving ? "Guardando…" : "Guardar descripción"}
-            </button>
+            {!readOnly && (
+              <button type="button" onClick={() => void save()} disabled={!dirty || saving}>
+                {saving ? "Guardando…" : "Guardar descripción"}
+              </button>
+            )}
           </div>
           {available.length > 0 && (
             <details className="index-view-columns">

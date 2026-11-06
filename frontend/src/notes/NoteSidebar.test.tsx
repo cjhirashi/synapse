@@ -1093,7 +1093,7 @@ const treeNames = () => within(screen.getByRole("tree", { name: "Notas" })).getA
 test("H-030: las carpetas reservadas van en la sección META, en su orden y encima de «Raíz»; no se repiten en la raíz", async () => {
   // Nota: BITACORA no incluye notas porque es de solo lectura (server-managed).
   // Para este test simplemente verificamos el árbol con carpetas reservadas.
-  await setup(["Zeta/z.md", "AG - AGENTES/aira.md", "AG - MENSAJES/m.md", "AG - SKILLS/skill-x.md", "Inicio.md"]);
+  await setup(["Zeta/z.md", "AG - AGENTES/aira.md", "AG - SKILLS/skill-x.md", "Inicio.md"], { seed: (db) => replicate(db, "AG - MENSAJES/INDICE.md", "") });
   expect(treeNames()).toEqual(["META", "AG - SKILLS", "AG - MENSAJES", "AG - AGENTES", "Raíz", "Zeta", "Inicio"]);
   const meta = screen.getByRole("group", { name: "META" });
   // Verificar que hay al menos 3 carpetas reservadas dentro de META.
@@ -1110,19 +1110,19 @@ test("H-030: sin carpetas reservadas no hay sección META", async () => {
 });
 
 test("H-030: la carpeta reservada no ofrece ⋮ (renombrar, mover o borrar) ni se arrastra; sus subcarpetas y notas sí", async () => {
-  const { user } = await setup(["AG - MENSAJES/aira/m.md", "Otra/b.md"]);
-  const reserved = screen.getByRole("treeitem", { name: "AG - MENSAJES" });
+  const { user } = await setup(["Otra/b.md"], { seed: (db) => replicate(db, "AG - SKILLS/s/m.md") });
+  const reserved = screen.getByRole("treeitem", { name: "AG - SKILLS" });
   expect(reserved).toHaveAttribute("draggable", "false");
-  expect(screen.queryByRole("button", { name: "Acciones de AG - MENSAJES" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Acciones de AG - SKILLS" })).toBeNull();
   expect(menuButton("Otra")).toBeInTheDocument();
   await user.click(reserved);
-  expect(menuButton("aira")).toBeInTheDocument();
-  expect(screen.getByRole("treeitem", { name: "aira" })).toHaveAttribute("draggable", "true");
+  expect(menuButton("s")).toBeInTheDocument();
+  expect(screen.getByRole("treeitem", { name: "s" })).toHaveAttribute("draggable", "true");
 });
 
 test("H-030: F2 y Supr sobre la carpeta reservada no hacen nada", async () => {
-  const { user } = await setup(["AG - MENSAJES/m.md"]);
-  const reserved = screen.getByRole("treeitem", { name: "AG - MENSAJES" });
+  const { user } = await setup(["AG - SKILLS/m.md"]);
+  const reserved = screen.getByRole("treeitem", { name: "AG - SKILLS" });
   reserved.focus();
   await user.keyboard("{F2}");
   expect(screen.queryByRole("textbox", { name: "Nuevo nombre de la carpeta" })).toBeNull();
@@ -1313,4 +1313,65 @@ test("H-030b: dentro de PLANTILLAS el formulario crea plantillas", async () => {
   await user.type(screen.getByLabelText("Nombre de la plantilla nueva"), "Informe");
   await user.click(screen.getByRole("button", { name: "Nueva plantilla" }));
   await waitFor(async () => expect((await value.notes.list(VAULT)).some((n) => n.path === "PLANTILLAS/plantilla-informe.md")).toBe(true));
+});
+
+
+// --- H-042: el buzón entre agentes es solo para agentes; el usuario lo lee ------------------------------------------
+
+const CONVERSACION = "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05";
+
+async function setupBuzon() {
+  return setup(["Otra/b.md"], {
+    seed: async (db) => {
+      await replicate(db, "AG - MENSAJES/INDICE.md", "");
+      await replicate(db, `${CONVERSACION}/000-cabecera.md`, "", { estado: "abierta", de: "aira", para: "liza" });
+      await replicate(db, `${CONVERSACION}/001-de-aira.md`, "Necesito que revises el plan.");
+    },
+  });
+}
+
+test("H-042: dentro de AG - MENSAJES no hay controles de creación y se avisa que es solo lectura", async () => {
+  const { user } = await setupBuzon();
+  expect(screen.getByRole("button", { name: "Nueva nota" })).toBeInTheDocument(); // en la raíz sí
+  await user.click(await screen.findByRole("treeitem", { name: "AG - MENSAJES" }));
+  expect(screen.queryByText(/Crear en:/)).toBeNull();
+  expect(screen.queryByRole("button", { name: "Nueva nota" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Nueva carpeta" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Crear…" })).toBeNull();
+  expect(screen.getByRole("note")).toHaveTextContent("Buzón entre agentes: solo lectura");
+  // al salir del buzón los controles vuelven
+  await user.click(screen.getByRole("treeitem", { name: "Raíz" }));
+  expect(screen.getByRole("button", { name: "Nueva nota" })).toBeInTheDocument();
+  expect(screen.queryByRole("note")).toBeNull();
+});
+
+test("H-042: en una conversación ni la carpeta ni sus documentos se arrastran ni ofrecen ⋮, y F2/Supr no hacen nada", async () => {
+  const { user } = await setupBuzon();
+  await user.click(await screen.findByRole("treeitem", { name: "AG - MENSAJES" }));
+  const folder = await screen.findByRole("treeitem", { name: "aira → liza - Revisar el plan - 2026-11-05" });
+  expect(folder).toHaveAttribute("draggable", "false");
+  expect(screen.queryByRole("button", { name: /^Acciones de aira → liza/ })).toBeNull();
+  await user.click(folder);
+  const message = await screen.findByRole("treeitem", { name: "001-de-aira" });
+  expect(message).toHaveAttribute("draggable", "false");
+  expect(screen.queryByRole("button", { name: "Acciones de 001-de-aira" })).toBeNull();
+  message.focus();
+  await user.keyboard("{F2}");
+  expect(screen.queryByRole("textbox")).toBeNull();
+  await user.keyboard("{Delete}");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
+});
+
+test("H-042: nada se suelta dentro del buzón", async () => {
+  const { user, value } = await setupBuzon();
+  await user.click(await screen.findByRole("treeitem", { name: "AG - MENSAJES" }));
+  const outside = await screen.findByRole("treeitem", { name: "Otra" });
+  await user.click(outside);
+  const note = await screen.findByRole("treeitem", { name: "b" });
+  fireEvent.dragStart(note);
+  fireEvent.drop(await screen.findByRole("treeitem", { name: "aira → liza - Revisar el plan - 2026-11-05" }));
+  await waitFor(() => expect(value.notes).toBeDefined());
+  const items = await value.notes.list(VAULT);
+  expect(items.find((item) => item.path === "Otra/b.md")).toBeDefined();
+  expect(items.some((item) => item.path.startsWith(`${CONVERSACION}/b`))).toBe(false);
 });

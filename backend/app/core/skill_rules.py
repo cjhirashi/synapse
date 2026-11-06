@@ -16,7 +16,7 @@ Se separan dos clases de reglas, igual que el resto de H-030:
 """
 import re
 
-from app.core.agent_access import Actor, Decision, Registration
+from app.core.agent_access import Actor, Decision, Registration, identity
 from app.core.ag_rules import AG_SKILLS, meta_folder_of
 from app.core.index_rules import is_index_path
 from app.core.system_docs import is_system_path
@@ -105,15 +105,6 @@ def check_people(frontmatter: dict, registry: dict[str, Registration], old: dict
 
 
 # --- Quién escribe: el propietario lo fija el servidor ---
-
-def identity(actor: Actor, *, honor_declared: bool) -> str | None:
-    """El agente que escribe (el de su clave; en sombra, el que declara una clave general), o `None`."""
-    if actor.kind == "agent":
-        return actor.agent_id
-    if actor.kind == "general" and honor_declared:
-        return actor.declared
-    return None
-
 
 def seal_owner(frontmatter: dict, agent_id: str | None) -> dict:
     """Metadatos con el propietario fijado por el servidor: el agente que crea. Sin identidad no se fija (y `check_shape`

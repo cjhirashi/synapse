@@ -119,3 +119,25 @@ describe("INDICES automáticos", () => {
     await expect(store.save(index.id, "", saved.rev, { ...saved.frontmatter, estado: "borrador" })).rejects.toBeInstanceOf(NoteValidationError);
   });
 });
+
+describe("H-042: el buzón entre agentes", () => {
+  it("el cliente no crea INDICES dentro de AG - MENSAJES (los crea el servidor)", async () => {
+    const now = "2026-11-05T10:00:00.000000Z";
+    await db.put({
+      _id: `note:${V}:00000000-0000-4000-8000-0000000000aa`, type: "note", vault_id: V,
+      path: "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md", content: "hola", frontmatter: {},
+      created_at: now, updated_at: now, deleted_at: null,
+    } as never);
+    await store.create(V, "Nota", "Otra");
+    await store.ensureIndexes(V);
+    const all = await paths();
+    expect(all).toContain("Otra/INDICE.md");
+    expect(all.filter((p) => p.startsWith("AG - MENSAJES") && p.endsWith("INDICE.md"))).toEqual([]);
+  });
+
+  it("la sesión del usuario no puede crear, mover ni borrar ahí", async () => {
+    await expect(store.create(V, "001-de-aira", "AG - MENSAJES/aira → liza - x - 2026-11-05")).rejects.toBeInstanceOf(NoteValidationError);
+    const note = await store.create(V, "Suelta", "Otra");
+    await expect(store.rename(note.id, "AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md", note.rev)).rejects.toBeInstanceOf(NoteValidationError);
+  });
+});

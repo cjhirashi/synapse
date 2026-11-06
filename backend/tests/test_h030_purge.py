@@ -10,7 +10,7 @@ from app.core.config import settings
 from app.core.timestamps import TIMESTAMP_FORMAT
 from app.routers.vaults import get_vault_port
 from app.services import agent_access_guard, mensajes_purge
-from tests.test_h030_api import HEAD, agent_client, find, patch, post_note, vault_of
+from tests.test_h030_api import agent_client, find, patch, post_note, vault_of
 from tests.test_notes_router import AUTH
 from tests.test_vaults_api import stored_docs, user_db
 
@@ -23,7 +23,7 @@ def _fresh_registry_cache():
 
 
 def _conv(n: int) -> str:
-    return f"AG - MENSAJES/liza/2026110{n}-0900-tema{n}"
+    return f"AG - MENSAJES/aira → liza - tema{n} - 2026-11-0{n}"
 
 
 def _set_frontmatter(db_name: str, note_id: str, vault_id: str, **changes):
@@ -36,11 +36,10 @@ def _set_frontmatter(db_name: str, note_id: str, vault_id: str, **changes):
 def _closed_conversation(aira, db_name: str, vault_id: str, n: int, days_ago: float | None):
     """Conversación `n` cerrada; `days_ago=None` la deja abierta."""
     folder = _conv(n)
-    assert post_note(aira, vault_id, f"{folder}/000-cabecera.md", frontmatter={**HEAD, "titulo": f"t{n}"}).status_code == 201
     assert post_note(aira, vault_id, f"{folder}/001-de-aira.md", "contenido").status_code == 201
     if days_ago is not None:
         head = find(aira, vault_id, f"{folder}/000-cabecera.md")
-        assert patch(aira, vault_id, head, frontmatter={**HEAD, "titulo": f"t{n}", "estado": "cerrada"}).status_code == 200
+        assert patch(aira, vault_id, head, frontmatter={"estado": "cerrada"}).status_code == 200
         stamp = (NOW - timedelta(days=days_ago)).strftime(TIMESTAMP_FORMAT)
         _set_frontmatter(db_name, head["id"], vault_id, cerrada_el=stamp)
     return folder
@@ -75,7 +74,7 @@ def test_only_old_closed_conversations_are_purged_with_dump_and_log(ready_admin,
     # idempotente
     assert mensajes_purge.plan(port, db_name, vault_id, NOW).candidates == []
     # las rutas quedan libres: la misma conversación puede volver a crearse
-    assert post_note(aira, vault_id, f"{old}/000-cabecera.md", frontmatter=HEAD).status_code == 201
+    assert post_note(aira, vault_id, f"{old}/001-de-aira.md").status_code == 201
 
 
 def test_recipient_index_goes_with_its_last_conversation(ready_admin, db, tmp_path):
@@ -85,7 +84,7 @@ def test_recipient_index_goes_with_its_last_conversation(ready_admin, db, tmp_pa
     [candidate] = mensajes_purge.plan(port, db_name, vault_id, NOW).candidates
     mensajes_purge.execute(port, db_name, "owner", vault_id, candidate, tmp_path / "d.jsonl")
     paths = [i["path"] for i in ready_admin.get(f"/vaults/{vault_id}/notes", params={"limit": 200}).json()["items"]]
-    assert not any(p.startswith("AG - MENSAJES/liza") for p in paths)
+    assert not any(p.startswith("AG - MENSAJES/aira") for p in paths)
 
 
 def test_closed_without_cerrada_el_is_ignored_and_alerted(ready_admin, db):

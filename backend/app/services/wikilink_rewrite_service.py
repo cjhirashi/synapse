@@ -8,6 +8,7 @@ siguen: nunca se pisa una edición concurrente.
 from collections.abc import Callable
 from typing import NamedTuple
 
+from app.core.ag_rules import AG_MENSAJES, meta_folder_of
 from app.core.errors import RevisionConflict
 from app.core.index_rules import is_index_path
 from app.core.note_dates import stamp_dates, today_cdmx
@@ -62,7 +63,8 @@ class WikilinkRewriteService:
                     continue
                 key = _name_key(path)
                 census[key] = census.get(key, 0) + 1
-                if "[[" in (doc.get("content") or ""):
+                # H-042: los mensajes de `AG - MENSAJES` son inmutables; un enlace suyo no se reescribe (queda como se escribió).
+                if "[[" in (doc.get("content") or "") and meta_folder_of(doc["path"]) != AG_MENSAJES:
                     candidates.append(doc["_id"])
             if len(page) < _PAGE:
                 break

@@ -11,10 +11,11 @@ from tests.test_agent_api_key_access import _bearer_client
 from tests.test_notes_router import _note, put_note
 from tests.test_vaults_api import create, user_db
 
-CAB = "AG - MENSAJES/liza/20261105-0930-revisar/000-cabecera.md"
-MSG1 = "AG - MENSAJES/liza/20261105-0930-revisar/001-de-aira.md"
-MSG2 = "AG - MENSAJES/liza/20261105-0930-revisar/002-de-liza.md"
-HEAD = {"de": "aira", "para": "liza", "estado": "abierta", "titulo": "Revisar", "descripcion": "x", "tags": []}
+# H-042: la conversación es una carpeta «de → para - asunto - fecha»; el servidor crea su cabecera con el primer mensaje.
+CONV = "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05"
+CAB = f"{CONV}/000-cabecera.md"
+MSG1 = f"{CONV}/001-de-aira.md"
+MSG2 = f"{CONV}/002-de-liza.md"
 
 
 @pytest.fixture(autouse=True)
@@ -147,58 +148,6 @@ def test_reserved_folder_cannot_be_renamed_but_content_can_move_into_it(ready_ad
     assert ready_admin.post(f"/vaults/{vault_id}/folders/move", json={"from": "Viejo", "to": "AG - SKILLS"}).status_code == 200
 
 
-# --- AG - MENSAJES (E4) ---
-
-def test_conversation_lifecycle_stamp_close_reopen_and_immutability(ready_admin):
-    vault_id = vault_of(ready_admin)
-    aira = agent_client(ready_admin, "aira")
-    liza = agent_client(ready_admin, "liza")
-
-    res = post_note(aira, vault_id, CAB, frontmatter={**HEAD, "cerrada_el": "2000-01-01T00:00:00.000000Z"})
-    assert res.status_code == 201, res.text
-    assert "cerrada_el" not in res.json()["frontmatter"]  # lo sella el servidor, no el cliente
-    assert post_note(aira, vault_id, MSG1, "hola").status_code == 201
-
-    # Rutas fuera de formato y remitente que no es la clave
-    assert detail(post_note(aira, vault_id, "AG - MENSAJES/nota.md")) == "ag-mensajes:path"
-    assert detail(post_note(aira, vault_id, "AG - MENSAJES/liza/20261105-0930-revisar/003-de-liza.md")) == "ag-mensajes:from-mismatch"
-    assert detail(post_note(aira, vault_id, "AG - MENSAJES/liza/20261106-1000-nueva/001-de-aira.md")) == "ag-mensajes:no-cabecera"
-    assert detail(post_note(aira, vault_id, "AG - MENSAJES/liza/20261106-1000-x/000-cabecera.md",
-                            frontmatter={**HEAD, "de": "emma"})) == "ag-mensajes:from-mismatch"
-
-    # Los mensajes no se editan ni se borran
-    msg = find(aira, vault_id, MSG1)
-    assert detail(patch(aira, vault_id, msg, content="otro")) == "ag-mensajes:immutable"
-    assert aira.delete(f"/vaults/{vault_id}/notes/{msg['id']}", headers={"If-Match": msg["etag"]}).status_code == 422
-
-    # Un tercero no cierra; los participantes sí, y se sella cerrada_el
-    emma = agent_client(ready_admin, "emma")
-    head = find(aira, vault_id, CAB)
-    assert detail(patch(emma, vault_id, head, frontmatter={**HEAD, "estado": "cerrada"})) == "ag-mensajes:forbidden"
-    closed = patch(aira, vault_id, head, frontmatter={**HEAD, "estado": "cerrada", "cerrada_el": "1999-01-01T00:00:00.000000Z"})
-    assert closed.status_code == 200, closed.text
-    stamp = closed.json()["frontmatter"]["cerrada_el"]
-    assert stamp.startswith("20") and stamp != "1999-01-01T00:00:00.000000Z"
-    # Cambiar otra cosa de la cabecera no se permite
-    head = find(aira, vault_id, CAB)
-    assert detail(patch(aira, vault_id, head, frontmatter={**head["frontmatter"], "titulo": "Otro"})) == "ag-mensajes:immutable"
-
-    # Escribir en la conversación cerrada la reabre sola (Q6)
-    assert post_note(liza, vault_id, MSG2, "ya vi").status_code == 201
-    reopened = find(aira, vault_id, CAB)["frontmatter"]
-    assert reopened["estado"] == "abierta" and "cerrada_el" not in reopened
-
-
-def test_human_can_edit_messages_but_format_still_applies(ready_admin):
-    vault_id = vault_of(ready_admin)
-    aira = agent_client(ready_admin, "aira")
-    assert post_note(aira, vault_id, CAB, frontmatter=HEAD).status_code == 201
-    assert post_note(aira, vault_id, MSG1).status_code == 201
-    msg = find(ready_admin, vault_id, MSG1)
-    assert patch(ready_admin, vault_id, msg, content="corregido").status_code == 200
-    assert patch(ready_admin, vault_id, find(ready_admin, vault_id, MSG1), path="AG - MENSAJES/mal.md").status_code == 422
-
-
 # --- Registro de agentes (E5) ---
 
 def test_registry_put_get_delete_shows_the_key_name(ready_admin):
@@ -277,8 +226,7 @@ def test_enforce_mode_rejects_with_403_and_leaves_humans_alone(ready_admin, monk
     # un agente no registrado solo escribe en AG - MENSAJES; el registro no lo toca ningún agente
     nobody = agent_client(ready_admin, "nadie")
     assert post_note(nobody, vault_id, "Permitida/x.md").status_code == 403
-    assert post_note(nobody, vault_id, "AG - MENSAJES/liza/20261105-0930-x/000-cabecera.md",
-                     frontmatter={**HEAD, "de": "nadie"}).status_code == 201
+    assert post_note(nobody, vault_id, "AG - MENSAJES/nadie → liza - x - 2026-11-05/001-de-nadie.md").status_code == 201
     assert post_note(aira, vault_id, "AG - AGENTES/aira.md", frontmatter={"estado": "activo", "carpetas": ["*"]}).status_code == 403
 
 
@@ -347,18 +295,6 @@ def test_mode_off_does_not_evaluate_or_log(ready_admin, db, monkeypatch):
     aira = agent_client(ready_admin, "aira")
     assert post_note(aira, vault_id, "X/a.md").status_code == 201
     assert _rows(db) == []
-
-
-def test_prefix_listing_for_the_inbox(ready_admin):
-    vault_id = vault_of(ready_admin)
-    aira = agent_client(ready_admin, "aira")
-    assert post_note(aira, vault_id, CAB, frontmatter=HEAD).status_code == 201
-    assert post_note(aira, vault_id, MSG1).status_code == 201
-    inbox = ready_admin.get(f"/vaults/{vault_id}/notes", params={"prefix": "AG - MENSAJES/liza", "limit": 200}).json()["items"]
-    paths = [i["path"] for i in inbox]
-    assert CAB in paths and MSG1 in paths and all(p.startswith("AG - MENSAJES/liza/") for p in paths)
-    cab = next(i for i in inbox if i["path"] == CAB)
-    assert cab["frontmatter"]["estado"] == "abierta"  # la bandeja filtra por estado en el cliente
 
 
 def test_shadow_mode_never_breaks_a_write_when_the_registry_cannot_be_read(ready_admin, monkeypatch):

@@ -81,9 +81,13 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   únicamente con su carpeta; el de la raíz nunca. Las usan `note_content_service.py` y `sync_push.py`; las espeja
   `frontend/src/notes/indexRules.ts` sobre `tests/fixtures/indice_cuerpo.json`.
 - `ag_rules.py` — reglas puras de las carpetas reservadas (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`,
-  `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`, formato de
-  `AG - MENSAJES` (`parse_mensaje_path`, `check_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `check_agent_mensaje_op`
-  de inmutabilidad). Códigos `reserved-name:path`, `meta-folder:*`, `ag-mensajes:*`. Las usan REST y `sync_push.py`.
+  `PLANTILLAS`, H-030): nombres por `path_key`, `check_create`/`check_folder_move`/`check_index_delete`. Códigos
+  `reserved-name:path`, `meta-folder:*`. Las usan REST y `sync_push.py`.
+- `conversation_rules.py` — conversaciones de `AG - MENSAJES` (H-042): carpeta `<de> → <para> - <asunto> - <AAAA-MM-DD>`
+  (`parse_conversation`, `parse_mensaje_path`, `canonical_arrow` para la REST), cabecera creada por el servidor
+  (`new_cabecera`, `stamp_cabecera` que sella `cerrada_el`, `merge_cabecera_update`), reglas de forma siempre activas
+  (`check_write`: la sesión humana no escribe, inmutabilidad, `ag-mensajes:*`) y reglas por agente bajo el interruptor
+  (`decide_mensaje`: remitente del nombre, quién abre, quién cierra; sin `is_admin` ni registro de `AG - AGENTES`).
   Desde H-030b `check_create` exige además la forma canónica en MAYÚSCULAS (`meta-folder:case`: `PLANTILLAS`, nunca `Plantillas`) y
   `check_folder_move(from, to)` solo deja pasar `Plantillas` → `PLANTILLAS`.
 - `meta_rules.py` — reglas de escritura de las carpetas META con lógica (H-030b), sin E/S: `BITACORA` de solo lectura para todos
@@ -97,6 +101,10 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   `AG - AGENTES/<id>.md`, `decide`/`decide_files`. `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
+- `wikilink_rewrite.py` — reglas puras de la reescritura de wikilinks al mover o renombrar notas y carpetas (H-039, sin E/S); las usa `services/wikilink_rewrite_service.py` y las espeja `frontend/src/editor/wikilink.ts` sobre un fixture compartido.
+- `etag.py` — validador de `ETag` según RFC 7232, incluido el débil (`W/`) que un intermediario produce al comprimir (`If-Match`).
+- `json_body.py` — decodificación de cuerpos JSON acotada en profundidad (un anidamiento excesivo da 422, no 500).
+- `config.py` — `Settings` (pydantic-settings): entorno, secretos y ajustes como `AGENT_ACCESS_MODE` (`shadow` por defecto, `enforce` u `off`) y `SYSTEM_DOCS_SYNC`.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 

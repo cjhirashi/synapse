@@ -1,5 +1,5 @@
 // H-030: la sección META agrupa las carpetas reservadas de la raíz encima de «Raíz».
-import { canonicalMetaName, isInBitacora, isMetaFolderPath, META_FOLDERS, splitMeta } from "./metaFolders";
+import { isInMensajes, canonicalMetaName, isInBitacora, isMetaFolderPath, META_FOLDERS, splitMeta } from "./metaFolders";
 import { buildTree } from "./noteTree";
 
 const note = (path: string) => ({ id: `note:v:${path}`, path });
@@ -78,5 +78,16 @@ describe("H-030b: isInBitacora y canonicalMetaName", () => {
     expect(canonicalMetaName("ag - skills")).toBe("AG - SKILLS");
     expect(canonicalMetaName("Proyectos/PLANTILLAS")).toBeNull();
     expect(canonicalMetaName("Otra")).toBeNull();
+  });
+});
+
+describe("H-042: isInMensajes", () => {
+  it("el buzón y todo lo que cuelga de él (carpetas y notas, sin distinguir mayúsculas) es solo lectura para el usuario", () => {
+    expect(isInMensajes("AG - MENSAJES")).toBe(true);
+    expect(isInMensajes("ag - mensajes/aira → liza - x - 2026-11-05")).toBe(true);
+    expect(isInMensajes("AG - MENSAJES/aira → liza - x - 2026-11-05/001-de-aira.md")).toBe(true);
+    expect(isInMensajes("AG - SKILLS/skill-x.md")).toBe(false);
+    expect(isInMensajes("Otra/AG - MENSAJES/x.md")).toBe(false);
+    expect(isInMensajes("")).toBe(false);
   });
 });

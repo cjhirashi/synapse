@@ -7,19 +7,23 @@ y respeta `.harness/constitution.md`.
 Protocolo de arranque:
 1. `.harness/gate/check.sh` — si cierra la compuerta, PARA y reporta.
 2. Lee `.harness/memory/state.md` (correcciones del usuario arriba).
-3. Ojea `.harness/specs/`.
+3. Ojea `.harness/backlog.md` (historias `H-NNN`). El análisis, el plan y el seguimiento de cada historia viven en su nota de la bóveda **Proyectos** de Synapse (`…/Synapse/9 - implentaciones/H-NNN - …`, desde 2026-11-02); el backlog solo las indexa. `.harness/specs/` es el archivo histórico de SDD Anchored.
 
 ## Reglas duras (no negociables)
 
 - **Aplica la rúbrica de `method.md §2` antes de tocar un archivo.**
-- **En caso de duda, o si "arreglar" implica revisar una decisión ya tomada, entra al carril SDD.** Nunca "prompt directo porque es rápido".
-- **No saltes la Fase 1 (Specify)** para nada que no sea trivial. Un `spec.md` de una línea sigue siendo un spec.
-- **Área sin `spec.md` que la cubra ≠ vía libre.** Es brownfield sin ancla todavía.
+- **En caso de duda, o si "arreglar" implica revisar una decisión ya tomada, entra al carril de historias (Slice Development).** Nunca "prompt directo porque es rápido".
+- **No saltes el refinamiento de la historia** (criterios EARS y plan, `method.md §3`) para nada que no sea trivial. Una historia de una línea sigue siendo una historia.
+- **Área sin historia que la cubra ≠ vía libre.** Toma o crea la historia antes de tocar código.
 - **No te autoapruebas** y no marcas nada `verified`.
 - 🔴 **Todo cambio queda documentado.** Cada cambio de código actualiza, **en el mismo commit**, los
   README y docs del mapa (`constitution.md` Art. 11) que ese cambio deja obsoletos. Si no toca ninguno,
   se declara `Docs actualizadas: ninguna — <motivo>` en el Session-End o en el mensaje del commit.
   `gate/check.sh` cierra la compuerta sin una de las dos cosas. Sin doc al día no hay tarea hecha.
+- 🔴 **La skill global sigue al servidor.** Si un cambio altera lo que un agente ve o hace con `synapse_vault`
+  (permisos, errores, carpetas META, plantillas, formato de mensajes, acciones), actualiza en **la misma entrega**
+  `backend/app/system_docs/skill-bovedas-synapse.md` (sube `version` y corre `scripts/sync_system_docs.py --stamp`);
+  el despliegue la replica a todas las bóvedas. Verifica el texto contra el servidor real, no contra el plan.
 - 🔴 **OBLIGATORIO: Actualiza `.harness/memory/history.md` cada sesión** — Agrega entrada Session-End con fecha, fase alcanzada, rebotes, gate status, docs, decisiones, próximo paso. Sin historia = sin visibilidad para AIRA.
 - 🔴 **Modelo por razonamiento (obligatorio, sin excepciones):** el modelo se elige por el razonamiento que exige la tarea, no por su etiqueta. Haiku = mecánico (buscar, leer, mover, formatear, transcribir, redacción simple); Sonnet = razonamiento medio (decidir, orquestar, analizar, depurar, redactar con razonamiento); Opus = solo diseño, arquitectura o alto razonamiento justificado por escrito. En la duda, el más barato; sube solo con evidencia. **Reparto de roles:** quienes diseñan, especifican y planifican usan modelo de razonamiento; quienes implementan código y ejecutan tests usan Haiku (el plan ya trae el razonamiento). Si Haiku no resuelve una falla, vuelve a los diseñadores, que corrigen el diseño con modelo de razonamiento, y regresa a Haiku; los roles de implementación no suben de modelo por su cuenta. **Todo subagente lleva `model` explícito con id completo** (`claude-opus-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`; omitido hereda el del padre). Anota los modelos usados en cada Session-End de `history.md`.
 - 🔴 **Código:** Comentado (lógica no obvia), ordenado (patrones visuales, mismo patrón en archivos similares), profesional (reflejar metodología, no aleatoriedad).

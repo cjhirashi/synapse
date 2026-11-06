@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable
 
 from app.core.ag_rules import AG_AGENTES
-from app.core import skill_rules
+from app.core import conversation_rules, skill_rules
 from app.core.agent_access import Actor, Registration, decide, decide_files, parse_registration
 from app.core.config import settings
 from app.core.errors import AgentAccessDenied
@@ -168,3 +168,37 @@ class AgentAccessGuard:
             detail = skill_rules.PUBLIC_DETAIL.get(reason or "")
             raise AgentAccessDenied(
                 f"{self._actor.agent_id or 'general'} denied: {reason} {path}", **({"detail": detail} if detail else {}))
+
+    # --- Conversaciones de AG - MENSAJES (H-042): quién escribe cada mensaje y quién cierra ---
+
+    def evaluate_mensaje(
+        self, vault_id: str, op: str, info: conversation_rules.MensajePath, first_message: bool,
+    ) -> tuple[bool, str | None]:
+        """Reglas por agente de una conversación (`conversation_rules.decide_mensaje`); mismo interruptor que el resto: en
+        sombra solo registra (`op` = `mensaje-<op>`), con `enforce` el llamador rechaza. No consulta `AG - AGENTES`: un
+        agente de solo lectura puede abrir y responder conversaciones. La sesión humana no se evalúa."""
+        if not self.active:
+            return True, None
+        enforce = self._mode == "enforce"
+        verdict = conversation_rules.decide_mensaje(
+            self._actor, op, info, first_message=first_message, honor_declared=not enforce)
+        identified = self._actor.kind == "agent" or (not enforce and self._actor.declared is not None)
+        self._sink({
+            "owner_id": self._owner_id, "vault_id": vault_id,
+            "agent_id": self._actor.agent_id or (self._actor.declared if not enforce else None),
+            "key_label": self._actor.key_label,
+            "declared": self._actor.kind == "general" and self._actor.declared is not None,
+            "op": f"mensaje-{op}", "paths": json.dumps([f"{info.folder}/…"], ensure_ascii=False),
+            "decision": ("allow" if verdict.allowed else "deny") if identified else
+                        ("allow" if verdict.allowed else "deny-general"),
+            "reason": verdict.reason, "mode": self._mode,
+        })
+        return verdict.allowed, verdict.reason
+
+    def check_mensaje(self, vault_id: str, op: str, info: conversation_rules.MensajePath, first_message: bool) -> None:
+        allowed, reason = self.evaluate_mensaje(vault_id, op, info, first_message)
+        if not allowed and self._mode == "enforce":
+            detail = conversation_rules.PUBLIC_DETAIL.get(reason or "")
+            raise AgentAccessDenied(
+                f"{self._actor.agent_id or 'general'} denied: {reason} {info.folder}",
+                **({"detail": detail} if detail else {}))

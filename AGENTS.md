@@ -18,12 +18,13 @@
 3. Ojea **`.harness/backlog.md`** — historias `H-NNN` pendientes, sin refinar. Al tomar
    una, créala en `.harness/historias/NNN-slug/` (`historia.md` + `plan.md`) — método.md §3.
    `.harness/specs/` es el archivo histórico de SDD Anchored (pre-2026-10-25); no se crean
-   `spec.md` nuevos ahí.
+   `spec.md` nuevos ahí. **Desde 2026-11-02** el análisis (rondas pregunta/respuesta con Carlos), el plan, la
+   autorización y el checklist de cada historia viven en su nota de la bóveda **Proyectos** de Synapse
+   (`1 - Proyectos AIRA/5 - Proyectos/1  - AI Solutions/Synapse/9 - implentaciones/H-NNN - …`); `backlog.md` solo las indexa.
 
 ## Qué es Synapse
 
-Plataforma personal self-hosted para gestión del conocimiento con agentes IA.
-Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
+Almacén personal self-hosted de bóvedas de conocimiento: notas Markdown offline-first (estilo Obsidian) y archivos, sin IA interna; los agentes (OpenClaw) lo usan por API REST con una clave por agente. Stack: FastAPI + PostgreSQL (control plane) + CouchDB/PouchDB (bóvedas y notas) + MinIO (archivos) + React/Vite. En producción. Cada bóveda trae carpetas de sistema (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`) con ÍNDICES y bitácora generados por el servidor, y una skill global (`backend/app/system_docs/`) que el servidor publica en todas las bóvedas.
 
 **Arquitectura:** Hexagonal (services → `core/ports/`; adapters seleccionados por factory).
 **Crítico:** Aislamiento por usuario. Base CouchDB `synapse_user_{id}`. **Nunca romper.**
@@ -45,6 +46,8 @@ Reemplaza Claude Desktop + Obsidian. Stack: FastAPI + CouchDB/PouchDB + React.
 - **Errores API:** RFC 9457 (Problem Details). Servicios y dependencias lanzan errores de dominio (`core/errors.py`), nunca `HTTPException`; sólo `core/problems.py` los traduce a HTTP (SPEC-0004).
 - 🔴 **Docs en el mismo commit:** todo cambio de código actualiza los README/docs que deja obsoletos
   (mapa de documentación) o declara `Docs actualizadas: ninguna — <motivo>`. El gate lo exige.
+- 🔴 **Skill global al día:** un cambio que altera lo que un agente ve o hace con `synapse_vault` actualiza
+  `backend/app/system_docs/skill-bovedas-synapse.md` (versión + `--stamp`) en la misma entrega.
 
 ## 🔴 Regla Crítica — History Actualizado
 
@@ -145,20 +148,17 @@ Añade entrada Session-End con:
 | Backlog de historias | `.harness/backlog.md` | Nueva historia o reorden |
 | Historia + plan | `.harness/historias/*/{historia.md,plan.md}` | Al tomar una historia (§3) |
 | Decisiones | `.harness/decisions/ADR-*.md` | Cambio arquitectónico |
-| API | `docs/API.md` | Endpoints cambian |
+| API | `docs/API.md` | Endpoints, reglas o códigos de error cambian |
+| README raíz y de cada paquete | `README.md`, `backend/**/README.md`, `frontend/**/README.md`, `backend/scripts/README.md` | Módulos, variables de entorno, scripts o estructura cambian |
+| Skill global de bóvedas | `backend/app/system_docs/skill-bovedas-synapse.md` | Cambia lo que un agente ve o hace con `synapse_vault` |
 
 Tabla completa: `.harness/constitution.md` Art. 11.
 
-## Roles Fijos (para futuras colaboraciones)
+## Roles
 
-| Rol | Especialidad |
-|-----|---|
-| **arquitecto-fastapi** | Endpoints, middleware, performance |
-| **experto-couchdb** | Datos, sync, aislamiento |
-| **guardian-seguridad** | Permisos, OWASP |
-| **especialista-frontend** | React, UX, hooks |
+Los roles base del arnés están en `.claude/agents/` (`orquestador`, `autor-de-spec`, `arquitecto`, `implementador`, `revisor`, `explorador`) y el especialista `experto-ux-ui`; el manual de cada uno, en su archivo de `.claude/agents/`.
 
-**OpenClaw (externos):** AIRA (diseño), Paulina (?), Liza (coordinación), main (orquestación).
+**Agentes OpenClaw (externos, usan la API de Synapse):** AIRA (diseño y desarrollo de proyectos), Liza (coordinación), `main` (orquestación) y otros; cada uno con su clave por agente.
 
 ---
 

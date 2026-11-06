@@ -7,7 +7,7 @@
  *
  * Espejos: `backend/app/core/ag_rules.py::check_create` (parte case),
  * `backend/app/core/ag_rules.py::check_folder_move`, `backend/app/core/meta_rules.py::check_note_write`,
- * `backend/app/core/plantilla_rules.py`, `backend/app/core/system_docs.py` (H-041).
+ * `backend/app/core/plantilla_rules.py`, `backend/app/core/system_docs.py` (H-041) y la regla `ag-mensajes:agents-only` de H-042.
  */
 import { pathKey, checkPath } from "./noteRules";
 import { isIndexPath, folderOf } from "./indexRules";
@@ -96,6 +96,11 @@ export function checkFolderMove(from: string, to: string | null = null): string 
   return from !== canonical && to === canonical ? null : "meta-folder:rename";
 }
 
+/** ¿La ruta está dentro de `AG - MENSAJES/` (INDICES incluidos)? Espejo de `meta_rules.in_mensajes`. */
+export function _inMensajes(path: string | null): boolean {
+  return path !== null && metaFolderOf(path) === AG_MENSAJES;
+}
+
 /** ¿La ruta está dentro de `BITACORA/` y no es un INDICE? */
 export function _inBitacora(path: string | null): boolean {
   return path !== null && metaFolderOf(path) === BITACORA && !isIndexPath(path);
@@ -110,6 +115,9 @@ export function checkNoteWrite(opts: {
   actorKind?: "human" | "agent" | "general" | "system";
 }): string | null {
   const { path, prevPath = null, deleted = false, frontmatter = null, actorKind = "human" } = opts;
+
+  // H-042: AG - MENSAJES es solo para agentes; la sesión humana no escribe nada ahí (ni siquiera un INDICE).
+  if (actorKind === "human" && (_inMensajes(path) || _inMensajes(prevPath))) return "ag-mensajes:agents-only";
 
   // BITACORA es de solo lectura para todos (la escribe el servidor); sus INDICES siguen las reglas de H-031.
   if (_inBitacora(path) || _inBitacora(prevPath)) return "bitacora:readonly";

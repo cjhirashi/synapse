@@ -1,5 +1,23 @@
 # History — Synapse
 
+## [2026-11-05] Revisión completa de la documentación del proyecto
+- **Qué pasó:** Carlos exigió que la documentación de Synapse y de cjhirashi-career quede al 100 % con el estado actual y que cada cambio la actualice. Medido antes de tocar: `TAREAS.md` y `ARCHIFY.md` llevaban cientos de commits sin editarse (Sprint 2 de octubre), el README raíz y el de frontend, decenas, y `CLAUDE.md` seguía ordenando el método anterior (Fase 1 Specify, `spec.md`, «carril SDD») mientras `AGENTS.md` y `method.md` ya usaban Slice Development.
+- **Hecho:** README raíz (gobierno de agentes, propiedades tipadas, migraciones 001…009, scripts); `backend/README.md` (tabla de entorno con `AGENT_ACCESS_MODE`, `SEED_AG_FOLDERS`, `SYSTEM_DOCS_SYNC`, `BITACORA_DOCS`, `DEFAULT_TIMEZONE`; router `folders.py`); READMEs de `core`, `core/models`, `core/ports`, `routers` y `services` con los módulos que faltaban; nuevo `backend/scripts/README.md`; `frontend/README.md` y `frontend/src/README.md` (e2e de H-030 a H-042, `parseWorkspace.ts`); `CLAUDE.md` y `AGENTS.md` alineados con Slice Development y con el flujo por la bóveda (desde 2026-11-02); `.claude/project.md` reescrito; `.harness/backlog.md` con H-038, H-039, H-040 y H-042; `TAREAS.md` y `ARCHIFY.md` reducidos a lo vigente; retirados `COWORK_HANDOFF.md` y `knowledge/` (documentaban LangGraph y LiteLLM, descartados: Synapse es un almacén sin IA interna).
+- **Comprobado y sin cambios:** `docs/API.md` documenta las rutas reales (comparado con el OpenAPI de producción: 47 operaciones); `docs/API.md` ya describía la purga de `AG - MENSAJES` a 30 días, que aún no existe (se ajustó a lo desplegado en el commit `9380f88`).
+- **Carpeta `diseño/`:** existe solo en el árbol principal y está en `.gitignore`; el agente `experto-ux-ui` la usa como referencia de identidad. No está en los worktrees ni en la bóveda con ese documento (1.1.4.1): pendiente decidir dónde debe vivir.
+- **Gate:** no se ejecutó la suite completa (solo documentación).
+- **Docs actualizadas:** las listadas arriba.
+- **Modelos usados:** AIRA (claude-sonnet-5-5); sin subagentes.
+- **Próximo paso:** H-042 E3 a E5; decidir la ubicación de `diseño/`.
+
+## [2026-11-05] H-042 (tanda B, en curso): E1 y E2 desplegadas; skill global 1.3.1 al estado real
+
+- **Estado:** E1 (servidor: conversaciones `de → para - asunto - fecha`, solo agentes, cabecera creada por el servidor) y E2 (interfaz de solo lectura para el usuario) en producción desde 2026-11-05 17:20 CDMX (imagen `h042b`; previa `pre-h042b`). **Faltan E3** (purga a 30 días sin mensajes y cierre por baja de gestor; hoy purga a 15 días tras el cierre), **E4** (`GET /agent-inbox`; la acción `inbox` del plugin sigue leyendo `AG - MENSAJES/<id>` y no ve las conversaciones nuevas) y **E5** (skill 1.4.0 con todo lo anterior).
+- **Skill global 1.3.1 (2026-11-05 22:30 CDMX, a petición de Carlos):** la 1.3.0 enseñaba el formato por destinatario, que el servidor ya rechaza (`ag-mensajes:path`). Texto de la sección 7 bis y errores de la sección 8 reescritos con lo comprobado en la bóveda desechable «ZZ prueba H-042 (borrar)»: la REST acepta ` -> ` y guarda `→`; la cabecera a mano da `ag-mensajes:cabecera-server`; cerrar con `{"estado": "cerrada"}` conserva el resto y sella `cerrada_el`; `ifMatch` exige las comillas del etag. La bandeja se enseña por `note_list` con `prefix` hasta E4. Sube `version` y huella (`--stamp`); 96 pruebas (`test_h041_system`, `test_h041_leave`, `test_h042_rules`) en verde.
+- **Incoherencias conocidas (no corregidas aquí):** la `descripcion` del INDICE raíz de `AG - MENSAJES` (aplicada por `h042_migrate.py` en E1) ya dice «30 días sin mensajes nuevos» y la purga real aún no lo hace; `docs/API.md` se ajustó al comportamiento de hoy.
+- **Regla para no repetirlo:** quien cambie lo que un agente ve o hace con `synapse_vault` (permisos, errores, carpetas META, plantillas, formato de mensajes) actualiza `backend/app/system_docs/skill-bovedas-synapse.md` (versión + `--stamp`) **en la misma entrega**; el despliegue la replica a todas las bóvedas.
+- **Pendiente de limpieza:** bóveda desechable «ZZ prueba H-042 (borrar)» (borrarla al cerrar la tanda B).
+
 ## [2026-11-05] H-041: skills y plantilla de sistema, propietario e invitados (tanda A; desplegada en 4 entregas)
 
 - **Fecha/hora:** 2026-11-05 14:23 a 16:35 CDMX. Fase: Specify + Implement + deploy + aceptación. Encargo de Carlos vía `main` (decisiones 1 a 9 cerradas; MENSAJES y las demás carpetas META son la tanda B). **Sin tocar** `AGENT_ACCESS_MODE` (sigue `shadow`), claves, Gateway ni instrucciones de otros agentes.
