@@ -50,13 +50,18 @@ export function useMenuPosition(
 
   useLayoutEffect(() => {
     if (!open) return;
+    // Sólo un scroll que mueve el botón (su contenedor o la página) lo suelta del menú; los demás se ignoran.
+    const onScroll = (event: Event) => {
+      const origin = event.target;
+      if (origin === document || (origin instanceof Node && origin.contains(trigger.current))) dismiss();
+    };
     window.addEventListener("resize", dismiss);
-    document.addEventListener("scroll", dismiss, true);
+    document.addEventListener("scroll", onScroll, true);
     return () => {
       window.removeEventListener("resize", dismiss);
-      document.removeEventListener("scroll", dismiss, true);
+      document.removeEventListener("scroll", onScroll, true);
     };
-  }, [open, dismiss]);
+  }, [open, trigger, dismiss]);
 
   return position;
 }
