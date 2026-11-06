@@ -1,6 +1,6 @@
 # frontend/
 
-React + TypeScript + Vite. Sincronización offline-first con CouchDB/PouchDB (sprints posteriores).
+React + TypeScript + Vite. SPA offline-first: PouchDB replica contra CouchDB por el canal `/sync` del backend. Estado a 2026-11-05: 125 archivos de prueba y 2.850 pruebas en verde (`npm test`).
 
 ## Comandos
 
@@ -52,6 +52,10 @@ Mismas reglas que `test:visual` (`scripts/visual.sh`; se filtran con `-- e2e/<ar
   estados de la bóveda y atributos tipados (fecha, select, multiselect).
 - `e2e/h037-plotly.spec.ts` — H-037: gráficos Plotly (línea SVG, WebGL 2D y 3D) subidos como archivo y embebidos en una nota.
   Los HTML (~4,8 MB) viven en `e2e/.fixtures-h037/`, fuera del repositorio.
+
+- `e2e/h030-meta.spec.ts`, `e2e/h030b.spec.ts` y `e2e/h031-indices.spec.ts` — H-030, H-030b y H-031: sección META plegable sobre la raíz, carpetas reservadas sin menú ni arrastre, BITACORA y PLANTILLAS de solo lectura o con formulario, ÍNDICES generados con su vista.
+- `e2e/h041-sistema.spec.ts` y `e2e/h041-gestor.spec.ts` — H-041: documentos de sistema con candado y vista de solo lectura; pantalla «Skills sin propietario» y reasignación al salir un gestor (`/settings/agent-access`).
+- `e2e/h042-mensajes.spec.ts` — H-042: `AG - MENSAJES` solo lectura para el usuario (sin controles de creación; conversaciones y mensajes en vista de lectura).
 
 ## Contenido markdown completo (SPEC-0010)
 

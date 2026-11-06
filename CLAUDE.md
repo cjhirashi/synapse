@@ -7,14 +7,14 @@ y respeta `.harness/constitution.md`.
 Protocolo de arranque:
 1. `.harness/gate/check.sh` — si cierra la compuerta, PARA y reporta.
 2. Lee `.harness/memory/state.md` (correcciones del usuario arriba).
-3. Ojea `.harness/specs/`.
+3. Ojea `.harness/backlog.md` (historias `H-NNN`). El análisis, el plan y el seguimiento de cada historia viven en su nota de la bóveda **Proyectos** de Synapse (`…/Synapse/9 - implentaciones/H-NNN - …`, desde 2026-11-02); el backlog solo las indexa. `.harness/specs/` es el archivo histórico de SDD Anchored.
 
 ## Reglas duras (no negociables)
 
 - **Aplica la rúbrica de `method.md §2` antes de tocar un archivo.**
-- **En caso de duda, o si "arreglar" implica revisar una decisión ya tomada, entra al carril SDD.** Nunca "prompt directo porque es rápido".
-- **No saltes la Fase 1 (Specify)** para nada que no sea trivial. Un `spec.md` de una línea sigue siendo un spec.
-- **Área sin `spec.md` que la cubra ≠ vía libre.** Es brownfield sin ancla todavía.
+- **En caso de duda, o si "arreglar" implica revisar una decisión ya tomada, entra al carril de historias (Slice Development).** Nunca "prompt directo porque es rápido".
+- **No saltes el refinamiento de la historia** (criterios EARS y plan, `method.md §3`) para nada que no sea trivial. Una historia de una línea sigue siendo una historia.
+- **Área sin historia que la cubra ≠ vía libre.** Toma o crea la historia antes de tocar código.
 - **No te autoapruebas** y no marcas nada `verified`.
 - 🔴 **Todo cambio queda documentado.** Cada cambio de código actualiza, **en el mismo commit**, los
   README y docs del mapa (`constitution.md` Art. 11) que ese cambio deja obsoletos. Si no toca ninguno,

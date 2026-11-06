@@ -17,12 +17,12 @@ backend/
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
 │   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, reservations.py, sync_*.py)
 │   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, files.py, sync.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, folders.py, files.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
 ├── alembic/          # Migraciones PostgreSQL
-├── scripts/          # export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py; H-030b: h030b_migrate.py (rutas heredadas -> BITACORA/PLANTILLAS, en seco/aplicar/revertir), rebuild_bitacora.py
+├── scripts/          # ver `scripts/README.md`. Resumen: export_openapi.py; H-030: ensure_ag_folders.py, seed_agent_registry.py, create_agent_keys.py, purge_mensajes.py; H-030b: h030b_migrate.py (rutas heredadas -> BITACORA/PLANTILLAS, en seco/aplicar/revertir), rebuild_bitacora.py
 ├── tests/
 ├── Dockerfile        # Multi-stage: compila la SPA (Node) y la copia a la imagen (contexto = raíz)
 └── requirements.txt
@@ -30,8 +30,8 @@ backend/
 
 ## Entorno
 
-Toda la configuración sensible viene del entorno; **no hay valores por defecto** y el
-backend no arranca si falta alguna (ver `.env.example` en la raíz):
+La configuración sensible viene del entorno; **no tiene valores por defecto** y el
+backend no arranca si falta alguna de las obligatorias (ver `.env.example` en la raíz). Los interruptores de abajo sí traen un valor por defecto:
 
 | Variable | Uso |
 |---|---|
@@ -40,6 +40,11 @@ backend no arranca si falta alguna (ver `.env.example` en la raíz):
 | `JWT_SECRET` | Firma HS256 de los JWT |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO (archivos subidos). Obligatorias. `MINIO_ENDPOINT` (`synapse-minio:9000`) y `MINIO_BUCKET` (`synapse-files`) tienen valor por defecto |
+| `AGENT_ACCESS_MODE` | Permisos por agente (H-030): `shadow` (por defecto) registra lo que rechazaría el registro de `AG - AGENTES` sin bloquear; `enforce` rechaza con 403; `off` no evalúa. Los valores por defecto de las siguientes sí existen |
+| `SEED_AG_FOLDERS` (`true`) | Las bóvedas nuevas nacen con las carpetas reservadas (`AG - *`, `BITACORA`, `PLANTILLAS`) |
+| `SYSTEM_DOCS_SYNC` (`true`) | Al arrancar replica en segundo plano la skill global y `plantilla-skill` en todas las bóvedas (idempotente) |
+| `BITACORA_DOCS` (`true`) | Genera los documentos diarios de `BITACORA/` desde el registro de cambios (`change_log`, que se escribe siempre) |
+| `DEFAULT_TIMEZONE` (`America/Mexico_City`) | Zona horaria de respaldo del propietario para la bitácora y las fechas selladas; cada usuario tiene la suya en `users.timezone` |
 
 ## Sirve la SPA (SPEC-0007)
 
