@@ -294,7 +294,7 @@ nota no cambia).
 
 - Sin `If-Match` → `428` `precondition-required`.
 - `If-Match` acepta el `ETag` tal como llegó, **fuerte (`"1-abc"`) o débil (`W/"1-abc"`)**: el servidor
-  compara el valor sin el prefijo `W/` (un intermediario como Cloudflare puede debilitar el `ETag` al
+  compara el valor sin el prefijo `W/` (un intermediario puede debilitar el `ETag` al
   comprimir). Aplica igual a notas y bóvedas.
 - `If-Match` distinto del `ETag` vigente → `412` `precondition-failed` (otra escritura ganó:
   relee y repite).

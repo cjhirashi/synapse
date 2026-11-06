@@ -24,7 +24,7 @@
 
 ## Qué es Synapse
 
-Almacén personal self-hosted de bóvedas de conocimiento: notas Markdown offline-first (estilo Obsidian) y archivos, sin IA interna; los agentes (OpenClaw) lo usan por API REST con una clave por agente. Stack: FastAPI + PostgreSQL (control plane) + CouchDB/PouchDB (bóvedas y notas) + MinIO (archivos) + React/Vite. En producción en `synapse.cjhirashi.com`. Cada bóveda trae carpetas de sistema (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`) con ÍNDICES y bitácora generados por el servidor, y una skill global (`backend/app/system_docs/`) que el servidor publica en todas las bóvedas.
+Almacén personal self-hosted de bóvedas de conocimiento: notas Markdown offline-first (estilo Obsidian) y archivos, sin IA interna; los agentes (OpenClaw) lo usan por API REST con una clave por agente. Stack: FastAPI + PostgreSQL (control plane) + CouchDB/PouchDB (bóvedas y notas) + MinIO (archivos) + React/Vite. En producción. Cada bóveda trae carpetas de sistema (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`) con ÍNDICES y bitácora generados por el servidor, y una skill global (`backend/app/system_docs/`) que el servidor publica en todas las bóvedas.
 
 **Arquitectura:** Hexagonal (services → `core/ports/`; adapters seleccionados por factory).
 **Crítico:** Aislamiento por usuario. Base CouchDB `synapse_user_{id}`. **Nunca romper.**

@@ -64,40 +64,19 @@ El `Dockerfile` (multi-stage, contexto = raíz del repo) compila la SPA con Node
 `/app/static`; `FRONTEND_DIST` apunta ahí. En dev sin build la app arranca como API pura
 (RF-006) y la SPA la sirve Vite en el host.
 
-## Despliegue: proxy inverso externo
+## Despliegue: requisitos de red
 
-El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). En producción lo
-pone el **Caddy externo**, que reenvía al backend (8000) —ahora **la SPA la sirve el propio
-backend**, el Caddy ya no la monta—. API y SPA van en el **mismo origen**: las cookies de
-sesión (`HttpOnly`, `SameSite`) y la réplica PouchDB (`origin + "/sync/db"`,
-`credentials: "include"`) no funcionan entre orígenes distintos.
-
-Requisitos del canal de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
+El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). El backend (8000)
+sirve la API y **la SPA**, en el **mismo origen**: las cookies de sesión (`HttpOnly`, `SameSite`)
+y la réplica PouchDB (`origin + "/sync/db"`, `credentials: "include"`) no funcionan entre
+orígenes distintos. Si se coloca un proxy delante, debe respetar esto y los requisitos del canal
+de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
 
 | Requisito | Motivo |
 |---|---|
 | `/sync` y `/sync/*` van al backend, en el mismo origen que la SPA | La ruta comodín del backend responde 404 a todo lo que no es el subconjunto del canal; `/sync` no es ruta de la SPA. |
-| Sin búfer de respuesta (`flush_interval -1`) | `_changes` responde en streaming; con búfer, los cambios y los latidos no llegan hasta cerrar la respuesta. |
-| Ningún tiempo límite de respuesta menor de 90 s (`timeouts` del servidor y `read_timeout`/`response_header_timeout` del transporte) | Un `longpoll` de `_changes` puede retener la conexión hasta 60 s (`MAX_WAIT_MS` en `services/sync_filter.py`); el margen cubre la latencia. |
-
-Ejemplo orientativo (el dominio y la dirección del backend son del despliegue):
-
-```caddyfile
-synapse.example.com {
-	@sync path /sync /sync/*
-	handle @sync {
-		reverse_proxy backend:8000 {
-			# Streaming de `_changes`: sin búfer.
-			flush_interval -1
-		}
-	}
-	# … todo lo demás (API `/auth`,`/admin`,`/vaults` y la SPA) lo sirve el backend.
-	reverse_proxy backend:8000
-}
-```
-
-Caddy no impone tiempo límite de respuesta por defecto; si el despliegue define `timeouts`
-o un `transport http` con `read_timeout`, deben ser de 90 s o más.
+| Sin búfer de respuesta | `_changes` responde en streaming; con búfer, los cambios y los latidos no llegan hasta cerrar la respuesta. |
+| Ningún tiempo límite de respuesta menor de 90 s (del servidor y del transporte hacia el backend) | Un `longpoll` de `_changes` puede retener la conexión hasta 60 s (`MAX_WAIT_MS` en `services/sync_filter.py`); el margen cubre la latencia. |
 
 ## Autenticación (SPEC-0002)
 
@@ -373,7 +352,7 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `GET /sync/db/_local/{id}` | 200 · 404 `checkpoint-not-found` · 503 |
 | `PUT /sync/db/_local/{id}` | 201 `{ok, id, rev}` · 413 · 422 · 503 |
 
-Todas pueden responder además 401 y 403. Requisitos del proxy inverso: ver "Despliegue".
+Todas pueden responder además 401 y 403. Requisitos de red: ver "Despliegue".
 Contrato completo: `.harness/specs/0005-sync/contracts/openapi.yaml`.
 
 ## Notas (SPEC-0008)

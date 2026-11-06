@@ -72,5 +72,4 @@ curl http://localhost:8000/health
 
 Tests y comandos de cada parte: [`backend/README.md`](backend/README.md) y
 [`frontend/README.md`](frontend/README.md); operación: [`backend/scripts/README.md`](backend/scripts/README.md).
-Cómo se trabaja y qué sigue: `AGENTS.md` y `.harness/backlog.md`. Estado a 2026-11-05: en producción en
-`synapse.cjhirashi.com`.
+Cómo se trabaja y qué sigue: `AGENTS.md` y `.harness/backlog.md`. Estado a 2026-11-05: en producción.

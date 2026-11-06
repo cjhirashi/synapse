@@ -1,6 +1,6 @@
 # Synapse — Almacén de Bóvedas
 
-**Estado (2026-11-05):** en producción (`synapse.cjhirashi.com`); desarrollo por historias (Slice Development). El backlog está en `.harness/backlog.md` y el detalle de cada historia, en su nota de la bóveda **Proyectos**.
+**Estado (2026-11-05):** en producción; desarrollo por historias (Slice Development). El backlog está en `.harness/backlog.md` y el detalle de cada historia, en su nota de la bóveda **Proyectos**.
 
 ## Qué es
 Almacén personal self-hosted de bóvedas de conocimiento: notas Markdown offline-first y archivos. Sin IA interna: los agentes OpenClaw lo usan por API REST con una clave por agente. Cada bóveda trae carpetas de sistema (`AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`) con ÍNDICES y bitácora generados por el servidor.

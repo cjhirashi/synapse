@@ -102,7 +102,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `wikilink_rewrite.py` — reglas puras de la reescritura de wikilinks al mover o renombrar notas y carpetas (H-039, sin E/S); las usa `services/wikilink_rewrite_service.py` y las espeja `frontend/src/editor/wikilink.ts` sobre un fixture compartido.
-- `etag.py` — validador de `ETag` según RFC 7232, incluido el débil (`W/`) que Cloudflare produce al comprimir (`If-Match`).
+- `etag.py` — validador de `ETag` según RFC 7232, incluido el débil (`W/`) que un intermediario produce al comprimir (`If-Match`).
 - `json_body.py` — decodificación de cuerpos JSON acotada en profundidad (un anidamiento excesivo da 422, no 500).
 - `config.py` — `Settings` (pydantic-settings): entorno, secretos y ajustes como `AGENT_ACCESS_MODE` (`shadow` por defecto, `enforce` u `off`) y `SYSTEM_DOCS_SYNC`.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su

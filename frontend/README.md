@@ -111,8 +111,7 @@ El editor se carga con `React.lazy` al abrir una bóveda: Milkdown y CodeMirror 
 a la API en su puerto 8000. El `Dockerfile` multi-stage que compila esta SPA y la copia a la
 imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
 
-- **Producción:** el reverse proxy externo (Caddy, fuera del repo) apunta al backend (8000),
-  que sirve API + SPA. El enrutado (assets directos, `/vaults` por `Accept`, fallback a
+- **Producción:** el backend (8000) sirve API + SPA. El enrutado (assets directos, `/vaults` por `Accept`, fallback a
   `index.html`) lo hace `backend/app/spa.py`.
 - **Desarrollo:** `npm run dev` en el host levanta Vite con el proxy de `vite.config.ts`
   (`/auth`, `/admin`, `/vaults`, `/sync` → backend). El backend en dev

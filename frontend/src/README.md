@@ -97,7 +97,7 @@ campo y la lectura de etiquetas y descripción, compartidos con la vista de conf
 
 En desarrollo, `vite.config.ts` reenvía `/vaults` al backend salvo las navegaciones del
 navegador (`Accept: text/html`), que reciben `index.html` para que React Router pinte la ruta,
-y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del Caddy externo, en el
+y `/sync` siempre (no es ruta de la SPA). En producción ese papel es del proxy de entrada (fuera del repo), en el
 mismo origen que la SPA y sin búfer ni tiempos límite menores de 90 s en `/sync`
 (`backend/README.md`, «Despliegue»).
 
