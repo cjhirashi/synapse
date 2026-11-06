@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-05] H-042 (tanda B, en curso): E1 y E2 desplegadas; skill global 1.3.1 al estado real
+
+- **Estado:** E1 (servidor: conversaciones `de → para - asunto - fecha`, solo agentes, cabecera creada por el servidor) y E2 (interfaz de solo lectura para el usuario) en producción desde 2026-11-05 17:20 CDMX (imagen `h042b`; previa `pre-h042b`). **Faltan E3** (purga a 30 días sin mensajes y cierre por baja de gestor; hoy purga a 15 días tras el cierre), **E4** (`GET /agent-inbox`; la acción `inbox` del plugin sigue leyendo `AG - MENSAJES/<id>` y no ve las conversaciones nuevas) y **E5** (skill 1.4.0 con todo lo anterior).
+- **Skill global 1.3.1 (2026-11-05 22:30 CDMX, a petición de Carlos):** la 1.3.0 enseñaba el formato por destinatario, que el servidor ya rechaza (`ag-mensajes:path`). Texto de la sección 7 bis y errores de la sección 8 reescritos con lo comprobado en la bóveda desechable «ZZ prueba H-042 (borrar)»: la REST acepta ` -> ` y guarda `→`; la cabecera a mano da `ag-mensajes:cabecera-server`; cerrar con `{"estado": "cerrada"}` conserva el resto y sella `cerrada_el`; `ifMatch` exige las comillas del etag. La bandeja se enseña por `note_list` con `prefix` hasta E4. Sube `version` y huella (`--stamp`); 96 pruebas (`test_h041_system`, `test_h041_leave`, `test_h042_rules`) en verde.
+- **Incoherencias conocidas (no corregidas aquí):** la `descripcion` del INDICE raíz de `AG - MENSAJES` (aplicada por `h042_migrate.py` en E1) ya dice «30 días sin mensajes nuevos» y la purga real aún no lo hace; `docs/API.md` se ajustó al comportamiento de hoy.
+- **Regla para no repetirlo:** quien cambie lo que un agente ve o hace con `synapse_vault` (permisos, errores, carpetas META, plantillas, formato de mensajes) actualiza `backend/app/system_docs/skill-bovedas-synapse.md` (versión + `--stamp`) **en la misma entrega**; el despliegue la replica a todas las bóvedas.
+- **Pendiente de limpieza:** bóveda desechable «ZZ prueba H-042 (borrar)» (borrarla al cerrar la tanda B).
+
 ## [2026-11-05] H-041: skills y plantilla de sistema, propietario e invitados (tanda A; desplegada en 4 entregas)
 
 - **Fecha/hora:** 2026-11-05 14:23 a 16:35 CDMX. Fase: Specify + Implement + deploy + aceptación. Encargo de Carlos vía `main` (decisiones 1 a 9 cerradas; MENSAJES y las demás carpetas META son la tanda B). **Sin tocar** `AGENT_ACCESS_MODE` (sigue `shadow`), claves, Gateway ni instrucciones de otros agentes.

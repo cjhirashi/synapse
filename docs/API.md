@@ -546,8 +546,9 @@ AG - MENSAJES/<de> → <para> - <asunto> - <AAAA-MM-DD>/000-cabecera.md      # l
   `403 agent-access-denied` con un `detail` fijo): el `<id>` del nombre es el agente de la clave, el primer mensaje lo escribe quien abre y solo
   los dos participantes cierran o reabren. `is_admin` no interviene. El sistema **no** valida el receptor ni mira `AG - AGENTES`: un agente de
   solo lectura puede abrir y responder conversaciones (la skill enseña a dirigirse solo a gestores).
-- **Fin:** una conversación sin mensajes nuevos en 30 días (`MENSAJES_PURGE_DAYS`), abierta o cerrada, se elimina físicamente (carpeta,
-  notas e INDICE, sin papelera); antes se vuelca a JSONL, que se conserva 30 días (`scripts/purge_mensajes.py`, tabla `purge_log`).
+- **Fin (hoy):** una conversación `cerrada` con `cerrada_el` de más de 15 días se elimina físicamente (carpeta, notas e INDICE, sin papelera);
+  antes se vuelca a JSONL, que se conserva 30 días (`scripts/purge_mensajes.py`, tabla `purge_log`). Una abierta no caduca. **Pendiente (H-042 E3):**
+  pasar a 30 días sin mensajes nuevos (`MENSAJES_PURGE_DAYS`), abierta o cerrada, y cerrar las conversaciones dirigidas a un agente que deja de ser gestor.
 
 Contrato máquina: `.harness/specs/h030-carpetas-ag/contracts/openapi.yaml`. Herramientas (dentro del contenedor, `backend/scripts/`):
 `ensure_ag_folders.py` (carga en las bóvedas existentes; sin `--apply` es informe en seco), `seed_agent_registry.py`

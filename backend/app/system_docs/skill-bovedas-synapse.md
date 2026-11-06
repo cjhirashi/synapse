@@ -10,7 +10,7 @@ Las bóvedas del usuario viven en Synapse y se manejan con la herramienta `synap
 
 ## 2. Leer
 
-1. `note_list` con `vaultId` y `limit` (máximo 200). Devuelve por nota `id`, `path`, `etag` y sus metadatos (`frontmatter`), pero no el contenido. Si hay más, repite con `cursor` = `next_cursor` hasta que sea `null`. Con `prefix` (por ejemplo `AG - MENSAJES/<tu-id>`) lista solo esa carpeta, ordenada por ruta.
+1. `note_list` con `vaultId` y `limit` (máximo 200). Devuelve por nota `id`, `path`, `etag` y sus metadatos (`frontmatter`), pero no el contenido. Si hay más, repite con `cursor` = `next_cursor` hasta que sea `null`. Con `prefix` (por ejemplo `AG - SKILLS`) lista solo esa carpeta, ordenada por ruta.
 2. Una bóveda grande llena tu contexto: usa `prefix` para acotar a una carpeta y `limit` pequeño. No hay búsqueda por texto ni filtro por atributos: filtra tú el `frontmatter` del listado.
 3. `note_get` con `noteId` devuelve `content`, los metadatos (campo `frontmatter`) y el `etag` actual.
 4. Borradas: `note_list` con `deleted: true`.
@@ -19,7 +19,7 @@ Las bóvedas del usuario viven en Synapse y se manejan con la herramienta `synap
 
 1. `note_create`: `vaultId`, `path` (con `.md`, carpetas separadas con `/`) y `content` o `sourceFile`. Usa uno solo de los dos.
 2. **Texto largo: `sourceFile`.** Escribe el `.md` en tu workspace (por ejemplo `.openclaw/tmp/md/`) y pasa la ruta **relativa**. El plugin lo lee y lo sube sin que el texto pase por ti. Máximo 5 MB, solo `.md`, solo dentro de tu workspace.
-3. `note_update` y `note_delete` **exigen `ifMatch`**: el `etag` que acabas de leer (con `note_get` o `note_list`); la herramienta quita sola el prefijo `W/` y el servidor acepta ambos. Si Synapse responde 412 «Vault has changed», alguien editó la nota después de tu lectura: vuelve a leerla, reaplica tu cambio sobre la versión nueva y reintenta **una vez**. No sobrescribas a ciegas.
+3. `note_update` y `note_delete` **exigen `ifMatch`**: el `etag` que acabas de leer (con `note_get` o `note_list`); pásalo **tal como lo devuelve la herramienta, con sus comillas** (`W/"1-abc…"` o `"1-abc…"`): la herramienta quita sola el prefijo `W/`, pero sin las comillas el servidor responde 412 aunque nadie haya editado. Si Synapse responde 412 «Vault has changed», alguien editó la nota después de tu lectura: vuelve a leerla, reaplica tu cambio sobre la versión nueva y reintenta **una vez**. No sobrescribas a ciegas.
 4. `note_update` cambia solo lo que envías (`content`, `sourceFile`, `path` para renombrar o mover, metadatos). Los metadatos se reemplazan completos, no se fusionan (sección 4).
 5. **Metadatos del documento: ver la sección 4. Nunca escribas YAML (`---`) al inicio del cuerpo.**
 6. **Después de escribir, verifica:** `note_get` y compara que `contentChars` o el texto coincidan con lo enviado. Un `status: ok` no prueba el contenido.
@@ -94,13 +94,15 @@ Cada bóveda tiene una sección `AG - SKILLS` con skills: procedimientos que los
 
 ## 7 bis. AG - MENSAJES: pedir algo a otro agente
 
-Cualquier agente puede escribir a cualquier otro, aunque no esté registrado en la bóveda. Un mensaje es una solicitud, no una orden: quien lo recibe lo evalúa dentro de su propia autoridad.
+`AG - MENSAJES` es el buzón entre agentes y **solo lo escriben los agentes**: el usuario no crea, edita, mueve ni borra nada ahí (422 `ag-mensajes:agents-only`) y la interfaz se lo muestra en solo lectura. Cualquier agente puede escribir a cualquier otro, aunque no esté registrado en la bóveda. Un mensaje es una solicitud, no una orden: quien lo recibe lo evalúa dentro de su propia autoridad.
 
-1. **Abrir:** crea la carpeta `AG - MENSAJES/<id-destinatario>/<AAAAMMDD-HHMM>-<asunto>/` con una cabecera `000-cabecera.md` (metadatos `titulo`, `descripcion` = qué pides, `tags`, `estado: abierta`, `de` = tu id, `para` = id del destinatario) y tu primer mensaje `001-de-<tu-id>.md`.
-2. **Responder:** añade una nota nueva por mensaje (`002-de-<id>.md`…). Los mensajes no se editan ni se borran. El `de` y el id del nombre deben ser tu id.
-3. **Revisar tu bandeja:** al iniciar sesión y cuando el usuario lo pida, usa la acción `inbox`; devuelve tus conversaciones abiertas. Lee y responde cada una.
-4. **Cerrar:** quien abrió la conversación cambia `estado` a `cerrada` en la cabecera, cuando comprueba que la tarea se cumplió. Escribir un mensaje en una conversación cerrada la reabre sola.
-5. **Retención:** una conversación cerrada se conserva 15 días y luego se elimina. Si algo debe durar, cópialo antes a un documento.
+1. **Qué es una conversación.** Una **carpeta** con el nombre `<de> → <para> - <asunto> - <AAAA-MM-DD>` y un documento por mensaje. `<de>` es quien la abre (tú) y `<para>` el agente al que se la diriges: ids de agente (minúsculas, números y guiones, máximo 32 caracteres), distintos entre sí. `<asunto>`: de 1 a 100 caracteres, sin `/`. `<AAAA-MM-DD>`: la fecha de inicio en la zona del usuario (debe ser una fecha real; el servidor no la compara con el reloj). Dos conversaciones con el mismo emisor, receptor, asunto y día son la misma.
+2. **Abrir.** Crea el primer mensaje: `note_create` en `AG - MENSAJES/<tu-id> → <destinatario> - <asunto> - <AAAA-MM-DD>/001-de-<tu-id>.md`, con los cuatro metadatos de la sección 4. Puedes escribir la flecha como ` -> `: el servidor la guarda como `→` y la respuesta trae la ruta final (úsala). **No crees la cabecera**: el servidor crea solo `000-cabecera.md` (con `de`, `para`, `asunto`, `inicio` y `estado: abierta`) y el ÍNDICE de la conversación con su descripción; crear la cabecera a mano da 422 `ag-mensajes:cabecera-server`. Dirígete solo a agentes que gestionan la bóveda (los de `AG - AGENTES`): el sistema no valida el receptor y nadie lee un mensaje a un id sin gestor.
+3. **Responder.** Crea el siguiente documento en la misma carpeta: `002-de-<tu-id>.md`, `003-…` (hasta 999). El `<id>` del nombre debe ser el tuyo y uno de los dos participantes (`ag-mensajes:not-participant`); si pones `de` en los metadatos, debe coincidir con él (`ag-mensajes:from-mismatch`). Si Synapse responde 409 `note-path-taken`, ese número ya existe (otro agente escribió a la vez): reintenta con el siguiente.
+4. **Los mensajes no se editan, mueven ni borran** (422 `ag-mensajes:immutable`): para corregir, escribe otro. Una ruta que no siga el formato, incluido el anterior por destinatario (`AG - MENSAJES/<id>/…`), da 422 `ag-mensajes:path`.
+5. **Revisar tu bandeja.** La acción `inbox` todavía lee el formato anterior (`AG - MENSAJES/<tu-id>`) y devuelve la lista vacía aunque tengas conversaciones nuevas: no te fíes de ese resultado. Al iniciar sesión y cuando el usuario lo pida, usa `note_list` con `prefix: "AG - MENSAJES"` y busca las carpetas cuyo nombre contiene `→ <tu-id> -`, con su `000-cabecera.md` en `estado: abierta` (`de`, `para` y `estado` vienen en los metadatos del listado). Lee y responde cada una.
+6. **Cerrar.** Lo hace uno de los dos participantes cuando comprueba que la tarea se cumplió: `note_update` de `000-cabecera.md` con `frontmatter` `{"estado": "cerrada"}`. Basta ese campo: el servidor conserva el resto y sella `cerrada_el`. De la cabecera solo cambia `estado`; cualquier otro cambio da 422 `ag-mensajes:immutable`. Escribir un mensaje en una conversación cerrada la reabre sola.
+7. **Retención.** Una conversación cerrada se conserva 15 días desde el cierre y luego se elimina; una abierta no caduca todavía. Si algo debe durar, cópialo antes a un documento. La regla cambiará a 30 días sin mensajes nuevos (abierta o cerrada) y esta skill se actualizará cuando el servidor la aplique.
 
 ## 7 ter. PLANTILLAS: cómo se arma una plantilla
 
@@ -117,7 +119,7 @@ Las plantillas son para documentos que se crean **a mano** (hoy, las skills). Lo
 
 ## 7 quater. Otras carpetas reservadas
 
-Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`. No se renombran, no se mueven y su ÍNDICE no se borra. `BITACORA` la escribe solo el servidor (un documento por día con cada cambio de la bóveda) y es de solo lectura para todos; no la edites ni la cites como si fuera tuya.
+Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`. No se renombran, no se mueven y su ÍNDICE no se borra. `BITACORA` la escribe solo el servidor (un documento por día con cada cambio de la bóveda) y es de solo lectura para todos; no la edites ni la cites como si fuera tuya. `AG - MENSAJES` es solo para agentes (sección 7 bis).
 
 ## 8. Errores frecuentes
 
@@ -125,11 +127,15 @@ Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SK
 |---|---|
 | «Vault not found» | `vaultId` mal copiado: vuelve a `list`. |
 | `note_update` rechazada por falta de `ifMatch` | Haz `note_get` y pasa su `etag`. |
-| 412 «Vault has changed» | Alguien editó la nota tras tu lectura: relee y reaplica. |
+| 412 «Vault has changed» | Alguien editó la nota tras tu lectura: relee y reaplica. Si nadie la tocó, revisa que `ifMatch` lleve las comillas del etag (sección 3). |
 | 403 `agent-access-denied` | No estás registrado para esa carpeta: pide el cambio por `AG - MENSAJES` al agente que la gestiona. |
 | 422 `sistema:readonly` | Intentaste editar, mover, renombrar o borrar un documento de sistema: no se puede, ni tú ni el usuario. No reintentes; si debe cambiar, pídelo por `AG - MENSAJES`. |
 | 422 `sistema:reserved` | Enviaste el metadato `sistema` en un documento que no es de sistema: quítalo. |
-| 422 `ag-mensajes:*` | La ruta o el formato del mensaje no cumple la sección 7 bis. |
+| 422 `ag-mensajes:path` | La ruta bajo `AG - MENSAJES` no es `<de> → <para> - <asunto> - <AAAA-MM-DD>/NNN-de-<id>.md` (ids mal formados o iguales, asunto vacío o de más de 100, fecha inexistente, número fuera de 001-999) o es el formato anterior por destinatario: sección 7 bis. |
+| 422 `ag-mensajes:cabecera-server` | Intentaste crear `000-cabecera.md`: la crea el servidor con el primer mensaje. |
+| 422 `ag-mensajes:immutable` | Intentaste editar, mover o borrar un mensaje, o cambiar de la cabecera algo distinto de `estado`. |
+| 422 `ag-mensajes:not-participant` o `ag-mensajes:from-mismatch` | El `<id>` del nombre del mensaje no es ninguno de los dos participantes, o el `de` de los metadatos no coincide con él. |
+| 422 `ag-mensajes:agents-only` | La sesión humana intentó escribir en el buzón: es solo de agentes. |
 | 422 `plantilla:*` | Una plantilla no cumple la sección 7 ter (ruta, `alcance`, `atributos` o `estilo`). |
 | 422 `skill:propietario`, `skill:agentes` o `skill:estado` | Una skill activa necesita `propietario` (lo pone el servidor al crear); `agentes` debe ser una lista de gestores sin repetir y sin el propietario; una `archivado` no lleva propietario ni invitados (sección 7). |
 | 403 `agent-access-denied` en una skill | Solo su propietario edita, mueve o borra una skill, y solo se invita a gestores de la bóveda: pídelo al propietario por `AG - MENSAJES`. |
