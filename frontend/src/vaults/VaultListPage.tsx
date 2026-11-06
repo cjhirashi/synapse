@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import VaultChip from "./VaultChip";
@@ -89,15 +90,21 @@ export default function VaultListPage() {
         </button>
       )}
 
+      {/* Modal fijo: la lista puede ser más alta que la ventana y un aviso al final quedaría fuera de vista. */}
       {confirming && (
-        <div role="alertdialog" aria-labelledby="confirm-delete-title">
-          <p id="confirm-delete-title">¿Mover «{confirming.name}» a la papelera?</p>
-          <button type="button" onClick={() => void confirmDelete(confirming)} disabled={busy}>
-            Mover a la papelera
-          </button>{" "}
-          <button type="button" onClick={() => setConfirming(null)} disabled={busy}>
-            Cancelar
-          </button>
+        <div className="modal-backdrop">
+          <ConfirmDialog
+            titleId="confirm-delete-title"
+            title={`¿Mover «${confirming.name}» a la papelera?`}
+            onCancel={() => setConfirming(null)}
+          >
+            <button type="button" onClick={() => void confirmDelete(confirming)} disabled={busy}>
+              Mover a la papelera
+            </button>
+            <button type="button" data-autofocus onClick={() => setConfirming(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </ConfirmDialog>
         </div>
       )}
     </section>

@@ -154,6 +154,21 @@ test("RF-020: borrar pide confirmación y cancelar no la mueve a la papelera", a
   expect(await value.vaults.list({ deleted: true })).toEqual([]);
 });
 
+test("RF-020: la confirmación es un modal fijo; Escape la cierra sin borrar y el foco inicial es «Cancelar»", async () => {
+  const { value, db } = syncValue();
+  await seedStore(db).create({ name: "Notas", description: null, tags: [] });
+  const { user } = renderPage(value);
+  await user.click(await deleteButton("Notas"));
+  const dialog = screen.getByRole("alertdialog", { name: "¿Mover «Notas» a la papelera?" });
+  expect(dialog).toHaveAttribute("aria-modal", "true");
+  expect(dialog.parentElement).toHaveClass("modal-backdrop");
+  expect(within(dialog).getByRole("button", { name: "Cancelar" })).toHaveFocus();
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(screen.getByRole("listitem", { name: "Notas" })).toBeInTheDocument();
+  expect(await value.vaults.list({ deleted: true })).toEqual([]);
+});
+
 test("RF-011: confirmar la mueve a la papelera de la réplica y la quita de la lista", async () => {
   const { value, db } = syncValue();
   const seed = seedStore(db);

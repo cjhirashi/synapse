@@ -398,6 +398,27 @@ button:focus-visible {
   }
 }
 
+/* --- Confirmación modal: capa fija sobre la ventana, siempre a la vista --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgb(0 0 0 / 0.55);
+}
+
+.modal-backdrop > [role="alertdialog"] {
+  width: min(420px, 100%);
+  margin: 0;
+  padding: var(--space-6);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-panel);
+  border-radius: var(--radius-lg);
+}
+
 /* --- Gestor que sale (H-041 E4): ventana de resolución de sus skills --- */
 .agent-leave-backdrop {
   position: fixed;
