@@ -44,6 +44,18 @@ describe("ConfirmDelete", () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
+  // Modal: capa fija por portal, siempre a la vista; clic fuera = Cancelar (nunca borra).
+  it("es un modal fijo en document.body y un clic en la capa cancela sin borrar", async () => {
+    const { onCancel, onConfirm } = setup({ kind: "note" });
+    const dialog = screen.getByRole("alertdialog");
+    const backdrop = dialog.parentElement as HTMLElement;
+    expect(backdrop).toHaveClass("modal-backdrop");
+    expect(backdrop.parentElement).toBe(document.body);
+    await userEvent.click(backdrop);
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   // C-7
   it("Cancelar no borra", async () => {
     const { onCancel, onConfirm } = setup({ kind: "note" });

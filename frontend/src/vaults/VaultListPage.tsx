@@ -90,22 +90,19 @@ export default function VaultListPage() {
         </button>
       )}
 
-      {/* Modal fijo: la lista puede ser más alta que la ventana y un aviso al final quedaría fuera de vista. */}
       {confirming && (
-        <div className="modal-backdrop">
-          <ConfirmDialog
-            titleId="confirm-delete-title"
-            title={`¿Mover «${confirming.name}» a la papelera?`}
-            onCancel={() => setConfirming(null)}
-          >
-            <button type="button" onClick={() => void confirmDelete(confirming)} disabled={busy}>
-              Mover a la papelera
-            </button>
-            <button type="button" data-autofocus onClick={() => setConfirming(null)} disabled={busy}>
-              Cancelar
-            </button>
-          </ConfirmDialog>
-        </div>
+        <ConfirmDialog
+          titleId="confirm-delete-title"
+          title={`¿Mover «${confirming.name}» a la papelera?`}
+          onCancel={() => setConfirming(null)}
+        >
+          <button type="button" onClick={() => void confirmDelete(confirming)} disabled={busy}>
+            Mover a la papelera
+          </button>
+          <button type="button" data-autofocus onClick={() => setConfirming(null)} disabled={busy}>
+            Cancelar
+          </button>
+        </ConfirmDialog>
       )}
     </section>
   );

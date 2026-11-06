@@ -5,20 +5,16 @@
  * su menú son hermanos de la fila, no parte de ella: sus clics y teclas se detienen aquí para que nunca
  * abran ni seleccionen la fila.
  */
-import { Fragment, KeyboardEvent, MouseEvent, useEffect, useId, useRef, useState } from "react";
+import { Fragment, KeyboardEvent, MouseEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { useMenuPosition } from "../editor/menuPlacement";
 
 interface TreeRowMenuProps {
   /** Nombre visible de la fila: el botón se anuncia como «Acciones de <label>». */
   label: string;
   onRename: () => void;
   onDelete: () => void;
-}
-
-interface Position {
-  top: number;
-  right: number;
 }
 
 export function TreeRowMenu({ label, onRename, onDelete }: TreeRowMenuProps) {
@@ -28,17 +24,16 @@ export function TreeRowMenu({ label, onRename, onDelete }: TreeRowMenuProps) {
   const menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [position, setPosition] = useState<Position>({ top: 0, right: 0 });
+  const dismiss = useCallback(() => setOpen(false), []);
+  const position = useMenuPosition(open, trigger, menu, dismiss);
 
   const items = [
     { label: "Renombrar", Icon: Pencil, run: onRename, danger: false },
     { label: "Borrar", Icon: Trash2, run: onDelete, danger: true },
   ];
 
-  /** Abre el menú con el foco en el ítem `index`, 4 px bajo el botón y alineado a su derecha. */
+  /** Abre el menú con el foco en el ítem `index`; `useMenuPosition` lo coloca bajo el botón o, si no cabe, encima. */
   function openAt(index: number) {
-    const box = trigger.current?.getBoundingClientRect();
-    if (box) setPosition({ top: box.bottom + 4, right: Math.max(0, window.innerWidth - box.right) });
     setActive(index);
     setOpen(true);
   }

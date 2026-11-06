@@ -8,9 +8,10 @@
  * (sólo el activo es tabulable) y el teclado cubre Enter/Espacio/↓ (abren en el primero), ↑ (en el último),
  * ↑/↓ cíclicas, Inicio/Fin, Esc y Tab (cierran y devuelven el foco al botón). Un clic fuera también cierra.
  */
-import { Fragment, KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { Fragment, KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Code, Copy, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { useMenuPosition } from "./menuPlacement";
 
 interface NoteMenuProps {
   /** ¿La nota ya está en la vista Código? Entonces «Ver en Código» queda `aria-disabled`. */
@@ -21,11 +22,6 @@ interface NoteMenuProps {
   onDelete: () => void;
 }
 
-interface Position {
-  top: number;
-  right: number;
-}
-
 export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete }: NoteMenuProps) {
   const triggerId = useId();
   const menuId = useId();
@@ -33,7 +29,8 @@ export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete 
   const menu = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [position, setPosition] = useState<Position>({ top: 0, right: 0 });
+  const dismiss = useCallback(() => setOpen(false), []);
+  const position = useMenuPosition(open, trigger, menu, dismiss);
 
   const items = [
     { label: "Renombrar o mover", Icon: Pencil, run: onRename, disabled: false, danger: false },
@@ -42,10 +39,8 @@ export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete 
     { label: "Borrar", Icon: Trash2, run: onDelete, disabled: false, danger: true },
   ];
 
-  /** Abre el menú con el foco en el ítem `index`, 4 px bajo el botón y alineado a su derecha. */
+  /** Abre el menú con el foco en el ítem `index`; `useMenuPosition` lo coloca bajo el botón o, si no cabe, encima. */
   function openAt(index: number) {
-    const box = trigger.current?.getBoundingClientRect();
-    if (box) setPosition({ top: box.bottom + 4, right: Math.max(0, window.innerWidth - box.right) });
     setActive(index);
     setOpen(true);
   }

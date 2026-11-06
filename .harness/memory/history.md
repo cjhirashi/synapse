@@ -2049,3 +2049,10 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Estado:** `implemented`. Pendiente: (a) verificación visual en navegador real (AIRA), (b) completar confirmaciones (ConfirmDialog), (c) implementar cambio de visibilidad/borrado con API, (d) agregar comando insertLink en editor para documentos, (e) renombrar en línea o diálogo.
 - **Próximo paso:** AIRA revisa, hace merge a feature/sprint-1-auth, ve funcionando en navegador real (table con real pdfs, excels, htmls), verifica confirmaciones y referencias. Cierra sin marcar `verified` (falta checkpoint demostrable en producción con Carlos).
 
+
+## 2026-11-06 — Correcciones de UX: confirmaciones modales y menús ⋮ que no se salen de la ventana (prompt directo, Gate 0)
+- **Qué:** (1) el aviso «¿Mover a la papelera?» de la lista de bóvedas quedaba al final de la página, fuera de vista (medido: 2199 px en ventana de 678 px): parecía que «Borrar» no respondía. `ConfirmDialog` pasó a ser un modal fijo por portal en `document.body` (capa `.modal-backdrop`, foco en la respuesta segura, Esc y clic fuera cancelan, las teclas no suben al árbol/editor): lo heredan el borrado del árbol, Archivos, API keys y los avisos del editor. (2) Los menús ⋮ (`TreeRowMenu`, `NoteMenu`) se abrían siempre hacia abajo y se salían de la ventana en las últimas filas: nuevo `editor/menuPlacement.ts` (debajo si cabe, si no encima, si no al borde; sin salirse por la izquierda; se cierran al hacer scroll o redimensionar).
+- **Archivos:** `editor/ConfirmDialog.tsx`, `editor/menuPlacement.ts(+test)`, `notes/TreeRowMenu.tsx`, `editor/NoteMenu.tsx`, `vaults/VaultListPage.tsx`, `styles/global.css`, pruebas de `VaultListPage` y `ConfirmDelete`.
+- **Docs:** exención declarada: ninguna doc describe estos componentes; el comportamiento queda en los comentarios y pruebas.
+- **Verificación:** suite completa 125 archivos / 2851 tests, 0 fallos; typecheck limpio.
+- **Lección:** todo aviso o menú flotante se revisa en el borde de la ventana (última fila, lista larga) antes de entregarse; la prueba en jsdom no mide geometría, hay que verla en el navegador real.
