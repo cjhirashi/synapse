@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-11-05] Revisión completa de la documentación del proyecto
+- **Qué pasó:** Carlos exigió que la documentación de Synapse y de cjhirashi-career quede al 100 % con el estado actual y que cada cambio la actualice. Medido antes de tocar: `TAREAS.md` y `ARCHIFY.md` llevaban cientos de commits sin editarse (Sprint 2 de octubre), el README raíz y el de frontend, decenas, y `CLAUDE.md` seguía ordenando el método anterior (Fase 1 Specify, `spec.md`, «carril SDD») mientras `AGENTS.md` y `method.md` ya usaban Slice Development.
+- **Hecho:** README raíz (gobierno de agentes, propiedades tipadas, migraciones 001…009, scripts); `backend/README.md` (tabla de entorno con `AGENT_ACCESS_MODE`, `SEED_AG_FOLDERS`, `SYSTEM_DOCS_SYNC`, `BITACORA_DOCS`, `DEFAULT_TIMEZONE`; router `folders.py`); READMEs de `core`, `core/models`, `core/ports`, `routers` y `services` con los módulos que faltaban; nuevo `backend/scripts/README.md`; `frontend/README.md` y `frontend/src/README.md` (e2e de H-030 a H-042, `parseWorkspace.ts`); `CLAUDE.md` y `AGENTS.md` alineados con Slice Development y con el flujo por la bóveda (desde 2026-11-02); `.claude/project.md` reescrito; `.harness/backlog.md` con H-038, H-039, H-040 y H-042; `TAREAS.md` y `ARCHIFY.md` reducidos a lo vigente; retirados `COWORK_HANDOFF.md` y `knowledge/` (documentaban LangGraph y LiteLLM, descartados en el ADR-011).
+- **Comprobado y sin cambios:** `docs/API.md` documenta las rutas reales (comparado con el OpenAPI de producción: 47 operaciones); `docs/API.md` ya describía la purga de `AG - MENSAJES` a 30 días, que aún no existe (se ajustó a lo desplegado en el commit `9380f88`).
+- **Carpeta `diseño/`:** existe solo en el árbol principal y está en `.gitignore`; el agente `experto-ux-ui` la usa como referencia de identidad. No está en los worktrees ni en la bóveda con ese documento (1.1.4.1): pendiente decidir dónde debe vivir.
+- **Gate:** no se ejecutó la suite completa (solo documentación).
+- **Docs actualizadas:** las listadas arriba.
+- **Modelos usados:** AIRA (claude-sonnet-5-5); sin subagentes.
+- **Próximo paso:** H-042 E3 a E5; decidir la ubicación de `diseño/`.
+
 ## [2026-11-05] H-042 (tanda B, en curso): E1 y E2 desplegadas; skill global 1.3.1 al estado real
 
 - **Estado:** E1 (servidor: conversaciones `de → para - asunto - fecha`, solo agentes, cabecera creada por el servidor) y E2 (interfaz de solo lectura para el usuario) en producción desde 2026-11-05 17:20 CDMX (imagen `h042b`; previa `pre-h042b`). **Faltan E3** (purga a 30 días sin mensajes y cierre por baja de gestor; hoy purga a 15 días tras el cierre), **E4** (`GET /agent-inbox`; la acción `inbox` del plugin sigue leyendo `AG - MENSAJES/<id>` y no ve las conversaciones nuevas) y **E5** (skill 1.4.0 con todo lo anterior).
