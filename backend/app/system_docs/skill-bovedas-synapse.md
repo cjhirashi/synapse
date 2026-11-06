@@ -115,14 +115,23 @@ Cada bóveda tiene una sección `AG - SKILLS` con skills: procedimientos que los
 
 Las plantillas son para documentos que se crean **a mano** (hoy, las skills). Los mensajes, el registro de agentes y la bitácora los genera el sistema y no llevan plantilla.
 
-1. **Dónde y cómo se llama.** `PLANTILLAS/plantilla-<nombre>.md`, plana (sin subcarpetas), con el nombre en minúsculas, sin acentos ni espacios. La crean los gestores que tengan `PLANTILLAS` en su registro y el usuario.
+1. **Dónde y cómo se llama.** `PLANTILLAS/plantilla-<nombre>.md`, plana (sin subcarpetas), con el nombre en minúsculas, sin acentos ni espacios (el servidor lo estructura como en las skills, sección 7.1). **Una plantilla vive siempre en `PLANTILLAS/`, aunque se use en otra carpeta**: la carpeta donde se ofrece la declara el metadato `alcance`, no la ubicación de la nota. Una nota «PLANTILLA …» creada junto a los documentos que la usarían es una nota normal: Synapse no la reconoce como plantilla. Dentro de `PLANTILLAS/` solo cabe una plantilla válida (cualquier otra nota da 422 `plantilla:path`). La crean los gestores que tengan `PLANTILLAS` en su registro y el usuario; si no la tienes, pídela por `AG - MENSAJES`.
 2. **Metadatos de la plantilla.** Los cuatro de siempre (`titulo`, `descripcion`, `tags`, `estado`) más su definición:
-   - `alcance`: lista de carpetas donde se ofrece (`["AG - SKILLS"]`), o `["*"]` para toda la bóveda. De 1 a 50, sin repetir.
+   - `alcance` (obligatorio): lista de carpetas donde se ofrece (`["AG - SKILLS"]`, `["3 - Proyectos/Fichas técnicas"]`; cubre también sus subcarpetas), o `["*"]` solo, para toda la bóveda (`*` no se mezcla con otras). De 1 a 50, sin repetir, cada una una ruta de carpeta válida.
    - `atributos`: lista de atributos opcionales extra, cada uno `{"nombre", "tipo", "valor"}`. `nombre` en minúsculas con guion bajo; `tipo` es `texto`, `numero`, `fecha`, `lista` o `booleano`; `valor` es opcional (el de partida) y debe ser del tipo. **No declares los que el sistema ya da** (`titulo`, `descripcion`, `tags`, `estado`, `fecha_creacion`, `fecha_actualizacion`, `plantilla`, `ruta`, `sistema`): si un nombre tuyo significa lo mismo que uno de esos, usa el del sistema y pregunta al usuario antes de crear uno paralelo.
-   - `estilo`: reservado para publicar y exportar a PDF; déjalo `{"publicar": {}, "pdf": {}}`.
+   - `estilo`: reservado para publicar y exportar a PDF; déjalo `{"publicar": {}, "pdf": {}}`. Cualquier otra clave, o con contenido, da 422 `plantilla:estilo`.
+   - Hasta 30 atributos; un `nombre` repetido, con mayúsculas o espacios, de un tipo desconocido o con un `valor` de otro tipo da 422 `plantilla:atributos` (`fecha` es `AAAA-MM-DD`; `lista` es una lista de textos). Cualquier otro metadato (por ejemplo `version`) es libre.
 3. **Cuerpo de la plantilla:** la estructura Markdown de partida del documento, con marcadores `<así>` donde hay que escribir.
 4. **Qué pasa al usarla.** El documento nace con el cuerpo, los atributos con su valor de partida y `plantilla: <nombre sin el prefijo>`. Cambiar la plantilla después no cambia los documentos que ya nacieron de ella. Una plantilla con documentos que la usan no se borra, no se renombra ni se mueve.
-5. **Plantillas de sistema** (`sistema: true`, como `plantilla-skill`): solo lectura para todos, igual que las skills de sistema.
+5. **Receta para crear una plantilla** (cada paso con su comprobación):
+   1. `note_list` con `prefix: "PLANTILLAS"` y `note_get` de una existente (`plantilla-skill` sirve de modelo de forma): copia su estructura de metadatos. Cierre: sabes qué `alcance` y `atributos` necesitas.
+   2. `note_create` con `path: "PLANTILLAS/plantilla-<nombre>.md"` y `frontmatter` como objeto JSON, por ejemplo:
+      `{"titulo": "plantilla-<nombre>", "descripcion": "Al <situación en que se usa>: <qué ofrece>.", "tags": ["plantilla"], "estado": "borrador", "alcance": ["<carpeta>"], "atributos": [{"nombre": "tipo", "tipo": "texto"}], "estilo": {"publicar": {}, "pdf": {}}}`
+      y `content` o `sourceFile` con el cuerpo (sección 3). Cierre: la respuesta trae la ruta final.
+   3. Verifica con `note_get`: están los cuatro metadatos más `alcance`, `atributos` y `estilo`, y el cuerpo no empieza con `---`. Cierre: lo que lees coincide con lo enviado.
+   4. Una plantilla nueva no crea carpeta: `PLANTILLAS` ya tiene su ÍNDICE y no hay que escribirle descripción.
+6. **Usar una plantilla al crear un documento.** La herramienta no tiene una acción que cree el documento desde la plantilla: tú lo armas. `note_get` de la plantilla; crea la nota en una carpeta de su `alcance` con el cuerpo como estructura de partida (reemplazando los marcadores `<así>`), los atributos declarados con su valor de partida o el que corresponda, y `plantilla: "<nombre sin el prefijo>"` entre los metadatos. Si ese nombre no corresponde a una plantilla existente, 422 `plantilla:unknown`.
+7. **Plantillas de sistema** (`sistema: true`, como `plantilla-skill`): solo lectura para todos, igual que las skills de sistema.
 
 ## 7 quater. Otras carpetas reservadas
 
@@ -144,7 +153,10 @@ Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SK
 | 422 `ag-mensajes:immutable` | Intentaste editar, mover o borrar un mensaje, o cambiar de la cabecera algo distinto de `estado`. |
 | 422 `ag-mensajes:not-participant` o `ag-mensajes:from-mismatch` | El `<id>` del nombre del mensaje no es ninguno de los dos participantes, o el `de` de los metadatos no coincide con él. |
 | 422 `ag-mensajes:agents-only` | La sesión humana intentó escribir en el buzón: es solo de agentes. |
-| 422 `plantilla:*` | Una plantilla no cumple la sección 7 ter (ruta, `alcance`, `atributos` o `estilo`). |
+| 422 `plantilla:path` | Intentaste crear en `PLANTILLAS/` algo que no es `plantilla-<nombre>.md` plana (o con subcarpeta): sección 7 ter, punto 1. Una plantilla puesta fuera de `PLANTILLAS/` no da error, pero tampoco es plantilla. |
+| 422 `plantilla:alcance`, `plantilla:atributos` o `plantilla:estilo` | La definición no cumple la sección 7 ter, punto 2 (falta `alcance`, `*` mezclado con carpetas, atributo mal formado, `estilo` con contenido). |
+| 422 `plantilla:unknown` | Un documento declara `plantilla: <nombre>` y esa plantilla no existe en `PLANTILLAS/` (sección 7 ter, punto 6). |
+| 422 `plantilla:in-use` | Intentaste renombrar, mover o borrar una plantilla que ya tiene documentos. |
 | 422 `skill:propietario`, `skill:agentes` o `skill:estado` | Una skill activa necesita `propietario` (lo pone el servidor al crear); `agentes` debe ser una lista de gestores sin repetir y sin el propietario; una `archivado` no lleva propietario ni invitados (sección 7). |
 | 403 `agent-access-denied` en una skill | Solo su propietario edita, mueve o borra una skill, y solo se invita a gestores de la bóveda: pídelo al propietario por `AG - MENSAJES`. |
 | 422 `skill:name` o `skill:path` | El nombre de la skill no tiene letras ni dígitos o es demasiado largo (`skill:name`), o intentaste una subcarpeta en `AG - SKILLS` (`skill:path`): sección 7. |
