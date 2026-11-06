@@ -413,7 +413,6 @@ button:focus-visible {
 }
 
 .modal-backdrop > .confirm-dialog {
-  --tone: var(--accent);
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
   column-gap: var(--space-4);
