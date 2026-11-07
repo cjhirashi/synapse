@@ -20,3 +20,18 @@ backend/test.db
 .coverage
 coverage/
 htmlcov/
+
+# --- Información de infraestructura y credenciales: nunca se versionan ---
+caddy.json
+Caddyfile
+cloudflared/
+*.pem
+*.key
+*.p12
+*.pfx
+.env.*
+!.env.example
+passphrase
+*.dump
+respaldos*/
+.credentials/
