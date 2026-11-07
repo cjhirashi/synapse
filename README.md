@@ -73,3 +73,7 @@ curl http://localhost:8000/health
 Tests y comandos de cada parte: [`backend/README.md`](backend/README.md) y
 [`frontend/README.md`](frontend/README.md); operación: [`backend/scripts/README.md`](backend/scripts/README.md).
 Cómo se trabaja y qué sigue: `AGENTS.md` y `.harness/backlog.md`. Estado a 2026-11-05: en producción.
+
+## Licencia
+
+Este proyecto se distribuye bajo la [PolyForm Noncommercial License 1.0.0](LICENSE): se puede ver, estudiar y usar con fines no comerciales. **No se permite su uso comercial** sin autorización escrita del autor. Copyright 2026 Carlos Jiménez Hirashi.
