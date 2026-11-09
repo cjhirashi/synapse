@@ -195,36 +195,6 @@
   color: var(--success-text);
 }
 
-.files-actions {
-  display: inline-flex;
-  gap: var(--space-1);
-  justify-content: flex-end;
-}
-
-.files-actions button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md, 6px);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.files-actions button:hover {
-  border-color: var(--border);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.files-actions .files-danger:hover {
-  color: var(--danger-text);
-}
-
 @media (max-width: 900px) {
   .files-layout {
     grid-template-columns: minmax(0, 1fr);

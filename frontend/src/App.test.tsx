@@ -106,8 +106,7 @@ test("RF-019: una bóveda creada en el formulario se lista y se edita desde la r
   const user = renderAt("/vaults/new", env);
   await user.type(await screen.findByLabelText("Nombre"), "Notas");
   await user.click(screen.getByRole("button", { name: "Crear bóveda" }));
-  const item = await screen.findByRole("listitem", { name: "Notas" });
-  await user.click(within(item).getByRole("link", { name: "Editar" }));
+  await user.click(await screen.findByRole("link", { name: "Editar Notas" }));
   expect(await screen.findByRole("heading", { name: "Editar bóveda" })).toBeInTheDocument();
   expect(screen.getByLabelText("Nombre")).toHaveValue("Notas");
 });

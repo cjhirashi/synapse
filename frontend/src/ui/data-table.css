@@ -158,3 +158,35 @@
     flex-wrap: wrap;
   }
 }
+
+.data-table-icons {
+  display: inline-flex;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.data-table-icons button,
+.data-table-icons a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.data-table-icons button:hover,
+.data-table-icons a:hover {
+  border-color: var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.data-table-icons .data-table-danger:hover {
+  color: var(--danger-text);
+}

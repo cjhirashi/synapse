@@ -552,7 +552,7 @@ export default function FilesPage() {
 
   function rowActions(file: Row) {
     return (
-      <span className="files-actions">
+      <span className="data-table-icons">
         <button type="button" aria-label={`Abrir ${file.name}`} title="Abrir" onClick={() => handleOpen(file)}>
           <ExternalLink size={14} aria-hidden="true" />
         </button>
@@ -580,7 +580,7 @@ export default function FilesPage() {
         </button>
         <button
           type="button"
-          className="files-danger"
+          className="data-table-danger"
           aria-label={`Borrar ${file.name}`}
           title="Borrar"
           onClick={() => void handleDeleteClick(file)}

@@ -72,7 +72,7 @@ test.each(HOSTILE)("lista de bóvedas: «%s» no llega a ningún href, src ni st
       </MemoryRouter>
     </WithSync>,
   );
-  await screen.findByRole("listitem", { name: "Notas" });
+  await screen.findByRole("link", { name: "Notas" });
   expectHarmless(
     dangerousAttributes(container).filter((a) => !a.startsWith("href=/vaults/")),
     raw,

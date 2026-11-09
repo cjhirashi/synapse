@@ -1,5 +1,14 @@
 # History — Synapse
 
+## [2026-11-09] H-047: la lista de bóvedas usa la tabla compartida (desplegada)
+
+- **Pedido de Carlos (2026-11-09 17:52 UTC):** que la lista de bóvedas tenga el mismo diseño de tabla que Archivos (continuación de H-046). Cambio directo, solo frontend.
+- **Qué cambió:** `vaults/VaultListPage.tsx` pinta las bóvedas con `ui/DataTable` (columnas Nombre con chip y enlace a la bóveda, Descripción, Etiquetas como chips, Actualizada; Nombre y Actualizada ordenan; acciones con iconos Abrir, Editar y Borrar). Se conserva el orden de más nueva a más antigua, «Cargar más», la confirmación de borrado y los avisos. Los estilos de los iconos de acción pasaron de `files.css` a `ui/data-table.css` (`.data-table-icons`). Página ensanchada a 1100 px.
+- **Verificación:** vitest completo en verde (2915 pruebas; las de la lista se reescribieron para filas y se añadió una de ordenación), `tsc` limpio. Chromium real contra una pila local aislada: tabla a 1280 px y sin desbordamiento horizontal a 390 px.
+- **Despliegue:** 2026-11-09 ~18:00 UTC; solo cambia el frontend, sin migraciones. Imagen previa `synapse-backend:pre-h047`.
+- **Docs:** `frontend/src/README.md`.
+- **Modelos:** claude-sonnet-5-5 (yo), sin subagentes.
+
 ## [2026-11-09] H-046: carpetas y subcarpetas en el servidor de archivos, tabla estilo cjhirashi-career y árbol lateral (desplegada)
 
 - **Pedido de Carlos (2026-11-09 17:03 UTC):** poder crear carpetas y subcarpetas para ordenar los archivos y cambiar en cualquier momento lo ya contenido de carpeta, como con las notas de la bóveda; mostrar los archivos en una tabla con el formato de las tablas de cjhirashi-career (la lista anterior le parecía mala) y las carpetas como el árbol de las bóvedas, en una barra lateral. Cambio directo, sin spec.
