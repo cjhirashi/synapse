@@ -1,5 +1,14 @@
 # History — Synapse
 
+## [2026-11-09] H-048: Archivos con la misma barra lateral que las notas y tablas con desplazamiento horizontal (desplegada)
+
+- **Pedido de Carlos (2026-11-09 17:57 UTC):** la barra de carpetas de Archivos debe replicar toda la estructura y el comportamiento de la de las notas (en móvil, a un costado y flotante, ocultable) y las tablas no deben ajustarse al ancho de pantalla con columnas angostas: deben desplazarse en horizontal. Corrige lo entregado en H-046 y H-047. Cambio directo, solo frontend.
+- **Qué cambió:** `FilesPage` usa la estructura `.vault-workspace` de las notas (barra fija a la izquierda a todo el alto, ancho ajustable en escritorio con el asa compartida, botón de ocultar; en ≤ 640 px flota sobre el panel, se cierra al tocar fuera, con Escape o al elegir una carpeta sin subcarpetas). El selector de bóveda y «Nueva carpeta» van en el bloque `.note-sidebar-new` y el árbol en `.note-tree-panel`, igual que en las notas. `ui/DataTable`: la tabla toma el ancho de sus columnas (`width: max-content`), con anchos mínimos por clase (`size`) y texto cortado con «…» (`clip`); se retiró el modo tarjeta de móvil; la primera columna y las acciones quedan fijas al desplazar (se sueltan en ≤ 700 px). Aplica también a la lista de bóvedas, que ya no se limita a 880 px.
+- **Verificación:** vitest completo en verde (2917), `tsc` limpio, 2 pruebas nuevas (ocultar/mostrar la barra; tabla sin estilos en línea, que la prueba de seguridad de íconos prohíbe). Chromium real contra una pila local aislada: a 1280 px la tabla de archivos mide 1317 px dentro de un contenedor de 950 y se desplaza; a 390 px la barra queda cerrada, se abre flotando, permanece abierta al tocar una carpeta con hijos y se cierra al tocar fuera o al elegir una hoja; sin desbordamiento del documento. No probé el arrastre con pantalla táctil real.
+- **Despliegue:** 2026-11-09 ~18:20 UTC; solo frontend. Imagen previa `synapse-backend:pre-h048`.
+- **Docs:** `frontend/src/README.md`.
+- **Modelos:** claude-sonnet-5-5 (yo), sin subagentes.
+
 ## [2026-11-09] H-047: la lista de bóvedas usa la tabla compartida (desplegada)
 
 - **Pedido de Carlos (2026-11-09 17:52 UTC):** que la lista de bóvedas tenga el mismo diseño de tabla que Archivos (continuación de H-046). Cambio directo, solo frontend.

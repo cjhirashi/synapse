@@ -120,12 +120,14 @@
 
 /* El espacio de trabajo de una bóveda (SPEC-0008) usa todo el alto y el ancho: sidebar + editor, cada
    uno con su scroll. */
-.app-main:has(.vault-workspace) {
+.app-main:has(.vault-workspace),
+.app-main:has(.files-workspace) {
   padding: 0;
   overflow: hidden;
 }
 
-.app-main:has(.vault-workspace) > * {
+.app-main:has(.vault-workspace) > *,
+.app-main:has(.files-workspace) > * {
   max-width: none;
   margin-inline: 0;
 }

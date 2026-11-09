@@ -41,7 +41,7 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
 | `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
-| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): árbol de carpetas con subniveles en la barra lateral (`FileFolderTree.tsx`, arrastrar para mover), tabla con `ui/DataTable.tsx` (mismo diseño que las tablas de cjhirashi-career), subir a la carpeta abierta, mover, renombrar, visibilidad, borrar (H-046) |
+| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): barra lateral con la misma estructura que la de las notas (`.vault-workspace`: fija a la izquierda, ancho ajustable en escritorio, flotante y ocultable en móvil) con el árbol de carpetas (`FileFolderTree.tsx`, arrastrar para mover), y tabla con `ui/DataTable.tsx` (diseño de las tablas de cjhirashi-career: columnas a su ancho con desplazamiento horizontal, nombre y acciones fijos), subir a la carpeta abierta, mover, renombrar, visibilidad, borrar (H-046) |
 | `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente (con agente y administrador, H-030) |
 | `/settings/agent-access` | `settings/AgentAccessPage.tsx` — H-030: qué agente escribe en qué carpetas de cada bóveda (registro `AG - AGENTES`), con el nombre de su clave |
 | `/settings/password` | `settings/ChangePasswordPage.tsx` — cambiar contraseña |

@@ -12,10 +12,10 @@ import { useVaultPages } from "./useVaultPages";
 const DATE_FORMAT = new Intl.DateTimeFormat("es", { dateStyle: "short", timeStyle: "short" });
 
 const COLUMNS: DataColumn<Vault>[] = [
-  { key: "name", label: "Nombre", key_column: true, sortValue: (v) => v.name },
-  { key: "description", label: "Descripción" },
-  { key: "tags", label: "Etiquetas" },
-  { key: "updated", label: "Actualizada", sortValue: (v) => v.updated_at },
+  { key: "name", label: "Nombre", key_column: true, size: "xl", sortValue: (v) => v.name },
+  { key: "description", label: "Descripción", size: "xxl", clip: true },
+  { key: "tags", label: "Etiquetas", size: "lg" },
+  { key: "updated", label: "Actualizada", size: "lg", sortValue: (v) => v.updated_at },
 ];
 
 type Notice = { kind: "status" | "alert"; text: string } | null;
@@ -84,7 +84,7 @@ export default function VaultListPage() {
                 </span>
               );
             }
-            if (column.key === "description") return vault.description ?? "";
+            if (column.key === "description") return vault.description ? <span title={vault.description}>{vault.description}</span> : null;
             if (column.key === "tags") {
               return vault.tags.length > 0 ? (
                 <ul className="chip-list" aria-label="Etiquetas">

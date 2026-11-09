@@ -7,11 +7,35 @@
   background: var(--bg-secondary);
 }
 
+/* La tabla toma el ancho que piden sus columnas (nunca las aprieta para caber): si no cabe en pantalla, el
+   contenedor se desplaza en horizontal. Es el comportamiento de las tablas de cjhirashi-career. */
 .data-table {
-  width: 100%;
-  min-width: 640px;
-  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
+}
+
+.data-table th,
+.data-table td {
+  white-space: nowrap;
+}
+
+.data-table .data-table-sm { min-width: 90px; }
+.data-table .data-table-md { min-width: 130px; }
+.data-table .data-table-lg { min-width: 160px; }
+.data-table .data-table-xl { min-width: 220px; }
+.data-table .data-table-xxl { min-width: 280px; }
+
+.data-table td.data-table-clip {
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-table .chip-list {
+  flex-wrap: nowrap;
 }
 
 .data-table thead th {
@@ -54,22 +78,51 @@
   cursor: grab;
 }
 
+/* Primera columna fija al desplazar en horizontal; el fondo es opaco para que no se transparente lo de debajo. */
+.data-table .data-table-key {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  box-shadow: 1px 0 0 var(--border);
+}
+
+.data-table thead th.data-table-key {
+  z-index: 3;
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg-tertiary);
+}
+
 .data-table td.data-table-key {
   font-weight: 600;
-  background: var(--accent-soft);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg-secondary);
 }
 
 .data-table tbody tr:hover td.data-table-key {
-  background: var(--accent-soft);
+  background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--bg-tertiary);
 }
 
 .data-table .data-table-right {
   text-align: right;
 }
 
+/* Las acciones quedan fijas a la derecha: siempre a la vista aunque la tabla se desplace. */
 .data-table-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
   white-space: nowrap;
   text-align: right;
+  background: var(--bg-secondary);
+  box-shadow: -1px 0 0 var(--border);
+}
+
+.data-table thead th.data-table-actions {
+  z-index: 3;
+  background: var(--bg-tertiary);
+  box-shadow: -1px 0 0 var(--border), 0 1px 0 var(--border);
+}
+
+.data-table tbody tr:hover td.data-table-actions {
+  background: var(--bg-tertiary);
 }
 
 .data-table-sort {
@@ -111,51 +164,12 @@
   white-space: nowrap;
 }
 
-/* Celular: cada fila pasa a tarjeta con la etiqueta de cada dato. */
+/* En pantallas angostas las columnas fijas se comerían la tabla: se sueltan y todo se desplaza junto. */
 @media (max-width: 700px) {
-  .data-table {
-    min-width: 0;
-  }
-
-  .data-table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-  }
-
-  .data-table tbody tr {
-    display: block;
-    border-bottom: 1px solid var(--border);
-    padding: var(--space-2) 0;
-  }
-
-  .data-table tbody td {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-3);
-    border: 0;
-    padding: var(--space-1) var(--space-4);
-    text-align: right;
-  }
-
-  .data-table tbody td[data-label]::before {
-    content: attr(data-label);
-    color: var(--text-secondary);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    text-align: left;
-  }
-
-  .data-table td.data-table-key {
-    background: var(--accent-soft);
-  }
-
-  .data-table-actions {
-    justify-content: flex-end;
-    flex-wrap: wrap;
+  .data-table .data-table-key,
+  .data-table .data-table-actions {
+    position: static;
+    box-shadow: none;
   }
 }
 

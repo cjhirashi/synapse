@@ -37,6 +37,13 @@
   min-width: 220px;
 }
 
+@media (max-width: 640px) {
+  .files-toolbar input[type="search"] {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+}
+
 .files-empty {
   color: var(--text-secondary);
   padding: var(--space-6);
@@ -45,55 +52,8 @@
   text-align: center;
 }
 
-/* H-046: dos columnas. Izquierda, bóveda y árbol de carpetas; derecha, la tabla de la carpeta abierta. */
-/* Árbol + tabla necesitan más que los 880 px de las demás páginas. */
-.app-main > .files-page {
-  max-width: 1320px;
-}
-
-.files-layout {
-  display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  gap: var(--space-4);
-  align-items: start;
-}
-
-.files-side {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  background: var(--bg-secondary);
-  overflow: hidden;
-}
-
-.files-side-head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-3);
-}
-
-.files-side-head label {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.files-side-head select,
-.files-side-form input {
-  width: 100%;
-}
-
-.files-side-new {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: 12px;
-}
-
+/* H-046: misma estructura que el espacio de trabajo de una bóveda (`.vault-workspace` en notes.css): barra
+   lateral a la izquierda y panel a la derecha, a todo el alto; en móvil la barra flota a un costado y se oculta. */
 .files-side-form {
   display: flex;
   flex-direction: column;
@@ -117,9 +77,13 @@
   font-size: 12px;
 }
 
-.files-tree-panel {
-  max-height: 60vh;
-  overflow: auto;
+.files-workspace .note-sidebar-new label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.files-workspace .note-sidebar-new select {
+  width: 100%;
 }
 
 .files-tree-panel .note-tree-row[data-drop-target="true"] {
@@ -127,15 +91,60 @@
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+/* Panel derecho: barra de herramientas fija arriba y la tabla debajo, que se desplaza sola en horizontal. */
 .files-main {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  min-width: 0;
+  overflow: hidden;
 }
 
 .files-main > .files-toolbar {
-  margin-bottom: 0;
+  flex-shrink: 0;
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.files-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  padding: var(--space-4);
+}
+
+.files-body > p {
+  margin: 0;
+}
+
+.files-body .data-table-scroll {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 100%;
+}
+
+.vault-sidebar-toggle--inline {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.vault-sidebar-toggle--inline:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.vault-sidebar-toggle--inline:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .files-crumbs {
@@ -166,10 +175,16 @@
 }
 
 .files-name {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2);
-  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.files-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .files-type-icon {
@@ -193,14 +208,4 @@
 .files-visibility--public {
   border-color: var(--success);
   color: var(--success-text);
-}
-
-@media (max-width: 900px) {
-  .files-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .files-tree-panel {
-    max-height: 30vh;
-  }
 }

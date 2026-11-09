@@ -628,6 +628,24 @@ describe("FilesPage con carpetas (H-046)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("still contains files");
   });
 
+  it("la barra de carpetas se oculta y se vuelve a mostrar con su botón, como la de las notas", async () => {
+    renderPage(["Docs"]);
+    const side = (await treeBtn("Raíz")).closest(".vault-workspace-side") as HTMLElement;
+    expect(side).toHaveAttribute("data-open");
+    await userEvent.click(screen.getByRole("button", { name: "Ocultar la barra de carpetas" }));
+    expect(side).not.toHaveAttribute("data-open");
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar la barra de carpetas" }));
+    expect(side).toHaveAttribute("data-open");
+  });
+
+  it("la tabla se desplaza en horizontal en vez de estrechar sus columnas (sin estilos en línea)", async () => {
+    renderPage([]);
+    await screen.findByText("documento.pdf");
+    const table = screen.getByRole("table", { name: "Archivos" });
+    expect(table.parentElement).toHaveClass("data-table-scroll");
+    expect(table.querySelector("[style]")).toBeNull();
+  });
+
   it("la tabla ordena al pulsar un encabezado", async () => {
     renderPage([]);
     await screen.findByText("documento.pdf");

@@ -19,6 +19,7 @@
 > indexa; el detalle está en el documento de cada slice.
 
 - [ ] H-043 — Historial de versiones de las notas (copia del texto por edición con tope de K versiones o D días, ver y restaurar; se captura donde hoy se escribe la BITACORA): **en análisis, ronda 1 con preguntas P1 a P8 para Carlos (2026-11-06)**. Detalle en su nota de la bóveda.
+- [x] H-048 — Archivos con la barra lateral de las notas (fija / flotante ocultable en móvil) y tablas con scroll horizontal, nombre y acciones fijos — **desplegada 2026-11-09** (imagen previa `pre-h048`): solo frontend; corrige H-046/H-047.
 - [x] H-047 — La lista de bóvedas usa `DataTable` (mismo diseño que Archivos) — **desplegada 2026-11-09** (imagen previa `pre-h047`): solo frontend.
 - [x] H-046 — Carpetas y subcarpetas para los archivos, mover archivos y carpetas, tabla estilo cjhirashi-career y árbol lateral — **desplegada 2026-11-09** (imagen previa `pre-h046`, migración 010): `folder` anidado con `/`, tabla `file_folders` para carpetas vacías, rutas `/vaults/{id}/file-folders`, `PATCH /files/{id}` mueve, arrastrar y soltar; skill global 1.3.6.
 - [x] H-045 — Visibilidad de un archivo elegida al subir; después solo la persona la cambia — **desplegada 2026-11-09** (imagen previa `pre-h045`): `POST /files` acepta `visibility` (`private` por defecto o `public`) para cualquier solicitante y `PATCH /files/{id}` con `visibility` por API key da 403 `file-visibility-user-only`; 7 pruebas nuevas, suite completa en verde, skill global 1.3.5. Falta aplicar el parche al plugin `synapse_vault` (fuera del repo).

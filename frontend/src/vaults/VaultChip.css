@@ -54,9 +54,10 @@
   color: var(--accent);
 }
 
-/* La tabla necesita más ancho que los 880 px de las demás páginas. */
+/* La tabla pide el ancho de sus columnas y se desplaza si no cabe: la página no se limita a 880 px. */
 .app-main > .vault-list-page {
-  max-width: 1100px;
+  max-width: none;
+  margin-inline: 0;
 }
 
 .vault-list-page .chip-list {

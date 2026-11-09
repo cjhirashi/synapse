@@ -15,6 +15,10 @@ export interface DataColumn<Row> {
   /** Primera columna: se destaca (como la columna id de career). */
   key_column?: boolean;
   align?: "right";
+  /** Ancho mínimo (clases en data-table.css, no `style`): sm 90, md 130, lg 160, xl 220, xxl 280 px. La tabla se desplaza antes que estrecharla. */
+  size?: "sm" | "md" | "lg" | "xl" | "xxl";
+  /** El texto que pase de 440 px se corta con «…»; ponle `title` al contenido si debe poder leerse completo. */
+  clip?: boolean;
 }
 
 export interface DataTableProps<Row> {
@@ -58,6 +62,11 @@ export function DataTable<Row>({
 
   if (rows.length === 0) return <p className="data-table-empty">{emptyMessage}</p>;
 
+  const colClass = (c: DataColumn<Row>) =>
+    [c.key_column ? "data-table-key" : "", c.align === "right" ? "data-table-right" : "", c.size ? `data-table-${c.size}` : "", c.clip ? "data-table-clip" : ""]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
   return (
     <div className="data-table-scroll">
       <table className="data-table" aria-label={label}>
@@ -67,7 +76,7 @@ export function DataTable<Row>({
               <th
                 key={c.key}
                 scope="col"
-                className={[c.key_column ? "data-table-key" : "", c.align === "right" ? "data-table-right" : ""].join(" ").trim() || undefined}
+                className={colClass(c)}
                 aria-sort={sort?.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
               >
                 {c.sortValue ? (
@@ -84,7 +93,7 @@ export function DataTable<Row>({
                 )}
               </th>
             ))}
-            {rowActions && <th scope="col" className="data-table-right"><span className="data-table-sr">{actionsLabel}</span></th>}
+            {rowActions && <th scope="col" className="data-table-right data-table-actions"><span className="data-table-sr">{actionsLabel}</span></th>}
           </tr>
         </thead>
         <tbody>
@@ -97,8 +106,7 @@ export function DataTable<Row>({
               {columns.map((c) => (
                 <td
                   key={c.key}
-                  data-label={c.label}
-                  className={[c.key_column ? "data-table-key" : "", c.align === "right" ? "data-table-right" : ""].join(" ").trim() || undefined}
+                  className={colClass(c)}
                 >
                   {renderCell(row, c)}
                 </td>

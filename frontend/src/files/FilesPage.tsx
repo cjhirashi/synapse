@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback, type DragEvent } from "react";
+import { useState, useEffect, useCallback, useId, useRef, type CSSProperties, type DragEvent } from "react";
+import { useMediaQuery } from "../layout/useMediaQuery";
+import SidebarResizeHandle from "../notes/SidebarResizeHandle";
+import { useSidebarWidth } from "../notes/useSidebarWidth";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import {
@@ -39,7 +42,10 @@ import {
   FileSpreadsheet,
   FileText,
   FolderInput,
+  FolderOpen,
   FolderPlus,
+  PanelLeft,
+  PanelLeftClose,
   Globe,
   Link2,
   Lock,
@@ -160,6 +166,35 @@ export default function FilesPage() {
 
   // Carpetas
   const [newFolderOpen, setNewFolderOpen] = useState(false);
+
+  // Misma barra lateral que la de las notas de una bóveda: fija a la izquierda (> 640 px, ancho ajustable en
+  // escritorio) y, en móvil, ventana flotante a un costado que se oculta con el botón, al tocar fuera o con Escape.
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const { width: sidebarWidth, setWidth: setSidebarWidth, reset: resetSidebarWidth } = useSidebarWidth();
+  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
+  const sideId = useId();
+  const sideRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setSidebarOpen(!isMobile);
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!isMobile || !sidebarOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [isMobile, sidebarOpen]);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderError, setNewFolderError] = useState<string | null>(null);
   const [folderRename, setFolderRename] = useState<{ path: string; name: string } | null>(null);
@@ -506,12 +541,12 @@ export default function FilesPage() {
   );
 
   const columns: DataColumn<Row>[] = [
-    { key: "name", label: "Nombre", key_column: true, sortValue: (f) => f.name },
-    { key: "type", label: "Tipo", sortValue: (f) => getFileTypeName(f.content_type) },
-    { key: "size", label: "Tamaño", sortValue: (f) => f.size },
-    { key: "date", label: "Fecha", sortValue: (f) => parseUtc(f.created_at).getTime() },
-    { key: "visibility", label: "Visibilidad", sortValue: (f) => f.visibility },
-    { key: "refs", label: "Usado en", sortValue: (f) => f.references_count },
+    { key: "name", label: "Nombre", key_column: true, size: "xxl", clip: true, sortValue: (f) => f.name },
+    { key: "type", label: "Tipo", size: "md", sortValue: (f) => getFileTypeName(f.content_type) },
+    { key: "size", label: "Tamaño", size: "sm", sortValue: (f) => f.size },
+    { key: "date", label: "Fecha", size: "lg", sortValue: (f) => parseUtc(f.created_at).getTime() },
+    { key: "visibility", label: "Visibilidad", size: "md", sortValue: (f) => f.visibility },
+    { key: "refs", label: "Usado en", size: "sm", sortValue: (f) => f.references_count },
   ];
 
   function renderCell(file: Row, column: DataColumn<Row>) {
@@ -520,7 +555,7 @@ export default function FilesPage() {
         return (
           <span className="files-name">
             <TypeIcon contentType={file.content_type} />
-            {file.name}
+            <span className="files-name-text" title={file.name}>{file.name}</span>
           </span>
         );
       case "type":
@@ -593,9 +628,18 @@ export default function FilesPage() {
 
   const crumbs = selectedFolder ? selectedFolder.split("/") : [];
 
+  const toggleLabel = sidebarOpen ? "Ocultar la barra de carpetas" : "Mostrar la barra de carpetas";
+
+  function selectFolder(path: string) {
+    setSelectedFolder(path);
+    // En móvil la barra flota sobre la tabla: se oculta al elegir una carpeta sin subcarpetas (si las tiene,
+    // se queda abierta para poder seguir bajando).
+    if (isMobile && !folders.some((f) => f.startsWith(`${path}/`))) setSidebarOpen(false);
+  }
+
   return (
     <section
-      className={`files-page${dragging ? " files-page--dragging" : ""}`}
+      className={`vault-workspace files-workspace${dragging ? " files-page--dragging" : ""}`}
       onDragOver={(e) => {
         if (e.dataTransfer?.types?.includes("Files")) {
           e.preventDefault();
@@ -607,167 +651,178 @@ export default function FilesPage() {
       }}
       onDrop={handleDrop}
     >
-      <header className="page-header">
-        <h1>Archivos</h1>
-      </header>
-      {notice && <p role={notice.kind}>{notice.text}</p>}
-
-      {allVaults.length > 0 && (
-        <div className="files-layout">
-          <aside className="files-side" aria-label="Carpetas">
-            <div className="files-side-head">
-              <label htmlFor="vault-selector">Bóveda</label>
-              <select
-                id="vault-selector"
-                value={selectedVaultId || ""}
-                onChange={(e) => setSelectedVaultId(e.target.value)}
-              >
-                {allVaults.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="files-side-new"
-                aria-expanded={newFolderOpen}
-                onClick={() => {
-                  setNewFolderOpen((open) => !open);
-                  setNewFolderError(null);
-                }}
-              >
-                <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
-              </button>
-              {newFolderOpen && (
-                <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
-                  <label htmlFor="new-folder-name">
-                    Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
-                  </label>
-                  <input
-                    id="new-folder-name"
-                    autoFocus
-                    type="text"
-                    value={newFolderName}
-                    onChange={(e) => {
-                      setNewFolderName(e.target.value);
-                      setNewFolderError(null);
-                    }}
-                    aria-invalid={newFolderError ? true : undefined}
-                    aria-describedby={newFolderError ? "new-folder-error" : undefined}
-                  />
-                  {newFolderError && (
-                    <p id="new-folder-error" role="alert" className="files-side-error">
-                      {newFolderError}
-                    </p>
-                  )}
-                  <div className="files-side-actions">
-                    <button type="button" onClick={() => setNewFolderOpen(false)}>
-                      Cancelar
-                    </button>
-                    <button type="submit" className="btn-primary">
-                      Crear
-                    </button>
-                  </div>
-                </form>
-              )}
-            </div>
-            <FileFolderTree
-              folders={folders}
-              selected={selectedFolder}
-              onSelect={setSelectedFolder}
-              onDropFile={(fileId, destination) => void moveFileTo(fileId, destination)}
-              onDropFolder={(path, destination) => void moveFolderTo(path, destination)}
-              onRename={(path) => {
-                setFolderRename({ path, name: baseName(path) });
-                setFolderRenameError(null);
+      <div
+        className="vault-workspace-side"
+        ref={sideRef}
+        id={sideId}
+        data-open={sidebarOpen ? "" : undefined}
+        data-floating={isMobile ? "" : undefined}
+        style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
+      >
+        <header className="vault-workspace-header">
+          <FolderOpen size={14} aria-hidden="true" />
+          <h1>Archivos</h1>
+        </header>
+        <aside className="note-sidebar" aria-label="Carpetas">
+          <div className="note-sidebar-new">
+            <label htmlFor="vault-selector">Bóveda</label>
+            <select
+              id="vault-selector"
+              value={selectedVaultId || ""}
+              onChange={(e) => setSelectedVaultId(e.target.value)}
+            >
+              {allVaults.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="note-sidebar-secondary"
+              aria-expanded={newFolderOpen}
+              onClick={() => {
+                setNewFolderOpen((open) => !open);
+                setNewFolderError(null);
               }}
-              onDelete={setFolderDelete}
-            />
-          </aside>
-
-          <div className="files-main">
-            <div className="files-toolbar">
-              <nav className="files-crumbs" aria-label="Ruta de la carpeta">
-                <button type="button" onClick={() => setSelectedFolder("")} aria-current={selectedFolder === "" ? "page" : undefined}>
-                  Raíz
-                </button>
-                {crumbs.map((name, i) => {
-                  const path = crumbs.slice(0, i + 1).join("/");
-                  return (
-                    <span key={path}>
-                      <span aria-hidden="true"> / </span>
-                      <button type="button" onClick={() => setSelectedFolder(path)} aria-current={path === selectedFolder ? "page" : undefined}>
-                        {name}
-                      </button>
-                    </span>
-                  );
-                })}
-              </nav>
-              <button
-                type="button"
-                className="btn-primary files-upload"
-                onClick={() => {
-                  const input =
-                    document.querySelector<HTMLInputElement>("#file-upload-input");
-                  input?.click();
-                }}
-              >
-                Subir archivo
-              </button>
-              <input
-                id="file-upload-input"
-                type="file"
-                multiple
-                hidden
-                onChange={(e) => void handleUpload(e)}
-              />
-            </div>
-
-            {status === "loading" && <p>Cargando…</p>}
-            {status === "error" && (
-              <div role="alert">No se pudo cargar la lista.</div>
-            )}
-            {status === "ready" && files.length === 0 && (
-              <p className="files-empty">
-                {selectedFolder
-                  ? "Esta carpeta no tiene archivos. Súbelos con el botón o arrástralos aquí, o muévelos desde otra carpeta."
-                  : "Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí."}
-              </p>
-            )}
-
-            {status === "ready" && filesWithReferences.length > 0 && (
-              <>
-                <div className="files-toolbar">
-                  <label htmlFor="search-files">Buscar</label>
-                  <input
-                    id="search-files"
-                    type="search"
-                    placeholder="Nombre del archivo…"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-
-                <DataTable
-                  label="Archivos"
-                  columns={columns}
-                  rows={visibleRows}
-                  getRowKey={(f) => f.id}
-                  renderCell={renderCell}
-                  rowActions={rowActions}
-                  initialSort={{ key: "date", dir: "desc" }}
-                  emptyMessage="Ningún archivo coincide con la búsqueda."
-                  onRowDragStart={(event: DragEvent<HTMLTableRowElement>, file) => {
-                    event.dataTransfer.setData(DRAG_FILE, file.id);
-                    event.dataTransfer.effectAllowed = "move";
+            >
+              <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
+            </button>
+            {newFolderOpen && (
+              <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
+                <label htmlFor="new-folder-name">
+                  Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
+                </label>
+                <input
+                  id="new-folder-name"
+                  autoFocus
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => {
+                    setNewFolderName(e.target.value);
+                    setNewFolderError(null);
                   }}
+                  aria-invalid={newFolderError ? true : undefined}
+                  aria-describedby={newFolderError ? "new-folder-error" : undefined}
                 />
-              </>
+                {newFolderError && (
+                  <p id="new-folder-error" role="alert" className="files-side-error">
+                    {newFolderError}
+                  </p>
+                )}
+                <div className="files-side-actions">
+                  <button type="button" onClick={() => setNewFolderOpen(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-primary">
+                    Crear
+                  </button>
+                </div>
+              </form>
             )}
           </div>
+          <FileFolderTree
+            folders={folders}
+            selected={selectedFolder}
+            onSelect={selectFolder}
+            onDropFile={(fileId, destination) => void moveFileTo(fileId, destination)}
+            onDropFolder={(path, destination) => void moveFolderTo(path, destination)}
+            onRename={(path) => {
+              setFolderRename({ path, name: baseName(path) });
+              setFolderRenameError(null);
+            }}
+            onDelete={setFolderDelete}
+          />
+        </aside>
+        {isDesktop && sidebarOpen && (
+          <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
+        )}
+      </div>
+
+      <div className="vault-workspace-main files-main">
+        <div className="files-toolbar">
+          <button
+            type="button"
+            className="vault-sidebar-toggle vault-sidebar-toggle--inline"
+            aria-expanded={sidebarOpen}
+            aria-controls={sideId}
+            aria-label={toggleLabel}
+            title={toggleLabel}
+            onClick={() => setSidebarOpen((v) => !v)}
+          >
+            {sidebarOpen ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
+          </button>
+          <nav className="files-crumbs" aria-label="Ruta de la carpeta">
+            <button type="button" onClick={() => setSelectedFolder("")} aria-current={selectedFolder === "" ? "page" : undefined}>
+              Raíz
+            </button>
+            {crumbs.map((name, i) => {
+              const path = crumbs.slice(0, i + 1).join("/");
+              return (
+                <span key={path}>
+                  <span aria-hidden="true"> / </span>
+                  <button type="button" onClick={() => setSelectedFolder(path)} aria-current={path === selectedFolder ? "page" : undefined}>
+                    {name}
+                  </button>
+                </span>
+              );
+            })}
+          </nav>
+          {status === "ready" && filesWithReferences.length > 0 && (
+            <>
+              <label htmlFor="search-files" className="data-table-sr">Buscar</label>
+              <input
+                id="search-files"
+                type="search"
+                placeholder="Nombre del archivo…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </>
+          )}
+          <button
+            type="button"
+            className="btn-primary files-upload"
+            onClick={() => {
+              const input = document.querySelector<HTMLInputElement>("#file-upload-input");
+              input?.click();
+            }}
+          >
+            Subir archivo
+          </button>
+          <input id="file-upload-input" type="file" multiple hidden onChange={(e) => void handleUpload(e)} />
         </div>
-      )}
+
+        <div className="files-body">
+          {notice && <p role={notice.kind}>{notice.text}</p>}
+          {allVaults.length === 0 && <p className="files-empty">Aún no tienes bóvedas.</p>}
+          {status === "loading" && <p>Cargando…</p>}
+          {status === "error" && <div role="alert">No se pudo cargar la lista.</div>}
+          {status === "ready" && files.length === 0 && (
+            <p className="files-empty">
+              {selectedFolder
+                ? "Esta carpeta no tiene archivos. Súbelos con el botón o arrástralos aquí, o muévelos desde otra carpeta."
+                : "Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí."}
+            </p>
+          )}
+          {status === "ready" && filesWithReferences.length > 0 && (
+            <DataTable
+              label="Archivos"
+              columns={columns}
+              rows={visibleRows}
+              getRowKey={(f) => f.id}
+              renderCell={renderCell}
+              rowActions={rowActions}
+              initialSort={{ key: "date", dir: "desc" }}
+              emptyMessage="Ningún archivo coincide con la búsqueda."
+              onRowDragStart={(event: DragEvent<HTMLTableRowElement>, file) => {
+                event.dataTransfer.setData(DRAG_FILE, file.id);
+                event.dataTransfer.effectAllowed = "move";
+              }}
+            />
+          )}
+        </div>
+      </div>
 
       {/* Rename Dialog */}
       {renameDialog && (
