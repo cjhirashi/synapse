@@ -10,6 +10,7 @@ from app.routers.admin import router as admin_router
 from app.routers.agent_access import router as agent_access_router
 from app.routers.agent_keys import router as agent_keys_router
 from app.routers.auth import router as auth_router
+from app.routers.file_folders import router as file_folders_router
 from app.routers.files import router as files_router
 from app.routers.folders import router as folders_router
 from app.routers.notes import router as notes_router
@@ -42,6 +43,7 @@ app.include_router(agent_access_router)
 app.include_router(notes_router)
 app.include_router(folders_router)
 app.include_router(files_router)
+app.include_router(file_folders_router)
 app.include_router(sync_router)
 
 

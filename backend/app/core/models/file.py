@@ -25,3 +25,18 @@ class File(Base):
     folder = Column(String, nullable=True)
     object_key = Column(String, nullable=False)
     created_at = Column(DateTime, nullable=False)
+
+
+class FileFolder(Base):
+    """Carpeta explícita de archivos de una bóveda (H-046): permite carpetas vacías.
+
+    Las carpetas con archivos existen por `files.folder`; esta tabla solo guarda las que se
+    crearon a mano (y sus ancestras), para que sobrevivan sin archivos. `path` usa `/` como
+    separador; la raíz no se guarda."""
+
+    __tablename__ = "file_folders"
+
+    vault_id = Column(String, primary_key=True)
+    path = Column(String, primary_key=True)
+    owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, nullable=False)

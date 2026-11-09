@@ -177,13 +177,18 @@ def list_vault_files(
     vault_id: VaultId,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
+    folder: Annotated[str | None, Query(max_length=300, description="Solo los archivos de esa carpeta (no de sus subcarpetas); vacío = los de la raíz; sin el parámetro, todos.")] = None,
     current_user: TokenPayload = Depends(get_current_principal),
     db: Session = Depends(get_db),
 ):
     """Lista archivos de la bóveda del usuario (C-4). 404 si la bóveda no es suya.
-    Paginación: limit (1-100, def 50) + offset."""
+    Paginación: limit (1-100, def 50) + offset. `folder` filtra por carpeta (H-046)."""
     repo = FileRepository(db)
-    files, total = repo.list_by_vault(vault_id, current_user.sub, limit=limit, offset=offset)
+    if folder is None:
+        files, total = repo.list_by_vault(vault_id, current_user.sub, limit=limit, offset=offset)
+    else:
+        files, total = repo.list_by_vault(
+            vault_id, current_user.sub, limit=limit, offset=offset, folder=folder.strip() or None)
 
     # Validar que la bóveda existe y es del usuario (si no hay archivos, validar contra vault_port)
     if not files:

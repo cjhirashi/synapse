@@ -6,7 +6,8 @@ Código fuente React.
 src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
-├── files/      # pantalla de archivos (/files): subir, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025)
+├── files/      # pantalla de archivos (/files): árbol de carpetas, subir, mover, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025/H-046)
+├── ui/         # componentes compartidos: DataTable (tabla ordenable con el diseño de las tablas de cjhirashi-career)
 ├── theme/      # tema claro/oscuro/sistema (useTheme, ThemeToggle)
 ├── styles/     # tokens de diseño y estilos globales (scrollbars con el formato del tema)
 ├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
@@ -40,7 +41,7 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
 | `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
-| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): subir, renombrar, visibilidad, borrar |
+| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): árbol de carpetas con subniveles en la barra lateral (`FileFolderTree.tsx`, arrastrar para mover), tabla con `ui/DataTable.tsx` (mismo diseño que las tablas de cjhirashi-career), subir a la carpeta abierta, mover, renombrar, visibilidad, borrar (H-046) |
 | `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente (con agente y administrador, H-030) |
 | `/settings/agent-access` | `settings/AgentAccessPage.tsx` — H-030: qué agente escribe en qué carpetas de cada bóveda (registro `AG - AGENTES`), con el nombre de su clave |
 | `/settings/password` | `settings/ChangePasswordPage.tsx` — cambiar contraseña |

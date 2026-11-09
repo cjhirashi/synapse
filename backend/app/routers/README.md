@@ -22,7 +22,8 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
   de la nota las sella el servidor (día de CDMX) cuando escribe un agente.
 - `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campos opcionales `folder` y `visibility` —`private` por defecto o `public`, a elegir al subir—), `GET /files/{id}`
   (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
-  `PATCH /files/{id}` (nombre y visibilidad; la visibilidad solo la cambia la persona con su sesión: una API key recibe `403` `file-visibility-user-only`) y `DELETE /files/{id}`. MinIO nunca se expone directo.
+  `PATCH /files/{id}` (nombre, carpeta —H-046: `folder` mueve el archivo; `""` es la raíz— y visibilidad; la visibilidad solo la cambia la persona con su sesión: una API key recibe `403` `file-visibility-user-only`) y `DELETE /files/{id}`. MinIO nunca se expone directo.
+- `file_folders.py` (H-046): carpetas de archivos con subniveles bajo `/vaults/{vault_id}/file-folders` —listar, crear (idempotente), `POST /move` (mueve la carpeta con su contenido; si el destino existe, se fusionan) y `DELETE ?path=` (solo vacía, `409 file-folder-not-empty`)—. Las carpetas con archivos se derivan de `files.folder`; las vacías viven en `file_folders`. `GET /vaults/{vault_id}/files` acepta `folder`.
 - `folders.py` (H-039): `POST /vaults/{id}/folders/move` mueve una carpeta entera (cambia el `path` de cada nota bajo ella) y reescribe los wikilinks que la apuntaban; respeta las carpetas reservadas y los documentos de sistema (`meta-folder:*`, `sistema:readonly`).
 - `sync.py` (SPEC-0005): canal `/sync` para PouchDB. La base sale del token
   (`get_sync_db`); sólo existe el subconjunto del protocolo que usa el replicador y una ruta

@@ -384,6 +384,37 @@ class AgentKeyOut(BaseModel):
 # --- Archivos (H-015) ---
 
 
+class FileFolderCreate(BaseModel):
+    """Cuerpo de `POST /vaults/{vault_id}/file-folders` (H-046): ruta de la carpeta, con `/` entre niveles."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(examples=["Portafolio/Synapse"])
+
+
+class FileFolderMove(BaseModel):
+    """Cuerpo de `POST /vaults/{vault_id}/file-folders/move` (H-046): mueve la carpeta y todo lo que contiene."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    from_: str = Field(alias="from", examples=["Portafolio/Synapse"])
+    to: str = Field(examples=["Archivo/Synapse"])
+
+
+class FileFoldersOut(BaseModel):
+    """Carpetas de archivos de una bóveda: ordenadas e incluyen las ancestras de cada una."""
+
+    folders: list[str]
+
+
+class FileFolderMoveOut(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_: str = Field(alias="from")
+    to: str
+    moved_files: int
+
+
 class FileMetaOut(BaseModel):
     """Metadatos de un archivo (respuesta de `POST` y `PATCH /files/{id}`); nunca los bytes."""
 

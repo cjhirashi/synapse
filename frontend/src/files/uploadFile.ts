@@ -64,6 +64,8 @@ export interface UploadedFile {
   content_type: string;
   size: number;
   visibility: "private" | "public";
+  /** Carpeta del archivo: ruta con `/` entre niveles; `null` = raíz (H-046). */
+  folder?: string | null;
   created_at: string;
 }
 
@@ -107,13 +109,48 @@ export async function uploadFile(file: File, vaultId: string, folder?: string): 
 }
 
 /**
- * Lista los archivos de una bóveda (GET /vaults/{vaultId}/files, C-4).
+ * Lista los archivos de una bóveda (GET /vaults/{vaultId}/files, C-4). Con `folder` solo los de esa carpeta
+ * (`""` = la raíz; no incluye subcarpetas); sin él, todos (H-046). Recorre las páginas del backend (tope 100).
  */
-export async function listVaultFiles(vaultId: string): Promise<VaultFile[]> {
-  // La respuesta es paginada `{files, total, limit, offset}` (contrato OpenAPI de H-016); 100 es el tope del backend.
-  const res = await request(`/vaults/${vaultId}/files?limit=100`);
-  const page = (await res.json()) as { files: VaultFile[] };
-  return page.files;
+export async function listVaultFiles(vaultId: string, folder?: string): Promise<VaultFile[]> {
+  const all: VaultFile[] = [];
+  for (let offset = 0; ; offset += 100) {
+    const query = new URLSearchParams({ limit: "100", offset: String(offset) });
+    if (folder !== undefined) query.set("folder", folder);
+    const res = await request(`/vaults/${vaultId}/files?${query}`);
+    const page = (await res.json()) as { files: VaultFile[]; total?: number };
+    all.push(...page.files);
+    if (page.files.length < 100 || (page.total !== undefined && all.length >= page.total)) return all;
+  }
+}
+
+/** Carpetas de archivos de la bóveda, ordenadas y con sus ancestras (GET /vaults/{id}/file-folders, H-046). */
+export async function listFileFolders(vaultId: string): Promise<string[]> {
+  const res = await request(`/vaults/${vaultId}/file-folders`);
+  return ((await res.json()) as { folders: string[] }).folders;
+}
+
+/** Crea una carpeta (y sus ancestras); devuelve la lista completa (POST /vaults/{id}/file-folders, H-046). */
+export async function createFileFolder(vaultId: string, path: string): Promise<string[]> {
+  const res = await request(`/vaults/${vaultId}/file-folders`, { method: "POST", body: JSON.stringify({ path }) });
+  return ((await res.json()) as { folders: string[] }).folders;
+}
+
+/** Mueve (o renombra) una carpeta con todo lo que contiene (POST /vaults/{id}/file-folders/move, H-046). */
+export async function moveFileFolder(vaultId: string, from: string, to: string): Promise<{ moved_files: number }> {
+  const res = await request(`/vaults/${vaultId}/file-folders/move`, { method: "POST", body: JSON.stringify({ from, to }) });
+  return res.json();
+}
+
+/** Borra una carpeta vacía (DELETE /vaults/{id}/file-folders?path=); con archivos dentro el servidor responde 409. */
+export async function deleteFileFolder(vaultId: string, path: string): Promise<void> {
+  await request(`/vaults/${vaultId}/file-folders?${new URLSearchParams({ path })}`, { method: "DELETE" });
+}
+
+/** Mueve un archivo a otra carpeta (`""` = raíz) (PATCH /files/{id}, H-046). */
+export async function moveFile(fileId: string, folder: string): Promise<UploadedFile> {
+  const res = await request(`/files/${fileId}`, { method: "PATCH", body: JSON.stringify({ folder }) });
+  return res.json();
 }
 
 /**

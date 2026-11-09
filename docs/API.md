@@ -561,9 +561,20 @@ Contrato máquina: `.harness/specs/h030-carpetas-ag/contracts/openapi.yaml`. Her
 medida) y revocar la key general. Antes, revisar `GET /agent-access/shadow-report` (o la tabla `agent_access_log`) de 24 a 48 h
 con las keys por agente en uso. Revertir: `AGENT_ACCESS_MODE=shadow` y el mismo `up -d`.
 
-## Archivos: carpeta opcional (H-025)
+## Archivos: carpetas y subcarpetas (H-025, H-046)
 
-`POST /files` (multipart) acepta el campo opcional `folder`: de 1 a 64 caracteres, sin `/`, `\` ni caracteres de control, y distinto de `.` y `..`. Vacío o solo espacios equivale a sin carpeta. Un valor inválido da `422` `validation-error` sin crear nada en MinIO ni en la base. Las respuestas de `POST /files`, `PATCH /files/{id}` y `GET /vaults/{vault_id}/files` devuelven `folder` (`null` para los archivos sin carpeta, incluidos los anteriores a la migración 007). `PATCH` no cambia la carpeta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
+`folder` es una **ruta de carpetas separadas por `/`** (por ejemplo `portafolio/synapse/capturas`). Reglas: hasta 8 niveles y 300 caracteres en total; cada nivel de 1 a 64 caracteres, sin `\` ni caracteres de control, sin espacios al principio o al final y distinto de `.` y `..`; no admite niveles vacíos (`a//b`, `/a`, `a/`). Vacío o solo espacios equivale a la raíz (`null` en las respuestas). Un valor inválido da `422` `validation-error` sin crear nada en MinIO ni en la base. Las respuestas de `POST /files`, `PATCH /files/{id}` y `GET /vaults/{vault_id}/files` devuelven `folder` (`null` en la raíz, incluidos los archivos anteriores a la migración 007).
+
+- `POST /files` (multipart) acepta `folder` y deja el archivo ahí.
+- `PATCH /files/{id}` con `folder` **mueve** el archivo (`""` lo devuelve a la raíz); sin el campo no lo toca. Se puede combinar con `name`.
+- `GET /vaults/{vault_id}/files?folder=<ruta>` lista solo los archivos de esa carpeta (sin los de sus subcarpetas); `folder=` vacío lista los de la raíz; sin el parámetro lista todos.
+- Las carpetas vacías existen por sí mismas (tabla `file_folders`, migración 010); las que tienen archivos se derivan de ellos, y todas incluyen sus carpetas padre. `GET /vaults/{vault_id}/file-folders` devuelve `{folders: [...]}` ordenado.
+- `POST /vaults/{vault_id}/file-folders` `{path}` crea una carpeta (y sus padres); es idempotente y devuelve la lista completa (`201`).
+- `POST /vaults/{vault_id}/file-folders/move` `{from, to}` mueve una carpeta con todo su contenido: cambia la ruta de sus archivos y de sus subcarpetas, también las vacías. Si el destino ya existe, **se fusionan**. Mover una carpeta dentro de sí misma da `422` `file-folder-move-invalid`; una carpeta que no existe, `404` `file-folder-not-found`. Devuelve `{from, to, moved_files}`.
+- `DELETE /vaults/{vault_id}/file-folders?path=<ruta>` borra una carpeta **vacía** (`204`; con archivos debajo, `409` `file-folder-not-empty`: primero se mueven o se borran los archivos).
+- Los agentes con API key pueden crear, mover y borrar carpetas como cualquier operación de archivos (permiso `files` sobre la bóveda); el registro de acceso las anota como `file-folder-create`, `file-folder-move` y `file-folder-delete`.
+
+La pantalla Archivos (`/files`) usa esto: árbol de carpetas en la barra lateral (arrastrar un archivo o una carpeta sobre otra la mueve), tabla de archivos con el mismo diseño que las tablas del portafolio, y «Subir archivo» deja el archivo en la carpeta abierta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
 
 ## Archivos: visibilidad elegida al subir
 
@@ -571,4 +582,4 @@ con las keys por agente en uso. Revertir: `AGENT_ACCESS_MODE=shadow` y el mismo 
 
 Después de subirlo, **solo la persona cambia la visibilidad**: `PATCH /files/{id}` con `visibility` desde una sesión humana (la pantalla Archivos). Con una API key —de un agente o la general— responde `403` `file-visibility-user-only` y no cambia nada; renombrar con key sigue permitido. Se elige bien al subir: un archivo subido como privado ya no lo vuelve público un agente, y uno subido como público no lo vuelve privado.
 
-La herramienta `synapse_vault` de OpenClaw expone el campo en `file_upload` cuando se actualice su plugin; hasta entonces, por REST. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
+La herramienta `synapse_vault` de OpenClaw expone el campo en `file_upload` cuando se actualice su plugin; hasta entonces, por REST. El parámetro `folder` de `file_upload` acepta rutas anidadas (`a/b/c`) desde H-046; crear, mover y borrar carpetas solo está por REST. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.

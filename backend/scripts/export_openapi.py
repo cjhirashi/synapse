@@ -28,7 +28,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
     # H-016 absorbe el contrato de H-015 (mismas rutas /files): un canon por hecho. Documentos, tipos y pantalla de archivos (lista, rename, delete por bóveda)
-    "h016-archivos-pantalla-y-tipos": {"paths": ("/files", "/vaults/{vault_id}/files"), "schemas": ()},
+    "h016-archivos-pantalla-y-tipos": {"paths": ("/files", "/vaults/{vault_id}/files", "/vaults/{vault_id}/file-folders"), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"

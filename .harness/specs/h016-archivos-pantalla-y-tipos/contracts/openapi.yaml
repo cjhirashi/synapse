@@ -26,6 +26,70 @@ components:
       - file
       title: Body_upload_file_files_post
       type: object
+    FileFolderCreate:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{vault_id}/file-folders` (H-046): ruta
+        de la carpeta, con `/` entre niveles.'
+      properties:
+        path:
+          examples:
+          - Portafolio/Synapse
+          title: Path
+          type: string
+      required:
+      - path
+      title: FileFolderCreate
+      type: object
+    FileFolderMove:
+      additionalProperties: false
+      description: 'Cuerpo de `POST /vaults/{vault_id}/file-folders/move` (H-046):
+        mueve la carpeta y todo lo que contiene.'
+      properties:
+        from:
+          examples:
+          - Portafolio/Synapse
+          title: From
+          type: string
+        to:
+          examples:
+          - Archivo/Synapse
+          title: To
+          type: string
+      required:
+      - from
+      - to
+      title: FileFolderMove
+      type: object
+    FileFolderMoveOut:
+      properties:
+        from:
+          title: From
+          type: string
+        moved_files:
+          title: Moved Files
+          type: integer
+        to:
+          title: To
+          type: string
+      required:
+      - from
+      - to
+      - moved_files
+      title: FileFolderMoveOut
+      type: object
+    FileFoldersOut:
+      description: 'Carpetas de archivos de una bóveda: ordenadas e incluyen las ancestras
+        de cada una.'
+      properties:
+        folders:
+          items:
+            type: string
+          title: Folders
+          type: array
+      required:
+      - folders
+      title: FileFoldersOut
+      type: object
     FileMetaOut:
       description: Metadatos de un archivo (respuesta de `POST` y `PATCH /files/{id}`);
         nunca los bytes.
@@ -71,6 +135,11 @@ components:
     FileUpdate:
       description: 'PATCH /files/{id}: actualizar name y/o visibility (C-5).'
       properties:
+        folder:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Folder
         name:
           anyOf:
           - type: string
@@ -342,8 +411,8 @@ paths:
       tags:
       - files
     patch:
-      description: 'Actualizar name y/o visibility del archivo (C-5). Solo el dueño.
-        La visibilidad se elige al subir (un agente
+      description: 'Actualizar name, visibility y/o folder del archivo (C-5, H-046).
+        Solo el dueño. La visibilidad se elige al subir (un agente
 
         puede pedir `public` entonces); después solo la cambia la persona con su sesión:
         una API key recibe 403.'
@@ -413,12 +482,262 @@ paths:
       summary: Update File
       tags:
       - files
+  /vaults/{vault_id}/file-folders:
+    delete:
+      description: Borra una carpeta vacía y sus subcarpetas vacías. Con archivos
+        dentro responde 409.
+      operationId: delete_file_folder_vaults__vault_id__file_folders_delete
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: query
+        name: path
+        required: true
+        schema:
+          maxLength: 300
+          minLength: 1
+          title: Path
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found / Folder not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: File folder is not empty
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Delete File Folder
+      tags:
+      - files
+    get:
+      description: Todas las carpetas de archivos de la bóveda, ordenadas, con sus
+        ancestras.
+      operationId: list_file_folders_vaults__vault_id__file_folders_get
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileFoldersOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: List File Folders
+      tags:
+      - files
+    post:
+      description: Crea una carpeta (y sus ancestras) aunque no tenga archivos. Idempotente;
+        devuelve la lista completa.
+      operationId: create_file_folder_vaults__vault_id__file_folders_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileFolderCreate'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileFoldersOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Create File Folder
+      tags:
+      - files
+  /vaults/{vault_id}/file-folders/move:
+    post:
+      description: Mueve (o renombra) una carpeta con todo lo que contiene. Si el
+        destino ya existe, se fusionan.
+      operationId: move_file_folder_vaults__vault_id__file_folders_move_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileFolderMove'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileFolderMoveOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Agent access denied
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Vault not found / Folder not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Move File Folder
+      tags:
+      - files
   /vaults/{vault_id}/files:
     get:
       description: 'Lista archivos de la bóveda del usuario (C-4). 404 si la bóveda
         no es suya.
 
-        Paginación: limit (1-100, def 50) + offset.'
+        Paginación: limit (1-100, def 50) + offset. `folder` filtra por carpeta (H-046).'
       operationId: list_vault_files_vaults__vault_id__files_get
       parameters:
       - in: path
@@ -445,6 +764,19 @@ paths:
           minimum: 0
           title: Offset
           type: integer
+      - description: Solo los archivos de esa carpeta (no de sus subcarpetas); vacío
+          = los de la raíz; sin el parámetro, todos.
+        in: query
+        name: folder
+        required: false
+        schema:
+          anyOf:
+          - maxLength: 300
+            type: string
+          - type: 'null'
+          description: Solo los archivos de esa carpeta (no de sus subcarpetas); vacío
+            = los de la raíz; sin el parámetro, todos.
+          title: Folder
       responses:
         '200':
           content:

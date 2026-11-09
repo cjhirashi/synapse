@@ -638,9 +638,17 @@ def test_h025_folder_too_long_is_rejected(ready_admin, storage):
     assert storage.objects == {}
 
 
-def test_h025_folder_with_slash_is_rejected(ready_admin, storage):
+def test_h046_folder_with_slash_is_a_nested_path(ready_admin, storage):
+    """Desde H-046 la carpeta es una ruta con `/`: `path/to/folder` son tres niveles."""
     vault_id = _vault(ready_admin)
     res = _upload(ready_admin, vault_id, filename="file.png", folder="path/to/folder")
+    assert res.status_code == 201 and res.json()["folder"] == "path/to/folder"
+
+
+@pytest.mark.parametrize("bad", ["a//b", "/a", "a/", "a/./b", "a/../b", "a/ b", "/".join(["x"] * 9)])
+def test_h046_malformed_nested_folder_is_rejected(ready_admin, storage, bad):
+    vault_id = _vault(ready_admin)
+    res = _upload(ready_admin, vault_id, filename="file.png", folder=bad)
     assert_problem(res, 422, "validation-error")
     assert storage.objects == {}
 

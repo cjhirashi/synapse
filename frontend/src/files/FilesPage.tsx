@@ -1,8 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, type DragEvent } from "react";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import {
   listVaultFiles,
+  listFileFolders,
+  createFileFolder,
+  moveFileFolder,
+  deleteFileFolder,
+  moveFile,
   renameFile,
   setFileVisibility,
   deleteFile,
@@ -14,7 +19,33 @@ import {
 } from "./uploadFile";
 import { scanFileReferences, type FileRef } from "./fileReferences";
 import { htmlEmbedMarkup } from "./embed";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  baseName,
+  folderNameError,
+  isInside,
+  joinPath,
+  parentOf,
+} from "./fileFolderTree";
+import { DRAG_FILE, FileFolderTree } from "./FileFolderTree";
+import { DataTable, type DataColumn } from "../ui/DataTable";
+import {
+  Archive,
+  Code,
+  Download,
+  ExternalLink,
+  File as FileIcon,
+  FileCode,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  FolderInput,
+  FolderPlus,
+  Globe,
+  Link2,
+  Lock,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import "./files.css";
 
@@ -37,6 +68,12 @@ interface VisibilityConfirm {
   newVisibility: "private" | "public";
   currentVisibility: "private" | "public";
   references: Array<{ id: string; path: string }>;
+}
+
+interface MoveDialog {
+  fileId: string;
+  fileName: string;
+  destination: string;
 }
 
 const DATE_FORMAT = new Intl.DateTimeFormat("es", {
@@ -76,10 +113,32 @@ function getFileTypeName(contentType: string): string {
   return contentType;
 }
 
+function TypeIcon({ contentType }: { contentType: string }) {
+  const props = { size: 15, "aria-hidden": true, className: "files-type-icon" } as const;
+  if (contentType.startsWith("image/")) return <FileImage {...props} />;
+  if (contentType.includes("html")) return <FileCode {...props} />;
+  if (contentType.includes("excel") || contentType.includes("spreadsheet") || contentType.includes("csv"))
+    return <FileSpreadsheet {...props} />;
+  if (contentType.includes("zip")) return <Archive {...props} />;
+  if (contentType.includes("pdf") || contentType.includes("word") || contentType.includes("text") || contentType.includes("presentation") || contentType.includes("powerpoint"))
+    return <FileText {...props} />;
+  return <FileIcon {...props} />;
+}
+
+/** Mensaje legible de un error de la API; el de carpeta no vacía se explica con sus palabras. */
+function errorText(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return fallback;
+}
+
+type Row = VaultFile & { references_count: number };
+
 export default function FilesPage() {
   const { vaults, notes } = useSync();
   const [allVaults, setAllVaults] = useState<Vault[]>([]);
   const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
+  const [folders, setFolders] = useState<string[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState("");
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [dragging, setDragging] = useState(false);
@@ -89,7 +148,7 @@ export default function FilesPage() {
     text: string;
   } | null>(null);
 
-  // Diálogos
+  // Diálogos de archivo
   const [renameDialog, setRenameDialog] = useState<RenameDialog | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<DeleteConfirm | null>(
     null,
@@ -97,13 +156,27 @@ export default function FilesPage() {
   const [visibilityConfirm, setVisibilityConfirm] =
     useState<VisibilityConfirm | null>(null);
   const [renameTmp, setRenameTmp] = useState("");
+  const [moveDialog, setMoveDialog] = useState<MoveDialog | null>(null);
+
+  // Carpetas
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [newFolderError, setNewFolderError] = useState<string | null>(null);
+  const [folderRename, setFolderRename] = useState<{ path: string; name: string } | null>(null);
+  const [folderRenameError, setFolderRenameError] = useState<string | null>(null);
+  const [folderDelete, setFolderDelete] = useState<string | null>(null);
 
   // Referencias desde los documentos de la bóveda (C-9), calculadas en la réplica local.
   const [refMap, setRefMap] = useState<Map<string, FileRef[]>>(new Map());
-  const filesWithReferences = files.map((file) => ({
+  const filesWithReferences: Row[] = files.map((file) => ({
     ...file,
     references_count: refMap.get(file.id)?.length ?? 0,
   }));
+
+  const flash = useCallback((next: { kind: "status" | "alert"; text: string }) => {
+    setNotice(next);
+    if (next.kind === "status") setTimeout(() => setNotice(null), 3000);
+  }, []);
 
   function handleOpen(file: VaultFile) {
     window.open(fileUrl(file.id), "_blank", "noopener");
@@ -122,20 +195,18 @@ export default function FilesPage() {
   async function handleCopyLink(file: VaultFile) {
     try {
       await navigator.clipboard.writeText(fileUrl(file.id));
-      setNotice({ kind: "status", text: "Link copiado." });
-      setTimeout(() => setNotice(null), 3000);
+      flash({ kind: "status", text: "Link copiado." });
     } catch (err) {
-      setNotice({ kind: "alert", text: "No se pudo copiar el link." });
+      flash({ kind: "alert", text: "No se pudo copiar el link." });
     }
   }
 
   async function handleCopyEmbed(file: VaultFile) {
     try {
       await navigator.clipboard.writeText(htmlEmbedMarkup(fileUrl(file.id)));
-      setNotice({ kind: "status", text: "Incrustado copiado." });
-      setTimeout(() => setNotice(null), 3000);
+      flash({ kind: "status", text: "Incrustado copiado." });
     } catch (err) {
-      setNotice({ kind: "alert", text: "No se pudo copiar el incrustado." });
+      flash({ kind: "alert", text: "No se pudo copiar el incrustado." });
     }
   }
 
@@ -153,16 +224,13 @@ export default function FilesPage() {
           f.id === renameDialog.fileId ? { ...f, name: updated.name } : f,
         ),
       );
-      setNotice({
+      flash({
         kind: "status",
         text: `Archivo renombrado a "${updated.name}".`,
       });
       setRenameDialog(null);
-      setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "No se pudo renombrar el archivo.";
-      setNotice({ kind: "alert", text: msg });
+      flash({ kind: "alert", text: errorText(err, "No se pudo renombrar el archivo.") });
     }
   }
 
@@ -199,18 +267,13 @@ export default function FilesPage() {
           f.id === fileId ? { ...f, visibility: updated.visibility } : f,
         ),
       );
-      setNotice({
+      flash({
         kind: "status",
         text: `Visibilidad cambiada a ${newVisibility === "private" ? "privado" : "público"}.`,
       });
       setVisibilityConfirm(null);
-      setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg =
-        err instanceof Error
-          ? err.message
-          : "No se pudo cambiar la visibilidad.";
-      setNotice({ kind: "alert", text: msg });
+      flash({ kind: "alert", text: errorText(err, "No se pudo cambiar la visibilidad.") });
     }
   }
 
@@ -230,13 +293,10 @@ export default function FilesPage() {
     try {
       await deleteFile(deleteConfirm.fileId);
       setFiles((prev) => prev.filter((f) => f.id !== deleteConfirm.fileId));
-      setNotice({ kind: "status", text: "Archivo borrado." });
+      flash({ kind: "status", text: "Archivo borrado." });
       setDeleteConfirm(null);
-      setTimeout(() => setNotice(null), 3000);
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "No se pudo borrar el archivo.";
-      setNotice({ kind: "alert", text: msg });
+      flash({ kind: "alert", text: errorText(err, "No se pudo borrar el archivo.") });
     }
   }
 
@@ -244,10 +304,9 @@ export default function FilesPage() {
     if (!selectedVaultId) return;
     for (const file of list) {
       try {
-        const uploaded = await uploadFile(file, selectedVaultId);
+        const uploaded = await uploadFile(file, selectedVaultId, selectedFolder || undefined);
         setFiles((prev) => [uploaded, ...prev]);
-        setNotice({ kind: "status", text: `"${file.name}" subido.` });
-        setTimeout(() => setNotice(null), 3000);
+        flash({ kind: "status", text: `"${file.name}" subido.` });
       } catch (err) {
         let msg = `No se pudo subir "${file.name}".`;
         if (err instanceof UploadTypeError) {
@@ -257,7 +316,7 @@ export default function FilesPage() {
         } else if (err instanceof Error) {
           msg = err.message;
         }
-        setNotice({ kind: "alert", text: msg });
+        flash({ kind: "alert", text: msg });
       }
     }
   }
@@ -272,6 +331,122 @@ export default function FilesPage() {
     e.preventDefault();
     setDragging(false);
     void uploadMany(Array.from(e.dataTransfer.files ?? []));
+  }
+
+  // --- Carpetas (H-046) ---
+
+  const refreshFolders = useCallback(async (vaultId: string) => {
+    try {
+      setFolders(await listFileFolders(vaultId));
+    } catch {
+      // El árbol es secundario: si falla, la tabla sigue funcionando.
+    }
+  }, []);
+
+  async function moveFileTo(fileId: string, destination: string) {
+    if (!selectedVaultId) return;
+    const file = files.find((f) => f.id === fileId);
+    if (file && (file.folder ?? "") === destination) return;
+    try {
+      await moveFile(fileId, destination);
+      setFiles((prev) => prev.filter((f) => f.id !== fileId));
+      void refreshFolders(selectedVaultId);
+      flash({
+        kind: "status",
+        text: `Archivo movido a ${destination ? `«${destination}»` : "la raíz"}.`,
+      });
+    } catch (err) {
+      flash({ kind: "alert", text: errorText(err, "No se pudo mover el archivo.") });
+    }
+  }
+
+  async function handleMoveSave() {
+    if (!moveDialog) return;
+    await moveFileTo(moveDialog.fileId, moveDialog.destination);
+    setMoveDialog(null);
+  }
+
+  async function moveFolderTo(path: string, destinationParent: string) {
+    if (!selectedVaultId) return;
+    const destination = joinPath(destinationParent, baseName(path));
+    if (destination === path) return;
+    if (isInside(destinationParent, path)) {
+      flash({ kind: "alert", text: "Una carpeta no se puede mover dentro de sí misma." });
+      return;
+    }
+    try {
+      await moveFileFolder(selectedVaultId, path, destination);
+      await refreshFolders(selectedVaultId);
+      if (isInside(selectedFolder, path)) setSelectedFolder(destination + selectedFolder.slice(path.length));
+      flash({ kind: "status", text: `Carpeta movida a «${destination}».` });
+    } catch (err) {
+      flash({ kind: "alert", text: errorText(err, "No se pudo mover la carpeta.") });
+    }
+  }
+
+  async function handleCreateFolder(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedVaultId) return;
+    const error = folderNameError(newFolderName);
+    if (error) {
+      setNewFolderError(error);
+      return;
+    }
+    const path = joinPath(selectedFolder, newFolderName.trim());
+    try {
+      setFolders(await createFileFolder(selectedVaultId, path));
+      setNewFolderOpen(false);
+      setNewFolderName("");
+      setNewFolderError(null);
+      setSelectedFolder(path);
+      flash({ kind: "status", text: `Carpeta «${path}» creada.` });
+    } catch (err) {
+      setNewFolderError(errorText(err, "No se pudo crear la carpeta."));
+    }
+  }
+
+  async function handleRenameFolder() {
+    if (!folderRename || !selectedVaultId) return;
+    const error = folderNameError(folderRename.name);
+    if (error) {
+      setFolderRenameError(error);
+      return;
+    }
+    const destination = joinPath(parentOf(folderRename.path), folderRename.name.trim());
+    if (destination === folderRename.path) {
+      setFolderRename(null);
+      return;
+    }
+    try {
+      await moveFileFolder(selectedVaultId, folderRename.path, destination);
+      await refreshFolders(selectedVaultId);
+      if (isInside(selectedFolder, folderRename.path)) {
+        setSelectedFolder(destination + selectedFolder.slice(folderRename.path.length));
+      }
+      setFolderRename(null);
+      setFolderRenameError(null);
+      flash({ kind: "status", text: `Carpeta renombrada a «${baseName(destination)}».` });
+    } catch (err) {
+      setFolderRenameError(errorText(err, "No se pudo renombrar la carpeta."));
+    }
+  }
+
+  async function handleDeleteFolder() {
+    if (!folderDelete || !selectedVaultId) return;
+    const path = folderDelete;
+    try {
+      await deleteFileFolder(selectedVaultId, path);
+      await refreshFolders(selectedVaultId);
+      if (isInside(selectedFolder, path)) setSelectedFolder(parentOf(path));
+      setFolderDelete(null);
+      flash({ kind: "status", text: `Carpeta «${path}» borrada.` });
+    } catch (err) {
+      setFolderDelete(null);
+      flash({
+        kind: "alert",
+        text: errorText(err, `No se pudo borrar «${path}». Si tiene archivos, muévelos o bórralos primero.`),
+      });
+    }
   }
 
   useEffect(() => {
@@ -289,25 +464,134 @@ export default function FilesPage() {
     void load();
   }, [vaults, selectedVaultId]);
 
+  // Al cambiar de bóveda: carpetas nuevas y vuelta a la raíz.
   useEffect(() => {
     if (!selectedVaultId) return;
+    setSelectedFolder("");
+    setFolders([]);
+    void refreshFolders(selectedVaultId);
+  }, [selectedVaultId, refreshFolders]);
 
+  // Archivos de la carpeta abierta.
+  useEffect(() => {
+    if (!selectedVaultId) return;
+    let cancelled = false;
     const load = async () => {
       try {
         setStatus("loading");
-        const data = await listVaultFiles(selectedVaultId);
+        const data = await listVaultFiles(selectedVaultId, selectedFolder);
+        if (cancelled) return;
         setFiles(data);
         setStatus("ready");
-        void scanFileReferences(notes, selectedVaultId).then(setRefMap, () =>
-          setRefMap(new Map()),
-        );
       } catch (err) {
-        setStatus("error");
+        if (!cancelled) setStatus("error");
       }
     };
-
     void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedVaultId, selectedFolder]);
+
+  // Referencias desde los documentos (se recalculan cuando cambian las notas).
+  useEffect(() => {
+    if (!selectedVaultId) return;
+    void scanFileReferences(notes, selectedVaultId).then(setRefMap, () =>
+      setRefMap(new Map()),
+    );
   }, [selectedVaultId, notes]);
+
+  const visibleRows = filesWithReferences.filter((file) =>
+    file.name.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const columns: DataColumn<Row>[] = [
+    { key: "name", label: "Nombre", key_column: true, sortValue: (f) => f.name },
+    { key: "type", label: "Tipo", sortValue: (f) => getFileTypeName(f.content_type) },
+    { key: "size", label: "Tamaño", sortValue: (f) => f.size },
+    { key: "date", label: "Fecha", sortValue: (f) => parseUtc(f.created_at).getTime() },
+    { key: "visibility", label: "Visibilidad", sortValue: (f) => f.visibility },
+    { key: "refs", label: "Usado en", sortValue: (f) => f.references_count },
+  ];
+
+  function renderCell(file: Row, column: DataColumn<Row>) {
+    switch (column.key) {
+      case "name":
+        return (
+          <span className="files-name">
+            <TypeIcon contentType={file.content_type} />
+            {file.name}
+          </span>
+        );
+      case "type":
+        return getFileTypeName(file.content_type);
+      case "size":
+        return formatSize(file.size);
+      case "date":
+        return DATE_FORMAT.format(parseUtc(file.created_at));
+      case "visibility":
+        return (
+          <button
+            type="button"
+            className={`files-visibility files-visibility--${file.visibility}`}
+            aria-label={`Cambiar visibilidad de ${file.name}`}
+            onClick={() => void handleVisibilityClick(file)}
+          >
+            {file.visibility === "private" ? (
+              <Lock size={12} aria-hidden="true" />
+            ) : (
+              <Globe size={12} aria-hidden="true" />
+            )}
+            {file.visibility === "private" ? "Privado" : "Público"}
+          </button>
+        );
+      default:
+        return file.references_count ?? 0;
+    }
+  }
+
+  function rowActions(file: Row) {
+    return (
+      <span className="files-actions">
+        <button type="button" aria-label={`Abrir ${file.name}`} title="Abrir" onClick={() => handleOpen(file)}>
+          <ExternalLink size={14} aria-hidden="true" />
+        </button>
+        <button type="button" aria-label={`Descargar ${file.name}`} title="Descargar" onClick={() => handleDownload(file)}>
+          <Download size={14} aria-hidden="true" />
+        </button>
+        <button type="button" aria-label={`Copiar link de ${file.name}`} title="Copiar link" onClick={() => void handleCopyLink(file)}>
+          <Link2 size={14} aria-hidden="true" />
+        </button>
+        {file.content_type === "text/html" && (
+          <button type="button" aria-label={`Copiar incrustado de ${file.name}`} title="Copiar incrustado" onClick={() => void handleCopyEmbed(file)}>
+            <Code size={14} aria-hidden="true" />
+          </button>
+        )}
+        <button
+          type="button"
+          aria-label={`Mover ${file.name}`}
+          title="Mover a otra carpeta"
+          onClick={() => setMoveDialog({ fileId: file.id, fileName: file.name, destination: file.folder ?? "" })}
+        >
+          <FolderInput size={14} aria-hidden="true" />
+        </button>
+        <button type="button" aria-label={`Renombrar ${file.name}`} title="Renombrar" onClick={() => handleRenameClick(file)}>
+          <Pencil size={14} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="files-danger"
+          aria-label={`Borrar ${file.name}`}
+          title="Borrar"
+          onClick={() => void handleDeleteClick(file)}
+        >
+          <Trash2 size={14} aria-hidden="true" />
+        </button>
+      </span>
+    );
+  }
+
+  const crumbs = selectedFolder ? selectedFolder.split("/") : [];
 
   return (
     <section
@@ -329,159 +613,160 @@ export default function FilesPage() {
       {notice && <p role={notice.kind}>{notice.text}</p>}
 
       {allVaults.length > 0 && (
-        <div className="files-toolbar">
-          <label htmlFor="vault-selector">Bóveda</label>
-          <select
-            id="vault-selector"
-            value={selectedVaultId || ""}
-            onChange={(e) => setSelectedVaultId(e.target.value)}
-          >
-            {allVaults.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn-primary files-upload"
-            onClick={() => {
-              const input =
-                document.querySelector<HTMLInputElement>("#file-upload-input");
-              input?.click();
-            }}
-          >
-            Subir archivo
-          </button>
-          <input
-            id="file-upload-input"
-            type="file"
-            multiple
-            hidden
-            onChange={(e) => void handleUpload(e)}
-          />
-        </div>
-      )}
-
-      {status === "loading" && <p>Cargando…</p>}
-      {status === "error" && (
-        <div role="alert">No se pudo cargar la lista.</div>
-      )}
-      {status === "ready" && files.length === 0 && (
-        <p className="files-empty">
-          Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos
-          aquí.
-        </p>
-      )}
-
-      {status === "ready" && filesWithReferences.length > 0 && (
-        <>
-          <div className="files-toolbar">
-            <label htmlFor="search-files">Buscar</label>
-            <input
-              id="search-files"
-              type="search"
-              placeholder="Nombre del archivo…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+        <div className="files-layout">
+          <aside className="files-side" aria-label="Carpetas">
+            <div className="files-side-head">
+              <label htmlFor="vault-selector">Bóveda</label>
+              <select
+                id="vault-selector"
+                value={selectedVaultId || ""}
+                onChange={(e) => setSelectedVaultId(e.target.value)}
+              >
+                {allVaults.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="files-side-new"
+                aria-expanded={newFolderOpen}
+                onClick={() => {
+                  setNewFolderOpen((open) => !open);
+                  setNewFolderError(null);
+                }}
+              >
+                <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
+              </button>
+              {newFolderOpen && (
+                <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
+                  <label htmlFor="new-folder-name">
+                    Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
+                  </label>
+                  <input
+                    id="new-folder-name"
+                    autoFocus
+                    type="text"
+                    value={newFolderName}
+                    onChange={(e) => {
+                      setNewFolderName(e.target.value);
+                      setNewFolderError(null);
+                    }}
+                    aria-invalid={newFolderError ? true : undefined}
+                    aria-describedby={newFolderError ? "new-folder-error" : undefined}
+                  />
+                  {newFolderError && (
+                    <p id="new-folder-error" role="alert" className="files-side-error">
+                      {newFolderError}
+                    </p>
+                  )}
+                  <div className="files-side-actions">
+                    <button type="button" onClick={() => setNewFolderOpen(false)}>
+                      Cancelar
+                    </button>
+                    <button type="submit" className="btn-primary">
+                      Crear
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+            <FileFolderTree
+              folders={folders}
+              selected={selectedFolder}
+              onSelect={setSelectedFolder}
+              onDropFile={(fileId, destination) => void moveFileTo(fileId, destination)}
+              onDropFolder={(path, destination) => void moveFolderTo(path, destination)}
+              onRename={(path) => {
+                setFolderRename({ path, name: baseName(path) });
+                setFolderRenameError(null);
+              }}
+              onDelete={setFolderDelete}
             />
-          </div>
+          </aside>
 
-          <div className="files-table-wrap">
-            <table className="files-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Tipo</th>
-                  <th>Tamaño</th>
-                  <th>Fecha</th>
-                  <th>Referencias</th>
-                  <th>
-                    <span className="files-sr">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {filesWithReferences
-                  .filter((file) =>
-                    file.name.toLowerCase().includes(searchQuery.toLowerCase()),
-                  )
-                  .map((file) => (
-                    <tr key={file.id}>
-                      <td className="files-name" data-label="Nombre">
-                        {file.name}
-                      </td>
-                      <td data-label="Tipo">
-                        {getFileTypeName(file.content_type)}
-                      </td>
-                      <td data-label="Tamaño">{formatSize(file.size)}</td>
-                      <td data-label="Fecha">
-                        {DATE_FORMAT.format(parseUtc(file.created_at))}
-                      </td>
-                      <td data-label="Usado en">
-                        {file.references_count ?? 0}
-                      </td>
-                      <td className="files-actions">
-                        <button
-                          type="button"
-                          aria-label={`Abrir ${file.name}`}
-                          onClick={() => handleOpen(file)}
-                        >
-                          Abrir
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Descargar ${file.name}`}
-                          onClick={() => handleDownload(file)}
-                        >
-                          Descargar
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Copiar link de ${file.name}`}
-                          onClick={() => void handleCopyLink(file)}
-                        >
-                          Link
-                        </button>
-                        {file.content_type === "text/html" && (
-                          <button
-                            type="button"
-                            aria-label={`Copiar incrustado de ${file.name}`}
-                            onClick={() => void handleCopyEmbed(file)}
-                          >
-                            Incrustado
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          aria-label={`Renombrar ${file.name}`}
-                          onClick={() => handleRenameClick(file)}
-                        >
-                          Renombrar
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Cambiar visibilidad de ${file.name}`}
-                          onClick={() => void handleVisibilityClick(file)}
-                        >
-                          {file.visibility === "private"
-                            ? "Privado"
-                            : "Público"}
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Borrar ${file.name}`}
-                          onClick={() => void handleDeleteClick(file)}
-                        >
-                          Borrar
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+          <div className="files-main">
+            <div className="files-toolbar">
+              <nav className="files-crumbs" aria-label="Ruta de la carpeta">
+                <button type="button" onClick={() => setSelectedFolder("")} aria-current={selectedFolder === "" ? "page" : undefined}>
+                  Raíz
+                </button>
+                {crumbs.map((name, i) => {
+                  const path = crumbs.slice(0, i + 1).join("/");
+                  return (
+                    <span key={path}>
+                      <span aria-hidden="true"> / </span>
+                      <button type="button" onClick={() => setSelectedFolder(path)} aria-current={path === selectedFolder ? "page" : undefined}>
+                        {name}
+                      </button>
+                    </span>
+                  );
+                })}
+              </nav>
+              <button
+                type="button"
+                className="btn-primary files-upload"
+                onClick={() => {
+                  const input =
+                    document.querySelector<HTMLInputElement>("#file-upload-input");
+                  input?.click();
+                }}
+              >
+                Subir archivo
+              </button>
+              <input
+                id="file-upload-input"
+                type="file"
+                multiple
+                hidden
+                onChange={(e) => void handleUpload(e)}
+              />
+            </div>
+
+            {status === "loading" && <p>Cargando…</p>}
+            {status === "error" && (
+              <div role="alert">No se pudo cargar la lista.</div>
+            )}
+            {status === "ready" && files.length === 0 && (
+              <p className="files-empty">
+                {selectedFolder
+                  ? "Esta carpeta no tiene archivos. Súbelos con el botón o arrástralos aquí, o muévelos desde otra carpeta."
+                  : "Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí."}
+              </p>
+            )}
+
+            {status === "ready" && filesWithReferences.length > 0 && (
+              <>
+                <div className="files-toolbar">
+                  <label htmlFor="search-files">Buscar</label>
+                  <input
+                    id="search-files"
+                    type="search"
+                    placeholder="Nombre del archivo…"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+
+                <DataTable
+                  label="Archivos"
+                  columns={columns}
+                  rows={visibleRows}
+                  getRowKey={(f) => f.id}
+                  renderCell={renderCell}
+                  rowActions={rowActions}
+                  initialSort={{ key: "date", dir: "desc" }}
+                  emptyMessage="Ningún archivo coincide con la búsqueda."
+                  onRowDragStart={(event: DragEvent<HTMLTableRowElement>, file) => {
+                    event.dataTransfer.setData(DRAG_FILE, file.id);
+                    event.dataTransfer.effectAllowed = "move";
+                  }}
+                />
+              </>
+            )}
           </div>
-        </>
+        </div>
       )}
 
       {/* Rename Dialog */}
@@ -510,6 +795,96 @@ export default function FilesPage() {
             onClick={() => void handleRenameSave()}
           >
             Guardar
+          </button>
+        </ConfirmDialog>
+      )}
+
+      {/* Mover archivo */}
+      {moveDialog && (
+        <ConfirmDialog
+          titleId="move-dialog-title"
+          title={`Mover "${moveDialog.fileName}"`}
+          glyph={FolderInput}
+          body={
+            <>
+              <label htmlFor="move-destination">Carpeta de destino</label>
+              <select
+                id="move-destination"
+                autoFocus
+                value={moveDialog.destination}
+                onChange={(e) => setMoveDialog({ ...moveDialog, destination: e.target.value })}
+              >
+                <option value="">Raíz</option>
+                {folders.map((path) => (
+                  <option key={path} value={path}>
+                    {path}
+                  </option>
+                ))}
+              </select>
+            </>
+          }
+          onCancel={() => setMoveDialog(null)}
+        >
+          <button type="button" onClick={() => setMoveDialog(null)}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-primary" onClick={() => void handleMoveSave()}>
+            Mover
+          </button>
+        </ConfirmDialog>
+      )}
+
+      {/* Renombrar carpeta */}
+      {folderRename && (
+        <ConfirmDialog
+          titleId="folder-rename-dialog-title"
+          title={`Renombrar la carpeta «${baseName(folderRename.path)}»`}
+          glyph={Pencil}
+          body={
+            <>
+              <input
+                autoFocus
+                type="text"
+                aria-label="Nuevo nombre de la carpeta"
+                value={folderRename.name}
+                onChange={(e) => {
+                  setFolderRename({ ...folderRename, name: e.target.value });
+                  setFolderRenameError(null);
+                }}
+              />
+              {folderRenameError && (
+                <p role="alert" className="files-side-error">
+                  {folderRenameError}
+                </p>
+              )}
+            </>
+          }
+          onCancel={() => setFolderRename(null)}
+        >
+          <button type="button" onClick={() => setFolderRename(null)}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-primary" onClick={() => void handleRenameFolder()}>
+            Guardar
+          </button>
+        </ConfirmDialog>
+      )}
+
+      {/* Borrar carpeta */}
+      {folderDelete && (
+        <ConfirmDialog
+          titleId="folder-delete-dialog-title"
+          title={`¿Borrar la carpeta «${folderDelete}»?`}
+          tone="danger"
+          glyph={Trash2}
+          body={<p>Solo se puede borrar una carpeta vacía. Si tiene archivos, muévelos o bórralos antes.</p>}
+          onCancel={() => setFolderDelete(null)}
+        >
+          <button type="button" data-autofocus onClick={() => setFolderDelete(null)}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-danger" onClick={() => void handleDeleteFolder()}>
+            Borrar carpeta
           </button>
         </ConfirmDialog>
       )}

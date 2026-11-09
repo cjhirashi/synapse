@@ -13,9 +13,9 @@
           "sistema"
         ],
         "estado": "aprobado",
-        "version": "1.3.5"
+        "version": "1.3.6"
       },
-      "sha256": "a4652ca2be678f9a639cdfca0cf87a9f9265cbc5854807dc706fbf8e3591f353"
+      "sha256": "7fa900d964d4814c1ce0df4fa5a74ea737060fb6be6aa73d43c2ebb08ad9b85d"
     },
     {
       "path": "PLANTILLAS/plantilla-skill.md",

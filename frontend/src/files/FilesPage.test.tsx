@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import FilesPage from "./FilesPage";
@@ -428,7 +428,7 @@ describe("FilesPage", () => {
     await screen.findByText(/Aún no hay archivos/i);
     const file = new File(["hola"], "nota.txt", { type: "text/plain" });
     fireEvent.drop(screen.getByRole("heading", { name: /Archivos/i }).closest("section")!, { dataTransfer: { files: [file], types: ["Files"] } });
-    await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1"));
+    await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1", undefined));
     expect(await screen.findByText("hoja.xlsx")).toBeInTheDocument();
   });
 
@@ -456,11 +456,9 @@ describe("FilesPage", () => {
       </WithSync>
     );
 
-    const htmlRow = await screen.findByText("widget.html");
-    const buttons = htmlRow.closest("tr")?.querySelectorAll("button");
-    const embedButton = Array.from(buttons || []).find((btn) => btn.textContent?.includes("Incrustado"));
-    expect(embedButton).toBeTruthy();
-    await userEvent.click(embedButton!);
+    await screen.findByText("widget.html");
+    const embedButton = screen.getByRole("button", { name: "Copiar incrustado de widget.html" });
+    await userEvent.click(embedButton);
 
     await waitFor(() =>
       expect(mockClipboard).toHaveBeenCalledWith(
@@ -514,5 +512,130 @@ describe("FilesPage", () => {
     const buttons = imgRow.closest("tr")?.querySelectorAll("button");
     const embedButton = Array.from(buttons || []).find((btn) => btn.textContent?.includes("Incrustado"));
     expect(embedButton).toBeUndefined();
+  });
+});
+
+
+// --- H-046: carpetas con subniveles, mover y tabla ---
+
+const treeBtn = async (name: string) =>
+  within(await screen.findByRole("list", { name: "Carpetas de archivos" })).findByRole("button", { name });
+
+function renderPage(listFolders: string[] = []) {
+  vi.spyOn(uploadFileModule, "listFileFolders").mockResolvedValue(listFolders);
+  const { value } = syncValue({
+    vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+    notes: emptyNotes(),
+  });
+  return render(
+    <WithSync value={value}>
+      <FilesPage />
+    </WithSync>,
+  );
+}
+
+describe("FilesPage con carpetas (H-046)", () => {
+  beforeEach(() => {
+    vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+  });
+
+  it("muestra el árbol de carpetas con subniveles y la raíz", async () => {
+    renderPage(["Portafolio", "Portafolio/Synapse", "Otros"]);
+    const tree = await screen.findByRole("list", { name: "Carpetas de archivos" });
+    expect(await treeBtn("Raíz")).toHaveAttribute("aria-current", "true");
+    expect(tree).toHaveTextContent("Portafolio");
+    expect(tree).toHaveTextContent("Otros");
+    expect(tree).not.toHaveTextContent("Synapse"); // el subnivel está plegado hasta abrir su carpeta
+    await userEvent.click(await treeBtn("Portafolio"));
+    expect(await treeBtn("Synapse")).toBeInTheDocument();
+  });
+
+  it("al abrir una carpeta lista solo sus archivos y la ruta aparece arriba", async () => {
+    const list = vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
+    renderPage(["Portafolio"]);
+    await userEvent.click(await treeBtn("Portafolio"));
+    await waitFor(() => expect(list).toHaveBeenLastCalledWith("vault-1", "Portafolio"));
+    const crumbs = screen.getByRole("navigation", { name: "Ruta de la carpeta" });
+    expect(crumbs).toHaveTextContent("Raíz");
+    expect(crumbs).toHaveTextContent("Portafolio");
+  });
+
+  it("subir con una carpeta abierta manda el archivo a esa carpeta", async () => {
+    const upload = vi.spyOn(uploadFileModule, "uploadFile").mockResolvedValue({ ...SAMPLE_FILES[1], id: "nuevo" } as any);
+    renderPage(["Portafolio"]);
+    await userEvent.click(await treeBtn("Portafolio"));
+    const file = new File(["x"], "a.txt", { type: "text/plain" });
+    await userEvent.upload(document.querySelector<HTMLInputElement>("#file-upload-input")!, file);
+    await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1", "Portafolio"));
+  });
+
+  it("«Nueva carpeta» crea la carpeta dentro de la abierta y la abre", async () => {
+    const create = vi.spyOn(uploadFileModule, "createFileFolder").mockResolvedValue(["Portafolio", "Portafolio/Capturas"]);
+    renderPage(["Portafolio"]);
+    await userEvent.click(await treeBtn("Portafolio"));
+    await userEvent.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
+    await userEvent.type(screen.getByLabelText(/Nombre \(se crea en «Portafolio»\)/), "Capturas");
+    await userEvent.click(screen.getByRole("button", { name: "Crear" }));
+    await waitFor(() => expect(create).toHaveBeenCalledWith("vault-1", "Portafolio/Capturas"));
+    expect(await screen.findByRole("status")).toHaveTextContent("Carpeta «Portafolio/Capturas» creada.");
+  });
+
+  it("rechaza en el cliente un nombre de carpeta con barra", async () => {
+    const create = vi.spyOn(uploadFileModule, "createFileFolder").mockResolvedValue([]);
+    renderPage([]);
+    await userEvent.click(await screen.findByRole("button", { name: /Nueva carpeta/ }));
+    await userEvent.type(screen.getByLabelText(/Nombre/), "a/b");
+    await userEvent.click(screen.getByRole("button", { name: "Crear" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("No puede llevar");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("«Mover» cambia el archivo de carpeta y lo quita de la lista actual", async () => {
+    const move = vi.spyOn(uploadFileModule, "moveFile").mockResolvedValue({ ...SAMPLE_FILES[0], folder: "Archivo" } as any);
+    renderPage(["Archivo"]);
+    await userEvent.click(await screen.findByRole("button", { name: "Mover documento.pdf" }));
+    await userEvent.selectOptions(screen.getByLabelText("Carpeta de destino"), "Archivo");
+    await userEvent.click(screen.getByRole("button", { name: "Mover" }));
+    await waitFor(() => expect(move).toHaveBeenCalledWith(FILE1, "Archivo"));
+    await waitFor(() => expect(screen.queryByText("documento.pdf")).not.toBeInTheDocument());
+    expect(screen.getByText("hoja.xlsx")).toBeInTheDocument();
+  });
+
+  it("soltar un archivo sobre una carpeta del árbol lo mueve", async () => {
+    const move = vi.spyOn(uploadFileModule, "moveFile").mockResolvedValue({ ...SAMPLE_FILES[0], folder: "Archivo" } as any);
+    renderPage(["Archivo"]);
+    const folder = await treeBtn("Archivo");
+    fireEvent.drop(folder, { dataTransfer: { types: ["application/x-synapse-file"], getData: (t: string) => (t === "application/x-synapse-file" ? FILE1 : "") } });
+    await waitFor(() => expect(move).toHaveBeenCalledWith(FILE1, "Archivo"));
+  });
+
+  it("mover una carpeta dentro de sí misma se avisa y no llama al servidor", async () => {
+    const moveFolder = vi.spyOn(uploadFileModule, "moveFileFolder").mockResolvedValue({ moved_files: 0 });
+    renderPage(["A", "A/B"]);
+    await userEvent.click(await treeBtn("A"));
+    const inner = await treeBtn("B");
+    fireEvent.drop(inner, { dataTransfer: { types: ["application/x-synapse-file-folder"], getData: (t: string) => (t === "application/x-synapse-file-folder" ? "A" : "") } });
+    expect(await screen.findByRole("alert")).toHaveTextContent("dentro de sí misma");
+    expect(moveFolder).not.toHaveBeenCalled();
+  });
+
+  it("borrar una carpeta con archivos muestra el motivo que da el servidor", async () => {
+    vi.spyOn(uploadFileModule, "deleteFileFolder").mockRejectedValue(new Error("The folder still contains files"));
+    renderPage(["Docs"]);
+    await userEvent.click(await screen.findByRole("button", { name: "Acciones de Docs" }));
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Borrar" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Borrar carpeta" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("still contains files");
+  });
+
+  it("la tabla ordena al pulsar un encabezado", async () => {
+    renderPage([]);
+    await screen.findByText("documento.pdf");
+    const names = () => screen.getAllByRole("row").slice(1).map((r) => r.querySelector("td")?.textContent ?? "");
+    expect(names()[0]).toContain("documento.pdf"); // por fecha descendente: el más reciente primero
+    await userEvent.click(screen.getByRole("button", { name: /^Nombre/ }));
+    expect(names()[0]).toContain("documento.pdf"); // A→Z
+    await userEvent.click(screen.getByRole("button", { name: /^Nombre/ }));
+    expect(names()[0]).toContain("hoja.xlsx"); // Z→A
   });
 });

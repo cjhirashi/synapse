@@ -45,110 +45,192 @@
   text-align: center;
 }
 
-.files-table-wrap {
-  overflow-x: auto;
+/* H-046: dos columnas. Izquierda, bóveda y árbol de carpetas; derecha, la tabla de la carpeta abierta. */
+/* Árbol + tabla necesitan más que los 880 px de las demás páginas. */
+.app-main > .files-page {
+  max-width: 1320px;
+}
+
+.files-layout {
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.files-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--bg-secondary);
+  overflow: hidden;
 }
 
-.files-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
+.files-side-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
 }
 
-.files-table th {
-  text-align: left;
-  padding: var(--space-3) var(--space-4);
+.files-side-head label {
   color: var(--text-secondary);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
 }
 
-.files-table td {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+.files-side-head select,
+.files-side-form input {
+  width: 100%;
+}
+
+.files-side-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+}
+
+.files-side-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.files-side-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.files-side-actions button {
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
+}
+
+.files-side-error {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 12px;
+}
+
+.files-tree-panel {
+  max-height: 60vh;
+  overflow: auto;
+}
+
+.files-tree-panel .note-tree-row[data-drop-target="true"] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.files-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.files-main > .files-toolbar {
+  margin-bottom: 0;
+}
+
+.files-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-right: auto;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.files-crumbs button {
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.files-crumbs button:hover {
   color: var(--text-primary);
 }
 
-.files-table tbody tr:last-child td {
-  border-bottom: 0;
-}
-
-.files-table tbody tr:hover {
-  background: var(--bg-tertiary);
+.files-crumbs button[aria-current="page"] {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .files-name {
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
   overflow-wrap: anywhere;
 }
 
+.files-type-icon {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+
+.files-visibility {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.files-visibility--public {
+  border-color: var(--success);
+  color: var(--success-text);
+}
+
 .files-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  display: inline-flex;
+  gap: var(--space-1);
   justify-content: flex-end;
 }
 
 .files-actions button {
-  padding: 4px 10px;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md, 6px);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
-.files-sr {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+.files-actions button:hover {
+  border-color: var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
 }
 
-/* Pantallas angostas: cada archivo es una tarjeta apilada. */
-@media (max-width: 720px) {
-  .files-table thead {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
+.files-actions .files-danger:hover {
+  color: var(--danger-text);
+}
+
+@media (max-width: 900px) {
+  .files-layout {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .files-table,
-  .files-table tbody,
-  .files-table tr,
-  .files-table td {
-    display: block;
-    width: 100%;
-  }
-
-  .files-table tr {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .files-table td {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--space-3);
-    padding: var(--space-1) 0;
-    border: 0;
-  }
-
-  .files-table td[data-label]::before {
-    content: attr(data-label);
-    color: var(--text-secondary);
-    font-size: 12px;
-  }
-
-  .files-table td.files-actions {
-    justify-content: flex-start;
-    padding-top: var(--space-2);
+  .files-tree-panel {
+    max-height: 30vh;
   }
 }

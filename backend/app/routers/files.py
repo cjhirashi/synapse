@@ -42,6 +42,7 @@ class FileUpdate(BaseModel):
     """PATCH /files/{id}: actualizar name y/o visibility (C-5)."""
     name: str | None = None
     visibility: str | None = None
+    folder: str | None = None  # presente = mover a esa carpeta (vacía = raíz); ausente = no cambia
 
 
 # Categorías de tipo para decidir cabeceras (C-3)
@@ -192,7 +193,7 @@ def update_file(
     guard: AgentAccessGuard = Depends(get_file_guard),
     principal: TokenPayload = Depends(get_current_principal),
 ):
-    """Actualizar name y/o visibility del archivo (C-5). Solo el dueño. La visibilidad se elige al subir (un agente
+    """Actualizar name, visibility y/o folder del archivo (C-5, H-046). Solo el dueño. La visibilidad se elige al subir (un agente
     puede pedir `public` entonces); después solo la cambia la persona con su sesión: una API key recibe 403."""
     record = service.get_record(file_id)
     guard.check(record.vault_id, "file-update", [record.name], files=True)
@@ -203,6 +204,8 @@ def update_file(
         record = service.set_name(file_id, body.name)
     if body.visibility is not None:
         record = service.set_visibility(file_id, body.visibility)
+    if "folder" in body.model_fields_set:
+        record = service.move_file(file_id, body.folder)
 
     return record
 

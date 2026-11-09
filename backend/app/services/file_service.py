@@ -12,7 +12,10 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from app.adapters.file_repository import FileRepository
-from app.core.errors import FileNotFound, FileTooLarge, UnsafeSvg, UnsupportedFileType, ValidationFailed
+from app.core.errors import (
+    FileFolderNotEmpty, FileNotFound, FileTooLarge, FolderMoveInvalid, FolderNotFound, UnsafeSvg, UnsupportedFileType,
+    ValidationFailed,
+)
 from app.core.file_safety import SVG, is_safe_svg, resolve_content_type
 from app.core.models.file import File
 from app.core.ports.object_storage_port import ObjectStoragePort
@@ -48,28 +51,43 @@ def _sanitize_filename(name: str) -> str | None:
     return name.strip()
 
 
+MAX_FOLDER_DEPTH = 8
+MAX_FOLDER_PATH = 300
+
+
 def _validate_folder(folder: str | None) -> str | None:
-    """Valida folder (H-025):
-    - None → None (sin carpeta)
-    - Cadena vacía o solo espacios → None
-    - 1-64 caracteres sin separadores de ruta ni control chars
-    - No . ni ..
-    Lanza ValidationFailed si es inválido, retorna la carpeta saneada o None."""
+    """Valida una carpeta de archivos (H-025, H-046): ruta con `/` entre niveles.
+    - None, vacía o solo espacios → None (raíz)
+    - Cada nivel: 1-64 caracteres, sin `\\` ni control chars, sin espacios en los extremos, ni `.` ni `..`
+    - Hasta 8 niveles y 300 caracteres en total; sin niveles vacíos (`a//b`, `/a`, `a/`)
+    Lanza ValidationFailed si es inválida; retorna la ruta saneada o None."""
     if folder is None or not folder or not folder.strip():
         return None
 
     clean_folder = folder.strip()
-
-    if len(clean_folder) > 64:
-        raise ValidationFailed("carpeta muy larga: máximo 64 caracteres")
-
-    if _INVALID_FOLDER_PATTERN.search(clean_folder):
-        raise ValidationFailed("carpeta inválida: contiene caracteres no permitidos")
-
-    if clean_folder in {'.', '..'}:
-        raise ValidationFailed(f"carpeta inválida: {clean_folder} no permitido")
-
+    if len(clean_folder) > MAX_FOLDER_PATH:
+        raise ValidationFailed(f"carpeta muy larga: máximo {MAX_FOLDER_PATH} caracteres")
+    levels = clean_folder.split("/")
+    if len(levels) > MAX_FOLDER_DEPTH:
+        raise ValidationFailed(f"carpeta con demasiados niveles: máximo {MAX_FOLDER_DEPTH}")
+    for level in levels:
+        if not level:
+            raise ValidationFailed("carpeta inválida: nivel vacío")
+        if len(level) > 64:
+            raise ValidationFailed("carpeta muy larga: cada nivel admite máximo 64 caracteres")
+        if level != level.strip():
+            raise ValidationFailed("carpeta inválida: un nivel no puede empezar ni terminar con espacio")
+        if _INVALID_FOLDER_PATTERN.search(level.replace("/", "")) or "\\" in level:
+            raise ValidationFailed("carpeta inválida: contiene caracteres no permitidos")
+        if level in {".", ".."}:
+            raise ValidationFailed(f"carpeta inválida: {level} no permitido")
     return clean_folder
+
+
+def _with_ancestors(path: str) -> set[str]:
+    """`a/b/c` → {`a`, `a/b`, `a/b/c`}."""
+    levels = path.split("/")
+    return {"/".join(levels[: i + 1]) for i in range(len(levels))}
 
 
 def _get_file_extension(filename: str) -> str:
@@ -269,3 +287,60 @@ class FileService:
 
         allowed = type_to_exts.get(content_type, {ext_lower})
         return ext_lower in allowed
+
+    # --- Carpetas (H-046) ---
+
+    def list_folders(self, vault_id: str) -> list[str]:
+        """Carpetas de la bóveda: explícitas + las que tienen archivos + las ancestras de todas, ordenadas."""
+        self._ensure_vault(vault_id)
+        known = self._repo.explicit_folders(vault_id, self._owner_id) | self._repo.file_folders(vault_id, self._owner_id)
+        every: set[str] = set()
+        for path in known:
+            every |= _with_ancestors(path)
+        return sorted(every, key=lambda p: [x.casefold() for x in p.split("/")])
+
+    def create_folder(self, vault_id: str, path: str) -> list[str]:
+        """Crea la carpeta (y sus ancestras) aunque no tenga archivos. Idempotente."""
+        clean = _validate_folder(path)
+        if clean is None:
+            raise ValidationFailed("carpeta inválida: la ruta no puede estar vacía")
+        self._ensure_vault(vault_id)
+        self._repo.add_folders(vault_id, self._owner_id, _with_ancestors(clean))
+        return self.list_folders(vault_id)
+
+    def move_file(self, file_id: str, folder: str | None) -> File:
+        """Mueve un archivo a otra carpeta (`None` o vacía = raíz). La carpeta destino queda registrada."""
+        clean = _validate_folder(folder)
+        record = self.get_record(file_id)
+        if record.owner_id != self._owner_id:
+            raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
+        if clean is not None:
+            self._repo.add_folders(record.vault_id, self._owner_id, _with_ancestors(clean))
+        moved = self._repo.set_folder(file_id, self._owner_id, clean)
+        if moved is None:
+            raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
+        return moved
+
+    def move_folder(self, vault_id: str, src: str, dst: str) -> tuple[str, str, int]:
+        """Mueve una carpeta con todo lo que contiene (`src` pasa a llamarse `dst`). Si `dst` ya existe, se fusionan."""
+        clean_src, clean_dst = _validate_folder(src), _validate_folder(dst)
+        if clean_src is None or clean_dst is None:
+            raise FolderMoveInvalid("la raíz no se mueve ni es destino de un nombre de carpeta")
+        if clean_dst == clean_src or clean_dst.startswith(clean_src + "/"):
+            raise FolderMoveInvalid("una carpeta no se puede mover dentro de sí misma")
+        if clean_src not in self.list_folders(vault_id):
+            raise FolderNotFound()
+        self._repo.add_folders(vault_id, self._owner_id, _with_ancestors(clean_dst))
+        moved = self._repo.move_folder_tree(vault_id, self._owner_id, clean_src, clean_dst)
+        return clean_src, clean_dst, moved
+
+    def delete_folder(self, vault_id: str, path: str) -> None:
+        """Borra una carpeta vacía (y sus subcarpetas vacías). Con archivos dentro: `FileFolderNotEmpty`."""
+        clean = _validate_folder(path)
+        if clean is None:
+            raise ValidationFailed("carpeta inválida: la raíz no se borra")
+        if clean not in self.list_folders(vault_id):
+            raise FolderNotFound()
+        if self._repo.count_files_under(vault_id, self._owner_id, clean) > 0:
+            raise FileFolderNotEmpty()
+        self._repo.delete_folder_rows(vault_id, self._owner_id, clean)

@@ -1,0 +1,160 @@
+/* Tabla compartida (diseño de las listas de cjhirashi-career). Solo tokens del tema, claro y oscuro. */
+.data-table-scroll {
+  overflow: auto;
+  max-height: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-secondary);
+}
+
+.data-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: var(--space-2) var(--space-4);
+  text-align: left;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  box-shadow: 0 1px 0 var(--border);
+}
+
+.data-table thead th.data-table-key {
+  color: var(--accent);
+  background: var(--accent-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+}
+
+.data-table tbody td {
+  padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.data-table tbody tr:hover td {
+  background: var(--bg-tertiary);
+}
+
+.data-table tbody tr[draggable="true"] {
+  cursor: grab;
+}
+
+.data-table td.data-table-key {
+  font-weight: 600;
+  background: var(--accent-soft);
+}
+
+.data-table tbody tr:hover td.data-table-key {
+  background: var(--accent-soft);
+}
+
+.data-table .data-table-right {
+  text-align: right;
+}
+
+.data-table-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.data-table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+
+.data-table-sort:hover {
+  color: var(--text-primary);
+}
+
+.data-table-sort-idle {
+  opacity: 0.3;
+}
+
+.data-table-empty {
+  padding: var(--space-6);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.data-table-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Celular: cada fila pasa a tarjeta con la etiqueta de cada dato. */
+@media (max-width: 700px) {
+  .data-table {
+    min-width: 0;
+  }
+
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .data-table tbody tr {
+    display: block;
+    border-bottom: 1px solid var(--border);
+    padding: var(--space-2) 0;
+  }
+
+  .data-table tbody td {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    border: 0;
+    padding: var(--space-1) var(--space-4);
+    text-align: right;
+  }
+
+  .data-table tbody td[data-label]::before {
+    content: attr(data-label);
+    color: var(--text-secondary);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    text-align: left;
+  }
+
+  .data-table td.data-table-key {
+    background: var(--accent-soft);
+  }
+
+  .data-table-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}

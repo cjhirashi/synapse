@@ -330,6 +330,15 @@ class AgentOwnsSkills(DomainError):
 
 # --- Archivos (H-015) ---
 
+class FileFolderNotEmpty(DomainError):
+    """Borrar una carpeta de archivos que todavía tiene archivos dentro (H-046): primero se mueven o se borran."""
+
+    slug = "file-folder-not-empty"
+    title = "File folder is not empty"
+    status = 409
+    detail = "The folder still contains files"
+
+
 class FileVisibilityUserOnly(DomainError):
     """Un agente (petición por API key) intenta cambiar la visibilidad de un archivo ya subido: la elige al subirlo y
     desde entonces solo la cambia la persona, con su sesión."""
