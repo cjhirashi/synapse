@@ -155,3 +155,17 @@ def test_metodo_no_permitido_en_ruta_real_sigue_dando_405(client):
     r = client.post("/health")
     assert r.status_code == 405
     assert "GET" in r.headers["allow"]
+
+
+# --- Caché tras un despliegue: el HTML se revalida, los assets con huella no caducan ---
+
+def test_index_se_revalida_siempre(client):
+    for path in ("/", "/files", "/vaults/x"):
+        r = client.get(path, headers={"Accept": "text/html"})
+        assert r.status_code == 200
+        assert r.headers["cache-control"] == "no-cache", path
+
+
+def test_asset_con_huella_es_inmutable(client):
+    r = client.get(f"/assets/{JS_ASSET}")
+    assert r.headers["cache-control"] == "public, max-age=31536000, immutable"

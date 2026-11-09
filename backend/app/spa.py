@@ -17,6 +17,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
 from starlette.datastructures import Headers
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -32,6 +33,20 @@ API_PREFIXES = ("/auth", "/admin", "/sync", "/vaults", "/health")
 _DEFAULT_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 DIST_DIR = Path(os.environ.get("FRONTEND_DIST", _DEFAULT_DIST))
 INDEX_HTML = DIST_DIR / "index.html"
+
+
+# El HTML de la app nombra los assets con huella del build vigente: el navegador debe revalidarlo siempre, o tras un
+# despliegue seguiría pidiendo assets que ya no existen. Los assets con huella nunca cambian: caché larga.
+INDEX_CACHE = {"Cache-Control": "no-cache"}
+ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
+
+
+class HashedAssets(StaticFiles):
+    def file_response(self, *args, **kwargs) -> Response:
+        response = super().file_response(*args, **kwargs)
+        if response.status_code == 200:
+            response.headers.update(ASSET_CACHE)
+        return response
 
 
 def prefers_html(accept: str | None) -> bool:
@@ -79,7 +94,7 @@ class VaultsSpaNegotiation:
             if path == "/vaults" or path.startswith("/vaults/"):
                 accept = Headers(scope=scope).get("accept")
                 if prefers_html(accept):
-                    await FileResponse(INDEX_HTML)(scope, receive, send)
+                    await FileResponse(INDEX_HTML, headers=INDEX_CACHE)(scope, receive, send)
                     return
         await self.app(scope, receive, send)
 
@@ -100,7 +115,7 @@ def install_spa(app: FastAPI) -> None:
     # Assets con huella del build: directos; inexistente → 404 real de `StaticFiles` (RF-004).
     assets = DIST_DIR / "assets"
     if assets.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets), name="assets")
+        app.mount("/assets", HashedAssets(directory=assets), name="assets")
 
     # Catch-all de React Router: va al final, tras los routers de API (RF-001/002/004/005).
     # `name=CATCH_ALL_ROUTE_NAME` (RF-007/D-7): identifica esta ruta para que
@@ -118,4 +133,4 @@ def install_spa(app: FastAPI) -> None:
         if "." in full_path.rsplit("/", 1)[-1]:
             raise SpaResourceNotFound()
         # Ruta de la SPA (sin extensión) → index.html (RF-002).
-        return FileResponse(INDEX_HTML)
+        return FileResponse(INDEX_HTML, headers=INDEX_CACHE)

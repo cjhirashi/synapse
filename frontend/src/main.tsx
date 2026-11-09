@@ -3,6 +3,9 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles/global.css";
+import { installStaleChunkReload } from "./reloadOnStaleChunk";
+
+installStaleChunkReload();
 
 // Data router (no `BrowserRouter`): sólo así existe `useBlocker`, que el editor usa para no
 // perder un borrador al navegar dentro de la app (SPEC-0008 RF-008, VF-1). Una única ruta

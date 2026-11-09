@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-11-09] H-049: caché del HTML tras un despliegue y recarga ante un chunk obsoleto (desplegada)
+
+- **Qué pasó (reporte de Carlos, 2026-11-09 18:12 UTC):** al abrir Archivos de la bóveda Proyectos vio un error y Cloudflare 502 (`Bad gateway`, 18:11:41 UTC). El 502 coincide con el arranque del contenedor en el despliegue de H-048 (18:11:41 UTC): el backend estuvo sin responder unos segundos y avisé después, no antes. Además su pestaña seguía con el build anterior (H-046/H-047: tarjetas en móvil, barra encima), porque el servidor no mandaba `Cache-Control` en el HTML y el navegador conservó un `index.html` que nombraba chunks que ya no existían.
+- **Causa raíz:** (1) despliegue con corte sin aviso; (2) sin política de caché: `index.html` y los assets se servían sin cabeceras. Descartado un fallo de la pantalla: con 121 archivos en la raíz (como Proyectos) carga las 121 filas, sin errores ni 4xx/5xx, a 390 px; `file_list` real sobre Proyectos responde 200 (total 121).
+- **Qué cambió:** `app/spa.py`: `index.html` (y el fallback de la SPA) con `Cache-Control: no-cache`; `/assets/*` con `public, max-age=31536000, immutable` (nombres con huella). `frontend/src/reloadOnStaleChunk.ts` (+ prueba): ante `vite:preloadError` recarga una vez, con marca en sessionStorage para no entrar en bucle. 3 pruebas nuevas.
+- **Verificación:** `test_spa.py` 18 en verde; vitest completo 2918 en verde; pantalla con 121 archivos en Chromium real local. Una pestaña abierta con el build de antes de este cambio necesita una recarga manual una vez.
+- **Despliegue:** 2026-11-09 18:18 UTC (corte medido de ~4 s del backend; no pude avisar antes porque Carlos estaba reportando el fallo). Imagen previa `synapse-backend:pre-h049`.
+- **Regla de despliegue desde hoy:** avisar a Carlos antes de reiniciar el backend si hay una sesión suya activa y desplegar una sola vez por entrega (juntar los cambios), no tras cada ajuste.
+- **Modelos:** claude-sonnet-5-5 (yo), sin subagentes.
+
 ## [2026-11-09] H-048: Archivos con la misma barra lateral que las notas y tablas con desplazamiento horizontal (desplegada)
 
 - **Pedido de Carlos (2026-11-09 17:57 UTC):** la barra de carpetas de Archivos debe replicar toda la estructura y el comportamiento de la de las notas (en móvil, a un costado y flotante, ocultable) y las tablas no deben ajustarse al ancho de pantalla con columnas angostas: deben desplazarse en horizontal. Corrige lo entregado en H-046 y H-047. Cambio directo, solo frontend.
