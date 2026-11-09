@@ -1,5 +1,14 @@
 # History — Synapse
 
+## [2026-11-09] H-050: ícono y color propios por tipo de archivo (desplegada)
+
+- **Pedido de Carlos (2026-11-09 18:24 UTC):** que el ícono del nombre de archivo cambie según el tipo de documento. Cambio directo, solo frontend.
+- **Qué cambió:** nuevo `files/fileKind.tsx` (clasifica el tipo MIME en 12 clases: PDF, Word, Excel, PowerPoint, HTML, CSV, JSON, Markdown, Texto, ZIP, Imagen y otro; da la etiqueta de «Tipo» y el ícono). Cada clase tiene ícono lucide propio (`FileText`, `FileSpreadsheet`, `Presentation`, `FileCode`, `FileJson`, `FileArchive`, `FileImage`) y color con tokens del tema en `files.css` (`.files-type-icon--<tipo>`), válido en claro y oscuro. La columna «Tipo» ahora distingue JSON y Markdown (antes ambos eran «Texto») y reconoce los formatos Office/ODF y RTF.
+- **Verificación:** 22 pruebas nuevas de clasificación; vitest del módulo de archivos en verde. Chromium real contra pila local aislada con un archivo válido de cada tipo (12): cada fila muestra su clase de ícono y su etiqueta correctas, en tema oscuro y claro. Las imágenes PNG y SVG comparten ícono y color.
+- **Despliegue:** 2026-11-09 ~18:35 UTC, solo frontend; imagen previa `synapse-backend:pre-h050`.
+- **Docs:** `frontend/src/README.md`.
+- **Modelos:** claude-sonnet-5-5 (yo), sin subagentes.
+
 ## [2026-11-09] H-049: caché del HTML tras un despliegue y recarga ante un chunk obsoleto (desplegada)
 
 - **Qué pasó (reporte de Carlos, 2026-11-09 18:12 UTC):** al abrir Archivos de la bóveda Proyectos vio un error y Cloudflare 502 (`Bad gateway`, 18:11:41 UTC). El 502 coincide con el arranque del contenedor en el despliegue de H-048 (18:11:41 UTC): el backend estuvo sin responder unos segundos y avisé después, no antes. Además su pestaña seguía con el build anterior (H-046/H-047: tarjetas en móvil, barra encima), porque el servidor no mandaba `Cache-Control` en el HTML y el navegador conservó un `index.html` que nombraba chunks que ya no existían.

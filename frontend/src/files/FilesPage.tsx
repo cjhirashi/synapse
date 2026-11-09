@@ -31,16 +31,11 @@ import {
 } from "./fileFolderTree";
 import { DRAG_FILE, FileFolderTree } from "./FileFolderTree";
 import { DataTable, type DataColumn } from "../ui/DataTable";
+import { FileKindIcon, fileKindLabel } from "./fileKind";
 import {
-  Archive,
   Code,
   Download,
   ExternalLink,
-  File as FileIcon,
-  FileCode,
-  FileImage,
-  FileSpreadsheet,
-  FileText,
   FolderInput,
   FolderOpen,
   FolderPlus,
@@ -97,38 +92,6 @@ function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function getFileTypeName(contentType: string): string {
-  if (contentType.includes("pdf")) return "PDF";
-  if (contentType.includes("word") || contentType.includes("wordprocessingml"))
-    return "Word";
-  if (contentType.includes("excel") || contentType.includes("spreadsheet"))
-    return "Excel";
-  if (
-    contentType.includes("powerpoint") ||
-    contentType.includes("presentation")
-  )
-    return "PowerPoint";
-  if (contentType.includes("html")) return "HTML";
-  if (contentType.includes("csv")) return "CSV";
-  if (contentType.includes("zip")) return "ZIP";
-  if (contentType.includes("text") || contentType.includes("json"))
-    return "Texto";
-  if (contentType.startsWith("image/")) return "Imagen";
-  return contentType;
-}
-
-function TypeIcon({ contentType }: { contentType: string }) {
-  const props = { size: 15, "aria-hidden": true, className: "files-type-icon" } as const;
-  if (contentType.startsWith("image/")) return <FileImage {...props} />;
-  if (contentType.includes("html")) return <FileCode {...props} />;
-  if (contentType.includes("excel") || contentType.includes("spreadsheet") || contentType.includes("csv"))
-    return <FileSpreadsheet {...props} />;
-  if (contentType.includes("zip")) return <Archive {...props} />;
-  if (contentType.includes("pdf") || contentType.includes("word") || contentType.includes("text") || contentType.includes("presentation") || contentType.includes("powerpoint"))
-    return <FileText {...props} />;
-  return <FileIcon {...props} />;
 }
 
 /** Mensaje legible de un error de la API; el de carpeta no vacía se explica con sus palabras. */
@@ -542,7 +505,7 @@ export default function FilesPage() {
 
   const columns: DataColumn<Row>[] = [
     { key: "name", label: "Nombre", key_column: true, size: "xxl", clip: true, sortValue: (f) => f.name },
-    { key: "type", label: "Tipo", size: "md", sortValue: (f) => getFileTypeName(f.content_type) },
+    { key: "type", label: "Tipo", size: "md", sortValue: (f) => fileKindLabel(f.content_type) },
     { key: "size", label: "Tamaño", size: "sm", sortValue: (f) => f.size },
     { key: "date", label: "Fecha", size: "lg", sortValue: (f) => parseUtc(f.created_at).getTime() },
     { key: "visibility", label: "Visibilidad", size: "md", sortValue: (f) => f.visibility },
@@ -554,12 +517,12 @@ export default function FilesPage() {
       case "name":
         return (
           <span className="files-name">
-            <TypeIcon contentType={file.content_type} />
+            <FileKindIcon contentType={file.content_type} />
             <span className="files-name-text" title={file.name}>{file.name}</span>
           </span>
         );
       case "type":
-        return getFileTypeName(file.content_type);
+        return fileKindLabel(file.content_type);
       case "size":
         return formatSize(file.size);
       case "date":

@@ -187,10 +187,22 @@
   text-overflow: ellipsis;
 }
 
+/* Un color por tipo de archivo, con los tokens del tema (claro y oscuro). */
 .files-type-icon {
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--text-secondary);
 }
+
+.files-type-icon--pdf { color: var(--danger-text); }
+.files-type-icon--word { color: var(--info-text); }
+.files-type-icon--excel,
+.files-type-icon--csv { color: var(--success-text); }
+.files-type-icon--powerpoint { color: color-mix(in srgb, var(--warning-text) 60%, var(--danger-text)); }
+.files-type-icon--html { color: var(--accent); }
+.files-type-icon--json { color: var(--warning-text); }
+.files-type-icon--markdown { color: color-mix(in srgb, var(--info-text) 55%, var(--accent)); }
+.files-type-icon--zip { color: color-mix(in srgb, var(--warning-text) 55%, var(--text-secondary)); }
+.files-type-icon--image { color: color-mix(in srgb, var(--info-text) 55%, var(--danger-text)); }
 
 .files-visibility {
   display: inline-flex;
