@@ -14,6 +14,13 @@ components:
         vault_id:
           title: Vault Id
           type: string
+        visibility:
+          default: private
+          enum:
+          - private
+          - public
+          title: Visibility
+          type: string
       required:
       - vault_id
       - file
@@ -335,7 +342,11 @@ paths:
       tags:
       - files
     patch:
-      description: Actualizar name y/o visibility del archivo (C-5). Solo el dueño.
+      description: 'Actualizar name y/o visibility del archivo (C-5). Solo el dueño.
+        La visibilidad se elige al subir (un agente
+
+        puede pedir `public` entonces); después solo la cambia la persona con su sesión:
+        una API key recibe 403.'
       operationId: update_file_files__file_id__patch
       parameters:
       - in: path
@@ -368,7 +379,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / File visibility is user-only
         '404':
           content:
             application/problem+json:

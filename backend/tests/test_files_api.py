@@ -694,3 +694,72 @@ def test_h025_patch_preserves_folder(ready_admin, storage):
     res = ready_admin.patch(f"/files/{file_id}", json={"name": "renamed.png"})
     assert res.status_code == 200
     assert res.json()["folder"] == "Documentos"
+
+
+# --- Visibilidad elegida al subir; después solo la persona la cambia ---
+
+def _anon(client):
+    anon = _bearer_client(client, "")
+    anon.headers.pop("Authorization", None)
+    return anon
+
+
+def _agent_upload(agent, vault_id, **extra):
+    return agent.post("/files", data={"vault_id": vault_id, **extra}, files={"file": ("a.png", PNG, "image/png")})
+
+
+def test_upload_defaults_to_private_for_an_agent_key(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    agent = _bearer_client(ready_admin, create_agent_key(ready_admin, "aira").json()["key"])
+    res = _agent_upload(agent, vault_id)
+    assert res.status_code == 201 and res.json()["visibility"] == "private"
+    assert_problem(_anon(ready_admin).get(f"/files/{res.json()['id']}"), 401, "not-authenticated")
+
+
+def test_agent_key_can_upload_as_public(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    agent = _bearer_client(ready_admin, create_agent_key(ready_admin, "aira").json()["key"])
+    res = _agent_upload(agent, vault_id, visibility="public")
+    assert res.status_code == 201, res.text
+    assert res.json()["visibility"] == "public"
+    got = _anon(ready_admin).get(f"/files/{res.json()['id']}")
+    assert got.status_code == 200 and got.content == PNG
+
+
+def test_person_can_also_upload_as_public(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = ready_admin.post("/files", data={"vault_id": vault_id, "visibility": "public"}, files={"file": ("a.png", PNG, "image/png")})
+    assert res.status_code == 201 and res.json()["visibility"] == "public"
+
+
+def test_upload_with_invalid_visibility_is_422(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    res = ready_admin.post("/files", data={"vault_id": vault_id, "visibility": "secret"}, files={"file": ("a.png", PNG, "image/png")})
+    assert res.status_code == 422, res.text
+
+
+def test_agent_key_cannot_change_visibility_after_upload(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    agent = _bearer_client(ready_admin, create_agent_key(ready_admin, "aira").json()["key"])
+    file_id = _agent_upload(agent, vault_id, visibility="public").json()["id"]
+    assert_problem(agent.patch(f"/files/{file_id}", json={"visibility": "private"}), 403, "file-visibility-user-only")
+    assert ready_admin.get(f"/files/{file_id}").status_code == 200
+    assert _anon(ready_admin).get(f"/files/{file_id}").status_code == 200  # sigue público
+
+
+def test_agent_key_cannot_make_a_private_file_public_afterwards(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    agent = _bearer_client(ready_admin, create_agent_key(ready_admin, "aira").json()["key"])
+    file_id = _agent_upload(agent, vault_id).json()["id"]
+    assert_problem(agent.patch(f"/files/{file_id}", json={"visibility": "public"}), 403, "file-visibility-user-only")
+    assert_problem(_anon(ready_admin).get(f"/files/{file_id}"), 401, "not-authenticated")
+
+
+def test_agent_key_can_still_rename_and_person_changes_visibility(ready_admin, storage):
+    vault_id = _vault(ready_admin)
+    agent = _bearer_client(ready_admin, create_agent_key(ready_admin, "aira").json()["key"])
+    file_id = _agent_upload(agent, vault_id, visibility="public").json()["id"]
+    res = agent.patch(f"/files/{file_id}", json={"name": "nuevo.png"})
+    assert res.status_code == 200 and res.json()["name"] == "nuevo.png"
+    res = ready_admin.patch(f"/files/{file_id}", json={"visibility": "private"})
+    assert res.status_code == 200 and res.json()["visibility"] == "private"

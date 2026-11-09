@@ -20,9 +20,9 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
 - `notes.py` (historia 0014, H-029): notas de una bóveda para agentes —listar con cursor, leer, crear,
   actualizar parcial (`PATCH`), borrar y restaurar— con `ETag`; delega en `NoteContentService`. Las fechas
   de la nota las sella el servidor (día de CDMX) cuando escribe un agente.
-- `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campo opcional `folder`), `GET /files/{id}`
+- `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campos opcionales `folder` y `visibility` —`private` por defecto o `public`, a elegir al subir—), `GET /files/{id}`
   (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
-  `PATCH /files/{id}` (nombre y visibilidad) y `DELETE /files/{id}`. MinIO nunca se expone directo.
+  `PATCH /files/{id}` (nombre y visibilidad; la visibilidad solo la cambia la persona con su sesión: una API key recibe `403` `file-visibility-user-only`) y `DELETE /files/{id}`. MinIO nunca se expone directo.
 - `folders.py` (H-039): `POST /vaults/{id}/folders/move` mueve una carpeta entera (cambia el `path` de cada nota bajo ella) y reescribe los wikilinks que la apuntaban; respeta las carpetas reservadas y los documentos de sistema (`meta-folder:*`, `sistema:readonly`).
 - `sync.py` (SPEC-0005): canal `/sync` para PouchDB. La base sale del token
   (`get_sync_db`); sólo existe el subconjunto del protocolo que usa el replicador y una ruta

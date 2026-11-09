@@ -101,8 +101,8 @@ class FileService:
         # con el `VaultService` del dueño; los tests pasan un doble).
         self._ensure_vault = ensure_vault
 
-    def create(self, *, vault_id: str, filename: str, data: bytes, folder: str | None = None) -> File:
-        """Guarda el objeto y crea su registro privado (C-1), o rechaza sin crear nada (C-2/C-5).
+    def create(self, *, vault_id: str, filename: str, data: bytes, folder: str | None = None, visibility: str = "private") -> File:
+        """Guarda el objeto y crea su registro, privado por defecto o público si se pide al subir (C-1), o rechaza sin crear nada (C-2/C-5).
 
         El orden importa (C-2): toda validación ocurre ANTES de tocar MinIO o Postgres, así un
         archivo rechazado no deja rastro en ningún almacén.
@@ -120,6 +120,9 @@ class FileService:
         clean_name = _sanitize_filename(filename)
         if clean_name is None:
             raise UnsupportedFileType(f"nombre inválido: {filename}")
+
+        if visibility not in _VALID_VISIBILITIES:
+            raise ValidationFailed(f"visibilidad inválida: {visibility}")
 
         # Validar carpeta (H-025)
         clean_folder = _validate_folder(folder)
@@ -151,7 +154,7 @@ class FileService:
                 name=clean_name,
                 content_type=content_type,
                 size=len(data),
-                visibility="private",
+                visibility=visibility,
                 folder=clean_folder,
                 object_key=object_key,
                 created_at=datetime.now(UTC),

@@ -85,7 +85,7 @@ Un agente puede subir un gráfico de Plotly como archivo HTML y embeberlo en una
    pio.write_html(fig, "grafico.html", include_plotlyjs=True, full_html=True, config={"responsive": True})
    ```
    Pesa ~4,7 MB (el límite de un documento es 25 MB). Con `include_plotlyjs="cdn"` el archivo **no se verá**: el HTML se sirve con una política de seguridad que impide cargar scripts externos y no tiene red. Quita el ancho fijo de la figura (`fig.update_layout(width=None, height=None)`) para que se adapte al celular.
-2. **Subirlo.** `POST /files` (multipart: `vault_id`, `file` con `content_type: text/html`) con la API key del agente (`Authorization: Bearer …`). Devuelve el `id`.
+2. **Subirlo.** `POST /files` (multipart: `vault_id`, `file` con `content_type: text/html`, y opcional `visibility`) con la API key del agente (`Authorization: Bearer …`). Devuelve el `id`.
 3. **Embeberlo.** En el markdown de la nota: `<iframe src="https://synapse.cjhirashi.com/files/<id>"></iframe>`.
 
 Funcionan los gráficos con SVG (líneas, barras, mapas de calor…), 3D y WebGL 2D (`scattergl`). El HTML corre aislado: sandbox sin `allow-same-origin`, sin acceso a red ni a la sesión. Esa política permite `unsafe-eval` solo para ese HTML (Plotly compila shaders con `new Function`); los demás tipos de archivo no lo llevan.
@@ -564,3 +564,11 @@ con las keys por agente en uso. Revertir: `AGENT_ACCESS_MODE=shadow` y el mismo 
 ## Archivos: carpeta opcional (H-025)
 
 `POST /files` (multipart) acepta el campo opcional `folder`: de 1 a 64 caracteres, sin `/`, `\` ni caracteres de control, y distinto de `.` y `..`. Vacío o solo espacios equivale a sin carpeta. Un valor inválido da `422` `validation-error` sin crear nada en MinIO ni en la base. Las respuestas de `POST /files`, `PATCH /files/{id}` y `GET /vaults/{vault_id}/files` devuelven `folder` (`null` para los archivos sin carpeta, incluidos los anteriores a la migración 007). `PATCH` no cambia la carpeta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
+
+## Archivos: visibilidad elegida al subir
+
+`POST /files` acepta el campo multipart opcional `visibility`: `private` (por defecto) o `public`. Lo puede pedir **cualquier solicitante**, también un agente con su API key: así una imagen o un HTML que va a una página pública nace público y nadie tiene que cambiarlo a mano. Un valor distinto de esos dos da `422` y no crea nada en MinIO ni en la base. Un archivo público se sirve sin credencial (`GET /files/{id}`).
+
+Después de subirlo, **solo la persona cambia la visibilidad**: `PATCH /files/{id}` con `visibility` desde una sesión humana (la pantalla Archivos). Con una API key —de un agente o la general— responde `403` `file-visibility-user-only` y no cambia nada; renombrar con key sigue permitido. Se elige bien al subir: un archivo subido como privado ya no lo vuelve público un agente, y uno subido como público no lo vuelve privado.
+
+La herramienta `synapse_vault` de OpenClaw expone el campo en `file_upload` cuando se actualice su plugin; hasta entonces, por REST. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.

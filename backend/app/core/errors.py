@@ -330,6 +330,16 @@ class AgentOwnsSkills(DomainError):
 
 # --- Archivos (H-015) ---
 
+class FileVisibilityUserOnly(DomainError):
+    """Un agente (petición por API key) intenta cambiar la visibilidad de un archivo ya subido: la elige al subirlo y
+    desde entonces solo la cambia la persona, con su sesión."""
+
+    slug = "file-visibility-user-only"
+    title = "File visibility is user-only"
+    status = 403
+    detail = "Only the user can change a file's visibility after upload"
+
+
 class FileNotFound(DomainError):
     """Archivo inexistente o, si es privado, de otro usuario: mismo cuerpo siempre (C-3).
 

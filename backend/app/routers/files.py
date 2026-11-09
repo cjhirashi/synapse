@@ -8,7 +8,7 @@ se expone directo.
 """
 from functools import lru_cache
 from urllib.parse import quote
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, File, Form, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel
@@ -20,7 +20,8 @@ from app.adapters.minio_adapter import MinioObjectStorage
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal
 from app.core.errors import (
-    AgentAccessDenied, FileNotFound, FileTooLarge, StorageUnavailable, UnsafeSvg, UnsupportedFileType, VaultNotFound,
+    AgentAccessDenied, FileNotFound, FileTooLarge, FileVisibilityUserOnly, StorageUnavailable, UnsafeSvg, UnsupportedFileType,
+    VaultNotFound,
 )
 from app.core.file_safety import SVG, HTML
 from app.core.ports.object_storage_port import ObjectStoragePort
@@ -137,6 +138,7 @@ def upload_file(
     vault_id: Annotated[str, Form()],
     file: Annotated[UploadFile, File()],
     folder: Annotated[str | None, Form()] = None,
+    visibility: Annotated[Literal["private", "public"], Form()] = "private",
     service: FileService = Depends(get_file_service),
     guard: AgentAccessGuard = Depends(get_file_guard),
 ):
@@ -145,7 +147,9 @@ def upload_file(
     # así la lectura y la subida a MinIO (que bloquean) no frenan el bucle de eventos.
     guard.check(vault_id, "file-upload", [file.filename or "archivo"], files=True)
     data = file.file.read(MAX_FILE_SIZE_DOCUMENT + 1)
-    return service.create(vault_id=vault_id, filename=file.filename or "archivo", data=data, folder=folder)
+    return service.create(
+        vault_id=vault_id, filename=file.filename or "archivo", data=data, folder=folder, visibility=visibility
+    )
 
 
 @router.get(
@@ -177,17 +181,23 @@ def get_file(
 @router.patch(
     "/{file_id}",
     response_model=FileMetaOut,
-    responses=problem_responses(*SESSION_ERRORS, FileNotFound, UnsupportedFileType, AgentAccessDenied, StorageUnavailable),
+    responses=problem_responses(
+        *SESSION_ERRORS, FileNotFound, UnsupportedFileType, AgentAccessDenied, FileVisibilityUserOnly, StorageUnavailable
+    ),
 )
 def update_file(
     file_id: str,
     body: FileUpdate,
     service: FileService = Depends(get_file_service),
     guard: AgentAccessGuard = Depends(get_file_guard),
+    principal: TokenPayload = Depends(get_current_principal),
 ):
-    """Actualizar name y/o visibility del archivo (C-5). Solo el dueño."""
+    """Actualizar name y/o visibility del archivo (C-5). Solo el dueño. La visibilidad se elige al subir (un agente
+    puede pedir `public` entonces); después solo la cambia la persona con su sesión: una API key recibe 403."""
     record = service.get_record(file_id)
     guard.check(record.vault_id, "file-update", [record.name], files=True)
+    if body.visibility is not None and principal.via_key:
+        raise FileVisibilityUserOnly()
 
     if body.name is not None:
         record = service.set_name(file_id, body.name)

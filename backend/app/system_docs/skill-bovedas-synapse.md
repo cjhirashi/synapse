@@ -74,9 +74,10 @@ Los ÍNDICES solo muestran lo que cada documento y cada carpeta declaran de sí 
 
 Synapse sí almacena archivos. Acciones: `file_upload`, `file_list`, `file_get`, `file_update`, `file_delete`.
 
-1. `file_upload`: `vaultId`, `sourceFile` (ruta relativa de **cualquier** archivo de tu workspace), `folder` opcional (por ejemplo `graficas/plotly`) y `fileName` opcional. Devuelve el `id`. Máximo 25 MB; imágenes 5 MB. Un 413 (tamaño) o un 415 (tipo no admitido) se reporta tal cual, sin recortar el archivo.
+1. `file_upload`: `vaultId`, `sourceFile` (ruta relativa de **cualquier** archivo de tu workspace), `folder` opcional (por ejemplo `graficas/plotly`), `fileName` opcional y `visibility` opcional (`private`, por defecto, o `public`). **La visibilidad se elige al subir**: si el archivo va a una página pública, súbelo como `public` y nadie tiene que cambiarlo después. Devuelve el `id`. Máximo 25 MB; imágenes 5 MB. Un 413 (tamaño) o un 415 (tipo no admitido) se reporta tal cual, sin recortar el archivo.
 2. `file_list` con `vaultId` (paginado con `offset`; límite máximo 100). `file_get` con `fileId` y `destFile` descarga a tu workspace; no pisa un archivo existente salvo `overwrite: true`, y no puede escribir sobre instrucciones ni sobre `skills/`.
-3. `file_update` cambia el nombre. `visibility: "public"` está restringido por la herramienta.
+3. `file_update` cambia el nombre. **La visibilidad no la cambia un agente después de subir** (solo la persona, con su sesión): un intento por API key da 403 `file-visibility-user-only`. Si te equivocaste de visibilidad, pídele a la persona que la cambie o vuelve a subir el archivo.
+   - Mientras la herramienta `synapse_vault` no exponga `visibility` en `file_upload`, súbelo por REST (`POST /files` con el campo `visibility`) o pídelo a la persona.
 4. `file_delete` está restringido por la herramienta y **no tiene papelera**.
 5. No subas credenciales: el plugin bloquea `.credenciales`, `.ssh`, `.gnupg` y `.env*`.
 6. **Diagramas y gráficas:** si tienes las herramientas `archify` (diagramas) y Plotly (gráficas), genéralos como HTML autocontenido con ellas, no como imagen pegada; súbelos con `file_upload` y enlázalos desde la nota con `<iframe src="https://<servidor-synapse>/files/<id>"></iframe>` (Synapse elimina un `iframe` cuya URL sea otra, o lleve `?` o `#`). Si no tienes esas herramientas, haz el diagrama con Mermaid dentro de la nota.
