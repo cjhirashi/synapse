@@ -207,7 +207,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   }, [isMobile]);
 
   // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
-  // `Escape` la cierran — mismo patrón que `AccountMenu` (mousedown + keydown en `document`). Fija
+  // `Escape` la cierran — cierre por mousedown + keydown en `document`. Fija
   // (tableta/escritorio) no se cierra así: sólo el botón la oculta.
   // H-028 C5: ignora clics dentro de menús portaled (.note-menu) o diálogos modales (.confirm-dialog, .modal-backdrop).
   useEffect(() => {

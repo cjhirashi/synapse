@@ -5,6 +5,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, RouterProvider, createMemoryRouter, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+import { MeContext } from "../auth/RequireAuth";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import { seedStore } from "../test-utils/sync";
 import VaultRail from "../notes/VaultRail";
@@ -12,6 +13,7 @@ import { createNoteStore } from "../notes/noteStore";
 import NoteEditor, { type NoteEditorViews, type ViewProps } from "./NoteEditor";
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
+const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false, display_name: null, photo_url: null };
 
 /** Editor falso: un textarea que lee y escribe el mismo texto. */
 function Fake({ value, onChange, label, readOnly }: ViewProps) {
@@ -36,12 +38,14 @@ async function setup() {
       {
         path: "*",
         element: (
-          <WithSync value={value}>
-            <VaultRail />
-            <Link to="/vaults">Bóvedas</Link>
-            <Where />
-            <NoteEditor noteId={note.id} views={views} />
-          </WithSync>
+          <MeContext.Provider value={ME}>
+            <WithSync value={value}>
+              <VaultRail />
+              <Link to="/vaults">Bóvedas</Link>
+              <Where />
+              <NoteEditor noteId={note.id} views={views} />
+            </WithSync>
+          </MeContext.Provider>
         ),
       },
     ],

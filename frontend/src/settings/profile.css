@@ -129,7 +129,7 @@
   font-size: 2rem;
   font-weight: 600;
   color: var(--text-secondary);
-  background: linear-gradient(135deg, var(--accent) 0%, rgba(var(--accent-rgb), 0.7) 100%);
+  background: var(--accent);
   color: white;
 }
 

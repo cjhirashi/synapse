@@ -7,10 +7,11 @@
  * El nombre completo sale en un tooltip propio (`RailTooltip`) al pasar el cursor o enfocar con el
  * teclado. Se monta en `document.body`: el riel tiene scroll (`overflow`) y recortaría un hijo.
  */
-import { ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronsLeft, ChevronsRight, Files, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
+import { useMe } from "../auth/RequireAuth";
 import { useSync } from "../sync/useSync";
 import type { Vault } from "../sync/vaultStore";
 import VaultChip from "../vaults/VaultChip";
@@ -48,6 +49,8 @@ function accessibleName(vault: Vault): string {
 
 export default function VaultRail() {
   const { vaults, dataVersion } = useSync();
+  // El nombre/foto del usuario para la entrada «Usuario»; se refresca al guardar en /settings (B10).
+  const me = useMe();
   const [items, setItems] = useState<Vault[]>([]);
   const [tip, setTip] = useState<Tip | null>(null);
   // Estado local, sin persistencia: el riel siempre carga colapsado, en cualquier viewport (C-2).
@@ -71,14 +74,11 @@ export default function VaultRail() {
     setTip({ name, top: box.top + box.height / 2, left: rail.current?.getBoundingClientRect().right ?? box.right });
   }
 
+  // Nombre visible del usuario para la entrada «Usuario»: el nombre si lo hay, si no el correo (H-028 A6).
+  const userLabel = me.display_name || me.email;
+
   return (
-    // Al hacer scroll el enlace se mueve y el tooltip (fijo) quedaría descolocado: se oculta.
-    <nav
-      ref={rail}
-      aria-label="Bóvedas abiertas"
-      className={expanded ? "vault-rail is-expanded" : "vault-rail"}
-      onScroll={() => setTip(null)}
-    >
+    <nav ref={rail} aria-label="Bóvedas abiertas" className={expanded ? "vault-rail is-expanded" : "vault-rail"}>
       {/* Toggle al inicio del riel: alterna colapsado (botones redondos) y expandido (píldoras). */}
       <button
         type="button"
@@ -89,31 +89,66 @@ export default function VaultRail() {
       >
         {expanded ? <ChevronsLeft size={20} aria-hidden="true" /> : <ChevronsRight size={20} aria-hidden="true" />}
       </button>
-      {items.map((vault) => (
-        <NavLink
-          key={vault.id}
-          to={`/vaults/${encodeURIComponent(vault.id)}`}
-          // Expandido: el nombre ya es texto visible, así que el nombre accesible sale de él (sin
-          // duplicar las iniciales); colapsado: lo da el `aria-label` (C-4).
-          aria-label={expanded ? undefined : accessibleName(vault)}
-          className="vault-rail-icon"
-          onMouseEnter={expanded ? undefined : (event) => showTip(event.currentTarget, vault.name)}
-          onMouseLeave={expanded ? undefined : () => setTip(null)}
-          onMouseDown={() => (pointerFocus.current = true)}
-          onFocus={
-            expanded
-              ? undefined
-              : (event) => {
-                  if (!pointerFocus.current) showTip(event.currentTarget, vault.name);
-                  pointerFocus.current = false;
-                }
-          }
-          onBlur={expanded ? undefined : () => setTip(null)}
-        >
-          <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
-          {expanded && <span className="vault-rail-name">{vault.name}</span>}
+      {/* Zona superior (H-028 A1): las bóvedas ocupan la altura disponible y sólo esta zona hace
+          scroll cuando no caben. Al hacer scroll el tooltip (fijo) quedaría descolocado: se oculta. */}
+      <div className="vault-rail-scroll" onScroll={() => setTip(null)}>
+        {items.map((vault) => (
+          <NavLink
+            key={vault.id}
+            to={`/vaults/${encodeURIComponent(vault.id)}`}
+            // Expandido: el nombre ya es texto visible, así que el nombre accesible sale de él (sin
+            // duplicar las iniciales); colapsado: lo da el `aria-label` (C-4).
+            aria-label={expanded ? undefined : accessibleName(vault)}
+            className="vault-rail-icon"
+            onMouseEnter={expanded ? undefined : (event) => showTip(event.currentTarget, vault.name)}
+            onMouseLeave={expanded ? undefined : () => setTip(null)}
+            onMouseDown={() => (pointerFocus.current = true)}
+            onFocus={
+              expanded
+                ? undefined
+                : (event) => {
+                    if (!pointerFocus.current) showTip(event.currentTarget, vault.name);
+                    pointerFocus.current = false;
+                  }
+            }
+            onBlur={expanded ? undefined : () => setTip(null)}
+          >
+            <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
+            {expanded && <span className="vault-rail-name">{vault.name}</span>}
+          </NavLink>
+        ))}
+      </div>
+      {/* Zona inferior (H-028 A2): altura de su contenido; Archivos, Papelera y Usuario (al final). */}
+      <div className="vault-rail-bottom">
+        <NavLink to="/files" className="vault-rail-icon vault-rail-action" aria-label="Archivos" title="Archivos">
+          <span className="vault-rail-glyph">
+            <Files size={18} aria-hidden="true" />
+          </span>
+          {expanded && <span className="vault-rail-name">Archivos</span>}
         </NavLink>
-      ))}
+        <NavLink to="/vaults/trash" className="vault-rail-icon vault-rail-action" aria-label="Papelera" title="Papelera">
+          <span className="vault-rail-glyph">
+            <Trash2 size={18} aria-hidden="true" />
+          </span>
+          {expanded && <span className="vault-rail-name">Papelera</span>}
+        </NavLink>
+        <NavLink
+          to="/settings"
+          className="vault-rail-icon vault-rail-action vault-rail-user"
+          aria-label={expanded ? undefined : `Usuario: ${userLabel}`}
+          title={userLabel}
+        >
+          {/* Icono = foto del usuario o, si no hay, sus iniciales (A6). */}
+          {me.photo_url ? (
+            <img className="vault-rail-avatar" src={me.photo_url} alt="" aria-hidden="true" />
+          ) : (
+            <span className="vault-rail-initials" aria-hidden="true">
+              {initials(userLabel)}
+            </span>
+          )}
+          {expanded && <span className="vault-rail-name">{userLabel}</span>}
+        </NavLink>
+      </div>
       {/* El tooltip sólo tiene sentido en colapsado (en expandido el nombre ya se ve, C-4). */}
       {!expanded && tip && <RailTooltip tip={tip} />}
     </nav>

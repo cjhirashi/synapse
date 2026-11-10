@@ -179,8 +179,8 @@ Vestido nuevo (riel, barra lateral, editor) sobre la misma lógica; las medidas 
   ancho (`useMediaQuery`, corte de 640 px): en tableta y escritorio (> 640 px) la barra es
   **fija/dockeada** y arranca visible; en móvil (≤ 640 px) arranca **oculta** y, al abrirla, aparece como
   **ventana flotante** (overlay anclado a la izquierda, `position: absolute` sobre `.vault-workspace`) que
-  no desplaza el editor y se cierra al hacer click fuera, elegir una nota o pulsar `Escape` (patrón de
-  `AccountMenu`). Cerrada, `.vault-workspace-side` se oculta entera. Al cruzar el breakpoint se recalcula
+  no desplaza el editor y se cierra al hacer click fuera, elegir una nota o pulsar `Escape` (mousedown +
+  keydown en `document`). Cerrada, `.vault-workspace-side` se oculta entera. Al cruzar el breakpoint se recalcula
   el modo sin perder la nota abierta. Es el primer uso del patrón **sidebar oculta** (vs. **sidebar en
   riel** de `VaultRail`/H-008).
 - **Editor** (`editor/editor.css`): barra superior fija de 43 px y cuerpo sin tarjeta con una

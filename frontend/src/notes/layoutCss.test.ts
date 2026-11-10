@@ -68,7 +68,8 @@ test("RF-009: el marco de la app mide el viewport y cada columna hace su propio 
   // Sin `min-height: 0` el cuerpo crece con su contenido y el scroll pasaría a la ventana.
   expect(rule(layout, ".app-body")).toMatch(/min-height: 0/);
   expect(rule(layout, ".app-main")).toMatch(/overflow-y: auto/);
-  expect(rule(read("notes.css"), ".vault-rail")).toMatch(/overflow-y: auto/);
+  // H-028 A1: el scroll vive en la zona superior del riel, no en `.vault-rail` (la zona inferior es fija).
+  expect(rule(read("notes.css"), ".vault-rail-scroll")).toMatch(/overflow-y: auto/);
 });
 
 test("RF-009: el riel ya no usa sticky ni max-height de viewport (parche de U-7 retirado)", () => {

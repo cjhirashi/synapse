@@ -1,19 +1,18 @@
 import { NavLink, Outlet } from "react-router-dom";
 import BrandLogo from "../brand/BrandLogo";
-import ThemeToggle from "../theme/ThemeToggle";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
 import VaultRail from "../notes/VaultRail";
-import AccountMenu from "./AccountMenu";
 import "./AppLayout.css";
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "active" : undefined);
 
 /**
- * Marco de las rutas privadas: secciones (SPEC-0003), navegación de cuenta (RF-023) y
- * estado de la sincronización (SPEC-0005 RF-009) y riel de bóvedas (SPEC-0008 RF-001). "Cerrar sesión" pasa por la
- * sincronización: con cambios sin confirmar abre antes el aviso (RF-017) — ver
- * `AccountMenu`, que dispara `requestLogout()` de `useSync()`.
+ * Marco de las rutas privadas: sección principal (SPEC-0003), estado de la sincronización
+ * (SPEC-0005 RF-009) y riel de bóvedas (SPEC-0008 RF-001). H-028 A7: Archivos, Papelera, el
+ * selector de tema y el menú de usuario salen de la navbar — Archivos/Papelera/Usuario viven en
+ * el riel y el tema en la pantalla de usuario. `LogoutDialog` sigue montado (el aviso de cambios
+ * sin confirmar, RF-017); «Cerrar sesión» lo dispara ahora la pantalla de usuario vía `requestLogout()`.
  */
 export default function AppLayout() {
   return (
@@ -29,16 +28,8 @@ export default function AppLayout() {
           <NavLink to="/vaults" end className={navLinkClass}>
             Bóvedas
           </NavLink>
-          <NavLink to="/files" className={navLinkClass}>
-            Archivos
-          </NavLink>
-          <NavLink to="/vaults/trash" className={navLinkClass}>
-            Papelera
-          </NavLink>
         </nav>
         <nav aria-label="Cuenta" className="app-nav-account">
-          <ThemeToggle />
-          <AccountMenu />
           <LogoutDialog />
         </nav>
       </header>

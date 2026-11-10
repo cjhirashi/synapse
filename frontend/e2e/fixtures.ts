@@ -130,7 +130,8 @@ export async function newSession(browser: Browser, user: { email: string; passwo
 
 /** Espera a que el riel muestre las `count` bóvedas (la réplica ya trajo los datos del servidor). */
 export async function waitForVaults(page: Page, count: number): Promise<void> {
-  await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).getByRole("link")).toHaveCount(count);
+  // H-028: el riel lleva abajo Archivos, Papelera y Usuario; las bóvedas son sólo la zona superior.
+  await expect(page.getByRole("navigation", { name: "Bóvedas abiertas" }).locator(".vault-rail-scroll").getByRole("link")).toHaveCount(count);
 }
 
 /** Espera a que la sincronización no tenga cambios pendientes. */

@@ -5,22 +5,35 @@ import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { expect, test } from "vitest";
 import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import type { SyncContextValue } from "../sync/useSync";
+import { MeContext } from "../auth/RequireAuth";
+import type { Me } from "../api/auth";
 import VaultRail from "./VaultRail";
+
+// El riel usa `useMe()` para la entrada «Usuario» (H-028 A6): sin foto → iniciales del correo.
+const ME: Me = { user_id: "1", email: "admin@synapse.test", role: "admin", must_change_password: false, display_name: null, photo_url: null };
 
 function Where() {
   return <p data-testid="where">{useLocation().pathname}</p>;
 }
 
+/** Enlaces de BÓVEDA: sólo los de la zona superior con scroll (la inferior trae Archivos/Papelera/Usuario). */
+function vaultLinks(rail: HTMLElement): HTMLElement[] {
+  const scroll = rail.querySelector<HTMLElement>(".vault-rail-scroll")!;
+  return within(scroll).queryAllByRole("link");
+}
+
 function renderRail(value: SyncContextValue, path = "/vaults") {
   render(
-    <WithSync value={value}>
-      <MemoryRouter initialEntries={[path]}>
-        <VaultRail />
-        <Routes>
-          <Route path="*" element={<Where />} />
-        </Routes>
-      </MemoryRouter>
-    </WithSync>,
+    <MeContext.Provider value={ME}>
+      <WithSync value={value}>
+        <MemoryRouter initialEntries={[path]}>
+          <VaultRail />
+          <Routes>
+            <Route path="*" element={<Where />} />
+          </Routes>
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>,
   );
   return userEvent.setup();
 }
@@ -35,7 +48,7 @@ test("RF-001: un icono con iniciales por bóveda activa, sin las de la papelera"
   renderRail(value);
   const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
   await within(rail).findByRole("link", { name: / Notas$/ });
-  expect(within(rail).getAllByRole("link").map((link) => link.textContent)).toEqual(["NO", "TP"]);
+  expect(vaultLinks(rail).map((link) => link.textContent)).toEqual(["NO", "TP"]);
   expect(within(rail).queryByRole("link", { name: / Vieja$/ })).toBeNull();
 });
 
@@ -57,22 +70,25 @@ test("RF-001: la bóveda abierta se marca con aria-current", async () => {
   expect(screen.getByRole("link", { name: / Beta$/ })).not.toHaveAttribute("aria-current");
 });
 
-test("RF-001: sin bóvedas el riel no muestra enlaces", async () => {
+test("RF-001: sin bóvedas la zona superior del riel no muestra enlaces de bóveda", async () => {
   const { value } = syncValue();
   renderRail(value);
-  expect(await screen.findByRole("navigation", { name: "Bóvedas abiertas" })).toBeInTheDocument();
-  expect(screen.queryAllByRole("link")).toHaveLength(0);
+  const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  // La zona inferior (Archivos/Papelera/Usuario) siempre está; la de bóvedas queda vacía.
+  expect(vaultLinks(rail)).toHaveLength(0);
 });
 
 test("RF-001: se relee cuando cambian las bóvedas (dataVersion)", async () => {
   const { value, db } = syncValue();
   const store = seedStore(db);
   const view = (version: number) => (
-    <WithSync value={{ ...value, dataVersion: version }}>
-      <MemoryRouter>
-        <VaultRail />
-      </MemoryRouter>
-    </WithSync>
+    <MeContext.Provider value={ME}>
+      <WithSync value={{ ...value, dataVersion: version }}>
+        <MemoryRouter>
+          <VaultRail />
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>
   );
   const { rerender } = render(view(0));
   await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
@@ -211,8 +227,9 @@ test("C-3: expandido, cada bóveda es una píldora con su nombre completo visibl
   await store.create({ name: "Trabajo Personal", description: null, tags: [] });
   await store.create({ name: "Notas", description: null, tags: [] });
   const user = renderRail(value);
-  await screen.findByRole("link", { name: / Notas$/ });
-  const order = () => screen.getAllByRole("link").map((l) => l.textContent);
+  const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  await within(rail).findByRole("link", { name: / Notas$/ });
+  const order = () => vaultLinks(rail).map((l) => l.textContent);
   const collapsed = order();
   await user.click(screen.getByRole("button", { name: "Expandir riel de bóvedas" }));
   // El nombre completo aparece como texto en cada enlace…
@@ -236,16 +253,88 @@ test("C-4: expandido, el nombre accesible del enlace es el nombre (sin duplicar 
   expect(document.querySelector(".rail-tooltip")).toBeNull();
 });
 
+// --- H-028: zona inferior del riel (Archivos, Papelera, Usuario) ---
+
+/** Renderiza el riel con un `Me` a medida (para probar foto vs iniciales y nombre vs correo). */
+function renderRailAs(me: Me, value: SyncContextValue, path = "/vaults") {
+  render(
+    <MeContext.Provider value={me}>
+      <WithSync value={value}>
+        <MemoryRouter initialEntries={[path]}>
+          <VaultRail />
+          <Routes>
+            <Route path="*" element={<Where />} />
+          </Routes>
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>,
+  );
+  return userEvent.setup();
+}
+
+/** Enlaces de la zona inferior fija. */
+function bottomLinks(rail: HTMLElement): HTMLElement[] {
+  const bottom = rail.querySelector<HTMLElement>(".vault-rail-bottom")!;
+  return within(bottom).queryAllByRole("link");
+}
+
+test("A2/A3/A4/A5: la zona inferior trae Archivos, Papelera y Usuario (al final) con sus rutas", async () => {
+  const { value } = syncValue();
+  renderRail(value);
+  const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  const links = bottomLinks(rail);
+  expect(links.map((l) => l.getAttribute("href"))).toEqual(["/files", "/vaults/trash", "/settings"]);
+  // Usuario es la última entrada (A2).
+  expect(links[2]).toHaveAttribute("href", "/settings");
+  expect(within(rail).getByRole("link", { name: "Archivos" })).toHaveAttribute("href", "/files");
+  expect(within(rail).getByRole("link", { name: "Papelera" })).toHaveAttribute("href", "/vaults/trash");
+});
+
+test("A3: pulsar Archivos navega a /files", async () => {
+  const { value } = syncValue();
+  const user = renderRail(value);
+  await user.click(await screen.findByRole("link", { name: "Archivos" }));
+  expect(screen.getByTestId("where")).toHaveTextContent("/files");
+});
+
+test("A6: sin foto la entrada Usuario muestra las iniciales del correo (y no una imagen)", async () => {
+  const { value } = syncValue();
+  renderRail(value); // ME: sin display_name ni photo_url
+  const user = await screen.findByRole("link", { name: /^Usuario/ });
+  expect(user.querySelector("img")).toBeNull();
+  expect(user).toHaveTextContent("AD"); // initials("admin@synapse.test")
+});
+
+test("A6: con foto la entrada Usuario muestra la imagen (no las iniciales)", async () => {
+  const { value } = syncValue();
+  const me = { ...ME, photo_url: "/auth/me/photo?v=3" };
+  renderRailAs(me, value);
+  const user = await screen.findByRole("link", { name: /^Usuario/ });
+  const img = user.querySelector("img")!;
+  expect(img).not.toBeNull();
+  expect(img).toHaveAttribute("src", "/auth/me/photo?v=3");
+});
+
+test("A6: con nombre, la entrada Usuario usa el nombre (no el correo)", async () => {
+  const { value } = syncValue();
+  const me = { ...ME, display_name: "Carlos" };
+  renderRailAs(me, value);
+  const user = await screen.findByRole("link", { name: "Usuario: Carlos" });
+  expect(user).toHaveAttribute("title", "Carlos");
+});
+
 // RF-012: el cambio de ícono hecho en la réplica llega al riel sin recargar (se relee con `dataVersion`).
 test("RF-012: un icon cambiado en la réplica se refleja en el chip del riel sin recargar", async () => {
   const { value, db } = syncValue();
   const vault = await seedStore(db).create({ name: "Notas", description: null, tags: [], icon: "star:success" });
   const view = (version: number) => (
-    <WithSync value={{ ...value, dataVersion: version }}>
-      <MemoryRouter>
-        <VaultRail />
-      </MemoryRouter>
-    </WithSync>
+    <MeContext.Provider value={ME}>
+      <WithSync value={{ ...value, dataVersion: version }}>
+        <MemoryRouter>
+          <VaultRail />
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>
   );
   const { rerender } = render(view(0));
   const link = await screen.findByRole("link", { name: "Notas" });

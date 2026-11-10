@@ -26,22 +26,23 @@ function renderAt(path: string, env = memoryEnv().env) {
   return userEvent.setup();
 }
 
-/** «Cambiar contraseña»/«Cerrar sesión» viven dentro del menú de cuenta: hay que abrirlo. */
-async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole("button", { name: /^Menú de cuenta/ }));
-}
-
-test("RF-023: las rutas privadas muestran la navegación de cuenta", async () => {
+test("H-028 A5: las rutas privadas ofrecen la entrada «Usuario» del riel hacia /settings", async () => {
   const { env } = signedIn();
-  const user = renderAt("/", env);
-  await openAccountMenu(user);
-  expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "Cambiar contraseña" })).toBeInTheDocument();
+  renderAt("/", env);
+  const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
+  expect(within(rail).getByRole("link", { name: /^Usuario/ })).toHaveAttribute("href", "/settings");
 });
 
-test("la pantalla de login no muestra la navegación de cuenta", () => {
+test("H-028: la pantalla de usuario ofrece «Cambiar contraseña» y «Cerrar sesión»", async () => {
+  const { env } = signedIn();
+  renderAt("/settings", env);
+  expect(await screen.findByRole("link", { name: "Contraseña" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
+});
+
+test("la pantalla de login no muestra el riel ni la navegación de cuenta", () => {
   renderAt("/login");
-  expect(screen.queryByRole("button", { name: /^Menú de cuenta/ })).not.toBeInTheDocument();
+  expect(screen.queryByRole("navigation", { name: "Bóvedas abiertas" })).not.toBeInTheDocument();
 });
 
 test("RF-018: `/` redirige a la lista de bóvedas de la réplica", async () => {
@@ -119,12 +120,11 @@ test("H-002.5: /settings/api-keys monta la gestión de API keys de agente", asyn
   expect(await screen.findByText("Aún no tienes API keys.")).toBeInTheDocument();
 });
 
-test("RF-017: «Cerrar sesión» sin cambios pendientes cierra la sesión y lleva a /login", async () => {
+test("RF-017: «Cerrar sesión» (en la pantalla de usuario) sin cambios pendientes cierra la sesión y lleva a /login", async () => {
   const { env } = signedIn();
   const logout = vi.spyOn(api, "logout").mockResolvedValue();
-  const user = renderAt("/vaults", env);
-  await openAccountMenu(user);
-  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  const user = renderAt("/settings", env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(logout).toHaveBeenCalledOnce();
 });
@@ -134,9 +134,8 @@ test("RF-017: si la réplica no se borra al salir, el login avisa de la copia co
   vi.spyOn(api, "logout").mockResolvedValue();
   vi.spyOn(console, "error").mockImplementation(() => undefined);
   vi.spyOn(localDb, "destroyLocalDb").mockRejectedValue(new Error("IndexedDB no disponible"));
-  const user = renderAt("/vaults", env);
-  await openAccountMenu(user);
-  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
+  const user = renderAt("/settings", env);
+  await user.click(await screen.findByRole("button", { name: "Cerrar sesión" }));
   expect(await screen.findByRole("heading", { name: "Iniciar sesión" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("No se pudo borrar la copia local de este dispositivo.");
 });
