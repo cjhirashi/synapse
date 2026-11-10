@@ -547,7 +547,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           </div>
           {tab === "tags" && (
             <div id={panelId} role="tabpanel" className="vault-tab-panel">
-              <TagFilterPanel vaultId={vault.id} openId={openId} onOpen={open} />
+              <TagFilterPanel vaultId={vault.id} vaultColor={vaultColor} openId={openId} onOpen={open} />
             </div>
           )}
           {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}

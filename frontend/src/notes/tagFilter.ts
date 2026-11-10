@@ -1,4 +1,5 @@
 import type { NoteSummary } from "./noteStore";
+import { displayName } from "./noteTree";
 
 export interface TagCount {
   tag: string;
@@ -8,7 +9,8 @@ export interface TagCount {
 export interface TaggedNote {
   id: string;
   path: string;
-  title: string;
+  /** Nombre que muestra el árbol de notas: el del archivo sin `.md`. */
+  name: string;
   tags: string[];
 }
 
@@ -17,18 +19,15 @@ function tagsOf(summary: NoteSummary): string[] {
   return Array.isArray(value) ? value.filter((tag): tag is string => typeof tag === "string") : [];
 }
 
-/** Título que se muestra de una nota: el atributo `titulo` o el nombre del archivo sin `.md`. */
-function titleOf(summary: NoteSummary): string {
-  const titulo = summary.frontmatter?.titulo;
-  if (typeof titulo === "string" && titulo.trim() !== "") return titulo;
-  return (summary.path.split("/").pop() ?? summary.path).replace(/\.md$/i, "");
+function nameOf(summary: NoteSummary): string {
+  return displayName(summary.path.split("/").pop() ?? summary.path);
 }
 
 /** Notas vivas de la bóveda con sus tags, ordenadas por ruta. */
 export function taggedNotes(summaries: readonly NoteSummary[]): TaggedNote[] {
   return summaries
     .filter((summary) => summary.deleted_at === null)
-    .map((summary) => ({ id: summary.id, path: summary.path, title: titleOf(summary), tags: tagsOf(summary) }))
+    .map((summary) => ({ id: summary.id, path: summary.path, name: nameOf(summary), tags: tagsOf(summary) }))
     .sort((a, b) => a.path.localeCompare(b.path, "es"));
 }
 

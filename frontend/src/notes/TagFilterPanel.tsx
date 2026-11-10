@@ -1,10 +1,13 @@
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type CSSProperties } from "react";
 import { ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useSync } from "../sync/useSync";
+import { colorVar, type PaletteKey } from "../vaults/vaultIcon";
 import { countTags, filterByTags, searchTags, taggedNotes, type TaggedNote } from "./tagFilter";
 
 interface Props {
   vaultId: string;
+  /** Color de la bóveda para los iconos de la lista (igual que el árbol de notas). */
+  vaultColor: PaletteKey;
   /** Nota abierta en el editor (se marca en la lista). */
   openId: string | null;
   onOpen: (id: string) => void;
@@ -14,7 +17,7 @@ interface Props {
  * Pestaña «Filtro por tags» (H-052): todos los tags de la bóveda como chips; al elegir uno o varios muestra, en lista
  * plana, solo los documentos que llevan todos los elegidos. Sin árbol. La elección no se guarda.
  */
-export default function TagFilterPanel({ vaultId, openId, onOpen }: Props) {
+export default function TagFilterPanel({ vaultId, vaultColor, openId, onOpen }: Props) {
   const { notes, notesVersion } = useSync();
   const [all, setAll] = useState<TaggedNote[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -47,14 +50,14 @@ export default function TagFilterPanel({ vaultId, openId, onOpen }: Props) {
 
   if (tags.length === 0) {
     return (
-      <aside className="note-sidebar tag-filter" aria-label="Filtro por tags">
+      <aside className="note-sidebar tag-filter" aria-label="Filtro por tags" style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties}>
         <p className="tag-filter-empty">Esta bóveda aún no tiene tags.</p>
       </aside>
     );
   }
 
   return (
-    <aside className="note-sidebar tag-filter" aria-label="Filtro por tags">
+    <aside className="note-sidebar tag-filter" aria-label="Filtro por tags" style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties}>
       <div className="tag-filter-head">
         <button type="button" className="tag-filter-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((v) => !v)}>
           {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
@@ -111,16 +114,22 @@ export default function TagFilterPanel({ vaultId, openId, onOpen }: Props) {
             <p className="tag-filter-count">
               {matches.length} {matches.length === 1 ? "documento" : "documentos"}
             </p>
-            <ul>
+            <ul className="note-tree" role="listbox" aria-label="Documentos que cumplen el filtro">
               {matches.map((note) => (
-                <li key={note.id}>
-                  <button type="button" className="tag-result" aria-current={note.id === openId ? "true" : undefined} onClick={() => onOpen(note.id)}>
-                    <FileText size={14} aria-hidden="true" />
-                    <span className="tag-result-text">
-                      <span className="tag-result-title">{note.title}</span>
-                      <span className="tag-result-path">{note.path}</span>
-                    </span>
-                  </button>
+                <li key={note.id} role="none">
+                  <div className="note-tree-line">
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={note.id === openId}
+                      className="note-tree-row note-tree-note"
+                      title={note.path}
+                      onClick={() => onOpen(note.id)}
+                    >
+                      <FileText size={12} aria-hidden="true" data-icon="file-text" className="note-tree-icon-note" />
+                      <span className="note-tree-name">{note.name}</span>
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

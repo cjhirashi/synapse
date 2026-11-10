@@ -904,8 +904,7 @@ body.is-resizing {
   font-weight: 600;
 }
 
-.tag-chip:focus-visible,
-.tag-result:focus-visible {
+.tag-chip:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
@@ -915,10 +914,7 @@ body.is-resizing {
   font-size: 0.75rem;
 }
 
-.tag-filter-results ul {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.tag-filter-results .note-tree {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -932,43 +928,6 @@ body.is-resizing {
   opacity: 0.75;
 }
 
-.tag-result {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  width: 100%;
-  padding: var(--space-1) var(--space-2);
-  border: 0;
-  border-radius: var(--radius-sm, 4px);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.tag-result:hover,
-.tag-result[aria-current="true"] {
-  background: var(--accent-soft);
-}
-
-.tag-result-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.tag-result-title,
-.tag-result-path {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tag-result-path {
-  font-size: 0.75rem;
-  opacity: 0.65;
-}
 
 /* H-052: la lista de tags se despliega y, abierta, nunca pasa de 30 % del alto de la ventana (la lista de documentos manda). */
 .tag-filter-toggle {
@@ -1005,7 +964,10 @@ body.is-resizing {
 }
 
 .tag-filter-results {
+  display: flex;
   flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-1);
   min-height: 0;
 }
 

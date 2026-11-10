@@ -1299,20 +1299,20 @@ test("H-052: el filtro lista los tags y muestra solo los documentos que tienen t
   expect(screen.getByText("Elige uno o más tags para ver los documentos.")).toBeInTheDocument();
 
   await userEvent.click(within(chips).getByRole("button", { name: /^trabajo/ }));
-  expect(await screen.findByRole("button", { name: /Uno/ })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Dos/ })).toBeInTheDocument();
-  expect(screen.queryByRole("button", { name: /Tres/ })).toBeNull();
+  expect(await screen.findByRole("option", { name: /Uno/ })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: /Dos/ })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: /Tres/ })).toBeNull();
 
   await userEvent.click(within(chips).getByRole("button", { name: /^tr26/ }));
-  await waitFor(() => expect(screen.queryByRole("button", { name: /Uno/ })).toBeNull());
+  await waitFor(() => expect(screen.queryByRole("option", { name: /Uno/ })).toBeNull());
   // Plegada, la lista deja a la vista solo los tags elegidos.
   await userEvent.click(toggle);
   const chosen = screen.getByRole("group", { name: "Tags elegidos" });
   expect(within(chosen).getAllByRole("button").map((b) => b.textContent)).toEqual(["trabajo", "tr26"]);
   expect(screen.queryByRole("group", { name: "Tags de la bóveda" })).toBeNull();
-  expect(screen.getByRole("button", { name: /Dos/ })).toBeInTheDocument();
+  expect(screen.getByRole("option", { name: /Dos/ })).toBeInTheDocument();
 
-  await userEvent.click(screen.getByRole("button", { name: /Dos/ }));
+  await userEvent.click(screen.getByRole("option", { name: /Dos/ }));
   await editorRegion();
   expect(screen.getByRole("tab", { name: "Filtro por tags" })).toHaveAttribute("aria-selected", "true");
 });
@@ -1405,9 +1405,9 @@ test("el filtro de tags se busca por texto (parte del nombre, sin acentos) y se 
   expect(screen.queryByRole("button", { name: "Desmarcar todos" })).toBeNull();
   await userEvent.click(within(chips()).getByRole("button", { name: /^apertura/ }));
   await userEvent.click(within(chips()).getByRole("button", { name: /^bitácora/ }));
-  expect(await screen.findByRole("button", { name: /Dos/ })).toBeInTheDocument();
+  expect(await screen.findByRole("option", { name: /Dos/ })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Desmarcar todos" }));
-  expect(screen.queryByRole("button", { name: /Dos/ })).toBeNull();
+  expect(screen.queryByRole("option", { name: /Dos/ })).toBeNull();
   expect(within(chips()).getAllByRole("button").every((b) => b.getAttribute("aria-pressed") === "false")).toBe(true);
   expect(screen.queryByRole("button", { name: "Desmarcar todos" })).toBeNull();
 });

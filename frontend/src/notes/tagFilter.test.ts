@@ -15,9 +15,9 @@ const notes = taggedNotes([
 ]);
 
 describe("taggedNotes", () => {
-  it("omite las borradas, ordena por ruta y toma el título del atributo o del archivo", () => {
-    expect(notes.map((n) => [n.path, n.title])).toEqual([
-      ["A/Uno.md", "Primero"],
+  it("omite las borradas, ordena por ruta y usa el nombre del archivo sin .md, como el árbol", () => {
+    expect(notes.map((n) => [n.path, n.name])).toEqual([
+      ["A/Uno.md", "Uno"],
       ["B/Dos.md", "Dos"],
       ["C/Tres.md", "Tres"],
       ["D/Sin.md", "Sin"],
