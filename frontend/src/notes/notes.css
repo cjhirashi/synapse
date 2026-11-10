@@ -273,69 +273,13 @@
   cursor: default;
 }
 
-/* Ventana emergente que pide el nombre de un documento, plantilla o carpeta (`NameDialog`). `--name-accent` es el
-   color de la bóveda (o el de la interfaz); solo tiñe el ícono y el foco: el texto conserva sus colores. */
-.name-dialog-backdrop {
-  align-items: flex-start;
-  padding-top: min(16vh, 120px);
-}
-
-.modal-backdrop > .name-dialog {
-  --name-accent: var(--accent);
-  margin: 0;
-  padding: 0;
-  max-width: none;
-  display: flex;
-  flex-direction: column;
-  width: min(440px, 100%);
-  max-height: calc(100vh - 2 * var(--space-4));
-  overflow: hidden;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-panel);
-  animation: fadeSlideUp var(--dur-base) var(--ease-out);
-}
-
-.name-dialog-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-6) var(--space-6) var(--space-3);
-}
-
-.name-dialog-badge {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  color: var(--name-accent);
-  background: color-mix(in srgb, var(--name-accent) 16%, transparent);
-}
-
-.name-dialog-heading {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.name-dialog-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--text-primary);
-}
-
+/* Contenido de la ventana de nombre (`NameDialog`, sobre `DialogFrame`). El color de la bóveda llega como `--dlg-accent`
+   y solo tiñe la insignia y el foco: el texto conserva sus colores. */
 .name-dialog-location {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  margin: 2px 0 0;
-  font-size: 12.5px;
-  color: var(--text-secondary);
 }
 
 .name-dialog-location-label {
@@ -354,6 +298,11 @@
   color: var(--text-primary);
 }
 
+.name-dialog-path svg {
+  flex-shrink: 0;
+  color: var(--dlg-accent, var(--accent));
+}
+
 .name-dialog-path-text {
   min-width: 0;
   overflow: hidden;
@@ -361,38 +310,14 @@
   white-space: nowrap;
 }
 
-.name-dialog-path svg {
-  flex-shrink: 0;
-  color: var(--name-accent);
-}
-
-.name-dialog-close {
-  display: grid;
-  flex-shrink: 0;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--text-secondary);
-  cursor: pointer;
-  align-self: flex-start;
-}
-
-.name-dialog-close:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.name-dialog-body {
+.name-dialog-fields {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  min-height: 0;
-  padding: var(--space-1) var(--space-6) var(--space-6);
-  overflow-y: auto;
+}
+
+.name-dialog-fields p {
+  margin: 0;
 }
 
 .name-dialog-field {
@@ -401,46 +326,8 @@
   gap: var(--space-1);
 }
 
-.name-dialog-field label {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.name-dialog-field input,
-.name-dialog select {
-  box-sizing: border-box;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 var(--space-3);
-  font-size: 14px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-sm);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.name-dialog-field input:focus-visible,
-.name-dialog select:focus-visible,
-.name-dialog-close:focus-visible,
-.name-dialog-actions button:focus-visible {
-  outline: 2px solid var(--name-accent);
-  outline-offset: 1px;
-}
-
-.name-dialog-field input[aria-invalid="true"] {
-  border-color: var(--danger-text);
-}
-
-.name-dialog-helper {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--text-secondary);
-}
-
-.name-dialog-body > label {
+.name-dialog-field label,
+.name-dialog-fields > label {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -450,11 +337,34 @@
   color: var(--text-primary);
 }
 
+.name-dialog-field input,
+.name-dialog-fields select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  font-size: 14px;
+  font-weight: 400;
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.name-dialog-field input[aria-invalid="true"] {
+  border-color: var(--danger-text);
+}
+
+.name-dialog-helper {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
 .name-dialog-error {
   display: flex;
   align-items: flex-start;
   gap: var(--space-2);
-  margin: 0;
   padding: var(--space-2) var(--space-3);
   border-left: 3px solid var(--danger-text);
   border-radius: var(--radius-sm);
@@ -470,19 +380,7 @@
   color: var(--danger-text);
 }
 
-.name-dialog-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
-  border-top: 1px solid var(--border);
-  background: var(--bg-tertiary);
-}
-
 .name-dialog-keys {
-  font-size: 12px;
-  color: var(--text-secondary);
   white-space: nowrap;
 }
 
@@ -493,33 +391,6 @@
   background: var(--bg-primary);
   font: inherit;
   font-size: 11px;
-}
-
-.name-dialog-actions {
-  display: flex;
-  gap: var(--space-2);
-  margin-left: auto;
-}
-
-.name-dialog-actions button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: 36px;
-  padding: 0 var(--space-4);
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .name-dialog-backdrop {
-    padding-top: var(--space-4);
-  }
-
-  .name-dialog-keys {
-    display: none;
-  }
 }
 
 /* Carpeta activa (y «Raíz» activa): fondo, peso 600 y barra interior de 3 px en `--text-secondary`; se distingue de

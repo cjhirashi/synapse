@@ -3,7 +3,9 @@
  * Dos botones iniciales: "Subir archivo" y "Pegar URL".
  * Al elegir "Pegar URL", muestra formulario con campo URL, tipo y botones Insertar/Cancelar.
  */
-import { ChangeEvent, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { ChangeEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Link2, Paperclip, Upload } from "lucide-react";
+import DialogFrame from "./DialogFrame";
 
 export interface AttachDialogProps {
   onUpload: () => void;
@@ -19,17 +21,8 @@ export default function AttachDialog({ onUpload, onUrl, onClose }: AttachDialogP
 
   const uploadBtnRef = useRef<HTMLButtonElement>(null);
   const urlInputRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Al cerrar, el foco vuelve al elemento que abrió el diálogo.
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    return () => {
-      if (previous && document.contains(previous)) previous.focus();
-    };
-  }, []);
-
-  // Foco inicial
   useEffect(() => {
     if (!showForm && uploadBtnRef.current) {
       uploadBtnRef.current.focus();
@@ -71,13 +64,6 @@ export default function AttachDialog({ onUpload, onUrl, onClose }: AttachDialogP
     }
   }
 
-  function handleKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onClose();
-    }
-  }
-
   function handleKeyDownUrl(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Enter") {
       event.preventDefault();
@@ -85,54 +71,36 @@ export default function AttachDialog({ onUpload, onUrl, onClose }: AttachDialogP
     }
   }
 
-  function handleFocusTrap(event: KeyboardEvent<HTMLDivElement>) {
-    if (event.key !== "Tab") return;
-
-    const focusableElements = dialogRef.current?.querySelectorAll(
-      'button, input, select'
-    ) as NodeListOf<HTMLElement> | undefined;
-
-    if (!focusableElements || focusableElements.length === 0) return;
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-    const activeElement = document.activeElement as HTMLElement;
-
-    if (event.shiftKey) {
-      if (activeElement === firstElement) {
-        event.preventDefault();
-        lastElement.focus();
-      }
-    } else {
-      if (activeElement === lastElement) {
-        event.preventDefault();
-        firstElement.focus();
-      }
-    }
-  }
-
   return (
-    <div
-      ref={dialogRef}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="attach-dialog-title"
-      className="attach-dialog"
-      onKeyDown={(e) => {
-        handleKeyDown(e);
-        handleFocusTrap(e);
-      }}
+    <DialogFrame
+      titleId="attach-dialog-title"
+      title="Adjuntar"
+      subtitle={showForm ? "Inserta una imagen o un video desde su dirección" : "Sube un archivo o pega una dirección"}
+      glyph={Paperclip}
+      tone="neutral"
+      size="sm"
+      onCancel={onClose}
+      actions={
+        showForm ? (
+          <>
+            <button type="button" onClick={handleCancelForm}>
+              Cancelar
+            </button>
+            <button type="button" onClick={handleInsert} className="btn-primary">
+              Insertar
+            </button>
+          </>
+        ) : undefined
+      }
     >
-      <h2 id="attach-dialog-title" className="attach-dialog-title">
-        Adjuntar
-      </h2>
-
       {!showForm ? (
         <div className="attach-dialog-buttons">
           <button type="button" ref={uploadBtnRef} onClick={handleUploadClick} className="attach-dialog-btn">
+            <Upload size={16} aria-hidden="true" />
             Subir archivo
           </button>
           <button type="button" onClick={handlePasteUrlClick} className="attach-dialog-btn">
+            <Link2 size={16} aria-hidden="true" />
             Pegar URL
           </button>
         </div>
@@ -176,17 +144,8 @@ export default function AttachDialog({ onUpload, onUrl, onClose }: AttachDialogP
               {error}
             </div>
           )}
-
-          <div className="attach-dialog-actions">
-            <button type="button" onClick={handleInsert} className="attach-dialog-btn attach-dialog-btn-primary">
-              Insertar
-            </button>
-            <button type="button" onClick={handleCancelForm} className="attach-dialog-btn">
-              Cancelar
-            </button>
-          </div>
         </div>
       )}
-    </div>
+    </DialogFrame>
   );
 }

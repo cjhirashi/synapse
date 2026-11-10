@@ -1794,58 +1794,37 @@ li.note-task[data-checked="true"] .note-task-body {
   text-decoration: underline;
 }
 
-/* H-025 paso 7: diálogo de adjuntar archivo o URL */
-.attach-dialog {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 1000;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  max-width: 400px;
-  width: 90%;
-  box-shadow: var(--shadow-panel);
-}
-
-.attach-dialog-title {
-  margin: 0 0 var(--space-2) 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
+/* H-025 paso 7: contenido del diálogo de adjuntar archivo o URL (marco: DialogFrame). */
 .attach-dialog-buttons,
 .attach-dialog-form {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .attach-dialog-btn {
-  padding: var(--space-1) var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: 0 var(--space-4);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
+  background: var(--bg-primary);
   color: var(--text-primary);
   font: inherit;
+  font-weight: 600;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
 }
 
-.attach-dialog-btn:hover {
-  background: var(--bg-hover);
-}
-
-.attach-dialog-btn-primary {
-  background: var(--info-bg);
-  border-color: var(--info-border);
+.attach-dialog-btn svg {
+  flex-shrink: 0;
   color: var(--info-text);
 }
 
-.attach-dialog-btn-primary:hover {
-  background: var(--info-bg-hover);
+.attach-dialog-btn:hover {
+  background: var(--bg-tertiary);
 }
 
 .attach-dialog-field {
@@ -1856,14 +1835,17 @@ li.note-task[data-checked="true"] .note-task-body {
 
 .attach-dialog-label {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 .attach-dialog-input,
 .attach-dialog-select {
-  padding: var(--space-1);
-  border: 1px solid var(--border);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -1871,26 +1853,16 @@ li.note-task[data-checked="true"] .note-task-body {
   font-size: 14px;
 }
 
-.attach-dialog-input:focus,
-.attach-dialog-select:focus {
-  outline: none;
-  border-color: var(--info-border);
-  box-shadow: 0 0 0 2px var(--info-bg);
-}
-
 .attach-dialog-error {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--danger-text);
   border-radius: var(--radius-sm);
-  background: var(--danger-bg);
-  color: var(--danger);
+  background: color-mix(in srgb, var(--danger-text) 12%, transparent);
+  color: var(--text-primary);
   font-size: 13px;
+  line-height: 1.4;
 }
 
-.attach-dialog-actions {
-  display: flex;
-  gap: var(--space-1);
-  justify-content: flex-end;
-}
 
 /* H-029: sección META (siete atributos generales arriba del documento). */
 .note-meta {

@@ -172,9 +172,9 @@ describe("AttachDialog (H-025 paso 7)", () => {
     await user.keyboard("{Tab}");
     expect(typeSelect).toHaveFocus();
     await user.keyboard("{Tab}");
-    expect(insertBtn).toHaveFocus();
-    await user.keyboard("{Tab}");
     expect(cancelBtn).toHaveFocus();
+    await user.keyboard("{Tab}");
+    expect(insertBtn).toHaveFocus();
     await user.keyboard("{Tab}");
     expect(urlInput).toHaveFocus();
   });

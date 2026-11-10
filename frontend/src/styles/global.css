@@ -398,7 +398,7 @@ button:focus-visible {
   }
 }
 
-/* --- Confirmación modal (ConfirmDialog): capa fija sobre la ventana, siempre a la vista --- */
+/* --- Ventanas emergentes (DialogFrame): un solo marco para confirmaciones, formularios y avisos --- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -412,15 +412,20 @@ button:focus-visible {
   animation: fadeIn var(--dur-base) var(--ease-out);
 }
 
-.modal-backdrop > .confirm-dialog {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  column-gap: var(--space-4);
-  width: min(460px, 100%);
+.modal-backdrop.dlg-backdrop-top {
+  align-items: flex-start;
+  padding-top: min(16vh, 120px);
+}
+
+.modal-backdrop > .dlg {
+  display: flex;
+  flex-direction: column;
+  width: min(var(--dlg-width, 460px), 100%);
+  max-width: none;
   max-height: calc(100vh - 2 * var(--space-4));
-  overflow-y: auto;
   margin: 0;
-  padding: var(--space-6);
+  padding: 0;
+  overflow: hidden;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -428,60 +433,119 @@ button:focus-visible {
   animation: fadeSlideUp var(--dur-base) var(--ease-out);
 }
 
-.confirm-dialog-danger {
-  --tone: var(--danger-text);
+.dlg-sm {
+  --dlg-width: 420px;
 }
 
-.confirm-dialog-warning {
-  --tone: var(--warning-text);
+.dlg-md {
+  --dlg-width: 460px;
 }
 
-.confirm-dialog-neutral {
-  --tone: var(--info-text);
+.dlg-lg {
+  --dlg-width: 600px;
 }
 
-.confirm-dialog-icon {
+.dlg-tone-neutral {
+  --dlg-tone: var(--info-text);
+}
+
+.dlg-tone-accent {
+  --dlg-tone: var(--dlg-accent, var(--accent));
+}
+
+.dlg-tone-danger {
+  --dlg-tone: var(--danger-text);
+}
+
+.dlg-tone-warning {
+  --dlg-tone: var(--warning-text);
+}
+
+/* Las ventanas que avisan de algo irreversible o pendiente llevan una franja de tono arriba. */
+.modal-backdrop > .dlg-tone-danger,
+.modal-backdrop > .dlg-tone-warning {
+  border-top: 3px solid var(--dlg-tone);
+}
+
+.dlg-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-6) var(--space-3);
+}
+
+.dlg-badge {
   display: grid;
+  flex-shrink: 0;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  color: var(--tone);
-  background: color-mix(in srgb, var(--tone) 15%, transparent);
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  color: var(--dlg-tone);
+  background: color-mix(in srgb, var(--dlg-tone) 16%, transparent);
 }
 
-.confirm-dialog-content {
+.dlg-heading {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
-.confirm-dialog-title {
+.dlg-title {
   margin: 0;
-  padding-top: 8px;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
   color: var(--text-primary);
   overflow-wrap: anywhere;
 }
 
-.confirm-dialog-body {
-  margin-top: var(--space-2);
+.dlg-subtitle {
+  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.dlg-close {
+  display: grid;
+  flex-shrink: 0;
+  align-self: flex-start;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dlg-close:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.dlg-body {
+  min-height: 0;
+  padding: var(--space-1) var(--space-6) var(--space-6);
+  overflow-y: auto;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
 
-.confirm-dialog-body p {
+.dlg-body p {
   margin: 0;
 }
 
-.confirm-dialog-body p + p,
-.confirm-dialog-body p + ul {
+.dlg-body p + p,
+.dlg-body p + ul {
   margin-top: var(--space-2);
 }
 
-.confirm-dialog-body ul {
+.dlg-body ul:not([class]) {
   max-height: 160px;
   overflow-y: auto;
   margin: 0;
@@ -491,96 +555,105 @@ button:focus-visible {
   font-size: 13px;
 }
 
-.confirm-dialog-body input {
+.dlg-body input[type="text"],
+.dlg-body input[type="search"],
+.dlg-body input:not([type]) {
   width: 100%;
 }
 
-.confirm-dialog-actions {
-  grid-column: 1 / -1;
+.dlg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-6);
+  border-top: 1px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.dlg-footer-start {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.dlg-actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--space-2);
-  margin-top: var(--space-6);
+  margin-left: auto;
 }
 
-.confirm-dialog-actions button {
-  min-height: 40px;
+.dlg-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 38px;
   padding: 0 var(--space-4);
   font-size: 14px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
-.name-dialog-actions .name-dialog-confirm {
-  border: 1px solid transparent;
-  background: var(--accent);
-  color: #fff;
+.dlg :focus-visible {
+  outline: 2px solid var(--dlg-tone);
+  outline-offset: 1px;
 }
 
-.name-dialog-actions .name-dialog-confirm:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
-.name-dialog-actions .name-dialog-confirm:disabled {
-  opacity: 0.6;
-}
-
-.confirm-dialog-actions .btn-primary {
+.dlg-actions .btn-primary {
   background: var(--accent);
   border: 1px solid transparent;
   color: #fff;
 }
 
-.confirm-dialog-actions .btn-primary:hover:not(:disabled) {
+.dlg-actions .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
   border-color: transparent;
 }
 
-.confirm-dialog-actions .btn-danger {
+.dlg-actions .btn-primary:disabled {
+  opacity: 0.6;
+}
+
+.dlg-actions .btn-danger {
   background: #dc2626;
   border: 1px solid transparent;
   color: #fff;
 }
 
-.confirm-dialog-actions .btn-danger:hover:not(:disabled) {
+.dlg-actions .btn-danger:hover:not(:disabled) {
   background: #b91c1c;
   border-color: transparent;
 }
 
-.confirm-dialog-actions .btn-danger:focus-visible {
+.dlg-actions .btn-danger:focus-visible {
   outline-color: #dc2626;
 }
 
-/* Pantallas angostas: botones apilados a ancho completo, en el mismo orden que al teclado. */
+/* Pantallas angostas: botones apilados a ancho completo, en el mismo orden que al teclado; sin atajos de teclado. */
 @media (max-width: 480px) {
-  .confirm-dialog-actions {
+  .dlg-footer {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  .confirm-dialog-actions button {
+  .dlg-footer-start {
+    display: none;
+  }
+
+  .dlg-actions {
+    flex-direction: column;
+    margin-left: 0;
+  }
+
+  .dlg-actions button {
     width: 100%;
   }
 }
 
 /* --- Gestor que sale (H-041 E4): ventana de resolución de sus skills --- */
-.agent-leave-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-  background: rgb(0 0 0 / 0.55);
-}
-
-.agent-leave-dialog {
-  width: min(560px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  margin: 0;
-}
-
 .agent-leave-skills {
   list-style: none;
   padding: 0;
@@ -595,7 +668,7 @@ button:focus-visible {
   margin: var(--space-2) 0 0;
 }
 
-.agent-leave-dialog fieldset label {
+.agent-leave-skills fieldset label {
   display: flex;
   align-items: flex-start;
   flex-wrap: nowrap;
@@ -603,22 +676,17 @@ button:focus-visible {
   font-size: 14px;
 }
 
-.agent-leave-dialog fieldset input[type="radio"] {
+.agent-leave-skills fieldset input[type="radio"] {
   width: auto;
   margin: 0;
   flex: 0 0 auto;
 }
 
-.agent-leave-dialog fieldset select {
+.agent-leave-skills fieldset select {
   width: auto;
   min-width: 6rem;
 }
 
-.agent-leave-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
 
 .agent-orphan-skills {
   margin-top: var(--space-4);

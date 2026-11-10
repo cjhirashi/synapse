@@ -138,9 +138,9 @@ test("RF-017: con cambios pendientes y conexión ofrece las tres opciones", asyn
   const user = renderApp(env);
   const dialog = await openWithPending(user);
   expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual([
-    "Sincronizar y salir",
-    "Salir y descartar",
     "Cancelar",
+    "Salir y descartar",
+    "Sincronizar y salir",
   ]);
 });
 
@@ -150,7 +150,7 @@ test("RF-017: sin conexión sólo ofrece salir y descartar o cancelar", async ()
   await screen.findByRole("button", { name: "crear" });
   fake.emit({ type: "paused", direction: "push", offline: true });
   const dialog = await openWithPending(user);
-  expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Salir y descartar", "Cancelar"]);
+  expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Cancelar", "Salir y descartar"]);
 });
 
 test("RF-017: decide con el estado actual aunque la pantalla aún no muestre el cambio (VC-4)", async () => {
@@ -278,7 +278,7 @@ test("RF-017: si la réplica no puede leerse, lo dice y no ofrece sincronizar (V
   await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
   const dialog = await screen.findByRole("dialog", { name: "No se pudo comprobar si hay cambios sin sincronizar" });
   expect(dialog).toHaveTextContent("No se pudo leer la copia de tus bóvedas en este dispositivo.");
-  expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Salir y descartar", "Cancelar"]);
+  expect(within(dialog).getAllByRole("button").map((button) => button.textContent)).toEqual(["Cancelar", "Salir y descartar"]);
   expect(logout).not.toHaveBeenCalled();
 });
 

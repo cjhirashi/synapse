@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+import { UserMinus } from "lucide-react";
+import DialogFrame from "../editor/DialogFrame";
 import { SkillInfo, SkillResolution, skillName } from "./agentAccess";
 
 type Choice = { accion: "assign"; a: string } | { accion: "delete" } | { accion: "archive" };
@@ -29,75 +31,83 @@ export default function LeaveDialog({ agentId, modo, owned, busy, onConfirm, onC
   }
 
   return (
-    <div className="agent-leave-backdrop">
-      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="agent-leave-dialog card-form">
-        <h2 id={titleId}>
-          {verb} a {agentId}
-        </h2>
-        <p>
-          {agentId} es propietario de {owned.length} skill{owned.length === 1 ? "" : "s"} activa{owned.length === 1 ? "" : "s"}. Una skill activa nunca queda
-          sin propietario: elige qué pasa con cada una antes de continuar.
-        </p>
-        <ul className="agent-leave-skills">
-          {owned.map((skill) => {
-            const name = skillName(skill);
-            const guests = skill.agentes;
-            const choice = choices[skill.note_id];
-            return (
-              <li key={skill.note_id} aria-label={`Skill ${name}`}>
-                <strong>{name}</strong> <small>{guests.length > 0 ? `invitados: ${guests.join(", ")}` : "sin invitados"}</small>
-                <fieldset>
-                  <legend>Qué hacer con {name}</legend>
-                  {guests.length > 0 && (
-                    <label>
-                      <input
-                        type="radio"
-                        name={`accion-${skill.note_id}`}
-                        checked={choice?.accion === "assign"}
-                        onChange={() => choose(skill, { accion: "assign", a: choice?.accion === "assign" ? choice.a : guests[0] })}
-                      />
-                      Asignar a
-                      <select
-                        aria-label={`Nuevo propietario de ${name}`}
-                        value={choice?.accion === "assign" ? choice.a : guests[0]}
-                        onChange={(event) => choose(skill, { accion: "assign", a: event.target.value })}
-                      >
-                        {guests.map((guest) => (
-                          <option key={guest} value={guest}>
-                            {guest}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-                  <label>
-                    <input type="radio" name={`accion-${skill.note_id}`} checked={choice?.accion === "delete"} onChange={() => choose(skill, { accion: "delete" })} />
-                    Eliminar
-                  </label>
-                  {guests.length === 0 && (
-                    <label>
-                      <input type="radio" name={`accion-${skill.note_id}`} checked={choice?.accion === "archive"} onChange={() => choose(skill, { accion: "archive" })} />
-                      Archivar (queda inactiva y sin propietario hasta que la asignes)
-                    </label>
-                  )}
-                </fieldset>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="agent-leave-actions">
+    <DialogFrame
+      titleId={titleId}
+      title={`${verb} a ${agentId}`}
+      glyph={UserMinus}
+      tone="warning"
+      size="lg"
+      backdropClosable={false}
+      onCancel={() => {
+        if (!busy) onCancel();
+      }}
+      actions={
+        <>
+          <button type="button" disabled={busy} onClick={onCancel}>
+            Cancelar
+          </button>
           <button
             type="button"
+            className={modo === "quitar" ? "btn-danger" : "btn-primary"}
             disabled={busy || !complete}
             onClick={() => onConfirm(owned.map((skill) => ({ note_id: skill.note_id, ...(choices[skill.note_id] as Choice) })))}
           >
             Confirmar y {modo === "quitar" ? "quitar" : "suspender"}
           </button>
-          <button type="button" className="note-sidebar-secondary" disabled={busy} onClick={onCancel}>
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p>
+        {agentId} es propietario de {owned.length} skill{owned.length === 1 ? "" : "s"} activa{owned.length === 1 ? "" : "s"}. Una skill activa nunca queda
+        sin propietario: elige qué pasa con cada una antes de continuar.
+      </p>
+      <ul className="agent-leave-skills">
+        {owned.map((skill) => {
+          const name = skillName(skill);
+          const guests = skill.agentes;
+          const choice = choices[skill.note_id];
+          return (
+            <li key={skill.note_id} aria-label={`Skill ${name}`}>
+              <strong>{name}</strong> <small>{guests.length > 0 ? `invitados: ${guests.join(", ")}` : "sin invitados"}</small>
+              <fieldset>
+                <legend>Qué hacer con {name}</legend>
+                {guests.length > 0 && (
+                  <label>
+                    <input
+                      type="radio"
+                      name={`accion-${skill.note_id}`}
+                      checked={choice?.accion === "assign"}
+                      onChange={() => choose(skill, { accion: "assign", a: choice?.accion === "assign" ? choice.a : guests[0] })}
+                    />
+                    Asignar a
+                    <select
+                      aria-label={`Nuevo propietario de ${name}`}
+                      value={choice?.accion === "assign" ? choice.a : guests[0]}
+                      onChange={(event) => choose(skill, { accion: "assign", a: event.target.value })}
+                    >
+                      {guests.map((guest) => (
+                        <option key={guest} value={guest}>
+                          {guest}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <label>
+                  <input type="radio" name={`accion-${skill.note_id}`} checked={choice?.accion === "delete"} onChange={() => choose(skill, { accion: "delete" })} />
+                  Eliminar
+                </label>
+                {guests.length === 0 && (
+                  <label>
+                    <input type="radio" name={`accion-${skill.note_id}`} checked={choice?.accion === "archive"} onChange={() => choose(skill, { accion: "archive" })} />
+                    Archivar (queda inactiva y sin propietario hasta que la asignes)
+                  </label>
+                )}
+              </fieldset>
+            </li>
+          );
+        })}
+      </ul>
+    </DialogFrame>
   );
 }

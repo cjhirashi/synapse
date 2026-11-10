@@ -10,6 +10,8 @@
  * - "Cancelar": cierra el aviso.
  * Si el servidor no cierra la sesión, nada se borra y se avisa (también al salir directo).
  */
+import { LogOut } from "lucide-react";
+import DialogFrame from "../editor/DialogFrame";
 import { useSync } from "./useSync";
 
 const LOGOUT_FAILED = "No se pudo cerrar la sesión. Inténtalo de nuevo.";
@@ -49,24 +51,34 @@ export default function LogoutDialog() {
   const busy = phase === "syncing" || phase === "exiting";
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="logout-dialog-title">
-      <h2 id="logout-dialog-title">{copy.title}</h2>
+    <DialogFrame
+      titleId="logout-dialog-title"
+      title={copy.title}
+      glyph={LogOut}
+      tone="warning"
+      backdropClosable={false}
+      onCancel={busy ? () => undefined : logout.cancel}
+      actions={
+        <>
+          <button type="button" onClick={logout.cancel} disabled={busy}>
+            Cancelar
+          </button>
+          <button type="button" className="btn-danger" onClick={() => void logout.discardAndExit()} disabled={busy}>
+            Salir y descartar
+          </button>
+          {canSync && (
+            <button type="button" className="btn-primary" onClick={() => void logout.syncAndExit()} disabled={busy}>
+              Sincronizar y salir
+            </button>
+          )}
+        </>
+      }
+    >
       <p>{copy.body}</p>
       {logout.draft && reason !== "draft" && <p>{DRAFT_NOTE}</p>}
       {phase === "syncing" && <p role="status">Sincronizando…</p>}
       {phase === "exiting" && <p role="status">Cerrando sesión…</p>}
       {failure && <p role="alert">{failure === "sync" ? SYNC_FAILED : LOGOUT_FAILED}</p>}
-      {canSync && (
-        <button type="button" onClick={() => void logout.syncAndExit()} disabled={busy}>
-          Sincronizar y salir
-        </button>
-      )}{" "}
-      <button type="button" onClick={() => void logout.discardAndExit()} disabled={busy}>
-        Salir y descartar
-      </button>{" "}
-      <button type="button" onClick={logout.cancel} disabled={busy}>
-        Cancelar
-      </button>
-    </div>
+    </DialogFrame>
   );
 }
