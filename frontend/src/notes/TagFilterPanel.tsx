@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { useEffect, useId, useMemo, useState } from "react";
+import { ChevronDown, ChevronRight, FileText } from "lucide-react";
 import { useSync } from "../sync/useSync";
 import { countTags, filterByTags, taggedNotes, type TaggedNote } from "./tagFilter";
 
@@ -18,6 +18,8 @@ export default function TagFilterPanel({ vaultId, openId, onOpen }: Props) {
   const { notes, notesVersion } = useSync();
   const [all, setAll] = useState<TaggedNote[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const listId = useId();
 
   useEffect(() => {
     let alive = true;
@@ -51,14 +53,31 @@ export default function TagFilterPanel({ vaultId, openId, onOpen }: Props) {
 
   return (
     <aside className="note-sidebar tag-filter" aria-label="Filtro por tags">
-      <div className="tag-filter-chips" role="group" aria-label="Tags de la bóveda">
-        {tags.map(({ tag, count }) => (
-          <button key={tag} type="button" className="tag-chip" aria-pressed={active.includes(tag)} onClick={() => toggle(tag)}>
-            <span>{tag}</span>
-            <span className="tag-chip-count">{count}</span>
-          </button>
-        ))}
-      </div>
+      <button type="button" className="tag-filter-toggle" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((v) => !v)}>
+        {open ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+        <span>Tags</span>
+        <span className="tag-chip-count">{active.length > 0 ? `${active.length} de ${tags.length}` : tags.length}</span>
+      </button>
+      {open ? (
+        <div id={listId} className="tag-filter-chips" role="group" aria-label="Tags de la bóveda">
+          {tags.map(({ tag, count }) => (
+            <button key={tag} type="button" className="tag-chip" aria-pressed={active.includes(tag)} onClick={() => toggle(tag)}>
+              <span>{tag}</span>
+              <span className="tag-chip-count">{count}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        active.length > 0 && (
+          <div id={listId} className="tag-filter-chips" role="group" aria-label="Tags elegidos">
+            {active.map((tag) => (
+              <button key={tag} type="button" className="tag-chip" aria-pressed="true" title={`Quitar ${tag}`} onClick={() => toggle(tag)}>
+                <span>{tag}</span>
+              </button>
+            ))}
+          </div>
+        )
+      )}
       {active.length > 0 && (
         <button type="button" className="note-sidebar-secondary tag-filter-clear" onClick={() => setSelected([])}>
           Quitar filtro

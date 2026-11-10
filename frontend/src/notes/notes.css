@@ -969,3 +969,42 @@ body.is-resizing {
   font-size: 0.75rem;
   opacity: 0.65;
 }
+
+/* H-052: la lista de tags se despliega y, abierta, nunca pasa de 30 % del alto de la ventana (la lista de documentos manda). */
+.tag-filter-toggle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tag-filter-toggle .tag-chip-count {
+  margin-left: auto;
+}
+
+.tag-filter-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tag-filter-chips {
+  flex-shrink: 0;
+  max-height: 30vh;
+  min-height: 2rem;
+  overflow-y: auto;
+}
+
+.tag-filter-results {
+  flex: 1 1 auto;
+  min-height: 0;
+}
