@@ -101,11 +101,14 @@ test("C-1: sólo global.css declara estilo de barra (ninguna otra hoja de src/)"
 const px = (css: string, prop: string) => Number(css.match(new RegExp(`(?:^|[\\s;])${prop}:\\s*(-?\\d+)px`))?.[1]);
 
 test("C-5: el riel ya no oculta su barra y reserva el gutter a ambos lados", () => {
-  const rail = rule(read("../notes/notes.css"), ".vault-rail");
-  expect(rail).not.toMatch(/scrollbar-width/);
-  expect(rail).toMatch(/overflow-y: auto/);
+  const notes = read("../notes/notes.css");
+  // H-028 A1: el riel se divide; la barra y el gutter viven en la zona superior que hace scroll.
+  expect(rule(notes, ".vault-rail")).not.toMatch(/scrollbar-width/);
+  const scroll = rule(notes, ".vault-rail-scroll");
+  expect(scroll).not.toMatch(/scrollbar-width/);
+  expect(scroll).toMatch(/overflow-y: auto/);
   // Con `both-edges` el contenido queda centrado haya o no desborde; con barras overlay el gutter es 0.
-  expect(rail).toMatch(/scrollbar-gutter: stable both-edges/);
+  expect(scroll).toMatch(/scrollbar-gutter: stable both-edges/);
 });
 
 test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa sigue dentro del riel colapsado", () => {

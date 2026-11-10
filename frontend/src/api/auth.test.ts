@@ -1,5 +1,5 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { ApiError, getMe, login } from "./auth";
+import { ApiError, deletePhoto, getMe, login, updateDisplayName, uploadPhoto } from "./auth";
 import { ApiError as ProblemApiError } from "./problems";
 
 function json(status: number, body: unknown = {}): Response {
@@ -12,7 +12,7 @@ function problem(status: number, slug: string, title: string, path = "/auth/me")
   return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/problem+json" } });
 }
 
-const ME = { user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false };
+const ME = { user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: false, display_name: null, photo_url: null };
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -77,6 +77,47 @@ test("RF-023: un 401 de login no dispara renovación", async () => {
 
   await expect(login("a@b.co", "x")).rejects.toMatchObject({ status: 401 });
   expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("H-028: updateDisplayName hace PATCH /auth/me con el nombre y devuelve el Me actualizado", async () => {
+  const updated = { ...ME, display_name: "Carlos" };
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, updated));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(updateDisplayName("Carlos")).resolves.toEqual(updated);
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/auth/me");
+  expect(init.method).toBe("PATCH");
+  expect(JSON.parse(init.body)).toEqual({ display_name: "Carlos" });
+});
+
+test("H-028: uploadPhoto hace PUT multipart /auth/me/photo SIN forzar Content-Type JSON (boundary del navegador)", async () => {
+  const updated = { ...ME, photo_url: "/auth/me/photo?v=1" };
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, updated));
+  vi.stubGlobal("fetch", fetchMock);
+
+  const file = new Blob([new Uint8Array([1, 2, 3])], { type: "image/png" });
+  await expect(uploadPhoto(file)).resolves.toEqual(updated);
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/auth/me/photo");
+  expect(init.method).toBe("PUT");
+  expect(init.body).toBeInstanceOf(FormData);
+  // FormData envuelve el Blob en un File; se comprueba el campo y el tamaño, no la identidad.
+  const sent = (init.body as FormData).get("file") as Blob;
+  expect(sent).toBeInstanceOf(Blob);
+  expect(sent.size).toBe(3);
+  // Correctness: forzar application/json rompería el parseo multipart del backend.
+  expect(init.headers).toEqual({});
+});
+
+test("H-028: deletePhoto hace DELETE /auth/me/photo y devuelve el Me sin foto", async () => {
+  const fetchMock = vi.fn().mockResolvedValueOnce(json(200, ME));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(deletePhoto()).resolves.toEqual(ME);
+  const [path, init] = fetchMock.mock.calls[0];
+  expect(path).toBe("/auth/me/photo");
+  expect(init.method).toBe("DELETE");
 });
 
 test("RF-010: un error de la API llega como ApiError con su type y detail", async () => {

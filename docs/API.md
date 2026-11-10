@@ -21,6 +21,65 @@ alcance de datos (su base `synapse_user_{id}`):
 La API key **no** es un segundo usuario: autentica *como el mismo usuario* que la creó (mismo
 `owner_id`, misma base). Nunca da acceso a los datos de otro usuario (aislamiento por usuario).
 
+## Perfil de usuario (H-028)
+
+Cada usuario tiene un **nombre visible** (`display_name`) y una **foto de perfil** (avatar).
+Son sólo del propio usuario: **nadie** ve ni edita el perfil de otro, y una **API key de agente
+no puede editar el perfil** (ni subir, borrar o leer la foto): estas rutas son sólo cookie.
+Si una key llama a cualquiera de ellas responde `401 not-authenticated`.
+
+Las rutas no reciben ningún identificador de usuario: el dueño se toma de la sesión, así que
+`?user_id=<otro>` no tiene efecto.
+
+| Método | Ruta | Cuerpo / entrada | Respuesta |
+|---|---|---|---|
+| `GET` | `/auth/me` | — | perfil (ver abajo) |
+| `PATCH` | `/auth/me` | JSON `{"display_name": "…"}` | perfil actualizado |
+| `PUT` | `/auth/me/photo` | `multipart/form-data`, campo `file` | perfil actualizado |
+| `DELETE` | `/auth/me/photo` | — | perfil actualizado (`photo_url: null`) |
+| `GET` | `/auth/me/photo` | — | los bytes de la foto, con su `Content-Type` |
+
+Forma del perfil (`GET`, `PATCH`, `PUT` y `DELETE` devuelven la misma):
+
+```json
+{
+  "user_id": "…",
+  "email": "…",
+  "role": "admin",
+  "must_change_password": false,
+  "display_name": "Ana",
+  "photo_url": "/auth/me/photo?v=2"
+}
+```
+
+- `photo_url` es `null` si no hay foto. Si la hay, lleva la **versión** (`v=N`): cada subida
+  incrementa `N`, así que el navegador no sirve la foto anterior de caché.
+- `GET /auth/me/photo` responde con `Cache-Control: private, no-cache`: es privada del usuario.
+
+### Validaciones
+
+- **`display_name`**: se recortan los espacios de los extremos; si queda vacío, se guarda `null`.
+  Máximo **80** caracteres *tras* recortar. Más de 80 → `422 validation-error`. Campos extra → `422`.
+- **Foto**: el tipo se decide por el **contenido** (firma de bytes), nunca por el nombre del
+  archivo ni por el `Content-Type` que envía el cliente. Admitidos: **PNG, JPEG, WebP**.
+  Un texto renombrado a `.png` se rechaza. GIF y SVG se admiten como archivos en `/files`, pero
+  **no** como foto de perfil.
+- **Tamaño**: máximo **2 MB** (2 097 152 bytes), límite inclusivo.
+
+### Errores
+
+| Situación | Status | `type` (slug) |
+|---|---|---|
+| Sin cookie, o con API key | 401 | `urn:synapse:problem:not-authenticated` |
+| `display_name` > 80 caracteres o cuerpo inválido | 422 | `urn:synapse:problem:validation-error` |
+| Foto > 2 MB | 413 | `urn:synapse:problem:profile-photo-too-large` |
+| Tipo no admitido (contenido) | 415 | `urn:synapse:problem:profile-photo-invalid-type` |
+| `GET /auth/me/photo` sin foto | 404 | `urn:synapse:problem:profile-photo-not-found` |
+| Almacén de objetos caído | 503 | `urn:synapse:problem:storage-unavailable` |
+
+Al borrar la foto, si el almacén falla la petición responde 503 y la foto **sigue** en la BD
+(no queda un objeto huérfano); se puede reintentar.
+
 ## Bóvedas — catálogo de atributos (H-029)
 
 Las bóvedas soportan un **catálogo personalizado de atributos** (opcional) para organizar

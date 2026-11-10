@@ -53,7 +53,7 @@ def test_rf_016_concurrent_bootstrap_yields_single_admin(db):
 
     session = Session()
     try:
-        service = AuthService(BlindRepo(session), FakeCouchDB())
+        service = AuthService(BlindRepo(session), FakeCouchDB(), object_storage=None)
         assert service.bootstrap_admin(settings.ADMIN_EMAIL, settings.ADMIN_PASSWORD) is None
     finally:
         session.close()

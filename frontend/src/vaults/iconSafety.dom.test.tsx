@@ -4,11 +4,14 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, test } from "vitest";
+import { MeContext } from "../auth/RequireAuth";
 import VaultRail from "../notes/VaultRail";
 import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import IconPicker from "./IconPicker";
 import VaultListPage from "./VaultListPage";
 import { PALETTE } from "./vaultIcon";
+
+const ME = { user_id: "1", email: "test@synapse.local", role: "guest" as const, must_change_password: false, display_name: null, photo_url: null };
 
 // Valores que la gramática del servidor admite (`javascript:x` es `glifo:color`) o que un documento
 // manipulado de la réplica podría traer.
@@ -30,8 +33,9 @@ function expectHarmless(attributes: string[], raw: string) {
   for (const attribute of attributes) {
     expect(attribute, `atributo con el valor hostil «${raw}»`).not.toMatch(/javascript|url\(|onerror|<|alert/i);
     expect(attribute).not.toContain(raw);
-    // Sólo se admiten enlaces internos de bóveda y estilos hechos de variables de la paleta.
-    if (attribute.startsWith("href=")) expect(attribute).toMatch(/^href=\/vaults\//);
+    // Sólo se admiten enlaces internos de bóveda, las entradas fijas del riel (H-028 A2) y estilos
+    // hechos de variables de la paleta.
+    if (attribute.startsWith("href=")) expect(attribute).toMatch(/^href=(\/vaults\/|\/files$|\/settings$)/);
     if (attribute.startsWith("style=")) {
       expect(attribute).toMatch(new RegExp(`^style=--chip-color: var\\(--(${PALETTE.join("|")})\\);?$`));
     }
@@ -48,11 +52,13 @@ async function seedHostile(icon: string) {
 test.each(HOSTILE)("riel: «%s» no llega a ningún href, src ni style", async (raw) => {
   const value = await seedHostile(raw);
   const { container } = render(
-    <WithSync value={value}>
-      <MemoryRouter>
-        <VaultRail />
-      </MemoryRouter>
-    </WithSync>,
+    <MeContext.Provider value={ME}>
+      <WithSync value={value}>
+        <MemoryRouter>
+          <VaultRail />
+        </MemoryRouter>
+      </WithSync>
+    </MeContext.Provider>,
   );
   await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
   await screen.findAllByRole("link");

@@ -7,7 +7,7 @@ import type { SyncContextValue } from "../sync/useSync";
 import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import AppLayout from "./AppLayout";
 
-const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false };
+const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false, display_name: null, photo_url: null };
 
 function renderAt(value: SyncContextValue, path = "/") {
   render(
@@ -29,28 +29,11 @@ function renderAt(value: SyncContextValue, path = "/") {
   return userEvent.setup();
 }
 
-/** El enlace/botón de cuenta vive dentro del menú desplegable: hay que abrirlo primero. */
-async function openAccountMenu(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole("button", { name: `Menú de cuenta (${ME.email})` }));
-}
-
 afterEach(() => vi.restoreAllMocks());
 
-test("RF-023: el menú de cuenta lleva a Cambiar contraseña", async () => {
-  const user = renderAt(syncValue().value);
-  expect(screen.getByText("inicio privado")).toBeInTheDocument();
-  await openAccountMenu(user);
-  await user.click(screen.getByRole("link", { name: "Cambiar contraseña" }));
-  expect(screen.getByText("cambio de clave")).toBeInTheDocument();
-});
-
-test("RF-017: «Cerrar sesión» (en el menú de cuenta) pide el cierre a la sincronización (que decide si avisar)", async () => {
-  const { value } = syncValue();
-  const user = renderAt(value);
-  await openAccountMenu(user);
-  await user.click(screen.getByRole("button", { name: "Cerrar sesión" }));
-  expect(value.requestLogout).toHaveBeenCalledOnce();
-});
+// H-028 A7: el menú de cuenta sale de la navbar; «Cambiar contraseña» y «Cerrar sesión» viven ahora
+// en la pantalla de usuario (/settings), cubiertos por SettingsPage.test. Aquí sólo queda que el
+// `LogoutDialog` siga montado en el marco (el aviso de cambios sin sincronizar, RF-017).
 
 test("RF-017: con el aviso abierto muestra el diálogo de cambios sin sincronizar", () => {
   const { value } = syncValue();
@@ -72,11 +55,13 @@ test("RF-009: muestra la barra de sincronización", () => {
   expect(within(bar).getByRole("status")).toHaveTextContent("Sincronizado");
 });
 
-test("RF-018 / RF-028: los enlaces «Bóvedas» y «Papelera» llevan a sus secciones", async () => {
+test("RF-018 / RF-028: «Bóvedas» (navbar) y «Papelera» (riel) llevan a sus secciones", async () => {
   const user = renderAt(syncValue().value);
-  const nav = screen.getByRole("navigation", { name: "Principal" });
-  await user.click(within(nav).getByRole("link", { name: "Papelera" }));
+  // H-028 A7: «Papelera» salió de la navbar al riel; «Bóvedas» sigue en la navbar principal.
+  const rail = screen.getByRole("navigation", { name: "Bóvedas abiertas" });
+  await user.click(within(rail).getByRole("link", { name: "Papelera" }));
   expect(screen.getByText("sección papelera")).toBeInTheDocument();
+  const nav = screen.getByRole("navigation", { name: "Principal" });
   await user.click(within(nav).getByRole("link", { name: "Bóvedas" }));
   expect(screen.getByText("sección bóvedas")).toBeInTheDocument();
 });

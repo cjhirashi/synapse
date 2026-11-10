@@ -421,6 +421,35 @@ class SpaResourceNotFound(DomainError):
     detail = "Resource not found"
 
 
+# --- Perfil de usuario (H-028) ---
+
+class ProfilePhotoNotFound(DomainError):
+    """GET /auth/me/photo cuando no hay foto de avatar (H-028)."""
+
+    slug = "profile-photo-not-found"
+    title = "Profile photo not found"
+    status = 404
+    detail = "Profile photo not found"
+
+
+class ProfilePhotoTooLarge(DomainError):
+    """Foto de avatar supera 2 MB (H-028)."""
+
+    slug = "profile-photo-too-large"
+    title = "Profile photo too large"
+    status = 413
+    detail = "Profile photo exceeds 2 MB limit"
+
+
+class ProfilePhotoInvalidType(DomainError):
+    """Tipo de foto no permitido: solo PNG, JPEG, WebP (H-028)."""
+
+    slug = "profile-photo-invalid-type"
+    title = "Profile photo invalid type"
+    status = 415
+    detail = "Profile photo type not allowed: only PNG, JPEG, and WebP are accepted"
+
+
 # --- Fallos internos de puertos (no son entradas del catálogo) ---
 
 class RevisionConflict(Exception):

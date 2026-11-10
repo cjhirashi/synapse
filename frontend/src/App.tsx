@@ -8,6 +8,9 @@ import VaultWorkspacePage from "./notes/VaultWorkspacePage";
 import AgentAccessPage from "./settings/AgentAccessPage";
 import ApiKeysPage from "./settings/ApiKeysPage";
 import ChangePasswordPage from "./settings/ChangePasswordPage";
+import ProfilePage from "./settings/ProfilePage";
+import SettingsPage from "./settings/SettingsPage";
+import ThemePage from "./settings/ThemePage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
 import LocalCopyNotice from "./sync/LocalCopyNotice";
@@ -77,11 +80,15 @@ export default function App({ syncEnv }: Props) {
           </RequireAuth>
         }
       >
-        <Route path="/settings/password" element={<ChangePasswordRoute />} />
-        {/* Gestión de API keys de agente (SPEC-0013 / H-002.5): sólo la UI sobre `/auth/agent-keys`. */}
-        <Route path="/settings/api-keys" element={<ApiKeysPage />} />
-        {/* H-030: qué agente escribe en qué carpetas de cada bóveda (registro de AG - AGENTES). */}
-        <Route path="/settings/agent-access" element={<AgentAccessPage />} />
+        {/* Pantalla de usuario (H-028 B1-B3). */}
+        <Route path="/settings" element={<SettingsPage />}>
+          <Route index element={<Navigate to="/settings/profile" replace />} />
+          <Route path="profile" element={<ProfilePage />} />
+          <Route path="password" element={<ChangePasswordRoute />} />
+          <Route path="api-keys" element={<ApiKeysPage />} />
+          <Route path="theme" element={<ThemePage />} />
+          <Route path="agent-access" element={<AgentAccessPage />} />
+        </Route>
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}
         <Route path="/vaults" element={<VaultListPage />} />
         <Route path="/vaults/new" element={<VaultForm />} />

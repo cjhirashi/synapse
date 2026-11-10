@@ -132,7 +132,7 @@ def test_rf_022_concurrent_rotation_of_the_same_token_leaves_no_second_session(c
         assert client.post("/auth/refresh").status_code == 200
 
         with pytest.raises(InvalidRefreshToken) as exc:
-            AuthService(AuthRepository(stale), couchdb=None).refresh(raw)
+            AuthService(AuthRepository(stale), couchdb=None, object_storage=None).refresh(raw)
         assert exc.value.status == 401
     finally:
         stale.close()

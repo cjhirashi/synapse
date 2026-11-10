@@ -11,11 +11,16 @@ from app.core.errors import (
     InvalidCredentials,
     InvalidRefreshToken,
     PasswordPolicyViolation,
+    ProfilePhotoInvalidType,
+    ProfilePhotoNotFound,
+    ProfilePhotoTooLarge,
     WrongCurrentPassword,
 )
+from app.core.file_safety import JPEG, PNG, WEBP, sniff_content_type
 from app.core.models.user import User
 from app.core.ports.auth_port import AuthPort
 from app.core.ports.couchdb_port import CouchDBPort
+from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.security import (
     hash_password,
     hash_refresh_token,
@@ -30,15 +35,21 @@ GUEST_ROLE_ID = "guest-role-id"
 ACCESS_TOKEN_TTL = timedelta(hours=24)
 REFRESH_TOKEN_TTL = timedelta(days=30)
 
+# Límites para avatar (H-028). Solo formatos de imagen de foto de perfil: GIF y SVG se
+# admiten como archivos en /files, pero no como avatar.
+AVATAR_MAX_SIZE = 2 * 1024 * 1024  # 2 MB
+AVATAR_TYPES = {PNG, JPEG, WEBP}
+
 # Se verifica contra este hash cuando el usuario no existe o está inactivo, para que el
 # login tarde lo mismo en todos los casos y no permita enumerar emails (RF-005).
 _DUMMY_HASH = hash_password(secrets.token_urlsafe(32))
 
 
 class AuthService:
-    def __init__(self, repo: AuthPort, couchdb: CouchDBPort):
+    def __init__(self, repo: AuthPort, couchdb: CouchDBPort, object_storage: ObjectStoragePort):
         self.repo = repo
         self.couchdb = couchdb
+        self.object_storage = object_storage
 
     def _provision_user(self, email: str, password: str, role_id: str, must_change_password: bool) -> User:
         """Inserta el usuario y su base CouchDB; si algo falla, no queda nada en PostgreSQL."""
@@ -152,3 +163,80 @@ class AuthService:
         self.repo.revoke_refresh_tokens(user.id)
         self.repo.commit()
         return user
+
+    def update_display_name(self, user_id: str, display_name: str | None) -> User:
+        """Guarda display_name del usuario (H-028).
+
+        El recorte de espacios y el tope de 80 caracteres los aplica el esquema
+        (`UpdateDisplayNameRequest`) antes de llegar aquí; el servicio sólo convierte "" en NULL.
+        """
+        user = self.repo.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentials()
+
+        user.display_name = display_name or None
+        self.repo.commit()
+        return user
+
+    def set_avatar(self, user_id: str, data: bytes) -> User:
+        """Guarda la foto de avatar del usuario en el almacén (H-028).
+
+        Las dos validaciones van aquí, en un único punto, para que ninguna ruta pueda saltárselas:
+        - Tamaño primero: es barato y evita husmear o subir un archivo que ya sabemos inválido.
+        - Tipo por CONTENIDO (firma de bytes), nunca por el nombre ni el Content-Type del cliente:
+          un texto renombrado a `.png` se rechaza igual.
+        `avatar_version` sube en cada subida para que el navegador no reutilice la foto anterior.
+        """
+        user = self.repo.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentials()
+
+        if len(data) > AVATAR_MAX_SIZE:
+            raise ProfilePhotoTooLarge()
+        content_type = sniff_content_type(data)
+        if content_type not in AVATAR_TYPES:
+            raise ProfilePhotoInvalidType()
+
+        # Guardar en el almacén antes de tocar la BD: si falla, los metadatos siguen como estaban.
+        key = f"users/{user_id}/avatar"
+        self.object_storage.put_object(key, data, content_type)
+
+        user.avatar_content_type = content_type
+        user.avatar_version += 1
+        self.repo.commit()
+        return user
+
+    def clear_avatar(self, user_id: str) -> User:
+        """Borra la foto de avatar del usuario (H-028).
+
+        Borra primero el objeto y sólo después limpia los metadatos. Si el almacén falla, la
+        excepción sube (503) y la BD sigue diciendo "hay foto": así nunca queda un objeto huérfano
+        con la BD ya en "sin foto", y el usuario puede reintentar. No se silencia ningún error.
+        """
+        user = self.repo.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentials()
+
+        if user.avatar_content_type is not None:
+            self.object_storage.delete_object(f"users/{user_id}/avatar")
+
+        user.avatar_content_type = None
+        # avatar_version NO se resetea: si se vuelve a subir, la URL cambia y el caché no sirve la vieja.
+        self.repo.commit()
+        return user
+
+    def get_avatar(self, user_id: str) -> tuple[bytes, str]:
+        """Descarga la foto de avatar del usuario (H-028).
+
+        Devuelve (bytes, content_type). Lanza ProfilePhotoNotFound si el usuario no tiene foto.
+        """
+        user = self.repo.get_user_by_id(user_id)
+        if user is None:
+            raise InvalidCredentials()
+
+        if user.avatar_content_type is None:
+            raise ProfilePhotoNotFound()
+
+        key = f"users/{user_id}/avatar"
+        data = self.object_storage.get_object(key)
+        return data, user.avatar_content_type

@@ -6,6 +6,7 @@ instalado en el host. Todo fallo del cliente (red caída, error S3) se eleva com
 `StorageUnavailable` (503), igual que `VaultRepository` ante CouchDB. MinIO nunca se expone
 directo: el acceso real lo controla siempre el backend.
 """
+from functools import lru_cache
 from io import BytesIO
 
 from app.core.config import settings
@@ -59,3 +60,13 @@ class MinioObjectStorage(ObjectStoragePort):
             self._client.remove_object(self._bucket, key)
         except Exception as exc:  # noqa: BLE001
             raise StorageUnavailable(f"MinIO delete_object falló: {exc}") from exc
+
+
+@lru_cache
+def get_object_storage() -> ObjectStoragePort:
+    """Un único adaptador MinIO por proceso.
+
+    Vive aquí (no en `routers/files.py`) para que `routers/auth.py` la importe sin ciclo: `files`
+    importa `SESSION_ERRORS` de `auth`. Los tests la sustituyen con `app.dependency_overrides`.
+    """
+    return MinioObjectStorage()

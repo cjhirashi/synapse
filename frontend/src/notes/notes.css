@@ -11,15 +11,85 @@
   padding: var(--space-3) 0;
   border-right: 1px solid var(--border);
   background: var(--bg-secondary);
-  /* Scroll propio dentro del marco de altura fija (AppLayout.css): con decenas de bóvedas el riel se
-     desplaza solo y sin mover la página. La barra ya no se oculta (H-022): usa el estilo global del tema. */
-  overflow-y: auto;
-  /* La barra clásica de 8 px restaría ancho al contenido y descentraría los chips (y la marca de la bóveda
-     activa, calculada sobre los 56 px). Reservar el gutter a ambos lados lo mantiene centrado con o sin
-     desborde; con barras overlay el gutter es 0 y nada cambia. */
-  scrollbar-gutter: stable both-edges;
+  /* H-028 A1/A2: el riel se divide en zona superior (scroll) e inferior (fija). El scroll vive en
+     `.vault-rail-scroll`, no en el `<nav>`, para que la zona inferior quede siempre anclada abajo. */
+  overflow: hidden;
   /* H-008 C-3: ensancharse al expandir es barato (una transición de ancho). */
   transition: width var(--dur-base) var(--ease-standard);
+}
+
+/* H-028 A1: zona superior con las bóvedas; ocupa el alto disponible y sólo ella hace scroll. */
+.vault-rail-scroll {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  overflow-y: auto;
+  /* La barra clásica de 8 px restaría ancho y descentraría los chips (y la marca de la bóveda activa,
+     calculada sobre los 56 px). El gutter a ambos lados lo mantiene centrado con o sin desborde. */
+  scrollbar-gutter: stable both-edges;
+}
+
+.vault-rail.is-expanded .vault-rail-scroll {
+  align-items: stretch;
+}
+
+/* H-028 A2: zona inferior de altura = su contenido (Archivos, Papelera, Usuario), anclada abajo. */
+.vault-rail-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  width: 100%;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+
+.vault-rail.is-expanded .vault-rail-bottom {
+  align-items: stretch;
+  padding: var(--space-2) var(--space-2) 0;
+}
+
+/* Entradas de acción (Archivos/Papelera/Usuario): el icono centrado en la caja de 34 px (colapsado);
+   en expandido reutilizan la píldora icono+nombre de `.is-expanded .vault-rail-icon`. */
+.vault-rail-action {
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+}
+
+.vault-rail-action:hover {
+  color: var(--text-primary);
+}
+
+.vault-rail-glyph,
+.vault-rail-initials {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+/* Icono = foto del usuario (recorte cuadrado por presentación) o sus iniciales en un chip. */
+.vault-rail-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.vault-rail-initials {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
 }
 
 /* H-008 C-3: expandido, el riel se ensancha y sus elementos se alinean a la izquierda como píldoras. */

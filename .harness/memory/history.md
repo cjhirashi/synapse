@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-10] H-028: riel principal dividido y pantalla de usuario (desplegada)
+
+- **Pedido de Carlos (2026-11-10, CDMX):** mover el usuario al riel, crear su pantalla de usuario y poner Archivos, Papelera y Usuario en la zona inferior del riel. Cambio directo, sin Gate previo; P1 a P4 de la nota resueltas con los valores recomendados (Archivos abre la pantalla de archivos de las bóvedas; foto PNG/JPG/WebP hasta 2 MB; Usuario es página completa; en móvil va dentro del riel flotante).
+- **Qué cambió:** `VaultRail.tsx` (zona superior con scroll, zona inferior con Archivos, Papelera y Usuario con foto o iniciales; el nombre sustituye al correo), `AppLayout.tsx` (sin Archivos, Papelera, tema ni `AccountMenu`, que se elimina), nueva `/settings` con navegación lateral (Perfil, Contraseña, API keys, Tema, Agentes por bóveda). Backend: migración 011 (`users.display_name`, `avatar_content_type`, `avatar_version`), `GET /auth/me` con `display_name` y `photo_url`, `PATCH /auth/me` (nombre, máx. 80), `PUT/DELETE/GET /auth/me/photo` (PNG/JPG/WebP validado por contenido, 2 MB, MinIO, solo su dueño; una API key de agente no edita el perfil). Contrato de auth regenerado.
+- **Verificación:** vitest completo 2972 pruebas en verde, `tsc` limpio, build OK. Backend en 4 fragmentos: 792 + 517+ + 714 + 715 pruebas en verde tras ajustar `test_flow` y regenerar el contrato. Migración 011 probada sobre PostgreSQL 15 con la imagen de producción: sube, baja y sube otra vez conservando usuarios existentes. Chromium real (`e2e/h028-riel.spec.ts`, pila aislada) a 1280 (oscuro y claro), 768 y 390 px (oscuro y claro): riel dividido y ordenado, navbar limpia, nombre sustituye al correo en encabezado y riel, secciones de la pantalla de usuario, cambio de tema y paso a Archivos y Papelera. Nota del arnés: `waitForVaults` ahora cuenta solo la zona de bóvedas del riel. La subida real de foto no se probó en navegador (MinIO desechable no disponible); la cubren 29 pruebas de backend.
+- **Despliegue:** 2026-11-10, con migración; imagen previa `synapse-backend:pre-h028`. Revertir: `docker tag synapse-backend:pre-h028 synapse-backend:latest && docker compose up -d backend` y `docker exec synapse-backend alembic downgrade c5d8e0f2a4b6` (borra las columnas de perfil).
+- **Docs:** `docs/API.md`, `backend/README.md`, `frontend/README.md`, `frontend/src/README.md`, este archivo y `backlog.md`.
+
 ## [2026-11-10] H-027: sidebar de documentos más compacta y menú ⋮ en móvil (desplegada)
 
 - **Pedido de Carlos (2026-11-10, CDMX):** quitar el bloque «Crear en…» y el aviso de «/», botones de icono, nombre de la bóveda arriba, y que el menú ⋮ no cierre la sidebar en móvil con confirmación de borrar en ventana centrada. Cambio directo, solo frontend.

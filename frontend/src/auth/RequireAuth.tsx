@@ -21,7 +21,7 @@ export function useMe(): Me {
 // Vuelve a pedir `/auth/me` y actualiza la sesión en caché. Quien cambia algo que `RequireAuth`
 // decide con `me` (p. ej. `must_change_password` tras cambiar la contraseña) debe llamarla
 // ANTES de navegar: si no, la redirección forzada se evalúa con el `me` obsoleto (VU-5).
-const RefreshMeContext = createContext<(() => Promise<void>) | null>(null);
+export const RefreshMeContext = createContext<(() => Promise<void>) | null>(null);
 
 /** Renueva la sesión verificada; sólo dentro de `RequireAuth`. */
 export function useRefreshMe(): () => Promise<void> {

@@ -104,6 +104,18 @@ propio en `src/editor/MilkdownView.tsx`):
 El editor se carga con `React.lazy` al abrir una bóveda: Milkdown y CodeMirror van en un
 *chunk* aparte y `/vaults` no los descarga. Detalle de módulos en `src/README.md`.
 
+## Riel principal (H-028)
+
+- `src/notes/VaultRail.tsx` — riel lateral dividido en dos zonas:
+  - **Superior:** lista de bóvedas con scroll vertical (ocupa el espacio disponible).
+  - **Inferior:** tres enlaces fijos (Archivos, Papelera, Usuario) + foto/iniciales del usuario.
+- `src/layout/AppLayout.tsx` — contenedor principal: navbar (marca + «Bóvedas») + riel +
+  contenido. H-028 A7: salen de la navbar los enlaces Archivos/Papelera (al riel), el
+  `ThemeToggle` (a `src/settings/ThemePage.tsx`) y el `AccountMenu`, que se elimina (su
+  «Cerrar sesión» pasa a `src/settings/SettingsPage.tsx`). `LogoutDialog` sigue montado.
+- La entrada «Usuario» del riel usa `useMe()`: muestra la foto (`photo_url`) o las iniciales
+  del nombre/correo, y enlaza a `/settings`.
+
 ## Despliegue
 
 **FastAPI sirve la SPA (SPEC-0007).** Ya no hay contenedor `frontend`/nginx: el build de
@@ -121,10 +133,25 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
 
 - `src/api/auth.ts` — cliente de `/auth/*` con `credentials: 'include'` (las cookies
   httpOnly las gestiona el navegador; el frontend nunca ve el token).
+  - Métodos `updateDisplayName`, `uploadPhoto`, `deletePhoto` para el perfil del usuario (H-028).
 - `src/auth/RequireAuth.tsx` — guardia de rutas: sin sesión → `/login`; con
   `must_change_password` → `/settings/password`.
+  - Exporta `MeContext`, `useMe()`, `useRefreshMe()` y `RefreshMeContext` (RF-021, RF-023).
+
+## Pantalla de usuario (H-028)
+
+- `src/settings/SettingsPage.tsx` — layout de dos columnas: navegación lateral +
+  `<Outlet>` de React Router. Rutas anidadas: `/settings/profile`, `/settings/password`,
+  `/settings/api-keys`, `/settings/theme`, `/settings/agent-access`. Botón "Cerrar sesión"
+  en el pie de la navegación.
+- `src/settings/ProfilePage.tsx` — sección "Perfil": editor de nombre (máx. 80 caracteres),
+  avatar cuadrado con recorte CSS (`object-fit: cover`), previsualización al seleccionar
+  archivo, botones subir/quitar foto.
+- `src/settings/ThemePage.tsx` — sección "Tema": selector de tema claro/oscuro.
 - `src/settings/ChangePasswordPage.tsx` — sección "Cambiar contraseña", accesible a todo
-  usuario autenticado.
+  usuario autenticado (reutilizada de SPEC-0002).
+- Rutas en `src/App.tsx`: `/settings` redirige a `/settings/profile`; las demás son
+  sub-rutas bajo `<SettingsPage>` (Outlet de React Router dentro de `<AppLayout>`).
 
 ## Convenciones
 

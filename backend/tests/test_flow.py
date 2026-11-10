@@ -42,6 +42,8 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
         "email": "g@test.com",
         "role": "guest",
         "must_change_password": False,
+        "display_name": None,
+        "photo_url": None,
     }
     again = client.post("/admin/users", json={"email": "x@test.com", "password": SEED_PASSWORD})
     assert again.status_code == 403
