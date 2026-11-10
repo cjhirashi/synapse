@@ -58,7 +58,7 @@
 /* Carpeta abierta: se marca como la seleccionada del árbol de documentos (fondo suave + barra de acento). */
 .files-tree-panel .note-tree-row[aria-current="true"],
 .files-tree-panel .note-tree-row[aria-current="true"]:not([type="submit"]):hover {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--vault-icon-color, var(--accent)) 18%, transparent);
   color: var(--text-primary);
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--vault-icon-color, var(--accent));

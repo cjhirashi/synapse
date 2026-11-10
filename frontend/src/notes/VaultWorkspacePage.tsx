@@ -526,7 +526,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           // en móvil (C-2/C-5).
           data-open={sidebarOpen ? "" : undefined}
           data-floating={isMobile ? "" : undefined}
-          style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
+          style={{ "--vault-icon-color": colorVar(vaultColor), ...(isDesktop ? { "--side-width": `${sidebarWidth}px` } : {}) } as CSSProperties}
         >
           <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} />
           {/* Documentos sigue montado (oculto) al cambiar de pestaña: conserva carpetas desplegadas y el estado que lee el editor. */}

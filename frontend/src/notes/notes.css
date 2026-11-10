@@ -142,11 +142,11 @@
 /* Bóveda activa en expandido: fondo de acento (como el resto de la app) y la barra pegada al borde
    izquierdo de la píldora (en colapsado sale a -10px porque el enlace va centrado en los 56 px). */
 .vault-rail.is-expanded .vault-rail-icon[aria-current="page"] {
-  background: var(--accent-soft);
+  background: var(--bg-tertiary);
 }
 
-.vault-rail.is-expanded .vault-rail-icon[aria-current="page"]::before {
-  left: 0;
+.vault-rail.is-expanded .vault-rail-icon[aria-current="page"] .vault-chip::before {
+  left: calc(-1 * var(--space-2));
 }
 
 /* El nombre completo, en una línea con elipsis si no cabe. */
@@ -187,9 +187,13 @@
   border-radius: var(--radius-md);
 }
 
-/* Barra de la bóveda activa: 3 × 20 px en acento, pegada al borde izquierdo del riel (el enlace está
-   centrado en los 56 px del riel, así que la barra sale hacia la izquierda hasta tocarlo). */
-.vault-rail-icon[aria-current="page"]::before {
+/* Barra de la bóveda activa: 3 × 20 px con el color de la bóveda (el del chip), pegada al borde izquierdo del riel
+   (el enlace está centrado en los 56 px del riel, así que la barra sale hacia la izquierda hasta tocarlo). */
+.vault-rail-icon[aria-current="page"] .vault-chip {
+  position: relative;
+}
+
+.vault-rail-icon[aria-current="page"] .vault-chip::before {
   content: "";
   position: absolute;
   left: -10px;
@@ -198,7 +202,7 @@
   width: 3px;
   height: 20px;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  background: var(--accent);
+  background: var(--chip-color, var(--accent));
 }
 
 /* Tooltip del riel (RailTooltip, en <body>): a la derecha del riel y centrado en vertical con el chip.
@@ -563,14 +567,14 @@
 
 /* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1, P-3) + barra con el color de la bóveda. */
 .note-tree-row[aria-selected="true"] {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--vault-icon-color, var(--accent)) 18%, transparent);
   color: var(--text-primary);
   box-shadow: inset 3px 0 0 var(--vault-icon-color, var(--accent));
 }
 
 /* El cursor sobre la fila seleccionada no le quita el fondo de selección (el hover es más específico). */
 .note-tree-row[aria-selected="true"]:not([type="submit"]):hover {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--vault-icon-color, var(--accent)) 18%, transparent);
 }
 
 /* H-003 C-3: carpeta/«Raíz» destino de un arrastre bajo el cursor; recuadro de acento para marcar
@@ -922,7 +926,7 @@ body.is-resizing {
 }
 
 .vault-tab[aria-selected="true"] {
-  border-bottom-color: var(--accent);
+  border-bottom-color: var(--vault-icon-color, var(--accent));
   opacity: 1;
   font-weight: 600;
 }
@@ -971,8 +975,8 @@ body.is-resizing {
 }
 
 .tag-chip[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--vault-icon-color, var(--accent));
+  background: color-mix(in srgb, var(--vault-icon-color, var(--accent)) 18%, transparent);
   font-weight: 600;
 }
 

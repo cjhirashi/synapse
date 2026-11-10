@@ -119,7 +119,7 @@ test("C-5: con el gutter, el chip de 34 px cabe y la marca de la bóveda activa 
   expect(content).toBeGreaterThanOrEqual(chip);
   // La marca nace a −10 px del chip (centrado en el contenido, desplazado por el gutter izquierdo).
   const chipLeft = gutter + (content - chip) / 2;
-  const bar = chipLeft + px(rule(notes, '.vault-rail-icon[aria-current="page"]::before'), "left");
+  const bar = chipLeft + px(rule(notes, '.vault-rail-icon[aria-current="page"] .vault-chip::before'), "left");
   expect(bar).toBeGreaterThanOrEqual(0); // no la recorta el borde del riel
 });
 

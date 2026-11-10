@@ -345,3 +345,10 @@ test("la barra de la fila seleccionada o activa de los árboles usa el color de 
   const files = read("../files/files.css");
   expect(rule(files, '.files-tree-panel .note-tree-row[aria-current="true"],\n.files-tree-panel .note-tree-row[aria-current="true"]:not([type="submit"]):hover')).toMatch(/--vault-icon-color/);
 });
+
+test("las marcas de selección (riel, pestaña, fila, chip) toman el color de la bóveda con respaldo al acento", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, '.vault-rail-icon[aria-current="page"] .vault-chip::before')).toMatch(/background: var\(--chip-color, var\(--accent\)\)/);
+  expect(rule(notes, '.vault-tab[aria-selected="true"]')).toMatch(/border-bottom-color: var\(--vault-icon-color, var\(--accent\)\)/);
+  expect(rule(notes, '.note-tree-row[aria-selected="true"]')).toMatch(/color-mix\(in srgb, var\(--vault-icon-color, var\(--accent\)\)/);
+});
