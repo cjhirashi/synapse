@@ -393,13 +393,13 @@
   font-size: 11px;
 }
 
-/* Carpeta activa (y «Raíz» activa): fondo, peso 600 y barra interior de 3 px en `--text-secondary`; se distingue de
+/* Carpeta activa (y «Raíz» activa): fondo, peso 600 y barra interior de 3 px con el color de la bóveda; se distingue de
    la nota seleccionada (`--accent-soft` + barra de acento) y pueden coexistir. */
 .note-tree-row[aria-current="true"] {
   background: var(--bg-tertiary);
   color: var(--text-primary);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--text-secondary);
+  box-shadow: inset 3px 0 0 var(--vault-icon-color, var(--text-secondary));
 }
 
 .note-sidebar > p {
@@ -561,11 +561,11 @@
   color: var(--text-primary);
 }
 
-/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1, P-3) + barra de acento, como el riel. */
+/* Seleccionada: texto primario (el acento sobre `--accent-soft` no llega a 4,5:1, P-3) + barra con el color de la bóveda. */
 .note-tree-row[aria-selected="true"] {
   background: var(--accent-soft);
   color: var(--text-primary);
-  box-shadow: inset 3px 0 0 var(--accent);
+  box-shadow: inset 3px 0 0 var(--vault-icon-color, var(--accent));
 }
 
 /* El cursor sobre la fila seleccionada no le quita el fondo de selección (el hover es más específico). */

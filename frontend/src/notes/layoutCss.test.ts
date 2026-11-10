@@ -337,3 +337,11 @@ test("H-014 (2026-11-04): la tabla tiene las cuatro esquinas redondeadas (bordes
   // Sin líneas dobles: la celda solo dibuja derecha e inferior; arriba e izquierda las pone la primera fila/columna.
   expect(css).toMatch(/th,\s*\.milkdown-view \.ProseMirror td\s*\{\s*border-top-width: 0;\s*border-left-width: 0;/);
 });
+
+test("la barra de la fila seleccionada o activa de los árboles usa el color de la bóveda (con respaldo)", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, '.note-tree-row[aria-selected="true"]')).toMatch(/box-shadow: inset 3px 0 0 var\(--vault-icon-color, var\(--accent\)\)/);
+  expect(rule(notes, '.note-tree-row[aria-current="true"]')).toMatch(/box-shadow: inset 3px 0 0 var\(--vault-icon-color/);
+  const files = read("../files/files.css");
+  expect(rule(files, '.files-tree-panel .note-tree-row[aria-current="true"],\n.files-tree-panel .note-tree-row[aria-current="true"]:not([type="submit"]):hover')).toMatch(/--vault-icon-color/);
+});
