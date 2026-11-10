@@ -1,0 +1,141 @@
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.settings-header {
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface-secondary);
+  flex-shrink: 0;
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Navegación lateral */
+.settings-nav {
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background-color: var(--surface-secondary);
+  padding: 1rem 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+.settings-nav a {
+  padding: 0.75rem 1rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: block;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.settings-nav a:hover {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+.settings-nav a.active {
+  background-color: var(--surface);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+
+.settings-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Botón cerrar sesión */
+.settings-logout {
+  margin-top: auto;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+}
+
+.settings-logout:hover {
+  background-color: rgba(var(--danger-rgb), 0.1);
+  border-left-color: var(--danger);
+}
+
+.settings-logout:focus-visible {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
+/* Contenido principal */
+.settings-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  background-color: var(--surface);
+}
+
+/* Responsive: en móvil, la nav va arriba */
+@media (max-width: 768px) {
+  .settings-container {
+    flex-direction: column;
+  }
+
+  .settings-nav {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    height: auto;
+    overflow: visible;
+  }
+
+  .settings-nav a,
+  .settings-logout {
+    padding: 0.5rem 0.5rem;
+    border-left: none;
+    border-bottom: 3px solid transparent;
+    text-align: center;
+    font-size: 0.85rem;
+  }
+
+  .settings-nav a.active,
+  .settings-logout:hover {
+    border-bottom-color: var(--accent);
+    border-left: none;
+  }
+
+  .settings-logout {
+    grid-column: 5;
+    margin-top: 0;
+  }
+
+  .settings-content {
+    padding: 1.5rem;
+  }
+}
