@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-10] H-027: sidebar de documentos más compacta y menú ⋮ en móvil (desplegada)
+
+- **Pedido de Carlos (2026-11-10, CDMX):** quitar el bloque «Crear en…» y el aviso de «/», botones de icono, nombre de la bóveda arriba, y que el menú ⋮ no cierre la sidebar en móvil con confirmación de borrar en ventana centrada. Cambio directo, solo frontend.
+- **Qué cambió:** `NoteSidebar.tsx`, `VaultWorkspacePage.tsx`, `notes.css` y sus pruebas. La regla de creación no cambia (carpeta seleccionada o raíz); el destino va en el `aria-label` del botón. El `mousedown` global que cerraba la sidebar flotante ignora los clics dentro del menú ⋮ y del diálogo (portaled).
+- **Verificación:** vitest completo 131 archivos / 2948 pruebas en verde, `tsc` limpio, build OK. Chromium real (`e2e/h027-sidebar.spec.ts`) contra pila local aislada a 1280 (oscuro y claro), 768 y 390 px (oscuro y claro): sin «Crear en» ni aviso, botones de icono centrados en una línea, franja con el nombre sobre sidebar y documento, Renombrar y Borrar sin cerrar la sidebar, diálogo `alertdialog` centrado. Nota del arnés: el sembrado compartido (`seed`) falla por un selector «Código» ambiguo desde H-010 y el CouchDB de pruebas devuelve 503 a veces al primer sembrado; se usó `buzon` y `--retries`.
+- **Despliegue:** 2026-11-10, solo frontend; imagen previa `synapse-backend:pre-h027`.
+- **Docs:** este archivo y `backlog.md`.
+
 ## [2026-11-09] H-050: ícono y color propios por tipo de archivo (desplegada)
 
 - **Pedido de Carlos (2026-11-09 18:24 UTC):** que el ícono del nombre de archivo cambie según el tipo de documento. Cambio directo, solo frontend.
