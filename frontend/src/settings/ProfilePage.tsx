@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { ApiError, deletePhoto, updateDisplayName, uploadPhoto } from "../api/auth";
 import { useMe, useRefreshMe } from "../auth/RequireAuth";
-import { Camera, Check, Trash2, Upload } from "lucide-react";
+import { Camera, Check, Trash2 } from "lucide-react";
+import { AVATAR_MAX_BYTES, AVATAR_TYPES, squareAvatar } from "./avatarImage";
 import UserAvatar from "./UserAvatar";
 import "./profile.css";
 
@@ -18,7 +19,6 @@ export default function ProfilePage() {
   // `previewUrl` es SOLO el blob del archivo recién elegido; cuando es null, la imagen mostrada sale
   // de `me.photo_url` (ya refrescado tras subir/quitar). Así nunca queda un blob revocado en el <img>.
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -45,40 +45,42 @@ export default function ProfilePage() {
     }
   }, [displayName, refreshMe]);
 
-  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.currentTarget.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    setError(null);
-  }, []);
-
-  const handleUploadPhoto = useCallback(async () => {
-    if (!selectedFile) return;
-
-    setIsSaving(true);
-    setError(null);
-    try {
-      await uploadPhoto(selectedFile);
-      await refreshMe();
-      setSelectedFile(null);
-      if (previewUrl?.startsWith("blob:")) {
-        URL.revokeObjectURL(previewUrl);
+  // Un solo paso: al elegir la foto se recorta a cuadrado, se muestra ya y se sube; el riel y la tarjeta se actualizan solos.
+  const handleFileSelect = useCallback(
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
+      const input = event.currentTarget;
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+      setError(null);
+      setSaved(false);
+      if (!AVATAR_TYPES.includes(file.type)) {
+        setError("Elige una imagen PNG, JPG o WebP.");
+        return;
       }
-      // La imagen vuelve a salir de `me.photo_url` (versión nueva); se descarta el blob local.
-      setPreviewUrl(null);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Error desconocido al subir la foto.");
+      setIsSaving(true);
+      let preview: string | null = null;
+      try {
+        const prepared = await squareAvatar(file);
+        if (prepared.size > AVATAR_MAX_BYTES) {
+          setError("La foto pesa más de 2 MB. Elige una más pequeña.");
+          return;
+        }
+        preview = URL.createObjectURL(prepared);
+        setPreviewUrl(preview);
+        await uploadPhoto(prepared);
+        await refreshMe();
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "No se pudo subir la foto. Inténtalo de nuevo.");
+      } finally {
+        // La imagen vuelve a salir de `me.photo_url` (versión nueva); se descarta el blob local.
+        setPreviewUrl(null);
+        if (preview) URL.revokeObjectURL(preview);
+        setIsSaving(false);
       }
-    } finally {
-      setIsSaving(false);
-    }
-  }, [selectedFile, refreshMe, previewUrl]);
+    },
+    [refreshMe],
+  );
 
   const handleDeletePhoto = useCallback(async () => {
     setIsSaving(true);
@@ -87,7 +89,6 @@ export default function ProfilePage() {
       await deletePhoto();
       await refreshMe();
       setPreviewUrl(null);
-      setSelectedFile(null);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -108,6 +109,12 @@ export default function ProfilePage() {
       <h2>Perfil</h2>
       <p className="settings-section-intro">Tu nombre y tu foto se muestran en el riel y en esta pantalla.</p>
 
+      {error && (
+        <div className="profile-error" role="alert">
+          {error}
+        </div>
+      )}
+
       <div className="settings-card">
         <h3>Foto de perfil</h3>
         <div className="profile-photo-row">
@@ -116,24 +123,16 @@ export default function ProfilePage() {
             <div className="profile-buttons">
               <button type="button" className="profile-button-secondary" disabled={isSaving} onClick={() => fileInputRef.current?.click()}>
                 <Camera size={16} aria-hidden="true" />
-                {me.photo_url || selectedFile ? "Elegir otra" : "Elegir foto"}
+                {previewUrl ? "Subiendo…" : me.photo_url ? "Cambiar foto" : "Elegir foto"}
               </button>
-              {selectedFile && (
-                <button type="button" onClick={handleUploadPhoto} disabled={isSaving} className="profile-button-primary">
-                  <Upload size={16} aria-hidden="true" />
-                  {isSaving ? "Subiendo…" : "Subir foto"}
-                </button>
-              )}
               {me.photo_url && (
                 <button type="button" onClick={handleDeletePhoto} disabled={isSaving} className="profile-button-danger">
                   <Trash2 size={16} aria-hidden="true" />
-                  {isSaving ? "Eliminando…" : "Quitar foto"}
+                  Quitar foto
                 </button>
               )}
             </div>
-            <p className="profile-hint">
-              {selectedFile ? `${selectedFile.name}: pulsa «Subir foto» para guardarla.` : "PNG, JPG o WebP, hasta 2 MB. Se recorta a cuadrado."}
-            </p>
+            <p className="profile-hint">PNG, JPG o WebP. Se recorta a cuadrado y se guarda al elegirla.</p>
             <input
               id="photo-input"
               ref={fileInputRef}
@@ -142,7 +141,7 @@ export default function ProfilePage() {
               onChange={handleFileSelect}
               disabled={isSaving}
               className="profile-file-input"
-              aria-label="Foto de perfil (PNG, JPEG, WebP; máx. 2 MB)"
+              aria-label="Archivo de la foto de perfil (PNG, JPEG, WebP)"
             />
           </div>
         </div>
@@ -184,11 +183,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {error && (
-        <div className="profile-error" role="alert">
-          {error}
-        </div>
-      )}
     </section>
   );
 }

@@ -144,9 +144,11 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
   correo, rol y «Cerrar sesión») y debajo navegación de secciones con iconos + `<Outlet>`. Rutas anidadas:
   `/settings/profile`, `/settings/password`, `/settings/api-keys`, `/settings/theme`, `/settings/agent-access`.
   En ≤ 800 px la navegación pasa a pestañas con scroll horizontal. Las secciones llevan su título en `h2`.
+- `src/settings/avatarImage.ts` — `squareAvatar()`: recorte cuadrado centrado y reducción a 512 px en WebP (JPEG si no hay WebP),
+  con orientación EXIF; si el navegador no puede, sube el original. Evita el tope de 2 MB con fotos de celular.
 - `src/settings/UserAvatar.tsx` — avatar redondo: foto o iniciales sobre el acento (hero y Perfil).
-- `src/settings/ProfilePage.tsx` — sección «Perfil» en dos tarjetas: foto (elegir, subir, quitar; el selector
-  nativo queda oculto tras «Elegir foto») e información personal (nombre máx. 80 con contador, correo de solo
+- `src/settings/ProfilePage.tsx` — sección «Perfil» en dos tarjetas: foto (un solo paso: al elegirla se recorta,
+  se sube y se refresca el riel; «Quitar foto»; el selector nativo queda oculto tras «Elegir foto») e información personal (nombre máx. 80 con contador, correo de solo
   lectura; «Guardar» se activa solo si el nombre cambió).
 - `src/settings/ThemePage.tsx` — sección «Tema»: tres tarjetas con vista previa (Claro, Oscuro, Sistema).
 - Estilos en `settings.css` y `profile.css`: solo tokens de `styles/tokens.css` (nunca `--surface*` ni

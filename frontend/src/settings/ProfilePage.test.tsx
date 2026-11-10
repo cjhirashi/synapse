@@ -181,3 +181,44 @@ test("B4: el componente maneja errores de API", () => {
   const profilePage = document.querySelector(".profile-page");
   expect(profilePage).toBeInTheDocument();
 });
+
+test("B10: elegir una foto la sube sola (un solo paso) y refresca el perfil", async () => {
+  const uploadSpy = vi.spyOn(api, "uploadPhoto").mockResolvedValue(undefined as never);
+  const { user, onRefreshMe } = setup();
+
+  const file = new File([new Uint8Array(10)], "yo.png", { type: "image/png" });
+  await user.upload(document.querySelector("input[type='file']") as HTMLInputElement, file);
+
+  await waitFor(() => expect(uploadSpy).toHaveBeenCalledTimes(1));
+  expect((uploadSpy.mock.calls[0][0] as File).type).toBe("image/png");
+  await waitFor(() => expect(onRefreshMe).toHaveBeenCalled());
+  expect(screen.queryByRole("button", { name: "Subir foto" })).not.toBeInTheDocument();
+});
+
+test("B10: un archivo que no es PNG, JPG o WebP se rechaza sin llamar al servidor", async () => {
+  const uploadSpy = vi.spyOn(api, "uploadPhoto").mockResolvedValue(undefined as never);
+  const { onRefreshMe } = setup();
+
+  const input = document.querySelector("input[type='file']") as HTMLInputElement;
+  const file = new File(["x"], "doc.pdf", { type: "application/pdf" });
+  // `userEvent.upload` respeta `accept` y descartaría el archivo: se dispara el cambio directamente.
+  await waitFor(() => {
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("PNG, JPG o WebP");
+  expect(uploadSpy).not.toHaveBeenCalled();
+  expect(onRefreshMe).not.toHaveBeenCalled();
+});
+
+test("B10: una foto de más de 2 MB (sin poder reducirla) se rechaza con un mensaje claro", async () => {
+  const uploadSpy = vi.spyOn(api, "uploadPhoto").mockResolvedValue(undefined as never);
+  const { user } = setup();
+
+  const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], "grande.png", { type: "image/png" });
+  await user.upload(document.querySelector("input[type='file']") as HTMLInputElement, big);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("2 MB");
+  expect(uploadSpy).not.toHaveBeenCalled();
+});

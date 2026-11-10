@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-10] H-028c: la foto de perfil se sube en un solo paso (desplegada)
+
+- **Reporte de Carlos (2026-11-10, CDMX):** «subo la foto» y no aparece en los campos de usuario como en el riel.
+- **Diagnóstico:** en producción no llegó ninguna subida (sin `PUT /auth/me/photo` en el log y `users.avatar_content_type` vacío). MinIO sí funcionaba (put/get/delete probados desde el backend). El flujo tenía dos pasos: «Elegir foto» solo mostraba una vista previa local y había que pulsar además «Subir foto», así que parecía terminado. Además una foto de celular suele pasar de los 2 MB que acepta el servidor.
+- **Qué cambió:** al elegir el archivo se recorta a cuadrado, se reduce a 512 px (WebP o JPEG), se sube y se refresca el perfil; el riel, la tarjeta de identidad y Perfil muestran la foto. Se quita el botón «Subir foto»; los errores (tipo, más de 2 MB, servidor) salen arriba, junto al título. Nuevo `avatarImage.ts`.
+- **Verificación:** vitest completo en verde (pruebas nuevas de subida automática, tipo rechazado, más de 2 MB y de `squareAvatar`), `tsc` limpio. Chromium real contra pila aislada con MinIO desechable (`e2e/h028-foto.spec.ts`): una foto apaisada de 1200×800 se sube de un paso, se ve en riel, tarjeta y Perfil, queda guardada de 512×512, persiste tras recargar y «Quitar foto» vuelve a las iniciales.
+- **Despliegue:** solo frontend, imagen previa `synapse-backend:pre-h028c`.
+
 ## [2026-11-10] H-028b: rediseño de la pantalla de usuario (desplegada)
 
 - **Pedido de Carlos (2026-11-10, CDMX):** la ventana de usuario se veía fea; rediseñarla con criterio de UX/UI.
