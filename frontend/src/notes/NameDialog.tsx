@@ -48,7 +48,7 @@ export default function NameDialog({ title, glyph, label, value, onChange, confi
       glyph={glyph}
       tone="accent"
       accent={accent}
-      size="sm"
+      size="md"
       top
       showClose
       backdropClosable={value.trim() === ""}
