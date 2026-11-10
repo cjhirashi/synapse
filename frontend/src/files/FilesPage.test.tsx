@@ -105,7 +105,25 @@ describe("FilesPage", () => {
         <FilesPage />
       </WithSync>
     );
-    await screen.findByRole("alert");
+    await screen.findByRole("alert", undefined, { timeout: 8000 });
+    expect(screen.getByRole("button", { name: "Reintentar" })).toBeInTheDocument();
+  }, 10000);
+
+  it("reintenta solo si la primera petición falla (reinicio del servidor)", async () => {
+    vi.spyOn(uploadFileModule, "listVaultFiles")
+      .mockRejectedValueOnce(new Error("502"))
+      .mockResolvedValue([]);
+    const { value } = syncValue({
+      vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
+      notes: emptyNotes(),
+    });
+    render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>
+    );
+    await screen.findByText(/Aún no hay archivos/i, undefined, { timeout: 3000 });
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("displays file list with metadata (C-7, C-9)", async () => {

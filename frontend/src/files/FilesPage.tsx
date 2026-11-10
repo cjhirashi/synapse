@@ -52,6 +52,8 @@ import "./files.css";
 
 type Status = "loading" | "ready" | "error";
 
+const LIST_RETRY_DELAYS_MS = [1000, 2000, 3000];
+
 interface RenameDialog {
   fileId: string;
   currentName: string;
@@ -112,6 +114,7 @@ export default function FilesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dragging, setDragging] = useState(false);
   const [status, setStatus] = useState<Status>("loading");
+  const [listReloadKey, setListReloadKey] = useState(0);
   const [notice, setNotice] = useState<{
     kind: "status" | "alert";
     text: string;
@@ -475,21 +478,31 @@ export default function FilesPage() {
     if (!selectedVaultId) return;
     let cancelled = false;
     const load = async () => {
-      try {
-        setStatus("loading");
-        const data = await listVaultFiles(selectedVaultId, selectedFolder);
-        if (cancelled) return;
-        setFiles(data);
-        setStatus("ready");
-      } catch (err) {
-        if (!cancelled) setStatus("error");
+      setStatus("loading");
+      // Un reinicio del servidor corta la petición unos segundos: se reintenta antes de dar error.
+      for (let attempt = 0; attempt <= LIST_RETRY_DELAYS_MS.length; attempt++) {
+        try {
+          const data = await listVaultFiles(selectedVaultId, selectedFolder);
+          if (cancelled) return;
+          setFiles(data);
+          setStatus("ready");
+          return;
+        } catch (err) {
+          if (cancelled) return;
+          if (attempt === LIST_RETRY_DELAYS_MS.length) {
+            setStatus("error");
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, LIST_RETRY_DELAYS_MS[attempt]));
+          if (cancelled) return;
+        }
       }
     };
     void load();
     return () => {
       cancelled = true;
     };
-  }, [selectedVaultId, selectedFolder]);
+  }, [selectedVaultId, selectedFolder, listReloadKey]);
 
   // Referencias desde los documentos (se recalculan cuando cambian las notas).
   useEffect(() => {
@@ -760,7 +773,14 @@ export default function FilesPage() {
           {notice && <p role={notice.kind}>{notice.text}</p>}
           {allVaults.length === 0 && <p className="files-empty">Aún no tienes bóvedas.</p>}
           {status === "loading" && <p>Cargando…</p>}
-          {status === "error" && <div role="alert">No se pudo cargar la lista.</div>}
+          {status === "error" && (
+            <div role="alert">
+              No se pudo cargar la lista.{" "}
+              <button type="button" onClick={() => setListReloadKey((k) => k + 1)}>
+                Reintentar
+              </button>
+            </div>
+          )}
           {status === "ready" && files.length === 0 && (
             <p className="files-empty">
               {selectedFolder
