@@ -209,9 +209,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
   // `Escape` la cierran — mismo patrón que `AccountMenu` (mousedown + keydown en `document`). Fija
   // (tableta/escritorio) no se cierra así: sólo el botón la oculta.
+  // H-028 C5: ignora clics dentro de menús portaled (.note-menu) o diálogos modales (.confirm-dialog, .modal-backdrop).
   useEffect(() => {
     if (!isMobile || !sidebarOpen) return;
     const onDown = (e: globalThis.MouseEvent) => {
+      const el = e.target as Element;
+      // Ignora clics dentro de elementos portaled (menú, diálogos de confirmación).
+      if (el?.closest?.(".note-menu") || el?.closest?.(".confirm-dialog") || el?.closest?.(".modal-backdrop")) {
+        return;
+      }
       if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
     };
     const onKey = (e: globalThis.KeyboardEvent) => {

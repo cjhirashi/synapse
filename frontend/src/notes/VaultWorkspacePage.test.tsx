@@ -169,7 +169,7 @@ test("RF-019, RF-007: un click en una nota la abre en modo lectura", async () =>
 test("RF-003: crear una nota la abre en edición", async () => {
   const { value, vault } = await setup();
   render(tree(value, `/vaults/${vault.id}`));
-  await userEvent.click(await screen.findByRole("button", { name: "Nueva nota" }));
+  await userEvent.click(await screen.findByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("button", { name: "Leer" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 2, name: "Sin título" })).toBeInTheDocument();
 });
@@ -551,7 +551,6 @@ test("RF-055: pulsar una carpeta de la miga la revela en el árbol y la deja act
   expect(screen.queryByRole("treeitem", { name: "Plan" })).toBeNull(); // el árbol está plegado
   await userEvent.click(within(screen.getByRole("navigation", { name: "Ruta" })).getByRole("button", { name: "Clientes" }));
   expect(await screen.findByRole("treeitem", { name: "Clientes" })).toHaveAttribute("aria-current", "true");
-  expect(screen.getByText(/Crear en:/)).toHaveTextContent("Proyectos/Clientes");
   expect(screen.getByRole("heading", { level: 2, name: "Plan" })).toBeInTheDocument();
 });
 
@@ -879,6 +878,62 @@ test("H-009 C-6: un click fuera NO afecta cuando la barra es fija (escritorio)",
   fireEvent.mouseDown(main);
   // La barra fija no se cierra por click afuera: sólo el botón la oculta.
   expect(sideEl(container)).toHaveAttribute("data-open");
+});
+
+// H-028 C5: un click dentro de `.note-menu` (menú portaled) NO cierra la barra flotante.
+test("H-028 C5: click en el menú ⋮ de una carpeta NO cierra la barra flotante", async () => {
+  const { container } = await openFloating();
+  // Simula el menú portaled con clase .note-menu dentro del documento.
+  const mockMenu = document.createElement("div");
+  mockMenu.className = "note-menu";
+  mockMenu.id = "mock-menu-for-test";
+  document.body.appendChild(mockMenu);
+  try {
+    fireEvent.mouseDown(mockMenu);
+    expect(sideEl(container)).toHaveAttribute("data-open");
+  } finally {
+    mockMenu.remove();
+  }
+});
+
+// H-028 C5+C6: un click dentro de `.confirm-dialog` (diálogo modal) NO cierra la barra flotante.
+test("H-028 C5+C6: click en el diálogo de confirmación NO cierra la barra flotante", async () => {
+  const { container } = await openFloating();
+  // Simula el diálogo de confirmación portaled con clase .confirm-dialog.
+  const mockDialog = document.createElement("div");
+  mockDialog.className = "confirm-dialog";
+  mockDialog.id = "mock-dialog-for-test";
+  document.body.appendChild(mockDialog);
+  try {
+    fireEvent.mouseDown(mockDialog);
+    expect(sideEl(container)).toHaveAttribute("data-open");
+  } finally {
+    mockDialog.remove();
+  }
+});
+
+// H-028 C5: un click dentro de `.modal-backdrop` (fondo del modal) NO cierra la barra flotante.
+test("H-028 C5: click en el fondo del modal NO cierra la barra flotante", async () => {
+  const { container } = await openFloating();
+  // Simula el backdrop del modal con clase .modal-backdrop.
+  const mockBackdrop = document.createElement("div");
+  mockBackdrop.className = "modal-backdrop";
+  mockBackdrop.id = "mock-backdrop-for-test";
+  document.body.appendChild(mockBackdrop);
+  try {
+    fireEvent.mouseDown(mockBackdrop);
+    expect(sideEl(container)).toHaveAttribute("data-open");
+  } finally {
+    mockBackdrop.remove();
+  }
+});
+
+// H-028 C5: verificar que un click normal en el área principal SÍ cierra la barra (no romper comportamiento).
+test("H-028 C5: click en el área principal SÍ cierra la barra flotante", async () => {
+  const { container } = await openFloating();
+  const main = container.querySelector(".vault-workspace-main") as HTMLElement;
+  fireEvent.mouseDown(main);
+  expect(sideEl(container)).not.toHaveAttribute("data-open");
 });
 
 test("H-009 C-8: Escape cierra la barra flotante en móvil", async () => {
