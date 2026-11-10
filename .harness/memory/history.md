@@ -32,6 +32,15 @@
 - **Despliegue:** 2026-11-10, solo frontend; imagen previa `synapse-backend:pre-h027`.
 - **Docs:** este archivo y `backlog.md`.
 
+## [2026-11-10] H-052: pestañas Documentos, Filtro por tags y Archivos en la bóveda (desplegada)
+
+- **Pedido de Carlos (2026-11-10 21:17 UTC):** tres pestañas en la barra lateral de cada bóveda; los archivos viven dentro de su bóveda y desaparece la ventana global. Diseño en la bóveda Proyectos (`H-052`), aprobado por Carlos.
+- **Qué cambió:** `VaultTabs`, `TagFilterPanel` y `tagFilter.ts` nuevos; `FilesPage` pasa a `VaultFiles` (por bóveda, árbol en la barra por portal); `workspaceMemory` recuerda `tab`; se retiran la ruta `/files` de la interfaz y el icono del riel. Solo frontend, sin cambios de backend ni migración. Filtro Y con varios tags; los tags se calculan en el cliente desde `frontmatter.tags`.
+- **Verificación:** vitest completo en verde (2 993), `tsc` y build OK. Tras desplegar: `/health` 200, la imagen sirve la cadena nueva, `/files/<id>` sigue yendo al backend (404 problema JSON con id inexistente). Sin capturas en navegador real (requieren sesión de Carlos). `test:bundle` ya fallaba antes (entrada 179 047 B > 157 020 B) y sube a 179 820 B: pendiente aparte.
+- **Despliegue:** 2026-11-10 ~15:50 CDMX, solo frontend; imagen previa `synapse-backend:pre-h052`. Rama `feature/h052-pestanas-boveda`, fusionada por avance rápido en `feature/sprint-1-auth`.
+- **Docs:** `frontend/src/README.md`, `README.md`, `docs/API.md`, `backlog.md` y este archivo.
+- **Modelos:** claude-sonnet-5-5 (yo); dos intentos de subagente fallaron por configuración y no se gastó nada en ellos.
+
 ## [2026-11-09] H-050: ícono y color propios por tipo de archivo (desplegada)
 
 - **Pedido de Carlos (2026-11-09 18:24 UTC):** que el ícono del nombre de archivo cambie según el tipo de documento. Cambio directo, solo frontend.

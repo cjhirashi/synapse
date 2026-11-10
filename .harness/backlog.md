@@ -19,7 +19,7 @@
 > indexa; el detalle está en el documento de cada slice.
 
 - [ ] H-043 — Historial de versiones de las notas (copia del texto por edición con tope de K versiones o D días, ver y restaurar; se captura donde hoy se escribe la BITACORA): **en análisis, ronda 1 con preguntas P1 a P8 para Carlos (2026-11-06)**. Detalle en su nota de la bóveda.
-- [ ] H-052 — Pestañas en la barra lateral de la bóveda (Documentos, Filtro por tags con varios tags en Y, Archivos con árbol de carpetas en la barra y tabla en la zona principal), la pestaña se recuerda por bóveda y la ventana global de Archivos desaparece — **implementada en la rama `feature/h052-pestanas-boveda`, sin desplegar**: solo frontend (diseño en la bóveda Proyectos, `H-052`).
+- [x] H-052 — Pestañas en la barra lateral de la bóveda (Documentos, Filtro por tags con varios tags en Y, Archivos con árbol de carpetas en la barra y tabla en la zona principal), la pestaña se recuerda por bóveda y la ventana global de Archivos desaparece — **desplegada 2026-11-10** (imagen previa `pre-h052`): solo frontend (diseño en la bóveda Proyectos, `H-052`).
 - [x] H-050 — Ícono y color por tipo de archivo en la tabla de Archivos — **desplegada 2026-11-09** (imagen previa `pre-h050`): solo frontend.
 - [x] H-049 — Caché correcta del HTML/assets y recarga ante chunk obsoleto tras un despliegue — **desplegada 2026-11-09** (imagen previa `pre-h049`).
 - [x] H-048 — Archivos con la barra lateral de las notas (fija / flotante ocultable en móvil) y tablas con scroll horizontal, nombre y acciones fijos — **desplegada 2026-11-09** (imagen previa `pre-h048`): solo frontend; corrige H-046/H-047.
