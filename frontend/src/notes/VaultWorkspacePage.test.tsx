@@ -1374,3 +1374,13 @@ test("H-052: la pestaña Archivos trae el árbol de carpetas de la bóveda y su 
   expect(await screen.findByRole("tree", { name: "Notas" })).toBeVisible();
   expect(screen.queryByRole("button", { name: /Subir archivo/ })).toBeNull();
 });
+
+test("la franja muestra el ícono de la bóveda con su color y el título con el color de texto normal", async () => {
+  const { value, vault } = await setupVault("book:info");
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  const title = await screen.findByRole("heading", { level: 1 });
+  const chip = container.querySelector<HTMLElement>(".vault-workspace-titlebar .vault-chip")!;
+  expect(chip.style.getPropertyValue("--chip-color")).toBe("var(--info)");
+  expect(chip.nextElementSibling).toBe(title);
+  expect(title.style.color).toBe("");
+});

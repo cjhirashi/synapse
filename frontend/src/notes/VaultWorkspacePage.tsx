@@ -37,6 +37,7 @@ import { isSystemPath } from "./metaRules";
 import { templateName } from "./metaRules";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { colorVar, derivedColor, parseIcon } from "../vaults/vaultIcon";
+import VaultChip from "../vaults/VaultChip";
 import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
@@ -510,7 +511,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       {/* H-027 C4: franja superior con el nombre de la bóveda y el botón de alternar la barra. */}
       <div className="vault-workspace-titlebar">
         <SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />
-        <h1 className="vault-workspace-title" title={vault.name} style={{ color: vaultColor }}>
+        <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
+        <h1 className="vault-workspace-title" title={vault.name}>
           {vault.name}
         </h1>
       </div>
