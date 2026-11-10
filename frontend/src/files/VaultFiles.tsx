@@ -109,10 +109,12 @@ interface VaultFilesProps {
   sideSlot: HTMLElement | null;
   /** En móvil, la barra lateral flota sobre la tabla: se pide cerrarla al elegir una carpeta final. */
   onCloseSide?: () => void;
+  /** Color de la bóveda (CSS) para la ventana de nombre de carpeta. */
+  accent?: string;
 }
 
 /** Archivos de una bóveda: tabla en la zona principal y árbol de carpetas en la barra lateral (`sideSlot`). */
-export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFilesProps) {
+export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: VaultFilesProps) {
   const { notes } = useSync();
   const selectedVaultId = vaultId;
   const [folders, setFolders] = useState<string[]>([]);
@@ -625,7 +627,10 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFile
         <NameDialog
           title="Nueva carpeta"
           glyph={FolderPlus}
-          hint={`Se creará en ${selectedFolder || "la raíz"}`}
+          location={selectedFolder}
+          accent={accent}
+          placeholder="Ej.: Capturas"
+          helper="El nombre no puede llevar /."
           label="Nombre de la carpeta"
           value={newFolderName}
           onChange={(value) => {

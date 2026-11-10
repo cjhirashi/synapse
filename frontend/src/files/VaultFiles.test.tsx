@@ -606,7 +606,7 @@ describe("VaultFiles con carpetas (H-046)", () => {
     renderPage(["Portafolio"]);
     await userEvent.click(await treeBtn("Portafolio"));
     await userEvent.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
-    expect(screen.getByText("Se creará en Portafolio")).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toHaveTextContent("Se creará enPortafolio");
     await userEvent.type(screen.getByLabelText("Nombre de la carpeta"), "Capturas");
     await userEvent.click(screen.getByRole("button", { name: "Crear carpeta" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("vault-1", "Portafolio/Capturas"));
@@ -622,11 +622,11 @@ describe("VaultFiles con carpetas (H-046)", () => {
     expect(screen.queryByRole("textbox", { name: "Nombre de la carpeta" })).toBeNull();
     await userEvent.click(button);
     await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
     await userEvent.click(button);
     await userEvent.type(screen.getByLabelText("Nombre de la carpeta"), "Nueva{Enter}");
     await waitFor(() => expect(create).toHaveBeenCalledWith("vault-1", "Nueva"));
-    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("rechaza en el cliente un nombre de carpeta con barra", async () => {

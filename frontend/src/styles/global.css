@@ -511,6 +511,20 @@ button:focus-visible {
   font-weight: 600;
 }
 
+.name-dialog-actions .name-dialog-confirm {
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #fff;
+}
+
+.name-dialog-actions .name-dialog-confirm:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.name-dialog-actions .name-dialog-confirm:disabled {
+  opacity: 0.6;
+}
+
 .confirm-dialog-actions .btn-primary {
   background: var(--accent);
   border: 1px solid transparent;

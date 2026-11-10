@@ -559,7 +559,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           {showTrash && (
             <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
           )}
-          {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} onCloseSide={() => setSidebarOpen(false)} />}
+          {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} accent={colorVar(vaultColor)} onCloseSide={() => setSidebarOpen(false)} />}
           {/* Con la papelera abierta (o en la pestaña Archivos) el editor sigue montado (oculto): no se pierde un borrador. */}
           <div hidden={showTrash || tab === "archivos"} className="vault-workspace-content">
             {openId === null ? (

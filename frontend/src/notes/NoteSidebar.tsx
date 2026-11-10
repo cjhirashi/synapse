@@ -928,7 +928,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         <NameDialog
           title={inTemplatesFolder ? "Nueva plantilla" : "Nueva nota"}
           glyph={FilePlus}
-          hint={`Se creará en ${activeFolder || "la raíz"}`}
+          location={activeFolder}
+          accent={colorVar(vaultColor)}
+          placeholder={inTemplatesFolder ? "Ej.: Informe semanal" : "Sin título"}
+          helper={inTemplatesFolder ? "Será una plantilla de esta bóveda." : "Opcional: sin título se llamará «Sin título». Usa / para crear subcarpetas."}
           label={inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
           value={title}
           onChange={setTitle}
@@ -970,7 +973,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         <NameDialog
           title="Nueva carpeta"
           glyph={FolderPlus}
-          hint={`Se creará en ${activeFolder || "la raíz"}`}
+          location={activeFolder}
+          accent={colorVar(vaultColor)}
+          placeholder="Ej.: Proyectos/Ideas"
+          helper="Usa / para crear subcarpetas anidadas."
           label="Nombre de la carpeta"
           value={folderForm.name}
           onChange={(name) => setFolderForm({ name, message: null })}

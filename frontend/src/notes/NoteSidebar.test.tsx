@@ -116,7 +116,7 @@ test("RF-012, RF-003: «Nueva nota» sin título crea «Sin título», «Sin tí
 test("RF-003: «Nueva nota» con título lo usa como ruta (con .md) y cierra la ventana", async () => {
   const { user, value } = await setup();
   await createNoteWith(user, "Ideas");
-  expect(screen.queryByRole("alertdialog")).toBeNull();
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   expect(await screen.findByRole("treeitem", { name: "Ideas" })).toBeInTheDocument();
   expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Ideas.md"]);
   await openNoteDialog(user);
@@ -419,9 +419,9 @@ test("RF-003: «Nueva nota» y «Nueva carpeta» son dos botones de icono fuera 
   // Sin ventana abierta no hay campo de título en la barra lateral.
   expect(screen.queryByLabelText("Título de la nota nueva (opcional)")).toBeNull();
   await openNoteDialog(user);
-  expect(within(screen.getByRole("alertdialog")).getByLabelText("Título de la nota nueva (opcional)")).toBeInTheDocument();
+  expect(within(screen.getByRole("dialog")).getByLabelText("Título de la nota nueva (opcional)")).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Cancelar" }));
-  expect(screen.queryByRole("alertdialog")).toBeNull();
+  expect(screen.queryByRole("dialog")).toBeNull();
 });
 
 test("RF-004: cada carpeta lleva su ícono (cerrada/abierta) y cada nota el suyo", async () => {
