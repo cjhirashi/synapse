@@ -92,17 +92,16 @@ test("RF-001, RF-015: bóveda activa → su nombre, el árbol y el editor vacío
   expect(screen.queryByRole("region", { name: "Editor de nota" })).toBeNull();
 });
 
-// SPEC-0009 RF-003: la cabecera de la barra lateral lleva el ícono de carpeta abierta y el nombre (h1).
-test("RF-003: la cabecera de la barra tiene el ícono de la bóveda y su nombre como h1", async () => {
+// SPEC-0009 RF-003 (actualizado en H-027 C4): la franja contiene el h1 de la bóveda.
+test("RF-003: la franja tiene el nombre de la bóveda como h1", async () => {
   const { value, vault } = await setup();
   const { container } = render(tree(value, `/vaults/${vault.id}`));
   await screen.findByRole("heading", { level: 1, name: "Trabajo" });
-  const header = container.querySelector(".vault-workspace-header")!;
-  expect(header).not.toBeNull();
-  expect(header.querySelector('svg[data-icon="folder-open"]')).not.toBeNull();
-  expect(within(header as HTMLElement).getByRole("heading", { level: 1, name: "Trabajo" })).toBeInTheDocument();
-  // El resto de la barra (formulario, árbol) va fuera de la cabecera.
-  expect(header.querySelector("form, [role='tree']")).toBeNull();
+  const titlebar = container.querySelector(".vault-workspace-titlebar")!;
+  expect(titlebar).not.toBeNull();
+  expect(titlebar.querySelector("h1")).toHaveTextContent("Trabajo");
+  // El resto de la barra (árbol) va fuera.
+  expect(titlebar.querySelector("[role='tree']")).toBeNull();
 });
 
 // SPEC-0009 RF-008: el estado vacío es un bloque propio con ícono, con el mismo texto de siempre.
@@ -355,6 +354,50 @@ test("precalc: pointerenter en una fila del árbol pide su precálculo con prior
   render(tree(value, `/vaults/${vault.id}`));
   await userEvent.hover(await screen.findByRole("treeitem", { name: "Hola" }));
   expect(parseFakes.scheduler.prioritize).toHaveBeenCalledWith(note.id);
+});
+
+// H-027 C4: franja de título de bóveda.
+test("H-027 C4: la franja muestra el nombre de la bóveda y el botón de alternar la barra", async () => {
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  // La franja contiene el nombre en un h1.
+  const titlebar = container.querySelector(".vault-workspace-titlebar");
+  expect(titlebar).not.toBeNull();
+  const h1 = titlebar!.querySelector("h1");
+  expect(h1).toHaveTextContent("Trabajo");
+  // El botón de alternar está en la franja.
+  const toggle = titlebar!.querySelector("button");
+  expect(toggle).not.toBeNull();
+  expect(toggle!.getAttribute("aria-label")).toMatch(/Ocultar|Mostrar/);
+});
+
+// H-027 C4: el h1 NO está dentro de .vault-workspace-side (se movió a la franja).
+test("H-027 C4: el h1 ya no está en la barra lateral", async () => {
+  const { value, vault } = await setup();
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  const sidebar = container.querySelector(".vault-workspace-side");
+  const headerInSidebar = sidebar!.querySelector(".vault-workspace-header");
+  expect(headerInSidebar).toBeNull();
+});
+
+// H-027 C4: la franja es visible tanto con nota abierta como sin ella.
+test("H-027 C4: la franja es visible en estado vacío y con nota abierta", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { container, rerender } = render(tree(value, `/vaults/${vault.id}`));
+  // Estado vacío.
+  await screen.findByRole("heading", { level: 1, name: "Trabajo" });
+  let titlebar = container.querySelector(".vault-workspace-titlebar");
+  expect(titlebar).not.toBeNull();
+  expect(titlebar!.querySelector("h1")).toHaveTextContent("Trabajo");
+  // Abre una nota.
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("heading", { level: 2, name: "Hola" });
+  titlebar = container.querySelector(".vault-workspace-titlebar");
+  expect(titlebar).not.toBeNull();
+  expect(titlebar!.querySelector("h1")).toHaveTextContent("Trabajo");
 });
 
 test("precalc: abrir una nota precalculada entrega su mdast al editor (marca cache-hit)", async () => {
@@ -739,33 +782,32 @@ afterEach(() => {
 /** El botón de alternar la barra de notas (C-1): su nombre accesible cambia con el estado. */
 const toggle = () => screen.getByRole("button", { name: /barra de notas/i });
 
-test("H-009 C-1 (corregido): el botón flota sobre el panel vacío y, con una nota abierta, es el primer elemento de la fila de título del editor", async () => {
+test("H-009 C-1 (corregido en H-027 C4): el botón está en la franja superior, tanto en estado vacío como con nota abierta", async () => {
   installViewport(false); // escritorio: la barra arranca visible
   const { value, vault } = await setup();
   await value.notes.create(vault.id, "Hola");
   const { container } = render(tree(value, `/vaults/${vault.id}`));
   await screen.findByRole("tree", { name: "Notas" });
 
-  // Sin nota abierta: el botón existe pero NO vive en la cabecera de la sidebar (corrección: ya no
-  // reserva columna propia ahí); apunta por aria-controls al contenedor real de la barra.
+  // Sin nota abierta: el botón vive en la franja, apunta por aria-controls al contenedor real de la barra.
   const emptyToggle = toggle();
   expect(emptyToggle).toHaveAttribute("type", "button");
   expect(emptyToggle).toHaveAttribute("aria-expanded", "true"); // visible por defecto en escritorio (C-4)
-  expect(emptyToggle.closest(".vault-workspace-header")).toBeNull();
+  expect(emptyToggle.closest(".vault-workspace-titlebar")).not.toBeNull();
   const controlledId = emptyToggle.getAttribute("aria-controls");
   expect(controlledId).toBeTruthy();
   expect(document.getElementById(controlledId!)).toHaveClass("vault-workspace-side");
   expect(emptyToggle.querySelector("svg")).not.toBeNull(); // icono lucide, no texto
 
-  // Con una nota abierta: el botón es el PRIMER hijo de `.note-editor-header` (fila de Atrás/Adelante/
-  // migas/controles), no una columna aparte.
+  // Con una nota abierta: el botón sigue en la franja (no está en el editor).
   await userEvent.click(screen.getByRole("treeitem", { name: "Hola" }));
   await screen.findByRole("heading", { level: 2, name: "Hola" });
+  const titlebar = container.querySelector(".vault-workspace-titlebar") as HTMLElement;
+  const headerToggle = within(titlebar).getByRole("button", { name: /barra de notas/i });
+  expect(headerToggle).toHaveAttribute("aria-controls", controlledId);
+  // El toggle NO está en el editor.
   const editorHeader = container.querySelector(".note-editor-header") as HTMLElement;
-  const headerToggle = within(editorHeader).getByRole("button", { name: /barra de notas/i });
-  expect(editorHeader.firstElementChild).toBe(headerToggle);
-  expect(headerToggle.getAttribute("aria-controls")).toBe(controlledId);
-  expect(headerToggle.closest(".vault-workspace-header")).toBeNull();
+  expect(within(editorHeader).queryByRole("button", { name: /barra de notas/i })).toBeNull();
 });
 
 test("H-009 C-8: el botón es operable por teclado (Enter alterna aria-expanded)", async () => {
