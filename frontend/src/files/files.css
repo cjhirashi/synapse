@@ -54,37 +54,6 @@
 
 /* H-046: misma estructura que el espacio de trabajo de una bóveda (`.vault-workspace` en notes.css): barra
    lateral a la izquierda y panel a la derecha, a todo el alto; en móvil la barra flota a un costado y se oculta. */
-.files-side-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.files-side-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--space-2);
-}
-
-.files-side-actions button {
-  padding: var(--space-1) var(--space-3);
-  font-size: 12px;
-}
-
-.files-side-error {
-  margin: 0;
-  color: var(--danger-text);
-  font-size: 12px;
-}
-
-.files-workspace .note-sidebar-new label {
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.files-workspace .note-sidebar-new select {
-  width: 100%;
-}
 
 .files-tree-panel .note-tree-row[data-drop-target="true"] {
   background: var(--accent-soft);

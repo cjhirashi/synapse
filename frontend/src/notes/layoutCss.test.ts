@@ -87,9 +87,8 @@ test("RF-009: los chips del riel no se encogen al llenarse el riel", () => {
   expect(chip).toMatch(/height: 34px/);
 });
 
-test("RF-003: el formulario «Nueva nota» y el panel del árbol tienen fondos de tokens distintos", () => {
+test("RF-003: el panel del árbol tiene fondo de token y la barra lateral su ancho", () => {
   const notes = read("notes.css");
-  expect(rule(notes, ".note-sidebar-new")).toMatch(/background: var\(--bg-tertiary\)/);
   expect(rule(notes, ".note-tree-panel")).toMatch(/background: var\(--bg-secondary\)/);
   expect(rule(notes, ".vault-workspace-side")).toMatch(/width: var\(--side-width, 240px\)/);
 });

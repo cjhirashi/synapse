@@ -22,10 +22,11 @@
  * ↑/↓ recorren los visibles, → abre la carpeta o baja a su primer hijo, ← la cierra o sube al
  * padre, Inicio/Fin saltan a los extremos.
  */
-import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, ReactNode, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, CircleAlert, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Plus, Trash2 } from "lucide-react";
+import { CSSProperties, DragEvent, forwardRef, KeyboardEvent, ReactNode, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
+import NameDialog from "./NameDialog";
 import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
 import { ancestors, checkFolderName, folderExists, joinPath, parentFolder } from "./folders";
@@ -167,6 +168,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(initialExpanded ?? []));
   const [title, setTitle] = useState("");
+  /** Ventana «Nueva nota» (o «Nueva plantilla» en PLANTILLAS) abierta. */
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   // H-030b: plantilla elegida para la nota nueva ("" = sin plantilla).
   const [templateId, setTemplateId] = useState("");
   /** Carpeta activa (`""` = raíz): dónde se crea lo nuevo. Estado visual del árbol (RF-043). */
@@ -199,8 +202,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   }, [templateId, templateOptions]);
   /** Formulario «Nueva carpeta» abierto, su texto y su mensaje de error (`null` = sin error). */
   const [folderForm, setFolderForm] = useState<{ name: string; message: string | null } | null>(null);
-  const uid = useId();
-  const folderErrorId = `${uid}-folder-error`;
   const newFolderRef = useRef<HTMLButtonElement>(null);
   /** El formulario se cerró a propósito: el foco vuelve a «Nueva carpeta» cuando el botón se vuelve a ver. */
   const refocusNewFolder = useRef(false);
@@ -424,9 +425,15 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
     }
   }
 
-  async function create(event: FormEvent) {
-    event.preventDefault();
-    await run(async () => {
+  function closeNoteDialog() {
+    setNoteDialogOpen(false);
+    setTitle("");
+    setTemplateId("");
+    setError(null);
+  }
+
+  async function create() {
+    const ok = await run(async () => {
       // RF-001/RF-003: la nota nueva nace en la carpeta activa (`""` = raíz). La carpeta se despliega
       // sola al abrirse la nota (efecto de «nota abierta»); no se toca `expanded` aquí (robaría el foco).
       let note;
@@ -443,11 +450,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
       } else {
         note = await notes.create(vaultId, title, activeFolder, undefined, inSkillsFolder ? { propietario: skillOwner } : undefined);
       }
-      setTitle("");
-      setTemplateId("");
       await reload();
       onOpen(note.id, { edit: true });
     });
+    if (ok) closeNoteDialog();
   }
 
   function startNoteRename(note: NoteSummary) {
@@ -812,8 +818,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
    * «Crear carpeta» (RF-004, RF-005, RF-042): valida el nombre (vacío/tramo/control) y que no exista ya
    * en la carpeta activa; si es válido crea la carpeta con su INDICE (H-031), la despliega y abre ese INDICE.
    */
-  async function submitFolder(event: FormEvent) {
-    event.preventDefault();
+  async function submitFolder() {
     if (folderForm === null) return;
     const name = folderForm.name;
     const invalid = checkFolderName(name);
@@ -891,103 +896,92 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           Buzón entre agentes: solo lectura
         </p>
       ) : (
-      <form className="note-sidebar-new" onSubmit={create}>
-        <div className="note-create-fields">
-        <label>
-          {inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
-          <input value={title} onChange={(event) => setTitle(event.target.value)} />
-        </label>
-        {inSkillsFolder && (
-          <label>
-            Propietario de la skill
-            <select value={skillOwner} onChange={(event) => setSkillOwner(event.target.value)}>
-              {managers.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-              {managers.length === 0 && <option value="">Sin gestores: nace archivada</option>}
-            </select>
-          </label>
-        )}
-        {templateOptions.length > 0 && (
-          <label>
-            Plantilla
-            <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
-              <option value="">Sin plantilla</option>
-              {templateOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        )}
-        {/* H-027 C2: «Nueva nota» y «Nueva carpeta» son botones de solo icono, en la misma
-            línea y centrados; el texto y el destino viven en `aria-label`/`title`. */}
-        <div className="note-create-actions">
+        /* Solo dos botones de icono pegados al lado del documento; el nombre se pide en una ventana emergente. */
+        <div className="note-create-bar" role="toolbar" aria-label="Crear en la carpeta activa">
           <button
             ref={newNoteRef}
-            type="submit"
+            type="button"
             className="note-create-icon"
             disabled={busy}
+            onClick={() => {
+              setError(null);
+              setNoteDialogOpen(true);
+            }}
             aria-label={`Nueva ${inTemplatesFolder ? "plantilla" : "nota"} en ${activeFolder || "Raíz"}`}
             title={`Crear ${inTemplatesFolder ? "plantilla" : "nota"} en ${activeFolder || "Raíz"}`}
           >
-            <Plus size={18} aria-hidden="true" />
+            <FilePlus size={16} aria-hidden="true" />
           </button>
           <button
             ref={newFolderRef}
             type="button"
-            className="note-create-icon note-sidebar-secondary"
-            hidden={folderForm !== null}
+            className="note-create-icon"
             onClick={() => setFolderForm({ name: "", message: null })}
             aria-label={`Nueva carpeta en ${activeFolder || "Raíz"}`}
             title={`Crear carpeta en ${activeFolder || "Raíz"}`}
           >
-            <FolderPlus size={18} aria-hidden="true" />
+            <FolderPlus size={16} aria-hidden="true" />
           </button>
         </div>
-        </div>
-      </form>
+      )}
+      {noteDialogOpen && !inMensajes && (
+        <NameDialog
+          title={inTemplatesFolder ? "Nueva plantilla" : "Nueva nota"}
+          glyph={FilePlus}
+          hint={`Se creará en ${activeFolder || "la raíz"}`}
+          label={inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
+          value={title}
+          onChange={setTitle}
+          error={error}
+          busy={busy}
+          confirmLabel={inTemplatesFolder ? "Crear plantilla" : "Crear nota"}
+          onSubmit={() => void create()}
+          onCancel={closeNoteDialog}
+        >
+          {inSkillsFolder && (
+            <label>
+              Propietario de la skill
+              <select value={skillOwner} onChange={(event) => setSkillOwner(event.target.value)}>
+                {managers.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+                {managers.length === 0 && <option value="">Sin gestores: nace archivada</option>}
+              </select>
+            </label>
+          )}
+          {templateOptions.length > 0 && (
+            <label>
+              Plantilla
+              <select value={templateId} onChange={(event) => setTemplateId(event.target.value)}>
+                <option value="">Sin plantilla</option>
+                {templateOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </NameDialog>
       )}
       {folderForm !== null && !inMensajes && (
-          <form
-            className="note-sidebar-new note-sidebar-folder"
-            onSubmit={submitFolder}
-            onKeyDown={(event) => {
-              // Esc cancela y devuelve el foco al botón que lo abrió.
-              if (event.key === "Escape") {
-                event.preventDefault();
-                closeFolderForm();
-              }
-            }}
-          >
-            <label>
-              Nombre de la carpeta
-              <input
-                autoFocus
-                value={folderForm.name}
-                onChange={(event) => setFolderForm({ name: event.target.value, message: null })}
-                aria-invalid={folderForm.message !== null ? true : undefined}
-                aria-describedby={folderForm.message !== null ? folderErrorId : undefined}
-              />
-            </label>
-            {folderForm.message !== null && (
-              <p id={folderErrorId} role="alert" className="note-sidebar-error">
-                <CircleAlert size={12} aria-hidden="true" />
-                {folderForm.message}
-              </p>
-            )}
-            <div className="note-sidebar-folder-actions">
-              <button type="submit">Crear carpeta</button>
-              <button type="button" onClick={closeFolderForm}>
-                Cancelar
-              </button>
-            </div>
-          </form>
+        <NameDialog
+          title="Nueva carpeta"
+          glyph={FolderPlus}
+          hint={`Se creará en ${activeFolder || "la raíz"}`}
+          label="Nombre de la carpeta"
+          value={folderForm.name}
+          onChange={(name) => setFolderForm({ name, message: null })}
+          error={folderForm.message}
+          busy={busy}
+          confirmLabel="Crear carpeta"
+          onSubmit={() => void submitFolder()}
+          onCancel={closeFolderForm}
+        />
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && !noteDialogOpen && <p role="alert">{error}</p>}
       <div className="note-tree-panel">
         {items === null ? (
           <p>Cargando…</p>

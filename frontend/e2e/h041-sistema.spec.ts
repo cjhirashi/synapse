@@ -97,8 +97,9 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
 
     await openFolder(page, "AG - SKILLS", "skill-bovedas-synapse");
     await openCreate(page);
+    await page.getByRole("button", { name: /^Nueva nota en/ }).click();
     await page.getByLabel(/Título de la nota nueva/).fill(`Gestión de variables ${label}`);
-    await page.getByRole("button", { name: "Nueva nota" }).click();
+    await page.getByRole("button", { name: "Crear nota", exact: true }).click();
     // El nombre que se guarda y se ve en el árbol es el canónico, no lo que se escribió.
     const row = tree(page).getByRole("treeitem", { name: `skill-gestion-de-variables-${label}`, exact: true });
     await expect(async () => {

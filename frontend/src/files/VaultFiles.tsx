@@ -28,6 +28,7 @@ import {
   parentOf,
 } from "./fileFolderTree";
 import { DRAG_FILE, FileFolderTree } from "./FileFolderTree";
+import NameDialog from "../notes/NameDialog";
 import { DataTable, type DataColumn } from "../ui/DataTable";
 import { FileKindIcon, fileKindLabel } from "./fileKind";
 import {
@@ -364,8 +365,7 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFile
     }
   }
 
-  async function handleCreateFolder(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleCreateFolder() {
     if (!selectedVaultId) return;
     const error = folderNameError(newFolderName);
     if (error) {
@@ -577,50 +577,19 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFile
 
   const treePanel = (
     <aside className="note-sidebar" aria-label="Carpetas">
-      <div className="note-sidebar-new">
+      <div className="note-create-bar" role="toolbar" aria-label="Crear en la carpeta abierta">
         <button
           type="button"
-          className="note-sidebar-secondary"
-          aria-expanded={newFolderOpen}
+          className="note-create-icon"
           onClick={() => {
-            setNewFolderOpen((open) => !open);
             setNewFolderError(null);
+            setNewFolderOpen(true);
           }}
+          aria-label={`Nueva carpeta en ${selectedFolder || "Raíz"}`}
+          title={`Crear carpeta en ${selectedFolder || "Raíz"}`}
         >
-          <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
+          <FolderPlus size={16} aria-hidden="true" />
         </button>
-        {newFolderOpen && (
-          <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
-            <label htmlFor="new-folder-name">
-              Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
-            </label>
-            <input
-              id="new-folder-name"
-              autoFocus
-              type="text"
-              value={newFolderName}
-              onChange={(e) => {
-                setNewFolderName(e.target.value);
-                setNewFolderError(null);
-              }}
-              aria-invalid={newFolderError ? true : undefined}
-              aria-describedby={newFolderError ? "new-folder-error" : undefined}
-            />
-            {newFolderError && (
-              <p id="new-folder-error" role="alert" className="files-side-error">
-                {newFolderError}
-              </p>
-            )}
-            <div className="files-side-actions">
-              <button type="button" onClick={() => setNewFolderOpen(false)}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn-primary">
-                Crear
-              </button>
-            </div>
-          </form>
-        )}
       </div>
       <FileFolderTree
         folders={folders}
@@ -652,6 +621,27 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFile
       onDrop={handleDrop}
     >
       {sideSlot && createPortal(treePanel, sideSlot)}
+      {newFolderOpen && (
+        <NameDialog
+          title="Nueva carpeta"
+          glyph={FolderPlus}
+          hint={`Se creará en ${selectedFolder || "la raíz"}`}
+          label="Nombre de la carpeta"
+          value={newFolderName}
+          onChange={(value) => {
+            setNewFolderName(value);
+            setNewFolderError(null);
+          }}
+          error={newFolderError}
+          confirmLabel="Crear carpeta"
+          onSubmit={() => void handleCreateFolder()}
+          onCancel={() => {
+            setNewFolderOpen(false);
+            setNewFolderName("");
+            setNewFolderError(null);
+          }}
+        />
+      )}
         <div className="files-toolbar">
           <nav className="files-crumbs" aria-label="Ruta de la carpeta">
             <button type="button" onClick={() => setSelectedFolder("")} aria-current={selectedFolder === "" ? "page" : undefined}>

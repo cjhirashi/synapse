@@ -52,6 +52,23 @@ const menuButton = (name: string) => screen.getByRole("button", { name: `Accione
 /** Campo de renombrado en línea de la fila (C-4, C-5): sustituye al treeitem mientras se edita. */
 const renameField = (kind: "nota" | "carpeta" = "nota") => screen.getByRole("textbox", { name: `Nuevo nombre de la ${kind}` });
 
+/** Abre la ventana «Nueva nota» (o plantilla), escribe el nombre y confirma. */
+type User = ReturnType<typeof userEvent.setup>;
+
+async function openNoteDialog(user: User) {
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+}
+
+async function confirmNote(user: User, name: string) {
+  if (name !== "") await user.type(screen.getByRole("textbox", { name: /Título de la nota nueva|Nombre de la plantilla nueva/ }), name);
+  await user.click(screen.getByRole("button", { name: /^Crear (nota|plantilla)$/ }));
+}
+
+async function createNoteWith(user: User, name: string) {
+  await openNoteDialog(user);
+  await confirmNote(user, name);
+}
+
 test("RF-019: árbol role=tree con las carpetas plegadas; se despliegan al pulsarlas", async () => {
   const { user } = await setup(["Inicio.md", "Carpeta/Sub/Hoja.md", "Carpeta/Otra.md"]);
   const tree = await screen.findByRole("tree", { name: "Notas" });
@@ -87,37 +104,35 @@ test("RF-019: un click en una nota la abre en lectura (onOpen con sólo el id) y
 
 test("RF-012, RF-003: «Nueva nota» sin título crea «Sin título», «Sin título 2»… y la abre en edición", async () => {
   const { user, onOpen, value } = await setup();
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "");
   expect(await screen.findByRole("treeitem", { name: "Sin título" })).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "");
   expect(await screen.findByRole("treeitem", { name: "Sin título 2" })).toBeInTheDocument();
   const byPath = new Map((await value.notes.list(VAULT)).map((n) => [n.path, n.id]));
   expect(onOpen).toHaveBeenNthCalledWith(1, byPath.get("Sin título.md"), { edit: true });
   expect(onOpen).toHaveBeenNthCalledWith(2, byPath.get("Sin título 2.md"), { edit: true });
 });
 
-test("RF-003: «Nueva nota» con título lo usa como ruta (con .md) y vacía el campo", async () => {
+test("RF-003: «Nueva nota» con título lo usa como ruta (con .md) y cierra la ventana", async () => {
   const { user, value } = await setup();
-  const title = screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" });
-  await user.type(title, "Ideas");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "Ideas");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(await screen.findByRole("treeitem", { name: "Ideas" })).toBeInTheDocument();
   expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Ideas.md"]);
-  expect(title).toHaveValue("");
+  await openNoteDialog(user);
+  expect(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" })).toHaveValue("");
 });
 
 test("RF-013: crear con una ruta ocupada muestra el mensaje y no crea nada", async () => {
   const { user, value } = await setup(["Ideas.md"]);
-  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "ideas");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "ideas");
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
   expect(await value.notes.list(VAULT)).toHaveLength(1);
 });
 
 test("RF-003: un título inválido muestra el mensaje de ruta", async () => {
   const { user } = await setup();
-  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "a//b");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "a//b");
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_INVALID);
 });
 
@@ -373,8 +388,7 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   await user.click(confirmButton());
   await waitForCondition(() => expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toHaveFocus());
   // «Carpeta» sigue siendo la carpeta activa (SPEC-0010 RF-043): basta el título relativo «Nueva».
-  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Nueva");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "Nueva");
   await screen.findByRole("treeitem", { name: "Carpeta" });
   expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toHaveFocus();
 });
@@ -394,16 +408,20 @@ test("RF-011, RF-019: Escape cancela el renombrado sin escribir y devuelve el fo
 
 // --- SPEC-0009: estructura de la barra lateral rediseñada (RF-003, RF-004, RF-010) ---
 
-test("RF-003: el formulario «Nueva nota» es un bloque propio, fuera del panel del árbol", async () => {
-  const { container } = await setup(["Hola.md"]);
-  const form = container.querySelector(".note-sidebar-new")!;
+test("RF-003: «Nueva nota» y «Nueva carpeta» son dos botones de icono fuera del panel del árbol; el título se pide en una ventana", async () => {
+  const { container, user } = await setup(["Hola.md"]);
+  const bar = container.querySelector<HTMLElement>(".note-create-bar")!;
   const panel = container.querySelector<HTMLElement>(".note-tree-panel")!;
-  expect(form.tagName).toBe("FORM");
-  expect(panel).not.toBeNull();
-  expect(panel).not.toContainElement(form as HTMLElement);
+  expect(within(bar).getAllByRole("button")).toHaveLength(2);
+  expect(panel).not.toContainElement(bar);
   // El árbol (role=tree) vive dentro del panel; los roles y nombres no cambian.
   expect(within(panel).getByRole("tree", { name: "Notas" })).toBeInTheDocument();
-  expect(screen.getByLabelText("Título de la nota nueva (opcional)")).toBeInTheDocument();
+  // Sin ventana abierta no hay campo de título en la barra lateral.
+  expect(screen.queryByLabelText("Título de la nota nueva (opcional)")).toBeNull();
+  await openNoteDialog(user);
+  expect(within(screen.getByRole("alertdialog")).getByLabelText("Título de la nota nueva (opcional)")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Cancelar" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
 });
 
 test("RF-004: cada carpeta lleva su ícono (cerrada/abierta) y cada nota el suyo", async () => {
@@ -599,8 +617,7 @@ test("RF-004: «Nueva carpeta» duplicada muestra el error y no crea nada", asyn
 test("RF-003: «Nueva nota» se crea en la carpeta activa", async () => {
   const { user, value } = await setup(["Proyectos/Hoja.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Proyectos" })); // carpeta activa = Proyectos
-  await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Idea");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await createNoteWith(user, "Idea");
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Idea.md"));
 });
 
@@ -1262,11 +1279,11 @@ test("H-041: en AG - SKILLS el formulario pide el propietario entre los gestores
     },
   });
   await user.click(await screen.findByRole("treeitem", { name: "AG - SKILLS" }));
+  await openNoteDialog(user);
   const owner = await screen.findByRole("combobox", { name: "Propietario de la skill" });
   expect(within(owner).getAllByRole("option").map((o) => o.textContent)).toEqual(["aira", "emma"]);
   await user.selectOptions(owner, "emma");
-  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Revisión final");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await confirmNote(user, "Revisión final");
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-revision-final.md");
     expect(created?.frontmatter).toMatchObject({ propietario: "emma" });
@@ -1276,10 +1293,10 @@ test("H-041: en AG - SKILLS el formulario pide el propietario entre los gestores
 test("H-041: sin gestores, la skill nueva nace archivada", async () => {
   const { user, value } = await setup(["Inicio.md"], { seed: (db) => replicate(db, "AG - SKILLS/skill-otra.md", "x", { propietario: "aira" }) });
   await user.click(await screen.findByRole("treeitem", { name: "AG - SKILLS" }));
+  await openNoteDialog(user);
   const owner = await screen.findByRole("combobox", { name: "Propietario de la skill" });
   expect(within(owner).getByRole("option", { name: "Sin gestores: nace archivada" })).toBeInTheDocument();
-  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Sin dueño");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await confirmNote(user, "Sin dueño");
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-sin-dueno.md");
     expect(created?.frontmatter).toMatchObject({ estado: "archivado" });
@@ -1293,12 +1310,14 @@ test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activ
     seed: (db) => replicate(db, "PLANTILLAS/plantilla-acta.md", "# Acuerdos\n", TEMPLATE_FM),
   });
   // En la raíz la plantilla (solo para «Proyectos») no se ofrece.
+  await openNoteDialog(user);
   expect(screen.queryByRole("combobox", { name: "Plantilla" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Cancelar" }));
   await user.click(screen.getByRole("treeitem", { name: "Proyectos" }));
+  await openNoteDialog(user);
   const select = await screen.findByRole("combobox", { name: "Plantilla" });
   await user.selectOptions(select, "Acta");
-  await user.type(screen.getByLabelText(/Título de la nota nueva/), "Reunión");
-  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
+  await confirmNote(user, "Reunión");
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "Proyectos/Reunión.md");
     expect(created?.frontmatter).toMatchObject({ plantilla: "acta", cliente: "Acme" });
@@ -1308,8 +1327,7 @@ test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activ
 test("H-030b: dentro de PLANTILLAS el formulario crea plantillas", async () => {
   const { user, value } = await setup(["Inicio.md"], { seed: (db) => replicate(db, "PLANTILLAS/plantilla-acta.md", "x", TEMPLATE_FM) });
   await user.click(await screen.findByRole("treeitem", { name: "PLANTILLAS" }));
-  await user.type(screen.getByLabelText("Nombre de la plantilla nueva"), "Informe");
-  await user.click(screen.getByRole("button", { name: /Nueva plantilla/ }));
+  await createNoteWith(user, "Informe");
   await waitFor(async () => expect((await value.notes.list(VAULT)).some((n) => n.path === "PLANTILLAS/plantilla-informe.md")).toBe(true));
 });
 

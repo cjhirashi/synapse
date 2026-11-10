@@ -63,10 +63,10 @@ for (const { label, size } of [{ label: "1280", size: { width: 1280, height: 900
     await showSidebar(page);
     await tree(page).getByRole("treeitem", { name: "Raíz", exact: true }).click();
     await showSidebar(page);
-    await openCreate(page);
+    await page.getByRole("button", { name: /^Nueva nota en/ }).click();
     await page.getByRole("combobox", { name: "Plantilla" }).selectOption({ label: `Acta ${label}` });
     await page.getByLabel(/Título de la nota nueva/).fill(`Reunión del lunes ${label}`);
-    await page.getByRole("button", { name: "Nueva nota" }).click();
+    await page.getByRole("button", { name: "Crear nota", exact: true }).click();
     await expect(page.getByText("Acuerdos")).toBeVisible({ timeout: 15_000 });
     await waitForSynced(page);
 

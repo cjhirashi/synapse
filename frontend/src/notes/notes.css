@@ -232,61 +232,83 @@
   min-height: 0;
 }
 
-/* Formulario «Nueva nota»: bloque propio de fondo distinto al del panel del árbol (RF-003). */
-.note-sidebar-new {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: var(--space-2);
-  padding: var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-tertiary);
-}
 
-/* H-027 C2: fila de los botones de solo icono «Nueva nota» / «Nueva carpeta», centrados. */
-.note-create-actions {
+/* Barra de creación: dos botones de icono pequeños, pegados al lado del documento y con el color de la bóveda;
+   el nombre se pide en una ventana emergente (`NameDialog`). */
+.note-create-bar {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
+  justify-content: flex-end;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border);
 }
 
-.note-create-actions .note-create-icon {
+.note-create-bar .note-create-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-2);
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--vault-icon-color, var(--text-secondary));
+  cursor: pointer;
 }
 
-/* El botón de carpeta se oculta mientras su formulario está abierto (atributo `hidden`). */
-.note-create-actions .note-sidebar-secondary[hidden] {
-  display: none;
+.note-create-bar .note-create-icon:hover:not(:disabled) {
+  background: var(--bg-tertiary);
 }
 
-.note-sidebar-error {
+.note-create-bar .note-create-icon:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.note-create-bar .note-create-icon:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Contenido de la ventana emergente de nombre (documento, plantilla, carpeta). */
+.name-dialog {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.name-dialog p {
+  margin: 0;
+}
+
+.name-dialog-hint {
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.name-dialog label {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-1);
   margin: 0;
+}
+
+.name-dialog select {
+  box-sizing: border-box;
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-control);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
   color: var(--text-primary);
-  font-size: 12px;
 }
 
-.note-sidebar-error svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--danger-text);
-}
-
-.note-sidebar-folder-actions {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.note-sidebar-folder-actions button {
-  padding: var(--space-1) var(--space-3);
-  font-size: 12px;
+.name-dialog-error {
+  font-weight: 600;
 }
 
 /* Carpeta activa (y «Raíz» activa): fondo, peso 600 y barra interior de 3 px en `--text-secondary`; se distingue de
@@ -296,24 +318,6 @@
   color: var(--text-primary);
   font-weight: 600;
   box-shadow: inset 3px 0 0 var(--text-secondary);
-}
-
-.note-sidebar-new label {
-  margin: 0;
-}
-
-.note-sidebar-new input {
-  padding: var(--space-1) var(--space-2);
-  font-size: 12px;
-}
-
-.note-sidebar-new button[type="submit"] {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: 12px;
 }
 
 .note-sidebar > p {
@@ -468,16 +472,6 @@
 /* El foco queda dentro de la fila: el árbol recorta lo que sobresale (T-049, M-4). */
 .note-tree-row:focus-visible {
   outline-offset: -2px;
-}
-
-.note-create-fields {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.note-create-fields[hidden] {
-  display: none;
 }
 
 .note-tree-row:not([type="submit"]):hover {
@@ -799,10 +793,6 @@ body.is-resizing {
 .template-view input[type="radio"], .template-view input[type="checkbox"] { width: auto; margin: 0; }
 .template-view :is(input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .template-view-section label:has(input[type="radio"]), .template-view-section .template-view-folders label { display: flex; align-items: center; gap: 0.5rem; }
-.note-sidebar-new select {
-  box-sizing: border-box; width: 100%; padding: var(--space-1) var(--space-2); font-size: 12px;
-  border: 1px solid var(--border-control); border-radius: var(--radius-sm); background: var(--bg-primary); color: var(--text-primary);
-}
 @media (max-width: 640px) { .template-view-attr { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 .index-view-title { margin: 0; font-size: 1rem; }
 .index-view-description { display: grid; gap: 0.35rem; margin-bottom: 0.75rem; }
@@ -927,7 +917,6 @@ body.is-resizing {
   font-size: 0.8125rem;
   opacity: 0.75;
 }
-
 
 /* H-052: la lista de tags se despliega y, abierta, nunca pasa de 30 % del alto de la ventana (la lista de documentos manda). */
 .tag-filter-toggle {

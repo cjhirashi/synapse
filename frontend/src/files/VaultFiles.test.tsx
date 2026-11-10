@@ -606,18 +606,35 @@ describe("VaultFiles con carpetas (H-046)", () => {
     renderPage(["Portafolio"]);
     await userEvent.click(await treeBtn("Portafolio"));
     await userEvent.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
-    await userEvent.type(screen.getByLabelText(/Nombre \(se crea en «Portafolio»\)/), "Capturas");
-    await userEvent.click(screen.getByRole("button", { name: "Crear" }));
+    expect(screen.getByText("Se creará en Portafolio")).toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText("Nombre de la carpeta"), "Capturas");
+    await userEvent.click(screen.getByRole("button", { name: "Crear carpeta" }));
     await waitFor(() => expect(create).toHaveBeenCalledWith("vault-1", "Portafolio/Capturas"));
     expect(await screen.findByRole("status")).toHaveTextContent("Carpeta «Portafolio/Capturas» creada.");
+  });
+
+  it("«Nueva carpeta» es un botón de icono con el color de la bóveda y pide el nombre en una ventana (Enter crea, Esc cancela)", async () => {
+    const create = vi.spyOn(uploadFileModule, "createFileFolder").mockResolvedValue(["Nueva"]);
+    renderPage([]);
+    const button = await screen.findByRole("button", { name: /Nueva carpeta en Raíz/ });
+    expect(button).toHaveClass("note-create-icon");
+    expect(button.closest(".note-create-bar")).not.toBeNull();
+    expect(screen.queryByRole("textbox", { name: "Nombre de la carpeta" })).toBeNull();
+    await userEvent.click(button);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await userEvent.click(button);
+    await userEvent.type(screen.getByLabelText("Nombre de la carpeta"), "Nueva{Enter}");
+    await waitFor(() => expect(create).toHaveBeenCalledWith("vault-1", "Nueva"));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
   });
 
   it("rechaza en el cliente un nombre de carpeta con barra", async () => {
     const create = vi.spyOn(uploadFileModule, "createFileFolder").mockResolvedValue([]);
     renderPage([]);
     await userEvent.click(await screen.findByRole("button", { name: /Nueva carpeta/ }));
-    await userEvent.type(screen.getByLabelText(/Nombre/), "a/b");
-    await userEvent.click(screen.getByRole("button", { name: "Crear" }));
+    await userEvent.type(screen.getByLabelText("Nombre de la carpeta"), "a/b");
+    await userEvent.click(screen.getByRole("button", { name: "Crear carpeta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("No puede llevar");
     expect(create).not.toHaveBeenCalled();
   });
