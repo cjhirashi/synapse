@@ -54,7 +54,7 @@ function FilesPage() {
   return (
     <>
       <div ref={setSlot} data-testid="side-slot" />
-      <VaultFiles vaultId="vault-1" sideSlot={slot} />
+      <VaultFiles vaultId="vault-1" sideSlot={slot} accent="var(--info)" />
     </>
   );
 }
@@ -62,6 +62,19 @@ function FilesPage() {
 describe("VaultFiles", () => {
   beforeEach(() => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([]);
+  });
+
+  it("la lista toma el color de la bóveda (columna ordenada y acentos de la tabla)", async () => {
+    const { value } = syncValue({ vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any, notes: emptyNotes() });
+    const { container } = render(
+      <WithSync value={value}>
+        <FilesPage />
+      </WithSync>,
+    );
+    await screen.findByRole("button", { name: /Subir archivo/i });
+    const body = container.querySelector<HTMLElement>(".files-body")!;
+    expect(body.style.getPropertyValue("--accent")).toBe("var(--info)");
+    expect(body.style.getPropertyValue("--accent-soft")).toContain("var(--info)");
   });
 
   it("no trae selector de bóveda: los archivos son los de la bóveda abierta", async () => {

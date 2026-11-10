@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, type DragEvent } from "react";
+import { useState, useEffect, useCallback, type CSSProperties, type DragEvent } from "react";
 import { createPortal } from "react-dom";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
@@ -689,7 +689,10 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
           <input id="file-upload-input" type="file" multiple hidden onChange={(e) => void handleUpload(e)} />
         </div>
 
-        <div className="files-body">
+        <div
+          className="files-body"
+          style={accent ? ({ "--accent": accent, "--accent-soft": `color-mix(in srgb, ${accent} 16%, transparent)` } as CSSProperties) : undefined}
+        >
           {notice && <p role={notice.kind}>{notice.text}</p>}
           {status === "loading" && <p>Cargando…</p>}
           {status === "error" && (
