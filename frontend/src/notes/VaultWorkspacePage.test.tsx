@@ -11,7 +11,7 @@ import type { SyncContextValue } from "../sync/useSync";
 import VaultWorkspacePage from "./VaultWorkspacePage";
 import { forgetNote, readMemory, writeMemory } from "./workspaceMemory";
 import { MeContext } from "../auth/RequireAuth";
-import { derivedColor } from "../vaults/vaultIcon";
+import { colorVar, derivedColor } from "../vaults/vaultIcon";
 import * as uploadFileModule from "../files/uploadFile";
 import { parseMarkdownToJson } from "../editor/markdown/parseStage";
 import { PARSE_MARK } from "../editor/markdown/cachedParser";
@@ -1350,6 +1350,8 @@ test("H-052: la pestaña Archivos trae el árbol de carpetas de la bóveda y su 
 
   const folders = await screen.findByRole("list", { name: "Carpetas de archivos" });
   expect(within(folders).getByRole("button", { name: "Docs" })).toBeInTheDocument();
+  // El árbol de carpetas toma el color de tema de la bóveda, como el árbol de notas.
+  expect(folders.closest<HTMLElement>(".files-workspace")!.style.getPropertyValue("--vault-icon-color")).toBe(colorVar(derivedColor(vault.id)));
   expect(await screen.findByRole("button", { name: /Subir archivo/ })).toBeInTheDocument();
   expect(listFiles).toHaveBeenCalledWith(vault.id, "");
   expect(screen.queryByRole("combobox", { name: /Bóveda/i })).toBeNull();

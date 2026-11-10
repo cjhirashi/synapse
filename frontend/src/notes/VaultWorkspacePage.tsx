@@ -36,7 +36,7 @@ import { isInBitacora, isInMensajes } from "./metaFolders";
 import { isSystemPath } from "./metaRules";
 import { templateName } from "./metaRules";
 import { useMediaQuery } from "../layout/useMediaQuery";
-import { derivedColor, parseIcon } from "../vaults/vaultIcon";
+import { colorVar, derivedColor, parseIcon } from "../vaults/vaultIcon";
 import NoteTrash from "./NoteTrash";
 import { createParseWorkspace, type ParseWorkspace } from "./parseWorkspace";
 import "./notes.css";
@@ -548,7 +548,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
               <TagFilterPanel vaultId={vault.id} openId={openId} onOpen={open} />
             </div>
           )}
-          {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} />}
+          {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
           {isDesktop && sidebarOpen && (
             <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
           )}
