@@ -87,9 +87,9 @@ test("RF-019: un click en una nota la abre en lectura (onOpen con sólo el id) y
 
 test("RF-012, RF-003: «Nueva nota» sin título crea «Sin título», «Sin título 2»… y la abre en edición", async () => {
   const { user, onOpen, value } = await setup();
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("treeitem", { name: "Sin título" })).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("treeitem", { name: "Sin título 2" })).toBeInTheDocument();
   const byPath = new Map((await value.notes.list(VAULT)).map((n) => [n.path, n.id]));
   expect(onOpen).toHaveBeenNthCalledWith(1, byPath.get("Sin título.md"), { edit: true });
@@ -100,7 +100,7 @@ test("RF-003: «Nueva nota» con título lo usa como ruta (con .md) y vacía el 
   const { user, value } = await setup();
   const title = screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" });
   await user.type(title, "Ideas");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("treeitem", { name: "Ideas" })).toBeInTheDocument();
   expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["Ideas.md"]);
   expect(title).toHaveValue("");
@@ -109,7 +109,7 @@ test("RF-003: «Nueva nota» con título lo usa como ruta (con .md) y vacía el 
 test("RF-013: crear con una ruta ocupada muestra el mensaje y no crea nada", async () => {
   const { user, value } = await setup(["Ideas.md"]);
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "ideas");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_TAKEN);
   expect(await value.notes.list(VAULT)).toHaveLength(1);
 });
@@ -117,7 +117,7 @@ test("RF-013: crear con una ruta ocupada muestra el mensaje y no crea nada", asy
 test("RF-003: un título inválido muestra el mensaje de ruta", async () => {
   const { user } = await setup();
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "a//b");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   expect(await screen.findByRole("alert")).toHaveTextContent(PATH_INVALID);
 });
 
@@ -316,7 +316,7 @@ test("RF-019, RF-010: si no queda ninguna fila, el foco va a «Nueva nota» (bot
   await user.click(menuButton("Sola"));
   await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
   await user.click(confirmButton());
-  await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toHaveFocus());
 });
 
 test("RF-019, RF-011: tras guardar o cancelar el renombrado el foco vuelve al treeitem de la nota", async () => {
@@ -371,12 +371,12 @@ test("RF-019, RF-010: la carpeta que reaparece al crear otra nota no le roba el 
   (await screen.findByRole("treeitem", { name: "Sola" })).focus();
   await user.keyboard("{Delete}");
   await user.click(confirmButton());
-  await waitForCondition(() => expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus());
+  await waitForCondition(() => expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toHaveFocus());
   // «Carpeta» sigue siendo la carpeta activa (SPEC-0010 RF-043): basta el título relativo «Nueva».
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Nueva");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   await screen.findByRole("treeitem", { name: "Carpeta" });
-  expect(screen.getByRole("button", { name: "Nueva nota" })).toHaveFocus();
+  expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toHaveFocus();
 });
 
 // U-3 (PLAN-0008 §17)
@@ -468,17 +468,18 @@ test("RF-043: «Raíz» está aunque la bóveda no tenga notas", async () => {
   expect(rootRow()).toHaveAttribute("aria-current", "true");
 });
 
-test("RF-002, RF-043: «Crear en» es una región viva que dice la carpeta activa", async () => {
+// H-028 C1: el bloque «Crear en» se eliminó, pero aria-current marca la carpeta activa en el árbol
+test("H-028 C1: no existe el bloque «Crear en», pero aria-current marca la carpeta activa", async () => {
   const { user } = await setup(["Carpeta/Sub/Hoja.md"]);
-  const live = () => document.getElementById("note-create-in")!;
-  expect(live()).toHaveAttribute("aria-live", "polite");
-  expect(live()).toHaveAttribute("aria-atomic", "true");
-  expect(live()).toHaveTextContent("Crear en: Raíz");
+  // Verifica que «Crear en» no exista
+  expect(document.getElementById("note-create-in")).toBeNull();
+  // La carpeta activa se marca con aria-current
+  expect(rootRow()).toHaveAttribute("aria-current", "true");
   await user.click(within(tree()).getByRole("treeitem", { name: "Carpeta" }));
-  expect(live()).toHaveTextContent("Crear en: Carpeta");
+  expect(within(tree()).getByRole("treeitem", { name: "Carpeta" })).toHaveAttribute("aria-current", "true");
+  expect(rootRow()).not.toHaveAttribute("aria-current");
   await user.click(within(tree()).getByRole("treeitem", { name: "Sub" }));
-  expect(live()).toHaveTextContent("Crear en: Carpeta/Sub");
-  expect(live().querySelector("strong")).toHaveAttribute("title", "Carpeta/Sub");
+  expect(within(tree()).getByRole("treeitem", { name: "Sub" })).toHaveAttribute("aria-current", "true");
 });
 
 test("RF-043: pulsar una carpeta la despliega y la marca como activa (aria-current); «Raíz» deja de serlo", async () => {
@@ -492,7 +493,6 @@ test("RF-043: pulsar una carpeta la despliega y la marca como activa (aria-curre
   expect(carpeta).not.toHaveAttribute("aria-current");
   await user.click(rootRow());
   expect(rootRow()).toHaveAttribute("aria-current", "true");
-  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Raíz");
 });
 
 test("RF-043: ←/→ sólo pliegan y despliegan; no cambian la carpeta activa", async () => {
@@ -514,31 +514,27 @@ test("RF-042: al abrir una nota la carpeta activa pasa a ser la suya (se disting
   const sub = await screen.findByRole("treeitem", { name: "Sub" });
   expect(sub).toHaveAttribute("aria-current", "true");
   expect(await screen.findByRole("treeitem", { name: "Hoja" })).toHaveAttribute("aria-selected", "true");
-  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Carpeta/Sub");
   const raiz = (await value.notes.list(VAULT)).find((n) => n.path === "Raiz.md")!;
   rerender(ui(value, raiz.id));
   expect(rootRow()).toHaveAttribute("aria-current", "true");
 });
 
-test("RF-006: la pista de «/» está visible y la describen el título, el renombrado y «Nueva carpeta»", async () => {
-  const { user } = await setup(["Uno.md"]);
-  const hint = screen.getByText(/Usa \/ para crear subcarpetas/);
-  expect(hint).toHaveTextContent("Usa / para crear subcarpetas (por ejemplo, Proyectos/Ideas)");
-  const title = screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" });
-  expect(title.getAttribute("aria-describedby")).toContain(hint.id);
-  expect(title.getAttribute("aria-describedby")).toContain("note-create-in");
-  await user.click(await screen.findByRole("treeitem", { name: "Uno" }));
-  await user.click(menuButton("Uno"));
-  await user.click(screen.getByRole("menuitem", { name: "Renombrar" }));
-  expect(renameField().getAttribute("aria-describedby")).toContain(hint.id);
-  await user.keyboard("{Escape}");
-  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
-  expect(screen.getByRole("textbox", { name: "Nombre de la carpeta" }).getAttribute("aria-describedby")).toContain(hint.id);
+test("H-027 C3: el aviso de «/» ya no se muestra, pero «/» sigue creando subcarpetas", async () => {
+  const { user, value } = await setup([], { indexes: true });
+  // C3: el texto del aviso desaparece de la sidebar (y ya no describe ningún campo).
+  expect(screen.queryByText(/Usa \/ para crear subcarpetas/)).toBeNull();
+  // La función de «/» se conserva: crear «Proyectos/Ideas» produce la subcarpeta anidada.
+  await user.click(screen.getByRole("button", { name: /Nueva carpeta en/ }));
+  await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos/Ideas");
+  await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
+  await waitForCondition(async () =>
+    expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Ideas/INDICE.md"),
+  );
 });
 
 test("RF-004: «Nueva carpeta» abre un formulario con el foco en el campo; Esc lo cierra y devuelve el foco al botón", async () => {
   const { user } = await setup(["Uno.md"]);
-  const open = screen.getByRole("button", { name: "Nueva carpeta" });
+  const open = screen.getByRole("button", { name: /Nueva carpeta/ });
   await user.click(open);
   const input = screen.getByRole("textbox", { name: "Nombre de la carpeta" });
   expect(input).toHaveFocus();
@@ -551,14 +547,14 @@ test("RF-004: «Nueva carpeta» abre un formulario con el foco en el campo; Esc 
 
 test("RF-004: «Cancelar» cierra el formulario de carpeta", async () => {
   const { user } = await setup();
-  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
   await user.click(screen.getByRole("button", { name: "Cancelar" }));
   expect(screen.queryByRole("textbox", { name: "Nombre de la carpeta" })).toBeNull();
 });
 
 test("RF-004: enviar el nombre vacío muestra el error asociado al campo (role=alert)", async () => {
   const { user } = await setup();
-  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
   const input = screen.getByRole("textbox", { name: "Nombre de la carpeta" });
   const alert = screen.getByRole("alert");
@@ -571,7 +567,7 @@ test("RF-004: enviar el nombre vacío muestra el error asociado al campo (role=a
 
 test("H-031: «Nueva carpeta» crea la carpeta con su INDICE (sin nota de relleno) y lo abre", async () => {
   const { user, value, onOpen } = await setup([], { indexes: true });
-  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
   await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toEqual(["INDICE.md", "Proyectos/INDICE.md"]));
@@ -593,7 +589,7 @@ test("H-031: pulsar el nombre de una carpeta abre su INDICE y la Raíz abre el d
 
 test("RF-004: «Nueva carpeta» duplicada muestra el error y no crea nada", async () => {
   const { user, value } = await setup(["Proyectos/Hoja.md"]);
-  await user.click(screen.getByRole("button", { name: "Nueva carpeta" }));
+  await user.click(screen.getByRole("button", { name: /Nueva carpeta/ }));
   await user.type(screen.getByRole("textbox", { name: "Nombre de la carpeta" }), "Proyectos");
   await user.click(screen.getByRole("button", { name: "Crear carpeta" }));
   expect(screen.getByRole("alert")).toHaveTextContent("Ya existe una carpeta con ese nombre («Proyectos»).");
@@ -604,7 +600,7 @@ test("RF-003: «Nueva nota» se crea en la carpeta activa", async () => {
   const { user, value } = await setup(["Proyectos/Hoja.md"]);
   await user.click(await screen.findByRole("treeitem", { name: "Proyectos" })); // carpeta activa = Proyectos
   await user.type(screen.getByRole("textbox", { name: "Título de la nota nueva (opcional)" }), "Idea");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   await waitForCondition(async () => expect((await value.notes.list(VAULT)).map((n) => n.path)).toContain("Proyectos/Idea.md"));
 });
 
@@ -991,14 +987,15 @@ test("C-8: tras borrar una carpeta el foco va a la fila que sigue", async () => 
   await waitForCondition(() => expect(screen.getByRole("treeitem", { name: "Otra" })).toHaveFocus());
 });
 
-test("C-8: borrar la carpeta activa devuelve «Crear en» a la raíz", async () => {
+test("C-8: borrar la carpeta activa devuelve aria-current a la raíz", async () => {
   const { user } = await setup(["Carpeta/Hoja.md", "Otra.md"]);
-  await user.click(screen.getByRole("treeitem", { name: "Carpeta" }));
-  expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Carpeta");
+  const carpeta = screen.getByRole("treeitem", { name: "Carpeta" });
+  await user.click(carpeta);
+  expect(carpeta).toHaveAttribute("aria-current", "true");
   await user.click(menuButton("Carpeta"));
   await user.click(screen.getByRole("menuitem", { name: "Borrar" }));
   await user.click(confirmButton());
-  await waitForCondition(() => expect(document.getElementById("note-create-in")).toHaveTextContent("Crear en: Raíz"));
+  await waitForCondition(() => expect(rootRow()).toHaveAttribute("aria-current", "true"));
 });
 
 // --- H-006: iconos de contenido con el color de la bóveda, solo contorno (C-2 corregido 2026-10-29) ---
@@ -1045,11 +1042,12 @@ test("H-006 C-3: los iconos de acción y de disclosure NO cambian (contorno neut
   expect(chevron.getAttribute("fill")).toBe("none");
   expect(colored(chevron)).toBe(false);
   // Botones de acción: «Nueva nota» (Plus) y «Papelera» (Trash2) siguen neutros, sin la clase de color.
-  for (const name of ["Nueva nota", "Papelera de la bóveda"]) {
-    const icon = screen.getByRole("button", { name }).querySelector("svg")!;
-    expect(icon.getAttribute("fill")).toBe("none");
-    expect(colored(icon)).toBe(false);
-  }
+  const newNoteIcon = screen.getByRole("button", { name: /Nueva nota/ }).querySelector("svg")!;
+  expect(newNoteIcon.getAttribute("fill")).toBe("none");
+  expect(colored(newNoteIcon)).toBe(false);
+  const trashIcon = screen.getByRole("button", { name: "Papelera de la bóveda" }).querySelector("svg")!;
+  expect(trashIcon.getAttribute("fill")).toBe("none");
+  expect(colored(trashIcon)).toBe(false);
 });
 
 test("H-006 C-5: cambiar de bóveda (otra prop de color) actualiza el color de los iconos", async () => {
@@ -1268,7 +1266,7 @@ test("H-041: en AG - SKILLS el formulario pide el propietario entre los gestores
   expect(within(owner).getAllByRole("option").map((o) => o.textContent)).toEqual(["aira", "emma"]);
   await user.selectOptions(owner, "emma");
   await user.type(screen.getByLabelText(/Título de la nota nueva/), "Revisión final");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-revision-final.md");
     expect(created?.frontmatter).toMatchObject({ propietario: "emma" });
@@ -1281,7 +1279,7 @@ test("H-041: sin gestores, la skill nueva nace archivada", async () => {
   const owner = await screen.findByRole("combobox", { name: "Propietario de la skill" });
   expect(within(owner).getByRole("option", { name: "Sin gestores: nace archivada" })).toBeInTheDocument();
   await user.type(screen.getByLabelText(/Título de la nota nueva/), "Sin dueño");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-sin-dueno.md");
     expect(created?.frontmatter).toMatchObject({ estado: "archivado" });
@@ -1300,7 +1298,7 @@ test("H-030b: el formulario ofrece las plantillas que aplican a la carpeta activ
   const select = await screen.findByRole("combobox", { name: "Plantilla" });
   await user.selectOptions(select, "Acta");
   await user.type(screen.getByLabelText(/Título de la nota nueva/), "Reunión");
-  await user.click(screen.getByRole("button", { name: "Nueva nota" }));
+  await user.click(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ }));
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "Proyectos/Reunión.md");
     expect(created?.frontmatter).toMatchObject({ plantilla: "acta", cliente: "Acme" });
@@ -1311,7 +1309,7 @@ test("H-030b: dentro de PLANTILLAS el formulario crea plantillas", async () => {
   const { user, value } = await setup(["Inicio.md"], { seed: (db) => replicate(db, "PLANTILLAS/plantilla-acta.md", "x", TEMPLATE_FM) });
   await user.click(await screen.findByRole("treeitem", { name: "PLANTILLAS" }));
   await user.type(screen.getByLabelText("Nombre de la plantilla nueva"), "Informe");
-  await user.click(screen.getByRole("button", { name: "Nueva plantilla" }));
+  await user.click(screen.getByRole("button", { name: /Nueva plantilla/ }));
   await waitFor(async () => expect((await value.notes.list(VAULT)).some((n) => n.path === "PLANTILLAS/plantilla-informe.md")).toBe(true));
 });
 
@@ -1332,16 +1330,15 @@ async function setupBuzon() {
 
 test("H-042: dentro de AG - MENSAJES no hay controles de creación y se avisa que es solo lectura", async () => {
   const { user } = await setupBuzon();
-  expect(screen.getByRole("button", { name: "Nueva nota" })).toBeInTheDocument(); // en la raíz sí
+  expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toBeInTheDocument(); // en la raíz sí
   await user.click(await screen.findByRole("treeitem", { name: "AG - MENSAJES" }));
   expect(screen.queryByText(/Crear en:/)).toBeNull();
-  expect(screen.queryByRole("button", { name: "Nueva nota" })).toBeNull();
-  expect(screen.queryByRole("button", { name: "Nueva carpeta" })).toBeNull();
-  expect(screen.queryByRole("button", { name: "Crear…" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Nueva carpeta/ })).toBeNull();
   expect(screen.getByRole("note")).toHaveTextContent("Buzón entre agentes: solo lectura");
   // al salir del buzón los controles vuelven
   await user.click(screen.getByRole("treeitem", { name: "Raíz" }));
-  expect(screen.getByRole("button", { name: "Nueva nota" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Nueva nota|Nueva plantilla/ })).toBeInTheDocument();
   expect(screen.queryByRole("note")).toBeNull();
 });
 

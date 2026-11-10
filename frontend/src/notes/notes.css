@@ -174,58 +174,23 @@
   background: var(--bg-tertiary);
 }
 
-/* «Crear en», «Nueva carpeta» y la pista de «/» (SPEC-0010 RF-002, RF-004, RF-006; R-14): 12 px, texto
-   secundario (nada de `--text-muted` como texto) y el nombre de la carpeta activa en primario/600. */
-.note-create-in {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-width: 0;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.note-create-in svg {
-  flex-shrink: 0;
-}
-
-.note-create-in > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.note-create-in strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.note-folder-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.note-folder-hint svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.note-sidebar-new .note-sidebar-secondary {
+/* H-027 C2: fila de los botones de solo icono «Nueva nota» / «Nueva carpeta», centrados. */
+.note-create-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: 12px;
+  gap: var(--space-3);
 }
 
-.note-sidebar-new .note-sidebar-secondary[hidden] {
+.note-create-actions .note-create-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+/* El botón de carpeta se oculta mientras su formulario está abierto (atributo `hidden`). */
+.note-create-actions .note-sidebar-secondary[hidden] {
   display: none;
 }
 
@@ -506,11 +471,41 @@
 }
 
 /* --- Espacio de trabajo de la bóveda --- */
-/* Ocupa todo el alto del marco fijo (AppLayout.css); cada columna hace su propio scroll. */
+/* H-027 C4: shell columna con franja + workspace (fila). Ocupa todo el alto del marco fijo (AppLayout.css). */
+.vault-workspace-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+/* H-027 C4: franja delgada superior con nombre de bóveda y botón de alternar. */
+.vault-workspace-titlebar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-2);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.vault-workspace-title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Ocupa el resto del alto; fila lateral + editor. */
 .vault-workspace {
   display: flex;
   align-items: stretch;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   /* Base de posicionamiento de la barra flotante en móvil (H-009 C-5): el overlay se ancla a este
      contenedor, no al viewport, para quedar dentro del área de trabajo sin depender de la altura del
      header de la app. */
@@ -559,36 +554,8 @@ body.is-resizing {
   user-select: none;
 }
 
-/* Cabecera de la barra (R-7, 51 px): carpeta abierta en acento + nombre de la bóveda con elipsis. */
-.vault-workspace-header {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  gap: var(--space-2);
-  height: 51px;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  color: var(--accent);
-}
-
-.vault-workspace-header svg {
-  flex-shrink: 0;
-}
-
-.vault-workspace-header h1 {
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
 /* H-009 C-1/C-8 (corregido): el botón de alternar la barra. En la fila de título del editor reutiliza
-   `note-nav-button` (editor.css); sin nota abierta, FLOTA sobre la esquina del panel vacío, sin reservar
-   columna ni padding que le reste ancho al documento. Discreto, con foco visible y activable por teclado
+   `note-nav-button` (editor.css). Discreto, con foco visible y activable por teclado
    (es un <button> nativo). */
 .vault-sidebar-toggle--floating {
   position: absolute;

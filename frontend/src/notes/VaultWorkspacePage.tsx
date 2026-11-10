@@ -209,9 +209,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
   // `Escape` la cierran — mismo patrón que `AccountMenu` (mousedown + keydown en `document`). Fija
   // (tableta/escritorio) no se cierra así: sólo el botón la oculta.
+  // H-028 C5: ignora clics dentro de menús portaled (.note-menu) o diálogos modales (.confirm-dialog, .modal-backdrop).
   useEffect(() => {
     if (!isMobile || !sidebarOpen) return;
     const onDown = (e: globalThis.MouseEvent) => {
+      const el = e.target as Element;
+      // Ignora clics dentro de elementos portaled (menú, diálogos de confirmación).
+      if (el?.closest?.(".note-menu") || el?.closest?.(".confirm-dialog") || el?.closest?.(".modal-backdrop")) {
+        return;
+      }
       if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
     };
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -483,81 +489,79 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const openIsSystem = openId !== null && noteRefs.some((ref) => ref.id === openId && isSystemPath(ref.path));
 
   return (
-    <div className="vault-workspace" onKeyDown={onKeyDown}>
-      <div
-        className="vault-workspace-side"
-        ref={sideRef}
-        id={sideId}
-        // La cabecera (con el botón) queda siempre visible; `data-open`/`data-floating` gobiernan el
-        // árbol vía CSS: dockeado en > 640 px, overlay `position: absolute` (anclado a
-        // `.vault-workspace`, no al viewport — ver nota en notes.css) en móvil (C-2/C-5).
-        data-open={sidebarOpen ? "" : undefined}
-        data-floating={isMobile ? "" : undefined}
-        style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
-      >
-        {/* Cabecera de la barra (SPEC-0009 RF-003): carpeta abierta + nombre; sigue siendo el `h1`. El
-            botón de alternar ya no vive aquí (H-009 corregido): se movió a la fila de título del editor
-            y al estado vacío, para no reservar una columna que le reste ancho al documento. */}
-        <header className="vault-workspace-header">
-          <FolderOpen size={14} aria-hidden="true" data-icon="folder-open" />
-          <h1 title={vault.name}>{vault.name}</h1>
-        </header>
-        <NoteSidebar
-          ref={sidebarRef}
-          vaultId={vault.id}
-          vaultColor={vaultColor}
-          openId={openId}
-          onOpen={open}
-          onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
-          onShowTrash={() => setShowTrash(true)}
-          confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
-          onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
-          initialExpanded={remembered.current?.expanded}
-          onExpandedChange={rememberExpanded}
-        />
-        {isDesktop && sidebarOpen && (
-          <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
-        )}
+    <div className="vault-workspace-shell" onKeyDown={onKeyDown}>
+      {/* H-027 C4: franja superior con el nombre de la bóveda y el botón de alternar la barra. */}
+      <div className="vault-workspace-titlebar">
+        <SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />
+        <h1 className="vault-workspace-title" title={vault.name} style={{ color: vaultColor }}>
+          {vault.name}
+        </h1>
       </div>
-      <div className="vault-workspace-main">
-        {showTrash && (
-          <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
-        )}
-        {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
-        <div hidden={showTrash} className="vault-workspace-content">
-          {openId === null ? (
-            // Estado vacío (SPEC-0009 RF-008): texto centrado; el botón de la barra flota en la esquina
-            // superior izquierda, sin reservar columna ni padding (H-009 C-1 corregido).
-            <>
-              <SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} floating />
+      <div className="vault-workspace">
+        <div
+          className="vault-workspace-side"
+          ref={sideRef}
+          id={sideId}
+          // `data-open`/`data-floating` gobiernan el árbol vía CSS: dockeado en > 640 px, overlay
+          // `position: absolute` (anclado a `.vault-workspace`, no al viewport — ver nota en notes.css)
+          // en móvil (C-2/C-5).
+          data-open={sidebarOpen ? "" : undefined}
+          data-floating={isMobile ? "" : undefined}
+          style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
+        >
+          <NoteSidebar
+            ref={sidebarRef}
+            vaultId={vault.id}
+            vaultColor={vaultColor}
+            openId={openId}
+            onOpen={open}
+            onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
+            onShowTrash={() => setShowTrash(true)}
+            confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
+            onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
+            initialExpanded={remembered.current?.expanded}
+            onExpandedChange={rememberExpanded}
+          />
+          {isDesktop && sidebarOpen && (
+            <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
+          )}
+        </div>
+        <div className="vault-workspace-main">
+          {showTrash && (
+            <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
+          )}
+          {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
+          <div hidden={showTrash} className="vault-workspace-content">
+            {openId === null ? (
+              // Estado vacío (SPEC-0009 RF-008): texto centrado.
               <div className="vault-workspace-empty">
                 <FileText size={32} aria-hidden="true" data-icon="file-text" />
                 <p>Abre o crea una nota para empezar.</p>
               </div>
-            </>
-          ) : (
-            <Suspense
-              fallback={
-                <div className="vault-workspace-empty">
-                  <p>Cargando el editor…</p>
-                </div>
-              }
-            >
-              {openIsIndex ? (
-                <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
-              ) : openIsSystem ? (
-                <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
-              ) : openIsTemplate ? (
-                <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
-              ) : openIsBitacora ? (
-                <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
-              ) : openIsMensaje ? (
-                <MensajeView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} />
-              ) : (
-              <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} sidebarToggle={<SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
-              )}
-            </Suspense>
-          )}
+            ) : (
+              <Suspense
+                fallback={
+                  <div className="vault-workspace-empty">
+                    <p>Cargando el editor…</p>
+                  </div>
+                }
+              >
+                {openIsIndex ? (
+                  <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+                ) : openIsSystem ? (
+                  <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+                ) : openIsTemplate ? (
+                  <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} />
+                ) : openIsBitacora ? (
+                  <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+                ) : openIsMensaje ? (
+                  <MensajeView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+                ) : (
+                  <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
+                )}
+              </Suspense>
+            )}
+          </div>
         </div>
       </div>
     </div>
