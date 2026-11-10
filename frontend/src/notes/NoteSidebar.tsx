@@ -23,7 +23,7 @@
  * padre, Inicio/Fin saltan a los extremos.
  */
 import { CSSProperties, DragEvent, FormEvent, forwardRef, KeyboardEvent, ReactNode, useCallback, useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, CircleAlert, CornerDownRight, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Plus, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleAlert, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Plus, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
 import { folderNameMessage, noteErrorMessage } from "./messages";
@@ -199,13 +199,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   }, [templateId, templateOptions]);
   /** Formulario «Nueva carpeta» abierto, su texto y su mensaje de error (`null` = sin error). */
   const [folderForm, setFolderForm] = useState<{ name: string; message: string | null } | null>(null);
-  /** A ≤ 640 px el bloque de creación es un disclosure («Crear…»): la barra lateral no empuja al editor fuera de la pantalla. */
-  const compact = useMediaQuery("(max-width: 640px)");
-  const [createOpen, setCreateOpen] = useState(false);
-  const fieldsId = useId();
   const uid = useId();
-  const createInId = "note-create-in";
-  const hintId = `${uid}-folder-hint`;
   const folderErrorId = `${uid}-folder-error`;
   const newFolderRef = useRef<HTMLButtonElement>(null);
   /** El formulario se cerró a propósito: el foco vuelve a «Nueva carpeta» cuando el botón se vuelve a ver. */
@@ -654,7 +648,6 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         {icon}
         <input
           aria-label={`Nuevo nombre de la ${label}`}
-          aria-describedby={hintId}
           value={inlineRename?.value ?? ""}
           autoFocus
           onChange={(event) => setInlineRename((edit) => edit && { ...edit, value: event.target.value })}
@@ -899,22 +892,10 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         </p>
       ) : (
       <form className="note-sidebar-new" onSubmit={create}>
-        <p id={createInId} className="note-create-in" aria-live="polite" aria-atomic="true">
-          {activeFolder === "" ? <House size={14} aria-hidden="true" /> : <FolderOpen size={14} aria-hidden="true" />}
-          <span>
-            Crear en: <strong title={activeFolder || "Raíz"}>{activeFolder || "Raíz"}</strong>
-          </span>
-        </p>
-        {compact && (
-          <button type="button" className="note-sidebar-secondary" aria-expanded={createOpen} aria-controls={fieldsId} onClick={() => setCreateOpen((open) => !open)}>
-            <Plus size={14} aria-hidden="true" />
-            Crear…
-          </button>
-        )}
-        <div id={fieldsId} className="note-create-fields" hidden={compact && !createOpen}>
+        <div className="note-create-fields">
         <label>
           {inTemplatesFolder ? "Nombre de la plantilla nueva" : "Título de la nota nueva (opcional)"}
-          <input value={title} onChange={(event) => setTitle(event.target.value)} aria-describedby={`${createInId} ${hintId}`} />
+          <input value={title} onChange={(event) => setTitle(event.target.value)} />
         </label>
         {inSkillsFolder && (
           <label>
@@ -942,24 +923,31 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             </select>
           </label>
         )}
-        <button ref={newNoteRef} type="submit" disabled={busy}>
-          <Plus size={14} aria-hidden="true" />
-          {inTemplatesFolder ? "Nueva plantilla" : "Nueva nota"}
-        </button>
-        <button
-          ref={newFolderRef}
-          type="button"
-          className="note-sidebar-secondary"
-          hidden={folderForm !== null}
-          onClick={() => setFolderForm({ name: "", message: null })}
-        >
-          <FolderPlus size={14} aria-hidden="true" />
-          Nueva carpeta
-        </button>
-        <p id={hintId} className="note-folder-hint">
-          <CornerDownRight size={12} aria-hidden="true" />
-          Usa / para crear subcarpetas (por ejemplo, Proyectos/Ideas)
-        </p>
+        {/* H-027 C2: «Nueva nota» y «Nueva carpeta» son botones de solo icono, en la misma
+            línea y centrados; el texto y el destino viven en `aria-label`/`title`. */}
+        <div className="note-create-actions">
+          <button
+            ref={newNoteRef}
+            type="submit"
+            className="note-create-icon"
+            disabled={busy}
+            aria-label={`Nueva ${inTemplatesFolder ? "plantilla" : "nota"} en ${activeFolder || "Raíz"}`}
+            title={`Crear ${inTemplatesFolder ? "plantilla" : "nota"} en ${activeFolder || "Raíz"}`}
+          >
+            <Plus size={18} aria-hidden="true" />
+          </button>
+          <button
+            ref={newFolderRef}
+            type="button"
+            className="note-create-icon note-sidebar-secondary"
+            hidden={folderForm !== null}
+            onClick={() => setFolderForm({ name: "", message: null })}
+            aria-label={`Nueva carpeta en ${activeFolder || "Raíz"}`}
+            title={`Crear carpeta en ${activeFolder || "Raíz"}`}
+          >
+            <FolderPlus size={18} aria-hidden="true" />
+          </button>
+        </div>
         </div>
       </form>
       )}
@@ -982,7 +970,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 value={folderForm.name}
                 onChange={(event) => setFolderForm({ name: event.target.value, message: null })}
                 aria-invalid={folderForm.message !== null ? true : undefined}
-                aria-describedby={folderForm.message !== null ? `${hintId} ${folderErrorId}` : hintId}
+                aria-describedby={folderForm.message !== null ? folderErrorId : undefined}
               />
             </label>
             {folderForm.message !== null && (

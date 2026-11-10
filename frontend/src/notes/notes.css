@@ -174,58 +174,23 @@
   background: var(--bg-tertiary);
 }
 
-/* «Crear en», «Nueva carpeta» y la pista de «/» (SPEC-0010 RF-002, RF-004, RF-006; R-14): 12 px, texto
-   secundario (nada de `--text-muted` como texto) y el nombre de la carpeta activa en primario/600. */
-.note-create-in {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-width: 0;
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.note-create-in svg {
-  flex-shrink: 0;
-}
-
-.note-create-in > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.note-create-in strong {
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.note-folder-hint {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-1);
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: 12px;
-}
-
-.note-folder-hint svg {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.note-sidebar-new .note-sidebar-secondary {
+/* H-027 C2: fila de los botones de solo icono «Nueva nota» / «Nueva carpeta», centrados. */
+.note-create-actions {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  font-size: 12px;
+  gap: var(--space-3);
 }
 
-.note-sidebar-new .note-sidebar-secondary[hidden] {
+.note-create-actions .note-create-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2);
+}
+
+/* El botón de carpeta se oculta mientras su formulario está abierto (atributo `hidden`). */
+.note-create-actions .note-sidebar-secondary[hidden] {
   display: none;
 }
 
