@@ -55,6 +55,15 @@
 /* H-046: misma estructura que el espacio de trabajo de una bóveda (`.vault-workspace` en notes.css): barra
    lateral a la izquierda y panel a la derecha, a todo el alto; en móvil la barra flota a un costado y se oculta. */
 
+/* Carpeta abierta: se marca como la seleccionada del árbol de documentos (fondo suave + barra de acento). */
+.files-tree-panel .note-tree-row[aria-current="true"],
+.files-tree-panel .note-tree-row[aria-current="true"]:not([type="submit"]):hover {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
 .files-tree-panel .note-tree-row[data-drop-target="true"] {
   background: var(--accent-soft);
   box-shadow: inset 0 0 0 1px var(--accent);

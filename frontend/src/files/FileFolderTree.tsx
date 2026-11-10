@@ -67,6 +67,7 @@ export function FileFolderTree({ folders, selected, onSelect, onDropFile, onDrop
   function renderNodes(nodes: FolderNode[], depth: number) {
     return nodes.map((node) => {
       const open = expanded.has(node.path);
+      const isSelected = selected === node.path;
       const indent = { "--depth": depth } as CSSProperties;
       return (
         <li key={node.path}>
@@ -76,7 +77,7 @@ export function FileFolderTree({ folders, selected, onSelect, onDropFile, onDrop
               className="note-tree-row note-tree-folder"
               style={indent}
               aria-expanded={node.children.length > 0 ? open : undefined}
-              aria-current={selected === node.path ? "true" : undefined}
+              aria-current={isSelected ? "true" : undefined}
               draggable
               onDragStart={(event) => {
                 event.dataTransfer.setData(DRAG_FOLDER, node.path);
@@ -95,7 +96,7 @@ export function FileFolderTree({ folders, selected, onSelect, onDropFile, onDrop
               ) : (
                 <ChevronRight size={12} aria-hidden="true" />
               )}
-              {open ? (
+              {open || isSelected ? (
                 <FolderOpen size={13} aria-hidden="true" className="note-tree-icon-folder" />
               ) : (
                 <Folder size={13} aria-hidden="true" className="note-tree-icon-folder" />

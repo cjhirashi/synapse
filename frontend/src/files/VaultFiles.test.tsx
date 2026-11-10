@@ -64,6 +64,21 @@ describe("VaultFiles", () => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([]);
   });
 
+  it("la carpeta abierta se marca y muestra el ícono de carpeta abierta, las demás cerradas", async () => {
+    renderPage(["Docs", "Otra"]);
+    const docs = await treeBtn("Docs");
+    const otra = await treeBtn("Otra");
+    expect(docs.querySelector("svg.lucide-folder")).not.toBeNull();
+    await userEvent.click(docs);
+    expect(docs).toHaveAttribute("aria-current", "true");
+    expect(docs.querySelector("svg.lucide-folder-open")).not.toBeNull();
+    expect(otra).not.toHaveAttribute("aria-current");
+    expect(otra.querySelector("svg.lucide-folder")).not.toBeNull();
+    await userEvent.click(otra);
+    expect(docs.querySelector("svg.lucide-folder")).not.toBeNull();
+    expect(otra.querySelector("svg.lucide-folder-open")).not.toBeNull();
+  });
+
   it("la lista toma el color de la bóveda (columna ordenada y acentos de la tabla)", async () => {
     const { value } = syncValue({ vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any, notes: emptyNotes() });
     const { container } = render(
