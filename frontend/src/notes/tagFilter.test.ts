@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { NoteSummary } from "./noteStore";
-import { countTags, filterByTags, taggedNotes } from "./tagFilter";
+import { countTags, filterByTags, searchTags, taggedNotes } from "./tagFilter";
 
 function summary(path: string, frontmatter: Record<string, unknown> | undefined, deleted = false): NoteSummary {
   return { id: path, path, rev: "1", updated_at: "2026-11-10T00:00:00Z", deleted_at: deleted ? "2026-11-10T00:00:00Z" : null, size: 1, frontmatter };
@@ -51,5 +51,31 @@ describe("filterByTags", () => {
   it("con varios tags exige todos (Y)", () => {
     expect(filterByTags(notes, ["trabajo", "tr26"]).map((n) => n.path)).toEqual(["B/Dos.md"]);
     expect(filterByTags(notes, ["trabajo", "personal"])).toEqual([]);
+  });
+});
+
+describe("searchTags", () => {
+  const tags = [
+    { tag: "filosofía-masónica", count: 1 },
+    { tag: "biblioteca", count: 121 },
+    { tag: "Bitácora", count: 3 },
+    { tag: "bitácora", count: 2 },
+  ];
+
+  it("sin texto devuelve todos", () => {
+    expect(searchTags(tags, "  ")).toEqual(tags);
+  });
+
+  it("coincide con una parte del nombre, sin distinguir mayúsculas ni acentos", () => {
+    expect(searchTags(tags, "BITACO").map((t) => t.tag)).toEqual(["Bitácora", "bitácora"]);
+    expect(searchTags(tags, "mason").map((t) => t.tag)).toEqual(["filosofía-masónica"]);
+  });
+
+  it("con la palabra exacta devuelve ese tag", () => {
+    expect(searchTags(tags, "biblioteca")).toEqual([{ tag: "biblioteca", count: 121 }]);
+  });
+
+  it("sin coincidencias devuelve vacío", () => {
+    expect(searchTags(tags, "zzz")).toEqual([]);
   });
 });

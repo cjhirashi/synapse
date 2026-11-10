@@ -44,3 +44,13 @@ export function filterByTags(notes: readonly TaggedNote[], selected: readonly st
   if (selected.length === 0) return [];
   return notes.filter((note) => selected.every((tag) => note.tags.includes(tag)));
 }
+
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+/** Tags cuyo nombre contiene el texto (sin distinguir mayúsculas ni acentos); texto vacío = todos. */
+export function searchTags(tags: readonly TagCount[], query: string): TagCount[] {
+  const needle = fold(query.trim());
+  return needle === "" ? [...tags] : tags.filter(({ tag }) => fold(tag).includes(needle));
+}

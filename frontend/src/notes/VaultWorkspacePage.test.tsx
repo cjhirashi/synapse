@@ -1384,3 +1384,30 @@ test("la franja muestra el ícono de la bóveda con su color y el título con el
   expect(chip.nextElementSibling).toBe(title);
   expect(title.style.color).toBe("");
 });
+
+test("el filtro de tags se busca por texto (parte del nombre, sin acentos) y se desmarcan todos de una vez", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Uno", "", undefined, { tags: ["bitácora", "biblioteca"] });
+  await value.notes.create(vault.id, "Dos", "", undefined, { tags: ["bitácora", "apertura"] });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await tabButton("Filtro por tags"));
+  await userEvent.click(await screen.findByRole("button", { name: /^Tags/ }));
+  const chips = () => screen.getByRole("group", { name: "Tags de la bóveda" });
+  expect(within(chips()).getAllByRole("button")).toHaveLength(3);
+
+  await userEvent.type(screen.getByRole("searchbox", { name: "Buscar tag" }), "BITACO");
+  expect(within(chips()).getAllByRole("button").map((b) => b.textContent)).toEqual(["bitácora2"]);
+  await userEvent.clear(screen.getByRole("searchbox", { name: "Buscar tag" }));
+  await userEvent.type(screen.getByRole("searchbox", { name: "Buscar tag" }), "zzz");
+  expect(screen.getByText("Ningún tag coincide.")).toBeInTheDocument();
+  await userEvent.clear(screen.getByRole("searchbox", { name: "Buscar tag" }));
+
+  expect(screen.queryByRole("button", { name: "Desmarcar todos" })).toBeNull();
+  await userEvent.click(within(chips()).getByRole("button", { name: /^apertura/ }));
+  await userEvent.click(within(chips()).getByRole("button", { name: /^bitácora/ }));
+  expect(await screen.findByRole("button", { name: /Dos/ })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Desmarcar todos" }));
+  expect(screen.queryByRole("button", { name: /Dos/ })).toBeNull();
+  expect(within(chips()).getAllByRole("button").every((b) => b.getAttribute("aria-pressed") === "false")).toBe(true);
+  expect(screen.queryByRole("button", { name: "Desmarcar todos" })).toBeNull();
+});
