@@ -278,23 +278,16 @@ function bottomLinks(rail: HTMLElement): HTMLElement[] {
   return within(bottom).queryAllByRole("link");
 }
 
-test("A2/A3/A4/A5: la zona inferior trae Archivos, Papelera y Usuario (al final) con sus rutas", async () => {
+test("A2/A4/A5: la zona inferior trae Papelera y Usuario (al final) con sus rutas, y ya no hay entrada global de Archivos (H-052)", async () => {
   const { value } = syncValue();
   renderRail(value);
   const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
   const links = bottomLinks(rail);
-  expect(links.map((l) => l.getAttribute("href"))).toEqual(["/files", "/vaults/trash", "/settings"]);
+  expect(links.map((l) => l.getAttribute("href"))).toEqual(["/vaults/trash", "/settings"]);
   // Usuario es la última entrada (A2).
-  expect(links[2]).toHaveAttribute("href", "/settings");
-  expect(within(rail).getByRole("link", { name: "Archivos" })).toHaveAttribute("href", "/files");
+  expect(links[1]).toHaveAttribute("href", "/settings");
+  expect(within(rail).queryByRole("link", { name: "Archivos" })).toBeNull();
   expect(within(rail).getByRole("link", { name: "Papelera" })).toHaveAttribute("href", "/vaults/trash");
-});
-
-test("A3: pulsar Archivos navega a /files", async () => {
-  const { value } = syncValue();
-  const user = renderRail(value);
-  await user.click(await screen.findByRole("link", { name: "Archivos" }));
-  expect(screen.getByTestId("where")).toHaveTextContent("/files");
 });
 
 test("A6: sin foto la entrada Usuario muestra las iniciales del correo (y no una imagen)", async () => {

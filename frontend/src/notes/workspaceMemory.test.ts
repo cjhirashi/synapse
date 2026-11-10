@@ -24,7 +24,7 @@ describe("workspaceMemory", () => {
       localStorage.setItem(`synapse.workspace.${userId}.${vaultId}`, JSON.stringify(data));
 
       const result = readMemory(userId, vaultId);
-      expect(result).toEqual(data);
+      expect(result).toEqual({ ...data, tab: "documentos" });
     });
 
     it("devuelve null si el JSON es inválido", () => {
@@ -149,7 +149,7 @@ describe("workspaceMemory", () => {
       writeMemory(userId, vaultId, data);
 
       const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
-      expect(stored).toEqual(data);
+      expect(stored).toEqual({ ...data, tab: "documentos" });
     });
 
     it("al cambiar de noteId y no especificar scroll, reinicia scroll a 0", () => {
@@ -161,7 +161,7 @@ describe("workspaceMemory", () => {
       writeMemory(userId, vaultId, { noteId: "note:vault1:def" });
 
       const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
-      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 0 });
+      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 0, tab: "documentos" });
     });
 
     it("al cambiar de noteId pero especificar scroll explícito, lo respeta", () => {
@@ -173,7 +173,7 @@ describe("workspaceMemory", () => {
       writeMemory(userId, vaultId, { noteId: "note:vault1:def", scroll: 500 });
 
       const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
-      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 500 });
+      expect(stored).toEqual({ noteId: "note:vault1:def", expanded: [], scroll: 500, tab: "documentos" });
     });
 
     it("al guardar el mismo noteId sin scroll explícito, conserva el scroll anterior", () => {
@@ -185,7 +185,7 @@ describe("workspaceMemory", () => {
       writeMemory(userId, vaultId, { expanded: ["folder1"] });
 
       const stored = JSON.parse(localStorage.getItem(`synapse.workspace.${userId}.${vaultId}`)!);
-      expect(stored).toEqual({ noteId: "note:vault1:abc", expanded: ["folder1"], scroll: 420 });
+      expect(stored).toEqual({ noteId: "note:vault1:abc", expanded: ["folder1"], scroll: 420, tab: "documentos" });
     });
 
     it("mezcla el patch sin pisar campos no mencionados", () => {
@@ -201,6 +201,7 @@ describe("workspaceMemory", () => {
         noteId: "note:vault1:abc",
         expanded: ["folder1", "folder2"],
         scroll: 100,
+        tab: "documentos",
       });
     });
 
@@ -271,6 +272,7 @@ describe("workspaceMemory", () => {
         noteId: null,
         expanded: ["folder1", "folder2"],
         scroll: 0,
+        tab: "documentos",
       });
     });
 
@@ -294,5 +296,34 @@ describe("workspaceMemory", () => {
       expect(() => forgetNote(userId, vaultId)).not.toThrow();
       spy.mockRestore();
     });
+  });
+});
+
+describe("pestaña recordada (H-052)", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("guarda la pestaña por usuario y bóveda y la devuelve al leer", () => {
+    writeMemory("u1", "vault1", { tab: "archivos" });
+    writeMemory("u1", "vault2", { tab: "tags" });
+    expect(readMemory("u1", "vault1")?.tab).toBe("archivos");
+    expect(readMemory("u1", "vault2")?.tab).toBe("tags");
+    expect(readMemory("u2", "vault1")).toBeNull();
+  });
+
+  it("al guardar otro campo conserva la pestaña", () => {
+    writeMemory("u1", "vault1", { tab: "tags" });
+    writeMemory("u1", "vault1", { scroll: 10 });
+    expect(readMemory("u1", "vault1")?.tab).toBe("tags");
+  });
+
+  it("lo guardado sin pestaña abre en documentos", () => {
+    localStorage.setItem("synapse.workspace.u1.vault1", JSON.stringify({ noteId: null, expanded: [], scroll: 0 }));
+    expect(readMemory("u1", "vault1")?.tab).toBe("documentos");
+  });
+
+  it("una pestaña inválida descarta lo guardado", () => {
+    localStorage.setItem("synapse.workspace.u1.vault1", JSON.stringify({ noteId: null, expanded: [], scroll: 0, tab: "otra" }));
+    expect(readMemory("u1", "vault1")).toBeNull();
+    expect(localStorage.getItem("synapse.workspace.u1.vault1")).toBeNull();
   });
 });

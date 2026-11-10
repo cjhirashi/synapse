@@ -1,5 +1,5 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation } from "react-router-dom";
@@ -12,6 +12,7 @@ import VaultWorkspacePage from "./VaultWorkspacePage";
 import { forgetNote, readMemory, writeMemory } from "./workspaceMemory";
 import { MeContext } from "../auth/RequireAuth";
 import { derivedColor } from "../vaults/vaultIcon";
+import * as uploadFileModule from "../files/uploadFile";
 import { parseMarkdownToJson } from "../editor/markdown/parseStage";
 import { PARSE_MARK } from "../editor/markdown/cachedParser";
 
@@ -1264,4 +1265,100 @@ test("H-026: el scroll recordado no se reaplica al volver a un documento ya abie
   } finally {
     layout.restore();
   }
+});
+
+// H-052: tres pestañas en la barra lateral (Documentos, Filtro por tags, Archivos), recordadas por bóveda.
+const tabButton = (name: string) => screen.findByRole("tab", { name });
+
+test("H-052: la barra trae tres pestañas y abre en Documentos con el árbol de notas", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  expect(await tabButton("Documentos")).toHaveAttribute("aria-selected", "true");
+  expect(await tabButton("Filtro por tags")).toHaveAttribute("aria-selected", "false");
+  expect(await tabButton("Archivos")).toHaveAttribute("aria-selected", "false");
+  expect(await screen.findByRole("tree", { name: "Notas" })).toBeVisible();
+});
+
+test("H-052: el filtro lista los tags y muestra solo los documentos que tienen todos los elegidos", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Uno", "", undefined, { tags: ["trabajo"] });
+  await value.notes.create(vault.id, "Dos", "", undefined, { tags: ["trabajo", "tr26"] });
+  await value.notes.create(vault.id, "Tres", "", undefined, { tags: ["personal"] });
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await tabButton("Filtro por tags"));
+
+  const chips = await screen.findByRole("group", { name: "Tags de la bóveda" });
+  expect(within(chips).getAllByRole("button").map((b) => b.textContent)).toEqual(["personal1", "tr261", "trabajo2"]);
+  expect(screen.queryByRole("tree")).toBeNull();
+  expect(screen.getByText("Elige uno o más tags para ver los documentos.")).toBeInTheDocument();
+
+  await userEvent.click(within(chips).getByRole("button", { name: /^trabajo/ }));
+  expect(await screen.findByRole("button", { name: /Uno/ })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Dos/ })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Tres/ })).toBeNull();
+
+  await userEvent.click(within(chips).getByRole("button", { name: /^tr26/ }));
+  await waitFor(() => expect(screen.queryByRole("button", { name: /Uno/ })).toBeNull());
+  expect(screen.getByRole("button", { name: /Dos/ })).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: /Dos/ }));
+  await editorRegion();
+  expect(screen.getByRole("tab", { name: "Filtro por tags" })).toHaveAttribute("aria-selected", "true");
+});
+
+test("H-052: una bóveda sin tags lo dice en la pestaña del filtro", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await tabButton("Filtro por tags"));
+  expect(await screen.findByText("Esta bóveda aún no tiene tags.")).toBeInTheDocument();
+});
+
+test("H-052: la pestaña elegida se recuerda por usuario y bóveda y se restaura al volver", async () => {
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola", "", undefined, { tags: ["a"] });
+  const first = render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await tabButton("Filtro por tags"));
+  await waitFor(() => expect(readMemory("u1", vault.id)?.tab).toBe("tags"));
+  first.unmount();
+
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  expect(await tabButton("Filtro por tags")).toHaveAttribute("aria-selected", "true");
+  cleanup();
+  render(treeMe(value, `/vaults/${vault.id}`, "u2"));
+  expect(await tabButton("Documentos")).toHaveAttribute("aria-selected", "true");
+});
+
+test("H-052: las flechas del teclado cambian de pestaña", async () => {
+  const { value, vault } = await setup();
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  const docs = await tabButton("Documentos");
+  docs.focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(await tabButton("Filtro por tags")).toHaveAttribute("aria-selected", "true");
+  await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
+  expect(await tabButton("Archivos")).toHaveAttribute("aria-selected", "true");
+});
+
+test("H-052: la pestaña Archivos trae el árbol de carpetas de la bóveda y su tabla, sin ventana aparte", async () => {
+  vi.spyOn(uploadFileModule, "listFileFolders").mockResolvedValue(["Docs"]);
+  const listFiles = vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([]);
+  const { value, vault } = await setup();
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  await userEvent.click(await tabButton("Archivos"));
+
+  const folders = await screen.findByRole("list", { name: "Carpetas de archivos" });
+  expect(within(folders).getByRole("button", { name: "Docs" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: /Subir archivo/ })).toBeInTheDocument();
+  expect(listFiles).toHaveBeenCalledWith(vault.id, "");
+  expect(screen.queryByRole("combobox", { name: /Bóveda/i })).toBeNull();
+
+  await userEvent.click(within(folders).getByRole("button", { name: "Docs" }));
+  await waitFor(() => expect(listFiles).toHaveBeenCalledWith(vault.id, "Docs"));
+
+  // Volver a Documentos restaura el árbol de notas.
+  await userEvent.click(screen.getByRole("tab", { name: "Documentos" }));
+  expect(await screen.findByRole("tree", { name: "Notas" })).toBeVisible();
+  expect(screen.queryByRole("button", { name: /Subir archivo/ })).toBeNull();
 });

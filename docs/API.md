@@ -633,7 +633,7 @@ con las keys por agente en uso. Revertir: `AGENT_ACCESS_MODE=shadow` y el mismo 
 - `DELETE /vaults/{vault_id}/file-folders?path=<ruta>` borra una carpeta **vacía** (`204`; con archivos debajo, `409` `file-folder-not-empty`: primero se mueven o se borran los archivos).
 - Los agentes con API key pueden crear, mover y borrar carpetas como cualquier operación de archivos (permiso `files` sobre la bóveda); el registro de acceso las anota como `file-folder-create`, `file-folder-move` y `file-folder-delete`.
 
-La pantalla Archivos (`/files`) usa esto: árbol de carpetas en la barra lateral (arrastrar un archivo o una carpeta sobre otra la mueve), tabla de archivos con el mismo diseño que las tablas del portafolio, y «Subir archivo» deja el archivo en la carpeta abierta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
+La pestaña «Archivos» de cada bóveda (H-052; ya no hay pantalla global de archivos) usa esto: árbol de carpetas en la barra lateral (arrastrar un archivo o una carpeta sobre otra la mueve), tabla de archivos con el mismo diseño que las tablas del portafolio, y «Subir archivo» deja el archivo en la carpeta abierta. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
 
 ## Archivos: visibilidad elegida al subir
 

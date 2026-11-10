@@ -1,7 +1,13 @@
+export type VaultTab = "documentos" | "tags" | "archivos";
+
+const VAULT_TABS: readonly VaultTab[] = ["documentos", "tags", "archivos"];
+
 export interface WorkspaceMemory {
   noteId: string | null;
   expanded: string[];
   scroll: number;
+  /** Pestaña de la barra lateral (H-052); ausente en lo guardado antes = `documentos`. */
+  tab: VaultTab;
 }
 
 const STORAGE_KEY_PREFIX = "synapse.workspace";
@@ -30,6 +36,8 @@ function isValidMemory(data: unknown, vaultId: string): data is WorkspaceMemory 
   if (typeof obj.scroll !== "number") return false;
   if (!Number.isInteger(obj.scroll) || !Number.isFinite(obj.scroll)) return false;
   if (obj.scroll < 0 || obj.scroll > 10_000_000) return false;
+
+  if (obj.tab !== undefined && !VAULT_TABS.includes(obj.tab as VaultTab)) return false;
   
   return true;
 }
@@ -56,7 +64,7 @@ export function readMemory(userId: string, vaultId: string): WorkspaceMemory | n
       return null;
     }
     
-    return { ...data, noteId: data.noteId ?? null };
+    return { ...data, noteId: data.noteId ?? null, tab: data.tab ?? "documentos" };
   } catch {
     return null;
   }
@@ -69,7 +77,7 @@ export function writeMemory(userId: string, vaultId: string, patch: Partial<Work
     // Leer lo guardado o usar defaults
     let current = readMemory(userId, vaultId);
     if (current === null) {
-      current = { noteId: null, expanded: [], scroll: 0 };
+      current = { noteId: null, expanded: [], scroll: 0, tab: "documentos" };
     }
 
     // Mezclar el patch
@@ -80,6 +88,7 @@ export function writeMemory(userId: string, vaultId: string, patch: Partial<Work
       noteId: newNoteId,
       expanded: patch.expanded !== undefined ? patch.expanded : current.expanded,
       scroll: patch.scroll !== undefined ? patch.scroll : noteIdChanged ? 0 : current.scroll,
+      tab: patch.tab !== undefined ? patch.tab : current.tab,
     };
 
     // Validar el resultado

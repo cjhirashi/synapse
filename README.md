@@ -16,7 +16,7 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
 - **Editor** con vistas Visual (Milkdown), Código (CodeMirror) y Lectura; wikilinks `[[Destino]]`
   con navegación y vista previa, bloques de código con resaltado, Mermaid, tablas, tareas, HTML
   incrustado en iframe aislado (diagramas Archify), gráficos Plotly (HTML) y vídeos de YouTube.
-- **Archivos** (`/files`): subida de imágenes (5 MB) y documentos (25 MB) a MinIO con visibilidad
+- **Archivos** (pestaña «Archivos» de cada bóveda): subida de imágenes (5 MB) y documentos (25 MB) a MinIO con visibilidad
   privada o pública, tipo verificado por firma de bytes, SVG saneado, carpeta opcional, renombrar
   y borrar.
 - **Acceso de agentes:** API keys de agente (`/auth/agent-keys`, `Authorization: Bearer syn_ak_…`)

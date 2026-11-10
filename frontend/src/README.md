@@ -6,7 +6,7 @@ Código fuente React.
 src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
-├── files/      # pantalla de archivos (/files): árbol de carpetas, subir, mover, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025/H-046)
+├── files/      # archivos de una bóveda (pestaña «Archivos» de la bóveda): árbol de carpetas, subir, mover, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025/H-046/H-052)
 ├── ui/         # componentes compartidos: DataTable (tabla ordenable con el diseño de las tablas de cjhirashi-career; la usan Archivos y la lista de bóvedas)
 ├── theme/      # tema claro/oscuro/sistema (useTheme, ThemeToggle)
 ├── styles/     # tokens de diseño y estilos globales (scrollbars con el formato del tema)
@@ -41,7 +41,8 @@ cuando basta (401), y muestra sus propios textos en español; `title`/`detail` v
 | `/vaults/:id/edit` | `vaults/VaultForm.tsx` — editar (guarda sólo los campos cambiados) |
 | `/vaults/:id` | `notes/VaultWorkspacePage.tsx` — la bóveda abierta: árbol de notas + editor; id inexistente, no canónico o borrado → 404 |
 | `/vaults/trash` | `vaults/TrashPage.tsx` — borradas, con fecha de borrado, y restaurar |
-| `/files` | `files/FilesPage.tsx` — archivos de las bóvedas (MinIO): barra lateral con la misma estructura que la de las notas (`.vault-workspace`: fija a la izquierda, ancho ajustable en escritorio, flotante y ocultable en móvil) con el árbol de carpetas (`FileFolderTree.tsx`, arrastrar para mover), y tabla con `ui/DataTable.tsx` (diseño de las tablas de cjhirashi-career: columnas a su ancho con desplazamiento horizontal, nombre y acciones fijos), ícono y color por tipo de archivo en el nombre (`fileKind.tsx`), subir a la carpeta abierta, mover, renombrar, visibilidad, borrar (H-046) |
+| (pestaña «Archivos» de `/vaults/:id`) | `files/VaultFiles.tsx` — archivos de UNA bóveda (MinIO), sin ventana global ni selector de bóveda (H-052): el árbol de carpetas se dibuja con un portal en la barra lateral de la bóveda (la misma, fija a la izquierda, ancho ajustable en escritorio, flotante en móvil) y la tabla ocupa la zona principal; árbol de carpetas (`FileFolderTree.tsx`, arrastrar para mover), y tabla con `ui/DataTable.tsx` (diseño de las tablas de cjhirashi-career: columnas a su ancho con desplazamiento horizontal, nombre y acciones fijos), ícono y color por tipo de archivo en el nombre (`fileKind.tsx`), subir a la carpeta abierta, mover, renombrar, visibilidad, borrar (H-046) |
+| (pestañas de `/vaults/:id`, H-052) | `notes/VaultTabs.tsx` — barra de pestañas de la barra lateral (Documentos, Filtro por tags, Archivos; roles `tablist`/`tab`, flechas/Inicio/Fin); `notes/TagFilterPanel.tsx` + `notes/tagFilter.ts` — lista de todos los tags de la bóveda (calculados en el cliente desde `frontmatter.tags` de `notes.list`), elección de uno o varios y lista plana de los documentos que tienen TODOS los elegidos (sin árbol; la elección no se guarda); la pestaña activa se recuerda por usuario y bóveda en `workspaceMemory` (`tab`). Documentos queda montado al cambiar de pestaña (conserva carpetas y estado del editor); `/files` ya no existe en la interfaz |
 | `/settings/api-keys` | `settings/ApiKeysPage.tsx` — crear y revocar API keys de agente (con agente y administrador, H-030) |
 | `/settings/agent-access` | `settings/AgentAccessPage.tsx` — H-030: qué agente escribe en qué carpetas de cada bóveda (registro `AG - AGENTES`), con el nombre de su clave |
 | `/settings/password` | `settings/ChangePasswordPage.tsx` — cambiar contraseña |

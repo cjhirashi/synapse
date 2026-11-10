@@ -24,10 +24,13 @@ import { catalogEstados, withEstado } from "../editor/catalogEstados";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
 import { parentFolder } from "./folders";
 import { NOTE_ID_PREFIX } from "./noteRules";
+import VaultFiles from "../files/VaultFiles";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
+import TagFilterPanel from "./TagFilterPanel";
+import VaultTabs from "./VaultTabs";
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
-import { readMemory, writeMemory, forgetNote } from "./workspaceMemory";
+import { readMemory, writeMemory, forgetNote, type VaultTab } from "./workspaceMemory";
 import { isIndexPath } from "./indexRules";
 import { isInBitacora, isInMensajes } from "./metaFolders";
 import { isSystemPath } from "./metaRules";
@@ -325,6 +328,20 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     // Sólo al montar: es lo que el estado inicial de `openId` ya consumió.
   }, []);
 
+  // H-052: pestaña de la barra lateral, recordada por usuario y bóveda. El árbol de archivos de la pestaña
+  // «Archivos» se dibuja en `filesSlot`, dentro de la barra, mientras su tabla ocupa la zona principal.
+  const [tab, setTab] = useState<VaultTab>(() => remembered.current?.tab ?? "documentos");
+  const [filesSlot, setFilesSlot] = useState<HTMLElement | null>(null);
+  const panelId = useId();
+  const changeTab = useCallback(
+    (next: VaultTab) => {
+      setTab(next);
+      setShowTrash(false);
+      if (userId) writeMemory(userId, vault.id, { tab: next });
+    },
+    [userId, vault.id],
+  );
+
   /** La nota recién creada abre en edición; una elegida del árbol, en lectura. */
   const [editOnOpen, setEditOnOpen] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
@@ -509,19 +526,29 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           data-floating={isMobile ? "" : undefined}
           style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
         >
-          <NoteSidebar
-            ref={sidebarRef}
-            vaultId={vault.id}
-            vaultColor={vaultColor}
-            openId={openId}
-            onOpen={open}
-            onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
-            onShowTrash={() => setShowTrash(true)}
-            confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
-            onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
-            initialExpanded={remembered.current?.expanded}
-            onExpandedChange={rememberExpanded}
-          />
+          <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} />
+          {/* Documentos sigue montado (oculto) al cambiar de pestaña: conserva carpetas desplegadas y el estado que lee el editor. */}
+          <div id={tab === "documentos" ? panelId : undefined} role="tabpanel" className="vault-tab-panel" hidden={tab !== "documentos"}>
+            <NoteSidebar
+              ref={sidebarRef}
+              vaultId={vault.id}
+              vaultColor={vaultColor}
+              openId={openId}
+              onOpen={open}
+              onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
+              onShowTrash={() => setShowTrash(true)}
+              confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
+              onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
+              initialExpanded={remembered.current?.expanded}
+              onExpandedChange={rememberExpanded}
+            />
+          </div>
+          {tab === "tags" && (
+            <div id={panelId} role="tabpanel" className="vault-tab-panel">
+              <TagFilterPanel vaultId={vault.id} openId={openId} onOpen={open} />
+            </div>
+          )}
+          {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} />}
           {isDesktop && sidebarOpen && (
             <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
           )}
@@ -530,8 +557,9 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           {showTrash && (
             <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
           )}
-          {/* Con la papelera abierta el editor sigue montado (oculto): no se pierde un borrador. */}
-          <div hidden={showTrash} className="vault-workspace-content">
+          {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} onCloseSide={() => setSidebarOpen(false)} />}
+          {/* Con la papelera abierta (o en la pestaña Archivos) el editor sigue montado (oculto): no se pierde un borrador. */}
+          <div hidden={showTrash || tab === "archivos"} className="vault-workspace-content">
             {openId === null ? (
               // Estado vacío (SPEC-0009 RF-008): texto centrado.
               <div className="vault-workspace-empty">

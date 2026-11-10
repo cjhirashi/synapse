@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback, useId, useRef, type CSSProperties, type DragEvent } from "react";
+import { useState, useEffect, useCallback, type DragEvent } from "react";
+import { createPortal } from "react-dom";
 import { useMediaQuery } from "../layout/useMediaQuery";
-import SidebarResizeHandle from "../notes/SidebarResizeHandle";
-import { useSidebarWidth } from "../notes/useSidebarWidth";
 import { useSync } from "../sync/useSync";
-import type { Vault } from "../sync/vaultStore";
 import {
   listVaultFiles,
   listFileFolders,
@@ -104,10 +102,18 @@ function errorText(err: unknown, fallback: string): string {
 
 type Row = VaultFile & { references_count: number };
 
-export default function FilesPage() {
-  const { vaults, notes } = useSync();
-  const [allVaults, setAllVaults] = useState<Vault[]>([]);
-  const [selectedVaultId, setSelectedVaultId] = useState<string | null>(null);
+interface VaultFilesProps {
+  vaultId: string;
+  /** Contenedor de la barra lateral de la bóveda donde se dibuja el árbol de carpetas (H-052). */
+  sideSlot: HTMLElement | null;
+  /** En móvil, la barra lateral flota sobre la tabla: se pide cerrarla al elegir una carpeta final. */
+  onCloseSide?: () => void;
+}
+
+/** Archivos de una bóveda: tabla en la zona principal y árbol de carpetas en la barra lateral (`sideSlot`). */
+export default function VaultFiles({ vaultId, sideSlot, onCloseSide }: VaultFilesProps) {
+  const { notes } = useSync();
+  const selectedVaultId = vaultId;
   const [folders, setFolders] = useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = useState("");
   const [files, setFiles] = useState<VaultFile[]>([]);
@@ -133,34 +139,7 @@ export default function FilesPage() {
   // Carpetas
   const [newFolderOpen, setNewFolderOpen] = useState(false);
 
-  // Misma barra lateral que la de las notas de una bóveda: fija a la izquierda (> 640 px, ancho ajustable en
-  // escritorio) y, en móvil, ventana flotante a un costado que se oculta con el botón, al tocar fuera o con Escape.
   const isMobile = useMediaQuery("(max-width: 640px)");
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const { width: sidebarWidth, setWidth: setSidebarWidth, reset: resetSidebarWidth } = useSidebarWidth();
-  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
-  const sideId = useId();
-  const sideRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
-
-  useEffect(() => {
-    if (!isMobile || !sidebarOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSidebarOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [isMobile, sidebarOpen]);
   const [newFolderName, setNewFolderName] = useState("");
   const [newFolderError, setNewFolderError] = useState<string | null>(null);
   const [folderRename, setFolderRename] = useState<{ path: string; name: string } | null>(null);
@@ -450,21 +429,6 @@ export default function FilesPage() {
     }
   }
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const list = await vaults.list({ deleted: false });
-        setAllVaults(list);
-        if (!selectedVaultId && list.length > 0) {
-          setSelectedVaultId(list[0].id);
-        }
-      } catch (err) {
-        console.error("Failed to load vaults:", err);
-      }
-    };
-    void load();
-  }, [vaults, selectedVaultId]);
-
   // Al cambiar de bóveda: carpetas nuevas y vuelta a la raíz.
   useEffect(() => {
     if (!selectedVaultId) return;
@@ -604,18 +568,78 @@ export default function FilesPage() {
 
   const crumbs = selectedFolder ? selectedFolder.split("/") : [];
 
-  const toggleLabel = sidebarOpen ? "Ocultar la barra de carpetas" : "Mostrar la barra de carpetas";
-
   function selectFolder(path: string) {
     setSelectedFolder(path);
     // En móvil la barra flota sobre la tabla: se oculta al elegir una carpeta sin subcarpetas (si las tiene,
     // se queda abierta para poder seguir bajando).
-    if (isMobile && !folders.some((f) => f.startsWith(`${path}/`))) setSidebarOpen(false);
+    if (isMobile && !folders.some((f) => f.startsWith(`${path}/`))) onCloseSide?.();
   }
 
+  const treePanel = (
+    <aside className="note-sidebar" aria-label="Carpetas">
+      <div className="note-sidebar-new">
+        <button
+          type="button"
+          className="note-sidebar-secondary"
+          aria-expanded={newFolderOpen}
+          onClick={() => {
+            setNewFolderOpen((open) => !open);
+            setNewFolderError(null);
+          }}
+        >
+          <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
+        </button>
+        {newFolderOpen && (
+          <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
+            <label htmlFor="new-folder-name">
+              Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
+            </label>
+            <input
+              id="new-folder-name"
+              autoFocus
+              type="text"
+              value={newFolderName}
+              onChange={(e) => {
+                setNewFolderName(e.target.value);
+                setNewFolderError(null);
+              }}
+              aria-invalid={newFolderError ? true : undefined}
+              aria-describedby={newFolderError ? "new-folder-error" : undefined}
+            />
+            {newFolderError && (
+              <p id="new-folder-error" role="alert" className="files-side-error">
+                {newFolderError}
+              </p>
+            )}
+            <div className="files-side-actions">
+              <button type="button" onClick={() => setNewFolderOpen(false)}>
+                Cancelar
+              </button>
+              <button type="submit" className="btn-primary">
+                Crear
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+      <FileFolderTree
+        folders={folders}
+        selected={selectedFolder}
+        onSelect={selectFolder}
+        onDropFile={(fileId, destination) => void moveFileTo(fileId, destination)}
+        onDropFolder={(path, destination) => void moveFolderTo(path, destination)}
+        onRename={(path) => {
+          setFolderRename({ path, name: baseName(path) });
+          setFolderRenameError(null);
+        }}
+        onDelete={setFolderDelete}
+      />
+    </aside>
+  );
+
   return (
-    <section
-      className={`vault-workspace files-workspace${dragging ? " files-page--dragging" : ""}`}
+    <div
+      className={`vault-workspace-main files-main${dragging ? " files-page--dragging" : ""}`}
       onDragOver={(e) => {
         if (e.dataTransfer?.types?.includes("Files")) {
           e.preventDefault();
@@ -627,107 +651,8 @@ export default function FilesPage() {
       }}
       onDrop={handleDrop}
     >
-      <div
-        className="vault-workspace-side"
-        ref={sideRef}
-        id={sideId}
-        data-open={sidebarOpen ? "" : undefined}
-        data-floating={isMobile ? "" : undefined}
-        style={isDesktop ? ({ "--side-width": `${sidebarWidth}px` } as CSSProperties) : undefined}
-      >
-        <header className="vault-workspace-header">
-          <FolderOpen size={14} aria-hidden="true" />
-          <h1>Archivos</h1>
-        </header>
-        <aside className="note-sidebar" aria-label="Carpetas">
-          <div className="note-sidebar-new">
-            <label htmlFor="vault-selector">Bóveda</label>
-            <select
-              id="vault-selector"
-              value={selectedVaultId || ""}
-              onChange={(e) => setSelectedVaultId(e.target.value)}
-            >
-              {allVaults.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              className="note-sidebar-secondary"
-              aria-expanded={newFolderOpen}
-              onClick={() => {
-                setNewFolderOpen((open) => !open);
-                setNewFolderError(null);
-              }}
-            >
-              <FolderPlus size={14} aria-hidden="true" /> Nueva carpeta
-            </button>
-            {newFolderOpen && (
-              <form className="files-side-form" onSubmit={(e) => void handleCreateFolder(e)}>
-                <label htmlFor="new-folder-name">
-                  Nombre (se crea en {selectedFolder ? `«${selectedFolder}»` : "la raíz"})
-                </label>
-                <input
-                  id="new-folder-name"
-                  autoFocus
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => {
-                    setNewFolderName(e.target.value);
-                    setNewFolderError(null);
-                  }}
-                  aria-invalid={newFolderError ? true : undefined}
-                  aria-describedby={newFolderError ? "new-folder-error" : undefined}
-                />
-                {newFolderError && (
-                  <p id="new-folder-error" role="alert" className="files-side-error">
-                    {newFolderError}
-                  </p>
-                )}
-                <div className="files-side-actions">
-                  <button type="button" onClick={() => setNewFolderOpen(false)}>
-                    Cancelar
-                  </button>
-                  <button type="submit" className="btn-primary">
-                    Crear
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-          <FileFolderTree
-            folders={folders}
-            selected={selectedFolder}
-            onSelect={selectFolder}
-            onDropFile={(fileId, destination) => void moveFileTo(fileId, destination)}
-            onDropFolder={(path, destination) => void moveFolderTo(path, destination)}
-            onRename={(path) => {
-              setFolderRename({ path, name: baseName(path) });
-              setFolderRenameError(null);
-            }}
-            onDelete={setFolderDelete}
-          />
-        </aside>
-        {isDesktop && sidebarOpen && (
-          <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
-        )}
-      </div>
-
-      <div className="vault-workspace-main files-main">
+      {sideSlot && createPortal(treePanel, sideSlot)}
         <div className="files-toolbar">
-          <button
-            type="button"
-            className="vault-sidebar-toggle vault-sidebar-toggle--inline"
-            aria-expanded={sidebarOpen}
-            aria-controls={sideId}
-            aria-label={toggleLabel}
-            title={toggleLabel}
-            onClick={() => setSidebarOpen((v) => !v)}
-          >
-            {sidebarOpen ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
-          </button>
           <nav className="files-crumbs" aria-label="Ruta de la carpeta">
             <button type="button" onClick={() => setSelectedFolder("")} aria-current={selectedFolder === "" ? "page" : undefined}>
               Raíz
@@ -771,7 +696,6 @@ export default function FilesPage() {
 
         <div className="files-body">
           {notice && <p role={notice.kind}>{notice.text}</p>}
-          {allVaults.length === 0 && <p className="files-empty">Aún no tienes bóvedas.</p>}
           {status === "loading" && <p>Cargando…</p>}
           {status === "error" && (
             <div role="alert">
@@ -805,7 +729,6 @@ export default function FilesPage() {
             />
           )}
         </div>
-      </div>
 
       {/* Rename Dialog */}
       {renameDialog && (
@@ -1022,6 +945,6 @@ export default function FilesPage() {
           </button>
         </ConfirmDialog>
       )}
-    </section>
+    </div>
   );
 }

@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import FilesPage from "./FilesPage";
+import { useState } from "react";
+import VaultFiles from "./VaultFiles";
 import { WithSync, syncValue } from "../test-utils/sync";
 import * as uploadFileModule from "./uploadFile";
 
@@ -20,6 +21,7 @@ function notesWith(items: Array<{ id: string; path: string; rev: string; content
   } as any;
 }
 
+const listVaultFilesSpy = () => uploadFileModule.listVaultFiles as unknown as ReturnType<typeof vi.fn>;
 const FILE1 = "11111111-1111-4111-8111-111111111111";
 const SAMPLE_VAULT = { id: "vault-1", name: "Mi bóveda", icon: "", color: "", deleted_at: null, rev: "1" };
 
@@ -46,12 +48,23 @@ const SAMPLE_FILES: VaultFile[] = [
   },
 ];
 
-describe("FilesPage", () => {
+/** La bóveda de las pruebas, con el hueco de la barra lateral donde VaultFiles dibuja el árbol (H-052). */
+function FilesPage() {
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  return (
+    <>
+      <div ref={setSlot} data-testid="side-slot" />
+      <VaultFiles vaultId="vault-1" sideSlot={slot} />
+    </>
+  );
+}
+
+describe("VaultFiles", () => {
   beforeEach(() => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue([]);
   });
 
-  it("renders heading and vault selector (C-7)", async () => {
+  it("no trae selector de bóveda: los archivos son los de la bóveda abierta", async () => {
     const { value } = syncValue({
       vaults: { list: vi.fn().mockResolvedValue([SAMPLE_VAULT]) } as any,
       notes: emptyNotes(),
@@ -61,8 +74,9 @@ describe("FilesPage", () => {
         <FilesPage />
       </WithSync>
     );
-    expect(screen.getByRole("heading", { name: /Archivos/i })).toBeTruthy();
-    await waitFor(() => expect(screen.getByRole("combobox", { name: /Bóveda/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole("button", { name: /Subir archivo/i })).toBeInTheDocument());
+    expect(screen.queryByRole("combobox", { name: /Bóveda/i })).toBeNull();
+    expect(listVaultFilesSpy()).toHaveBeenCalledWith("vault-1", "");
   });
 
   it("shows loading state initially (C-7)", async () => {
@@ -445,7 +459,7 @@ describe("FilesPage", () => {
     );
     await screen.findByText(/Aún no hay archivos/i);
     const file = new File(["hola"], "nota.txt", { type: "text/plain" });
-    fireEvent.drop(screen.getByRole("heading", { name: /Archivos/i }).closest("section")!, { dataTransfer: { files: [file], types: ["Files"] } });
+    fireEvent.drop(screen.getByRole("button", { name: /Subir archivo/i }).closest(".files-main")!, { dataTransfer: { files: [file], types: ["Files"] } });
     await waitFor(() => expect(upload).toHaveBeenCalledWith(file, "vault-1", undefined));
     expect(await screen.findByText("hoja.xlsx")).toBeInTheDocument();
   });
@@ -552,7 +566,7 @@ function renderPage(listFolders: string[] = []) {
   );
 }
 
-describe("FilesPage con carpetas (H-046)", () => {
+describe("VaultFiles con carpetas (H-046)", () => {
   beforeEach(() => {
     vi.spyOn(uploadFileModule, "listVaultFiles").mockResolvedValue(SAMPLE_FILES);
   });
@@ -644,16 +658,6 @@ describe("FilesPage con carpetas (H-046)", () => {
     await userEvent.click(await screen.findByRole("menuitem", { name: "Borrar" }));
     await userEvent.click(await screen.findByRole("button", { name: "Borrar carpeta" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("still contains files");
-  });
-
-  it("la barra de carpetas se oculta y se vuelve a mostrar con su botón, como la de las notas", async () => {
-    renderPage(["Docs"]);
-    const side = (await treeBtn("Raíz")).closest(".vault-workspace-side") as HTMLElement;
-    expect(side).toHaveAttribute("data-open");
-    await userEvent.click(screen.getByRole("button", { name: "Ocultar la barra de carpetas" }));
-    expect(side).not.toHaveAttribute("data-open");
-    await userEvent.click(screen.getByRole("button", { name: "Mostrar la barra de carpetas" }));
-    expect(side).toHaveAttribute("data-open");
   });
 
   it("la tabla se desplaza en horizontal en vez de estrechar sus columnas (sin estilos en línea)", async () => {

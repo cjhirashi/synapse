@@ -815,3 +815,157 @@ body.is-resizing {
 /* H-042: el buzón entre agentes es solo para agentes; el usuario lo lee. */
 .note-sidebar-readonly { display: flex; align-items: center; gap: 0.4rem; margin: 0 0 0.5rem; padding: 0.4rem 0.6rem; font-size: 0.8rem; opacity: 0.85; border: 1px dashed currentColor; border-radius: 6px; }
 .mensaje-view-facts { margin-bottom: 0.75rem; }
+
+/* H-052: pestañas de la barra lateral de la bóveda. */
+.vault-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: var(--space-1) var(--space-2) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.vault-tab {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  opacity: 0.75;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.vault-tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vault-tab[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  opacity: 1;
+  font-weight: 600;
+}
+
+.vault-tab:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Cada pestaña llena la barra; `hidden` conserva el estado de la que no se ve. */
+.vault-tab-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vault-tab-panel[hidden] {
+  display: none;
+}
+
+.tag-filter {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.tag-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.tag-chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+
+.tag-chip:focus-visible,
+.tag-result:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.tag-chip-count {
+  opacity: 0.7;
+  font-size: 0.75rem;
+}
+
+.tag-filter-results ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tag-filter-empty,
+.tag-filter-hint,
+.tag-filter-count {
+  margin: 0;
+  font-size: 0.8125rem;
+  opacity: 0.75;
+}
+
+.tag-result {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tag-result:hover,
+.tag-result[aria-current="true"] {
+  background: var(--accent-soft);
+}
+
+.tag-result-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tag-result-title,
+.tag-result-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tag-result-path {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
