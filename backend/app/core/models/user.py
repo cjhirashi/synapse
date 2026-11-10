@@ -18,6 +18,10 @@ class User(Base):
     created_at = Column(DateTime, nullable=False)
     # Zona horaria del propietario (H-030b): hora de la bitácora y corte de día. Nombre IANA.
     timezone = Column(String, nullable=False, default="America/Mexico_City", server_default="America/Mexico_City")
+    # Perfil (H-028)
+    display_name = Column(String(80), nullable=True)  # Nombre visible del usuario
+    avatar_content_type = Column(String, nullable=True)  # image/png, image/jpeg, image/webp
+    avatar_version = Column(Integer, nullable=False, default=0, server_default='0')  # Versión de foto para cache-busting
     role = relationship("Role", back_populates="users")
 
     # Unicidad case-insensitive (RF-013); la crea la migración 003.

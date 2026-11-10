@@ -1,5 +1,15 @@
 components:
   schemas:
+    Body_put_me_photo_auth_me_photo_put:
+      properties:
+        file:
+          contentMediaType: application/octet-stream
+          title: File
+          type: string
+      required:
+      - file
+      title: Body_put_me_photo_auth_me_photo_put
+      type: object
     ChangePasswordRequest:
       properties:
         current_password:
@@ -91,6 +101,21 @@ components:
       required:
       - detail
       title: ProblemError
+      type: object
+    UpdateDisplayNameRequest:
+      additionalProperties: false
+      description: 'Cuerpo de `PATCH /auth/me`: actualiza display_name (H-028).
+
+
+        Se recortan espacios; si queda vacío, se convierte a null. Máximo 80 caracteres.'
+      properties:
+        display_name:
+          anyOf:
+          - maxLength: 80
+            type: string
+          - type: 'null'
+          title: Display Name
+      title: UpdateDisplayNameRequest
       type: object
     UserResponse:
       properties:
@@ -281,6 +306,169 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Internal Server Error
       summary: Me
+      tags:
+      - auth
+    patch:
+      description: Actualiza el perfil del usuario autenticado (display_name). Solo
+        cookie (B9 de H-028).
+      operationId: patch_me_auth_me_patch
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDisplayNameRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Patch Me
+      tags:
+      - auth
+  /auth/me/photo:
+    delete:
+      description: Borra la foto de avatar (H-028). Solo cookie.
+      operationId: delete_me_photo_auth_me_photo_delete
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Delete Me Photo
+      tags:
+      - auth
+    get:
+      description: 'Descarga la foto de avatar del propio usuario (H-028). Solo cookie.
+
+
+        `private`: la foto es de este usuario; ningún caché compartido (proxy) debe
+        servirla a otro.'
+      operationId: get_me_photo_auth_me_photo_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Profile photo not found
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Get Me Photo
+      tags:
+      - auth
+    put:
+      description: 'Sube la foto de avatar (H-028). Solo cookie (B9: una API key no
+        edita el perfil).'
+      operationId: put_me_photo_auth_me_photo_put
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_put_me_photo_auth_me_photo_put'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '413':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Profile photo too large
+        '415':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Profile photo invalid type
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Put Me Photo
       tags:
       - auth
   /auth/refresh:

@@ -6,7 +6,6 @@ así que su handler resuelve el principal a mano sólo cuando el archivo es priv
 contenido sale en binario con su `Content-Type` y cabeceras por tipo (C-3/C-5). MinIO nunca
 se expone directo.
 """
-from functools import lru_cache
 from urllib.parse import quote
 from typing import Annotated, Literal
 
@@ -16,7 +15,8 @@ from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
-from app.adapters.minio_adapter import MinioObjectStorage
+# `get_object_storage` se reexporta: `tests/test_files_api.py` lo importa desde aquí para sobrescribirlo.
+from app.adapters.minio_adapter import get_object_storage  # noqa: F401
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal
 from app.core.errors import (
@@ -94,12 +94,6 @@ def _get_response_headers(record) -> dict[str, str]:
         headers["Cache-Control"] = "private, no-store"
 
     return headers
-
-
-@lru_cache
-def get_object_storage() -> ObjectStoragePort:
-    """Un único adaptador MinIO por proceso (los tests lo sustituyen por un FAKE del puerto)."""
-    return MinioObjectStorage()
 
 
 def get_file_guard(

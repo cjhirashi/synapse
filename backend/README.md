@@ -102,7 +102,11 @@ de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
 | `POST /auth/login` `{email,password}` | 200 + cookies · 401 |
 | `POST /auth/refresh` | 200 + nuevos `access_token` y `refresh_token` (rotación) · 401 |
 | `POST /auth/logout` | 204, limpia cookies y revoca el refresh token |
-| `GET /auth/me` | 200 `{user_id,role,must_change_password}` · 401 |
+| `GET /auth/me` | 200 `{user_id,email,role,must_change_password,display_name,photo_url}` · 401 |
+| `PATCH /auth/me` `{display_name}` (sólo cookie, H-028) | 200 mismo cuerpo que GET · 401 · 422 (más de 80 caracteres tras recortar) |
+| `PUT /auth/me/photo` multipart `file` (sólo cookie, H-028) | 200 mismo cuerpo que GET · 401 · 413 (> 2 MB) · 415 (tipo no admitido por contenido) · 503 |
+| `DELETE /auth/me/photo` (sólo cookie, H-028) | 200 mismo cuerpo que GET (`photo_url: null`) · 401 · 503 |
+| `GET /auth/me/photo` (sólo cookie, H-028) | 200 bytes de la foto · 401 · 404 · 503 |
 | `POST /auth/change-password` `{current_password,new_password}` | 204 + cookies nuevas · 400 · 422 |
 | `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
 
@@ -445,7 +449,10 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `precondition-failed` | 412 | `If-Match` distinto del `ETag` vigente de la bóveda |
 | `precondition-required` | 428 | escritura de bóveda sin `If-Match` |
 | `validation-error` | 422 | cuerpo, query, path o cabecera inválidos; política de contraseña; `cursor` inválido |
-| `storage-unavailable` | 503 | CouchDB inaccesible |
+| `storage-unavailable` | 503 | CouchDB inaccesible; o MinIO inaccesible en las rutas de foto de perfil |
+| `profile-photo-not-found` | 404 | `GET /auth/me/photo` de un usuario sin foto |
+| `profile-photo-too-large` | 413 | `PUT /auth/me/photo` con más de 2 MB |
+| `profile-photo-invalid-type` | 415 | `PUT /auth/me/photo` cuyo contenido no es PNG, JPEG ni WebP (el nombre y el Content-Type no cuentan) |
 | `sync-endpoint-not-found` | 404 | ruta o método bajo `/sync` fuera del subconjunto del canal |
 | `checkpoint-not-found` | 404 | `GET /sync/db/_local/{id}` sin checkpoint guardado |
 | `payload-too-large` | 413 | cuerpo del canal o lote de `_bulk_docs` sobre el límite (16 MiB en `_bulk_docs`) |

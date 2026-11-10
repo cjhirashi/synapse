@@ -18,7 +18,7 @@ class FakeCouchDB:
 
 
 def _service(db, couch):
-    return AuthService(AuthRepository(db), couch)
+    return AuthService(AuthRepository(db), couch, object_storage=None)
 
 
 def test_rf_015_failure_in_couchdb_rolls_back_user(db):

@@ -47,6 +47,18 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+class UpdateDisplayNameRequest(BaseModel):
+    """Cuerpo de `PATCH /auth/me`: actualiza display_name (H-028).
+
+    Se recortan espacios; si queda vacío, se convierte a null. Máximo 80 caracteres.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # El recorte va ANTES del tope: "  <80 letras>  " es válido porque los espacios sobrantes no cuentan.
+    display_name: Annotated[str, StringConstraints(strip_whitespace=True, max_length=80)] | None = None
+
+
 class TokenPayload(BaseModel):
     sub: str   # user_id — el proxy construye synapse_user_{sub}
     role: str
