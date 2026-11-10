@@ -7,7 +7,7 @@ import type { SyncContextValue } from "../sync/useSync";
 import { seedStore, syncValue, WithSync } from "../test-utils/sync";
 import AppLayout from "./AppLayout";
 
-const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false };
+const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false, display_name: null, photo_url: null };
 
 function renderAt(value: SyncContextValue, path = "/") {
   render(

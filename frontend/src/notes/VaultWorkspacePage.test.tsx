@@ -1097,7 +1097,7 @@ test("H-023 C-7: al cruzar el umbral de escritorio el ancho se quita y vuelve al
 });
 
 // H-026: la bóveda recuerda, por dispositivo, usuario y bóveda, el último documento y las carpetas desplegadas.
-const ME = (user_id: string) => ({ user_id, email: `${user_id}@example.com`, role: "admin" as const, must_change_password: false });
+const ME = (user_id: string) => ({ user_id, email: `${user_id}@example.com`, role: "admin" as const, must_change_password: false, display_name: null, photo_url: null });
 
 function treeMe(value: SyncContextValue, path: string, userId: string | null, state?: unknown) {
   return (

@@ -13,7 +13,7 @@ afterEach(() => vi.restoreAllMocks());
 
 /** Sesión válida; la réplica local es una base en memoria nueva en cada prueba. */
 function signedIn(mustChangePassword = false) {
-  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: mustChangePassword });
+  vi.spyOn(api, "getMe").mockResolvedValue({ user_id: "1", email: "test@synapse.local", role: "guest", must_change_password: mustChangePassword, display_name: null, photo_url: null });
   return memoryEnv();
 }
 
@@ -85,7 +85,7 @@ test("RF-002: mientras deba cambiar la contraseña no replica (el canal responde
 // entrar a las bóvedas en vez de volver al formulario (el estado de sesión en caché estaba obsoleto).
 test("SPEC-0002 RF-020: tras el cambio forzado de contraseña se entra a la app, no al formulario vacío", async () => {
   const { env } = signedIn(true);
-  const me = { user_id: "1", email: "test@synapse.local", role: "guest" as const };
+  const me = { user_id: "1", email: "test@synapse.local", role: "guest" as const, display_name: null, photo_url: null };
   // El servidor refleja el cambio: antes del POST exige cambiarla; después ya no.
   let changed = false;
   vi.spyOn(api, "getMe").mockImplementation(async () => ({ ...me, must_change_password: !changed }));

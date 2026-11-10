@@ -8,6 +8,9 @@ export interface Me {
   email: string;
   role: "admin" | "guest";
   must_change_password: boolean;
+  // Perfil (H-028): nombre para mostrar y URL de la foto; `null` cuando no se han puesto.
+  display_name: string | null;
+  photo_url: string | null;
 }
 
 // Rutas cuyo 401 es una respuesta final, no una sesión caducada.
@@ -72,4 +75,26 @@ export async function changePassword(current: string, next: string): Promise<voi
     method: "POST",
     body: JSON.stringify({ current_password: current, new_password: next }),
   });
+}
+
+/**
+ * Perfil (H-028). El nombre va como JSON; `null`/""→ sin nombre (el servidor recorta y limita a 80).
+ * La foto va como `multipart/form-data`: con `headers: {}` el navegador fija el `boundary` (si se
+ * dejara el `Content-Type: application/json` por defecto, el backend no podría leer el archivo).
+ * Los tres devuelven el `Me` actualizado para que quien llama refresque la sesión.
+ */
+export async function updateDisplayName(name: string | null): Promise<Me> {
+  return (
+    await request("/auth/me", { method: "PATCH", body: JSON.stringify({ display_name: name }) })
+  ).json();
+}
+
+export async function uploadPhoto(file: Blob): Promise<Me> {
+  const form = new FormData();
+  form.append("file", file);
+  return (await request("/auth/me/photo", { method: "PUT", body: form, headers: {} })).json();
+}
+
+export async function deletePhoto(): Promise<Me> {
+  return (await request("/auth/me/photo", { method: "DELETE", headers: {} })).json();
 }

@@ -6,7 +6,7 @@ import { MeContext } from "../auth/RequireAuth";
 import { syncValue, WithSync } from "../test-utils/sync";
 import AccountMenu from "./AccountMenu";
 
-const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false };
+const ME = { user_id: "1", email: "admin@synapse.test", role: "admin" as const, must_change_password: false, display_name: null, photo_url: null };
 
 function setup() {
   render(
