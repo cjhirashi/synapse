@@ -180,7 +180,7 @@ export default function AgentAccessPage() {
   return (
     <section className="agent-access-page">
       <div className="page-header">
-        <h1>Agentes por bóveda</h1>
+        <h2>Agentes por bóveda</h2>
         <Link to="/settings/api-keys">API keys</Link>
       </div>
       {error && <p role="alert">{error}</p>}

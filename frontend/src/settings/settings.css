@@ -1,141 +1,442 @@
+/* Pantalla de usuario (H-028): tarjeta de identidad, navegación de secciones y contenido en tarjetas.
+   Sólo tokens de `styles/tokens.css`. */
 .settings-page {
-  display: flex;
-  flex-direction: column;
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  padding: var(--space-2) var(--space-6) var(--space-12);
 }
 
-.settings-header {
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid var(--border);
-  background-color: var(--surface-secondary);
-  flex-shrink: 0;
-}
-
-.settings-header h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.settings-container {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Navegación lateral */
-.settings-nav {
-  width: 200px;
+.settings-inner {
+  max-width: 980px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border);
-  background-color: var(--surface-secondary);
-  padding: 1rem 0;
-  overflow-y: auto;
-  flex-shrink: 0;
+  gap: var(--space-6);
 }
 
-.settings-nav a {
-  padding: 0.75rem 1rem;
-  color: var(--text-secondary);
-  text-decoration: none;
-  display: block;
-  border-left: 3px solid transparent;
-  transition: all 0.2s ease;
-}
-
-.settings-nav a:hover {
-  background-color: var(--surface);
-  color: var(--text-primary);
-}
-
-.settings-nav a.active {
-  background-color: var(--surface);
-  color: var(--accent);
-  border-left-color: var(--accent);
-  font-weight: 500;
-}
-
-.settings-nav a:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-/* Botón cerrar sesión */
-.settings-logout {
-  margin-top: auto;
-  padding: 0.75rem 1rem;
+/* --- Tarjeta de identidad --- */
+.settings-header {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  background: none;
-  border: none;
-  color: var(--danger);
-  cursor: pointer;
-  font-size: 0.95rem;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.settings-identity {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.settings-identity h1 {
+  margin: 0;
+  max-width: 100%;
+  font-size: 1.375rem;
+  line-height: 1.25;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-email {
+  margin: 0;
+  max-width: 100%;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-role {
+  margin-top: var(--space-2);
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.settings-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
+  color: var(--danger-text);
+  background: transparent;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out);
 }
 
 .settings-logout:hover {
-  background-color: rgba(var(--danger-rgb), 0.1);
-  border-left-color: var(--danger);
+  background: var(--danger-bg);
 }
 
 .settings-logout:focus-visible {
   outline: 2px solid var(--danger);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-/* Contenido principal */
+/* --- Avatar (hero y perfil) --- */
+.settings-avatar-container {
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--border);
+  background: var(--bg-tertiary);
+}
+
+.settings-avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.settings-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
+}
+
+/* --- Navegación + contenido --- */
+.settings-container {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.settings-nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.settings-nav a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.settings-nav a:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.settings-nav a.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.settings-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .settings-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 2rem;
-  background-color: var(--surface);
+  min-width: 0;
 }
 
-/* Responsive: en móvil, la nav va arriba */
-@media (max-width: 768px) {
+.settings-content h2 {
+  margin: 0 0 var(--space-1);
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.settings-section-intro {
+  margin: 0 0 var(--space-6);
+  font-size: 0.9375rem;
+  color: var(--text-secondary);
+}
+
+/* Tarjeta de sección: la usan Perfil y, por herencia visual, los formularios de las demás secciones. */
+.settings-card,
+.settings-content .card-form {
+  max-width: none;
+  margin: 0 0 var(--space-4);
+  padding: var(--space-6);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.settings-card h3 {
+  margin: 0 0 var(--space-4);
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.settings-content .card-form h2 {
+  font-size: 1.125rem;
+  margin-bottom: var(--space-4);
+}
+
+.settings-content .page-header {
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.settings-content .page-header h2 {
+  font-size: 1.25rem;
+  margin: 0 auto 0 0;
+}
+
+/* --- Tema: tarjetas con vista previa --- */
+.theme-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.theme-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+
+.theme-option:hover {
+  border-color: var(--border-control);
+}
+
+.theme-option[aria-pressed="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.theme-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-preview {
+  display: flex;
+  flex-direction: column;
+  height: 92px;
+  overflow: hidden;
+  border: 1px solid #94a3b8;
+  border-radius: var(--radius-md);
+  background: var(--pv-bg);
+}
+
+.theme-preview-bar {
+  height: 14px;
+  background: var(--pv-bar);
+  border-bottom: 1px solid var(--pv-line);
+}
+
+.theme-preview-body {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+}
+
+.theme-preview-rail {
+  width: 14px;
+  border-radius: 4px;
+  background: var(--pv-bar);
+  border: 1px solid var(--pv-line);
+}
+
+.theme-preview-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.theme-preview-lines i {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--pv-line);
+}
+
+.theme-preview-lines i:first-child {
+  width: 60%;
+  background: var(--accent);
+}
+
+.theme-option--light {
+  --pv-bg: #ffffff;
+  --pv-bar: #f1f5f9;
+  --pv-line: #cbd5e1;
+}
+
+.theme-option--dark {
+  --pv-bg: #12121a;
+  --pv-bar: #22222e;
+  --pv-line: #3b3b4f;
+}
+
+.theme-option--system .theme-preview {
+  --pv-bg: #ffffff;
+  --pv-bar: #f1f5f9;
+  --pv-line: #cbd5e1;
+  background: linear-gradient(115deg, #ffffff 0 50%, #12121a 50% 100%);
+}
+
+.theme-option-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.theme-option-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+
+.theme-option-hint {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+/* --- Tableta y móvil: navegación como pestañas con scroll horizontal --- */
+@media (max-width: 800px) {
+  .settings-page {
+    padding: var(--space-4) var(--space-3) var(--space-8);
+  }
+
+  .settings-header {
+    flex-wrap: wrap;
+    padding: var(--space-4);
+  }
+
+  .settings-logout {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .settings-identity h1,
+  .settings-email {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .settings-container {
-    flex-direction: column;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
   }
 
   .settings-nav {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    height: auto;
-    overflow: visible;
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-2);
+    padding-bottom: var(--space-1);
   }
 
-  .settings-nav a,
-  .settings-logout {
-    padding: 0.5rem 0.5rem;
-    border-left: none;
-    border-bottom: 3px solid transparent;
-    text-align: center;
-    font-size: 0.85rem;
+  .settings-nav a {
+    flex-shrink: 0;
+    padding: var(--space-2) var(--space-4);
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 999px;
   }
 
-  .settings-nav a.active,
-  .settings-logout:hover {
-    border-bottom-color: var(--accent);
-    border-left: none;
+  .settings-nav a.active {
+    border-color: var(--accent);
   }
 
-  .settings-logout {
-    grid-column: 5;
-    margin-top: 0;
+  .settings-card,
+  .settings-content .card-form {
+    padding: var(--space-4);
   }
 
-  .settings-content {
-    padding: 1.5rem;
+  .theme-options {
+    grid-template-columns: minmax(0, 1fr);
   }
+
+  .theme-option {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .theme-preview {
+    width: 120px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+}
+
+/* --- Secciones heredadas (Contraseña, API keys, Agentes): mismos énfasis y etiquetas que Perfil --- */
+.settings-nav a:hover,
+.settings-nav a.active {
+  text-decoration: none;
+}
+
+.settings-content .card-form label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* En el encabezado de sección la acción principal es el botón; el enlace es secundario. */
+.settings-content .page-header a {
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+}
+
+.settings-content .page-header a:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-control);
+}
+
+.settings-content .page-header button {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.settings-content .page-header button:hover {
+  background: var(--accent-hover);
+}
+
+.api-keys-page > p:not([role]) {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-control);
+  border-radius: var(--radius-lg);
 }

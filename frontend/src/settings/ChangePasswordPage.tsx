@@ -37,7 +37,7 @@ export default function ChangePasswordPage({ onChanged }: { onChanged: () => voi
 
   return (
     <form className="card-form" onSubmit={submit}>
-      <h1>Cambiar contraseña</h1>
+      <h2>Cambiar contraseña</h2>
       {error && <p role="alert">{error}</p>}
       <label>
         Contraseña actual

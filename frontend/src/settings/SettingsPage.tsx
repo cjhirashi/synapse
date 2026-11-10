@@ -1,65 +1,60 @@
-import { LogOut } from "lucide-react";
+import { Bot, KeyRound, Lock, LogOut, Palette, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
-import { useMe, useRefreshMe } from "../auth/RequireAuth";
+import { useMe } from "../auth/RequireAuth";
 import { useSync } from "../sync/useSync";
+import UserAvatar from "./UserAvatar";
 import "./settings.css";
 
+const NAV_ITEMS = [
+  { href: "/settings/profile", label: "Perfil", Icon: User },
+  { href: "/settings/password", label: "Contraseña", Icon: Lock },
+  { href: "/settings/api-keys", label: "API keys", Icon: KeyRound },
+  { href: "/settings/theme", label: "Tema", Icon: Palette },
+  { href: "/settings/agent-access", label: "Agentes por bóveda", Icon: Bot },
+];
+
+const ROLE_LABEL = { admin: "Administrador", guest: "Invitado" } as const;
+
 /**
- * Pantalla de usuario (H-028 B1-B3).
- * Layout de dos columnas: navegación lateral + contenido (Outlet).
- * Encabezado con el nombre o correo del usuario.
- * Botón «Cerrar sesión» al pie de la navegación.
+ * Pantalla de usuario (H-028): tarjeta de identidad arriba (avatar, nombre, correo, rol y cerrar sesión)
+ * y debajo la navegación de secciones con su contenido (Outlet).
  */
 export default function SettingsPage() {
   const me = useMe();
-  const refreshMe = useRefreshMe();
   const { requestLogout } = useSync();
 
   const displayName = me.display_name || me.email;
 
-  const handleLogout = async () => {
-    await requestLogout();
-  };
-
-  const navItems = [
-    { href: "/settings/profile", label: "Perfil" },
-    { href: "/settings/password", label: "Contraseña" },
-    { href: "/settings/api-keys", label: "API keys" },
-    { href: "/settings/theme", label: "Tema" },
-    { href: "/settings/agent-access", label: "Agentes por bóveda" },
-  ];
-
   return (
     <div className="settings-page">
-      {/* Encabezado con el nombre del usuario */}
-      <header className="settings-header">
-        <h1>{displayName}</h1>
-      </header>
-
-      <div className="settings-container">
-        {/* Navegación lateral */}
-        <nav className="settings-nav">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              className={({ isActive }) => isActive ? "active" : ""}
-            >
-              {item.label}
-            </NavLink>
-          ))}
-
-          {/* Botón cerrar sesión al pie */}
-          <button className="settings-logout" onClick={handleLogout} aria-label="Cerrar sesión">
-            <LogOut size={20} />
+      <div className="settings-inner">
+        <header className="settings-header">
+          <UserAvatar photoUrl={me.photo_url} label={displayName} size={72} />
+          <div className="settings-identity">
+            <h1>{displayName}</h1>
+            {me.display_name && <p className="settings-email">{me.email}</p>}
+            <span className="settings-role">{ROLE_LABEL[me.role]}</span>
+          </div>
+          <button type="button" className="settings-logout" onClick={() => void requestLogout()} aria-label="Cerrar sesión">
+            <LogOut size={16} aria-hidden="true" />
             <span>Cerrar sesión</span>
           </button>
-        </nav>
+        </header>
 
-        {/* Contenido de la sección activa */}
-        <main className="settings-content">
-          <Outlet />
-        </main>
+        <div className="settings-container">
+          <nav className="settings-nav" aria-label="Secciones de usuario">
+            {NAV_ITEMS.map(({ href, label, Icon }) => (
+              <NavLink key={href} to={href} className={({ isActive }) => (isActive ? "active" : "")}>
+                <Icon size={18} aria-hidden="true" />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <main className="settings-content">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

@@ -58,12 +58,23 @@ test("B4: muestra la foto del usuario cuando existe", () => {
   expect(img).toHaveAttribute("src", "https://example.com/photo.jpg");
 });
 
-test("B4: título de la sección usa el nombre si existe", () => {
+test("B4: el título de la sección es «Perfil» y hay tarjetas de foto e información", () => {
   setup();
 
-  // El título debe ser «Perfil» o el nombre del usuario
-  const heading = screen.getByRole("heading", { name: /Perfil|Admin User/i });
-  expect(heading).toBeInTheDocument();
+  expect(screen.getByRole("heading", { level: 2, name: "Perfil" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Foto de perfil" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Información personal" })).toBeInTheDocument();
+});
+
+test("B4: «Guardar» está desactivado mientras el nombre no cambie y el correo es de solo lectura", async () => {
+  setup();
+
+  expect(screen.getByRole("button", { name: "Guardar" })).toBeDisabled();
+  expect(screen.getByLabelText("Correo")).toHaveAttribute("readonly");
+
+  const input = screen.getByDisplayValue("Admin User") as HTMLInputElement;
+  await userEvent.type(input, "!");
+  expect(screen.getByRole("button", { name: "Guardar" })).toBeEnabled();
 });
 
 test("B4: editor de nombre tiene el valor precargado", () => {

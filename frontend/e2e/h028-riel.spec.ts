@@ -55,7 +55,8 @@ for (const { label, size, theme } of CASES) {
     // Usuario abre la pantalla de perfil; sin nombre muestra el correo y las iniciales.
     await user.click();
     await expect(page).toHaveURL(/\/settings\/profile$/);
-    await expect(page.locator(".settings-header h1")).toContainText("visual-");
+    // El usuario del sembrado se comparte entre casos: puede traer ya un nombre de una pasada anterior.
+    await expect(page.locator(".settings-header h1")).not.toBeEmpty();
     await shot(page, `h028-${label}-2-perfil`);
 
     // Guardar el nombre: el encabezado y el riel muestran el nombre y no el correo.
@@ -70,8 +71,10 @@ for (const { label, size, theme } of CASES) {
     const settingsNav = page.locator(".settings-nav");
     await settingsNav.getByRole("link", { name: "Contraseña" }).click();
     await expect(page.getByLabel("Nueva contraseña", { exact: true })).toBeVisible();
+    await shot(page, `h028-${label}-5-contrasena`);
     await settingsNav.getByRole("link", { name: "API keys" }).click();
     await expect(page.getByText("Crear API key").first()).toBeVisible();
+    await shot(page, `h028-${label}-6-apikeys`);
     await settingsNav.getByRole("link", { name: "Tema" }).click();
     const group = page.getByRole("group", { name: "Tema" });
     await expect(group).toBeVisible();

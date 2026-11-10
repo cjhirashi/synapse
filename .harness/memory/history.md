@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-10] H-028b: rediseño de la pantalla de usuario (desplegada)
+
+- **Pedido de Carlos (2026-11-10, CDMX):** la ventana de usuario se veía fea; rediseñarla con criterio de UX/UI.
+- **Causa raíz del mal aspecto:** `settings.css` y `profile.css` usaban variables que no existen en el sistema (`--surface`, `--surface-secondary`, `--accent-rgb`, `--danger-rgb`), así que fondos, degradados y estados quedaban sin pintar. Se reescriben con los tokens reales.
+- **Qué cambió:** tarjeta de identidad (avatar redondo con foto o iniciales, nombre, correo, rol y «Cerrar sesión»); navegación con iconos y pestañas con scroll en móvil; Perfil en dos tarjetas (foto con botón «Elegir foto» en vez del selector nativo; nombre con contador y correo de solo lectura; «Guardar» activo solo si cambió); Tema como tres tarjetas con vista previa; secciones heredadas (Contraseña, API keys, Agentes) con estilo de tarjeta y énfasis corregido; un único `h1` por pantalla. Nuevo `UserAvatar.tsx`.
+- **Verificación:** vitest completo 2973 en verde (ProfilePage ajustada y 1 prueba nueva), `tsc` limpio, build OK. Chromium real (`e2e/h028-riel.spec.ts`) a 1280, 768 y 390 px, claro y oscuro: capturas de Perfil, Contraseña, API keys y Tema revisadas. Sin probar en navegador: la subida real de foto (sin MinIO desechable).
+- **Despliegue:** solo frontend, imagen previa `synapse-backend:pre-h028b`.
+
 ## [2026-11-10] H-028: riel principal dividido y pantalla de usuario (desplegada)
 
 - **Pedido de Carlos (2026-11-10, CDMX):** mover el usuario al riel, crear su pantalla de usuario y poner Archivos, Papelera y Usuario en la zona inferior del riel. Cambio directo, sin Gate previo; P1 a P4 de la nota resueltas con los valores recomendados (Archivos abre la pantalla de archivos de las bóvedas; foto PNG/JPG/WebP hasta 2 MB; Usuario es página completa; en móvil va dentro del riel flotante).

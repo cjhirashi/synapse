@@ -140,14 +140,18 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
 
 ## Pantalla de usuario (H-028)
 
-- `src/settings/SettingsPage.tsx` — layout de dos columnas: navegación lateral +
-  `<Outlet>` de React Router. Rutas anidadas: `/settings/profile`, `/settings/password`,
-  `/settings/api-keys`, `/settings/theme`, `/settings/agent-access`. Botón "Cerrar sesión"
-  en el pie de la navegación.
-- `src/settings/ProfilePage.tsx` — sección "Perfil": editor de nombre (máx. 80 caracteres),
-  avatar cuadrado con recorte CSS (`object-fit: cover`), previsualización al seleccionar
-  archivo, botones subir/quitar foto.
-- `src/settings/ThemePage.tsx` — sección "Tema": selector de tema claro/oscuro.
+- `src/settings/SettingsPage.tsx` — tarjeta de identidad arriba (avatar, nombre o correo en el único `h1`,
+  correo, rol y «Cerrar sesión») y debajo navegación de secciones con iconos + `<Outlet>`. Rutas anidadas:
+  `/settings/profile`, `/settings/password`, `/settings/api-keys`, `/settings/theme`, `/settings/agent-access`.
+  En ≤ 800 px la navegación pasa a pestañas con scroll horizontal. Las secciones llevan su título en `h2`.
+- `src/settings/UserAvatar.tsx` — avatar redondo: foto o iniciales sobre el acento (hero y Perfil).
+- `src/settings/ProfilePage.tsx` — sección «Perfil» en dos tarjetas: foto (elegir, subir, quitar; el selector
+  nativo queda oculto tras «Elegir foto») e información personal (nombre máx. 80 con contador, correo de solo
+  lectura; «Guardar» se activa solo si el nombre cambió).
+- `src/settings/ThemePage.tsx` — sección «Tema»: tres tarjetas con vista previa (Claro, Oscuro, Sistema).
+- Estilos en `settings.css` y `profile.css`: solo tokens de `styles/tokens.css` (nunca `--surface*` ni
+  `--accent-rgb`, que no existen). Los formularios heredados (Contraseña, API keys) toman el estilo de tarjeta
+  con `.settings-content .card-form`.
 - `src/settings/ChangePasswordPage.tsx` — sección "Cambiar contraseña", accesible a todo
   usuario autenticado (reutilizada de SPEC-0002).
 - Rutas en `src/App.tsx`: `/settings` redirige a `/settings/profile`; las demás son

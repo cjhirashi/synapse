@@ -123,7 +123,7 @@ export default function ApiKeysPage() {
   return (
     <section className="api-keys-page">
       <div className="page-header">
-        <h1>API keys</h1>
+        <h2>API keys</h2>
         <Link to="/settings/agent-access">Asignación de agentes a bóvedas</Link>
         {!creating && (
           <button
