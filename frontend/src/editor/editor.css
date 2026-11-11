@@ -1601,6 +1601,74 @@ li.note-task[data-checked="true"] .note-task-body {
   max-width: 100%;
 }
 
+/* Imagen de documento con botón de pantalla completa (abajo a la derecha, siempre visible: en móvil no hay hover). */
+.md-img {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+}
+
+.md-img > img {
+  display: block;
+}
+
+.md-img-fullscreen {
+  position: absolute;
+  right: var(--space-2);
+  bottom: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--bg-primary) 80%, transparent);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+}
+
+.md-img-fullscreen:hover,
+.md-img-fullscreen:focus-visible {
+  background: var(--bg-primary);
+}
+
+.image-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-primary);
+  cursor: zoom-out;
+}
+
+.image-viewer-img {
+  max-width: 100vw;
+  max-height: 100vh;
+  object-fit: contain;
+}
+
+.image-viewer-close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--border);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* Vista Código (SPEC-0010 RF-029, RF-040; R-9): mono 13 px con interlineado 1,8 como el mockup
    (`.edit-view-code`), números de línea en `--text-secondary` (el `--text-muted` del mockup no llega a
    4,5:1, P-2), línea activa en `--bg-secondary` (no el literal del mockup, C-3) y cursor de 2 px en

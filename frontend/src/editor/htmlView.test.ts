@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { Node as PMNode } from "@milkdown/prose/model";
 import { Schema, Node } from "@milkdown/prose/model";
-import { htmlViewFactory } from "./htmlView";
+import { htmlViewFactory, imageViewFactory } from "./htmlView";
 
 describe("htmlView", () => {
   const schema = new Schema({
@@ -200,5 +200,49 @@ describe("htmlView", () => {
     if (!view.dom) throw new Error("No dom");
     // El atributo data-value debe coincidir con el markdown original
     expect(view.dom.getAttribute("data-value")).toBe(markdown);
+  });
+});
+
+describe("imageView: pantalla completa", () => {
+  const schema = new Schema({
+    nodes: {
+      doc: { content: "block*" },
+      text: { group: "inline" },
+      paragraph: { content: "inline*", group: "block", toDOM: () => ["p", 0] },
+      image: {
+        inline: true,
+        group: "inline",
+        atom: true,
+        attrs: { src: {}, alt: { default: "" } },
+        toDOM: (node) => ["img", { src: node.attrs.src, alt: node.attrs.alt }],
+      },
+    },
+    marks: {},
+  });
+
+  it("toda imagen lleva un botón de pantalla completa que abre el visor y se cierra con Esc", () => {
+    const node = schema.nodes.image.create({ src: "https://synapse.cjhirashi.com/files/x.gif", alt: "anim" });
+    const view = imageViewFactory()(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+    const button = view.dom.querySelector("button.md-img-fullscreen") as HTMLButtonElement;
+    expect(view.dom.querySelector("img")?.getAttribute("src")).toBe("https://synapse.cjhirashi.com/files/x.gif");
+    expect(button).not.toBeNull();
+
+    button.click();
+    const viewer = document.querySelector(".image-viewer");
+    expect(viewer?.querySelector("img")?.getAttribute("src")).toBe("https://synapse.cjhirashi.com/files/x.gif");
+
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    expect(document.querySelector(".image-viewer")).toBeNull();
+  });
+
+  it("update con otra imagen conserva el botón y apunta a la nueva", () => {
+    const a = schema.nodes.image.create({ src: "https://synapse.cjhirashi.com/files/a.png" });
+    const b = schema.nodes.image.create({ src: "https://synapse.cjhirashi.com/files/b.png" });
+    const view = imageViewFactory()(a, { editable: true } as never, (() => 0) as never, [], {} as never);
+    expect(view.update?.(b, [], {} as never)).toBe(true);
+    expect(view.dom.querySelectorAll("button.md-img-fullscreen")).toHaveLength(1);
+    (view.dom.querySelector("button") as HTMLButtonElement).click();
+    expect(document.querySelector(".image-viewer img")?.getAttribute("src")).toBe("https://synapse.cjhirashi.com/files/b.png");
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
   });
 });

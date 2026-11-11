@@ -3,6 +3,7 @@
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
+import { fullscreenButton, openImageViewer } from "./imageViewer";
 import { parseYoutubeEmbedSrc, parseYoutubeUrl, youtubeEmbedUrl, youtubeWatchUrl } from "./classifyUrl";
 
 /** Renderiza el nodo html como texto plano (esquema original). */
@@ -137,8 +138,53 @@ class YoutubeImageView implements NodeView {
   }
 }
 
+/** Imagen del documento (fija o animada) con el botón de pantalla completa abajo a la derecha. */
+class FullscreenImageView implements NodeView {
+  readonly dom: HTMLSpanElement;
+  private img: HTMLImageElement;
+  private node: PMNode;
+
+  constructor(node: PMNode) {
+    this.node = node;
+    this.dom = document.createElement("span");
+    this.dom.className = "md-img";
+    this.dom.setAttribute("contenteditable", "false");
+    this.img = this.renderImg();
+    this.dom.append(
+      this.img,
+      fullscreenButton(() => {
+        const src = this.img.currentSrc || this.img.getAttribute("src") || "";
+        if (src) openImageViewer(src, this.img.alt);
+      }),
+    );
+  }
+
+  private renderImg(): HTMLImageElement {
+    const spec = this.node.type.spec.toDOM;
+    if (!spec) throw new Error("image sin toDOM");
+    return DOMSerializer.renderSpec(document, spec(this.node)).dom as HTMLImageElement;
+  }
+
+  update(next: PMNode): boolean {
+    if (next.type !== this.node.type) return false;
+    this.node = next;
+    const fresh = this.renderImg();
+    this.img.replaceWith(fresh);
+    this.img = fresh;
+    return true;
+  }
+
+  stopEvent(event: Event): boolean {
+    return event.target instanceof Element && event.target.closest(".md-img-fullscreen") !== null;
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
 export const imageViewFactory = (): NodeViewConstructor => (node, _view, _getPos) => {
   const youtube = parseYoutubeUrl(String(node.attrs.src ?? ""));
   if (youtube) return new YoutubeImageView(node, youtube);
-  return plainItem(node);
+  return new FullscreenImageView(node);
 };

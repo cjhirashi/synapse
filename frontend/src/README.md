@@ -12,6 +12,7 @@ src/
 ├── styles/     # tokens de diseño y estilos globales (scrollbars con el formato del tema)
 ├── notes/      # notas sobre la réplica local: bóveda abierta, árbol, papelera, conflictos (SPEC-0008)
 ├── editor/     # editor de una nota: vistas Visual (Milkdown) y Código (CodeMirror) (SPEC-0008)
+│               # imágenes del documento (fijas o animadas): `htmlView.ts` les pone el botón de pantalla completa (abajo a la derecha) y `imageViewer.ts` abre el visor (Fullscreen API; en iPhone, capa `fixed`; Esc o toque cierra)
 ├── brand/      # logo oficial (BrandLogo + brand.css) y sus pruebas de assets (SPEC-0011)
 ├── layout/     # marco de las rutas privadas (navegación, cuenta, barra de sincronización, cerrar sesión)
 ├── settings/   # ajustes de cuenta (cambiar contraseña; API keys de agente, SPEC-0013)
