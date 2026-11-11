@@ -1613,7 +1613,12 @@ li.note-task[data-checked="true"] .note-task-body {
   display: block;
 }
 
-.md-img-fullscreen {
+.md-embed-open-wrap {
+  position: relative;
+}
+
+.md-img-fullscreen,
+.md-embed-open {
   position: absolute;
   right: var(--space-2);
   bottom: var(--space-2);
@@ -1632,7 +1637,9 @@ li.note-task[data-checked="true"] .note-task-body {
 }
 
 .md-img-fullscreen:hover,
-.md-img-fullscreen:focus-visible {
+.md-img-fullscreen:focus-visible,
+.md-embed-open:hover,
+.md-embed-open:focus-visible {
   background: var(--bg-primary);
 }
 

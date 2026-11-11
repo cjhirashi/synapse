@@ -36,3 +36,9 @@ export function safeImageUrl(url: string): string {
   const scheme = schemeOf(url);
   return scheme !== null && IMAGE_SCHEMES.has(scheme) ? url : "";
 }
+
+/** Enlace `http`/`https` (externo al documento): se abre en una pestaña nueva; los relativos y `mailto` no. */
+export function isExternalHttpLink(url: string): boolean {
+  const scheme = schemeOf(url);
+  return scheme === "http" || scheme === "https";
+}

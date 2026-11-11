@@ -4,6 +4,7 @@ import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
 import { fullscreenButton, openImageViewer } from "./imageViewer";
+import { icon } from "./icons";
 import { parseYoutubeEmbedSrc, parseYoutubeUrl, youtubeEmbedUrl, youtubeWatchUrl } from "./classifyUrl";
 
 /** Renderiza el nodo html como texto plano (esquema original). */
@@ -16,6 +17,19 @@ function plainItem(node: PMNode): NodeView {
     contentDOM: contentDOM ?? undefined,
     update: (next) => next.type === node.type && next.attrs.value === node.attrs.value,
   };
+}
+
+/** Enlace con ícono «abrir en pestaña nueva» (esquina inferior derecha del documento incrustado). */
+function openInNewTabLink(src: string): HTMLAnchorElement {
+  const link = document.createElement("a");
+  link.className = "md-embed-open";
+  link.href = src;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.title = "Abrir en una pestaña nueva";
+  link.setAttribute("aria-label", "Abrir en una pestaña nueva");
+  link.appendChild(icon("external-link", 16));
+  return link;
 }
 
 class HtmlEmbedView implements NodeView {
@@ -63,8 +77,16 @@ class HtmlEmbedView implements NodeView {
       link.textContent = "Abrir en YouTube";
       this.dom.appendChild(link);
     } else {
-      // No es YouTube: insertar el fragmento sin cambios
+      // No es YouTube (Archify, Plotly…): el documento se ve en su sitio y un botón lo abre en una pestaña nueva.
       this.dom.appendChild(fragment);
+      this.dom.querySelectorAll("iframe").forEach((iframe) => {
+        const src = iframe.getAttribute("src");
+        if (!src) return;
+        const wrap = document.createElement("div");
+        wrap.className = "md-embed-open-wrap";
+        iframe.replaceWith(wrap);
+        wrap.append(iframe, openInNewTabLink(src));
+      });
     }
   }
 

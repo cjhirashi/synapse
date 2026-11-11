@@ -157,6 +157,14 @@ describe("MilkdownView", () => {
     expect(link).toHaveTextContent("x");
   });
 
+  it("los enlaces externos abren en pestaña nueva; los relativos y los wikilinks no", async () => {
+    const { container } = await mount({ value: "[a](https://x.test) [b](nota.md) [c](mailto:a@b.test) [[Nota A]]", readOnly: true });
+    const links = [...container.querySelectorAll(".ProseMirror a")] as HTMLAnchorElement[];
+    expect(links.map((a) => a.getAttribute("target"))).toEqual(["_blank", null, null, null]);
+    expect(links[0].getAttribute("rel")).toBe("noopener noreferrer");
+    expect(links[3].classList.contains("wikilink")).toBe(true);
+  });
+
   // RF-007
   it("sólo http/https/mailto/relativos en enlaces: tel: se quita", async () => {
     const { container } = await mount({ value: "[a](tel:123) [b](https://x.test) [c](nota.md)", readOnly: true });

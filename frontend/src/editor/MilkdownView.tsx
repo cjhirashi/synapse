@@ -57,7 +57,7 @@ import { linkPastePlugin } from "./markdown/linkPaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
 import { htmlViewFactory, imageViewFactory } from "./htmlView";
-import { safeImageUrl, safeLinkUrl } from "./safeUrl";
+import { isExternalHttpLink, safeImageUrl, safeLinkUrl } from "./safeUrl";
 import { htmlEmbedMarkup } from "../files/embed";
 // Hoja base de ProseMirror (`white-space: pre-wrap`, etc.): viaja en el chunk del editor (VU-3).
 import "prosemirror-view/style/prosemirror.css";
@@ -71,7 +71,12 @@ const safeLink = linkSchema.extendSchema((prev) => (ctx) => ({
   ...prev(ctx),
   toDOM: (mark) => [
     "a",
-    { ...ctx.get(linkAttr.key)(mark), ...mark.attrs, href: safeLinkUrl(mark.attrs.href as string) || undefined },
+    {
+      ...ctx.get(linkAttr.key)(mark),
+      ...mark.attrs,
+      href: safeLinkUrl(mark.attrs.href as string) || undefined,
+      ...(isExternalHttpLink(mark.attrs.href as string) ? { target: "_blank", rel: "noopener noreferrer" } : {}),
+    },
   ],
 }));
 

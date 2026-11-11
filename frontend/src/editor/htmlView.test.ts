@@ -45,6 +45,18 @@ describe("htmlView", () => {
     expect(iframe!.getAttribute("loading")).toBe("lazy");
   });
 
+  // Archify/Plotly: sin pantalla completa; un enlace con ícono lo abre en una pestaña nueva.
+  it("el documento incrustado lleva un enlace «abrir en pestaña nueva» y ningún botón de pantalla completa", () => {
+    const src = "https://synapse.cjhirashi.com/files/123e4567-e89b-42d3-a456-426614174000";
+    const node = createHtmlNode(`<iframe src="${src}"></iframe>`);
+    const view = htmlViewFactory()(node, { editable: true } as never, (() => 0) as never, [], {} as never);
+    const link = view.dom!.querySelector("a.md-embed-open") as HTMLAnchorElement;
+    expect(link.getAttribute("href")).toBe(src);
+    expect(link.target).toBe("_blank");
+    expect(link.rel).toBe("noopener noreferrer");
+    expect(view.dom!.querySelector(".md-img-fullscreen")).toBeNull();
+  });
+
   // 4b: iframe bloqueado (src externo) → NO hay iframe en DOM, texto visible.
   it("4b: iframe con src externo no se renderiza, nodo queda como texto", () => {
     const markdown = '<iframe src="https://evil.example/x"></iframe>';
