@@ -2,20 +2,12 @@
 // dirigiendo su prop `hover` (lo que `MilkdownView` emitiría) y una vista inyectada que pinta su `value`
 // como texto —así se verifica QUÉ cuerpo se renderiza sin montar Milkdown de verdad—. jsdom no ejerce el
 // hover real ni la geometría: la verificación en navegador la hace AIRA (lección H-012). Aquí se prueban el
-// retardo (P-3), el cierre con periodo de gracia para pasar a la tarjeta (C-3), la nota vacía (C-8), el
-// enlace roto (C-6), que la vista interna es inerte (C-4) y que no se muestra el YAML heredado (P-1).
+// retardo (P-3), el cierre con periodo de gracia para pasar a la tarjeta (C-3), el enlace roto (C-6) y que la
+// tarjeta muestra SÓLO `titulo` y `descripcion` del frontmatter (nunca el cuerpo del documento).
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ViewProps } from "./NoteEditor";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Note } from "../notes/noteStore";
 import { WikilinkPreview, type WikilinkHoverTarget } from "./WikilinkPreview";
-
-/** Props capturadas por la última vista inyectada, para comprobar qué se renderiza y que es inerte. */
-let lastViewProps: ViewProps | null = null;
-function FakeView(props: ViewProps) {
-  lastViewProps = props;
-  return <div data-testid="preview-body">{props.value}</div>;
-}
 
 const RECT = { top: 100, bottom: 120, left: 50, right: 150, width: 100, height: 20, x: 50, y: 100, toJSON: () => ({}) } as DOMRect;
 
@@ -34,13 +26,10 @@ const BROKEN: WikilinkHoverTarget = { resolvedId: null, target: "Nota Nueva", re
 function renderPreview(hover: WikilinkHoverTarget | null, props?: Partial<Parameters<typeof WikilinkPreview>[0]>) {
   const notes = props?.notes ?? notesWith({ "note:v:1": note({ path: "Nota A.md", content: "# Hola\ncuerpo" }) });
   const onCreate = props?.onCreate ?? vi.fn();
-  const utils = render(<WikilinkPreview hover={hover} notes={notes} View={FakeView} onCreate={onCreate} delayMs={props?.delayMs ?? 0} />);
+  const utils = render(<WikilinkPreview hover={hover} notes={notes} onCreate={onCreate} delayMs={props?.delayMs ?? 0} />);
   return { ...utils, notes, onCreate };
 }
 
-beforeEach(() => {
-  lastViewProps = null;
-});
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -48,39 +37,38 @@ afterEach(() => {
 describe("WikilinkPreview (H-021)", () => {
   it("C-1/P-3: la tarjeta no aparece antes del retardo y sí después", async () => {
     vi.useFakeTimers();
-    const { rerender } = render(<WikilinkPreview hover={null} notes={notesWith({})} View={FakeView} onCreate={vi.fn()} delayMs={400} />);
-    rerender(<WikilinkPreview hover={BROKEN} notes={notesWith({})} View={FakeView} onCreate={vi.fn()} delayMs={400} />);
+    const { rerender } = render(<WikilinkPreview hover={null} notes={notesWith({})} onCreate={vi.fn()} delayMs={400} />);
+    rerender(<WikilinkPreview hover={BROKEN} notes={notesWith({})} onCreate={vi.fn()} delayMs={400} />);
     act(() => void vi.advanceTimersByTime(399));
     expect(screen.queryByText(/esta nota no existe/i)).toBeNull();
     act(() => void vi.advanceTimersByTime(1));
     expect(screen.getByText(/esta nota no existe/i)).toBeInTheDocument();
   });
 
-  it("C-1/P-1: muestra el título (sin .md) y el cuerpo renderizado, sin el bloque YAML heredado", async () => {
-    const notes = notesWith({ "note:v:1": note({ path: "carpeta/Nota A.md", content: "---\ntitle: Secreto\n---\n# Hola\ncuerpo" }) });
+  it("muestra `titulo` y `descripcion` del frontmatter y NO el cuerpo", async () => {
+    const notes = notesWith({
+      "note:v:1": note({ path: "carpeta/Nota A.md", frontmatter: { titulo: "La matriz", descripcion: "Tabla rectangular de números." }, content: "# Hola\ncuerpo secreto" }),
+    });
     renderPreview(RESOLVED, { notes });
-    await screen.findByTestId("preview-body");
-    expect(screen.getByText("Nota A")).toBeInTheDocument(); // título = nombre de archivo sin .md
-    const body = lastViewProps!.value;
-    expect(body).toContain("# Hola");
-    expect(body).not.toContain("title: Secreto"); // P-1: sin propiedades YAML
-    expect(body).not.toContain("---");
+    await screen.findByText("La matriz");
+    expect(screen.getByText("Tabla rectangular de números.")).toBeInTheDocument();
+    expect(screen.queryByText(/cuerpo secreto/)).toBeNull();
+    expect(screen.queryByText(/# Hola/)).toBeNull();
   });
 
-  it("C-4: la vista interna es inerte (sin onWikilinkClick ni onWikilinkHover) y de sólo lectura", async () => {
-    renderPreview(RESOLVED);
-    await screen.findByTestId("preview-body");
-    expect(lastViewProps!.readOnly).toBe(true);
-    expect(lastViewProps!.onWikilinkClick).toBeUndefined();
-    expect((lastViewProps as unknown as { onWikilinkHover?: unknown }).onWikilinkHover).toBeUndefined();
+  it("sin `titulo` usa el nombre de archivo sin .md", async () => {
+    const notes = notesWith({ "note:v:1": note({ path: "carpeta/Nota A.md", frontmatter: { descripcion: "Algo." }, content: "x" }) });
+    renderPreview(RESOLVED, { notes });
+    await screen.findByText("Nota A");
+    expect(screen.getByText("Algo.")).toBeInTheDocument();
   });
 
-  it("C-8: una nota vacía muestra el título y «Nota vacía», sin renderizar cuerpo", async () => {
-    const notes = notesWith({ "note:v:1": note({ path: "Vacía.md", content: "" }) });
+  it("sin `descripcion` muestra «Sin descripción» aunque el documento tenga cuerpo", async () => {
+    const notes = notesWith({ "note:v:1": note({ path: "Vacía.md", frontmatter: { titulo: "Vacía" }, content: "mucho texto" }) });
     renderPreview(RESOLVED, { notes });
-    await screen.findByText("Nota vacía");
+    await screen.findByText("Sin descripción");
     expect(screen.getByText("Vacía")).toBeInTheDocument();
-    expect(screen.queryByTestId("preview-body")).toBeNull();
+    expect(screen.queryByText(/mucho texto/)).toBeNull();
   });
 
   it("C-6: un wikilink roto sin extensión muestra el aviso y, al hacer clic, pide crear la nota", async () => {
@@ -95,18 +83,17 @@ describe("WikilinkPreview (H-021)", () => {
     renderPreview({ resolvedId: null, target: "informe.docx", rect: RECT });
     await act(async () => void (await new Promise((r) => setTimeout(r, 20))));
     expect(screen.queryByText(/esta nota no existe/i)).toBeNull();
-    expect(screen.queryByTestId("preview-body")).toBeNull();
   });
 
   it("C-3: al salir del enlace la tarjeta se cierra tras el periodo de gracia, salvo que el puntero entre a la tarjeta", async () => {
     vi.useFakeTimers();
     const notes = notesWith({});
-    const { rerender } = render(<WikilinkPreview hover={BROKEN} notes={notes} View={FakeView} onCreate={vi.fn()} delayMs={0} />);
+    const { rerender } = render(<WikilinkPreview hover={BROKEN} notes={notes} onCreate={vi.fn()} delayMs={0} />);
     act(() => void vi.advanceTimersByTime(0));
     const card = screen.getByText(/esta nota no existe/i);
     // El puntero entra a la tarjeta antes de que venza la gracia: no se cierra.
     act(() => card.closest("[data-wikilink-preview]")!.dispatchEvent(new MouseEvent("mouseenter", { bubbles: true })));
-    rerender(<WikilinkPreview hover={null} notes={notes} View={FakeView} onCreate={vi.fn()} delayMs={0} />);
+    rerender(<WikilinkPreview hover={null} notes={notes} onCreate={vi.fn()} delayMs={0} />);
     act(() => void vi.advanceTimersByTime(1000));
     expect(screen.getByText(/esta nota no existe/i)).toBeInTheDocument();
     // Al salir también de la tarjeta, se cierra.
@@ -118,10 +105,10 @@ describe("WikilinkPreview (H-021)", () => {
   it("C-3: sin entrar a la tarjeta, salir del enlace la cierra al vencer la gracia", async () => {
     vi.useFakeTimers();
     const notes = notesWith({});
-    const { rerender } = render(<WikilinkPreview hover={BROKEN} notes={notes} View={FakeView} onCreate={vi.fn()} delayMs={0} />);
+    const { rerender } = render(<WikilinkPreview hover={BROKEN} notes={notes} onCreate={vi.fn()} delayMs={0} />);
     act(() => void vi.advanceTimersByTime(0));
     expect(screen.getByText(/esta nota no existe/i)).toBeInTheDocument();
-    rerender(<WikilinkPreview hover={null} notes={notes} View={FakeView} onCreate={vi.fn()} delayMs={0} />);
+    rerender(<WikilinkPreview hover={null} notes={notes} onCreate={vi.fn()} delayMs={0} />);
     act(() => void vi.advanceTimersByTime(1000));
     expect(screen.queryByText(/esta nota no existe/i)).toBeNull();
   });

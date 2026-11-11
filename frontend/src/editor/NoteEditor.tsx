@@ -1304,16 +1304,13 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
               <Visual value={legacyRead ? legacyRead.rest : draft} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} onWikilinkHover={setWikilinkHover} vaultColor={vaultColor} />
-              {/* H-021: tarjeta de vista previa del wikilink bajo el puntero. Sólo con puntero fino (C-5); usa la
-                  MISMA vista de sólo lectura para pintar el cuerpo (inerte, C-4) y el mismo `onOpenWikilink` para
-                  crear la nota rota desde la tarjeta (C-7). */}
+              {/* H-021: tarjeta de vista previa del wikilink bajo el puntero. Sólo con puntero fino (C-5); muestra
+                  `titulo` y `descripcion` del documento (no el cuerpo) y crea la nota rota con el mismo
+                  `onOpenWikilink` (C-7). */}
               {(
                 <WikilinkPreview
                   hover={wikilinkHover}
                   notes={notes}
-                  View={Visual}
-                  vaultNotes={vaultNotes}
-                  vaultColor={vaultColor}
                   onCreate={(target) => {
                     setWikilinkHover(null);
                     onOpenWikilink?.({ resolvedId: null, target });
