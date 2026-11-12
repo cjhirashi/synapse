@@ -10,7 +10,7 @@ import pytest
 from app.core.config import settings
 from app.core.models.task import VaultTask
 from app.services import agent_access_guard
-from app.services.task_retention import purge_closed_tasks
+from app.services.task_jobs import purge_closed_tasks
 from tests.conftest import TestingSessionLocal
 from tests.test_agent_api_key_access import _guest
 from tests.test_h030_api import agent_client, register, vault_of

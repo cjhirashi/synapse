@@ -472,6 +472,15 @@ class TaskPreconditionFailed(DomainError):
     detail = "Task has changed"
 
 
+class NotificationNotFound(DomainError):
+    """Aviso inexistente o de otro usuario: mismo cuerpo siempre."""
+
+    slug = "notification-not-found"
+    title = "Notification not found"
+    status = 404
+    detail = "Notification not found"
+
+
 class TaskInvalid(ValidationFailed):
     """Una regla de las tareas (dos niveles, agente asignable, ruta, estado derivado) rechaza el cuerpo."""
 

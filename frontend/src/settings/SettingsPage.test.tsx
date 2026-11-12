@@ -36,13 +36,13 @@ function setup(initialRoute = "/settings") {
 
 afterEach(() => vi.restoreAllMocks());
 
-test("B1: la navegación lateral muestra 5 enlaces en orden correcto", () => {
+test("B1: la navegación lateral muestra 6 enlaces en orden correcto", () => {
   setup();
 
   const nav = screen.getByRole("navigation");
   const links = nav.querySelectorAll("a");
 
-  expect(links).toHaveLength(5);
+  expect(links).toHaveLength(6);
   expect(links[0]).toHaveTextContent("Perfil");
   expect(links[0]).toHaveAttribute("href", "/settings/profile");
   expect(links[1]).toHaveTextContent("Contraseña");
@@ -53,6 +53,8 @@ test("B1: la navegación lateral muestra 5 enlaces en orden correcto", () => {
   expect(links[3]).toHaveAttribute("href", "/settings/theme");
   expect(links[4]).toHaveTextContent("Agentes por bóveda");
   expect(links[4]).toHaveAttribute("href", "/settings/agent-access");
+  expect(links[5]).toHaveTextContent("Notificaciones");
+  expect(links[5]).toHaveAttribute("href", "/settings/notifications");
 });
 
 test("B1: al renderizar /settings redirige a /settings/profile", () => {

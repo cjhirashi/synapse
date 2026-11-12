@@ -31,8 +31,19 @@ agentes ya está retirado y no tiene PWA ni push.
    (`TASKS_RETENTION_DAYS`), en un ciclo de fondo del proceso; sin papelera. Una subtarea nunca se elimina sola (cambiaría el
    estado derivado de su raíz). Reabrir reinicia la cuenta.
 
+## Decisiones (fase 2: notificaciones en la app)
+
+8. **Tabla `notifications` general** (`kind`, `resource_type`, `url`, `dedupe_key` única) y `notification_prefs` (tipos apagados),
+   migración 013. Solo sesión humana: un agente no lee ni marca los avisos de la persona.
+9. **Se generan al escribir** (misma transacción que el cambio): un agente asigna una tarea a la persona; un agente cambia el
+   estado de una tarea que creó la persona. La persona nunca se avisa de su propia acción.
+10. **Vencimientos** en el ciclo de fondo del proceso (`task_jobs.py`, cada 5 min, junto con la retención): avisos a 24 h, a 1 h y al
+    vencer (hasta 7 días después), solo la ventana vigente, idempotentes por `dedupe_key` (id, `due_at`, ventana).
+11. **Pantalla de avisos en el riel** (`/avisos`) con contador consultado cada 45 s con la pestaña visible, en vez de un menú
+    emergente dentro del riel angosto. La ruta de la API es `/notifications` (la de la app, en español, para no chocar con ella).
+
 ## Fases siguientes (mismo ADR, se amplía al ejecutarlas)
 
-Notificaciones en la app (tabla `notifications`, campana), vencimientos, PWA instalable con service worker `NetworkOnly` para
+PWA instalable con service worker `NetworkOnly` para
 todo lo que no sea el shell, y Web Push con VAPID y horas silenciosas. El orden lo fijó Carlos: tareas, luego notificaciones,
 al final PWA y push.

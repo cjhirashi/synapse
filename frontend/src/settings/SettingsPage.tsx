@@ -1,4 +1,4 @@
-import { Bot, KeyRound, Lock, LogOut, Palette, User } from "lucide-react";
+import { Bell, Bot, KeyRound, Lock, LogOut, Palette, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useMe } from "../auth/RequireAuth";
 import { useSync } from "../sync/useSync";
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: "/settings/api-keys", label: "API keys", Icon: KeyRound },
   { href: "/settings/theme", label: "Tema", Icon: Palette },
   { href: "/settings/agent-access", label: "Agentes por bóveda", Icon: Bot },
+  { href: "/settings/notifications", label: "Notificaciones", Icon: Bell },
 ];
 
 const ROLE_LABEL = { admin: "Administrador", guest: "Invitado" } as const;

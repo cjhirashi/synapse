@@ -12,6 +12,7 @@ from app.core.agent_access import Actor, Decision, Registration, identity
 
 STATUSES = ("pending", "in_progress", "done", "cancelled")
 CLOSED_STATUSES = ("done", "cancelled")
+STATUS_ES = {"pending": "Pendiente", "in_progress": "En progreso", "done": "Hecha", "cancelled": "Cancelada"}
 PRIORITIES = ("low", "medium", "high")
 ASSIGNEE_TYPES = ("user", "agent")
 

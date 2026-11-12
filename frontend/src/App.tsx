@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { lazy, ReactNode, Suspense } from "react";
 import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginPage from "./auth/LoginPage";
 import RequireAuth, { useMe, useRefreshMe } from "./auth/RequireAuth";
@@ -18,6 +18,9 @@ import type { SyncEnv } from "./sync/resources";
 import TrashPage from "./vaults/TrashPage";
 import VaultForm from "./vaults/VaultForm";
 import VaultListPage from "./vaults/VaultListPage";
+
+const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
+const NotificationsSettingsPage = lazy(() => import("./settings/NotificationsSettingsPage"));
 
 interface Props {
   /** Réplica, remota y replicador sustituibles en las pruebas (por defecto, los reales). */
@@ -87,6 +90,7 @@ export default function App({ syncEnv }: Props) {
           <Route path="api-keys" element={<ApiKeysPage />} />
           <Route path="theme" element={<ThemePage />} />
           <Route path="agent-access" element={<AgentAccessPage />} />
+          <Route path="notifications" element={<Suspense fallback={null}><NotificationsSettingsPage /></Suspense>} />
         </Route>
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}
         <Route path="/vaults" element={<VaultListPage />} />
@@ -96,6 +100,7 @@ export default function App({ syncEnv }: Props) {
         {/* Bóveda abierta: sidebar de notas + editor (SPEC-0008). `new` y `trash` ganan por ser estáticas. */}
         <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
         {/* Lo que la sincronización deja al usuario (SPEC-0005 RF-006, RF-013). */}
+        <Route path="/avisos" element={<Suspense fallback={null}><NotificationsPage /></Suspense>} />
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />
         <Route path="/" element={<Navigate to="/vaults" replace />} />

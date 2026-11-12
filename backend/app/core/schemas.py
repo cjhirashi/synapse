@@ -635,3 +635,43 @@ class TaskOut(BaseModel):
 class TaskListOut(BaseModel):
     items: list[TaskOut]
     total: int
+
+
+# --- Avisos (H-053) ---
+
+class NotificationOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    kind: str
+    title: str
+    body: str | None
+    vault_id: str | None
+    resource_type: str | None
+    resource_id: str | None
+    url: str | None
+    read_at: UtcDateTime | None
+    created_at: UtcDateTime
+
+
+class NotificationListOut(BaseModel):
+    items: list[NotificationOut]
+    unread: int
+
+
+class UnreadCountOut(BaseModel):
+    count: int
+
+
+class NotificationPrefsOut(BaseModel):
+    """Tipos de aviso y si están activos: `task_assigned`, `task_status`, `task_due`."""
+
+    kinds: dict[str, bool]
+
+
+class NotificationPrefsPut(BaseModel):
+    """Cuerpo de `PUT /notifications/preferences`: solo cambia los tipos enviados."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kinds: dict[Literal["task_assigned", "task_status", "task_due"], bool]

@@ -1,0 +1,16 @@
+/* Pantalla de avisos y contador del riel (H-053). Solo tokens del tema. */
+.notices-page { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; }
+.notices-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.notices-head h1 { margin: 0; font-size: 20px; }
+.notices-head button { display: inline-flex; align-items: center; gap: 6px; }
+.notices-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.notices-item { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; color: var(--text-primary); }
+.notices-item--unread { border-left: 3px solid var(--accent); background: var(--accent-soft); }
+.notices-title { font-weight: 600; }
+.notices-body { color: var(--text-secondary); font-size: 13px; }
+.notices-time { color: var(--text-muted); font-size: 12px; }
+.notices-rail-glyph { position: relative; }
+.notices-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; }
+.notices-settings { display: flex; flex-direction: column; gap: 12px; }
+.notices-settings label { display: flex; gap: 10px; align-items: flex-start; }
+.notices-settings small { display: block; color: var(--text-secondary); }

@@ -17,6 +17,7 @@ from app.core.errors import TaskInvalid, TaskNotFound, TaskPreconditionFailed
 from app.core.models.task import VaultTask
 from app.core.schemas import TaskCreate, TaskOut, TaskUpdate
 from app.services.agent_access_guard import AgentAccessGuard
+from app.services.notification_service import NotificationService
 
 _VERSION = re.compile(r'^(?:W/)?"?(\d{1,9})"?$')
 
@@ -49,12 +50,15 @@ def parse_version(if_match: str | None) -> int | None:
 class TaskService:
     def __init__(
         self, repo: TaskRepository, owner_id: str, guard: AgentAccessGuard, ensure_vault: Callable[[str], object],
+        notifier: NotificationService | None = None,
     ) -> None:
         self._repo = repo
         self._owner_id = owner_id
         self._guard = guard
         # Lanza `VaultNotFound` si la bóveda no existe o no es del usuario (lo provee la ruta con el `VaultService`).
         self._ensure_vault = ensure_vault
+        # Avisos a la persona cuando un agente cambia algo que le toca (misma transacción que el cambio).
+        self._notifier = notifier
 
     # --- Lectura ---
 
@@ -96,6 +100,8 @@ class TaskService:
         self._repo.add(task)
         if parent is not None:
             self._refresh_parent(parent)
+        if task.assignee_type == "user":
+            self._notify_assigned(task)
         return self._save(task)
 
     def update(self, vault_id: str, task_id: str, body: TaskUpdate, if_match: str | None = None) -> VaultTask:
@@ -120,6 +126,7 @@ class TaskService:
         for field in ("description", "notes"):  # un `null` explícito los vacía
             if field in sent:
                 setattr(task, field, getattr(body, field))
+        was_status, was_assignee = task.status, task.assignee_type
         if "due_at" in sent:
             task.due_at = _naive_utc(body.due_at)
         if "path" in sent:
@@ -132,6 +139,10 @@ class TaskService:
         if "status" in sent and body.status is not None:
             self._set_status(task, body.status)
         self._touch(task)
+        if task.assignee_type == "user" and was_assignee != "user":
+            self._notify_assigned(task)
+        if task.status != was_status:
+            self._notify_status(task)
         self._repo.flush()  # la sesión no vuelca sola: la raíz debe ver el estado nuevo de esta subtarea
         if task.parent_id is not None:
             self._refresh_parent(self._owned(vault_id, task.parent_id))
@@ -205,6 +216,25 @@ class TaskService:
         if derived is not None and derived != parent.status:
             self._set_status(parent, derived)
             self._touch(parent)
+
+    def _agent(self) -> str | None:
+        """El agente que hace el cambio, o `None` si lo hace la persona (la persona no se avisa de su propia acción)."""
+        author = self._guard.author
+        return author.removeprefix("agent:") if author != task_rules.USER else None
+
+    def _notify_assigned(self, task: VaultTask) -> None:
+        agent = self._agent()
+        if self._notifier is not None and agent is not None:
+            self._notifier.notify(
+                "task_assigned", f"{agent} te asignó una tarea", body=task.title, vault_id=task.vault_id,
+                resource_type="task", resource_id=task.id, url=f"/vaults/{task.vault_id}?tab=tareas&task={task.id}")
+
+    def _notify_status(self, task: VaultTask) -> None:
+        agent = self._agent()
+        if self._notifier is not None and agent is not None and task.created_by == task_rules.USER:
+            self._notifier.notify(
+                "task_status", f"{agent} marcó «{task.title}» como {task_rules.STATUS_ES[task.status]}", vault_id=task.vault_id,
+                resource_type="task", resource_id=task.id, url=f"/vaults/{task.vault_id}?tab=tareas&task={task.id}")
 
     def _save(self, task: VaultTask) -> VaultTask:
         self._repo.commit()

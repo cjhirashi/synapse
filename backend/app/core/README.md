@@ -104,7 +104,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `wikilink_rewrite.py` — reglas puras de la reescritura de wikilinks al mover o renombrar notas y carpetas (H-039, sin E/S); las usa `services/wikilink_rewrite_service.py` y las espeja `frontend/src/editor/wikilink.ts` sobre un fixture compartido.
 - `etag.py` — validador de `ETag` según RFC 7232, incluido el débil (`W/`) que un intermediario produce al comprimir (`If-Match`).
 - `json_body.py` — decodificación de cuerpos JSON acotada en profundidad (un anidamiento excesivo da 422, no 500).
-- `config.py` — `Settings` (pydantic-settings): entorno, secretos y ajustes como `AGENT_ACCESS_MODE` (`shadow` por defecto, `enforce` u `off`), `SYSTEM_DOCS_SYNC` y `TASKS_*` (retención de tareas, H-053).
+- `config.py` — `Settings` (pydantic-settings): entorno, secretos y ajustes como `AGENT_ACCESS_MODE` (`shadow` por defecto, `enforce` u `off`), `SYSTEM_DOCS_SYNC` y `TASKS_*` (retención y vencimientos de tareas, H-053).
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 
@@ -119,6 +119,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   ejecutables y verifica coherencia OOXML/ODF) y saneo de SVG (`is_safe_svg`, mismo criterio RNF-003 que el editor).
 - `models/file.py` — `File`, metadatos de un archivo subido a MinIO (migraciones 006 y 007, carpeta opcional).
 - `models/task.py` — `VaultTask`, tarea de una bóveda en dos niveles (migración 012): `parent_id`, `path` indicativa, `version` (ETag) y `completed_at` (retención).
+- `models/notification.py` — `Notification` (aviso para la persona, `dedupe_key` única) y `NotificationPref` (tipos apagados); migración 013.
 - `task_rules.py` — reglas puras de las tareas (H-053): estados, ruta indicativa, estado derivado de la raíz y permisos por agente (`decide_task`).
 
 ## Subdirectorios

@@ -667,8 +667,25 @@ Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas
 - Una raíz con subtareas toma su estado de ellas: alguna en curso o hecha → `in_progress`; todas cerradas → `done` (o `cancelled` si todas se cancelaron); si no, `pending`. Cambiarlo a mano da 422 (`/status`). Se recalcula al crear, cambiar o borrar una subtarea.
 - `path` es indicativa: se normaliza (sin `/` en los extremos) y se rechaza solo si tiene niveles vacíos, `.`, `..`, `\` o más de 500 caracteres (422, `/path`); no se comprueba que el documento o la carpeta existan.
 - `If-Match` con una versión distinta de la vigente → 412 `task-precondition-failed`.
-- **Retención:** una raíz cerrada (`done` o `cancelled`) se elimina con sus subtareas `TASKS_RETENTION_DAYS` (30) días después de `completed_at`, en un ciclo de fondo (`TASKS_PURGE_INTERVAL_SECONDS`, 3600). Sin papelera; una subtarea nunca se elimina sola; reabrir la tarea borra `completed_at`. `purge_at` lo informa en las raíces cerradas.
+- **Retención:** una raíz cerrada (`done` o `cancelled`) se elimina con sus subtareas `TASKS_RETENTION_DAYS` (30) días después de `completed_at`, en un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300). Sin papelera; una subtarea nunca se elimina sola; reabrir la tarea borra `completed_at`. `purge_at` lo informa en las raíces cerradas.
 
 **Permisos de agentes** (con `AGENT_ACCESS_MODE=enforce`; en `shadow` solo se registra en `agent_access_log`): la persona y el agente administrador, todo. Un agente registrado y activo lee todo, crea tareas y subtareas, cambia `status` y `notes` de las que tiene asignadas, y edita, reasigna o borra solo las que creó (`created_by`). Un agente sin registro, suspendido o con clave general solo lee. Un cambio no permitido → 403 `agent-access-denied`.
 
 **Errores:** 404 `task-not-found` (también si la tarea es de otra bóveda o de otro usuario), 412 `task-precondition-failed`, 403 `agent-access-denied`, 422 (con `errors[].pointer`), más los de sesión y `vault-not-found`.
+
+## Avisos y preferencias (H-053)
+
+Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key de agente no los lee ni los marca (401).
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /notifications` | Avisos del usuario, del más nuevo al más viejo. Filtros: `unread=true`, `limit` (1 a 200, 50 por defecto). Respuesta `{items, unread}`. |
+| `GET /notifications/unread-count` | `{count}` de avisos sin leer (el contador del riel). |
+| `POST /notifications/{id}/read` | Marca un aviso como leído (404 `notification-not-found` si no existe o es de otro). |
+| `POST /notifications/read-all` | Marca todos como leídos. |
+| `GET /notifications/preferences` | `{kinds: {task_assigned, task_status, task_due}}` con si cada tipo está activo. |
+| `PUT /notifications/preferences` | Cambia solo los tipos enviados; un tipo apagado deja de generar avisos. |
+
+**Tipos** (`kind`): `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
+
+**Vencimientos:** un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300) revisa las tareas abiertas asignadas a la persona: avisa a 24 h, a 1 h y al vencer (hasta 7 días después). Solo se envía la ventana vigente (una ya pasada al crear la tarea no se manda) y cambiar `due_at` reinicia los avisos. La creación es idempotente por `dedupe_key`: un reinicio no duplica.

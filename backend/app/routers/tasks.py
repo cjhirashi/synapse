@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, Header, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
+from app.adapters.notification_repository import NotificationRepository
 from app.adapters.task_repository import TaskRepository
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, require_password_changed
@@ -25,6 +26,7 @@ from app.core.schemas import TaskCreate, TaskListOut, TaskOut, TaskUpdate, Token
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
+from app.services.notification_service import NotificationService
 from app.services.task_service import TaskService
 from app.services.vault_service import VaultService
 
@@ -53,7 +55,8 @@ def get_task_service(
     vault_service = VaultService(vault_port, couch)
     guard = AgentAccessGuard(vault_port, couch, principal.sub, actor_of(principal))
     return TaskService(
-        TaskRepository(db), principal.sub, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id))
+        TaskRepository(db), principal.sub, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id),
+        notifier=NotificationService(NotificationRepository(db), principal.sub))
 
 
 def _respond(service: TaskService, task, response: Response) -> TaskOut:

@@ -336,15 +336,20 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-052: pestaña de la barra lateral, recordada por usuario y bóveda. El árbol de archivos de la pestaña
   // «Archivos» se dibuja en `filesSlot`, dentro de la barra, mientras su tabla ocupa la zona principal.
   // H-053: un enlace `?tab=tareas&task=<id>` (el de un aviso) abre la pestaña Tareas y resalta esa tarea; manda sobre la memoria.
-  const [deepLink] = useState(() => {
-    const query = new URLSearchParams(location.search);
-    return { tab: query.get("tab") === "tareas", task: query.get("task") };
-  });
-  const [tab, setTab] = useState<VaultTab>(() => (deepLink.tab ? "tareas" : remembered.current?.tab ?? "documentos"));
+  // Se relee al cambiar la URL: un aviso puede llegar con la bóveda ya abierta (no se vuelve a montar).
+  const [focusTask, setFocusTask] = useState<string | null>(() => new URLSearchParams(location.search).get("task"));
+  const [tab, setTab] = useState<VaultTab>(() => (new URLSearchParams(location.search).get("tab") === "tareas" ? "tareas" : remembered.current?.tab ?? "documentos"));
   const [filesSlot, setFilesSlot] = useState<HTMLElement | null>(null);
   const [tasksSlot, setTasksSlot] = useState<HTMLElement | null>(null);
   const [taskCount, setTaskCount] = useState(0);
   const panelId = useId();
+  useEffect(() => {
+    const query = new URLSearchParams(location.search);
+    if (query.get("tab") === "tareas") {
+      setTab("tareas");
+      setFocusTask(query.get("task"));
+    }
+  }, [location.search]);
   useEffect(() => {
     // El contador de la pestaña «Tareas» se lee al abrir la bóveda; la pestaña lo mantiene al día cuando está abierta.
     let cancelled = false;
@@ -586,7 +591,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
               vaultId={vault.id}
               accent={colorVar(vaultColor)}
               sideSlot={tasksSlot}
-              focusTaskId={deepLink.task}
+              focusTaskId={focusTask}
               onOpenNote={(id) => { changeTab("documentos"); open(id); }}
               onOpenFolder={(path) => { changeTab("documentos"); requestAnimationFrame(() => sidebarRef.current?.revealFolder(path)); }}
               onCloseSide={() => setSidebarOpen(false)}
