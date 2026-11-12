@@ -1,5 +1,13 @@
 # History — Synapse
 
+## [2026-11-12] H-052 (ajustes) y editor: afinado de la interfaz de la bóveda (desplegado)
+
+- **Pedidos de Carlos (2026-11-10 a 2026-11-12, CDMX):** pulir las pestañas de la bóveda y el editor; cambios directos, cada uno desplegado con imagen previa (`pre-h052b` a `pre-h052o`, `pre-wikilink-preview`, `pre-links-newtab`, `pre-img-fullscreen`).
+- **Qué cambió:** color de la bóveda en el árbol y la tabla de archivos, en la línea de selección y en los chips de tags (el título no se tiñe y lleva su ícono); panel de tags plegable con buscador de tags y «Desmarcar todos», y lista de resultados con el formato del árbol; barra de creación solo con íconos y ventana de nombre (`NameDialog`) también en Archivos; marco único de ventanas emergentes (`DialogFrame`) para nombre, confirmaciones y visibilidad; carpeta seleccionada con ícono abierto; pestañas inactivas solo con ícono en barras de menos de 340 px (`notes.css`, consulta de contenedor) y encabezado del panel de tags que envuelve. Editor: la vista previa de un wikilink muestra solo título y descripción; HTML incrustado y enlaces externos abren en pestaña nueva; imágenes con pantalla completa.
+- **Verificación:** vitest completo 135 archivos / 3 017 pruebas en verde (2026-11-12), `tsc` limpio. Capturas en Chromium real contra una instancia de demostración aislada (código de producción, datos de ejemplo) a 1280, 1440 y 390 px.
+- **Despliegue:** solo frontend; sin migración.
+- **Docs:** `docs/API.md` (la visibilidad se cambia desde la pestaña Archivos), `frontend/src/README.md`, `backlog.md` y la ficha del portafolio con 25 capturas nuevas.
+
 ## [2026-11-10] H-028c: la foto de perfil se sube en un solo paso (desplegada)
 
 - **Reporte de Carlos (2026-11-10, CDMX):** «subo la foto» y no aparece en los campos de usuario como en el riel.
