@@ -642,3 +642,33 @@ La pestaña «Archivos» de cada bóveda (H-052; ya no hay pantalla global de ar
 Después de subirlo, **solo la persona cambia la visibilidad**: `PATCH /files/{id}` con `visibility` desde una sesión humana (la pestaña Archivos de cada bóveda). Con una API key —de un agente o la general— responde `403` `file-visibility-user-only` y no cambia nada; renombrar con key sigue permitido. Se elige bien al subir: un archivo subido como privado ya no lo vuelve público un agente, y uno subido como público no lo vuelve privado.
 
 La herramienta `synapse_vault` de OpenClaw expone el campo en `file_upload` cuando se actualice su plugin; hasta entonces, por REST. El parámetro `folder` de `file_upload` acepta rutas anidadas (`a/b/c`) desde H-046; crear, mover y borrar carpetas solo está por REST. Contrato: `.harness/specs/h016-archivos-pantalla-y-tipos/contracts/openapi.yaml`.
+
+## Tareas de bóveda (H-053)
+
+Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas), asignables a la persona o a un agente. Las tareas viven en PostgreSQL (tabla `vault_tasks`, migración 012), no en la base de notas: se editan solo con conexión. Los endpoints aceptan la sesión (cookie) o una API key; la bóveda se valida contra la base del dueño y una tarea ajena responde 404.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /vaults/{id}/tasks` | Tareas de la bóveda, planas (la jerarquía va en `parent_id`). Filtros: `status` (repetible), `assignee` (`user` o id de agente), `due_after`, `due_before`. Respuesta `{items, total}` (hasta 1000). |
+| `GET /tasks` | Lo mismo en todas las bóvedas del dueño (con los mismos filtros). |
+| `POST /vaults/{id}/tasks` | Crea una tarea; con `parent_id` crea una subtarea. 201 con `ETag`. |
+| `POST /vaults/{id}/tasks/{task_id}/subtasks` | Crea una subtarea bajo `task_id` (manda la ruta). |
+| `GET /vaults/{id}/tasks/{task_id}` | Lee una tarea (`ETag` = `"<version>"`). |
+| `PATCH /vaults/{id}/tasks/{task_id}` | Cambia solo lo enviado (un `null` vacía `description`, `notes`, `due_at` y `path`). `If-Match: "<version>"` opcional. |
+| `DELETE /vaults/{id}/tasks/{task_id}` | Borra la tarea y, si es raíz, sus subtareas. 204. |
+
+**Campos de entrada:** `title` (1 a 255), `description`, `notes` (≤ 20 000), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `due_at` (con zona; se guarda en UTC), `assignee_type` (`user`, `agent`), `assignee_agent_id`, `path`, `sort_order`. Cualquier otro campo → 422.
+
+**Salida (`TaskOut`):** los anteriores más `id`, `vault_id`, `parent_id`, `created_by` y `updated_by` (`user` o `agent:<id>`), `version`, `created_at`, `updated_at`, `completed_at` y `purge_at`. Las fechas van en UTC con `Z`.
+
+**Reglas:**
+- Dos niveles exactos: una subtarea no puede tener subtareas (422, `/parent_id`).
+- `assignee_type: agent` exige `assignee_agent_id` de un agente registrado y activo en la bóveda (422, `/assignee_agent_id`). Volver a `user` limpia el agente.
+- Una raíz con subtareas toma su estado de ellas: alguna en curso o hecha → `in_progress`; todas cerradas → `done` (o `cancelled` si todas se cancelaron); si no, `pending`. Cambiarlo a mano da 422 (`/status`). Se recalcula al crear, cambiar o borrar una subtarea.
+- `path` es indicativa: se normaliza (sin `/` en los extremos) y se rechaza solo si tiene niveles vacíos, `.`, `..`, `\` o más de 500 caracteres (422, `/path`); no se comprueba que el documento o la carpeta existan.
+- `If-Match` con una versión distinta de la vigente → 412 `task-precondition-failed`.
+- **Retención:** una raíz cerrada (`done` o `cancelled`) se elimina con sus subtareas `TASKS_RETENTION_DAYS` (30) días después de `completed_at`, en un ciclo de fondo (`TASKS_PURGE_INTERVAL_SECONDS`, 3600). Sin papelera; una subtarea nunca se elimina sola; reabrir la tarea borra `completed_at`. `purge_at` lo informa en las raíces cerradas.
+
+**Permisos de agentes** (con `AGENT_ACCESS_MODE=enforce`; en `shadow` solo se registra en `agent_access_log`): la persona y el agente administrador, todo. Un agente registrado y activo lee todo, crea tareas y subtareas, cambia `status` y `notes` de las que tiene asignadas, y edita, reasigna o borra solo las que creó (`created_by`). Un agente sin registro, suspendido o con clave general solo lee. Un cambio no permitido → 403 `agent-access-denied`.
+
+**Errores:** 404 `task-not-found` (también si la tarea es de otra bóveda o de otro usuario), 412 `task-precondition-failed`, 403 `agent-access-denied`, 422 (con `errors[].pointer`), más los de sesión y `vault-not-found`.

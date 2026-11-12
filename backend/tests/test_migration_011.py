@@ -34,8 +34,11 @@ def test_migration_011_round_trip_upgrade_downgrade_upgrade(tmp_path, monkeypatc
     cfg = Config(str(BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
 
-    # Una sola cabeza: si alguien añade otra migración sin encadenarla, este test lo avisa.
-    assert ScriptDirectory.from_config(cfg).get_current_head() == HEAD_011
+    # Una sola cabeza y 011 en su cadena: si alguien añade otra migración sin encadenarla, este test lo avisa
+    # (la cabeza ya no es 011 desde que migraciones posteriores se encadenan detrás de ella).
+    scripts = ScriptDirectory.from_config(cfg)
+    assert len(scripts.get_heads()) == 1
+    assert HEAD_011 in {rev.revision for rev in scripts.walk_revisions()}
 
     engine = create_engine(url)
     try:

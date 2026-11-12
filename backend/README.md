@@ -15,9 +15,9 @@ backend/
 ├── app/
 │   ├── core/         # config, seguridad (Argon2id), dependencias, esquemas, modelos, errores, reglas de nota/atributos/fechas, seguridad de archivos, marcas de tiempo
 │   │   └── ports/    # Interfaces abstractas (Protocols de Python)
-│   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, reservations.py, sync_*.py)
-│   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
-│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, folders.py, files.py, sync.py)
+│   ├── services/     # Lógica de negocio (auth_service.py, agent_key_service.py, vault_service.py, note_service.py, note_content_service.py, file_service.py, task_service.py, task_retention.py, reservations.py, sync_*.py)
+│   ├── adapters/     # Implementaciones concretas (PostgreSQL: auth_repository.py, agent_key_repository.py, file_repository.py, task_repository.py; CouchDB: vault_repository.py; MinIO: minio_adapter.py)
+│   ├── routers/      # Endpoints FastAPI (auth.py, admin.py, agent_keys.py, agent_access.py, vaults.py, notes.py, folders.py, files.py, tasks.py, sync.py)
 │   ├── bootstrap.py  # Siembra del admin al arrancar
 │   ├── spa.py        # Sirve la SPA (SPEC-0007): estáticos del build + fallback de React Router
 │   └── main.py
@@ -41,6 +41,9 @@ backend no arranca si falta alguna de las obligatorias (ver `.env.example` en la
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin sembrado al arrancar |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO (archivos subidos). Obligatorias. `MINIO_ENDPOINT` (`synapse-minio:9000`) y `MINIO_BUCKET` (`synapse-files`) tienen valor por defecto |
 | `AGENT_ACCESS_MODE` | Permisos por agente (H-030): `shadow` (por defecto) registra lo que rechazaría el registro de `AG - AGENTES` sin bloquear; `enforce` rechaza con 403; `off` no evalúa. Los valores por defecto de las siguientes sí existen |
+| `TASKS_RETENTION_DAYS` | (H-053) Días que una tarea cerrada (hecha o cancelada) se conserva antes de eliminarse con sus subtareas. 30 por defecto. |
+| `TASKS_PURGE` | (H-053) `true` (por defecto) arranca el ciclo de fondo que elimina las tareas vencidas por retención; `false` lo apaga (las pruebas lo apagan). |
+| `TASKS_PURGE_INTERVAL_SECONDS` | (H-053) Cada cuánto corre ese ciclo. 3600 por defecto. |
 | `SEED_AG_FOLDERS` (`true`) | Las bóvedas nuevas nacen con las carpetas reservadas (`AG - *`, `BITACORA`, `PLANTILLAS`) |
 | `SYSTEM_DOCS_SYNC` (`true`) | Al arrancar replica en segundo plano la skill global y `plantilla-skill` en todas las bóvedas (idempotente) |
 | `BITACORA_DOCS` (`true`) | Genera los documentos diarios de `BITACORA/` desde el registro de cambios (`change_log`, que se escribe siempre) |
@@ -341,6 +344,8 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `leave:skill`, `leave:accion`, `leave:a` | (H-041 E4) resolución inválida al quitar o suspender un gestor (skill ajena o repetida, acción no permitida, asignar a quien no es invitado) |
 | `skill:path` | (H-041 E2) una skill en una subcarpeta de `AG - SKILLS` |
 | `sistema:reserved` | (H-041) una nota que no es de sistema trae el atributo `sistema` |
+| `task-not-found` | (H-053) la tarea no existe en esa bóveda, o es de otro usuario |
+| `task-precondition-failed` | (H-053) `If-Match` distinto de la `version` vigente de la tarea (412) |
 | `agent-access-denied` | (H-030) solo con `AGENT_ACCESS_MODE=enforce`: el registro de `AG - AGENTES` no permite a esa clave escribir ahí |
 | `note-path-taken` | otra nota activa de la misma bóveda usa una ruta equivalente (`NFKC` + `casefold`) |
 

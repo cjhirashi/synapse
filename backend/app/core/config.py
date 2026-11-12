@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     # H-030 E6: `shadow` (por defecto) solo registra lo que el registro de `AG - AGENTES` decidiría; `enforce`
     # rechaza con 403; `off` ni evalúa. El corte (E9) es pasar a `enforce`.
     AGENT_ACCESS_MODE: str = "shadow"
+    # H-053: una raíz de tareas cerrada se elimina (con sus subtareas) pasados estos días; el ciclo de fondo corre cada
+    # `TASKS_PURGE_INTERVAL_SECONDS`. `TASKS_PURGE=false` lo apaga (la suite de pruebas lo apaga por defecto).
+    TASKS_RETENTION_DAYS: int = 30
+    TASKS_PURGE: bool = True
+    TASKS_PURGE_INTERVAL_SECONDS: int = 3600
     # H-030 E3: las bóvedas nuevas nacen con las carpetas reservadas (INDICES de `AG - *`, BITACORA y
     # PLANTILLAS). Interruptor para desactivarlo sin tocar código; la suite de pruebas lo apaga por defecto.
     SEED_AG_FOLDERS: bool = True

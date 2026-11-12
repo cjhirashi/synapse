@@ -1,11 +1,11 @@
 import json
 import re
 import unicodedata
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Annotated, Literal
 
 from pydantic import (
-    AfterValidator, BaseModel, ConfigDict, Field, StringConstraints, field_validator,
+    AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer, StringConstraints, field_validator,
 )
 
 from app.core.errors import field_error
@@ -555,3 +555,83 @@ class ShadowReportOut(BaseModel):
     total: int
     counts: list[ShadowCountOut]
     recent_denies: list[ShadowDenyOut]
+
+
+# --- Tareas de bóveda (H-053) ---
+
+def _utc_z(value: datetime) -> str:
+    """Fecha de la tabla (UTC naive) con su `Z`: el navegador no la tome por hora local."""
+    return value.replace(tzinfo=UTC).isoformat().replace("+00:00", "Z")
+
+
+UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_used="json")]
+TaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
+TaskText = Annotated[str, StringConstraints(max_length=20000)]
+TaskPath = Annotated[str, StringConstraints(max_length=600)]
+
+
+class TaskCreate(BaseModel):
+    """Cuerpo de `POST /vaults/{id}/tasks` (y de `.../tasks/{task_id}/subtasks`, donde `parent_id` lo pone la ruta)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle
+    description: TaskText | None = None
+    notes: TaskText | None = None
+    status: Literal["pending", "in_progress", "done", "cancelled"] = "pending"
+    priority: Literal["low", "medium", "high"] = "medium"
+    due_at: datetime | None = None
+    assignee_type: Literal["user", "agent"] = "user"
+    assignee_agent_id: AgentId | None = None
+    path: TaskPath | None = None
+    parent_id: str | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+
+class TaskUpdate(BaseModel):
+    """Cuerpo de `PATCH /vaults/{id}/tasks/{task_id}`: solo cambia lo enviado (un `null` explícito vacía el campo)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle | None = None
+    description: TaskText | None = None
+    notes: TaskText | None = None
+    status: Literal["pending", "in_progress", "done", "cancelled"] | None = None
+    priority: Literal["low", "medium", "high"] | None = None
+    due_at: datetime | None = None
+    assignee_type: Literal["user", "agent"] | None = None
+    assignee_agent_id: AgentId | None = None
+    path: TaskPath | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+
+class TaskOut(BaseModel):
+    """Una tarea (raíz o subtarea; la jerarquía va en `parent_id`). Fechas en UTC con `Z`."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    vault_id: str
+    parent_id: str | None
+    sort_order: int
+    title: str
+    description: str | None
+    notes: str | None
+    status: str
+    priority: str
+    due_at: UtcDateTime | None
+    assignee_type: str
+    assignee_agent_id: str | None
+    path: str | None
+    created_by: str
+    updated_by: str
+    version: int
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    completed_at: UtcDateTime | None
+    purge_at: UtcDateTime | None = None  # cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz
+
+
+class TaskListOut(BaseModel):
+    items: list[TaskOut]
+    total: int

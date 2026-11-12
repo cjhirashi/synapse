@@ -29,6 +29,8 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
     # H-016 absorbe el contrato de H-015 (mismas rutas /files): un canon por hecho. Documentos, tipos y pantalla de archivos (lista, rename, delete por bóveda)
     "h016-archivos-pantalla-y-tipos": {"paths": ("/files", "/vaults/{vault_id}/files", "/vaults/{vault_id}/file-folders"), "schemas": ()},
+    # H-053: tareas de bóveda (por bóveda y la vista transversal `GET /tasks`).
+    "h053-tareas-de-boveda": {"paths": ("/tasks", "/vaults/{vault_id}/tasks"), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"

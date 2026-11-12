@@ -61,6 +61,8 @@ export default defineConfig({
       // Canal de sincronización (SPEC-0005): sólo API, sin pantallas propias, así que no
       // necesita `bypass`. En producción lo lleva el Caddy externo (ver backend/README.md).
       "/sync": BACKEND,
+      // Vista transversal de tareas (H-053): solo API, sin pantalla propia.
+      "/tasks": BACKEND,
     },
   },
   test: {

@@ -5,6 +5,7 @@ from app.core.models.file import File, FileFolder
 from app.core.models.purge_log import PurgeLog
 from app.core.models.refresh_token import RefreshToken
 from app.core.models.role import Role
+from app.core.models.task import VaultTask
 from app.core.models.user import User
 
-__all__ = ["AgentAccessLog", "AgentApiKey", "ChangeLog", "File", "FileFolder", "PurgeLog", "RefreshToken", "Role", "User"]
+__all__ = ["AgentAccessLog", "AgentApiKey", "ChangeLog", "File", "FileFolder", "PurgeLog", "RefreshToken", "Role", "User", "VaultTask"]

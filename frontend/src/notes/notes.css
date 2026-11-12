@@ -1084,3 +1084,16 @@ body.is-resizing {
     display: none;
   }
 }
+
+/* Contador de tareas abiertas junto a la pestaña «Tareas» (H-053). */
+.vault-tab-badge {
+  margin-left: 4px;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
+}

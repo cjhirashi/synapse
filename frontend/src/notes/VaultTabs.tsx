@@ -1,11 +1,12 @@
 import { useId, type KeyboardEvent } from "react";
-import { FileText, Files, Tags } from "lucide-react";
+import { FileText, Files, ListChecks, Tags } from "lucide-react";
 import type { VaultTab } from "./workspaceMemory";
 
 const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
   { id: "documentos", label: "Documentos", Icon: FileText },
   { id: "tags", label: "Filtro por tags", Icon: Tags },
   { id: "archivos", label: "Archivos", Icon: Files },
+  { id: "tareas", label: "Tareas", Icon: ListChecks },
 ];
 
 interface Props {
@@ -13,10 +14,12 @@ interface Props {
   onChange: (tab: VaultTab) => void;
   /** Id del panel que controla la pestaña activa. */
   panelId: string;
+  /** Tareas abiertas de la persona en esta bóveda (H-053): se muestra como contador junto a «Tareas». */
+  taskCount?: number;
 }
 
 /** Barra de pestañas de la barra lateral de la bóveda (H-052). Flechas, Inicio y Fin mueven la selección. */
-export default function VaultTabs({ tab, onChange, panelId }: Props) {
+export default function VaultTabs({ tab, onChange, panelId, taskCount = 0 }: Props) {
   const baseId = useId();
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
@@ -49,6 +52,7 @@ export default function VaultTabs({ tab, onChange, panelId }: Props) {
         >
           <Icon size={14} aria-hidden="true" />
           <span>{label}</span>
+          {id === "tareas" && taskCount > 0 && <span className="vault-tab-badge" aria-label={`${taskCount} abiertas`}>{taskCount > 99 ? "99+" : taskCount}</span>}
         </button>
       ))}
     </div>

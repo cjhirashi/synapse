@@ -14,6 +14,7 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   usuario, el tamaño (5 MB imágenes, 25 MB documentos), el tipo por **firma de bytes** (nunca por el
   `Content-Type` del cliente), sanea SVG y valida el nombre y la carpeta. Opera sobre el repositorio de
   metadatos y el puerto de almacenamiento de objetos; no conoce HTTP.
+- `task_service.py` (`TaskService`, H-053): reglas de las tareas de bóveda. Valida la bóveda del dueño, los dos niveles, el agente asignable (registrado y activo), la forma de la ruta indicativa, `If-Match` sobre `version` y los permisos por agente; deriva el estado de una raíz de sus subtareas. `task_retention.py`: ciclo de fondo que elimina las raíces cerradas hace más de `TASKS_RETENTION_DAYS` días (con sus subtareas).
 - H-030: `agent_access_guard.py` (cumplimiento del registro `AG - AGENTES`: modo sombra/`enforce`, caché del registro y bitácora
   `agent_access_log`), `agent_registry_service.py` (lee y escribe el registro), `mensajes_service.py` (reabrir conversaciones,
   sellar `cerrada_el` de cabeceras llegadas por `/sync`) y `mensajes_purge.py` (purga de cerradas > 15 días con volcado a 30 días).

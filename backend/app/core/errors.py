@@ -452,6 +452,30 @@ class ProfilePhotoInvalidType(DomainError):
 
 # --- Fallos internos de puertos (no son entradas del catálogo) ---
 
+# --- Tareas de bóveda (H-053) ---
+
+class TaskNotFound(DomainError):
+    """Tarea inexistente, de otra bóveda o de otro usuario: mismo cuerpo siempre."""
+
+    slug = "task-not-found"
+    title = "Task not found"
+    status = 404
+    detail = "Task not found"
+
+
+class TaskPreconditionFailed(DomainError):
+    """`If-Match` distinto de la `version` vigente de la tarea: alguien la cambió antes."""
+
+    slug = "task-precondition-failed"
+    title = "Task precondition failed"
+    status = 412
+    detail = "Task has changed"
+
+
+class TaskInvalid(ValidationFailed):
+    """Una regla de las tareas (dos niveles, agente asignable, ruta, estado derivado) rechaza el cuerpo."""
+
+
 class RevisionConflict(Exception):
     """El almacén rechazó una escritura por `_rev` (documento cambiado o ya existente).
 

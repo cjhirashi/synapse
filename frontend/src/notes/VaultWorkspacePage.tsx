@@ -25,9 +25,13 @@ import { canStep, type History, load as loadHistory, push, save as saveHistory, 
 import { parentFolder } from "./folders";
 import { NOTE_ID_PREFIX } from "./noteRules";
 import VaultFiles from "../files/VaultFiles";
+import { listMyOpenTasks } from "../tasks/tasksApi";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import TagFilterPanel from "./TagFilterPanel";
 import VaultTabs from "./VaultTabs";
+
+// La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
+const VaultTasks = lazy(() => import("../tasks/VaultTasks"));
 import SidebarResizeHandle from "./SidebarResizeHandle";
 import { useSidebarWidth } from "./useSidebarWidth";
 import { readMemory, writeMemory, forgetNote, type VaultTab } from "./workspaceMemory";
@@ -331,9 +335,24 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
 
   // H-052: pestaña de la barra lateral, recordada por usuario y bóveda. El árbol de archivos de la pestaña
   // «Archivos» se dibuja en `filesSlot`, dentro de la barra, mientras su tabla ocupa la zona principal.
-  const [tab, setTab] = useState<VaultTab>(() => remembered.current?.tab ?? "documentos");
+  // H-053: un enlace `?tab=tareas&task=<id>` (el de un aviso) abre la pestaña Tareas y resalta esa tarea; manda sobre la memoria.
+  const [deepLink] = useState(() => {
+    const query = new URLSearchParams(location.search);
+    return { tab: query.get("tab") === "tareas", task: query.get("task") };
+  });
+  const [tab, setTab] = useState<VaultTab>(() => (deepLink.tab ? "tareas" : remembered.current?.tab ?? "documentos"));
   const [filesSlot, setFilesSlot] = useState<HTMLElement | null>(null);
+  const [tasksSlot, setTasksSlot] = useState<HTMLElement | null>(null);
+  const [taskCount, setTaskCount] = useState(0);
   const panelId = useId();
+  useEffect(() => {
+    // El contador de la pestaña «Tareas» se lee al abrir la bóveda; la pestaña lo mantiene al día cuando está abierta.
+    let cancelled = false;
+    listMyOpenTasks(vault.id)
+      .then((list) => { if (!cancelled) setTaskCount(list.length); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [vault.id]);
   const changeTab = useCallback(
     (next: VaultTab) => {
       setTab(next);
@@ -528,7 +547,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           data-floating={isMobile ? "" : undefined}
           style={{ "--vault-icon-color": colorVar(vaultColor), ...(isDesktop ? { "--side-width": `${sidebarWidth}px` } : {}) } as CSSProperties}
         >
-          <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} />
+          <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} taskCount={taskCount} />
           {/* Documentos sigue montado (oculto) al cambiar de pestaña: conserva carpetas desplegadas y el estado que lee el editor. */}
           <div id={tab === "documentos" ? panelId : undefined} role="tabpanel" className="vault-tab-panel" hidden={tab !== "documentos"}>
             <NoteSidebar
@@ -551,6 +570,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             </div>
           )}
           {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
+          {tab === "tareas" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setTasksSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
           {isDesktop && sidebarOpen && (
             <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
           )}
@@ -560,8 +580,22 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
           )}
           {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} accent={colorVar(vaultColor)} onCloseSide={() => setSidebarOpen(false)} />}
-          {/* Con la papelera abierta (o en la pestaña Archivos) el editor sigue montado (oculto): no se pierde un borrador. */}
-          <div hidden={showTrash || tab === "archivos"} className="vault-workspace-content">
+          {tab === "tareas" && (
+            <Suspense fallback={<p className="tasks-empty">Cargando tareas…</p>}>
+            <VaultTasks
+              vaultId={vault.id}
+              accent={colorVar(vaultColor)}
+              sideSlot={tasksSlot}
+              focusTaskId={deepLink.task}
+              onOpenNote={(id) => { changeTab("documentos"); open(id); }}
+              onOpenFolder={(path) => { changeTab("documentos"); requestAnimationFrame(() => sidebarRef.current?.revealFolder(path)); }}
+              onCloseSide={() => setSidebarOpen(false)}
+              onOpenCount={setTaskCount}
+            />
+            </Suspense>
+          )}
+          {/* Con la papelera abierta (o en las pestañas Archivos y Tareas) el editor sigue montado (oculto): no se pierde un borrador. */}
+          <div hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
             {openId === null ? (
               // Estado vacío (SPEC-0009 RF-008): texto centrado.
               <div className="vault-workspace-empty">

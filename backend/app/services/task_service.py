@@ -1,0 +1,211 @@
+"""Reglas de negocio de las tareas de bóveda (H-053).
+
+Opera sobre el repositorio de Postgres y no conoce HTTP. Valida que la bóveda sea del usuario, los dos niveles
+(raíz y subtareas), que el agente asignado esté registrado y activo en la bóveda, la ruta indicativa (solo su
+forma) y los permisos de cada agente (`AgentAccessGuard.check_task`). El estado de una raíz con subtareas se
+deriva de ellas al escribir; no hay planificador. Lanza errores de dominio de `core/errors.py`.
+"""
+import re
+import uuid
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+
+from app.adapters.task_repository import TaskRepository
+from app.core import task_rules
+from app.core.config import settings
+from app.core.errors import TaskInvalid, TaskNotFound, TaskPreconditionFailed
+from app.core.models.task import VaultTask
+from app.core.schemas import TaskCreate, TaskOut, TaskUpdate
+from app.services.agent_access_guard import AgentAccessGuard
+
+_VERSION = re.compile(r'^(?:W/)?"?(\d{1,9})"?$')
+
+
+def _now() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _naive_utc(value: datetime | None) -> datetime | None:
+    """Una fecha con zona se lleva a UTC; una sin zona se toma como UTC (así se guarda y así se devuelve con `Z`)."""
+    if value is None:
+        return None
+    return value.astimezone(UTC).replace(tzinfo=None) if value.tzinfo else value
+
+
+def _invalid(pointer: str, detail: str) -> TaskInvalid:
+    return TaskInvalid(errors=[{"pointer": pointer, "detail": detail}])
+
+
+def parse_version(if_match: str | None) -> int | None:
+    """`If-Match` de una tarea: su `version` (`"3"`, `W/"3"` o `3`). Ausente → `None` (sin precondición)."""
+    if if_match is None:
+        return None
+    found = _VERSION.match(if_match.strip())
+    if found is None:
+        raise TaskPreconditionFailed()
+    return int(found.group(1))
+
+
+class TaskService:
+    def __init__(
+        self, repo: TaskRepository, owner_id: str, guard: AgentAccessGuard, ensure_vault: Callable[[str], object],
+    ) -> None:
+        self._repo = repo
+        self._owner_id = owner_id
+        self._guard = guard
+        # Lanza `VaultNotFound` si la bóveda no existe o no es del usuario (lo provee la ruta con el `VaultService`).
+        self._ensure_vault = ensure_vault
+
+    # --- Lectura ---
+
+    def to_out(self, task: VaultTask) -> TaskOut:
+        out = TaskOut.model_validate(task)
+        if task.parent_id is None and task.completed_at is not None and task.status in task_rules.CLOSED_STATUSES:
+            out.purge_at = task.completed_at + timedelta(days=settings.TASKS_RETENTION_DAYS)
+        return out
+
+    def get(self, vault_id: str, task_id: str) -> VaultTask:
+        self._ensure_vault(vault_id)
+        return self._owned(vault_id, task_id)
+
+    def list(self, vault_id: str | None, **filters) -> list[VaultTask]:
+        if vault_id is not None:
+            self._ensure_vault(vault_id)
+        return self._repo.list(self._owner_id, vault_id, **filters)
+
+    # --- Escritura ---
+
+    def create(self, vault_id: str, body: TaskCreate) -> VaultTask:
+        self._ensure_vault(vault_id)
+        parent = self._parent_for(vault_id, body.parent_id)
+        self._guard.check_task(vault_id, "create", body.title, created_by=None, assignee_agent_id=None)
+        path = self._path(body.path)
+        agent_id = self._assignee(vault_id, body.assignee_type, body.assignee_agent_id)
+        now = _now()
+        closed = body.status in task_rules.CLOSED_STATUSES
+        task = VaultTask(
+            id=str(uuid.uuid4()), owner_id=self._owner_id, vault_id=vault_id,
+            parent_id=parent.id if parent else None,
+            sort_order=body.sort_order if body.sort_order is not None else self._repo.next_sort_order(
+                self._owner_id, vault_id, parent.id if parent else None),
+            title=body.title, description=body.description, notes=body.notes, status=body.status,
+            priority=body.priority, due_at=_naive_utc(body.due_at), assignee_type=body.assignee_type,
+            assignee_agent_id=agent_id, path=path, created_by=self._guard.author, updated_by=self._guard.author,
+            version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
+        )
+        self._repo.add(task)
+        if parent is not None:
+            self._refresh_parent(parent)
+        return self._save(task)
+
+    def update(self, vault_id: str, task_id: str, body: TaskUpdate, if_match: str | None = None) -> VaultTask:
+        self._ensure_vault(vault_id)
+        task = self._owned(vault_id, task_id)
+        expected = parse_version(if_match)
+        if expected is not None and expected != task.version:
+            raise TaskPreconditionFailed()
+        sent = body.model_fields_set
+        if "title" in sent and body.title is None:
+            raise _invalid("/title", "Title cannot be empty")
+        self._guard.check_task(
+            vault_id, "update", task.title, created_by=task.created_by, assignee_agent_id=task.assignee_agent_id,
+            changed=frozenset(sent))
+        if "status" in sent and body.status is None:
+            raise _invalid("/status", "Status cannot be empty")
+        if "status" in sent and body.status != task.status and self._repo.children(task.id):
+            raise _invalid("/status", "A task with subtasks takes its status from them")
+        for field in ("title", "priority", "sort_order"):
+            if field in sent and getattr(body, field) is not None:
+                setattr(task, field, getattr(body, field))
+        for field in ("description", "notes"):  # un `null` explícito los vacía
+            if field in sent:
+                setattr(task, field, getattr(body, field))
+        if "due_at" in sent:
+            task.due_at = _naive_utc(body.due_at)
+        if "path" in sent:
+            task.path = self._path(body.path)
+        if "assignee_type" in sent or "assignee_agent_id" in sent:
+            kind = body.assignee_type if "assignee_type" in sent and body.assignee_type else task.assignee_type
+            agent_id = body.assignee_agent_id if "assignee_agent_id" in sent else task.assignee_agent_id
+            task.assignee_agent_id = self._assignee(vault_id, kind, agent_id)
+            task.assignee_type = kind
+        if "status" in sent and body.status is not None:
+            self._set_status(task, body.status)
+        self._touch(task)
+        self._repo.flush()  # la sesión no vuelca sola: la raíz debe ver el estado nuevo de esta subtarea
+        if task.parent_id is not None:
+            self._refresh_parent(self._owned(vault_id, task.parent_id))
+        return self._save(task)
+
+    def delete(self, vault_id: str, task_id: str) -> None:
+        self._ensure_vault(vault_id)
+        task = self._owned(vault_id, task_id)
+        self._guard.check_task(
+            vault_id, "delete", task.title, created_by=task.created_by, assignee_agent_id=task.assignee_agent_id)
+        parent_id = task.parent_id
+        self._repo.delete(task)
+        self._repo.commit()
+        if parent_id is not None:
+            parent = self._repo.get(parent_id, self._owner_id)
+            if parent is not None:
+                self._refresh_parent(parent)
+                self._repo.commit()
+
+    # --- Reglas ---
+
+    def _owned(self, vault_id: str, task_id: str) -> VaultTask:
+        task = self._repo.get(task_id, self._owner_id)
+        if task is None or task.vault_id != vault_id:
+            raise TaskNotFound()
+        return task
+
+    def _parent_for(self, vault_id: str, parent_id: str | None) -> VaultTask | None:
+        """La raíz bajo la que cuelga una subtarea. Una subtarea no puede tener hijas: dos niveles exactos."""
+        if parent_id is None:
+            return None
+        parent = self._owned(vault_id, parent_id)
+        if parent.parent_id is not None:
+            raise _invalid("/parent_id", "A subtask cannot have subtasks")
+        return parent
+
+    def _path(self, path: str | None) -> str | None:
+        try:
+            return task_rules.normalize_path(path)
+        except ValueError:
+            raise _invalid("/path", "Path is not valid") from None
+
+    def _assignee(self, vault_id: str, kind: str, agent_id: str | None) -> str | None:
+        """Id del agente asignado, o `None` si es de la persona. Un agente debe estar registrado y activo en la bóveda."""
+        if kind == "user":
+            return None
+        if agent_id is None:
+            raise _invalid("/assignee_agent_id", "An agent is required when assigned to an agent")
+        registration = self._guard.read_registry(vault_id).get(agent_id)
+        if registration is None or registration.estado != "activo":
+            raise _invalid("/assignee_agent_id", "The agent is not registered and active in this vault")
+        return agent_id
+
+    def _set_status(self, task: VaultTask, status: str) -> None:
+        """Cambia el estado; `completed_at` marca el cierre y arranca la cuenta de retención (reabrir la reinicia)."""
+        closed = status in task_rules.CLOSED_STATUSES
+        if closed and task.completed_at is None:
+            task.completed_at = _now()
+        elif not closed:
+            task.completed_at = None
+        task.status = status
+
+    def _touch(self, task: VaultTask) -> None:
+        task.version += 1
+        task.updated_at = _now()
+        task.updated_by = self._guard.author
+
+    def _refresh_parent(self, parent: VaultTask) -> None:
+        """Recalcula el estado de la raíz a partir de sus subtareas (vigentes en la sesión)."""
+        derived = task_rules.derive_parent_status(c.status for c in self._repo.children(parent.id))
+        if derived is not None and derived != parent.status:
+            self._set_status(parent, derived)
+            self._touch(parent)
+
+    def _save(self, task: VaultTask) -> VaultTask:
+        self._repo.commit()
+        return self._repo.refresh(task)

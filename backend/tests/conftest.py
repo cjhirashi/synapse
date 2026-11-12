@@ -15,6 +15,8 @@ os.environ.setdefault("SEED_AG_FOLDERS", "false")
 os.environ.setdefault("BITACORA_DOCS", "false")
 # H-041: sin replicación de documentos de sistema al arrancar (las pruebas que la ejercitan llaman al publicador).
 os.environ.setdefault("SYSTEM_DOCS_SYNC", "false")
+# H-053: sin ciclo de purga de tareas en segundo plano en las pruebas (las de retención llaman a la purga directo).
+os.environ.setdefault("TASKS_PURGE", "false")
 os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
 os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 

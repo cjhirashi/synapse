@@ -15,7 +15,7 @@ import time
 from collections.abc import Callable
 
 from app.core.ag_rules import AG_AGENTES
-from app.core import conversation_rules, skill_rules
+from app.core import conversation_rules, skill_rules, task_rules
 from app.core.agent_access import Actor, Registration, decide, decide_files, parse_registration
 from app.core.config import settings
 from app.core.errors import AgentAccessDenied
@@ -202,3 +202,51 @@ class AgentAccessGuard:
             raise AgentAccessDenied(
                 f"{self._actor.agent_id or 'general'} denied: {reason} {info.folder}",
                 **({"detail": detail} if detail else {}))
+
+    # --- Tareas de bóveda (H-053): qué puede cambiar cada agente según autor y asignado ---
+
+    @property
+    def author(self) -> str:
+        """Quién consta como autor de una tarea: `user` o `agent:<id>` (`task_rules.actor_label`)."""
+        return task_rules.actor_label(self._actor, honor_declared=self._mode != "enforce")
+
+    def evaluate_task(
+        self, vault_id: str, op: str, ref: str, *, created_by: str | None, assignee_agent_id: str | None,
+        changed: frozenset[str] = frozenset(),
+    ) -> tuple[bool, str | None]:
+        """Reglas por agente de una tarea (`task_rules.decide_task`); mismo interruptor que el resto: en sombra solo
+        registra (`op` = `task-<op>`), con `enforce` el llamador rechaza. La sesión humana no se evalúa."""
+        if not self.active:
+            return True, None
+        enforce = self._mode == "enforce"
+        try:
+            registry = read_registry(self._port, self._db, vault_id)
+        except Exception:  # noqa: BLE001
+            if enforce:
+                raise
+            logger.warning("agent registry unreadable in shadow mode; task write allowed", exc_info=True)
+            return True, "registry-unreadable"
+        verdict = task_rules.decide_task(
+            self._actor, registry, op, created_by=created_by, assignee_agent_id=assignee_agent_id,
+            changed=changed, honor_declared=not enforce)
+        identified = self._actor.kind == "agent" or (not enforce and self._actor.declared is not None)
+        self._sink({
+            "owner_id": self._owner_id, "vault_id": vault_id,
+            "agent_id": self._actor.agent_id or (self._actor.declared if not enforce else None),
+            "key_label": self._actor.key_label,
+            "declared": self._actor.kind == "general" and self._actor.declared is not None,
+            "op": f"task-{op}", "paths": json.dumps([ref], ensure_ascii=False),
+            "decision": ("allow" if verdict.allowed else "deny") if identified else
+                        ("allow" if verdict.allowed else "deny-general"),
+            "reason": verdict.reason, "mode": self._mode,
+        })
+        return verdict.allowed, verdict.reason
+
+    def check_task(
+        self, vault_id: str, op: str, ref: str, *, created_by: str | None, assignee_agent_id: str | None,
+        changed: frozenset[str] = frozenset(),
+    ) -> None:
+        allowed, reason = self.evaluate_task(
+            vault_id, op, ref, created_by=created_by, assignee_agent_id=assignee_agent_id, changed=changed)
+        if not allowed and self._mode == "enforce":
+            raise AgentAccessDenied(f"{self._actor.agent_id or 'general'} denied: {reason} {ref}")

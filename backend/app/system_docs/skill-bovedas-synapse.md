@@ -83,6 +83,16 @@ Synapse sí almacena archivos. Acciones: `file_upload`, `file_list`, `file_get`,
 5. No subas credenciales: el plugin bloquea `.credenciales`, `.ssh`, `.gnupg` y `.env*`.
 6. **Diagramas y gráficas:** si tienes las herramientas `archify` (diagramas) y Plotly (gráficas), genéralos como HTML autocontenido con ellas, no como imagen pegada; súbelos con `file_upload` y enlázalos desde la nota con `<iframe src="https://<servidor-synapse>/files/<id>"></iframe>` (Synapse elimina un `iframe` cuya URL sea otra, o lleve `?` o `#`). Si no tienes esas herramientas, haz el diagrama con Mermaid dentro de la nota.
 
+## 6 bis. Tareas de la bóveda
+
+Cada bóveda tiene un gestor de tareas en dos niveles: una tarea y sus **subtareas** (una subtarea no tiene subtareas). Se asignan a la persona o a un agente, y pueden llevar una `path` (ruta a un documento o carpeta de la bóveda donde se trabaja) que es **solo indicativa**: no se comprueba que exista ni bloquea nada. Mientras `synapse_vault` no exponga acciones de tareas, se usan por REST con tu clave, en `/vaults/{vaultId}/tasks` (lista y crea), `/vaults/{vaultId}/tasks/{taskId}` (lee, `PATCH`, borra) y `/vaults/{vaultId}/tasks/{taskId}/subtasks` (crea una subtarea). `GET /tasks?assignee=<tu id>&status=pending&status=in_progress` lista **tus** tareas abiertas en todas las bóvedas.
+
+1. Campos: `title` (obligatorio), `description`, `notes` (notas de avance), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `due_at` (fecha con zona; se guarda en UTC y se devuelve con `Z`), `assignee_type` (`user` o `agent`), `assignee_agent_id` y `path`. Cada tarea devuelve su `version`, que viaja como `ETag`; en `PATCH` manda `If-Match: "<version>"` y un cambio ajeno da 412.
+2. **Asignar a un agente** exige que esté registrado y activo en esa bóveda (`AG - AGENTES`); si no, 422 con `/assignee_agent_id`.
+3. **El estado de una tarea con subtareas sale de ellas** (alguna en curso o hecha → `in_progress`; todas cerradas → `done`, o `cancelled` si todas se cancelaron): cambiarlo a mano da 422 con `/status`. Cambia el estado de las subtareas.
+4. **Qué puedes hacer:** todos los agentes leen. Un agente registrado y activo crea tareas y subtareas; cambia `status` y `notes` de las que **tiene asignadas**; y edita, reasigna o borra solo las que **él creó**. Un agente sin registro, suspendido o con clave general solo lee. Un cambio que no te toca da 403 `agent-access-denied`: pídelo por `AG - MENSAJES`.
+5. **Retención:** una tarea cerrada (`done` o `cancelled`) se elimina con sus subtareas 30 días después de cerrarse, sin papelera; reabrirla reinicia la cuenta. La respuesta trae `purge_at` en las tareas cerradas.
+
 ## 7. La sección AG - SKILLS
 
 Cada bóveda tiene una sección `AG - SKILLS` con skills: procedimientos que los agentes usan al trabajar en ella. Cada skill es una nota; esa nota no se carga como skill por sí sola: el agente mantiene su skill real en `skills/` de su workspace a partir de ella.
@@ -147,6 +157,8 @@ Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SK
 | `note_update` rechazada por falta de `ifMatch` | Haz `note_get` y pasa su `etag`. |
 | 412 «Vault has changed» | Alguien editó la nota tras tu lectura: relee y reaplica. Si nadie la tocó, revisa que `ifMatch` lleve las comillas del etag (sección 3). |
 | 403 `agent-access-denied` | No estás registrado para esa carpeta: pide el cambio por `AG - MENSAJES` al agente que la gestiona. |
+| 404 `task-not-found` | El `taskId` no existe en esa bóveda (o ya se eliminó por retención): vuelve a listar. |
+| 412 `task-precondition-failed` | Otro cambió la tarea tras tu lectura: relee, usa su `version` nueva en `If-Match` y reaplica. |
 | 422 `sistema:readonly` | Intentaste editar, mover, renombrar o borrar un documento de sistema: no se puede, ni tú ni el usuario. No reintentes; si debe cambiar, pídelo por `AG - MENSAJES`. |
 | 422 `sistema:reserved` | Enviaste el metadato `sistema` en un documento que no es de sistema: quítalo. |
 | No encuentro el mensaje que me enviaron | `inbox` devuelve la lista vacía a propósito (lee el formato anterior). Haz el recorrido de la sección 7 bis, punto 5, en **cada** bóveda: la conversación es una carpeta `<de> → <tu-id> - <asunto> - <fecha>` dentro de `AG - MENSAJES`. |
