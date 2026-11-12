@@ -352,3 +352,10 @@ test("las marcas de selección (riel, pestaña, fila, chip) toman el color de la
   expect(rule(notes, '.vault-tab[aria-selected="true"]')).toMatch(/border-bottom-color: var\(--vault-icon-color, var\(--accent\)\)/);
   expect(rule(notes, '.note-tree-row[aria-selected="true"]')).toMatch(/color-mix\(in srgb, var\(--vault-icon-color, var\(--accent\)\)/);
 });
+
+test("H-052: en una barra angosta las pestañas inactivas se reducen a su ícono y el encabezado de tags puede envolver", () => {
+  const notes = read("notes.css");
+  expect(rule(notes, ".vault-tabs")).toMatch(/container-type: inline-size/);
+  expect(notes).toMatch(/@container \(max-width: 340px\)/);
+  expect(rule(notes, ".tag-filter-head")).toMatch(/flex-wrap: wrap/);
+});

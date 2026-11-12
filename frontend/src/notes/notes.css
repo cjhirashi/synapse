@@ -894,6 +894,7 @@ body.is-resizing {
 
 /* H-052: pestañas de la barra lateral de la bóveda. */
 .vault-tabs {
+  container-type: inline-size;
   display: flex;
   flex-shrink: 0;
   gap: 2px;
@@ -1048,15 +1049,17 @@ body.is-resizing {
 
 .tag-filter-head {
   display: flex;
+  flex-wrap: wrap;
   flex-shrink: 0;
   align-items: center;
   gap: var(--space-2);
 }
 
 .tag-filter-head .tag-filter-toggle {
-  flex: 1 1 auto;
+  flex: 1 1 7rem;
   width: auto;
-  min-width: 0;
+  min-width: 7rem;
+  white-space: nowrap;
 }
 
 .tag-filter-clear {
@@ -1068,4 +1071,16 @@ body.is-resizing {
   flex-shrink: 0;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* En una barra angosta solo la pestaña activa muestra su texto; las demás quedan como ícono (con su `title`). */
+@container (max-width: 340px) {
+  .vault-tab[aria-selected="false"] {
+    flex: 0 0 auto;
+    padding-inline: var(--space-3);
+  }
+
+  .vault-tab[aria-selected="false"] span {
+    display: none;
+  }
 }
