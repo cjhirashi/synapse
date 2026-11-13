@@ -510,3 +510,4 @@
 .tasks-gantt-handle:hover::after { opacity: 1 !important; }
 .tasks-gantt-after.is-live { font-weight: 600; color: var(--text-primary); }
 .tasks-card-who .agent-badge-name { font-size: 13px; }
+.tasks-gantt-parent { flex: none; margin-left: -4px; color: var(--text-secondary); }

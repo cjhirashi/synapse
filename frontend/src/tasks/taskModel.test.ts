@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, fromLocalInput, isOverdue, monthGrid, resolvePath, toLocalInput, tasksByDay,
 } from "./taskModel";
-import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, daysBetween, ganttDelta, ganttDraggable, ganttPatch, ganttPreview, ganttRange, ganttRows, shiftIso, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
+import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, daysBetween, ganttDelta, ganttPatch, ganttPreview, ganttRange, ganttRows, hasSpan, shiftIso, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
 import type { Task } from "./tasksApi";
 
 let n = 0;
@@ -157,36 +157,37 @@ describe("línea de tiempo", () => {
     expect(daysBetween("2026-10-30", "2026-11-02")).toBe(3);
   });
 
-  it("las filas van raíz y sus subtareas; la barra es de la creación al vencimiento (en hora de México) y una raíz sin fecha toma la mayor de sus subtareas", () => {
-    const root = task({ id: "r", created_at: "2026-11-12T20:00:00Z", due_at: null });
-    const kid = task({ id: "k", parent_id: "r", created_at: "2026-11-12T20:00:00Z", due_at: "2026-11-18T03:00:00Z", status: "done" }); // 17 nov 21:00 en México
-    const other = task({ id: "o", created_at: "2026-11-13T12:00:00Z", due_at: null });
-    const rows = ganttRows([{ task: root, children: [kid] }, { task: other, children: [] }]);
-    expect(rows.map((r) => [r.task.id, r.depth])).toEqual([["r", 0], ["k", 1], ["o", 0]]);
-    expect(rows[0]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: { done: 1, total: 1 } });
-    expect(rows[1]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: null });
-    expect(rows[2]).toMatchObject({ start: "2026-11-13", end: null });
+  it("solo hay fila para las tareas con inicio y vencimiento; las de una sola fecha o ninguna no se dibujan", () => {
+    expect(hasSpan(task({ start_at: "2026-11-10T15:00:00Z", due_at: "2026-11-12T15:00:00Z" }))).toBe(true);
+    expect(hasSpan(task({ start_at: "2026-11-10T15:00:00Z" }))).toBe(false);
+    expect(hasSpan(task({ due_at: "2026-11-12T15:00:00Z" }))).toBe(false);
+    expect(hasSpan(task())).toBe(false);
+    const both = task({ id: "b", start_at: "2026-11-10T15:00:00Z", due_at: "2026-11-12T15:00:00Z" });
+    const rows = ganttRows([{ task: both, children: [] }, { task: task({ id: "s", start_at: "2026-11-10T15:00:00Z" }), children: [] }, { task: task({ id: "d", due_at: "2026-11-12T15:00:00Z" }), children: [] }, { task: task({ id: "n" }), children: [] }]);
+    expect(rows.map((r) => r.task.id)).toEqual(["b"]);
   });
 
-  it("la barra empieza en la fecha de inicio de la tarea; una raíz sin inicio toma el primero de sus subtareas", () => {
-    const root = task({ id: "r", created_at: "2026-11-01T12:00:00Z", due_at: "2026-11-20T18:00:00Z" });
-    const early = task({ id: "a", parent_id: "r", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-15T18:00:00Z", due_at: "2026-11-17T18:00:00Z" });
-    const late = task({ id: "b", parent_id: "r", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-18T18:00:00Z", due_at: "2026-11-20T18:00:00Z" });
-    const own = task({ id: "o", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-05T18:00:00Z", due_at: "2026-11-08T18:00:00Z" });
-    const rows = ganttRows([{ task: root, children: [late, early] }, { task: own, children: [] }]);
-    expect(rows.map((r) => [r.task.id, r.start, r.end])).toEqual([
-      ["r", "2026-11-15", "2026-11-20"], ["b", "2026-11-18", "2026-11-20"], ["a", "2026-11-15", "2026-11-17"], ["o", "2026-11-05", "2026-11-08"],
-    ]);
+  it("la barra va del día de inicio al de vencimiento en hora de México; la raíz va seguida de sus subtareas con fechas y cuenta el avance de todas", () => {
+    const root = task({ id: "r", start_at: "2026-11-12T20:00:00Z", due_at: "2026-11-18T03:00:00Z" }); // vence el 17 nov 21:00 en México
+    const dated = task({ id: "k1", parent_id: "r", start_at: "2026-11-13T15:00:00Z", due_at: "2026-11-14T15:00:00Z", status: "done" });
+    const undated = task({ id: "k2", parent_id: "r", status: "done" });
+    const rows = ganttRows([{ task: root, children: [dated, undated] }]);
+    expect(rows.map((r) => [r.task.id, r.depth, r.start, r.end])).toEqual([["r", 0, "2026-11-12", "2026-11-17"], ["k1", 1, "2026-11-13", "2026-11-14"]]);
+    expect(rows[0].progress).toEqual({ done: 2, total: 2 });
+    expect(rows[1]).toMatchObject({ progress: null, parentTitle: null });
   });
 
-  it("si el vencimiento es anterior a la creación, la barra empieza en el vencimiento", () => {
-    const [row] = ganttRows([{ task: task({ created_at: "2026-11-13T12:00:00Z", due_at: "2026-11-10T12:00:00Z" }), children: [] }]);
-    expect(row).toMatchObject({ start: "2026-11-10", end: "2026-11-10" });
+  it("una subtarea con fechas cuya raíz no las tiene se muestra suelta y dice de cuál cuelga", () => {
+    const root = task({ id: "r", title: "Raíz sin fechas" });
+    const kid = task({ id: "k", parent_id: "r", start_at: "2026-11-13T15:00:00Z", due_at: "2026-11-14T15:00:00Z" });
+    const rows = ganttRows([{ task: root, children: [kid] }]);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ depth: 0, parentTitle: "Raíz sin fechas" });
   });
 
   it("el rango cubre hoy, lo más antiguo y lo más lejano, con un mínimo de cinco semanas", () => {
     expect(ganttRange([], "2026-11-13")).toEqual({ from: "2026-11-10", days: 34 });
-    const rows = ganttRows([{ task: task({ created_at: "2026-10-01T12:00:00Z", due_at: "2026-12-25T12:00:00Z" }), children: [] }]);
+    const rows = ganttRows([{ task: task({ start_at: "2026-10-01T12:00:00Z", due_at: "2026-12-25T12:00:00Z" }), children: [] }]);
     const { from, days } = ganttRange(rows, "2026-11-13");
     expect(from).toBe("2026-09-29");
     expect(daysBetween(from, "2026-12-28")).toBe(days - 1);
@@ -194,7 +195,7 @@ describe("línea de tiempo", () => {
 });
 
 describe("arrastrar barras del Gantt", () => {
-  const row = (over: Parameters<typeof task>[0] = {}) => ganttRows([{ task: task({ created_at: "2026-11-01T12:00:00Z", ...over }), children: [] }])[0];
+  const row = (over: Parameters<typeof task>[0] = {}) => ganttRows([{ task: task({ start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z", ...over }), children: [] }])[0];
 
   it("shiftIso corre días de calendario en México y conserva la hora", () => {
     expect(shiftIso("2026-11-16T15:00:00Z", 2)).toBe("2026-11-18T15:00:00.000Z"); // 09:00 en México
@@ -202,18 +203,14 @@ describe("arrastrar barras del Gantt", () => {
     expect(shiftIso("2026-11-30T05:30:00Z", 1)).toBe("2026-12-01T05:30:00.000Z"); // 29 nov 23:30 en México → 30 nov 23:30
   });
 
-  it("mover desplaza inicio y vencimiento juntos; sin inicio propio lo crea a las 09:00 en el día que se suelta", () => {
-    const withBoth = row({ start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z" });
-    expect(ganttPatch(withBoth, "move", 2)).toEqual({ start_at: "2026-11-18T15:00:00.000Z", due_at: "2026-11-20T15:00:00.000Z" });
-    expect(ganttPreview(withBoth, "move", 2)).toEqual({ start: "2026-11-18", end: "2026-11-20" });
-    const onlyDue = row({ due_at: "2026-11-18T15:00:00Z" }); // empieza el día en que se creó
-    expect(ganttPatch(onlyDue, "move", 1)).toEqual({ start_at: "2026-11-02T15:00:00.000Z", due_at: "2026-11-19T15:00:00.000Z" });
-    const noDue = row({ start_at: "2026-11-16T15:00:00Z" });
-    expect(ganttPatch(noDue, "move", 1)).toEqual({ start_at: "2026-11-17T15:00:00.000Z" }); // sin vencimiento no se inventa uno
+  it("mover desplaza inicio y vencimiento juntos", () => {
+    const r = row();
+    expect(ganttPatch(r, "move", 2)).toEqual({ start_at: "2026-11-18T15:00:00.000Z", due_at: "2026-11-20T15:00:00.000Z" });
+    expect(ganttPreview(r, "move", 2)).toEqual({ start: "2026-11-18", end: "2026-11-20" });
   });
 
   it("el borde izquierdo cambia solo el inicio y el derecho solo el vencimiento, sin cruzarse", () => {
-    const r = row({ start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z" });
+    const r = row();
     expect(ganttPatch(r, "start", -2)).toEqual({ start_at: "2026-11-14T15:00:00.000Z" });
     expect(ganttPatch(r, "end", 3)).toEqual({ due_at: "2026-11-21T15:00:00.000Z" });
     expect(ganttDelta(r, "start", 10)).toBe(2); // el inicio no pasa del último día de la barra
@@ -222,16 +219,12 @@ describe("arrastrar barras del Gantt", () => {
   });
 
   it("nunca deja el inicio después del vencimiento el mismo día (la hora también cuenta)", () => {
-    const r = row({ start_at: "2026-11-16T22:00:00Z", due_at: "2026-11-18T15:00:00Z" }); // inicia 16:00, vence el 18 a las 09:00
+    const r = row({ start_at: "2026-11-16T22:00:00Z" }); // inicia 16:00, vence el 18 a las 09:00
     expect(ganttPatch(r, "start", 2)).toEqual({ start_at: "2026-11-18T15:00:00Z" }); // 18 a las 16:00 sería posterior: se recorta al vencimiento
   });
 
-  it("sin cambio de días no hay parche, y una raíz que solo muestra fechas de sus subtareas no se arrastra", () => {
-    expect(ganttPatch(row({ due_at: "2026-11-18T15:00:00Z" }), "move", 0)).toBeNull();
-    const root = task({ id: "r", created_at: "2026-11-01T12:00:00Z" });
-    const kid = task({ id: "k", parent_id: "r", due_at: "2026-11-18T15:00:00Z", created_at: "2026-11-01T12:00:00Z" });
-    const [summary, child] = ganttRows([{ task: root, children: [kid] }]);
-    expect(ganttDraggable(summary)).toBe(false);
-    expect(ganttDraggable(child)).toBe(true);
+  it("sin cambio de días no hay parche", () => {
+    expect(ganttPatch(row(), "move", 0)).toBeNull();
+    expect(ganttPatch(row(), "start", 5 - 5)).toBeNull();
   });
 });

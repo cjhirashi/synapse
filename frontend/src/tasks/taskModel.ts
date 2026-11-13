@@ -286,11 +286,12 @@ export const GANTT_PX: Record<GanttScale, number> = { day: 44, week: 20, month: 
 export interface GanttRow {
   task: Task;
   depth: 0 | 1;
-  /** Primer día de la barra: el de inicio de la tarea (o, sin él, el de creación; el del vencimiento si este es anterior). */
+  /** Primer y último día de la barra: los de su inicio y su vencimiento (en hora de México). */
   start: string;
-  /** Último día de la barra (el del vencimiento; en una raíz sin fecha, el mayor de sus subtareas); `null` = sin vencimiento. */
-  end: string | null;
-  /** Subtareas cerradas y totales de una raíz, para su avance. */
+  end: string;
+  /** Una subtarea cuya raíz no se muestra (no tiene ambas fechas) dice de cuál cuelga. */
+  parentTitle: string | null;
+  /** Subtareas cerradas y totales de una raíz, para su avance (cuenta todas, también las que no se dibujan). */
   progress: { done: number; total: number } | null;
 }
 
@@ -299,25 +300,30 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
+/** El Gantt solo dibuja las tareas con fecha de inicio y de vencimiento. */
+export function hasSpan(task: Task): task is Task & { start_at: string; due_at: string } {
+  return task.start_at !== null && task.due_at !== null;
+}
+
 /**
- * Las tareas como filas del Gantt: cada raíz seguida de sus subtareas. La barra empieza en la fecha de inicio de la tarea (si no tiene, en
- * su creación; una raíz sin inicio toma el primero de sus subtareas) y termina en su vencimiento (una raíz sin fecha, el mayor de sus subtareas).
+ * Las tareas del Gantt como filas: solo las que tienen inicio y vencimiento, cada raíz seguida de sus subtareas con fechas. Una subtarea con
+ * fechas cuya raíz no las tiene se muestra suelta, indicando de cuál cuelga.
  */
 export function ganttRows(nodes: TaskNode[]): GanttRow[] {
   const rows: GanttRow[] = [];
-  const bounds = (task: Task, fallbackStart: string | null, fallbackEnd: string | null) => {
-    const begin = task.start_at ? dateKey(task.start_at) : (fallbackStart ?? dateKey(task.created_at));
-    const due = task.due_at ? dateKey(task.due_at) : fallbackEnd;
-    return { start: due !== null && due < begin ? due : begin, end: due };
+  const bounds = (task: Task & { start_at: string; due_at: string }) => {
+    const start = dateKey(task.start_at);
+    const end = dateKey(task.due_at);
+    return { start, end: end < start ? start : end };
   };
   for (const { task, children } of nodes) {
-    const childStarts = children.flatMap((c) => (c.start_at ? [dateKey(c.start_at)] : [])).sort();
-    const childEnds = children.flatMap((c) => (c.due_at ? [dateKey(c.due_at)] : [])).sort();
-    rows.push({
-      task, depth: 0, ...bounds(task, childStarts[0] ?? null, childEnds.length ? childEnds[childEnds.length - 1] : null),
-      progress: children.length ? { done: children.filter(isClosed).length, total: children.length } : null,
-    });
-    for (const child of children) rows.push({ task: child, depth: 1, ...bounds(child, null, null), progress: null });
+    const rootShown = hasSpan(task);
+    if (rootShown) {
+      rows.push({ task, depth: 0, ...bounds(task), parentTitle: null, progress: children.length ? { done: children.filter(isClosed).length, total: children.length } : null });
+    }
+    for (const child of children) {
+      if (hasSpan(child)) rows.push({ task: child, depth: rootShown ? 1 : 0, ...bounds(child), parentTitle: rootShown ? null : task.title, progress: null });
+    }
   }
   return rows;
 }
@@ -328,8 +334,7 @@ export function ganttRange(rows: GanttRow[], todayKey: string): { from: string; 
   let to = addDays(todayKey, 30);
   for (const row of rows) {
     if (addDays(row.start, -2) < from) from = addDays(row.start, -2);
-    const end = row.end ?? row.start;
-    if (addDays(end, 3) > to) to = addDays(end, 3);
+    if (addDays(row.end, 3) > to) to = addDays(row.end, 3);
   }
   return { from, days: daysBetween(from, to) + 1 };
 }
@@ -337,7 +342,7 @@ export function ganttRange(rows: GanttRow[], todayKey: string): { from: string; 
 // --- Arrastrar barras del Gantt ---
 
 export type GanttDragMode = "move" | "start" | "end";
-export interface GanttSpan { start_at?: string | null; due_at?: string | null }
+export interface GanttSpan { start_at?: string; due_at?: string }
 
 /** Corre un instante `days` días de calendario (en México) conservando su hora. */
 export function shiftIso(iso: string, days: number): string {
@@ -345,47 +350,36 @@ export function shiftIso(iso: string, days: number): string {
   return fromLocalInput(`${addDays(local.slice(0, 10), days)}${local.slice(10)}`) as string;
 }
 
-const atTime = (key: string, time: string) => fromLocalInput(`${key}T${time}`) as string;
-const START_TIME = "09:00";
-const END_TIME = "18:00";
-
-/** Una raíz con subtareas y sin fechas propias muestra las de sus subtareas: no hay fecha suya que arrastrar. */
-export function ganttDraggable(row: GanttRow): boolean {
-  return !(row.progress !== null && row.task.start_at === null && row.task.due_at === null);
-}
-
 /** Cuántos días se aplican de verdad: el inicio nunca pasa del último día de la barra ni el fin queda antes del primero. */
 export function ganttDelta(row: GanttRow, mode: GanttDragMode, wanted: number): number {
-  const span = row.end === null ? 0 : daysBetween(row.start, row.end);
+  const span = daysBetween(row.start, row.end);
   if (mode === "start") return Math.min(wanted, span);
   if (mode === "end") return Math.max(wanted, -span);
   return wanted;
 }
 
 /** Los días de la barra tras arrastrarla (para dibujarla mientras se arrastra). */
-export function ganttPreview(row: GanttRow, mode: GanttDragMode, wanted: number): { start: string; end: string | null } {
+export function ganttPreview(row: GanttRow, mode: GanttDragMode, wanted: number): { start: string; end: string } {
   const d = ganttDelta(row, mode, wanted);
-  if (mode === "move") return { start: addDays(row.start, d), end: row.end === null ? null : addDays(row.end, d) };
+  if (mode === "move") return { start: addDays(row.start, d), end: addDays(row.end, d) };
   if (mode === "start") return { start: addDays(row.start, d), end: row.end };
-  return { start: row.start, end: addDays(row.end ?? row.start, d) };
+  return { start: row.start, end: addDays(row.end, d) };
 }
 
 /**
- * Los campos que cambian al soltar la barra, o `null` si no hay cambio. Se conservan las horas que ya tenía la tarea; una fecha que no existía
- * toma las 09:00 (inicio) o las 18:00 (vencimiento). Nunca queda el inicio después del vencimiento, ni siquiera el mismo día.
+ * Los campos que cambian al soltar la barra, o `null` si no hay cambio. Se conservan las horas de cada fecha, y nunca queda el inicio
+ * después del vencimiento, ni siquiera el mismo día (la hora también cuenta).
  */
 export function ganttPatch(row: GanttRow, mode: GanttDragMode, wanted: number): GanttSpan | null {
   const d = ganttDelta(row, mode, wanted);
   if (d === 0) return null;
-  const { task } = row;
-  const view = ganttPreview(row, mode, wanted);
+  const { start_at: start0, due_at: due0 } = row.task as Task & { start_at: string; due_at: string };
   const patch: GanttSpan = {};
-  if (mode !== "end") patch.start_at = task.start_at ? shiftIso(task.start_at, d) : atTime(view.start, START_TIME);
-  if (mode === "end") patch.due_at = task.due_at ? shiftIso(task.due_at, d) : atTime(view.end as string, END_TIME);
-  else if (mode === "move" && task.due_at) patch.due_at = shiftIso(task.due_at, d);
-  const start = patch.start_at ?? task.start_at;
-  const due = patch.due_at ?? task.due_at;
-  if (start && due && Date.parse(start) > Date.parse(due)) {
+  if (mode !== "end") patch.start_at = shiftIso(start0, d);
+  if (mode !== "start") patch.due_at = shiftIso(due0, d);
+  const start = patch.start_at ?? start0;
+  const due = patch.due_at ?? due0;
+  if (Date.parse(start) > Date.parse(due)) {
     if (mode === "end") patch.due_at = start;
     else patch.start_at = due;
   }
