@@ -3,6 +3,8 @@
 Un tipo apagado en las preferencias deja de generar avisos (no se crea la fila). `notify` no confirma la transacción:
 lo hace quien lo llama, para que el aviso y el cambio que lo causó se guarden juntos o ninguno.
 """
+from __future__ import annotations
+
 import threading
 import uuid
 from datetime import UTC, datetime
