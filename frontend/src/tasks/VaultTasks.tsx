@@ -169,7 +169,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
 
   const shownCount = tree.reduce((total, node) => total + 1 + node.children.length, 0);
   const filters = (
-    <div style={{ "--vault-icon-color": accent } as CSSProperties}>
+    <div className="tf-panel-host" style={{ "--vault-icon-color": accent } as CSSProperties}>
       <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} onClose={onCloseSide} />
     </div>
   );

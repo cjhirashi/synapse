@@ -291,4 +291,12 @@ describe("VaultTasks", () => {
     expect(create.mock.calls[1]).toEqual(["v", { title: "Datos", description: null, assignee_type: "agent", assignee_agent_id: "aira" }, "nueva"]);
     expect(create.mock.calls[2]).toEqual(["v", { title: "Gráficas", description: "Tres gráficas del mes", assignee_type: "user", assignee_agent_id: null }, "nueva"]);
   });
+
+  it("el panel de filtros se desplaza por sí mismo (alto y ancho) para que nada quede cortado", async () => {
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    const host = screen.getByTestId("side").querySelector(".tf-panel-host");
+    expect(host).not.toBeNull();
+    expect(host!.querySelector(".tf-panel")).not.toBeNull();
+  });
 });
