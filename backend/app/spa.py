@@ -38,6 +38,9 @@ INDEX_HTML = DIST_DIR / "index.html"
 # El HTML de la app nombra los assets con huella del build vigente: el navegador debe revalidarlo siempre, o tras un
 # despliegue seguiría pidiendo assets que ya no existen. Los assets con huella nunca cambian: caché larga.
 INDEX_CACHE = {"Cache-Control": "no-cache"}
+# El service worker y el manifest se revalidan siempre: un `sw.js` cacheado impediría que llegue la versión nueva.
+SW_HEADERS = {"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"}
+MANIFEST_MEDIA_TYPE = "application/manifest+json"
 ASSET_CACHE = {"Cache-Control": "public, max-age=31536000, immutable"}
 
 
@@ -128,6 +131,10 @@ def install_spa(app: FastAPI) -> None:
         # Archivo real del build (favicon, etc.) → directo (RF-001/004).
         candidate = _safe_file(full_path)
         if candidate is not None:
+            if full_path == "sw.js":
+                return FileResponse(candidate, media_type="text/javascript", headers=SW_HEADERS)
+            if full_path == "manifest.webmanifest":
+                return FileResponse(candidate, media_type=MANIFEST_MEDIA_TYPE, headers=INDEX_CACHE)
             return FileResponse(candidate)
         # Se pedía un archivo concreto (tiene extensión) y no existe → 404 real (RF-004).
         if "." in full_path.rsplit("/", 1)[-1]:

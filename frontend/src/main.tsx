@@ -4,8 +4,11 @@ import { RouterProvider, createBrowserRouter } from "react-router-dom";
 import App from "./App";
 import "./styles/global.css";
 import { installStaleChunkReload } from "./reloadOnStaleChunk";
+import UpdateNotice from "./pwa/UpdateNotice";
+import { registerServiceWorker } from "./pwa/serviceWorker";
 
 installStaleChunkReload();
+registerServiceWorker();
 
 // Data router (no `BrowserRouter`): sólo así existe `useBlocker`, que el editor usa para no
 // perder un borrador al navegar dentro de la app (SPEC-0008 RF-008, VF-1). Una única ruta
@@ -16,5 +19,6 @@ const router = createBrowserRouter([{ path: "*", element: <App /> }]);
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <RouterProvider router={router} />
+    <UpdateNotice />
   </React.StrictMode>,
 );

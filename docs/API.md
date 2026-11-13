@@ -683,9 +683,17 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 | `GET /notifications/unread-count` | `{count}` de avisos sin leer (el contador del riel). |
 | `POST /notifications/{id}/read` | Marca un aviso como leído (404 `notification-not-found` si no existe o es de otro). |
 | `POST /notifications/read-all` | Marca todos como leídos. |
-| `GET /notifications/preferences` | `{kinds: {task_assigned, task_status, task_due}}` con si cada tipo está activo. |
-| `PUT /notifications/preferences` | Cambia solo los tipos enviados; un tipo apagado deja de generar avisos. |
+| `GET /notifications/preferences` | `{kinds: {task_assigned, task_status, task_due}, quiet: {enabled, start, end}}`: tipos activos y horas silenciosas (HH:MM, America/Mexico_City; por defecto 22:00–07:00). |
+| `PUT /notifications/preferences` | Cambia solo lo enviado: `kinds` (un tipo apagado deja de generar avisos) y/o `quiet`. Horas con otro formato o inicio igual al fin: 422. |
+| `GET /notifications/push` | `{enabled, public_key, devices}`: si el servidor tiene claves VAPID, la clave pública para suscribirse y los dispositivos de la persona. |
+| `PUT /notifications/push/subscription` | Registra o reasigna este dispositivo (cuerpo de `PushSubscription.toJSON()`). 204. 422 si el servidor no tiene push o el `endpoint` no es https de un servicio de push conocido. |
+| `DELETE /notifications/push/subscription?endpoint=` | Quita este dispositivo. 204. |
+| `POST /notifications/push/test` | Envía ya un aviso de prueba a los dispositivos (ignora las horas silenciosas). `{sent, removed, failed}`. |
 
 **Tipos** (`kind`): `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
 
 **Vencimientos:** un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300) revisa las tareas abiertas asignadas a la persona: avisa a 24 h, a 1 h y al vencer (hasta 7 días después). Solo se envía la ventana vigente (una ya pasada al crear la tarea no se manda) y cambiar `due_at` reinicia los avisos. La creación es idempotente por `dedupe_key`: un reinicio no duplica.
+
+**Web Push (H-053):** cada aviso nuevo se envía al dispositivo con un hilo despachador (`PUSH_DISPATCH`, `PUSH_POLL_SECONDS`), salvo en las horas silenciosas; el aviso siempre queda en la bandeja. Claves VAPID: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` en `.env`; sin ellas el push está apagado (`GET /notifications/push` → `enabled: false`). Una API key de agente no usa ninguna de estas rutas (401).
+
+**PWA:** `/sw.js` (service worker, `Cache-Control: no-cache`, `Service-Worker-Allowed: /`) y `/manifest.webmanifest` (`application/manifest+json`) se sirven desde el build; el service worker solo guarda `/assets/*` y la pantalla de arranque, nunca datos de la API.

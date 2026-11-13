@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.models.notification import Notification, NotificationPref
+from app.core.models.notification import Notification, NotificationPref, PushSubscription
 
 
 class NotificationRepository:
@@ -50,6 +50,38 @@ class NotificationRepository:
             self._db.add(pref)
         pref.disabled_kinds = json.dumps(sorted(kinds))
         self._db.commit()
+
+    def quiet(self, owner_id: str) -> tuple[bool, str, str]:
+        pref = self._db.get(NotificationPref, owner_id)
+        if pref is None:
+            return True, "22:00", "07:00"
+        return pref.quiet_enabled, pref.quiet_start, pref.quiet_end
+
+    def set_quiet(self, owner_id: str, enabled: bool, start: str, end: str) -> None:
+        pref = self._db.get(NotificationPref, owner_id)
+        if pref is None:
+            pref = NotificationPref(owner_id=owner_id)
+            self._db.add(pref)
+        pref.quiet_enabled, pref.quiet_start, pref.quiet_end = enabled, start, end
+        self._db.commit()
+
+    def subscriptions(self, owner_id: str) -> list[PushSubscription]:
+        return self._db.query(PushSubscription).filter(PushSubscription.owner_id == owner_id).all()
+
+    def upsert_subscription(self, owner_id: str, endpoint: str, p256dh: str, auth: str, user_agent: str | None, now: datetime, new_id: str) -> PushSubscription:
+        found = self._db.query(PushSubscription).filter(PushSubscription.endpoint == endpoint).first()
+        if found is None:
+            found = PushSubscription(id=new_id, endpoint=endpoint, created_at=now)
+            self._db.add(found)
+        found.owner_id, found.p256dh, found.auth, found.user_agent = owner_id, p256dh, auth, user_agent
+        self._db.commit()
+        return found
+
+    def delete_subscription(self, owner_id: str, endpoint: str) -> bool:
+        count = self._db.query(PushSubscription).filter(
+            PushSubscription.owner_id == owner_id, PushSubscription.endpoint == endpoint).delete()
+        self._db.commit()
+        return count > 0
 
     def commit(self) -> None:
         self._db.commit()

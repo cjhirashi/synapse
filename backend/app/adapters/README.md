@@ -9,7 +9,8 @@ Aquí viven las dependencias concretas: CouchDB, httpx, psycopg2, MinIO, etc.
 - `agent_key_repository.py` (`AgentKeyRepository`, SPEC-0013): tabla de API keys de agente (solo el hash en reposo).
 - `file_repository.py` (`FileRepository`, H-015): metadatos de archivos (nombre, tipo, tamaño, visibilidad, carpeta) sobre la sesión de Postgres.
 - `task_repository.py` (`TaskRepository`, H-053): tareas de bóveda (`vault_tasks`) sobre la sesión de Postgres; toda lectura acotada al dueño; purga de raíces cerradas.
-- `notification_repository.py` (`NotificationRepository`, H-053): avisos (`notifications`) y preferencias (`notification_prefs`) sobre la sesión de Postgres, acotados al dueño.
+- `notification_repository.py` (`NotificationRepository`, H-053): avisos (`notifications`), preferencias (`notification_prefs`, con horas silenciosas) y suscripciones push sobre la sesión de Postgres, acotados al dueño.
+- `web_push.py` (H-053): único módulo que importa `pywebpush`; `send` firma con las claves VAPID y `endpoint_allowed` limita las suscripciones a servicios de push conocidos por https.
 - `minio_adapter.py` (`MinioObjectStorage`, H-015/H-016): `ObjectStoragePort` sobre MinIO. `minio` se importa dentro del
   constructor y de los métodos para que los tests usen un FAKE del puerto (`tests/fake_object_storage.py`); todo fallo del
   cliente sube como `StorageUnavailable` (503). Clave de objeto: `vaults/<vault_id>/<file_id>`.

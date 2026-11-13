@@ -13,3 +13,4 @@ python-dotenv==1.0.1
 PyYAML==6.0.3  # export del contrato OpenAPI (scripts/export_openapi.py) y test de deriva
 minio==7.2.20  # H-015: cliente del almacén de objetos (sólo lo importa app/adapters/minio_adapter.py)
 python-multipart==0.0.32  # H-015: FastAPI lo necesita para la subida multipart de POST /files
+pywebpush==2.5.0  # H-053: envío de Web Push (VAPID); auditada con OSV-Scanner 2026-11-12, 0 hallazgos; solo la importa app/adapters/web_push.py

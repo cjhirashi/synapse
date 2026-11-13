@@ -4,16 +4,17 @@ Solo sesión humana (`get_current_user`): los avisos son de la persona, un agent
 """
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Header, Query, Response
 from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
 from app.adapters.notification_repository import NotificationRepository
 from app.core.dependencies import get_current_user, require_password_changed
-from app.core.errors import NotificationNotFound, PasswordChangeRequired
+from app.core.errors import NotificationNotFound, PasswordChangeRequired, PushInvalid
 from app.core.problems import problem_responses
 from app.core.schemas import (
-    NotificationListOut, NotificationOut, NotificationPrefsOut, NotificationPrefsPut, TokenPayload, UnreadCountOut,
+    NotificationListOut, NotificationOut, NotificationPrefsOut, NotificationPrefsPut, PushStatusOut, PushSubscriptionIn, PushTestOut,
+    TokenPayload, UnreadCountOut,
 )
 from app.routers.auth import SESSION_ERRORS
 from app.services.notification_service import NotificationService
@@ -52,12 +53,40 @@ def read_all(service: NotificationService = Depends(get_notification_service)):
 
 @router.get("/preferences", response_model=NotificationPrefsOut)
 def get_preferences(service: NotificationService = Depends(get_notification_service)):
-    return NotificationPrefsOut(kinds=service.preferences())
+    return NotificationPrefsOut(kinds=service.preferences(), quiet=service.quiet_hours())
 
 
-@router.put("/preferences", response_model=NotificationPrefsOut)
+@router.put("/preferences", response_model=NotificationPrefsOut, responses=problem_responses(PushInvalid))
 def put_preferences(body: NotificationPrefsPut, service: NotificationService = Depends(get_notification_service)):
-    return NotificationPrefsOut(kinds=service.set_preferences(body.kinds))
+    kinds = service.set_preferences(body.kinds) if body.kinds else service.preferences()
+    quiet = service.set_quiet_hours(body.quiet.enabled, body.quiet.start, body.quiet.end) if body.quiet else service.quiet_hours()
+    return NotificationPrefsOut(kinds=kinds, quiet=quiet)
+
+
+@router.get("/push", response_model=PushStatusOut)
+def push_status(service: NotificationService = Depends(get_notification_service)):
+    return PushStatusOut(**service.push_status())
+
+
+@router.put("/push/subscription", status_code=204, responses=problem_responses(PushInvalid))
+def put_subscription(
+    body: PushSubscriptionIn,
+    user_agent: Annotated[str | None, Header()] = None,
+    service: NotificationService = Depends(get_notification_service),
+):
+    service.subscribe(body.endpoint, body.keys.p256dh, body.keys.auth, user_agent)
+    return Response(status_code=204)
+
+
+@router.delete("/push/subscription", status_code=204)
+def delete_subscription(endpoint: Annotated[str, Query(min_length=1, max_length=2000)], service: NotificationService = Depends(get_notification_service)):
+    service.unsubscribe(endpoint)
+    return Response(status_code=204)
+
+
+@router.post("/push/test", response_model=PushTestOut)
+def push_test(service: NotificationService = Depends(get_notification_service)):
+    return PushTestOut(**service.test_push())
 
 
 @router.post("/{notification_id}/read", response_model=NotificationOut, responses=problem_responses(NotificationNotFound))

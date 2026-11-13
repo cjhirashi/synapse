@@ -169,3 +169,30 @@ def test_index_se_revalida_siempre(client):
 def test_asset_con_huella_es_inmutable(client):
     r = client.get(f"/assets/{JS_ASSET}")
     assert r.headers["cache-control"] == "public, max-age=31536000, immutable"
+
+
+# --- PWA (H-053): service worker y manifest ---
+
+def test_service_worker_se_revalida_y_cubre_toda_la_app(client):
+    r = client.get("/sw.js")
+    assert r.status_code == 200
+    assert r.headers["cache-control"] == "no-cache"
+    assert r.headers["service-worker-allowed"] == "/"
+    assert r.headers["content-type"].startswith("text/javascript")
+
+
+def test_manifest_con_tipo_correcto_y_campos_de_instalacion(client):
+    r = client.get("/manifest.webmanifest")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("application/manifest+json")
+    assert r.headers["cache-control"] == "no-cache"
+    data = r.json()
+    assert data["display"] == "standalone" and data["scope"] == "/" and data["start_url"] == "/vaults"
+    assert {i["purpose"] for i in data["icons"]} >= {"any", "maskable"}
+
+
+def test_service_worker_no_cachea_datos_de_la_api(client):
+    sw = (DIST_DIR / "sw.js").read_text()
+    for prefix in ("/vaults", "/files", "/sync", "/tasks", "/notifications"):
+        assert f'startsWith("{prefix}' not in sw, prefix
+    assert 'startsWith("/assets/")' in sw

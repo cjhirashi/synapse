@@ -696,3 +696,9 @@ button:focus-visible {
 .agent-orphan-skills {
   margin-top: var(--space-4);
 }
+
+.pwa-update {
+  position: fixed; inset: auto 1rem 1rem auto; z-index: 1000; display: flex; gap: .5rem; align-items: center;
+  padding: .6rem .8rem; border-radius: 8px; background: var(--bg-secondary); color: var(--text-primary, inherit);
+  border: 1px solid var(--border, rgba(127, 127, 127, .4)); box-shadow: 0 4px 16px rgba(0, 0, 0, .3);
+}

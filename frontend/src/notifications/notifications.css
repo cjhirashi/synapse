@@ -14,3 +14,6 @@
 .notices-settings { display: flex; flex-direction: column; gap: 12px; }
 .notices-settings label { display: flex; gap: 10px; align-items: flex-start; }
 .notices-settings small { display: block; color: var(--text-secondary); }
+
+.notices-settings h3 { margin: 1.4rem 0 .4rem; font-size: 1rem; }
+.notices-actions { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }

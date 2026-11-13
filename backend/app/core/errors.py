@@ -485,6 +485,10 @@ class TaskInvalid(ValidationFailed):
     """Una regla de las tareas (dos niveles, agente asignable, ruta, estado derivado) rechaza el cuerpo."""
 
 
+class PushInvalid(ValidationFailed):
+    """Una suscripción de push o una hora silenciosa inválida (H-053)."""
+
+
 class RevisionConflict(Exception):
     """El almacén rechazó una escritura por `_rev` (documento cambiado o ya existente).
 

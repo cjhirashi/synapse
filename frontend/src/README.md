@@ -7,6 +7,8 @@ src/
 ├── api/        # cliente HTTP de la sesión (auth.ts) y errores de la API (problems.ts)
 ├── auth/       # login y guardia de rutas
 ├── tasks/      # pestaña «Tareas» de la bóveda (H-053): lista con subtareas, Kanban y Calendario, filtros en la barra lateral, ruta indicativa, formulario; `tasksApi.ts` (cliente de `/vaults/{id}/tasks`) y `taskModel.ts` (reglas puras: jerarquía, filtros, fechas en America/Mexico_City, calendario)
+├── notifications/ # avisos de la persona (H-053): bandeja `/avisos`, contador en el riel, `notificationsApi.ts` (cliente de `/notifications`) y `pushClient.ts` (suscripción de este dispositivo a Web Push; el permiso se pide solo tras un clic)
+├── pwa/        # registro del service worker (solo producción) y banner «Hay una versión nueva» (H-053); el service worker vive en `public/sw.js` y no guarda datos de la API
 ├── files/      # archivos de una bóveda (pestaña «Archivos» de la bóveda): árbol de carpetas, subir, mover, renombrar, visibilidad, borrar, referencias y embed (H-015/H-016/H-025/H-046/H-052)
 ├── ui/         # componentes compartidos: DataTable (tabla ordenable con el diseño de las tablas de cjhirashi-career; la usan Archivos y la lista de bóvedas)
 ├── theme/      # tema claro/oscuro/sistema (useTheme, ThemeToggle)

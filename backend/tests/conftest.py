@@ -17,6 +17,7 @@ os.environ.setdefault("BITACORA_DOCS", "false")
 os.environ.setdefault("SYSTEM_DOCS_SYNC", "false")
 # H-053: sin ciclo de fondo de tareas en las pruebas (las de retención y vencimientos llaman a cada pasada directo).
 os.environ.setdefault("TASKS_JOBS", "false")
+os.environ.setdefault("PUSH_DISPATCH", "false")
 os.environ.setdefault("MINIO_ROOT_USER", "minio-test")
 os.environ.setdefault("MINIO_ROOT_PASSWORD", "minio-test-pass")
 

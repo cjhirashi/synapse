@@ -243,18 +243,17 @@ function links(html: string): Array<Record<string, string>> {
 describe("manifest e index.html", () => {
   const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8");
 
-  test("RF-004: manifest.webmanifest es el JSON de PLAN-0011 §3, sin start_url, scope ni display (D-11)", () => {
-    expect(JSON.parse(read("manifest.webmanifest"))).toEqual({
-      name: "Synapse",
-      short_name: "Synapse",
-      icons: [
-        { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-        { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      ],
-      theme_color: "#12121a",
-      background_color: "#12121a",
+  test("RF-004 (ampliado por la PWA de H-053): el manifest conserva la marca y declara la instalación (id, start_url, scope, display)", () => {
+    const manifest = JSON.parse(read("manifest.webmanifest"));
+    expect(manifest).toMatchObject({
+      id: "/", name: "Synapse", short_name: "Synapse", lang: "es", start_url: "/vaults", scope: "/", display: "standalone",
+      theme_color: "#12121a", background_color: "#12121a",
     });
+    expect(manifest.icons).toEqual([
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ]);
   });
 
   test("RF-004: cada icono declarado existe en public/ con las dimensiones que dice el manifest", () => {

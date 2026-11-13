@@ -42,8 +42,28 @@ agentes ya está retirado y no tiene PWA ni push.
 11. **Pantalla de avisos en el riel** (`/avisos`) con contador consultado cada 45 s con la pestaña visible, en vez de un menú
     emergente dentro del riel angosto. La ruta de la API es `/notifications` (la de la app, en español, para no chocar con ella).
 
-## Fases siguientes (mismo ADR, se amplía al ejecutarlas)
+## Fase 3: PWA y Web Push
 
-PWA instalable con service worker `NetworkOnly` para
-todo lo que no sea el shell, y Web Push con VAPID y horas silenciosas. El orden lo fijó Carlos: tareas, luego notificaciones,
-al final PWA y push.
+12. **Service worker propio y mínimo** (`public/sw.js`, sin Workbox: cero dependencias nuevas). Guarda solo los assets con huella
+    (`/assets/*`, inmutables) y la pantalla de arranque para abrir sin red; todo lo demás (`/vaults`, `/files`, `/sync`, `/auth`,
+    `/admin`, `/tasks`, `/notifications`) va directo a la red: el service worker nunca guarda datos de la persona. La réplica
+    local de notas sigue siendo PouchDB. Se registra solo en producción.
+13. **Actualización con aviso, sin recarga automática**: la versión nueva queda en espera y un banner ofrece «Actualizar»; así no se
+    pierde un borrador abierto. Convive con `reloadOnStaleChunk`. `spa.py` sirve `/sw.js` con `Cache-Control: no-cache` y
+    `Service-Worker-Allowed: /`, y el manifest como `application/manifest+json`.
+14. **Manifest instalable**: `id`, `start_url=/vaults`, `scope=/`, `display=standalone`, `lang=es`, iconos `any` y `maskable`, atajo «Avisos».
+15. **Web Push con VAPID** (`pywebpush==2.5.0`, auditada con OSV-Scanner el 2026-11-12: 20 paquetes, 0 hallazgos). Las claves viven en
+    `.env` (modo 600, fuera del repo); sin ellas el push queda apagado y la bandeja sigue funcionando. Solo `adapters/web_push.py`
+    importa la librería. Las suscripciones solo se aceptan hacia servicios de push conocidos y por https (sin SSRF).
+16. **Cola en la tabla**: `notifications.pushed_at` NULL = pendiente. Un hilo despachador (`push_dispatcher.py`) se despierta al crear
+    un aviso (y cada 30 s), lo marca revisado *antes* de enviar (a lo sumo una vez), lo envía con un payload mínimo
+    (`title`, `body` ≤140, `url`, `tag`) y borra la suscripción si el servicio responde 404/410. Un aviso con más de 24 h no se envía.
+17. **Horas silenciosas** por persona (por defecto 22:00–07:00, America/Mexico_City, pueden cruzar la medianoche): suprimen el push,
+    no el aviso en la bandeja. Un aviso generado en ese horario no se envía después (decisión de simplicidad; un resumen matutino
+    queda como mejora posible).
+18. **Permiso solo tras un clic** (Ajustes → Notificaciones → «Activar notificaciones»), con «Enviar aviso de prueba» para validar
+    cada dispositivo. Dispositivos previstos: laptop y Android (sin iPhone).
+
+**Sustituye a D-11 de la spec 0011** («la app no se vuelve instalable ni offline»): esa decisión dejaba la PWA fuera hasta contar con una
+spec propia, y por orden de Carlos (2026-11-12) este ADR es esa spec. Por eso `brandAssets.test.ts` ya no exige un manifest sin
+`start_url`, `scope` ni `display`.

@@ -19,6 +19,8 @@ from app.routers.sync import router as sync_router
 from app.routers.tasks import router as tasks_router
 from app.routers.vaults import get_vault_port, router as vaults_router
 from app.services.system_docs_service import sync_all_in_background
+from app.adapters.web_push import push_configured
+from app.services.push_dispatcher import start_push_dispatcher
 from app.services.task_jobs import start_task_jobs
 from app.spa import install_spa
 
@@ -30,9 +32,12 @@ async def lifespan(app: FastAPI):
         # H-041: publica los documentos de sistema en las bóvedas existentes, sin bloquear el arranque.
         sync_all_in_background(get_vault_port())
     stop_jobs = start_task_jobs(app.state.session_factory) if settings.TASKS_JOBS else None
+    stop_push = start_push_dispatcher(app.state.session_factory) if settings.PUSH_DISPATCH and push_configured() else None
     yield
     if stop_jobs is not None:
         stop_jobs()
+    if stop_push is not None:
+        stop_push()
 
 
 app = FastAPI(title="Synapse", lifespan=lifespan)

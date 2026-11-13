@@ -663,10 +663,21 @@ class UnreadCountOut(BaseModel):
     count: int
 
 
+class QuietHours(BaseModel):
+    """Horas silenciosas del push (America/Mexico_City, HH:MM). Solo suprimen el envío al dispositivo; el aviso sigue en la bandeja."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool
+    start: str
+    end: str
+
+
 class NotificationPrefsOut(BaseModel):
-    """Tipos de aviso y si están activos: `task_assigned`, `task_status`, `task_due`."""
+    """Tipos de aviso y si están activos (`task_assigned`, `task_status`, `task_due`) y las horas silenciosas."""
 
     kinds: dict[str, bool]
+    quiet: QuietHours
 
 
 class NotificationPrefsPut(BaseModel):
@@ -674,4 +685,35 @@ class NotificationPrefsPut(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kinds: dict[Literal["task_assigned", "task_status", "task_due"], bool]
+    kinds: dict[Literal["task_assigned", "task_status", "task_due"], bool] = {}
+    quiet: QuietHours | None = None
+
+
+class PushStatusOut(BaseModel):
+    """Estado del push: si el servidor lo tiene configurado, la clave pública para suscribirse y los dispositivos de la persona."""
+
+    enabled: bool
+    public_key: str | None
+    devices: int
+
+
+class PushKeys(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    p256dh: str = Field(min_length=1, max_length=200)
+    auth: str = Field(min_length=1, max_length=100)
+
+
+class PushSubscriptionIn(BaseModel):
+    """Suscripción tal como la entrega `PushSubscription.toJSON()` del navegador."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    endpoint: str = Field(min_length=1, max_length=2000)
+    keys: PushKeys
+
+
+class PushTestOut(BaseModel):
+    sent: int
+    removed: int
+    failed: int

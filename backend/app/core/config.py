@@ -28,6 +28,13 @@ class Settings(BaseSettings):
     TASKS_RETENTION_DAYS: int = 30
     TASKS_JOBS: bool = True
     TASKS_JOBS_INTERVAL_SECONDS: int = 300
+    # H-053 Web Push: claves VAPID (en `.env`, nunca en el repo). Sin ellas el push queda apagado y los avisos siguen
+    # llegando a la bandeja. `PUSH_DISPATCH=false` apaga el hilo que envía (las pruebas lo apagan).
+    VAPID_PRIVATE_KEY: str = ""
+    VAPID_PUBLIC_KEY: str = ""
+    VAPID_SUBJECT: str = ""
+    PUSH_DISPATCH: bool = True
+    PUSH_POLL_SECONDS: int = 30
     # H-030 E3: las bóvedas nuevas nacen con las carpetas reservadas (INDICES de `AG - *`, BITACORA y
     # PLANTILLAS). Interruptor para desactivarlo sin tocar código; la suite de pruebas lo apaga por defecto.
     SEED_AG_FOLDERS: bool = True

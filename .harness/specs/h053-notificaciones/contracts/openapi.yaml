@@ -73,16 +73,19 @@ components:
       title: NotificationOut
       type: object
     NotificationPrefsOut:
-      description: 'Tipos de aviso y si están activos: `task_assigned`, `task_status`,
-        `task_due`.'
+      description: Tipos de aviso y si están activos (`task_assigned`, `task_status`,
+        `task_due`) y las horas silenciosas.
       properties:
         kinds:
           additionalProperties:
             type: boolean
           title: Kinds
           type: object
+        quiet:
+          $ref: '#/components/schemas/QuietHours'
       required:
       - kinds
+      - quiet
       title: NotificationPrefsOut
       type: object
     NotificationPrefsPut:
@@ -93,6 +96,7 @@ components:
         kinds:
           additionalProperties:
             type: boolean
+          default: {}
           propertyNames:
             enum:
             - task_assigned
@@ -100,8 +104,10 @@ components:
             - task_due
           title: Kinds
           type: object
-      required:
-      - kinds
+        quiet:
+          anyOf:
+          - $ref: '#/components/schemas/QuietHours'
+          - type: 'null'
       title: NotificationPrefsPut
       type: object
     Problem:
@@ -155,6 +161,98 @@ components:
       required:
       - detail
       title: ProblemError
+      type: object
+    PushKeys:
+      additionalProperties: false
+      properties:
+        auth:
+          maxLength: 100
+          minLength: 1
+          title: Auth
+          type: string
+        p256dh:
+          maxLength: 200
+          minLength: 1
+          title: P256Dh
+          type: string
+      required:
+      - p256dh
+      - auth
+      title: PushKeys
+      type: object
+    PushStatusOut:
+      description: 'Estado del push: si el servidor lo tiene configurado, la clave
+        pública para suscribirse y los dispositivos de la persona.'
+      properties:
+        devices:
+          title: Devices
+          type: integer
+        enabled:
+          title: Enabled
+          type: boolean
+        public_key:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Public Key
+      required:
+      - enabled
+      - public_key
+      - devices
+      title: PushStatusOut
+      type: object
+    PushSubscriptionIn:
+      description: Suscripción tal como la entrega `PushSubscription.toJSON()` del
+        navegador.
+      properties:
+        endpoint:
+          maxLength: 2000
+          minLength: 1
+          title: Endpoint
+          type: string
+        keys:
+          $ref: '#/components/schemas/PushKeys'
+      required:
+      - endpoint
+      - keys
+      title: PushSubscriptionIn
+      type: object
+    PushTestOut:
+      properties:
+        failed:
+          title: Failed
+          type: integer
+        removed:
+          title: Removed
+          type: integer
+        sent:
+          title: Sent
+          type: integer
+      required:
+      - sent
+      - removed
+      - failed
+      title: PushTestOut
+      type: object
+    QuietHours:
+      additionalProperties: false
+      description: Horas silenciosas del push (America/Mexico_City, HH:MM). Solo suprimen
+        el envío al dispositivo; el aviso sigue en la bandeja.
+      properties:
+        enabled:
+          title: Enabled
+          type: boolean
+        end:
+          title: End
+          type: string
+        start:
+          title: Start
+          type: string
+      required:
+      - enabled
+      - start
+      - end
+      title: QuietHours
       type: object
     UnreadCountOut:
       properties:
@@ -295,6 +393,157 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Internal Server Error
       summary: Put Preferences
+      tags:
+      - notifications
+  /notifications/push:
+    get:
+      operationId: push_status_notifications_push_get
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushStatusOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Push Status
+      tags:
+      - notifications
+  /notifications/push/subscription:
+    delete:
+      operationId: delete_subscription_notifications_push_subscription_delete
+      parameters:
+      - in: query
+        name: endpoint
+        required: true
+        schema:
+          maxLength: 2000
+          minLength: 1
+          title: Endpoint
+          type: string
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Delete Subscription
+      tags:
+      - notifications
+    put:
+      operationId: put_subscription_notifications_push_subscription_put
+      parameters:
+      - in: header
+        name: user-agent
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: User-Agent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushSubscriptionIn'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Put Subscription
+      tags:
+      - notifications
+  /notifications/push/test:
+    post:
+      operationId: push_test_notifications_push_test_post
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushTestOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+      summary: Push Test
       tags:
       - notifications
   /notifications/read-all:

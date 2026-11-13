@@ -37,11 +37,37 @@ export async function markAllRead(): Promise<void> {
   window.dispatchEvent(new Event(NOTICES_CHANGED));
 }
 
-export async function getPreferences(): Promise<Record<NoticeKind, boolean>> {
-  return ((await (await request("/notifications/preferences")).json()) as { kinds: Record<NoticeKind, boolean> }).kinds;
+export interface QuietHours { enabled: boolean; start: string; end: string }
+export interface Preferences { kinds: Record<NoticeKind, boolean>; quiet: QuietHours }
+
+export async function getPreferences(): Promise<Preferences> {
+  return (await request("/notifications/preferences")).json();
 }
 
-export async function setPreference(kind: NoticeKind, enabled: boolean): Promise<Record<NoticeKind, boolean>> {
+export async function setPreference(kind: NoticeKind, enabled: boolean): Promise<Preferences> {
   const res = await request("/notifications/preferences", { method: "PUT", body: JSON.stringify({ kinds: { [kind]: enabled } }) });
-  return ((await res.json()) as { kinds: Record<NoticeKind, boolean> }).kinds;
+  return res.json();
+}
+
+export async function setQuietHours(quiet: QuietHours): Promise<Preferences> {
+  const res = await request("/notifications/preferences", { method: "PUT", body: JSON.stringify({ quiet }) });
+  return res.json();
+}
+
+export interface PushStatus { enabled: boolean; public_key: string | null; devices: number }
+
+export async function pushStatus(): Promise<PushStatus> {
+  return (await request("/notifications/push")).json();
+}
+
+export async function saveSubscription(subscription: PushSubscriptionJSON): Promise<void> {
+  await request("/notifications/push/subscription", { method: "PUT", body: JSON.stringify(subscription) });
+}
+
+export async function removeSubscription(endpoint: string): Promise<void> {
+  await request(`/notifications/push/subscription?endpoint=${encodeURIComponent(endpoint)}`, { method: "DELETE" });
+}
+
+export async function sendTestPush(): Promise<{ sent: number; removed: number; failed: number }> {
+  return (await request("/notifications/push/test", { method: "POST" })).json();
 }
