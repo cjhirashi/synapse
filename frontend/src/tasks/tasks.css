@@ -37,9 +37,9 @@
 .tasks-item[data-status="done"], .tasks-status[data-status="done"] { --st: var(--success); --st-text: var(--success-text); }
 .tasks-item[data-status="cancelled"], .tasks-status[data-status="cancelled"] { --st: var(--danger); --st-text: var(--danger-text); }
 
-.tasks-body { container-type: inline-size; container-name: tasks; }
-.tasks-table, .tasks-list { --tasks-cols: minmax(0, 1fr) 132px 96px 156px 158px 152px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
-.tasks-table > .tasks-list { border: 0; border-radius: 0; background: transparent; }
+/* En pantallas angostas la tabla conserva su ancho y se desplaza en horizontal (no se reacomoda). */
+.tasks-table { --tasks-cols: minmax(0, 1fr) 132px 96px 156px 158px 152px; overflow-x: auto; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.tasks-table > * { box-sizing: border-box; min-width: 1060px; }
 .tasks-head { display: grid; grid-template-columns: var(--tasks-cols); column-gap: 12px; padding: 9px 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-tertiary); border-bottom: 1px solid var(--border); }
 .tasks-list, .tasks-sublist { list-style: none; margin: 0; padding: 0; }
 .tasks-item { position: relative; border-top: 1px solid var(--border); }
@@ -106,32 +106,6 @@
 .tasks-status:disabled { opacity: 0.9; color: var(--st-text, var(--text-secondary)); cursor: not-allowed; background-image: none; padding-right: 12px; }
 .tasks-status:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tasks-status option { color: var(--text-primary); background: var(--bg-secondary); }
-
-/* Ancho medio y móvil: sin columnas; el título arriba con sus acciones y los datos en una línea debajo. */
-@container tasks (max-width: 1040px) {
-  .tasks-head { display: none; }
-  .tasks-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 10px; }
-  .tasks-cells { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; grid-column: 1 / -1; padding-left: 32px; }
-  .tasks-item--sub .tasks-cells { padding-left: 32px; }
-  .tasks-cell { min-height: 0; }
-  .tasks-cell--none { display: none; }
-  .tasks-cell--who { order: 3; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
-  .tasks-who { min-height: 0; }
-  .tasks-cell--due { order: 4; }
-  .tasks-cell--pri { order: 2; }
-  .tasks-cell--st { order: 1; }
-  .tasks-actions { grid-row: 1; grid-column: 2; align-self: start; }
-  .tasks-item--sub::after { top: 23px; }
-}
-@container tasks (max-width: 520px) {
-  .tasks-row { padding: 10px 12px; }
-  .tasks-cells { padding-left: 0; }
-  .tasks-item--sub .tasks-cells { padding-left: 22px; }
-  .tasks-main > .tasks-desc, .tasks-main > .tasks-notes { margin-left: 0; }
-  .tasks-item--sub .tasks-main { padding-left: 22px; }
-  .tasks-item--sub::before { left: 17px; }
-  .tasks-item--sub::after { left: 17px; width: 10px; }
-}
 
 .tasks-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; line-height: 20px; padding: 1px 9px; border: 1px solid transparent; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); max-width: 100%; }
 .tasks-chip[data-priority]::before { content: ""; flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--text-muted); }
@@ -233,7 +207,7 @@
 .tasks-day { display: flex; flex-direction: column; gap: 8px; }
 .tasks-day-item { display: flex; align-items: flex-start; gap: 10px; }
 .tasks-day-item .tasks-cal-time { width: 38px; padding-top: 12px; font-size: 12px; text-align: right; }
-.tasks-day-item .tasks-list { flex: 1; min-width: 0; }
+.tasks-day-item .tasks-table { flex: 1; min-width: 0; }
 .tasks-cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
 .tasks-cal-dow { text-align: center; color: var(--text-secondary); font-size: 12px; padding: 4px 0; }
 .tasks-cal-cell { min-height: 84px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; padding: 4px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }

@@ -113,9 +113,11 @@ function DayView({ anchor, byDay, actions }: { anchor: string; byDay: Map<string
       {day.map((task) => (
         <div key={task.id} className="tasks-day-item">
           <span className="tasks-cal-time">{formatTime(task.due_at as string)}</span>
-          <ul className="tasks-list">
-            <Row task={task} node={{ task, children: [] }} actions={actions} sub={task.parent_id !== null} />
-          </ul>
+          <div className="tasks-table">
+            <ul className="tasks-list">
+              <Row task={task} node={{ task, children: [] }} actions={actions} sub={task.parent_id !== null} />
+            </ul>
+          </div>
         </div>
       ))}
     </div>
