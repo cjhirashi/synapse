@@ -37,7 +37,7 @@ agentes ya está retirado y no tiene PWA ni push.
    migración 013. Solo sesión humana: un agente no lee ni marca los avisos de la persona.
 9. **Se generan al escribir** (misma transacción que el cambio): un agente asigna una tarea a la persona; un agente cambia el
    estado de una tarea que creó la persona. La persona nunca se avisa de su propia acción.
-10. **Vencimientos** en el ciclo de fondo del proceso (`task_jobs.py`, cada 5 min, junto con la retención): avisos a 24 h, a 1 h y al
+10. **Vencimientos** en el ciclo de fondo del proceso (`task_jobs.py`, cada 60 s, junto con la retención; también las tareas asignadas a un agente, que la persona supervisa): avisos a 24 h, a 1 h y al
     vencer (hasta 7 días después), solo la ventana vigente, idempotentes por `dedupe_key` (id, `due_at`, ventana).
 11. **Pantalla de avisos en el riel** (`/avisos`) con contador consultado cada 45 s con la pestaña visible, en vez de un menú
     emergente dentro del riel angosto. La ruta de la API es `/notifications` (la de la app, en español, para no chocar con ella).
@@ -59,8 +59,8 @@ agentes ya está retirado y no tiene PWA ni push.
     un aviso (y cada 30 s), lo marca revisado *antes* de enviar (a lo sumo una vez), lo envía con un payload mínimo
     (`title`, `body` ≤140, `url`, `tag`) y borra la suscripción si el servicio responde 404/410. Un aviso con más de 24 h no se envía.
 17. **Horas silenciosas** por persona (por defecto 22:00–07:00, America/Mexico_City, pueden cruzar la medianoche): suprimen el push,
-    no el aviso en la bandeja. Un aviso generado en ese horario no se envía después (decisión de simplicidad; un resumen matutino
-    queda como mejora posible).
+    no el aviso en la bandeja. Un aviso generado en ese horario queda pendiente y sale al terminar las horas silenciosas, siempre que
+    no tenga más de 24 h (corrección del 2026-11-13: antes se descartaba el push).
 18. **Permiso solo tras un clic** (Ajustes → Notificaciones → «Activar notificaciones»), con «Enviar aviso de prueba» para validar
     cada dispositivo. Dispositivos previstos: laptop y Android (sin iPhone).
 

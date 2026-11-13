@@ -43,7 +43,9 @@ backend no arranca si falta alguna de las obligatorias (ver `.env.example` en la
 | `AGENT_ACCESS_MODE` | Permisos por agente (H-030): `shadow` (por defecto) registra lo que rechazaría el registro de `AG - AGENTES` sin bloquear; `enforce` rechaza con 403; `off` no evalúa. Los valores por defecto de las siguientes sí existen |
 | `TASKS_RETENTION_DAYS` | (H-053) Días que una tarea cerrada (hecha o cancelada) se conserva antes de eliminarse con sus subtareas. 30 por defecto. |
 | `TASKS_JOBS` | (H-053) `true` (por defecto) arranca el ciclo de fondo que aplica la retención de tareas y avisa de vencimientos; `false` lo apaga (las pruebas lo apagan). |
-| `TASKS_JOBS_INTERVAL_SECONDS` | (H-053) Cada cuánto corre ese ciclo. 300 por defecto. |
+| `TASKS_JOBS_INTERVAL_SECONDS` | (H-053) Cada cuánto corre ese ciclo. 60 por defecto. |
+| `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` | (H-053) Claves y contacto de Web Push (VAPID), solo en `.env`. Sin ellas el push queda apagado y los avisos siguen llegando a la bandeja. |
+| `PUSH_DISPATCH` (`true`), `PUSH_POLL_SECONDS` (30) | (H-053) El hilo que envía los avisos pendientes como push y cada cuántos segundos los revisa; `PUSH_DISPATCH=false` lo apaga (las pruebas lo apagan). |
 | `SEED_AG_FOLDERS` (`true`) | Las bóvedas nuevas nacen con las carpetas reservadas (`AG - *`, `BITACORA`, `PLANTILLAS`) |
 | `SYSTEM_DOCS_SYNC` (`true`) | Al arrancar replica en segundo plano la skill global y `plantilla-skill` en todas las bóvedas (idempotente) |
 | `BITACORA_DOCS` (`true`) | Genera los documentos diarios de `BITACORA/` desde el registro de cambios (`change_log`, que se escribe siempre) |
