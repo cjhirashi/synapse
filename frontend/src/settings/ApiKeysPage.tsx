@@ -1,9 +1,12 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { BookOpen, Check, KeyRound, Plus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import { PROBLEM } from "../api/problems";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { AgentKey, CreatedAgentKey, createAgentKey, listAgentKeys, revokeAgentKey } from "./apiKeys";
+import ConnectAgentGuide from "./ConnectAgentGuide";
+import "./agents.css";
 
 // El backend limita el `label` a 1-64 caracteres (AgentKeyLabel); se valida también en cliente.
 const MAX_LABEL = 64;
@@ -33,6 +36,7 @@ export default function ApiKeysPage() {
   const [revoking, setRevoking] = useState<AgentKey | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [tab, setTab] = useState<"keys" | "connect">("keys");
   const navigate = useNavigate();
 
   // Un 401 aquí es una sesión cerrada (`request()` ya intentó renovarla); el resto se decide
@@ -120,118 +124,168 @@ export default function ApiKeysPage() {
     }
   }
 
+  const active = (keys ?? []).filter((k) => !k.revoked_at);
+  const revoked = (keys ?? []).filter((k) => k.revoked_at);
+
+  const keyCard = (k: AgentKey) => (
+    <li key={k.id} aria-labelledby={`key-${k.id}`} className={`ag-card${k.revoked_at ? " ag-card--muted" : ""}`}>
+      <div className="ag-row">
+        <span className={`ag-icon${k.revoked_at ? "" : " ag-icon--accent"}`} aria-hidden="true">
+          <KeyRound size={18} />
+        </span>
+        <div className="ag-grow">
+          <h3 id={`key-${k.id}`}>{k.label}</h3>
+          <p className="ag-sub">
+            Creada el {fmtDate(k.created_at)} · Último uso: {k.last_used_at ? fmtDate(k.last_used_at) : "nunca"}
+          </p>
+        </div>
+        <span className={`ag-pill ${k.revoked_at ? "ag-pill--bad" : "ag-pill--ok"}`}>{k.revoked_at ? "Revocada" : "Activa"}</span>
+      </div>
+      <div className="ag-row">
+        <div className="ag-meta" style={{ flex: 1 }}>
+          <span className="ag-chip">Agente: {k.agent_id ? <code>{k.agent_id}</code> : "general"}</span>
+          {k.is_admin && <span className="ag-chip">Administrador</span>}
+        </div>
+        {!k.revoked_at && (
+          <button type="button" className="ag-danger" aria-label={`Revocar ${k.label}`} onClick={() => setRevoking(k)}>
+            Revocar
+          </button>
+        )}
+      </div>
+    </li>
+  );
+
   return (
     <section className="api-keys-page">
-      <div className="page-header">
-        <h2>API keys</h2>
-        <Link to="/settings/agent-access">Asignación de agentes a bóvedas</Link>
-        {!creating && (
+      <header className="ag-head">
+        <div>
+          <h2>API keys</h2>
+          <p className="settings-section-intro">
+            Conecta agentes externos (Claude, ChatGPT, Gemini, n8n…) a tus bóvedas. Cada key identifica a un agente y actúa con tu cuenta.
+          </p>
+        </div>
+        {tab === "keys" && !creating && (
           <button
             type="button"
+            className="btn-primary"
             onClick={() => {
               setCreating(true);
               setCreateError(null);
             }}
           >
-            Crear API key
+            <Plus size={16} aria-hidden="true" /> Crear API key
           </button>
         )}
+      </header>
+
+      <div className="ag-tabs" role="tablist" aria-label="API keys">
+        <button type="button" role="tab" id="tab-keys" aria-selected={tab === "keys"} aria-controls="panel-keys" onClick={() => setTab("keys")}>
+          Mis API keys{keys !== null ? ` (${active.length})` : ""}
+        </button>
+        <button type="button" role="tab" id="tab-connect" aria-selected={tab === "connect"} aria-controls="panel-connect" onClick={() => setTab("connect")}>
+          Cómo conectar un agente
+        </button>
       </div>
 
-      {notice && <p role="alert">{notice}</p>}
-
-      {created && (
-        <div className="card-form api-key-created" role="group" aria-label="Nueva API key">
-          <h2>API key creada</h2>
-          <p>
-            Cópiala ahora: por seguridad <strong>no se volverá a mostrar</strong>.
-          </p>
-          <code className="api-key-secret">{created.key}</code>
-          <div className="api-key-created-actions">
-            <button type="button" onClick={() => void copy(created.key)}>
-              {copied ? "Copiado" : "Copiar"}
-            </button>
-            <button type="button" onClick={() => setCreated(null)}>
-              Entendido
-            </button>
-          </div>
+      {tab === "connect" && (
+        <div role="tabpanel" id="panel-connect" aria-labelledby="tab-connect">
+          <ConnectAgentGuide />
         </div>
       )}
 
-      {creating && (
-        <form className="card-form" onSubmit={submitCreate}>
-          {createError && <p role="alert">{createError}</p>}
-          <label>
-            Nombre de la key
-            <input autoFocus value={label} maxLength={MAX_LABEL} onChange={(e) => setLabel(e.target.value)} />
-          </label>
-          <label>
-            Agente (opcional; sin agente la key es general)
-            <input value={agentId} maxLength={32} placeholder="aira" onChange={(e) => setAgentId(e.target.value)} />
-          </label>
-          <label>
-            <input type="checkbox" checked={isAdmin} disabled={!agentId.trim()} onChange={(e) => setIsAdmin(e.target.checked)} />{" "}
-            Agente administrador
-          </label>
-          <div className="api-key-form-actions">
-            <button type="submit" disabled={busy}>
-              Crear
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => {
-                setCreating(false);
-                setCreateError(null);
-                setLabel("");
-                setAgentId("");
-                setIsAdmin(false);
-              }}
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
+      {tab === "keys" && (
+        <div role="tabpanel" id="panel-keys" aria-labelledby="tab-keys" className="ag-list">
+          {notice && <p role="alert" className="ag-callout ag-callout--warn">{notice}</p>}
 
-      {keys === null && !loadError && <p>Cargando…</p>}
-
-      {loadError && (
-        <div role="alert">
-          No se pudieron cargar las API keys.{" "}
-          <button type="button" onClick={() => void load()}>
-            Reintentar
-          </button>
-        </div>
-      )}
-
-      {keys !== null && keys.length === 0 && !creating && <p>Aún no tienes API keys.</p>}
-
-      {keys !== null && keys.length > 0 && (
-        <ul className="card-list">
-          {keys.map((k) => (
-            <li key={k.id} aria-labelledby={`key-${k.id}`}>
-              <h2 id={`key-${k.id}`}>{k.label}</h2>
+          {created && (
+            <div className="ag-card ag-secret" role="group" aria-label="Nueva API key">
+              <h3>
+                <Check size={18} aria-hidden="true" /> API key creada
+              </h3>
               <p>
-                Creada el {fmtDate(k.created_at)}
-                {" · "}
-                Último uso: {k.last_used_at ? fmtDate(k.last_used_at) : "nunca"}
-                {" · "}
-                Agente: {k.agent_id ? <code>{k.agent_id}</code> : "general"}
-                {k.is_admin && <strong> · Administrador</strong>}
-                {" · "}
-                <span className={k.revoked_at ? "api-key-revoked" : "api-key-active"}>
-                  {k.revoked_at ? "Revocada" : "Activa"}
-                </span>
+                Cópiala ahora: por seguridad <strong>no se volverá a mostrar</strong>.
               </p>
-              {!k.revoked_at && (
-                <button type="button" aria-label={`Revocar ${k.label}`} onClick={() => setRevoking(k)}>
-                  Revocar
+              <code className="ag-secret-value">{created.key}</code>
+              <div className="ag-actions">
+                <button type="button" className="btn-primary" onClick={() => void copy(created.key)}>
+                  {copied ? "Copiado" : "Copiar"}
                 </button>
-              )}
-            </li>
-          ))}
-        </ul>
+                <button type="button" onClick={() => setCreated(null)}>
+                  Entendido
+                </button>
+                <button type="button" onClick={() => setTab("connect")}>
+                  <BookOpen size={14} aria-hidden="true" /> Ver cómo conectar un agente
+                </button>
+              </div>
+            </div>
+          )}
+
+          {creating && (
+            <form className="ag-card ag-form" onSubmit={submitCreate}>
+              <h3>Nueva API key</h3>
+              {createError && <p role="alert" className="ag-callout ag-callout--warn">{createError}</p>}
+              <div className="ag-field">
+                <label htmlFor="ak-label">Nombre de la key</label>
+                <input id="ak-label" autoFocus value={label} maxLength={MAX_LABEL} onChange={(e) => setLabel(e.target.value)} />
+                <p className="ag-help">Para distinguirla en la lista, por ejemplo el agente o la plataforma (op-chatgpt).</p>
+              </div>
+              <div className="ag-field">
+                <label htmlFor="ak-agent">Agente (opcional; sin agente la key es general)</label>
+                <input id="ak-agent" value={agentId} maxLength={32} placeholder="aira" onChange={(e) => setAgentId(e.target.value)} />
+                <p className="ag-help">Id corto en minúsculas. Con él el servidor sabe qué agente escribe y aplica sus permisos por bóveda.</p>
+              </div>
+              <label className="ag-switch-row" aria-disabled={!agentId.trim()}>
+                <input className="ag-switch" type="checkbox" checked={isAdmin} disabled={!agentId.trim()} onChange={(e) => setIsAdmin(e.target.checked)} />
+                <span>Agente administrador</span>
+              </label>
+              <div className="ag-actions">
+                <button type="submit" className="btn-primary" disabled={busy}>
+                  Crear
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setCreating(false);
+                    setCreateError(null);
+                    setLabel("");
+                    setAgentId("");
+                    setIsAdmin(false);
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+
+          {keys === null && !loadError && <p className="ag-sub">Cargando…</p>}
+
+          {loadError && (
+            <div role="alert" className="ag-callout ag-callout--warn">
+              No se pudieron cargar las API keys.{" "}
+              <button type="button" onClick={() => void load()}>
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {keys !== null && keys.length === 0 && !creating && (
+            <div className="ag-empty">
+              <KeyRound size={28} aria-hidden="true" />
+              <p>Aún no tienes API keys.</p>
+              <p className="ag-sub">Crea una para conectar un agente a tus bóvedas.</p>
+            </div>
+          )}
+
+          {active.length > 0 && <ul className="ag-list">{active.map(keyCard)}</ul>}
+          {revoked.length > 0 && (
+            <>
+              <h3 className="ag-section-title">Revocadas</h3>
+              <ul className="ag-list">{revoked.map(keyCard)}</ul>
+            </>
+          )}
+        </div>
       )}
 
       {revoking && (

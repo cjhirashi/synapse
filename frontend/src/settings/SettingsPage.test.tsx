@@ -36,25 +36,28 @@ function setup(initialRoute = "/settings") {
 
 afterEach(() => vi.restoreAllMocks());
 
-test("B1: la navegación lateral muestra 6 enlaces en orden correcto", () => {
+test("B1: la navegación lateral muestra 6 enlaces en orden correcto, en dos grupos", () => {
   setup();
 
   const nav = screen.getByRole("navigation");
   const links = nav.querySelectorAll("a");
 
   expect(links).toHaveLength(6);
-  expect(links[0]).toHaveTextContent("Perfil");
-  expect(links[0]).toHaveAttribute("href", "/settings/profile");
-  expect(links[1]).toHaveTextContent("Contraseña");
-  expect(links[1]).toHaveAttribute("href", "/settings/password");
-  expect(links[2]).toHaveTextContent("API keys");
-  expect(links[2]).toHaveAttribute("href", "/settings/api-keys");
-  expect(links[3]).toHaveTextContent("Tema");
-  expect(links[3]).toHaveAttribute("href", "/settings/theme");
-  expect(links[4]).toHaveTextContent("Agentes por bóveda");
-  expect(links[4]).toHaveAttribute("href", "/settings/agent-access");
-  expect(links[5]).toHaveTextContent("Notificaciones");
-  expect(links[5]).toHaveAttribute("href", "/settings/notifications");
+  const expected: Array<[string, string]> = [
+    ["Perfil", "/settings/profile"], ["Contraseña", "/settings/password"], ["Tema", "/settings/theme"],
+    ["Notificaciones", "/settings/notifications"], ["API keys", "/settings/api-keys"], ["Agentes por bóveda", "/settings/agent-access"],
+  ];
+  expected.forEach(([label, href], i) => {
+    expect(links[i]).toHaveTextContent(label);
+    expect(links[i]).toHaveAttribute("href", href);
+  });
+});
+
+test("las secciones de agentes (API keys y Agentes por bóveda) van juntas en su propio grupo", () => {
+  setup();
+  const group = screen.getByRole("group", { name: "Agentes" });
+  const labels = Array.from(group.querySelectorAll("a")).map((a) => a.textContent);
+  expect(labels).toEqual(["API keys", "Agentes por bóveda"]);
 });
 
 test("B1: al renderizar /settings redirige a /settings/profile", () => {

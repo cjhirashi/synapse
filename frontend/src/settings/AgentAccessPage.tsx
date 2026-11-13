@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Bot, Info, UserPlus } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import {
@@ -18,11 +19,18 @@ import {
   skillName,
 } from "./agentAccess";
 import LeaveDialog from "./LeaveDialog";
+import "./agents.css";
 
 const MODE_TEXT: Record<string, string> = {
   off: "Cumplimiento apagado: nada se evalúa.",
   shadow: "Modo sombra: el servidor solo registra lo que haría; todavía no bloquea a nadie.",
   enforce: "Cumplimiento activo: el servidor rechaza las escrituras fuera de lo asignado.",
+};
+
+const MODE_PILL: Record<string, { label: string; tone: string }> = {
+  off: { label: "Apagado", tone: "" },
+  shadow: { label: "Sombra", tone: "ag-pill--warn" },
+  enforce: { label: "Activo", tone: "ag-pill--ok" },
 };
 
 function keyNames(keys: AgentKeyInfo[]): string {
@@ -47,35 +55,47 @@ interface RowProps {
 function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, registered, busy, onSave, onRemove }: RowProps) {
   const [folders, setFolders] = useState(initialFolders.join("\n"));
   const [estado, setEstado] = useState(initialEstado === "suspendido" ? "suspendido" : "activo");
+  const suspended = initialEstado === "suspendido";
+  const status = !registered ? { label: "Sin registrar", tone: "ag-pill--warn" } : suspended ? { label: "Suspendido", tone: "ag-pill--bad" } : { label: "Activo", tone: "ag-pill--ok" };
   return (
-    <li aria-label={`Agente ${agentId}`}>
-      <h2>
-        {agentId} <small>· clave: {keyNames(keys)}</small>
-      </h2>
+    <li aria-label={`Agente ${agentId}`} className="ag-card">
+      <div className="ag-row">
+        <span className="ag-icon ag-icon--accent" aria-hidden="true">
+          <Bot size={18} />
+        </span>
+        <div className="ag-grow">
+          <h3>{agentId}</h3>
+          <span className="ag-sub">clave: {keyNames(keys)}</span>
+        </div>
+        <span className={`ag-pill ${status.tone}`}>{status.label}</span>
+      </div>
       {registered && (
-        <p>
+        <p className="ag-sub">
           Skills: posee {owns} activa{owns === 1 ? "" : "s"} · invitado en {invitedTo}
         </p>
       )}
-      <label>
-        Carpetas con escritura (una por línea; * = toda la bóveda salvo las reservadas)
-        <textarea rows={3} value={folders} onChange={(e) => setFolders(e.target.value)} />
-      </label>
-      <label>
-        Estado
-        <select value={estado} onChange={(e) => setEstado(e.target.value as "activo" | "suspendido")}>
-          <option value="activo">activo</option>
-          <option value="suspendido">suspendido</option>
-        </select>
-      </label>
-      <button type="button" disabled={busy} onClick={() => onSave(agentId, parseFolders(folders), estado as "activo" | "suspendido")}>
-        {registered ? `Guardar ${agentId}` : `Registrar ${agentId}`}
-      </button>
-      {registered && (
-        <button type="button" disabled={busy} onClick={() => onRemove(agentId)}>
-          Quitar {agentId}
+      <div className="ag-field">
+        <label htmlFor={`folders-${agentId}`}>Carpetas con escritura (una por línea; * = toda la bóveda salvo las reservadas)</label>
+        <textarea id={`folders-${agentId}`} rows={3} value={folders} onChange={(e) => setFolders(e.target.value)} />
+      </div>
+      <div className="ag-actions">
+        <div className="ag-field">
+          <label htmlFor={`estado-${agentId}`}>Estado</label>
+          <select id={`estado-${agentId}`} value={estado} onChange={(e) => setEstado(e.target.value as "activo" | "suspendido")}>
+            <option value="activo">activo</option>
+            <option value="suspendido">suspendido</option>
+          </select>
+        </div>
+        <span className="ag-spacer" />
+        {registered && (
+          <button type="button" className="ag-danger" disabled={busy} onClick={() => onRemove(agentId)}>
+            Quitar {agentId}
+          </button>
+        )}
+        <button type="button" className="btn-primary" disabled={busy} onClick={() => onSave(agentId, parseFolders(folders), estado as "activo" | "suspendido")}>
+          {registered ? `Guardar ${agentId}` : `Registrar ${agentId}`}
         </button>
-      )}
+      </div>
     </li>
   );
 }
@@ -177,36 +197,66 @@ export default function AgentAccessPage() {
   const archived = skills.filter((s) => s.estado === "archivado");
   const managers = (access?.agents ?? []).filter((a) => a.estado === "activo").map((a) => a.agent_id);
 
+  const mode = access ? MODE_PILL[access.mode] ?? { label: access.mode, tone: "" } : null;
+
   return (
     <section className="agent-access-page">
-      <div className="page-header">
-        <h2>Agentes por bóveda</h2>
-        <Link to="/settings/api-keys">API keys</Link>
-      </div>
-      {error && <p role="alert">{error}</p>}
-      {vaults === null && !error && <p>Cargando…</p>}
-      {vaults !== null && vaults.length === 0 && <p>Aún no tienes bóvedas.</p>}
+      <header className="ag-head">
+        <div>
+          <h2>Agentes por bóveda</h2>
+          <p className="settings-section-intro">
+            Decide en qué carpetas de cada bóveda puede escribir cada agente. Los agentes se identifican con su{" "}
+            <Link className="ag-link" to="/settings/api-keys">API key</Link>.
+          </p>
+        </div>
+      </header>
+      {error && <p role="alert" className="ag-callout ag-callout--warn">{error}</p>}
+      {vaults === null && !error && <p className="ag-sub">Cargando…</p>}
+      {vaults !== null && vaults.length === 0 && (
+        <div className="ag-empty">
+          <p>Aún no tienes bóvedas.</p>
+        </div>
+      )}
       {vaults !== null && vaults.length > 0 && (
-        <label>
-          Bóveda a asignar
-          <select value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
-            {vaults.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="ag-toolbar">
+          <div className="ag-field">
+            <label htmlFor="agent-access-vault">Bóveda a asignar</label>
+            <select id="agent-access-vault" value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
+              {vaults.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          {mode && (
+            <span className={`ag-pill ${mode.tone}`} title="Modo de cumplimiento del servidor">
+              Cumplimiento: {mode.label}
+            </span>
+          )}
+        </div>
       )}
       {access && (
         <>
-          <p>{MODE_TEXT[access.mode] ?? access.mode}</p>
-          <p>
-            Un agente registrado y activo (gestor) lee toda la bóveda y escribe en sus carpetas y en AG - MENSAJES; en AG - SKILLS
-            solo edita las skills de las que es propietario. Uno no registrado solo escribe en AG - MENSAJES.
+          <p className="ag-callout">
+            <Info size={18} aria-hidden="true" />
+            <span>{MODE_TEXT[access.mode] ?? access.mode}</span>
           </p>
-          {access.agents.length === 0 && <p>Ningún agente está registrado en esta bóveda.</p>}
-          <ul className="card-list">
+          <details className="ag-details">
+            <summary>¿Cómo funcionan los permisos?</summary>
+            <p>
+              Un agente registrado y activo (gestor) lee toda la bóveda y escribe en sus carpetas y en AG - MENSAJES; en AG - SKILLS
+              solo edita las skills de las que es propietario. Uno no registrado solo escribe en AG - MENSAJES.
+            </p>
+          </details>
+          {access.agents.length === 0 && (
+            <div className="ag-empty">
+              <Bot size={28} aria-hidden="true" />
+              <p>Ningún agente está registrado en esta bóveda.</p>
+              <p className="ag-sub">Regístralo abajo con el id de su API key.</p>
+            </div>
+          )}
+          <ul className="ag-list">
             {access.agents.map((a) => (
               <Row
                 key={`${vaultId}-${a.agent_id}-${a.note_id}`}
@@ -240,33 +290,38 @@ export default function AgentAccessPage() {
           </ul>
           {archived.length > 0 && (
             <section aria-label="Skills sin propietario" className="agent-orphan-skills">
-              <h2>Skills sin propietario</h2>
-              <p>Están archivadas: inactivas, en su carpeta, sin propietario ni invitados. Asigna cada una a un gestor para reactivarla (vuelve a «en revisión»).</p>
-              <ul className="card-list">
+              <h3 className="ag-section-title">Skills sin propietario</h3>
+              <p className="ag-sub" style={{ marginBottom: "var(--space-3)" }}>
+                Están archivadas: inactivas, en su carpeta, sin propietario ni invitados. Asigna cada una a un gestor para reactivarla (vuelve a «en revisión»).
+              </p>
+              <ul className="ag-list">
                 {archived.map((skill) => {
                   const name = skillName(skill);
                   const target = assignTo[skill.note_id] ?? managers[0] ?? "";
                   return (
-                    <li key={skill.note_id} aria-label={`Skill archivada ${name}`}>
+                    <li key={skill.note_id} aria-label={`Skill archivada ${name}`} className="ag-card">
                       <h3>{name}</h3>
-                      <label>
-                        Asignar {name} a
-                        <select value={target} disabled={managers.length === 0} onChange={(e) => setAssignTo((cur) => ({ ...cur, [skill.note_id]: e.target.value }))}>
-                          {managers.map((id) => (
-                            <option key={id} value={id}>
-                              {id}
-                            </option>
-                          ))}
-                          {managers.length === 0 && <option value="">Sin gestores activos</option>}
-                        </select>
-                      </label>
-                      <button
-                        type="button"
-                        disabled={busy || target === ""}
-                        onClick={() => void run(() => assignSkill(vaultId, skill.note_id, target), `No se pudo asignar ${name}.`)}
-                      >
-                        Asignar {name}
-                      </button>
+                      <div className="ag-actions">
+                        <div className="ag-field">
+                          <label htmlFor={`assign-${skill.note_id}`}>Asignar {name} a</label>
+                          <select id={`assign-${skill.note_id}`} value={target} disabled={managers.length === 0} onChange={(e) => setAssignTo((cur) => ({ ...cur, [skill.note_id]: e.target.value }))}>
+                            {managers.map((id) => (
+                              <option key={id} value={id}>
+                                {id}
+                              </option>
+                            ))}
+                            {managers.length === 0 && <option value="">Sin gestores activos</option>}
+                          </select>
+                        </div>
+                        <span className="ag-spacer" />
+                        <button
+                          type="button"
+                          disabled={busy || target === ""}
+                          onClick={() => void run(() => assignSkill(vaultId, skill.note_id, target), `No se pudo asignar ${name}.`)}
+                        >
+                          Asignar {name}
+                        </button>
+                      </div>
                     </li>
                   );
                 })}
@@ -274,7 +329,8 @@ export default function AgentAccessPage() {
             </section>
           )}
           <form
-            className="card-form"
+            className="ag-card ag-form"
+            style={{ marginTop: "var(--space-4)" }}
             onSubmit={(e) => {
               e.preventDefault();
               const id = newAgent.trim();
@@ -284,13 +340,15 @@ export default function AgentAccessPage() {
               }
             }}
           >
-            <label>
-              Registrar otro agente (id)
-              <input value={newAgent} maxLength={32} placeholder="aira" onChange={(e) => setNewAgent(e.target.value)} />
-            </label>
-            <button type="submit" disabled={busy || !newAgent.trim()}>
-              Registrar
-            </button>
+            <div className="ag-inline">
+              <div className="ag-field">
+                <label htmlFor="agent-access-new">Registrar otro agente (id)</label>
+                <input id="agent-access-new" value={newAgent} maxLength={32} placeholder="aira" onChange={(e) => setNewAgent(e.target.value)} />
+              </div>
+              <button type="submit" className="btn-primary" disabled={busy || !newAgent.trim()}>
+                <UserPlus size={16} aria-hidden="true" /> Registrar
+              </button>
+            </div>
           </form>
         </>
       )}

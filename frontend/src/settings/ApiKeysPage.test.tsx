@@ -185,3 +185,45 @@ test("H-030: un id de agente inválido se rechaza antes de llamar al servidor", 
   expect(await screen.findByRole("alert")).toHaveTextContent(/id corto en minúsculas/i);
   expect(create).not.toHaveBeenCalled();
 });
+
+test("la pestaña «Cómo conectar un agente» trae los datos de conexión, las plataformas y la instrucción, sin mostrar la lista", async () => {
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([ACTIVE]);
+  const user = setup();
+  await screen.findByRole("heading", { name: "CI" });
+  await user.click(screen.getByRole("tab", { name: "Cómo conectar un agente" }));
+  expect(screen.getByRole("tab", { name: "Cómo conectar un agente" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.queryByRole("heading", { name: "CI" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Crear API key" })).not.toBeInTheDocument();
+  expect(screen.getAllByText(`${window.location.origin}/openapi.json`).length).toBeGreaterThanOrEqual(1);
+  expect(screen.getByText("Authorization: Bearer syn_ak_…")).toBeInTheDocument();
+  for (const platform of [/^ChatGPT/, /^Claude/, /^Gemini/, /^Cualquier agente con código/, /^n8n/]) {
+    expect(screen.getByText(platform, { selector: "summary" })).toBeInTheDocument();
+  }
+  expect(screen.getByRole("button", { name: "Copiar Instrucción para el agente" })).toBeInTheDocument();
+  expect(screen.getAllByRole("link", { name: "Agentes por bóveda" })[0]).toHaveAttribute("href", "/settings/agent-access");
+  await user.click(screen.getByRole("tab", { name: /Mis API keys/ }));
+  expect(await screen.findByRole("heading", { name: "CI" })).toBeInTheDocument();
+});
+
+test("el botón de copiar de la guía deja el texto en el portapapeles", async () => {
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([]);
+  const user = setup();
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+  await user.click(await screen.findByRole("tab", { name: "Cómo conectar un agente" }));
+  await user.click(screen.getByRole("button", { name: "Copiar Instrucción para el agente" }));
+  expect(writeText).toHaveBeenCalledWith(expect.stringContaining(`URL base: ${window.location.origin}`));
+  expect(writeText.mock.calls[0][0]).toContain("Authorization: Bearer <API key>");
+  expect(writeText.mock.calls[0][0]).not.toMatch(/syn_ak_[A-Za-z0-9]/);
+});
+
+test("tras crear una key ofrece ir a la guía de conexión", async () => {
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([]);
+  vi.spyOn(api, "createAgentKey").mockResolvedValue({ id: "k9", label: "nueva", key: "syn_ak_x", created_at: "2026-11-01T10:00:00Z" });
+  const user = setup();
+  await user.click(await screen.findByRole("button", { name: "Crear API key" }));
+  await user.type(screen.getByLabelText("Nombre de la key"), "nueva");
+  await user.click(screen.getByRole("button", { name: "Crear" }));
+  await user.click(await screen.findByRole("button", { name: /Ver cómo conectar un agente/ }));
+  expect(screen.getByText(/Antes de empezar/)).toBeInTheDocument();
+});

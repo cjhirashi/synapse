@@ -7,14 +7,26 @@ import { useSync } from "../sync/useSync";
 import UserAvatar from "./UserAvatar";
 import "./settings.css";
 
-const NAV_ITEMS = [
-  { href: "/settings/profile", label: "Perfil", Icon: User },
-  { href: "/settings/password", label: "Contraseña", Icon: Lock },
-  { href: "/settings/api-keys", label: "API keys", Icon: KeyRound },
-  { href: "/settings/theme", label: "Tema", Icon: Palette },
-  { href: "/settings/agent-access", label: "Agentes por bóveda", Icon: Bot },
-  { href: "/settings/notifications", label: "Notificaciones", Icon: Bell },
+// Las dos secciones de agentes van juntas: las keys identifican al agente y la asignación decide dónde escribe.
+const NAV_GROUPS = [
+  {
+    title: "Cuenta",
+    items: [
+      { href: "/settings/profile", label: "Perfil", Icon: User },
+      { href: "/settings/password", label: "Contraseña", Icon: Lock },
+      { href: "/settings/theme", label: "Tema", Icon: Palette },
+      { href: "/settings/notifications", label: "Notificaciones", Icon: Bell },
+    ],
+  },
+  {
+    title: "Agentes",
+    items: [
+      { href: "/settings/api-keys", label: "API keys", Icon: KeyRound },
+      { href: "/settings/agent-access", label: "Agentes por bóveda", Icon: Bot },
+    ],
+  },
 ];
+const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
 
 const ROLE_LABEL = { admin: "Administrador", guest: "Invitado" } as const;
 
@@ -90,11 +102,16 @@ export default function SettingsPage() {
           </header>
 
           <nav className="settings-nav" aria-label="Secciones de usuario">
-            {NAV_ITEMS.map(({ href, label, Icon }) => (
-              <NavLink key={href} to={href} className={({ isActive }) => (isActive ? "active" : "")}>
-                <Icon size={18} aria-hidden="true" />
-                <span>{label}</span>
-              </NavLink>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="settings-nav-group" role="group" aria-label={group.title}>
+                <span className="settings-nav-title" aria-hidden="true">{group.title}</span>
+                {group.items.map(({ href, label, Icon }) => (
+                  <NavLink key={href} to={href} className={({ isActive }) => (isActive ? "active" : "")}>
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{label}</span>
+                  </NavLink>
+                ))}
+              </div>
             ))}
           </nav>
 
