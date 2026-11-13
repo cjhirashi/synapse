@@ -4,13 +4,16 @@
 que el estado derivado de la raíz no cambie por una limpieza). Es una purga irreversible y sin papelera: solo queda el
 respaldo semanal.
 
-**Vencimientos:** las tareas abiertas asignadas a la persona generan un aviso a 24 h, a 1 h y al vencer (esta última, hasta 7 días
-después). Solo se envía la ventana vigente: una ventana ya pasada al crear la tarea no se manda de forma retroactiva. La
+**Vencimientos:** las tareas abiertas asignadas a la persona generan un aviso por cada recordatorio de la tarea (por defecto 1 día
+y 1 hora antes; la persona puede poner hasta 5, de 1 minuto a 4 semanas) y otro al vencer (hasta 7 días después). Solo se envía la
+ventana vigente —la del recordatorio más cercano al vencimiento que ya llegó—: un recordatorio ya pasado al crear la tarea no se
+manda de forma retroactiva. La
 `dedupe_key` lleva el id de la tarea, su `due_at` y la ventana: repetir o reiniciar el trabajo no duplica avisos, y cambiar la
 fecha de vencimiento reinicia los avisos.
 
 Corren en un hilo de fondo del proceso; ambos son idempotentes, así que no importa si algún día corren varios procesos.
 """
+import json
 import logging
 import threading
 from collections.abc import Callable
@@ -20,6 +23,7 @@ from zoneinfo import ZoneInfo
 from app.adapters.notification_repository import NotificationRepository
 from app.adapters.task_repository import TaskRepository
 from app.core.config import settings
+from app.core import task_rules
 from app.core.models.task import VaultTask
 from app.services.notification_service import NotificationService
 
@@ -45,10 +49,38 @@ def purge_closed_tasks(session_factory, now: datetime | None = None, days: int |
         session.close()
 
 
-def _window(due: datetime, now: datetime) -> str:
-    if due <= now:
-        return "overdue"
-    return "1h" if due - now <= timedelta(hours=1) else "24h"
+def reminders_of(task: VaultTask) -> list[int]:
+    """Minutos antes del vencimiento a los que avisar, del más cercano al más lejano. Sin lista propia, los de siempre."""
+    raw = json.loads(task.reminders) if task.reminders is not None else list(task_rules.DEFAULT_REMINDERS)
+    return sorted(set(raw))
+
+
+def _label(minutes: int) -> str:
+    """El tiempo que falta como se lee mejor: «30 min», «1 h», «24 h» (un día), «2 días», «1 semana»."""
+    if minutes % 10080 == 0:
+        weeks = minutes // 10080
+        return f"{weeks} {'semana' if weeks == 1 else 'semanas'}"
+    if minutes % 1440 == 0 and minutes != 1440:
+        return f"{minutes // 1440} días"
+    if minutes % 60 == 0:
+        return f"{minutes // 60} h"
+    return f"{minutes} min"
+
+
+def _window(due: datetime, now: datetime, offsets: list[int]) -> int | None:
+    """La ventana vigente: `0` si ya venció, el recordatorio más cercano al vencimiento que ya llegó, o `None` si aún no toca."""
+    remaining = due - now
+    if remaining <= timedelta(0):
+        return 0
+    for offset in offsets:  # de menor a mayor
+        if remaining <= timedelta(minutes=offset):
+            return offset
+    return None
+
+
+def _key(offset: int) -> str:
+    """Parte de la `dedupe_key`: conserva los nombres de siempre para 24 h y 1 h, así un despliegue no repite avisos ya enviados."""
+    return "overdue" if offset == 0 else {1440: "24h", 60: "1h"}.get(offset, f"{offset}m")
 
 
 def _when(due: datetime) -> str:
@@ -64,15 +96,17 @@ def notify_due_tasks(session_factory, now: datetime | None = None) -> int:
     try:
         tasks = session.query(VaultTask).filter(
             VaultTask.assignee_type == "user", VaultTask.status.notin_(("done", "cancelled")), VaultTask.due_at.isnot(None),
-            VaultTask.due_at >= moment - _OVERDUE_WINDOW, VaultTask.due_at <= moment + timedelta(hours=24),
+            VaultTask.due_at >= moment - _OVERDUE_WINDOW, VaultTask.due_at <= moment + timedelta(minutes=task_rules.MAX_REMINDER_MINUTES),
         ).all()
         for task in tasks:
-            window = _window(task.due_at, moment)
-            headline = {"24h": "vence en 24 h", "1h": "vence en 1 h", "overdue": "venció"}[window]
+            window = _window(task.due_at, moment, reminders_of(task))
+            if window is None:
+                continue
+            headline = "venció" if window == 0 else f"vence en {_label(window)}"
             notice = NotificationService(NotificationRepository(session), task.owner_id).notify(
                 "task_due", f"«{task.title}» {headline}", body=f"Vence el {_when(task.due_at)}.", vault_id=task.vault_id,
                 resource_type="task", resource_id=task.id, url=f"/vaults/{task.vault_id}?tab=tareas&task={task.id}",
-                dedupe_key=f"task:{task.id}:{task.due_at.isoformat()}:{window}")
+                dedupe_key=f"task:{task.id}:{task.due_at.isoformat()}:{_key(window)}")
             created += notice is not None
         session.commit()
         return created

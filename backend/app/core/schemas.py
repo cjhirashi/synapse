@@ -568,6 +568,19 @@ UtcDateTime = Annotated[datetime, PlainSerializer(_utc_z, return_type=str, when_
 TaskTitle = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 TaskText = Annotated[str, StringConstraints(max_length=20000)]
 TaskPath = Annotated[str, StringConstraints(max_length=600)]
+# Minutos antes del vencimiento: de 1 minuto a 4 semanas, hasta 5 por tarea, sin repetidos (se ordenan del más lejano al más cercano).
+ReminderMinutes = Annotated[int, Field(ge=1, le=40320)]
+
+
+def _clean_reminders(value):
+    if value is None:
+        return None
+    if isinstance(value, str):  # la columna guarda JSON
+        value = json.loads(value)
+    unique = sorted(set(value), reverse=True)
+    if len(unique) > 5:
+        raise ValueError("Una tarea admite hasta 5 recordatorios")
+    return unique
 
 
 class TaskCreate(BaseModel):
@@ -584,8 +597,11 @@ class TaskCreate(BaseModel):
     assignee_type: Literal["user", "agent"] = "user"
     assignee_agent_id: AgentId | None = None
     path: TaskPath | None = None
+    reminders: list[ReminderMinutes] | None = None
     parent_id: str | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+    _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
 
 class TaskUpdate(BaseModel):
@@ -602,7 +618,10 @@ class TaskUpdate(BaseModel):
     assignee_type: Literal["user", "agent"] | None = None
     assignee_agent_id: AgentId | None = None
     path: TaskPath | None = None
+    reminders: list[ReminderMinutes] | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+    _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
 
 class TaskOut(BaseModel):
@@ -623,6 +642,7 @@ class TaskOut(BaseModel):
     assignee_type: str
     assignee_agent_id: str | None
     path: str | None
+    reminders: list[int] | None = None  # minutos antes del vencimiento; `null` = los de siempre (1440 y 60), `[]` = ninguno
     created_by: str
     updated_by: str
     version: int
@@ -630,6 +650,11 @@ class TaskOut(BaseModel):
     updated_at: UtcDateTime
     completed_at: UtcDateTime | None
     purge_at: UtcDateTime | None = None  # cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz
+
+    @field_validator("reminders", mode="before")
+    @classmethod
+    def _parse_reminders(cls, value):
+        return json.loads(value) if isinstance(value, str) else value
 
 
 class TaskListOut(BaseModel):

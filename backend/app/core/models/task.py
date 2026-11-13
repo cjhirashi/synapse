@@ -31,6 +31,9 @@ class VaultTask(Base):
     assignee_type = Column(String(10), nullable=False, server_default=text("'user'"), default="user")
     assignee_agent_id = Column(String, nullable=True)
     path = Column(String(500), nullable=True)
+    # Recordatorios de vencimiento: JSON con los minutos antes de `due_at` (p. ej. `[1440, 60]`). NULL = los de siempre (1 día y 1 hora);
+    # `[]` = ninguno. El aviso de «venció» no depende de esta lista.
+    reminders = Column(Text, nullable=True)
     created_by = Column(String, nullable=False)  # `user` o `agent:<id>`
     updated_by = Column(String, nullable=False)
     version = Column(Integer, nullable=False, server_default=text("1"), default=1)

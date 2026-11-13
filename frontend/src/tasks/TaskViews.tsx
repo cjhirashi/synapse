@@ -58,11 +58,9 @@ function TaskMeta({ task, actions }: { task: Task; actions: ViewActions }) {
     <span className="tasks-meta">
       <span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span>
       <span className="tasks-chip" title="Asignada a"><Assignee task={task} /></span>
-      {creatorAgent(task) && (
-        <span className="tasks-chip" title="Creada por">
-          Creó: <AgentBadge agentId={creatorAgent(task)!} size={16} />
-        </span>
-      )}
+      <span className="tasks-chip" title="Creada por">
+        Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={16} /> : task.created_by === "user" ? "Yo" : "un agente"}
+      </span>
       {task.due_at && (
         <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={formatDue(task.due_at)}>
           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}

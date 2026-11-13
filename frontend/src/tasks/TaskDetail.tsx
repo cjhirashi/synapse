@@ -1,8 +1,8 @@
 import { useId, type ReactNode } from "react";
-import { CalendarClock, CornerDownRight, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bell, CalendarClock, CornerDownRight, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import DialogFrame from "../editor/DialogFrame";
-import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, formatDue, isClosed, isOverdue, resolvePath, type PathIndex, type PathTarget } from "./taskModel";
+import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, effectiveReminders, formatDue, formatReminder, isClosed, isOverdue, resolvePath, type PathIndex, type PathTarget } from "./taskModel";
 import type { Task, TaskStatus } from "./tasksApi";
 
 interface Props {
@@ -114,6 +114,20 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
           </Field>
           <Field label="Creada por"><Creator value={task.created_by} /></Field>
         </dl>
+
+        {task.due_at && (
+          <section className="td-block" aria-labelledby={`${id}-rem`}>
+            <h3 id={`${id}-rem`}>Notificaciones</h3>
+            {effectiveReminders(task).length === 0 ? <p className="td-none">Sin recordatorios: solo se avisa cuando vence.</p> : (
+              <ul className="td-reminders">
+                {effectiveReminders(task).map((minutes) => (
+                  <li key={minutes} className="tasks-chip"><Bell size={12} aria-hidden="true" /> {formatReminder(minutes)}</li>
+                ))}
+              </ul>
+            )}
+            {task.assignee_type !== "user" && <p className="td-note">Avisan a la persona: esta tarea es de un agente, así que no generará avisos.</p>}
+          </section>
+        )}
 
         <section className="td-block" aria-labelledby={`${id}-path`}>
           <h3 id={`${id}-path`}>Ruta</h3>

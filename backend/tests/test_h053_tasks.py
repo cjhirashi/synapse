@@ -332,3 +332,47 @@ def test_reopening_a_task_restarts_its_retention_clock(ready_admin, db):
     reopened = patch(ready_admin, vault, task["id"], status="pending").json()
     assert reopened["purge_at"] is None
     assert purge_closed_tasks(TestingSessionLocal) == 0
+
+
+# --- Recordatorios de vencimiento por tarea ---
+
+def test_reminders_default_to_null_and_round_trip_sorted_without_repeats(ready_admin):
+    vault = vault_of(ready_admin)
+    plain = make(ready_admin, vault, title="Sin lista")
+    assert plain["reminders"] is None  # null = los de siempre (1 día y 1 hora)
+    task = make(ready_admin, vault, title="Con lista", due_at="2026-11-20T15:00:00Z", reminders=[30, 1440, 30, 10080])
+    assert task["reminders"] == [10080, 1440, 30]  # del más lejano al más cercano, sin repetidos
+    assert get(ready_admin, vault, task["id"])["reminders"] == [10080, 1440, 30]
+
+
+def test_reminders_can_be_changed_emptied_and_reset(ready_admin):
+    vault = vault_of(ready_admin)
+    task = make(ready_admin, vault, due_at="2026-11-20T15:00:00Z", reminders=[60])
+    assert patch(ready_admin, vault, task["id"], reminders=[15, 5]).json()["reminders"] == [15, 5]
+    assert patch(ready_admin, vault, task["id"], reminders=[]).json()["reminders"] == []  # ninguno
+    assert patch(ready_admin, vault, task["id"], reminders=None).json()["reminders"] is None  # los de siempre
+    assert patch(ready_admin, vault, task["id"], title="Otro").json()["reminders"] is None  # no enviarlo no lo toca
+
+
+@pytest.mark.parametrize("bad", [[0], [-5], [40321], [1, 2, 3, 4, 5, 6], ["x"], 30])
+def test_invalid_reminders_are_rejected(ready_admin, bad):
+    vault = vault_of(ready_admin)
+    res = ready_admin.post(f"/vaults/{vault}/tasks", json={"title": "X", "reminders": bad})
+    assert res.status_code == 422, res.text
+
+
+def test_limits_of_reminders_are_accepted(ready_admin):
+    vault = vault_of(ready_admin)
+    assert make(ready_admin, vault, reminders=[1, 40320])["reminders"] == [40320, 1]
+    assert make(ready_admin, vault, reminders=[1, 2, 3, 4, 5])["reminders"] == [5, 4, 3, 2, 1]
+
+
+def test_an_agent_assignee_cannot_change_reminders_of_a_task_it_did_not_create(ready_admin, enforce):
+    vault = vault_of(ready_admin)
+    aira = agent_client(ready_admin, "aira")
+    register(ready_admin, vault, "aira", ["*"])
+    mine = make(ready_admin, vault, title="De aira", assignee_type="agent", assignee_agent_id="aira")
+    assert patch(aira, vault, mine["id"], reminders=[10]).status_code == 403  # solo estado y notas
+    assert patch(aira, vault, mine["id"], status="in_progress").status_code == 200
+    created = aira.post(f"/vaults/{vault}/tasks", json={"title": "Suya", "reminders": [10]})
+    assert created.status_code == 201 and created.json()["reminders"] == [10]  # lo que crea, lo edita

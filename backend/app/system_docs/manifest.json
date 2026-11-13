@@ -13,9 +13,9 @@
           "sistema"
         ],
         "estado": "aprobado",
-        "version": "1.3.7"
+        "version": "1.3.8"
       },
-      "sha256": "2eccc2cf2020198d8a1a57597e8ec6118b6b03638f79acee6385e6148e151700"
+      "sha256": "9c8028e75c342c3ec0778a45e54a90528d75c81aad6a7d1b514d0db0303ed681"
     },
     {
       "path": "PLANTILLAS/plantilla-skill.md",

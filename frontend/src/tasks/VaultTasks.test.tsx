@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
@@ -13,7 +13,7 @@ import type { Task } from "./tasksApi";
 function task(over: Partial<Task>): Task {
   return {
     id: "t", vault_id: "v", parent_id: null, sort_order: 0, title: "T", description: null, notes: null, status: "pending", priority: "medium",
-    due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, created_by: "user", updated_by: "user", version: 3,
+    due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user", version: 3,
     created_at: "2026-11-12T00:00:00Z", updated_at: "2026-11-12T00:00:00Z", completed_at: null, purge_at: null, ...over,
   };
 }
@@ -161,14 +161,14 @@ describe("VaultTasks", () => {
     expect(list).toHaveBeenCalledTimes(1);
   });
 
-  it("H-053: sin perfil se muestra el id del agente, y una tarea creada por la persona no lleva «Creó»", async () => {
+  it("H-053: sin perfil se muestra el id del agente, y una tarea creada por la persona dice «Creó: Yo»", async () => {
     resetAgentProfiles();
     vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
     vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "b", title: "Mía", assignee_type: "agent", assignee_agent_id: "liza" })]);
     render(<Page />);
     const row = (await screen.findByText("Mía")).closest("li")!;
     expect(await within(row).findByText("liza")).toBeInTheDocument();
-    expect(within(row).queryByText(/Creó:/)).toBeNull();
+    expect(within(row).getByText(/Creó:/)).toHaveTextContent("Creó: Yo");
   });
 
   it("H-053: «Asignada a» es una lista desplegable con los gestores registrados, cada uno con su avatar y su nombre visible (o el id)", async () => {
@@ -526,6 +526,101 @@ describe("VaultTasks", () => {
       await userEvent.click(within(dialog).getByRole("button", { name: /Plan\.md/ }));
       expect(onOpenNote).toHaveBeenCalledWith("n1");
       expect(screen.queryByRole("dialog")).toBeNull();
+    });
+  });
+
+  describe("recordatorios de vencimiento", () => {
+    const openNew = async () => {
+      render(<Page />);
+      await screen.findByText("Publicar el plan");
+      await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+      return screen.findByRole("dialog", { name: "Nueva tarea" });
+    };
+    const group = (dialog: HTMLElement) => within(dialog).getByRole("group", { name: /Notificaciones/ });
+
+    it("sin fecha de vencimiento no hay recordatorios que añadir, y lo explica", async () => {
+      const dialog = await openNew();
+      expect(within(group(dialog)).getByText(/Elige una fecha de vencimiento/)).toBeInTheDocument();
+      expect(within(group(dialog)).queryByRole("button", { name: /Añadir notificación/ })).toBeNull();
+    });
+
+    it("con fecha ofrece los de siempre (1 día y 1 hora), se pueden añadir, cambiar de unidad y quitar, hasta cinco", async () => {
+      const create = vi.spyOn(api, "createTask").mockResolvedValue(ROOT);
+      const dialog = await openNew();
+      await userEvent.type(within(dialog).getByLabelText("Título"), "Entrega");
+      fireEvent.change(within(dialog).getByLabelText(/Vence/), { target: { value: "2026-11-20T09:00" } });
+      const g = group(dialog);
+      expect(within(g).getByLabelText("Recordatorio 1: cantidad")).toHaveValue(1);
+      expect(within(g).getByLabelText("Recordatorio 1: unidad")).toHaveValue("days");
+      expect(within(g).getByLabelText("Recordatorio 2: unidad")).toHaveValue("hours");
+      await userEvent.click(within(g).getByRole("button", { name: /Añadir notificación/ }));
+      expect(within(g).getByLabelText("Recordatorio 3: cantidad")).toHaveValue(30); // empieza en 30 minutos
+      expect(within(g).getByLabelText("Recordatorio 3: unidad")).toHaveValue("minutes");
+      await userEvent.selectOptions(within(g).getByLabelText("Recordatorio 3: unidad"), "weeks");
+      fireEvent.change(within(g).getByLabelText("Recordatorio 3: cantidad"), { target: { value: "2" } });
+      await userEvent.click(within(g).getByRole("button", { name: "Quitar 1 hora antes" }));
+      expect(within(g).queryByLabelText("Recordatorio 3: cantidad")).toBeNull();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+      expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ title: "Entrega", reminders: [1440, 20160] }), undefined);
+    });
+
+    it("el máximo es cinco y se puede dejar sin ninguno", async () => {
+      const create = vi.spyOn(api, "createTask").mockResolvedValue(ROOT);
+      const dialog = await openNew();
+      await userEvent.type(within(dialog).getByLabelText("Título"), "Sin avisos");
+      fireEvent.change(within(dialog).getByLabelText(/Vence/), { target: { value: "2026-11-20T09:00" } });
+      const g = group(dialog);
+      for (let i = 0; i < 3; i++) await userEvent.click(within(g).getByRole("button", { name: /Añadir notificación/ }));
+      expect(within(g).getByRole("button", { name: /Añadir notificación/ })).toBeDisabled();
+      expect(within(g).getByText(/Máximo 5 recordatorios/)).toBeInTheDocument();
+      for (let i = 0; i < 5; i++) await userEvent.click(within(g).getAllByRole("button", { name: /^Quitar/ })[0]);
+      expect(within(g).getByText(/Sin recordatorios: solo se avisa cuando la tarea vence/)).toBeInTheDocument();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+      expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ reminders: [] }), undefined);
+    });
+
+    it("sin vencimiento se envía `null` y una tarea de un agente avisa de que no generará avisos", async () => {
+      resetAgentProfiles();
+      vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+      const create = vi.spyOn(api, "createTask").mockResolvedValue(ROOT);
+      const dialog = await openNew();
+      await userEvent.type(within(dialog).getByLabelText("Título"), "Sin fecha");
+      await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+      expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ reminders: null }), undefined);
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+      const again = await screen.findByRole("dialog", { name: "Nueva tarea" });
+      fireEvent.change(within(again).getByLabelText(/Vence/), { target: { value: "2026-11-20T09:00" } });
+      await userEvent.click(within(again).getByRole("combobox", { name: "Asignada a" }));
+      await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /aira/ }));
+      expect(within(group(again)).getByText(/esta tarea no es tuya/)).toBeInTheDocument();
+    });
+
+    it("al editar una tarea con lista propia la muestra, y el detalle la enseña con su texto", async () => {
+      vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "x", title: "Con lista", due_at: "2026-11-20T15:00:00Z", reminders: [10080, 30] })]);
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Con lista" }));
+      const detail = await screen.findByRole("dialog", { name: "Con lista" });
+      expect(within(detail).getByText("1 semana antes")).toBeInTheDocument();
+      expect(within(detail).getByText("30 minutos antes")).toBeInTheDocument();
+      await userEvent.click(within(detail).getByRole("button", { name: /Editar/ }));
+      const form = await screen.findByRole("dialog", { name: "Editar tarea" });
+      expect(within(form).getByLabelText("Recordatorio 1: cantidad")).toHaveValue(1);
+      expect(within(form).getByLabelText("Recordatorio 1: unidad")).toHaveValue("weeks");
+      expect(within(form).getByLabelText("Recordatorio 2: cantidad")).toHaveValue(30);
+      expect(form).toHaveTextContent("Creada por ti");
+    });
+
+    it("una tarea sin lista propia muestra los de siempre en el detalle; sin fecha no hay sección", async () => {
+      vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "a", title: "Clásica", due_at: "2026-11-20T15:00:00Z" }), task({ id: "b", title: "Sin fecha" })]);
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Clásica" }));
+      const detail = await screen.findByRole("dialog", { name: "Clásica" });
+      expect(within(detail).getByText("1 día antes")).toBeInTheDocument();
+      expect(within(detail).getByText("1 hora antes")).toBeInTheDocument();
+      await userEvent.click(within(detail).getAllByRole("button", { name: "Cerrar" }).at(-1)!);
+      await userEvent.click(screen.getByRole("button", { name: "Ver detalle de Sin fecha" }));
+      expect(within(await screen.findByRole("dialog", { name: "Sin fecha" })).queryByText("Notificaciones")).toBeNull();
     });
   });
 });

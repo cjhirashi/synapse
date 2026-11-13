@@ -5,7 +5,7 @@ import pytest
 
 from app.core.models.notification import Notification
 from app.services import agent_access_guard
-from app.services.task_jobs import notify_due_tasks
+from app.services.task_jobs import _label, notify_due_tasks, reminders_of
 from tests.conftest import TestingSessionLocal
 from tests.test_agent_api_key_access import _guest
 from tests.test_h030_api import agent_client, register, vault_of
@@ -167,3 +167,72 @@ def test_a_disabled_due_kind_creates_nothing(ready_admin):
     ready_admin.put("/notifications/preferences", json={"kinds": {"task_due": False}})
     assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(hours=2)) == 0
     assert TestingSessionLocal().query(Notification).count() == 0
+
+
+# --- Recordatorios propios de cada tarea ---
+
+def titles(client):
+    return [n["title"] for n in reversed(due_notices(client))]
+
+
+def test_custom_reminders_each_fire_once_at_their_own_time(ready_admin):
+    vault = vault_of(ready_admin)
+    make(ready_admin, vault, title="Informe", due_at=DUE, reminders=[2880, 120, 30])
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(days=3)) == 0  # aún falta más de 2 días
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(days=2) + timedelta(minutes=1)) == 1  # 2 días antes
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(hours=10)) == 0  # sigue en la misma ventana: no repite
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=100)) == 1  # 2 h antes
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=25)) == 1  # 30 min antes
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT + timedelta(minutes=1)) == 1  # venció
+    assert titles(ready_admin) == ["«Informe» vence en 2 días", "«Informe» vence en 2 h", "«Informe» vence en 30 min", "«Informe» venció"]
+
+
+def test_an_empty_list_sends_no_reminders_but_the_overdue_notice_remains(ready_admin):
+    vault = vault_of(ready_admin)
+    make(ready_admin, vault, title="Sin avisos", due_at=DUE, reminders=[])
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(hours=20)) == 0
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=30)) == 0
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT + timedelta(minutes=5)) == 1
+    assert titles(ready_admin) == ["«Sin avisos» venció"]
+
+
+def test_a_task_without_its_own_list_keeps_the_old_windows_and_their_keys(ready_admin):
+    vault = vault_of(ready_admin)
+    make(ready_admin, vault, title="Clásica", due_at=DUE)
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(hours=20)) == 1
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=30)) == 1
+    keys = sorted(n.dedupe_key.rsplit(":", 1)[1] for n in TestingSessionLocal().query(Notification).all())
+    assert keys == ["1h", "24h"]  # los nombres de siempre: un despliegue no repite avisos ya enviados
+    assert titles(ready_admin) == ["«Clásica» vence en 24 h", "«Clásica» vence en 1 h"]
+
+
+def test_reminders_longer_than_a_day_are_found_by_the_job(ready_admin):
+    vault = vault_of(ready_admin)
+    make(ready_admin, vault, title="Lejana", due_at=DUE, reminders=[20160])  # 2 semanas
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(days=15)) == 0
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(days=13)) == 1
+    assert titles(ready_admin) == ["«Lejana» vence en 2 semanas"]
+
+
+def test_changing_the_reminders_adds_the_new_window_without_resending_the_old_one(ready_admin):
+    vault = vault_of(ready_admin)
+    task = make(ready_admin, vault, title="Ajustada", due_at=DUE, reminders=[120])
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=100)) == 1
+    patch(ready_admin, vault, task["id"], reminders=[120, 15])
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=90)) == 0  # la de 2 h ya salió
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(minutes=10)) == 1  # la nueva
+    assert titles(ready_admin) == ["«Ajustada» vence en 2 h", "«Ajustada» vence en 15 min"]
+
+
+def test_reminder_labels_and_defaults():
+    assert [_label(m) for m in (1, 30, 60, 90, 120, 1440, 2880, 4320, 10080, 20160)] == [
+        "1 min", "30 min", "1 h", "90 min", "2 h", "24 h", "2 días", "3 días", "1 semana", "2 semanas"]
+
+    class T:
+        reminders = None
+
+    assert reminders_of(T()) == [60, 1440]
+    T.reminders = "[]"
+    assert reminders_of(T()) == []
+    T.reminders = "[1440, 30]"
+    assert reminders_of(T()) == [30, 1440]

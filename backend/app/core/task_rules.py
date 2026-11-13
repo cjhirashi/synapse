@@ -22,6 +22,18 @@ MAX_PATH = 500
 # Campos que puede cambiar quien solo tiene la tarea asignada; el resto es del creador.
 ASSIGNEE_FIELDS = frozenset({"status", "notes"})
 
+# Recordatorios de vencimiento (minutos antes del vencimiento). `None` en la tarea = los de siempre: 1 día y 1 hora antes.
+DEFAULT_REMINDERS = (1440, 60)
+MAX_REMINDERS = 5
+MAX_REMINDER_MINUTES = 28 * 24 * 60  # cuatro semanas
+
+
+def normalize_reminders(values: list[int] | None) -> list[int] | None:
+    """Lista de recordatorios lista para guardar: sin repetidos y del más lejano al más cercano. `None` = los de siempre."""
+    if values is None:
+        return None
+    return sorted(set(values), reverse=True)
+
 _CONTROL = re.compile(r"[\x00-\x1f\x7f\\]")
 
 

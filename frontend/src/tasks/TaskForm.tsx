@@ -3,7 +3,8 @@ import { CornerDownRight, ListChecks, Plus, X } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import AgentSelect from "../agents/AgentSelect";
 import DialogFrame from "../editor/DialogFrame";
-import { PRIORITY_LABEL, STATUS_LABEL, fromLocalInput, toLocalInput } from "./taskModel";
+import ReminderEditor from "./ReminderEditor";
+import { DEFAULT_REMINDERS, PRIORITY_LABEL, STATUS_LABEL, effectiveReminders, fromLocalInput, toLocalInput } from "./taskModel";
 import type { Task, TaskInput, TaskPriority } from "./tasksApi";
 
 interface Props {
@@ -22,6 +23,16 @@ interface Props {
   /** Añade ya una subtarea a la tarea que se edita. */
   onAddSubtask?: (input: TaskInput & { title: string }) => Promise<void>;
   onCancel: () => void;
+}
+
+/** «Creada por …» con la foto y el nombre del agente (el servidor guarda `user` o `agent:<id>`). */
+function CreatedBy({ value }: { value: string }) {
+  const agent = value.startsWith("agent:") && value !== "agent:general" ? value.slice(6) : null;
+  return (
+    <span className="tf-created">
+      Creada por {value === "user" ? "ti" : agent ? <AgentBadge agentId={agent} size={16} /> : "un agente (clave general)"}
+    </span>
+  );
 }
 
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high"];
@@ -53,6 +64,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
   const [due, setDue] = useState(toLocalInput(task?.due_at ?? null));
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [path, setPath] = useState(task?.path ?? "");
+  const [reminders, setReminders] = useState<number[]>(() => (task ? effectiveReminders(task) : [...DEFAULT_REMINDERS]));
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [newSub, setNewSub] = useState("");
   const [newSubDescription, setNewSubDescription] = useState("");
@@ -83,6 +95,8 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         assignee_type: assignee === "user" ? "user" : "agent",
         assignee_agent_id: assignee === "user" ? null : assignee,
         path: path.trim() || null,
+        // Sin vencimiento no hay recordatorios: se vuelve a los de siempre. Las repetidas se unen y el servidor las ordena.
+        reminders: due ? Array.from(new Set(reminders)) : null,
       },
       drafts.map(subtaskInput),
     );
@@ -115,7 +129,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
       role="dialog"
       titleId={`${id}-title`}
       title={heading}
-      subtitle={parent ? `Dentro de «${parent.title}»` : undefined}
+      subtitle={parent ? `Dentro de «${parent.title}»` : task ? <CreatedBy value={task.created_by} /> : undefined}
       glyph={ListChecks}
       tone="accent"
       accent={accent}
@@ -169,6 +183,8 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
             </div>
           </div>
         </div>
+
+        <ReminderEditor value={reminders} onChange={setReminders} hasDue={due !== ""} mine={assignee === "user"} />
 
         <div className="tf-field">
           <label htmlFor={`${id}-r`}>Ruta <small>(documento o carpeta donde se trabaja; solo indicativa)</small></label>

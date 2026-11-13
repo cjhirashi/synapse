@@ -22,6 +22,8 @@ export interface Task {
   assignee_type: AssigneeType;
   assignee_agent_id: string | null;
   path: string | null;
+  /** Minutos antes del vencimiento a los que avisar; `null` = los de siempre (1 día y 1 hora), `[]` = ninguno. */
+  reminders: number[] | null;
   created_by: string;
   updated_by: string;
   version: number;
@@ -43,6 +45,8 @@ export interface TaskInput {
   assignee_type?: AssigneeType;
   assignee_agent_id?: string | null;
   path?: string | null;
+  /** Minutos antes del vencimiento (hasta 5, de 1 a 40 320); `null` = los de siempre, `[]` = ninguno. */
+  reminders?: number[] | null;
 }
 
 const base = (vaultId: string) => `/vaults/${encodeURIComponent(vaultId)}/tasks`;

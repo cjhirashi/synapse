@@ -6,6 +6,7 @@ forma) y los permisos de cada agente (`AgentAccessGuard.check_task`). El estado 
 deriva de ellas al escribir; no hay planificador. Lanza errores de dominio de `core/errors.py`.
 """
 import re
+import json
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
@@ -24,6 +25,12 @@ _VERSION = re.compile(r'^(?:W/)?"?(\d{1,9})"?$')
 
 def _now() -> datetime:
     return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _reminders_json(values: list[int] | None) -> str | None:
+    """Los recordatorios como se guardan en la columna (JSON); `None` = los de siempre."""
+    normalized = task_rules.normalize_reminders(values)
+    return None if normalized is None else json.dumps(normalized)
 
 
 def _naive_utc(value: datetime | None) -> datetime | None:
@@ -93,7 +100,7 @@ class TaskService:
             sort_order=body.sort_order if body.sort_order is not None else self._repo.next_sort_order(
                 self._owner_id, vault_id, parent.id if parent else None),
             title=body.title, description=body.description, notes=body.notes, status=body.status,
-            priority=body.priority, due_at=_naive_utc(body.due_at), assignee_type=body.assignee_type,
+            priority=body.priority, due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
             assignee_agent_id=agent_id, path=path, created_by=self._guard.author, updated_by=self._guard.author,
             version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
         )
@@ -131,6 +138,8 @@ class TaskService:
             task.due_at = _naive_utc(body.due_at)
         if "path" in sent:
             task.path = self._path(body.path)
+        if "reminders" in sent:  # `null` vuelve a los de siempre; `[]` los quita todos
+            task.reminders = _reminders_json(body.reminders)
         if "assignee_type" in sent or "assignee_agent_id" in sent:
             kind = body.assignee_type if "assignee_type" in sent and body.assignee_type else task.assignee_type
             agent_id = body.assignee_agent_id if "assignee_agent_id" in sent else task.assignee_agent_id

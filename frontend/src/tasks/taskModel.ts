@@ -15,6 +15,39 @@ export const STATUS_LABEL: Record<TaskStatus, string> = {
 export const STATUSES: TaskStatus[] = ["pending", "in_progress", "done", "cancelled"];
 export const PRIORITY_LABEL = { low: "Baja", medium: "Media", high: "Alta" } as const;
 
+// --- Recordatorios de vencimiento ---
+
+/** Los que rigen cuando la tarea no tiene lista propia (el servidor usa los mismos): 1 día y 1 hora antes. */
+export const DEFAULT_REMINDERS: readonly number[] = [1440, 60];
+export const MAX_REMINDERS = 5;
+export const MAX_REMINDER_MINUTES = 40320; // cuatro semanas
+
+export type ReminderUnit = "minutes" | "hours" | "days" | "weeks";
+export const REMINDER_UNIT_MINUTES: Record<ReminderUnit, number> = { minutes: 1, hours: 60, days: 1440, weeks: 10080 };
+export const REMINDER_UNIT_LABEL: Record<ReminderUnit, [string, string]> = {
+  minutes: ["minuto", "minutos"], hours: ["hora", "horas"], days: ["día", "días"], weeks: ["semana", "semanas"],
+};
+
+/** Los recordatorios que de verdad aplican a una tarea (sin lista propia, los de siempre), del más lejano al más cercano. */
+export function effectiveReminders(task: Pick<{ reminders: number[] | null }, "reminders">): number[] {
+  return [...(task.reminders ?? DEFAULT_REMINDERS)].sort((a, b) => b - a);
+}
+
+/** Un total de minutos en la mayor unidad que lo expresa exacto: 90 → 1,5 h no existe, así que queda en 90 minutos; 120 → 2 horas. */
+export function splitReminder(minutes: number): { value: number; unit: ReminderUnit } {
+  for (const unit of ["weeks", "days", "hours"] as const) {
+    if (minutes % REMINDER_UNIT_MINUTES[unit] === 0) return { value: minutes / REMINDER_UNIT_MINUTES[unit], unit };
+  }
+  return { value: minutes, unit: "minutes" };
+}
+
+/** «30 minutos antes», «1 hora antes», «2 días antes». */
+export function formatReminder(minutes: number): string {
+  const { value, unit } = splitReminder(minutes);
+  const [one, many] = REMINDER_UNIT_LABEL[unit];
+  return `${value} ${value === 1 ? one : many} antes`;
+}
+
 export const isClosed = (task: Pick<Task, "status">) => task.status === "done" || task.status === "cancelled";
 
 // --- Jerarquía ---

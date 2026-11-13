@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, fromLocalInput, isOverdue, monthGrid, resolvePath, toLocalInput, tasksByDay,
 } from "./taskModel";
-import { calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
+import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
 import type { Task } from "./tasksApi";
 
 let n = 0;
@@ -10,7 +10,7 @@ function task(over: Partial<Task> = {}): Task {
   n += 1;
   return {
     id: `t${n}`, vault_id: "v", parent_id: null, sort_order: n, title: `T${n}`, description: null, notes: null, status: "pending",
-    priority: "medium", due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, created_by: "user", updated_by: "user",
+    priority: "medium", due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user",
     version: 1, created_at: "2026-11-12T00:00:00Z", updated_at: "2026-11-12T00:00:00Z", completed_at: null, purge_at: null, ...over,
   };
 }
@@ -125,5 +125,26 @@ describe("subvistas del calendario", () => {
   it("la hora de un vencimiento sale en la Ciudad de México", () => {
     expect(formatTime("2026-11-13T02:00:00Z")).toBe("20:00"); // UTC-6 en noviembre
     expect(formatTime("2026-11-13T18:30:00Z")).toBe("12:30");
+  });
+});
+
+describe("recordatorios", () => {
+  it("se expresan en la mayor unidad exacta y se leen en español", () => {
+    expect(splitReminder(1)).toEqual({ value: 1, unit: "minutes" });
+    expect(splitReminder(90)).toEqual({ value: 90, unit: "minutes" });
+    expect(splitReminder(120)).toEqual({ value: 2, unit: "hours" });
+    expect(splitReminder(1440)).toEqual({ value: 1, unit: "days" });
+    expect(splitReminder(4320)).toEqual({ value: 3, unit: "days" });
+    expect(splitReminder(10080)).toEqual({ value: 1, unit: "weeks" });
+    expect(splitReminder(40320)).toEqual({ value: 4, unit: "weeks" });
+    expect([1, 30, 60, 120, 1440, 2880, 10080, 20160].map(formatReminder)).toEqual([
+      "1 minuto antes", "30 minutos antes", "1 hora antes", "2 horas antes", "1 día antes", "2 días antes", "1 semana antes", "2 semanas antes"]);
+  });
+
+  it("sin lista propia rigen los de siempre; una lista propia se ordena del más lejano al más cercano; vacía = ninguno", () => {
+    expect(DEFAULT_REMINDERS).toEqual([1440, 60]);
+    expect(effectiveReminders({ reminders: null })).toEqual([1440, 60]);
+    expect(effectiveReminders({ reminders: [30, 10080, 60] })).toEqual([10080, 60, 30]);
+    expect(effectiveReminders({ reminders: [] })).toEqual([]);
   });
 });

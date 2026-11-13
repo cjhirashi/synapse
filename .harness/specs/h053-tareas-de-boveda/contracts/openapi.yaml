@@ -107,6 +107,15 @@ components:
           - high
           title: Priority
           type: string
+        reminders:
+          anyOf:
+          - items:
+              maximum: 40320.0
+              minimum: 1.0
+              type: integer
+            type: array
+          - type: 'null'
+          title: Reminders
         sort_order:
           anyOf:
           - maximum: 100000.0
@@ -206,6 +215,13 @@ components:
           - type: string
           - type: 'null'
           title: Purge At
+        reminders:
+          anyOf:
+          - items:
+              type: integer
+            type: array
+          - type: 'null'
+          title: Reminders
         sort_order:
           title: Sort Order
           type: integer
@@ -301,6 +317,15 @@ components:
             type: string
           - type: 'null'
           title: Priority
+        reminders:
+          anyOf:
+          - items:
+              maximum: 40320.0
+              minimum: 1.0
+              type: integer
+            type: array
+          - type: 'null'
+          title: Reminders
         sort_order:
           anyOf:
           - maximum: 100000.0

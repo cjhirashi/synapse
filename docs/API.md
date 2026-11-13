@@ -654,10 +654,10 @@ Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas
 | `POST /vaults/{id}/tasks` | Crea una tarea; con `parent_id` crea una subtarea. 201 con `ETag`. |
 | `POST /vaults/{id}/tasks/{task_id}/subtasks` | Crea una subtarea bajo `task_id` (manda la ruta). |
 | `GET /vaults/{id}/tasks/{task_id}` | Lee una tarea (`ETag` = `"<version>"`). |
-| `PATCH /vaults/{id}/tasks/{task_id}` | Cambia solo lo enviado (un `null` vacía `description`, `notes`, `due_at` y `path`). `If-Match: "<version>"` opcional. |
+| `PATCH /vaults/{id}/tasks/{task_id}` | Cambia solo lo enviado (un `null` vacía `description`, `notes`, `due_at` y `path`, y devuelve `reminders` a los de siempre). `If-Match: "<version>"` opcional. |
 | `DELETE /vaults/{id}/tasks/{task_id}` | Borra la tarea y, si es raíz, sus subtareas. 204. |
 
-**Campos de entrada:** `title` (1 a 255), `description`, `notes` (≤ 20 000), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `due_at` (con zona; se guarda en UTC), `assignee_type` (`user`, `agent`), `assignee_agent_id`, `path`, `sort_order`. Cualquier otro campo → 422.
+**Campos de entrada:** `title` (1 a 255), `description`, `notes` (≤ 20 000), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `due_at` (con zona; se guarda en UTC), `assignee_type` (`user`, `agent`), `assignee_agent_id`, `path`, `reminders`, `sort_order`. Cualquier otro campo → 422.
 
 **Salida (`TaskOut`):** los anteriores más `id`, `vault_id`, `parent_id`, `created_by` y `updated_by` (`user` o `agent:<id>`), `version`, `created_at`, `updated_at`, `completed_at` y `purge_at`. Las fechas van en UTC con `Z`.
 
@@ -692,7 +692,9 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 
 **Tipos** (`kind`): `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
 
-**Vencimientos:** un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300) revisa las tareas abiertas asignadas a la persona: avisa a 24 h, a 1 h y al vencer (hasta 7 días después). Solo se envía la ventana vigente (una ya pasada al crear la tarea no se manda) y cambiar `due_at` reinicia los avisos. La creación es idempotente por `dedupe_key`: un reinicio no duplica.
+**Recordatorios (`reminders`):** lista de minutos antes de `due_at` a los que se avisa a la persona (de 1 a 40 320, o sea hasta 4 semanas; máximo 5; sin repetidos, se guardan del más lejano al más cercano). `[1440, 60]` = 1 día y 1 hora antes. Sin enviarlo, o con `null`, rigen los de siempre (1 día y 1 hora); `[]` = ninguno. Valores fuera de rango, más de 5 o que no sean enteros → 422. Un agente solo cambia `reminders` en las tareas que creó (la asignada solo permite `status` y `notes`). Migración 016.
+
+**Vencimientos:** un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300) revisa las tareas abiertas asignadas a la persona: avisa a cada recordatorio de la tarea y al vencer (hasta 7 días después; este último no depende de la lista). Solo se envía la ventana vigente, la del recordatorio más cercano al vencimiento que ya llegó (uno ya pasado al crear la tarea no se manda), y cambiar `due_at` reinicia los avisos. Un recordatorio nuevo no repite los que ya salieron. La creación es idempotente por `dedupe_key`: un reinicio no duplica.
 
 **Web Push (H-053):** cada aviso nuevo se envía al dispositivo con un hilo despachador (`PUSH_DISPATCH`, `PUSH_POLL_SECONDS`), salvo en las horas silenciosas; el aviso siempre queda en la bandeja. Claves VAPID: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` en `.env`; sin ellas el push está apagado (`GET /notifications/push` → `enabled: false`). Una API key de agente no usa ninguna de estas rutas (401).
 
