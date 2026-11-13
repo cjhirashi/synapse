@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId, type ReactNode, type CSSProperties } from "react";
 import { Bell, CalendarClock, CornerDownRight, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
@@ -90,7 +90,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
         </>
       }
     >
-      <div className="td">
+      <div className="td" style={{ "--vault-icon-color": accent } as CSSProperties}>
         <section className="td-status" aria-label="Estado">
           <div className="td-segments" role="radiogroup" aria-label="Estado">
             {STATUSES.map((status) => (

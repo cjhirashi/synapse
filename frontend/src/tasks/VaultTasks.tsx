@@ -201,7 +201,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   );
 
   return (
-    <section className="tasks-workspace" aria-label="Tareas de la bóveda" data-moved={moved ? "" : undefined} data-direction={direction}>
+    <section className="tasks-workspace" aria-label="Tareas de la bóveda" style={{ "--vault-icon-color": accent } as CSSProperties} data-moved={moved ? "" : undefined} data-direction={direction}>
       {sideSlot && createPortal(filters, sideSlot)}
       <header className="tasks-toolbar">
         <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">

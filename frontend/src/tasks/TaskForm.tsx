@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { CornerDownRight, ListChecks, Plus, X } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import AgentSelect from "../agents/AgentSelect";
@@ -148,7 +148,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         </>
       }
     >
-      <form className="tf" onSubmit={(e) => { e.preventDefault(); submit(); }}>
+      <form className="tf" style={{ "--vault-icon-color": accent } as CSSProperties} onSubmit={(e) => { e.preventDefault(); submit(); }}>
         <div className="tf-field">
           <label htmlFor={`${id}-t`}>Título</label>
           <input id={`${id}-t`} autoFocus value={title} maxLength={255} placeholder="¿Qué hay que hacer?" onChange={(e) => setTitle(e.target.value)} />
