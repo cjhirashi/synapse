@@ -48,7 +48,7 @@ def quiet(admin, enabled, start="22:00", end="07:00"):
 
 
 def run(sender):
-    return dispatch_pending(TestingSessionLocal, now=datetime.now(UTC).replace(tzinfo=None), sender=sender)
+    return dispatch_pending(TestingSessionLocal, now=datetime.now(UTC).replace(tzinfo=None), sender=sender, vault_name=lambda *_: "Proyectos")
 
 
 # --- Reglas puras ---
@@ -147,10 +147,45 @@ def test_dispatcher_sends_a_new_notice_once_with_a_minimal_payload(ready_admin):
     target, payload = fake.calls[0]
     assert target.endpoint == ENDPOINT
     assert set(payload) == {"title", "body", "url", "tag"}
-    assert payload["title"] == "aira te asignó una tarea" and payload["url"].startswith(f"/vaults/{vault}?tab=tareas")
+    assert payload["title"] == "Tarea asignada · Aira te asignó una tarea" and payload["url"].startswith(f"/vaults/{vault}?tab=tareas")
+    assert payload["body"].split("\n") == ["Revisar el plan", "Pendiente · Tú · Proyectos"]
     assert run(fake)["checked"] == 0 and len(fake.calls) == 1  # ya revisado: no se reenvía
     with TestingSessionLocal() as s:
         assert s.query(PushSubscription).one().last_success_at is not None
+
+
+def test_the_push_carries_the_card_structure_of_the_task(ready_admin):
+    quiet(ready_admin, False)
+    ready_admin.put("/notifications/push/subscription", json=SUB)
+    vault = vault_of(ready_admin)
+    aira = agent_client(ready_admin, "aira")
+    register(ready_admin, vault, "aira", ["*"])
+    assert aira.post(f"/vaults/{vault}/tasks", json={
+        "title": "Revisar el plan", "description": "Con los números\n de octubre", "due_at": "2026-11-20T18:30:00Z"}).status_code == 201
+    fake = Fake()
+    run(fake)
+    assert fake.calls[0][1]["body"].split("\n") == [
+        "Revisar el plan", "Con los números de octubre", "Pendiente · Tú · Proyectos", "Vence 20 nov 2026, 12:30 CDMX"]
+
+
+def test_a_push_without_its_task_falls_back_to_the_plain_notice(ready_admin):
+    quiet(ready_admin, False)
+    ready_admin.put("/notifications/push/subscription", json=SUB)
+    vault, aira = notice_from_agent(ready_admin)
+    with TestingSessionLocal() as s:
+        task_id = s.query(Notification).one().resource_id
+    assert ready_admin.delete(f"/vaults/{vault}/tasks/{task_id}").status_code in (200, 204)
+    fake = Fake()
+    run(fake)
+    assert fake.calls[0][1]["title"] == "aira te asignó una tarea" and fake.calls[0][1]["body"] == "Revisar el plan"
+
+
+def test_the_push_headline_does_not_repeat_the_task_title():
+    from app.services.push_dispatcher import headline
+    due = Notification(kind="task_due", title="«Plataformas» (de paulina) vence en 1 h")
+    status = Notification(kind="task_status", title="aira marcó «Plataformas» como Hecha")
+    assert headline(due, True) == "Vence en 1 h" and headline(status, True) == "Aira marcó la tarea como Hecha"
+    assert headline(due, False) == due.title
 
 
 def test_dispatcher_respects_quiet_hours_but_the_notice_stays_in_the_inbox(ready_admin):

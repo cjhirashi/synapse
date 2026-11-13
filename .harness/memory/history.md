@@ -2232,3 +2232,4 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Verificación:** 19 pruebas de avisos en backend y 10 en frontend; `tsc` limpio; capturas en escritorio (claro y oscuro) y móvil con la API simulada.
 - **Modelos:** Sonnet 5 en la sesión principal; sin subagentes.
 - **Ajuste (mismo día):** cada tarjeta sin leer lleva un botón ✓ que marca el aviso como leído sin abrir la tarea; desplegado.
+- **Push con la estructura de la tarjeta (mismo día):** la notificación del móvil ahora lleva «Tipo · evento» como título y, en el cuerpo, título y descripción de la tarea, «estado · responsable · bóveda» y vencimiento (CDMX); si la tarea se eliminó, el aviso simple. `push_dispatcher.py` (`_payload`, `headline`, `couch_vault_name`); 44 pruebas de push y avisos; importación comprobada en la imagen de Python 3.11; desplegado y verificado con un push real.
