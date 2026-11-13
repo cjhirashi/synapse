@@ -343,12 +343,16 @@ describe("VaultTasks", () => {
   it("al cambiar de vista el cuerpo se vuelve a montar con la dirección de la pestaña elegida, para animar la entrada", async () => {
     render(<Page />);
     await screen.findByText("Publicar el plan");
+    const workspace = document.querySelector(".tasks-workspace")!;
+    expect(workspace).not.toHaveAttribute("data-moved"); // la carga inicial no se anima
     const first = document.querySelector(".tasks-body")!;
     expect(first).toHaveAttribute("data-direction", "next");
     await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
     const second = document.querySelector(".tasks-body")!;
     expect(second).not.toBe(first); // nuevo montaje = nueva animación
     expect(second).toHaveAttribute("data-direction", "next"); // lista → calendario: hacia la derecha
+    expect(workspace).toHaveAttribute("data-moved"); // desde el primer cambio, la pestaña elegida y su ícono se animan
+    expect(workspace).toHaveAttribute("data-direction", "next");
     await userEvent.click(screen.getByRole("tab", { name: /Kanban/ }));
     expect(document.querySelector(".tasks-body")).toHaveAttribute("data-direction", "prev"); // calendario → kanban
     expect(screen.getByRole("tab", { name: /Kanban/ })).toHaveAttribute("aria-selected", "true");

@@ -62,6 +62,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const [view, setView] = useState<View>("list");
   // Hacia dónde se mueve la vista nueva: entra desde la derecha si la pestaña está más a la derecha, y al revés.
   const [direction, setDirection] = useState<"next" | "prev">("next");
+  const [moved, setMoved] = useState(false); // la carga inicial no se anima; sí cada cambio de vista
   const [filter, setFilter] = useState<TaskFilter>(NO_FILTER);
   const [agents, setAgents] = useState<string[]>([]);
   const [paths, setPaths] = useState(() => buildPathIndex([]));
@@ -164,6 +165,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   function changeView(next: View) {
     if (next === shownView) return;
     setDirection(views.findIndex(([id]) => id === next) > views.findIndex(([id]) => id === shownView) ? "next" : "prev");
+    setMoved(true);
     setView(next);
   }
 
@@ -199,7 +201,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   );
 
   return (
-    <section className="tasks-workspace" aria-label="Tareas de la bóveda">
+    <section className="tasks-workspace" aria-label="Tareas de la bóveda" data-moved={moved ? "" : undefined} data-direction={direction}>
       {sideSlot && createPortal(filters, sideSlot)}
       <header className="tasks-toolbar">
         <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">

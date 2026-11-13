@@ -975,9 +975,29 @@ body.is-resizing {
   outline-offset: -2px;
 }
 
+/* Movimiento al cambiar de pestaña: la que se elige entra desde el lado de la anterior (con su ícono), el panel se desliza igual y la
+   barra lateral toma `data-moved` solo tras el primer cambio (la carga inicial no se anima). */
+@keyframes vault-tab-in-next { from { opacity: 0.4; transform: translate(-18px, 4px); } to { opacity: 1; transform: none; } }
+@keyframes vault-tab-in-prev { from { opacity: 0.4; transform: translate(18px, 4px); } to { opacity: 1; transform: none; } }
+@keyframes vault-tab-icon { 0% { transform: scale(0.55) rotate(-12deg); } 60% { transform: scale(1.22) rotate(4deg); } 100% { transform: none; } }
+@keyframes vault-panel-in-next { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes vault-panel-in-prev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+
+.vault-workspace-side[data-moved] .vault-tab[aria-selected="true"] { animation: vault-tab-in-next 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.vault-workspace-side[data-moved][data-direction="prev"] .vault-tab[aria-selected="true"] { animation-name: vault-tab-in-prev; }
+.vault-workspace-side[data-moved] .vault-tab[aria-selected="true"] svg { animation: vault-tab-icon 0.42s cubic-bezier(0.3, 0.9, 0.3, 1.2) both; }
+.vault-workspace-side[data-moved] .vault-tab-panel { animation: vault-panel-in-next 0.26s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.vault-workspace-side[data-moved][data-direction="prev"] .vault-tab-panel { animation-name: vault-panel-in-prev; }
+
 @media (prefers-reduced-motion: reduce) {
   .vault-tab {
     transition: none;
+  }
+
+  .vault-workspace-side[data-moved] .vault-tab[aria-selected="true"],
+  .vault-workspace-side[data-moved] .vault-tab[aria-selected="true"] svg,
+  .vault-workspace-side[data-moved] .vault-tab-panel {
+    animation: none;
   }
 }
 

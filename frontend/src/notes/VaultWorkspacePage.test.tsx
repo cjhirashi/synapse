@@ -1281,6 +1281,18 @@ test("H-052: la barra trae tres pestañas y abre en Documentos con el árbol de 
   expect(await screen.findByRole("tree", { name: "Notas" })).toBeVisible();
 });
 
+test("al cambiar de pestaña la barra toma la dirección del cambio para animar la pestaña y el panel (la carga inicial no se anima)", async () => {
+  const { value, vault } = await setup();
+  render(treeMe(value, `/vaults/${vault.id}`, "u1"));
+  const side = (await tabButton("Documentos")).closest(".vault-workspace-side")!;
+  expect(side).not.toHaveAttribute("data-moved");
+  await userEvent.click(await tabButton("Archivos"));
+  expect(side).toHaveAttribute("data-moved");
+  expect(side).toHaveAttribute("data-direction", "next"); // documentos → archivos: hacia la derecha
+  await userEvent.click(await tabButton("Filtro por tags"));
+  expect(side).toHaveAttribute("data-direction", "prev"); // archivos → tags: hacia la izquierda
+});
+
 test("H-052: el filtro lista los tags y muestra solo los documentos que tienen todos los elegidos", async () => {
   const { value, vault } = await setup();
   await value.notes.create(vault.id, "Uno", "", undefined, { tags: ["trabajo"] });

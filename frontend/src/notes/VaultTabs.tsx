@@ -9,6 +9,9 @@ const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
   { id: "tareas", label: "Tareas", Icon: ListChecks },
 ];
 
+/** Orden de izquierda a derecha: de él sale hacia dónde se mueve el cambio de pestaña. */
+export const TAB_ORDER: VaultTab[] = TABS.map((t) => t.id);
+
 interface Props {
   tab: VaultTab;
   onChange: (tab: VaultTab) => void;

@@ -28,7 +28,7 @@ import VaultFiles from "../files/VaultFiles";
 import { listMyOpenTasks } from "../tasks/tasksApi";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import TagFilterPanel from "./TagFilterPanel";
-import VaultTabs from "./VaultTabs";
+import VaultTabs, { TAB_ORDER } from "./VaultTabs";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
 const VaultTasks = lazy(() => import("../tasks/VaultTasks"));
@@ -339,6 +339,14 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // Se relee al cambiar la URL: un aviso puede llegar con la bóveda ya abierta (no se vuelve a montar).
   const [focusTask, setFocusTask] = useState<string | null>(() => new URLSearchParams(location.search).get("task"));
   const [tab, setTab] = useState<VaultTab>(() => (new URLSearchParams(location.search).get("tab") === "tareas" ? "tareas" : remembered.current?.tab ?? "documentos"));
+  // Movimiento del cambio de pestaña: hacia dónde va (por el orden de las pestañas) y si ya hubo un cambio (la carga inicial no se anima).
+  // Se calcula al renderizar, no en un efecto, para que la animación arranque con el panel nuevo y no un cuadro después.
+  const [seenTab, setSeenTab] = useState(tab);
+  const [tabMotion, setTabMotion] = useState<{ moved: boolean; dir: "next" | "prev" }>({ moved: false, dir: "next" });
+  if (seenTab !== tab) {
+    setSeenTab(tab);
+    setTabMotion({ moved: true, dir: TAB_ORDER.indexOf(tab) > TAB_ORDER.indexOf(seenTab) ? "next" : "prev" });
+  }
   const [filesSlot, setFilesSlot] = useState<HTMLElement | null>(null);
   const [tasksSlot, setTasksSlot] = useState<HTMLElement | null>(null);
   const [taskCount, setTaskCount] = useState(0);
@@ -550,6 +558,8 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           // en móvil (C-2/C-5).
           data-open={sidebarOpen ? "" : undefined}
           data-floating={isMobile ? "" : undefined}
+          data-moved={tabMotion.moved ? "" : undefined}
+          data-direction={tabMotion.dir}
           style={{ "--vault-icon-color": colorVar(vaultColor), ...(isDesktop ? { "--side-width": `${sidebarWidth}px` } : {}) } as CSSProperties}
         >
           <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} taskCount={taskCount} />
