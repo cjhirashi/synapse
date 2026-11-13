@@ -54,22 +54,35 @@ function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
   );
 }
 
-function TaskMeta({ task, actions }: { task: Task; actions: ViewActions }) {
+/** Lo que acompaña al título: la ruta y la fecha de eliminación. */
+function TaskNotes({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
-    <span className="tasks-meta">
-      <span className="tasks-chip tasks-chip--who" title="Asignada a"><Assignee task={task} /></span>
-      {task.due_at && (
-        <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={isOverdue(task) ? `Vencida: ${formatDue(task.due_at)}` : formatDue(task.due_at)}>
-          <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
-        </span>
-      )}
-      <span className="tasks-chip" data-priority={task.priority} title="Prioridad">{PRIORITY_LABEL[task.priority]}</span>
+    <span className="tasks-notes">
       <PathChip task={task} actions={actions} />
       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
-      <span className="tasks-chip tasks-chip--creator" title="Creada por">
-        Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={16} /> : task.created_by === "user" ? <UserBadge size={16} /> : "un agente"}
-      </span>
     </span>
+  );
+}
+
+/** Responsable, vencimiento, prioridad y estado: una columna cada uno, alineadas con la cabecera de la tabla. */
+function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; actions: ViewActions }) {
+  const late = isOverdue(task);
+  return (
+    <div className="tasks-cells">
+      <span className="tasks-cell tasks-cell--who">
+        <span className="tasks-who" title="Asignada a"><Assignee task={task} /></span>
+        <span className="tasks-creator" title="Creada por">
+          Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={14} /> : task.created_by === "user" ? <UserBadge size={14} /> : "un agente"}
+        </span>
+      </span>
+      {task.due_at ? (
+        <span className={`tasks-cell tasks-cell--due${late ? " tasks-cell--late" : ""}`} title={late ? `Vencida: ${formatDue(task.due_at)}` : formatDue(task.due_at)}>
+          <CalendarClock size={14} aria-hidden="true" /> {formatDue(task.due_at)}
+        </span>
+      ) : <span className="tasks-cell tasks-cell--due tasks-cell--none" aria-label="Sin vencimiento">—</span>}
+      <span className="tasks-cell tasks-cell--pri" data-priority={task.priority} title="Prioridad">{PRIORITY_LABEL[task.priority]}</span>
+      <span className="tasks-cell tasks-cell--st"><StatusSelect task={task} locked={locked} onStatus={actions.onStatus} /></span>
+    </div>
   );
 }
 
@@ -80,23 +93,27 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
   return (
     <li className={`tasks-item${sub ? " tasks-item--sub" : ""}`} data-status={task.status}>
       <div className={`tasks-row${actions.focusId === task.id ? " tasks-row--focus" : ""}${isClosed(task) ? " tasks-row--closed" : ""}`} id={`task-${task.id}`}>
-        {!sub && (hasKids ? (
-          <button type="button" className="tasks-icon-btn tasks-toggle" aria-expanded={open} aria-label={open ? "Plegar subtareas" : "Mostrar subtareas"} onClick={() => setOpen(!open)}>
-            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-          </button>
-        ) : <span className="tasks-toggle" />)}
-        <StatusSelect task={task} locked={hasKids} onStatus={actions.onStatus} />
-        <span className="tasks-title">
-          <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
-          {hasKids && (
-            <span className="tasks-progress" title={`${done} de ${node.children.length} subtareas cerradas`}>
-              <span className="tasks-progress-bar" aria-hidden="true"><i style={{ width: `${Math.round((done / node.children.length) * 100)}%` }} /></span>
-              {done}/{node.children.length}
+        <div className="tasks-main">
+          <div className="tasks-line">
+            {!sub && (hasKids ? (
+              <button type="button" className="tasks-icon-btn tasks-toggle" aria-expanded={open} aria-label={open ? "Plegar subtareas" : "Mostrar subtareas"} onClick={() => setOpen(!open)}>
+                {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+            ) : <span className="tasks-toggle" />)}
+            <span className="tasks-title">
+              <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
+              {hasKids && (
+                <span className="tasks-progress" title={`${done} de ${node.children.length} subtareas cerradas`}>
+                  <span className="tasks-progress-bar" aria-hidden="true"><i style={{ width: `${Math.round((done / node.children.length) * 100)}%` }} /></span>
+                  {done}/{node.children.length}
+                </span>
+              )}
             </span>
-          )}
-        </span>
-        <TaskMeta task={task} actions={actions} />
-        {task.description && <p className="tasks-desc">{task.description}</p>}
+          </div>
+          {task.description && <p className="tasks-desc">{task.description}</p>}
+          <TaskNotes task={task} actions={actions} />
+        </div>
+        <TaskCells task={task} locked={hasKids} actions={actions} />
         <span className="tasks-actions">
           {!sub && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
           <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={15} /></button>
@@ -114,7 +131,14 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
 
 export function TaskList({ nodes, actions }: { nodes: TaskNode[]; actions: ViewActions }) {
   if (nodes.length === 0) return <p className="tasks-empty">No hay tareas con estos filtros.</p>;
-  return <ul className="tasks-list">{nodes.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>;
+  return (
+    <div className="tasks-table">
+      <div className="tasks-head" aria-hidden="true">
+        <span>Tarea</span><span>Responsable</span><span>Vence</span><span>Prioridad</span><span>Estado</span><span />
+      </div>
+      <ul className="tasks-list">{nodes.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>
+    </div>
+  );
 }
 
 const COLUMN_HINT: Record<TaskStatus, string> = {
