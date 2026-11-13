@@ -7,6 +7,7 @@ import { useSync } from "../sync/useSync";
 import { ApiError } from "../api/problems";
 import { getVaultAgentAccess } from "../settings/agentAccess";
 import TaskFilters from "./TaskFilters";
+import TaskDetail from "./TaskDetail";
 import TaskForm from "./TaskForm";
 import { TaskCalendar } from "./TaskCalendar";
 import { TaskKanban, TaskList, type ViewActions } from "./TaskViews";
@@ -18,7 +19,7 @@ import "./tasks.css";
 
 type View = "list" | "kanban" | "calendar";
 const VIEWS = [["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays]] as const;
-type Dialog = { kind: "form"; task?: Task; parent?: Task } | null;
+type Dialog = { kind: "form"; task?: Task; parent?: Task } | { kind: "detail"; id: string } | null;
 
 interface Props {
   vaultId: string;
@@ -170,6 +171,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     pathIndex: paths,
     focusId: focusTaskId,
     onStatus: (task, status: TaskStatus) => void run(() => updateTask(vaultId, task, { status })),
+    onOpen: (task) => setDialog({ kind: "detail", id: task.id }),
     onEdit: (task) => { setFormError(null); setDialog({ kind: "form", task }); },
     onAddSubtask: (parent) => { setFormError(null); setDialog({ kind: "form", parent }); },
     onDelete: setConfirm,
@@ -177,6 +179,8 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   };
 
   const list = tasks ?? [];
+  // El detalle se lee de la lista viva: un cambio de estado o una subtarea nueva se reflejan sin cerrarlo.
+  const detailTask = dialog?.kind === "detail" ? list.find((t) => t.id === dialog.id) : undefined;
   const tree = useMemo(() => filterTree(buildTree(list), filter), [list, filter]);
   const visible = useMemo(() => tree.flatMap((n) => [n.task, ...n.children]), [tree]);
   const agentIds = Array.from(new Set([...agents, ...list.flatMap((t) => (t.assignee_agent_id ? [t.assignee_agent_id] : []))])).sort();
@@ -217,6 +221,16 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
         {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
       </div>
+      {detailTask && (
+        <TaskDetail
+          key={detailTask.id} task={detailTask} parent={detailTask.parent_id ? list.find((t) => t.id === detailTask.parent_id) : undefined}
+          subtasks={list.filter((t) => t.parent_id === detailTask.id)} pathIndex={paths} accent={accent}
+          onStatus={actions.onStatus} onEdit={actions.onEdit} onAddSubtask={actions.onAddSubtask} onDelete={setConfirm}
+          onOpenTask={actions.onOpen}
+          onOpenPath={(target) => { setDialog(null); actions.onOpenPath(target); }}
+          onClose={() => setDialog(null)}
+        />
+      )}
       {dialog?.kind === "form" && (
         <TaskForm
           key={dialog.task?.id ?? dialog.parent?.id ?? "new"} task={dialog.task} parent={dialog.parent} agents={agents}
@@ -231,7 +245,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
           body={confirm.parent_id ? "Se elimina la subtarea." : "Se elimina la tarea y todas sus subtareas. No se puede deshacer."}
         >
           <button type="button" onClick={() => setConfirm(null)}>Cancelar</button>
-          <button type="button" className="btn-danger" onClick={() => { const target = confirm; setConfirm(null); void run(() => deleteTask(vaultId, target.id)); }}>Eliminar</button>
+          <button type="button" className="btn-danger" onClick={() => { const target = confirm; setConfirm(null); setDialog((d) => (d?.kind === "detail" ? null : d)); void run(() => deleteTask(vaultId, target.id)); }}>Eliminar</button>
         </ConfirmDialog>
       )}
     </section>

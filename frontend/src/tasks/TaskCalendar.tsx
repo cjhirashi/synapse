@@ -26,7 +26,7 @@ function CalendarTask({ task, actions, time = false }: { task: Task; actions: Vi
       type="button"
       className={`tasks-cal-task${isClosed(task) ? " tasks-row--closed" : ""}${isOverdue(task) ? " tasks-chip--overdue" : ""}`}
       title={`${task.title} · ${formatDue(task.due_at as string)}`}
-      onClick={() => actions.onEdit(task)}
+      onClick={() => actions.onOpen(task)}
     >
       {time && <span className="tasks-cal-time">{formatTime(task.due_at as string)}</span>}
       {task.title}

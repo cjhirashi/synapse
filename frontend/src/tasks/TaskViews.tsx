@@ -12,6 +12,8 @@ export interface ViewActions {
   focusId: string | null;
   onStatus: (task: Task, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
+  /** Abre el detalle completo de la tarea (solo lectura). */
+  onOpen: (task: Task) => void;
   onAddSubtask: (parent: Task) => void;
   onDelete: (task: Task) => void;
   onOpenPath: (target: NonNullable<PathTarget>) => void;
@@ -86,7 +88,7 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
         ) : <span className="tasks-icon-spacer" />}
         <StatusSelect task={task} locked={hasKids} onStatus={actions.onStatus} />
         <span className="tasks-title">
-          {task.title}
+          <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
           {hasKids && <span className="tasks-progress"> {done}/{node.children.length}</span>}
         </span>
         <TaskMeta task={task} actions={actions} />
@@ -128,7 +130,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
               return (
                 <article key={task.id} className={`tasks-card${actions.focusId === task.id ? " tasks-row--focus" : ""}`} id={`task-${task.id}`}>
                   {parent && <p className="tasks-card-parent">↳ {parent.title}</p>}
-                  <p className="tasks-title">{task.title}{children.length > 0 && <span className="tasks-progress"> {children.filter(isClosed).length}/{children.length}</span>}</p>
+                  <p className="tasks-title"><button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>{children.length > 0 && <span className="tasks-progress"> {children.filter(isClosed).length}/{children.length}</span>}</p>
                   <TaskMeta task={task} actions={actions} />
                   <div className="tasks-card-foot">
                     <StatusSelect task={task} locked={children.length > 0} onStatus={actions.onStatus} />

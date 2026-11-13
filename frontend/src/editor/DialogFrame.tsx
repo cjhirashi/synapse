@@ -65,9 +65,10 @@ export default function DialogFrame({
 
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const first = root.current?.querySelector<HTMLElement>(
-      "[data-autofocus], .dlg-body :is(button, input, select, textarea):not([disabled]), .dlg-footer button:not([disabled])",
-    );
+    // `data-autofocus` manda aunque esté en el pie; sin él, el primer control del cuerpo o del pie.
+    const first =
+      root.current?.querySelector<HTMLElement>("[data-autofocus]") ??
+      root.current?.querySelector<HTMLElement>(".dlg-body :is(button, input, select, textarea):not([disabled]), .dlg-footer button:not([disabled])");
     first?.focus();
     return () => {
       if (previous && document.contains(previous)) previous.focus();

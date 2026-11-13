@@ -138,10 +138,10 @@ describe("VaultTasks", () => {
     expect(within(group).getByRole("radio", { name: /Vencidas/ }).closest("label")).toHaveTextContent("1");
     await userEvent.click(within(side).getByRole("button", { name: /1 vencida/ }));
     expect(within(group).getByRole("radio", { name: /Vencidas/ })).toBeChecked();
-    expect(screen.queryByText("Sin fecha", { selector: ".tasks-title" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Sin fecha", { selector: ".tasks-title-btn" })).not.toBeInTheDocument();
     expect(within(side).queryByRole("button", { name: /1 vencida/ })).toBeNull(); // ya filtrado: el atajo sobra
     await userEvent.click(within(group).getByRole("radio", { name: /Sin fecha/ }));
-    expect(screen.getByText("Sin fecha", { selector: ".tasks-title" })).toBeInTheDocument();
+    expect(screen.getByText("Sin fecha", { selector: ".tasks-title-btn" })).toBeInTheDocument();
     expect(within(side).getByText(/de 2 tareas con estos filtros/)).toBeInTheDocument();
   });
 
@@ -432,5 +432,100 @@ describe("VaultTasks", () => {
     } finally {
       window.matchMedia = original;
     }
+  });
+
+  describe("detalle de la tarea", () => {
+    const DETAILED = task({
+      id: "r", title: "Publicar el plan", description: "Texto del plan\ncon dos líneas", notes: "Avance: borrador listo", path: "Plan.md",
+      due_at: "2026-11-20T15:00:00Z", priority: "high", assignee_type: "agent", assignee_agent_id: "aira", created_by: "agent:aira",
+      updated_by: "user", completed_at: null,
+    });
+
+    it("pulsar el título abre el detalle completo (no la edición) con todos los datos de la tarea", async () => {
+      resetAgentProfiles();
+      vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([{ agent_id: "aira", display_name: "Aira · Arquitecta", photo_url: null }]);
+      vi.spyOn(api, "listTasks").mockResolvedValue([DETAILED, CHILD]);
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Publicar el plan" }));
+      const dialog = await screen.findByRole("dialog", { name: "Publicar el plan" });
+      expect(screen.queryByRole("dialog", { name: /Editar/ })).toBeNull();
+      expect(within(dialog).getByText("Texto del plan", { exact: false })).toBeInTheDocument();
+      expect(within(dialog).getByText("Avance: borrador listo")).toBeInTheDocument();
+      expect(within(dialog).getByText("Alta")).toBeInTheDocument();
+      expect(await within(dialog).findAllByText("Aira · Arquitecta")).toHaveLength(3); // asignada a, creada por y la subtarea de aira
+      expect(within(dialog).getByRole("button", { name: /Plan\.md/ })).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Abrir Escribir borrador" })).toBeInTheDocument();
+      expect(within(within(dialog).getByRole("region", { name: "Fechas" })).getByText(/^Creada /)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: /Editar/ })).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: /Eliminar/ })).toBeInTheDocument();
+    });
+
+    it("los campos vacíos lo dicen en lugar de quedarse en blanco", async () => {
+      vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "x", title: "Mínima" })]);
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Mínima" }));
+      const dialog = await screen.findByRole("dialog", { name: "Mínima" });
+      for (const text of ["Sin fecha", "Sin ruta.", "Sin descripción.", "Sin notas de avance.", "Todavía no tiene subtareas."]) {
+        expect(within(dialog).getByText(text)).toBeInTheDocument();
+      }
+    });
+
+    it("el estado se cambia desde el detalle y se refleja en el momento; una raíz con subtareas lo tiene bloqueado", async () => {
+      const update = vi.spyOn(api, "updateTask").mockResolvedValue(task({ id: "x" }));
+      vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "x", title: "Simple" }), ROOT, CHILD]);
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Simple" }));
+      let dialog = await screen.findByRole("dialog", { name: "Simple" });
+      expect(within(dialog).getByRole("radio", { name: "Pendiente" })).toBeChecked();
+      await userEvent.click(within(dialog).getByRole("radio", { name: "Hecha" }));
+      expect(update).toHaveBeenCalledWith("v", expect.objectContaining({ id: "x" }), { status: "done" });
+      await userEvent.click(within(dialog).getAllByRole("button", { name: "Cerrar" }).at(-1)!); // el del pie
+      await userEvent.click(screen.getByRole("button", { name: "Ver detalle de Publicar el plan" }));
+      dialog = await screen.findByRole("dialog", { name: "Publicar el plan" });
+      for (const radio of within(dialog).getAllByRole("radio")) expect(radio).toBeDisabled();
+      expect(within(dialog).getByText(/sale de sus subtareas/)).toBeInTheDocument();
+    });
+
+    it("desde el detalle se edita, se añade una subtarea y se elimina; cada acción abre lo suyo", async () => {
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Publicar el plan" }));
+      await userEvent.click(within(await screen.findByRole("dialog", { name: "Publicar el plan" })).getByRole("button", { name: /Editar/ }));
+      expect(await screen.findByRole("dialog", { name: "Editar tarea" })).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Publicar el plan" })).toBeNull();
+      await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+      await userEvent.click(screen.getByRole("button", { name: "Ver detalle de Publicar el plan" }));
+      await userEvent.click(within(await screen.findByRole("dialog", { name: "Publicar el plan" })).getByRole("button", { name: /Añadir subtarea/ }));
+      expect(await screen.findByRole("dialog", { name: "Nueva subtarea" })).toHaveTextContent("Dentro de «Publicar el plan»");
+      await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+      await userEvent.click(screen.getByRole("button", { name: "Ver detalle de Publicar el plan" }));
+      await userEvent.click(within(await screen.findByRole("dialog", { name: "Publicar el plan" })).getByRole("button", { name: /Eliminar/ }));
+      expect(await screen.findByRole("alertdialog")).toHaveTextContent("Se elimina la tarea y todas sus subtareas");
+    });
+
+    it("una subtarea enlaza a su tarea y la tarea a sus subtareas; Escape y Cerrar cierran el detalle", async () => {
+      render(<Page />);
+      await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Escribir borrador" }));
+      const sub = await screen.findByRole("dialog", { name: "Escribir borrador" });
+      expect(within(sub).queryByText("Todavía no tiene subtareas.")).toBeNull(); // una subtarea no tiene subtareas
+      expect(within(sub).queryByRole("button", { name: /Añadir subtarea/ })).toBeNull();
+      await userEvent.click(within(sub).getByRole("button", { name: /Subtarea de «Publicar el plan»/ }));
+      const parent = await screen.findByRole("dialog", { name: "Publicar el plan" });
+      await userEvent.click(within(parent).getByRole("button", { name: "Abrir Escribir borrador" }));
+      expect(await screen.findByRole("dialog", { name: "Escribir borrador" })).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("el calendario también abre el detalle al pulsar una tarea, y la ruta existente abre el documento", async () => {
+      const onOpenNote = vi.fn();
+      render(<Page onOpenNote={onOpenNote} />);
+      await screen.findByText("Publicar el plan");
+      await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
+      await userEvent.click(screen.getAllByRole("button", { name: /Publicar el plan/ })[0]);
+      const dialog = await screen.findByRole("dialog", { name: "Publicar el plan" });
+      await userEvent.click(within(dialog).getByRole("button", { name: /Plan\.md/ }));
+      expect(onOpenNote).toHaveBeenCalledWith("n1");
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
   });
 });
