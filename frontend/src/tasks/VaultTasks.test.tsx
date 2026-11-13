@@ -76,7 +76,8 @@ describe("VaultTasks", () => {
     await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText("Título"), "Revisar");
-    await userEvent.click(within(dialog).getByRole("radio", { name: /aira/ }));
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Asignada a" }));
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /aira/ }));
     await userEvent.type(within(dialog).getByLabelText(/Ruta/), "Carpeta/Doc.md");
     await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
     expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ title: "Revisar", assignee_type: "agent", assignee_agent_id: "aira", path: "Carpeta/Doc.md" }), undefined);
@@ -126,21 +127,53 @@ describe("VaultTasks", () => {
     expect(within(row).queryByText(/Creó:/)).toBeNull();
   });
 
-  it("H-053: el formulario ofrece cada agente con su avatar y su nombre visible (o el id si no lo tiene)", async () => {
+  it("H-053: «Asignada a» es una lista desplegable con los gestores registrados, cada uno con su avatar y su nombre visible (o el id)", async () => {
     resetAgentProfiles();
     vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([{ agent_id: "aira", display_name: "Aira · Arquitecta", photo_url: "/agent-profiles/aira/photo?v=1" }]);
     vi.spyOn(agentAccess, "getVaultAgentAccess").mockResolvedValue({ mode: "enforce", agents: [
       { agent_id: "aira", estado: "activo", carpetas: ["*"], note_id: "x", keys: [] }, { agent_id: "liza", estado: "activo", carpetas: ["*"], note_id: "y", keys: [] },
+      { agent_id: "suspendido", estado: "suspendido", carpetas: ["*"], note_id: "z", keys: [] },
     ], unregistered_keys: [], unregistered_agent_ids: [] });
     render(<Page />);
     await screen.findByText("Publicar el plan");
     await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
     const dialog = await screen.findByRole("dialog");
-    const group = within(dialog).getByRole("radiogroup", { name: "Asignada a" });
-    expect(await within(group).findByRole("radio", { name: /Aira · Arquitecta/ })).toBeInTheDocument();
-    expect(within(group).getByRole("radio", { name: /liza/ })).toBeInTheDocument();
-    expect(within(group).getByRole("radio", { name: /Yo/ })).toBeChecked();
-    expect(group.querySelector("img[src='/agent-profiles/aira/photo?v=1']")).not.toBeNull();
+    const select = within(dialog).getByRole("combobox", { name: "Asignada a" });
+    expect(select).toHaveTextContent("Yo");
+    expect(select).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(select);
+    expect(select).toHaveAttribute("aria-expanded", "true");
+    const list = screen.getByRole("listbox", { name: "Asignada a" });
+    expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(expect.arrayContaining(["Yo"]));
+    expect(await within(list).findByRole("option", { name: /Aira · Arquitecta/ })).toBeInTheDocument();
+    expect(within(list).getByRole("option", { name: /liza/ })).toBeInTheDocument();
+    expect(within(list).queryByRole("option", { name: /suspendido/ })).toBeNull(); // solo gestores activos
+    expect(list.querySelector("img[src='/agent-profiles/aira/photo?v=1']")).not.toBeNull();
+    await userEvent.click(within(list).getByRole("option", { name: /Aira · Arquitecta/ }));
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(select).toHaveTextContent("Aira · Arquitecta");
+  });
+
+  it("H-053: la lista se maneja con teclado, y Escape la cierra sin cerrar la ventana de la tarea", async () => {
+    resetAgentProfiles();
+    vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+    const dialog = await screen.findByRole("dialog");
+    const select = within(dialog).getByRole("combobox", { name: "Asignada a" });
+    select.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await userEvent.keyboard("{ArrowDown}{Enter}");
+    expect(select).toHaveTextContent("aira");
+    await userEvent.keyboard("{ArrowDown}");
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("H-053: una tarea nueva crea con ella las subtareas preparadas en el formulario, dentro de la tarea", async () => {
@@ -159,8 +192,8 @@ describe("VaultTasks", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
     expect(create.mock.calls[0]).toEqual(["v", expect.objectContaining({ title: "Lanzamiento" }), undefined]);
-    expect(create.mock.calls[1]).toEqual(["v", { title: "Redactar" }, "nueva"]);
-    expect(create.mock.calls[2]).toEqual(["v", { title: "Revisar" }, "nueva"]);
+    expect(create.mock.calls[1]).toEqual(["v", { title: "Redactar", description: null, assignee_type: "user", assignee_agent_id: null }, "nueva"]);
+    expect(create.mock.calls[2]).toEqual(["v", { title: "Revisar", description: null, assignee_type: "user", assignee_agent_id: null }, "nueva"]);
   });
 
   it("H-053: al editar una tarea, añadir una subtarea la crea al momento y la lista de la tarea la muestra", async () => {
@@ -170,7 +203,7 @@ describe("VaultTasks", () => {
     const dialog = await screen.findByRole("dialog", { name: "Editar tarea" });
     expect(within(dialog).getByText("Escribir borrador")).toBeInTheDocument(); // ya existente
     await userEvent.type(within(dialog).getByLabelText("Nueva subtarea"), "Nueva sub{Enter}");
-    expect(create).toHaveBeenCalledWith("v", { title: "Nueva sub" }, "r");
+    expect(create).toHaveBeenCalledWith("v", { title: "Nueva sub", description: null, assignee_type: "user", assignee_agent_id: null }, "r");
     expect(dialog).toBeInTheDocument(); // Enter en la subtarea no guarda ni cierra la tarea
   });
 
@@ -187,5 +220,31 @@ describe("VaultTasks", () => {
     const dialog = await screen.findByRole("dialog", { name: "Nueva subtarea" });
     expect(dialog).toHaveTextContent("Dentro de «Publicar el plan»");
     expect(within(dialog).queryByLabelText("Nueva subtarea")).toBeNull();
+  });
+
+  it("H-053: una subtarea lleva su título, su descripción y, si se quiere, su propio agente; sin agente toma el de la tarea", async () => {
+    resetAgentProfiles();
+    vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+    const create = vi.spyOn(api, "createTask").mockResolvedValue({ ...ROOT, id: "nueva" });
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Título"), "Informe");
+    await userEvent.click(within(dialog).getByRole("combobox", { name: "Asignada a" })); // la tarea es de aira
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /aira/ }));
+    const agentSelect = within(dialog).getByRole("combobox", { name: "Agente de la subtarea" });
+    expect(agentSelect).toHaveTextContent("Igual que la tarea"); // opcional: por defecto sin agente propio
+    await userEvent.type(within(dialog).getByLabelText("Nueva subtarea"), "Datos{Enter}");
+    await userEvent.type(within(dialog).getByLabelText("Nueva subtarea"), "Gráficas");
+    await userEvent.type(within(dialog).getByLabelText("Descripción de la subtarea"), "Tres gráficas del mes");
+    await userEvent.click(agentSelect);
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: "Yo" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /Añadir subtarea/ }));
+    expect(within(dialog).getByText("Tres gráficas del mes")).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+    expect(create.mock.calls[1]).toEqual(["v", { title: "Datos", description: null, assignee_type: "agent", assignee_agent_id: "aira" }, "nueva"]);
+    expect(create.mock.calls[2]).toEqual(["v", { title: "Gráficas", description: "Tres gráficas del mes", assignee_type: "user", assignee_agent_id: null }, "nueva"]);
   });
 });

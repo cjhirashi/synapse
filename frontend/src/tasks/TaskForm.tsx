@@ -1,6 +1,7 @@
 import { useId, useState } from "react";
-import { CornerDownRight, ListChecks, Plus, User, X } from "lucide-react";
+import { CornerDownRight, ListChecks, Plus, X } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
+import AgentSelect from "../agents/AgentSelect";
 import DialogFrame from "../editor/DialogFrame";
 import { PRIORITY_LABEL, STATUS_LABEL, fromLocalInput, toLocalInput } from "./taskModel";
 import type { Task, TaskInput, TaskPriority } from "./tasksApi";
@@ -16,14 +17,28 @@ interface Props {
   accent: string;
   error: string | null;
   saving: boolean;
-  /** En una tarea nueva, `drafts` son los títulos de las subtareas que se crean junto con ella. */
-  onSave: (input: TaskInput & { title: string }, drafts: string[]) => void;
+  /** En una tarea nueva, `drafts` son las subtareas (ya con su asignación resuelta) que se crean junto con ella. */
+  onSave: (input: TaskInput & { title: string }, drafts: Array<TaskInput & { title: string }>) => void;
   /** Añade ya una subtarea a la tarea que se edita. */
-  onAddSubtask?: (title: string) => Promise<void>;
+  onAddSubtask?: (input: TaskInput & { title: string }) => Promise<void>;
   onCancel: () => void;
 }
 
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high"];
+
+/** Asignación de una subtarea: `inherit` = la misma que la tarea que la contiene. */
+type SubAssignee = string;
+
+interface Draft {
+  title: string;
+  description: string | null;
+  assignee: SubAssignee;
+}
+
+const assignment = (assignee: string) => ({
+  assignee_type: assignee === "user" ? ("user" as const) : ("agent" as const),
+  assignee_agent_id: assignee === "user" ? null : assignee,
+});
 
 /**
  * Alta y edición de una tarea o subtarea. La ruta es indicativa: se sugiere, pero se acepta cualquiera con forma válida.
@@ -38,14 +53,23 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
   const [due, setDue] = useState(toLocalInput(task?.due_at ?? null));
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [path, setPath] = useState(task?.path ?? "");
-  const [drafts, setDrafts] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
   const [newSub, setNewSub] = useState("");
+  const [newSubDescription, setNewSubDescription] = useState("");
+  const [newSubAssignee, setNewSubAssignee] = useState<SubAssignee>("inherit");
   const [addingSub, setAddingSub] = useState(false);
 
   // Un agente asignado que ya no está registrado sigue visible para poder cambiarlo.
   const agentChoices = Array.from(new Set([...agents, ...(task?.assignee_agent_id ? [task.assignee_agent_id] : [])]));
   const canSave = title.trim().length > 0 && !saving;
   const showSubtasks = !parent && !task?.parent_id;
+
+  /** La subtarea lista para enviar: «igual que la tarea» toma la asignación que tiene la tarea en este formulario. */
+  const subtaskInput = (draft: Draft): TaskInput & { title: string } => ({
+    title: draft.title,
+    description: draft.description,
+    ...assignment(draft.assignee === "inherit" ? assignee : draft.assignee),
+  });
 
   function submit() {
     if (!canSave) return;
@@ -60,25 +84,29 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         assignee_agent_id: assignee === "user" ? null : assignee,
         path: path.trim() || null,
       },
-      drafts,
+      drafts.map(subtaskInput),
     );
   }
 
   async function addSubtask() {
     const text = newSub.trim();
     if (!text || addingSub) return;
+    const draft: Draft = { title: text, description: newSubDescription.trim() || null, assignee: newSubAssignee };
     if (task && onAddSubtask) {
       setAddingSub(true);
       try {
-        await onAddSubtask(text);
-        setNewSub("");
+        await onAddSubtask(subtaskInput(draft));
+      } catch {
+        return; // el error ya se muestra en el formulario y lo escrito se conserva para reintentar
       } finally {
         setAddingSub(false);
       }
     } else {
-      setDrafts((current) => [...current, text]);
-      setNewSub("");
+      setDrafts((current) => [...current, draft]);
     }
+    setNewSub("");
+    setNewSubDescription("");
+    setNewSubAssignee("inherit");
   }
 
   const heading = task ? (task.parent_id ? "Editar subtarea" : "Editar tarea") : parent ? "Nueva subtarea" : "Nueva tarea";
@@ -115,25 +143,11 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
           <textarea id={`${id}-d`} rows={3} value={description} placeholder="Detalles, criterios de terminado…" onChange={(e) => setDescription(e.target.value)} />
         </div>
 
-        <fieldset className="tf-field">
-          <legend>Asignada a</legend>
-          <div className="tf-choices" role="radiogroup" aria-label="Asignada a">
-            <label className="tf-choice">
-              <input type="radio" name={`${id}-as`} value="user" checked={assignee === "user"} onChange={() => setAssignee("user")} />
-              <span className="tf-choice-box">
-                <span className="tf-me" aria-hidden="true"><User size={14} /></span>
-                Yo
-              </span>
-            </label>
-            {agentChoices.map((agent) => (
-              <label key={agent} className="tf-choice">
-                <input type="radio" name={`${id}-as`} value={agent} checked={assignee === agent} onChange={() => setAssignee(agent)} />
-                <span className="tf-choice-box"><AgentBadge agentId={agent} size={24} /></span>
-              </label>
-            ))}
-          </div>
-          {agentChoices.length === 0 && <p className="tf-help">Para asignarla a un agente, regístralo en esta bóveda (Ajustes → Agentes por bóveda).</p>}
-        </fieldset>
+        <div className="tf-field">
+          <label htmlFor={`${id}-a`}>Asignada a</label>
+          <AgentSelect id={`${id}-a`} label="Asignada a" value={assignee} onChange={setAssignee} agents={agentChoices} />
+          {agentChoices.length === 0 && <p className="tf-help">Para asignarla a un agente, regístralo como gestor en esta bóveda (Ajustes → Agentes por bóveda).</p>}
+        </div>
 
         <div className="tf-row">
           <fieldset className="tf-field">
@@ -177,27 +191,34 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
                 {subtasks.map((s) => (
                   <li key={s.id}>
                     <CornerDownRight size={14} aria-hidden="true" />
-                    <span className="tf-sub-title">{s.title}</span>
+                    <span className="tf-sub-body">
+                      <span className="tf-sub-title">{s.title}</span>
+                      {s.description && <span className="tf-sub-desc">{s.description}</span>}
+                    </span>
                     {s.assignee_type === "agent" && s.assignee_agent_id && <AgentBadge agentId={s.assignee_agent_id} size={16} />}
                     <span className="tasks-chip" data-status={s.status}>{STATUS_LABEL[s.status]}</span>
                   </li>
                 ))}
-                {drafts.map((text, index) => (
+                {drafts.map((d, index) => (
                   <li key={`draft-${index}`} className="tf-draft">
                     <CornerDownRight size={14} aria-hidden="true" />
-                    <span className="tf-sub-title">{text}</span>
+                    <span className="tf-sub-body">
+                      <span className="tf-sub-title">{d.title}</span>
+                      {d.description && <span className="tf-sub-desc">{d.description}</span>}
+                    </span>
+                    {d.assignee !== "inherit" && d.assignee !== "user" && <AgentBadge agentId={d.assignee} size={16} />}
                     <span className="tasks-chip">Se crea al guardar</span>
-                    <button type="button" className="tf-icon" aria-label={`Quitar la subtarea ${text}`} onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}><X size={14} /></button>
+                    <button type="button" className="tf-icon" aria-label={`Quitar la subtarea ${d.title}`} onClick={() => setDrafts((current) => current.filter((_, i) => i !== index))}><X size={14} /></button>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="tf-inline">
+            <div className="tf-subform">
               <input
                 aria-label="Nueva subtarea"
                 value={newSub}
                 maxLength={255}
-                placeholder="Añadir una subtarea…"
+                placeholder="Título de la subtarea"
                 onChange={(e) => setNewSub(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
@@ -206,11 +227,18 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
                   void addSubtask();
                 }}
               />
-              <button type="button" disabled={!newSub.trim() || addingSub} onClick={() => void addSubtask()}>
-                <Plus size={14} aria-hidden="true" /> Añadir subtarea
-              </button>
+              <textarea aria-label="Descripción de la subtarea" rows={2} value={newSubDescription} placeholder="Descripción (opcional)" onChange={(e) => setNewSubDescription(e.target.value)} />
+              <div className="tf-subform-row">
+                <div className="tf-field">
+                  <label htmlFor={`${id}-sa`}>Agente de la subtarea <small>(opcional)</small></label>
+                  <AgentSelect id={`${id}-sa`} label="Agente de la subtarea" value={newSubAssignee} onChange={setNewSubAssignee} agents={agentChoices} inherit />
+                </div>
+                <button type="button" disabled={!newSub.trim() || addingSub} onClick={() => void addSubtask()}>
+                  <Plus size={14} aria-hidden="true" /> Añadir subtarea
+                </button>
+              </div>
             </div>
-            <p className="tf-help">{task ? "Se añade al momento. Cada subtarea se asigna y se edita desde la lista." : "Se crean junto con la tarea al guardar."}</p>
+            <p className="tf-help">{task ? "Se añade al momento. Después se edita desde la lista." : "Se crean junto con la tarea al guardar."}</p>
           </section>
         )}
 

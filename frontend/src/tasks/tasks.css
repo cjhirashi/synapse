@@ -101,10 +101,19 @@
 .tf-subtasks h3 span { padding: 0 7px; font-size: 11px; line-height: 18px; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 999px; }
 .tf-sublist { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .tf-sublist li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 13px; background: var(--bg-secondary); border-radius: var(--radius-sm); color: var(--text-secondary); }
-.tf-sub-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.tf-sub-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tf-sub-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.tf-sub-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-muted); }
+.tf-subform { display: flex; flex-direction: column; gap: var(--space-2); }
+.tf-subform > input, .tf-subform > textarea { width: 100%; margin: 0; }
+.tf-subform > textarea { resize: vertical; }
+.tf-subform-row { display: flex; align-items: flex-end; gap: var(--space-3); }
+.tf-subform-row .tf-field { flex: 1; }
+.tf-subform-row > button { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 42px; }
 .tf-draft { border: 1px dashed var(--border-control); background: transparent; }
 
 @media (max-width: 700px) {
+  .tf-subform-row { flex-direction: column; align-items: stretch; }
   .tf-row { grid-template-columns: minmax(0, 1fr); }
   .tasks-workspace { padding: 10px; }
   .tasks-actions { margin-left: 0; }

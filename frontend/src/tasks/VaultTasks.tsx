@@ -123,7 +123,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     await reload();
   }
 
-  async function save(input: TaskInput & { title: string }, drafts: string[]) {
+  async function save(input: TaskInput & { title: string }, drafts: Array<TaskInput & { title: string }>) {
     if (dialog?.kind !== "form") return;
     setSaving(true);
     setFormError(null);
@@ -132,7 +132,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
       else {
         const created = await createTask(vaultId, input, dialog.parent?.id);
         // Las subtareas preparadas en el formulario se crean ya con la tarea (una a una, en orden).
-        for (const title of drafts) await createTask(vaultId, { title }, created.id);
+        for (const draft of drafts) await createTask(vaultId, draft, created.id);
       }
       setDialog(null);
       await reload();
@@ -143,10 +143,10 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     }
   }
 
-  async function addSubtask(parent: Task, title: string) {
+  async function addSubtask(parent: Task, input: TaskInput & { title: string }) {
     setFormError(null);
     try {
-      await createTask(vaultId, { title }, parent.id);
+      await createTask(vaultId, input, parent.id);
       await reload();
     } catch (error) {
       setFormError(errorText(error, "No se pudo añadir la subtarea."));
@@ -220,7 +220,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         <TaskForm
           key={dialog.task?.id ?? dialog.parent?.id ?? "new"} task={dialog.task} parent={dialog.parent} agents={agents}
           subtasks={dialog.task ? list.filter((t) => t.parent_id === dialog.task!.id) : []}
-          onAddSubtask={dialog.task ? (title) => addSubtask(dialog.task!, title).catch(() => undefined) : undefined}
+          onAddSubtask={dialog.task ? (input) => addSubtask(dialog.task!, input) : undefined}
           pathOptions={pathOptions} accent={accent} error={formError} saving={saving} onSave={(input, drafts) => void save(input, drafts)} onCancel={() => setDialog(null)}
         />
       )}
