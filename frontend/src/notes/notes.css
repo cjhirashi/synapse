@@ -936,19 +936,11 @@ body.is-resizing {
 .docaside-task {
   --st: var(--text-muted);
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  padding: 8px 10px 8px 14px;
   overflow: hidden;
-  font: inherit;
-  text-align: left;
   color: var(--text-primary);
   background: var(--bg-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  cursor: pointer;
 }
 
 .docaside-task::before {
@@ -962,15 +954,47 @@ body.is-resizing {
 .docaside-task[data-status="in_progress"] { --st: var(--info); }
 .docaside-task[data-status="done"] { --st: var(--success); }
 .docaside-task[data-status="cancelled"] { --st: var(--danger); }
-.docaside-task:hover { border-color: color-mix(in srgb, var(--st) 55%, var(--border)); background: var(--bg-tertiary); }
+.docaside-task:hover, .docaside-task.is-open { border-color: color-mix(in srgb, var(--st) 55%, var(--border)); }
+.docaside-task-head { display: flex; flex-direction: column; gap: 4px; width: 100%; padding: 8px 10px 8px 14px; font: inherit; text-align: left; color: inherit; background: transparent; border: 0; cursor: pointer; }
+.docaside-task-head:hover { background: var(--bg-tertiary); }
+.docaside-task-head:focus-visible { outline: 2px solid var(--vault-icon-color, var(--accent)); outline-offset: -2px; }
 .docaside-task.is-closed .docaside-task-title { text-decoration: line-through; color: var(--text-secondary); }
 .docaside-task-parent { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.docaside-task-title { font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
-.docaside-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; color: var(--text-secondary); }
+.docaside-task-title { display: flex; align-items: flex-start; gap: 4px; font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.docaside-task-title svg { flex: none; margin-top: 2px; color: var(--text-secondary); }
+.docaside-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding-left: 18px; font-size: 11px; color: var(--text-secondary); }
 .docaside-status { padding: 0 7px; line-height: 18px; color: var(--st); background: color-mix(in srgb, var(--st) 14%, transparent); border: 1px solid color-mix(in srgb, var(--st) 40%, transparent); border-radius: 999px; font-weight: 600; }
 .docaside-due { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
 .docaside-due.is-late { color: var(--danger-text); font-weight: 600; }
 .docaside-who { margin-left: auto; display: inline-flex; }
+
+/* Detalle expandido de la tarea (sin salir del documento). */
+.docaside-task-detail { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) 18px; border-top: 1px solid var(--border); }
+.docaside-field { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: 12px; color: var(--text-secondary); }
+.docaside-select { min-width: 0; padding: 3px 8px; font: inherit; font-size: 12px; font-weight: 600; color: var(--text-primary); background: var(--bg-tertiary); border: 1px solid var(--border-control); border-radius: var(--radius-sm); }
+.docaside-select[data-status="in_progress"] { color: var(--info-text); }
+.docaside-select[data-status="done"] { color: var(--success-text); }
+.docaside-select[data-status="cancelled"] { color: var(--danger-text); }
+.docaside-select:disabled { cursor: not-allowed; opacity: 0.8; }
+.docaside-text { margin: 0; font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-primary); }
+.docaside-facts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); margin: 0; }
+.docaside-facts div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.docaside-facts dt, .docaside-block h4 { margin: 0; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
+.docaside-facts dd { margin: 0; font-size: 12px; color: var(--text-primary); overflow-wrap: anywhere; }
+.docaside-facts dd.is-late { color: var(--danger-text); font-weight: 600; }
+.docaside-block { display: flex; flex-direction: column; gap: 4px; }
+.docaside-block h4 span { font-weight: 400; letter-spacing: 0; }
+.docaside-subs { display: flex; flex-direction: column; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.docaside-subs li { --st: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 4px 6px; font-size: 12px; background: var(--bg-secondary); border-radius: var(--radius-xs); }
+.docaside-subs li[data-status="in_progress"] { --st: var(--info); }
+.docaside-subs li[data-status="done"] { --st: var(--success); }
+.docaside-subs li[data-status="cancelled"] { --st: var(--danger); }
+.docaside-subs li.is-closed .docaside-sub-title { text-decoration: line-through; color: var(--text-secondary); }
+.docaside-sub-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--st); }
+.docaside-sub-title { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.docaside-sub-state { flex: none; font-size: 11px; color: var(--text-secondary); }
+.docaside-open { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; font: inherit; font-size: 12px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; }
+.docaside-open:hover { color: var(--text-primary); border-color: var(--vault-icon-color, var(--accent)); }
 
 /* --- Conflicto de una nota: dos versiones lado a lado --- */
 .note-conflict-versions {

@@ -70,21 +70,64 @@ test("sin encabezados lo dice; con la vista de código explica dónde se ve el �
   expect(await screen.findByText(/en la vista Visual/)).toBeInTheDocument();
 });
 
-test("la pestaña Tareas muestra solo las ligadas a este documento (abiertas primero, con su contador) y un clic la abre", async () => {
+test("la pestaña Tareas muestra solo las ligadas a este documento (abiertas primero, con su contador) y un clic solo expande la tarjeta", async () => {
   const onOpenTask = vi.fn();
   render(<Harness onOpenTask={onOpenTask} />);
   const tab = await screen.findByRole("tab", { name: /Tareas/ });
   await waitFor(() => expect(within(tab).getByLabelText("2 abiertas")).toBeInTheDocument()); // la hecha no cuenta
   await userEvent.click(tab);
   const panel = screen.getByRole("tabpanel");
-  const items = await within(panel).findAllByRole("button");
-  expect(items.map((b) => b.querySelector(".docaside-task-title")?.textContent)).toEqual(["Revisar el plan", "Subtarea ligada", "Ya hecha"]);
+  const heads = await within(panel).findAllByRole("button", { expanded: false });
+  expect(heads.map((b) => b.querySelector(".docaside-task-title")?.textContent)).toEqual(["Revisar el plan", "Subtarea ligada", "Ya hecha"]);
   expect(within(panel).queryByText("De otro documento")).toBeNull();
   expect(within(panel).queryByText("Sin ruta")).toBeNull();
   expect(within(panel).getByText("↳ Revisar el plan")).toBeInTheDocument(); // la subtarea dice de cuál cuelga
-  expect(items[0].querySelector(".docaside-due")).toHaveClass("is-late");
-  await userEvent.click(items[1]);
-  expect(onOpenTask).toHaveBeenCalledWith(expect.objectContaining({ id: "e" }));
+  expect(heads[0].querySelector(".docaside-due")).toHaveClass("is-late");
+  await userEvent.click(heads[1]);
+  expect(onOpenTask).not.toHaveBeenCalled(); // no abre el gestor
+  expect(heads[1]).toHaveAttribute("aria-expanded", "true");
+});
+
+test("expandida muestra el detalle (descripción, notas, fechas, responsable y subtareas); el botón la abre en Tareas y otro clic la contrae", async () => {
+  const onOpenTask = vi.fn();
+  vi.spyOn(tasksApi, "listTasks").mockResolvedValue([
+    task({ id: "a", title: "Revisar el plan", path: "Proyectos/Plan.md", description: "Leer todo el plan.", notes: "Falta el anexo.", priority: "high", start_at: "2026-11-10T15:00:00Z", due_at: "2026-11-20T15:00:00Z" }),
+    task({ id: "s1", parent_id: "a", title: "Anexo A", status: "done" }),
+    task({ id: "s2", parent_id: "a", title: "Anexo B" }),
+  ]);
+  render(<Harness onOpenTask={onOpenTask} />);
+  await userEvent.click(await screen.findByRole("tab", { name: /Tareas/ }));
+  const head = await screen.findByRole("button", { name: /Revisar el plan/, expanded: false });
+  await userEvent.click(head);
+  const detail = await screen.findByRole("region", { name: "Detalle de Revisar el plan" });
+  expect(within(detail).getByText("Leer todo el plan.")).toBeInTheDocument();
+  expect(within(detail).getByText("Falta el anexo.")).toBeInTheDocument();
+  expect(within(detail).getByText("Alta")).toBeInTheDocument();
+  expect(within(detail).getByText("Subtareas")).toHaveTextContent("1/2");
+  expect(within(detail).getByText("Anexo A")).toBeInTheDocument();
+  expect(within(detail).getByLabelText("Estado de Revisar el plan")).toBeDisabled(); // su estado sale de las subtareas
+  await userEvent.click(within(detail).getByRole("button", { name: /Abrir en Tareas/ }));
+  expect(onOpenTask).toHaveBeenCalledWith(expect.objectContaining({ id: "a" }));
+  await userEvent.click(head);
+  expect(screen.queryByRole("region", { name: "Detalle de Revisar el plan" })).toBeNull();
+});
+
+test("el estado se cambia desde la tarjeta: se ve al instante, manda PATCH y relee; si falla, avisa", async () => {
+  const mine = task({ id: "a", title: "Sola", path: "Proyectos/Plan.md" });
+  const list = vi.spyOn(tasksApi, "listTasks").mockResolvedValue([mine]);
+  const update = vi.spyOn(tasksApi, "updateTask").mockResolvedValue({ ...mine, status: "in_progress" });
+  render(<Harness />);
+  await userEvent.click(await screen.findByRole("tab", { name: /Tareas/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /Sola/, expanded: false }));
+  list.mockResolvedValue([{ ...mine, status: "in_progress" }]);
+  await userEvent.selectOptions(screen.getByLabelText("Estado de Sola"), "in_progress");
+  expect(update).toHaveBeenCalledWith("v", mine, { status: "in_progress" });
+  await waitFor(() => expect(screen.getByLabelText("Estado de Sola")).toHaveValue("in_progress"));
+  update.mockRejectedValue(new Error("412"));
+  list.mockResolvedValue([{ ...mine, status: "in_progress" }]);
+  await userEvent.selectOptions(screen.getByLabelText("Estado de Sola"), "done");
+  expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo cambiar el estado");
+  await waitFor(() => expect(screen.getByLabelText("Estado de Sola")).toHaveValue("in_progress")); // vuelve a lo que dice el servidor
 });
 
 test("sin tareas ligadas explica cómo ligar una; si falla la lectura lo avisa", async () => {
