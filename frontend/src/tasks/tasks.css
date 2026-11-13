@@ -215,7 +215,10 @@
 .tasks-week-day h4 button { padding: 0; font: inherit; font-weight: 600; color: var(--text-primary); background: transparent; border: 0; cursor: pointer; }
 .tasks-week-day h4 button:hover { color: var(--tk); }
 .tasks-week-empty { margin: 0; font-size: 12px; color: var(--text-muted); }
-.tasks-week .tasks-cal-task { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; white-space: normal; padding: 3px 6px; }
+.tasks-week .tasks-cal-task { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "time who" "title title"; align-items: center; gap: 1px 6px; padding: 4px 6px 4px 9px; font-size: 12px; }
+.tasks-week .tasks-cal-time { grid-area: time; }
+.tasks-week .tasks-cal-who { grid-area: who; }
+.tasks-week .tasks-cal-title { grid-area: title; white-space: normal; overflow: visible; overflow-wrap: anywhere; }
 
 /* Día */
 .tasks-day { display: flex; flex-direction: column; gap: 8px; }
@@ -231,7 +234,16 @@
 .tasks-cal-cell--today .tasks-cal-day:hover { color: var(--tk-on); background: color-mix(in srgb, var(--tk) 80%, white); }
 .tasks-cal-day { align-self: flex-start; padding: 0 2px; font-size: 12px; color: var(--text-secondary); background: transparent; border: 0; cursor: pointer; }
 .tasks-cal-day:hover { color: var(--tk); }
-.tasks-cal-task { display: block; width: 100%; font-size: 11px; text-align: left; padding: 1px 4px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.tasks-cal-task { --st: var(--text-muted); display: flex; align-items: center; gap: 6px; width: 100%; min-width: 0; font-size: 11px; line-height: 1.35; text-align: left; padding: 2px 6px 2px 9px; border-radius: 4px; border: 1px solid color-mix(in srgb, var(--st) 38%, var(--border)); background: color-mix(in srgb, var(--st) 13%, var(--bg-tertiary)); box-shadow: inset 3px 0 0 var(--st); color: var(--text-primary); cursor: pointer; transition: background .12s, border-color .12s; }
+.tasks-cal-task:hover { background: color-mix(in srgb, var(--st) 24%, var(--bg-tertiary)); border-color: var(--st); }
+.tasks-cal-task:focus-visible { outline: 2px solid var(--tk); outline-offset: 1px; }
+.tasks-cal-task[data-status="in_progress"] { --st: var(--info); }
+.tasks-cal-task[data-status="done"] { --st: var(--success); }
+.tasks-cal-task[data-status="cancelled"] { --st: var(--danger); }
+.tasks-cal-task.tasks-chip--overdue { color: var(--danger-text); }
+.tasks-cal-title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tasks-cal-who { flex: none; display: inline-flex; align-items: center; }
+.tasks-row--closed.tasks-cal-task .tasks-cal-title { text-decoration: line-through; }
 
 .tasks-side-close { display: none; }
 
@@ -301,7 +313,7 @@
   .tasks-cal-cell { min-height: 56px; }
   .tasks-week { grid-template-columns: minmax(0, 1fr); }
   .tasks-week-day { min-height: 0; }
-  .tasks-week .tasks-cal-task { flex-direction: row; align-items: baseline; gap: 8px; }
+  .tasks-week .tasks-cal-task { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "time title who"; gap: 8px; }
   .tasks-cal-modes { order: 5; width: 100%; }
   .tasks-cal-mode { flex: 1; }
   .tasks-cal-head h3 { flex-basis: 100%; order: 1; }

@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import AgentBadge from "../agents/AgentBadge";
+import UserBadge from "../agents/UserBadge";
 import { Row, type ViewActions } from "./TaskViews";
 import {
   calendarTitle, formatDue, formatTime, isClosed, isOverdue, monthGrid, monthName, shiftAnchor, tasksByDay, weekDays, weekdayLabel,
@@ -19,17 +21,29 @@ const DOW = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 const byTime = (a: Task, b: Task) => (a.due_at ?? "").localeCompare(b.due_at ?? "");
 
-/** Botón de una tarea dentro de una celda: abre su edición. */
+/** Foto del responsable (solo la imagen; el nombre queda en su título). */
+function CalendarWho({ task }: { task: Task }) {
+  return (
+    <span className="tasks-cal-who" aria-hidden="true">
+      {task.assignee_type === "agent" && task.assignee_agent_id
+        ? <AgentBadge agentId={task.assignee_agent_id} size={16} showName={false} />
+        : <UserBadge size={16} label={null} />}
+    </span>
+  );
+}
+
+/** Botón de una tarea dentro de una celda: abre su detalle. Lleva el color de su estado y la foto de su responsable. */
 function CalendarTask({ task, actions, time = false }: { task: Task; actions: ViewActions; time?: boolean }) {
   return (
     <button
-      type="button"
+      type="button" data-status={task.status}
       className={`tasks-cal-task${isClosed(task) ? " tasks-row--closed" : ""}${isOverdue(task) ? " tasks-chip--overdue" : ""}`}
       title={`${task.title} · ${formatDue(task.due_at as string)}`}
       onClick={() => actions.onOpen(task)}
     >
       {time && <span className="tasks-cal-time">{formatTime(task.due_at as string)}</span>}
-      {task.title}
+      <span className="tasks-cal-title">{task.title}</span>
+      <CalendarWho task={task} />
     </button>
   );
 }
