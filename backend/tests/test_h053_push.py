@@ -126,6 +126,10 @@ def test_test_push_sends_now_even_in_quiet_hours_and_prunes_dead_devices(ready_a
     monkeypatch.setattr(web_push, "send", fake)
     assert ready_admin.post("/notifications/push/test").json() == {"sent": 1, "removed": 0, "failed": 0}
     assert fake.calls[0][1]["url"] == "/avisos"
+    with TestingSessionLocal() as s:
+        assert s.query(PushSubscription).one().last_success_at is not None  # la prueba también deja constancia del envío
+    ready_admin.post("/notifications/push/test")
+    assert fake.calls[0][1]["tag"] != fake.calls[1][1]["tag"]  # etiqueta única: con una fija el sistema reemplaza la anterior sin mostrarla
     monkeypatch.setattr(web_push, "send", Fake("gone"))
     assert ready_admin.post("/notifications/push/test").json() == {"sent": 0, "removed": 1, "failed": 0}
     assert ready_admin.get("/notifications/push").json()["devices"] == 0
@@ -157,6 +161,47 @@ def test_dispatcher_respects_quiet_hours_but_the_notice_stays_in_the_inbox(ready
     stats = run(fake)
     assert stats["quiet"] == 1 and fake.calls == []
     assert ready_admin.get("/notifications").json()["unread"] == 1
+
+
+def test_a_notice_created_in_quiet_hours_is_pushed_when_the_window_ends(ready_admin):
+    ready_admin.put("/notifications/push/subscription", json=SUB)
+    notice_from_agent(ready_admin)
+    quiet(ready_admin, True, "00:00", "23:59")
+    fake = Fake()
+    assert run(fake)["quiet"] == 1 and fake.calls == []
+    with TestingSessionLocal() as s:
+        assert s.query(Notification).one().pushed_at is None  # sigue pendiente, no se da por enviado
+    quiet(ready_admin, False)  # termina la ventana
+    stats = run(fake)
+    assert stats["sent"] == 1 and len(fake.calls) == 1
+    assert run(fake)["checked"] == 0  # y solo sale una vez
+
+
+def test_push_goes_out_with_high_urgency_and_failures_are_logged(monkeypatch, caplog):
+    import sys
+    import types
+
+    seen = {}
+
+    class WebPushException(Exception):
+        response = None
+
+    def ok(**kwargs):
+        seen.update(kwargs)
+
+    fake = types.SimpleNamespace(webpush=ok, WebPushException=WebPushException)
+    monkeypatch.setitem(sys.modules, "pywebpush", fake)
+    assert web_push.send(web_push.Target(ENDPOINT, "k", "a"), {"title": "t"}) == "ok"
+    assert seen["headers"] == {"Urgency": "high"}
+
+    def boom(**kwargs):
+        raise RuntimeError("sin red")
+
+    fake.webpush = boom
+    with caplog.at_level("WARNING", logger="synapse.push"):
+        assert web_push.send(web_push.Target(ENDPOINT, "k", "a"), {"title": "t"}) == "error"
+    assert "fcm.googleapis.com" in caplog.text and "RuntimeError" in caplog.text
+    assert "abc123" not in caplog.text  # el resto del endpoint es un secreto de la suscripción
 
 
 def test_dispatcher_without_devices_or_with_old_notices_sends_nothing(ready_admin):

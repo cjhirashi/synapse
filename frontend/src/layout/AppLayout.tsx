@@ -1,5 +1,6 @@
 import { Link, Outlet, useMatch } from "react-router-dom";
 import BrandLogo from "../brand/BrandLogo";
+import NotificationsBell from "../notifications/NotificationsBell";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
 import VaultRail from "../notes/VaultRail";
@@ -26,6 +27,8 @@ export default function AppLayout() {
         <nav aria-label="Cuenta" className="app-nav-account">
           <LogoutDialog />
         </nav>
+        {/* Campana de avisos: siempre en el extremo derecho de la navbar (antes vivía en el riel de bóvedas). */}
+        <NotificationsBell />
       </header>
       <SyncStatusBar />
       {/* Riel de bóvedas (SPEC-0008 RF-001) a la izquierda de cada pantalla privada. */}

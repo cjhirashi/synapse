@@ -4,7 +4,7 @@
 que el estado derivado de la raíz no cambie por una limpieza). Es una purga irreversible y sin papelera: solo queda el
 respaldo semanal.
 
-**Vencimientos:** las tareas abiertas asignadas a la persona generan un aviso por cada recordatorio de la tarea (por defecto 1 día
+**Vencimientos:** las tareas abiertas (también las asignadas a un agente: la persona es quien las supervisa) generan un aviso por cada recordatorio de la tarea (por defecto 1 día
 y 1 hora antes; la persona puede poner hasta 5, de 1 minuto a 4 semanas) y otro al vencer (hasta 7 días después). Solo se envía la
 ventana vigente —la del recordatorio más cercano al vencimiento que ya llegó—: un recordatorio ya pasado al crear la tarea no se
 manda de forma retroactiva. La
@@ -95,7 +95,7 @@ def notify_due_tasks(session_factory, now: datetime | None = None) -> int:
     created = 0
     try:
         tasks = session.query(VaultTask).filter(
-            VaultTask.assignee_type == "user", VaultTask.status.notin_(("done", "cancelled")), VaultTask.due_at.isnot(None),
+            VaultTask.status.notin_(("done", "cancelled")), VaultTask.due_at.isnot(None),
             VaultTask.due_at >= moment - _OVERDUE_WINDOW, VaultTask.due_at <= moment + timedelta(minutes=task_rules.MAX_REMINDER_MINUTES),
         ).all()
         for task in tasks:
@@ -103,8 +103,9 @@ def notify_due_tasks(session_factory, now: datetime | None = None) -> int:
             if window is None:
                 continue
             headline = "venció" if window == 0 else f"vence en {_label(window)}"
+            whose = f" (de {task.assignee_agent_id})" if task.assignee_type == "agent" and task.assignee_agent_id else ""
             notice = NotificationService(NotificationRepository(session), task.owner_id).notify(
-                "task_due", f"«{task.title}» {headline}", body=f"Vence el {_when(task.due_at)}.", vault_id=task.vault_id,
+                "task_due", f"«{task.title}»{whose} {headline}", body=f"Vence el {_when(task.due_at)}.", vault_id=task.vault_id,
                 resource_type="task", resource_id=task.id, url=f"/vaults/{task.vault_id}?tab=tareas&task={task.id}",
                 dedupe_key=f"task:{task.id}:{task.due_at.isoformat()}:{_key(window)}")
             created += notice is not None

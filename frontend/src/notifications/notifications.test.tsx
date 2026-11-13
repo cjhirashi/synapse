@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
 import NotificationsPage from "./NotificationsPage";
-import NotificationsRailLink from "./NotificationsRailLink";
+import NotificationsBell from "./NotificationsBell";
 import * as api from "./notificationsApi";
 
 afterEach(() => vi.restoreAllMocks());
@@ -73,11 +73,28 @@ test("si falla la lectura muestra el error y permite reintentar", async () => {
   expect(list).toHaveBeenCalledTimes(2);
 });
 
-test("el riel muestra el contador, lo relee al leer y oculta el 0", async () => {
+test("la campana de la navbar muestra el contador, lo relee al leer y oculta el 0", async () => {
   const count = vi.spyOn(api, "unreadCount").mockResolvedValue(3);
-  render(<MemoryRouter><NotificationsRailLink expanded={false} /></MemoryRouter>);
+  render(<MemoryRouter><NotificationsBell /></MemoryRouter>);
   expect(await screen.findByRole("link", { name: "Avisos (3 sin leer)" })).toHaveAttribute("href", "/avisos");
   count.mockResolvedValue(0);
   window.dispatchEvent(new Event(api.NOTICES_CHANGED));
   expect(await screen.findByRole("link", { name: "Avisos" })).toBeInTheDocument();
+});
+
+test("un push recibido por el service worker actualiza el contador al instante", async () => {
+  const listeners: Array<(event: MessageEvent) => void> = [];
+  vi.stubGlobal("navigator", { ...navigator, serviceWorker: {
+    addEventListener: (_: string, fn: (event: MessageEvent) => void) => listeners.push(fn), removeEventListener: vi.fn(),
+  } });
+  try {
+    const count = vi.spyOn(api, "unreadCount").mockResolvedValue(0);
+    render(<MemoryRouter><NotificationsBell /></MemoryRouter>);
+    await screen.findByRole("link", { name: "Avisos" });
+    count.mockResolvedValue(1);
+    listeners.forEach((fn) => fn({ data: { type: "NOTICES_CHANGED" } } as MessageEvent));
+    expect(await screen.findByRole("link", { name: "Avisos (1 sin leer)" })).toBeInTheDocument();
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

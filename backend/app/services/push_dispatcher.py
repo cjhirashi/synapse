@@ -1,7 +1,8 @@
 """Despachador de Web Push (H-053): envía al dispositivo los avisos recién creados.
 
 La cola es la tabla: un aviso con `pushed_at` NULL está pendiente. Cada pasada lo marca revisado *antes* de enviar (a lo sumo
-una vez: un fallo no se reintenta en bucle) y respeta las horas silenciosas de la persona (el aviso sigue en la bandeja).
+una vez: un fallo no se reintenta en bucle). Dentro de las horas silenciosas de la persona el aviso no se marca: sigue pendiente
+y sale en cuanto termina la ventana (antes se daba por enviado y se perdía; en la bandeja está siempre).
 Un 404/410 del servicio de push borra la suscripción. El hilo duerme hasta `PUSH_POLL_SECONDS` y `PUSH_WAKE` lo despierta al
 crear un aviso; si el aviso aún no se confirmó, la siguiente pasada lo recoge.
 """
@@ -31,34 +32,45 @@ def _payload(notice: Notification) -> dict:
     return {"title": notice.title, "body": body, "url": notice.url if (notice.url or "").startswith("/") else "/avisos", "tag": notice.id}
 
 
+def _quiet_now(session: Session, owner_id: str, now: datetime, cache: dict[str, bool]) -> bool:
+    if owner_id not in cache:
+        pref = session.get(NotificationPref, owner_id)
+        window = (pref.quiet_enabled, pref.quiet_start, pref.quiet_end) if pref is not None else (True, "22:00", "07:00")
+        cache[owner_id] = in_quiet_hours(now, *window)
+    return cache[owner_id]
+
+
 def dispatch_pending(session_factory: sessionmaker, now: datetime | None = None, sender: Sender = web_push.send) -> dict:
     """Una pasada. Devuelve contadores (para pruebas y registro)."""
     now = now or datetime.now(UTC).replace(tzinfo=None)
     stats = {"checked": 0, "sent": 0, "quiet": 0, "removed": 0, "failed": 0}
+    quiet: dict[str, bool] = {}
     with session_factory() as session:
         pending = (
             session.query(Notification).filter(Notification.pushed_at.is_(None))
-            .order_by(Notification.created_at).limit(BATCH).all()
+            .order_by(Notification.created_at).limit(BATCH * 4).all()
         )
+        ready = []
         for notice in pending:
+            if now - notice.created_at <= MAX_AGE and _quiet_now(session, notice.owner_id, now, quiet):
+                stats["quiet"] += 1  # se queda pendiente: sale al terminar las horas silenciosas
+                continue
+            ready.append(notice)
+        ready = ready[:BATCH]
+        for notice in ready:
             notice.pushed_at = now
         session.commit()
-        for notice in pending:
+        for notice in ready:
             stats["checked"] += 1
             if now - notice.created_at > MAX_AGE:
                 continue
-            _deliver(session, notice, now, sender, stats)
+            _deliver(session, notice, sender, now, stats)
     return stats
 
 
-def _deliver(session: Session, notice: Notification, now: datetime, sender: Sender, stats: dict) -> None:
+def _deliver(session: Session, notice: Notification, sender: Sender, now: datetime, stats: dict) -> None:
     subs = session.query(PushSubscription).filter(PushSubscription.owner_id == notice.owner_id).all()
     if not subs:
-        return
-    pref = session.get(NotificationPref, notice.owner_id)
-    window = (pref.quiet_enabled, pref.quiet_start, pref.quiet_end) if pref is not None else (True, "22:00", "07:00")
-    if in_quiet_hours(now, *window):
-        stats["quiet"] += 1
         return
     payload = _payload(notice)
     for sub in subs:

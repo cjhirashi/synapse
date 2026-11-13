@@ -1,4 +1,4 @@
-/* Pantalla de avisos y contador del riel (H-053). Solo tokens del tema. */
+/* Pantalla de avisos y contador de la campana (H-053). Solo tokens del tema. */
 .notices-page { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; }
 .notices-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .notices-head h1 { margin: 0; font-size: 20px; }
@@ -9,7 +9,6 @@
 .notices-title { font-weight: 600; }
 .notices-body { color: var(--text-secondary); font-size: 13px; }
 .notices-time { color: var(--text-muted); font-size: 12px; }
-.notices-rail-glyph { position: relative; }
 .notices-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; }
 /* Configuración de notificaciones (Ajustes): filas con icono, texto e interruptor; todo con tokens del tema. */
 .notices-settings { display: flex; flex-direction: column; }
@@ -40,3 +39,4 @@ label.notif-row { cursor: pointer; }
 .notif-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .notif-switch, .notif-switch::after { transition: none; } }
 @media (max-width: 560px) { .notif-times { padding-left: 0; } .notif-device { flex-wrap: wrap; } }
+.notif-warning { margin: var(--space-2) 0 0; padding: var(--space-2) var(--space-3); font-size: 13px; line-height: 1.4; color: var(--warning-text); background: color-mix(in srgb, var(--warning) 12%, transparent); border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border)); border-radius: var(--radius-md); }

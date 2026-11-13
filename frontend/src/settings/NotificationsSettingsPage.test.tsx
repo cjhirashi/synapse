@@ -41,7 +41,7 @@ test("con el dispositivo suscrito ofrece desactivar y probar", async () => {
   render(<NotificationsSettingsPage />);
   await userEvent.click(await screen.findByRole("button", { name: "Enviar aviso de prueba" }));
   expect(test_).toHaveBeenCalled();
-  expect(await screen.findByText("Aviso de prueba enviado.")).toBeInTheDocument();
+  expect(await screen.findByText(/Aviso de prueba enviado a 1 dispositivo\./)).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "Desactivar en este dispositivo" }));
   expect(off).toHaveBeenCalled();
 });
@@ -65,4 +65,22 @@ test("las horas silenciosas se guardan al cambiarlas y se pueden apagar", async 
   await userEvent.click(await screen.findByRole("checkbox", { name: /Activar horas silenciosas/ }));
   expect(save).toHaveBeenCalledWith({ enabled: false, start: "22:00", end: "07:00" });
   await waitFor(() => expect(screen.getByLabelText("Inicio de horas silenciosas")).toBeDisabled());
+});
+
+test("avisa cuando las horas silenciosas dejan menos de 12 h al día para recibir notificaciones", async () => {
+  vi.spyOn(api, "getPreferences").mockResolvedValue(prefs({ start: "12:00", end: "08:00" }));
+  render(<NotificationsSettingsPage />);
+  expect(await screen.findByRole("alert")).toHaveTextContent("Son 20 h al día sin notificaciones");
+  expect(screen.getByRole("alert")).toHaveTextContent("entre las 08:00 y las 12:00");
+});
+
+test("con la ventana habitual (22:00 a 07:00) no hay advertencia, y apagada tampoco", async () => {
+  const { unmount } = render(<NotificationsSettingsPage />);
+  await screen.findByText(/de 22:00 a 07:00/);
+  expect(screen.queryByRole("alert")).toBeNull();
+  unmount();
+  vi.spyOn(api, "getPreferences").mockResolvedValue(prefs({ enabled: false, start: "12:00", end: "08:00" }));
+  render(<NotificationsSettingsPage />);
+  await screen.findByText("Recibirás notificaciones a cualquier hora.");
+  expect(screen.queryByRole("alert")).toBeNull();
 });

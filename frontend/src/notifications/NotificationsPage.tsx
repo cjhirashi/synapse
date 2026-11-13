@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatDue } from "../tasks/taskModel";
-import { listNotices, markAllRead, markRead, type Notice } from "./notificationsApi";
+import { NOTICES_CHANGED, listNotices, markAllRead, markRead, type Notice } from "./notificationsApi";
 import "./notifications.css";
 
 /** Pantalla de avisos (H-053): los más nuevos primero; un clic marca el aviso como leído y abre la tarea. */
@@ -23,7 +23,13 @@ export default function NotificationsPage() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    // Un push que llega con esta pantalla abierta (o un cambio hecho en otro sitio) la actualiza al momento.
+    const refresh = () => void load();
+    window.addEventListener(NOTICES_CHANGED, refresh);
+    return () => window.removeEventListener(NOTICES_CHANGED, refresh);
+  }, [load]);
 
   async function open(notice: Notice) {
     if (!notice.read_at) await markRead(notice.id).catch(() => undefined);

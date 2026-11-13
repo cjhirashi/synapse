@@ -8,7 +8,6 @@
  * teclado. Se monta en `document.body`: el riel tiene scroll (`overflow`) y recortaría un hijo.
  */
 import { ChevronsLeft, ChevronsRight, Trash2 } from "lucide-react";
-import NotificationsRailLink from "../notifications/NotificationsRailLink";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
@@ -119,9 +118,8 @@ export default function VaultRail() {
           </NavLink>
         ))}
       </div>
-      {/* Zona inferior (H-028 A2): altura de su contenido; Papelera y Usuario (al final). */}
+      {/* Zona inferior (H-028 A2): altura de su contenido; Papelera y Usuario (al final). Los avisos salieron al navbar. */}
       <div className="vault-rail-bottom">
-        <NotificationsRailLink expanded={expanded} />
         <NavLink to="/vaults/trash" className="vault-rail-icon vault-rail-action" aria-label="Papelera" title="Papelera">
           <span className="vault-rail-glyph">
             <Trash2 size={18} aria-hidden="true" />

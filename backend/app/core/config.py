@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # (la suite de pruebas lo apaga por defecto).
     TASKS_RETENTION_DAYS: int = 30
     TASKS_JOBS: bool = True
-    TASKS_JOBS_INTERVAL_SECONDS: int = 300
+    TASKS_JOBS_INTERVAL_SECONDS: int = 60
     # H-053 Web Push: claves VAPID (en `.env`, nunca en el repo). Sin ellas el push queda apagado y los avisos siguen
     # llegando a la bandeja. `PUSH_DISPATCH=false` apaga el hilo que envía (las pruebas lo apagan).
     VAPID_PRIVATE_KEY: str = ""

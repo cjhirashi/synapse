@@ -147,7 +147,7 @@ def test_a_task_created_inside_the_last_hour_only_gets_the_current_window(ready_
     assert [n["title"] for n in due_notices(ready_admin)] == ["«Urgente» vence en 1 h"]
 
 
-def test_due_notices_skip_closed_agent_owned_and_ancient_tasks_and_restart_on_a_new_date(ready_admin):
+def test_due_notices_skip_closed_and_ancient_tasks_include_agent_tasks_and_restart_on_a_new_date(ready_admin):
     vault, _ = setup_agent(ready_admin)
     closed = make(ready_admin, vault, title="Cerrada", due_at=DUE)
     patch(ready_admin, vault, closed["id"], status="done")
@@ -155,10 +155,18 @@ def test_due_notices_skip_closed_agent_owned_and_ancient_tasks_and_restart_on_a_
     make(ready_admin, vault, title="Antigua", due_at="2026-11-01T15:00:00Z")
     moved = make(ready_admin, vault, title="Movible", due_at=DUE)
     now = DUE_AT - timedelta(hours=10)
-    assert notify_due_tasks(TestingSessionLocal, now=now) == 1  # solo «Movible»
+    assert notify_due_tasks(TestingSessionLocal, now=now) == 2  # «Movible» y la de aira (la persona supervisa lo de sus agentes)
     assert notify_due_tasks(TestingSessionLocal, now=now) == 0
     patch(ready_admin, vault, moved["id"], due_at="2026-11-20T16:00:00Z")  # otra fecha: se reinician los avisos
     assert notify_due_tasks(TestingSessionLocal, now=now) == 1
+
+
+def test_a_task_of_an_agent_notifies_the_person_and_names_the_agent(ready_admin):
+    vault, _ = setup_agent(ready_admin)
+    make(ready_admin, vault, title="Informe", due_at=DUE, assignee_type="agent", assignee_agent_id="aira")
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT - timedelta(hours=20)) == 1
+    assert notify_due_tasks(TestingSessionLocal, now=DUE_AT + timedelta(minutes=2)) == 1
+    assert [n["title"] for n in reversed(due_notices(ready_admin))] == ["«Informe» (de aira) vence en 24 h", "«Informe» (de aira) venció"]
 
 
 def test_a_disabled_due_kind_creates_nothing(ready_admin):

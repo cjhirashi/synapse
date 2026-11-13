@@ -58,15 +58,22 @@ self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch { data = {}; }
   const title = data.title || "Synapse";
-  event.waitUntil(
+  const tag = typeof data.tag === "string" && data.tag ? data.tag : undefined;
+  event.waitUntil(Promise.all([
+    // `renotify`: si ya hay una notificación con la misma etiqueta, el sistema la reemplaza Y vuelve a avisar (sin esto, Windows
+    // y Chrome la sustituyen en silencio y parece que no llegó nada). Exige `tag`, por eso solo se activa con etiqueta.
     self.registration.showNotification(title, {
       body: data.body || "",
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      tag: data.tag || undefined,
+      tag,
+      renotify: tag !== undefined,
+      vibrate: [120, 60, 120],
       data: { url: typeof data.url === "string" && data.url.startsWith("/") ? data.url : "/avisos" },
     }),
-  );
+    // La app abierta sube su contador de avisos al instante, sin esperar al sondeo.
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => list.forEach((client) => client.postMessage({ type: "NOTICES_CHANGED" }))),
+  ]));
 });
 
 self.addEventListener("notificationclick", (event) => {

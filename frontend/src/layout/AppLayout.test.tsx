@@ -109,3 +109,12 @@ test("RF-018: hay un solo logo por pantalla privada, dentro de la cabecera", () 
   expect(document.querySelectorAll(".brand-logo")).toHaveLength(1);
   expect(document.querySelectorAll(".app-header .brand-logo")).toHaveLength(1);
 });
+
+test("la campana de avisos es lo último de la navbar (extremo derecho) y lleva a /avisos", () => {
+  renderAt(syncValue().value);
+  const header = document.querySelector(".app-header")!;
+  const bell = header.lastElementChild as HTMLElement;
+  expect(bell).toHaveAttribute("href", "/avisos");
+  expect(bell).toHaveAccessibleName(/^Avisos/);
+  expect(document.querySelector(".vault-rail-bottom a[href='/avisos']")).toBeNull(); // ya no está en el riel
+});

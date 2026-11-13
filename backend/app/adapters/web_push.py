@@ -4,11 +4,14 @@ El mensaje viaja cifrado de extremo a extremo (aes128gcm) hacia el servicio de p
 conexiones a ningún otro destino: `endpoint_allowed` limita las suscripciones a los servicios de push conocidos.
 """
 import json
+import logging
 from dataclasses import dataclass
 from typing import Literal
 from urllib.parse import urlparse
 
 from app.core.config import settings
+
+log = logging.getLogger("synapse.push")
 
 PUSH_HOSTS = ("fcm.googleapis.com", "updates.push.services.mozilla.com", "web.push.apple.com", "notify.windows.com")
 PUSH_SUFFIXES = (".push.services.mozilla.com", ".push.apple.com", ".notify.windows.com", ".googleapis.com")
@@ -39,8 +42,17 @@ def endpoint_allowed(endpoint: str) -> bool:
     return host in PUSH_HOSTS or host.endswith(PUSH_SUFFIXES)
 
 
-def send(target: Target, payload: dict) -> Result:
-    """Envía un mensaje. `gone` = el servicio dice que la suscripción ya no existe (404/410): hay que borrarla."""
+def _host(endpoint: str) -> str:
+    """Solo el servidor del servicio de push: el resto de la URL es un secreto de la suscripción y no se escribe en el registro."""
+    return urlparse(endpoint).hostname or "?"
+
+
+def send(target: Target, payload: dict, urgency: str = "high") -> Result:
+    """Envía un mensaje. `gone` = el servicio dice que la suscripción ya no existe (404/410): hay que borrarla.
+
+    `Urgency: high` hace que Android lo entregue al momento aunque el teléfono esté en reposo (Doze); con la urgencia normal
+    por omisión, los avisos llegan tarde o casi nunca. Los fallos quedan en el registro (antes se perdían en silencio).
+    """
     from pywebpush import WebPushException, webpush
 
     try:
@@ -51,10 +63,16 @@ def send(target: Target, payload: dict) -> Result:
             vapid_claims={"sub": settings.VAPID_SUBJECT},
             ttl=86400,
             timeout=10,
+            headers={"Urgency": urgency},
         )
         return "ok"
     except WebPushException as exc:
         status = getattr(exc.response, "status_code", None)
-        return "gone" if status in (404, 410) else "error"
-    except Exception:
+        if status in (404, 410):
+            return "gone"
+        detail = (getattr(exc.response, "text", "") or str(exc))[:160]
+        log.warning("push rechazado por %s: HTTP %s %s", _host(target.endpoint), status, detail)
+        return "error"
+    except Exception as exc:
+        log.warning("push fallido hacia %s: %s", _host(target.endpoint), type(exc).__name__)
         return "error"

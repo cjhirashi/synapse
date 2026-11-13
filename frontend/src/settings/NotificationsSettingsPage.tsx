@@ -9,7 +9,7 @@ import "../notifications/notifications.css";
 const OPTIONS: { kind: NoticeKind; label: string; hint: string; Icon: LucideIcon }[] = [
   { kind: "task_assigned", label: "Un agente me asigna una tarea", hint: "Cuando un agente crea o te reasigna una tarea o subtarea.", Icon: UserPlus },
   { kind: "task_status", label: "Un agente cambia el estado de una tarea mía", hint: "Cuando un agente la marca como hecha, en progreso o cancelada.", Icon: CheckCheck },
-  { kind: "task_due", label: "Mis tareas vencen", hint: "A 24 h y a 1 h del vencimiento, y cuando vence sin cerrarse.", Icon: AlarmClock },
+  { kind: "task_due", label: "Las tareas vencen", hint: "A 24 h y a 1 h del vencimiento (o con los recordatorios de cada tarea) y cuando vence sin cerrarse; también las tareas de tus agentes.", Icon: AlarmClock },
 ];
 
 const SUPPORT_TEXT: Record<Exclude<PushSupport, "ready">, string> = {
@@ -17,6 +17,15 @@ const SUPPORT_TEXT: Record<Exclude<PushSupport, "ready">, string> = {
   "no-worker": "Las notificaciones en el dispositivo se activan desde la app publicada (con el service worker instalado).",
   denied: "El permiso de notificaciones está bloqueado en este navegador; habilítalo en la configuración del sitio.",
 };
+
+/** Minutos que dura la ventana silenciosa (puede cruzar la medianoche); 0 si alguna hora no es válida. */
+function quietSpan(start: string, end: string): number {
+  const minutes = (value: string) => { const [h, m] = value.split(":").map(Number); return Number.isNaN(h) || Number.isNaN(m) ? null : h * 60 + m; };
+  const from = minutes(start);
+  const to = minutes(end);
+  if (from === null || to === null || from === to) return 0;
+  return to > from ? to - from : 24 * 60 - from + to;
+}
 
 /** Sección Notificaciones (H-053): qué avisos recibes, las horas silenciosas y las notificaciones en este dispositivo. */
 export default function NotificationsSettingsPage() {
@@ -62,12 +71,16 @@ export default function NotificationsSettingsPage() {
   });
   const test = () => run(async () => {
     const result = await sendTestPush();
-    setMessage(result.sent > 0 ? "Aviso de prueba enviado." : "No se pudo enviar el aviso de prueba a ningún dispositivo.");
+    setMessage(result.sent > 0 ? `Aviso de prueba enviado a ${result.sent} ${result.sent === 1 ? "dispositivo" : "dispositivos"}. Si no lo ves, revisa que el navegador tenga permiso para notificar y que el sistema no esté en «No molestar».` : "No se pudo enviar el aviso de prueba a ningún dispositivo.");
     await refreshDevice();
   });
 
   const deviceOn = push?.enabled === true && support === "ready" && subscribed;
-  const quietText = prefs?.quiet.enabled ? `No recibirás notificaciones en el dispositivo de ${prefs.quiet.start} a ${prefs.quiet.end} (hora de Ciudad de México).` : "Recibirás notificaciones a cualquier hora.";
+  const quietMinutes = prefs ? quietSpan(prefs.quiet.start, prefs.quiet.end) : 0;
+  const quietText = prefs?.quiet.enabled
+    ? `No recibirás notificaciones en el dispositivo de ${prefs.quiet.start} a ${prefs.quiet.end} (hora de Ciudad de México); los avisos de ese rato salen al terminar.`
+    : "Recibirás notificaciones a cualquier hora.";
+  const quietTooLong = prefs?.quiet.enabled === true && quietMinutes > 12 * 60;
 
   return (
     <section className="notices-settings">
@@ -123,6 +136,11 @@ export default function NotificationsSettingsPage() {
             <span className="notif-text"><span className="notif-title">Activar horas silenciosas</span><span className="notif-hint">{quietText}</span></span>
             <input className="notif-switch" type="checkbox" checked={prefs.quiet.enabled} onChange={(e) => void saveQuiet({ enabled: e.target.checked })} />
           </label>
+          {quietTooLong && (
+            <p className="notif-warning" role="alert">
+              Son {Math.round(quietMinutes / 60)} h al día sin notificaciones en el dispositivo (solo recibirías avisos entre las {prefs.quiet.end} y las {prefs.quiet.start}). ¿Es lo que quieres?
+            </p>
+          )}
           <div className="notif-times">
             <label>Desde<input type="time" aria-label="Inicio de horas silenciosas" value={prefs.quiet.start} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ start: e.target.value })} /></label>
             <label>Hasta<input type="time" aria-label="Fin de horas silenciosas" value={prefs.quiet.end} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ end: e.target.value })} /></label>

@@ -79,6 +79,45 @@
   color: var(--accent);
 }
 
+/* Campana de avisos: extremo derecho de la navbar. */
+.app-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  /* El margen negativo compensa su alto: la cabecera conserva la altura que le da el logo. */
+  margin: -3px 0 -3px var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition:
+    background var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+
+.app-bell:hover {
+  color: var(--text-primary);
+  text-decoration: none;
+  background: var(--bg-tertiary);
+}
+
+.app-bell.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.app-bell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.app-bell .notices-badge {
+  top: 3px;
+  right: 1px;
+}
+
 /* Riel de bóvedas + contenido. `min-height: 0` deja que el cuerpo se encoja al alto que sobra y que
    sus columnas hagan scroll en lugar de estirar el marco. */
 .app-body {

@@ -100,17 +100,24 @@ class NotificationService:
         return self._repo.delete_subscription(self._owner_id, endpoint)
 
     def test_push(self) -> dict:
-        """Envía ya un aviso de prueba a los dispositivos de la persona (ignora las horas silenciosas)."""
+        """Envía ya un aviso de prueba a los dispositivos de la persona (ignora las horas silenciosas).
+
+        Cada prueba lleva una etiqueta distinta: con una fija, Windows y Chrome reemplazan la notificación anterior sin volver
+        a mostrarla y solo se veía la primera.
+        """
         sent = removed = failed = 0
+        now = datetime.now(UTC).replace(tzinfo=None)
         for sub in self._repo.subscriptions(self._owner_id):
             result = web_push.send(
                 web_push.Target(sub.endpoint, sub.p256dh, sub.auth),
-                {"title": "Synapse", "body": "Aviso de prueba: las notificaciones funcionan en este dispositivo.", "url": "/avisos", "tag": "test"})
+                {"title": "Synapse", "body": "Aviso de prueba: las notificaciones funcionan en este dispositivo.", "url": "/avisos", "tag": f"test-{uuid.uuid4()}"})
             if result == "ok":
+                sub.last_success_at = now
                 sent += 1
             elif result == "gone":
                 self._repo.delete_subscription(self._owner_id, sub.endpoint)
                 removed += 1
             else:
                 failed += 1
+        self._repo.commit()
         return {"sent": sent, "removed": removed, "failed": failed}
