@@ -299,4 +299,42 @@ describe("VaultTasks", () => {
     expect(host).not.toBeNull();
     expect(host!.querySelector(".tf-panel")).not.toBeNull();
   });
+
+  it("la barra de la ventana es fija y trae las pestañas de vista y un botón de icono para la tarea nueva", async () => {
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    const toolbar = document.querySelector(".tasks-toolbar")!;
+    const body = document.querySelector(".tasks-body")!;
+    expect(toolbar.contains(body)).toBe(false); // la barra no se desplaza con la lista
+    expect(body.contains(toolbar)).toBe(false);
+    expect(toolbar.nextElementSibling).toBe(body);
+    const create = within(toolbar as HTMLElement).getByRole("button", { name: "Nueva tarea" });
+    expect(create).toHaveTextContent(""); // solo icono; el nombre sale de aria-label y title
+    expect(create).toHaveAttribute("title", "Nueva tarea");
+    expect(create.querySelector("svg")).not.toBeNull();
+    const tabs = within(toolbar as HTMLElement).getAllByRole("tab");
+    expect(tabs.map((t) => t.textContent?.trim())).toEqual(["Lista", "Kanban", "Calendario"]);
+    expect(tabs[0]).toHaveAttribute("aria-selected", "true");
+    expect(body).toHaveAttribute("role", "tabpanel");
+    expect(body).toHaveAttribute("aria-labelledby", tabs[0].id);
+    expect(tabs[0]).toHaveAttribute("aria-controls", body.id);
+  });
+
+  it("al cambiar de vista el cuerpo se vuelve a montar con la dirección de la pestaña elegida, para animar la entrada", async () => {
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    const first = document.querySelector(".tasks-body")!;
+    expect(first).toHaveAttribute("data-direction", "next");
+    await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
+    const second = document.querySelector(".tasks-body")!;
+    expect(second).not.toBe(first); // nuevo montaje = nueva animación
+    expect(second).toHaveAttribute("data-direction", "next"); // lista → calendario: hacia la derecha
+    await userEvent.click(screen.getByRole("tab", { name: /Kanban/ }));
+    expect(document.querySelector(".tasks-body")).toHaveAttribute("data-direction", "prev"); // calendario → kanban
+    expect(screen.getByRole("tab", { name: /Kanban/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tab", { name: /Calendario/ })).toHaveAttribute("aria-selected", "false");
+    const sameBody = document.querySelector(".tasks-body")!;
+    await userEvent.click(screen.getByRole("tab", { name: /Kanban/ })); // la misma pestaña no reanima
+    expect(document.querySelector(".tasks-body")).toBe(sameBody);
+  });
 });

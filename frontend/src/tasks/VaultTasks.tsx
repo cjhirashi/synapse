@@ -15,6 +15,7 @@ import { createTask, deleteTask, listTasks, updateTask, type Task, type TaskInpu
 import "./tasks.css";
 
 type View = "list" | "kanban" | "calendar";
+const VIEWS = [["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays]] as const;
 type Dialog = { kind: "form"; task?: Task; parent?: Task } | null;
 
 interface Props {
@@ -56,6 +57,8 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [view, setView] = useState<View>("list");
+  // Hacia dónde se mueve la vista nueva: entra desde la derecha si la pestaña está más a la derecha, y al revés.
+  const [direction, setDirection] = useState<"next" | "prev">("next");
   const [filter, setFilter] = useState<TaskFilter>(NO_FILTER);
   const [agents, setAgents] = useState<string[]>([]);
   const [paths, setPaths] = useState(() => buildPathIndex([]));
@@ -150,6 +153,12 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     }
   }
 
+  function changeView(next: View) {
+    if (next === view) return;
+    setDirection(VIEWS.findIndex(([id]) => id === next) > VIEWS.findIndex(([id]) => id === view) ? "next" : "prev");
+    setView(next);
+  }
+
   const actions: ViewActions = {
     pathIndex: paths,
     focusId: focusTaskId,
@@ -178,21 +187,29 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     <section className="tasks-workspace" aria-label="Tareas de la bóveda">
       {sideSlot && createPortal(filters, sideSlot)}
       <header className="tasks-toolbar">
-        <div className="tasks-views" role="tablist" aria-label="Vista de tareas">
-          {([["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays]] as const).map(([id, label, Icon]) => (
-            <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => setView(id)}><Icon size={14} aria-hidden="true" /> {label}</button>
+        <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">
+          {VIEWS.map(([id, label, Icon]) => (
+            <button
+              key={id} type="button" role="tab" id={`tasks-tab-${id}`} className="tasks-tab"
+              aria-selected={view === id} aria-controls="tasks-panel" aria-label={label} title={label} onClick={() => changeView(id)}
+            >
+              <Icon size={15} aria-hidden="true" /> <span className="tasks-tab-label">{label}</span>
+            </button>
           ))}
         </div>
-        <button type="button" className="btn-primary" onClick={() => { setFormError(null); setDialog({ kind: "form" }); }}>
-          <Plus size={14} aria-hidden="true" /> Nueva tarea
+        <button type="button" className="tasks-new" title="Nueva tarea" aria-label="Nueva tarea" onClick={() => { setFormError(null); setDialog({ kind: "form" }); }}>
+          <Plus size={18} aria-hidden="true" />
         </button>
       </header>
-      {notice && <p className="tasks-error" role="alert">{notice}</p>}
-      {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
-      {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
-      {tasks !== null && view === "list" && <TaskList nodes={tree} actions={actions} />}
-      {tasks !== null && view === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
-      {tasks !== null && view === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
+      {/* La barra de arriba queda fija; solo este cuerpo se desplaza. `key` lo vuelve a montar al cambiar de vista y se anima la entrada. */}
+      <div key={view} id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${view}`} data-direction={direction}>
+        {notice && <p className="tasks-error" role="alert">{notice}</p>}
+        {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
+        {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
+        {tasks !== null && view === "list" && <TaskList nodes={tree} actions={actions} />}
+        {tasks !== null && view === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
+        {tasks !== null && view === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
+      </div>
       {dialog?.kind === "form" && (
         <TaskForm
           key={dialog.task?.id ?? dialog.parent?.id ?? "new"} task={dialog.task} parent={dialog.parent} agents={agents}

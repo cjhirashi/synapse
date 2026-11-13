@@ -1,9 +1,32 @@
 /* Pestaña «Tareas» de la bóveda (H-053). Solo usa los tokens del tema (claro y oscuro). */
-.tasks-workspace { display: flex; flex-direction: column; gap: 12px; padding: 16px; min-height: 0; overflow: auto; height: 100%; box-sizing: border-box; }
-.tasks-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
-.tasks-views { display: flex; gap: 4px; }
-.tasks-views button { display: inline-flex; align-items: center; gap: 6px; }
-.tasks-views button[aria-selected="true"] { background: var(--accent-soft); border-color: var(--vault-icon-color, var(--accent)); color: var(--text-primary); }
+.tasks-workspace { display: flex; flex-direction: column; min-height: 0; overflow: hidden; height: 100%; box-sizing: border-box; background: var(--bg-primary); }
+
+/* Barra fija de la ventana: pestañas tipo carpeta a la izquierda y la acción principal (solo icono) a la derecha. */
+.tasks-toolbar { flex: none; display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding: 10px 16px 0; background: var(--bg-secondary); border-bottom: 1px solid var(--border); }
+.tasks-tabs { display: flex; align-items: flex-end; gap: 4px; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-right: 10px; }
+.tasks-new { flex: none; display: inline-flex; align-items: center; justify-content: center; align-self: center; width: 36px; height: 36px; margin-bottom: 8px; padding: 0; color: #fff; background: var(--accent); border: 0; border-radius: 50%; cursor: pointer; transition: background .15s, transform .15s; }
+.tasks-new:hover { background: var(--accent-hover); transform: scale(1.06); }
+.tasks-new:active { transform: scale(0.96); }
+.tasks-new:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Pestaña de carpeta: la activa comparte color con el cuerpo, tapa la línea de la barra y lleva «alas» curvas en su base. */
+.tasks-tabs .tasks-tab { --tab-bg: var(--bg-primary); position: relative; flex: none; display: inline-flex; align-items: center; gap: 7px; margin: 0 0 -1px; padding: 9px 18px; font: inherit; font-size: 14px; color: var(--text-secondary); background: transparent; border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; cursor: pointer; transition: background .18s ease, color .18s ease, box-shadow .18s ease; }
+.tasks-tabs .tasks-tab:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+.tasks-tabs .tasks-tab[aria-selected="true"] { z-index: 1; color: var(--text-primary); font-weight: 600; background: var(--tab-bg); border-color: var(--border); box-shadow: inset 0 2px 0 var(--vault-icon-color, var(--accent)); }
+.tasks-tabs .tasks-tab[aria-selected="true"]::before, .tasks-tabs .tasks-tab[aria-selected="true"]::after { content: ""; position: absolute; bottom: 0; width: 10px; height: 10px; pointer-events: none; }
+.tasks-tabs .tasks-tab[aria-selected="true"]::before { left: -11px; border-bottom-right-radius: 10px; box-shadow: 4px 4px 0 4px var(--tab-bg); }
+.tasks-tabs .tasks-tab[aria-selected="true"]::after { right: -11px; border-bottom-left-radius: 10px; box-shadow: -4px 4px 0 4px var(--tab-bg); }
+.tasks-tabs .tasks-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Cuerpo con su propio desplazamiento; al cambiar de vista entra deslizándose desde el lado de la pestaña elegida. */
+.tasks-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px; padding: 16px; overflow: auto; background: var(--bg-primary); animation: tasks-view-in-next .24s cubic-bezier(.2, .7, .2, 1) both; }
+.tasks-body[data-direction="prev"] { animation-name: tasks-view-in-prev; }
+@keyframes tasks-view-in-next { from { opacity: 0; transform: translateX(22px); } to { opacity: 1; transform: none; } }
+@keyframes tasks-view-in-prev { from { opacity: 0; transform: translateX(-22px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tasks-body { animation: none; }
+  .tasks-tabs .tasks-tab, .tasks-new { transition: none; }
+}
 .tasks-empty { color: var(--text-secondary); padding: 24px 0; text-align: center; }
 .tasks-error { color: var(--danger-text, var(--danger)); background: var(--danger-bg); border: 1px solid var(--danger-border); border-radius: 8px; padding: 8px 12px; margin: 0; }
 
@@ -111,7 +134,11 @@
 @media (max-width: 700px) {
   .tf-subform-row { flex-direction: column; align-items: stretch; }
   .tf-row { grid-template-columns: minmax(0, 1fr); }
-  .tasks-workspace { padding: 10px; }
+  .tasks-body { padding: 10px; }
+  .tasks-toolbar { padding-left: 10px; padding-right: 10px; }
+  .tasks-tabs .tasks-tab { padding: 9px 12px; }
+  /* En pantallas chicas solo la pestaña activa muestra su nombre; las demás, el icono. */
+  .tasks-tabs .tasks-tab[aria-selected="false"] .tasks-tab-label { display: none; }
   .tasks-actions { margin-left: 0; }
   .tasks-side-close { display: inline-flex; }
   .tasks-cal-cell { min-height: 56px; }
