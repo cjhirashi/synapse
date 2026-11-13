@@ -1,4 +1,5 @@
 // Espacio de trabajo de una bóveda: sidebar + editor (SPEC-0008 RF-001, RF-002, RF-014, RF-015, RF-019).
+import * as tasksApi from "../tasks/tasksApi";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { EditorView } from "@codemirror/view";
 import userEvent from "@testing-library/user-event";
@@ -884,6 +885,96 @@ test("H-009 C-5: en móvil, abrir con el botón marca el modo flotante sin reord
   expect(sideEl(container)).toHaveAttribute("data-open");
   expect(sideEl(container)).toHaveAttribute("data-floating");
   expect(Array.from(workspace.children)).toEqual([side, main]);
+});
+
+// --- Barra derecha del documento: índice y tareas ligadas ---
+
+const asideEl = (container: HTMLElement) => container.querySelector(".vault-workspace-aside") as HTMLElement | null;
+const asideToggle = () => screen.getByRole("button", { name: /el índice y las tareas del documento/i });
+
+async function openNoteWith(desktop: boolean, mobile: boolean) {
+  installViewport(mobile, desktop);
+  vi.spyOn(tasksApi, "listTasks").mockResolvedValue([]);
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const utils = render(tree(value, `/vaults/${vault.id}`));
+  await userEvent.click(await screen.findByRole("treeitem", { name: "Hola" }));
+  await screen.findByRole("region", { name: "Editor de nota" });
+  return utils;
+}
+
+test("la barra derecha no existe sin documento abierto ni en otras pestañas", async () => {
+  installViewport(false, true);
+  const { value, vault } = await setup();
+  await value.notes.create(vault.id, "Hola");
+  const { container } = render(tree(value, `/vaults/${vault.id}`));
+  await screen.findByRole("tree", { name: "Notas" });
+  expect(asideEl(container)).toBeNull();
+  expect(screen.queryByRole("button", { name: /el índice y las tareas del documento/i })).toBeNull();
+});
+
+test("en escritorio abre con el documento, a su derecha, con Índice y Tareas; el botón la oculta y se recuerda", async () => {
+  window.localStorage.removeItem("synapse.docAside");
+  const { container } = await openNoteWith(true, false);
+  const aside = asideEl(container)!;
+  expect(aside).toHaveAttribute("data-open");
+  expect(aside).not.toHaveAttribute("data-floating");
+  const workspace = container.querySelector(".vault-workspace") as HTMLElement;
+  expect(workspace.lastElementChild).toBe(aside); // a la derecha del documento
+  expect(within(aside).getAllByRole("tab").map((t) => t.textContent?.trim())).toEqual(["Índice", "Tareas"]);
+  const button = asideToggle();
+  expect(button.closest(".vault-workspace-titlebar")).not.toBeNull();
+  expect(button).toHaveAttribute("aria-expanded", "true");
+  await userEvent.click(button);
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
+  expect(window.localStorage.getItem("synapse.docAside")).toBe("0");
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).toHaveAttribute("data-open");
+  expect(window.localStorage.getItem("synapse.docAside")).toBe("1");
+});
+
+test("si en escritorio la persona la ocultó, el documento siguiente la abre oculta", async () => {
+  window.localStorage.setItem("synapse.docAside", "0");
+  const { container } = await openNoteWith(true, false);
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
+  window.localStorage.removeItem("synapse.docAside");
+});
+
+test("en tableta empieza oculta (aunque se hubiera recordado abierta) y se abre con el botón", async () => {
+  window.localStorage.setItem("synapse.docAside", "1");
+  const { container } = await openNoteWith(false, false);
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).toHaveAttribute("data-open");
+  window.localStorage.removeItem("synapse.docAside");
+});
+
+test("en móvil empieza oculta y flota; abrirla cierra la barra izquierda y un clic fuera o Escape la cierran", async () => {
+  window.localStorage.setItem("synapse.docAside", "1");
+  const { container } = await openNoteWith(false, true);
+  const aside = asideEl(container)!;
+  expect(aside).toHaveAttribute("data-floating");
+  expect(aside).not.toHaveAttribute("data-open");
+  await userEvent.click(toggle()); // la barra izquierda flotante, abierta
+  expect(sideEl(container)).toHaveAttribute("data-open");
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).toHaveAttribute("data-open");
+  expect(sideEl(container)).not.toHaveAttribute("data-open"); // una sola flotante a la vez
+  fireEvent.mouseDown(container.querySelector(".vault-workspace-main") as HTMLElement);
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).toHaveAttribute("data-open");
+  await userEvent.keyboard("{Escape}");
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
+  window.localStorage.removeItem("synapse.docAside");
+});
+
+test("en móvil, pulsar el botón con la barra abierta la cierra (el clic no la reabre tras cerrarse por clic fuera)", async () => {
+  const { container } = await openNoteWith(false, true);
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).toHaveAttribute("data-open");
+  await userEvent.click(asideToggle());
+  expect(asideEl(container)).not.toHaveAttribute("data-open");
 });
 
 /** Abre la barra flotante en móvil y devuelve utilidades del render. */

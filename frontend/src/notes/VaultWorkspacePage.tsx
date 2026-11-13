@@ -12,7 +12,7 @@
  *   descarga (P-3).
  */
 import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
-import { FileText, FolderOpen, PanelLeft, PanelLeftClose } from "lucide-react";
+import { FileText, FolderOpen, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MeContext } from "../auth/RequireAuth";
 import { whenIdle } from "../editor/deferred/idle";
@@ -28,6 +28,7 @@ import VaultFiles from "../files/VaultFiles";
 import { listMyOpenTasks } from "../tasks/tasksApi";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import TagFilterPanel from "./TagFilterPanel";
+import DocAside from "./DocAside";
 import VaultTabs, { TAB_ORDER } from "./VaultTabs";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
@@ -77,6 +78,25 @@ function SidebarToggle({ open, controls, onToggle, floating = false }: { open: b
       {open ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
     </button>
   );
+}
+
+/** Botón de la barra derecha del documento (índice y tareas ligadas), en el extremo derecho de la franja superior. */
+function AsideToggle({ open, controls, onToggle }: { open: boolean; controls: string; onToggle: () => void }) {
+  const label = open ? "Ocultar el índice y las tareas del documento" : "Mostrar el índice y las tareas del documento";
+  return (
+    <button type="button" className="note-nav-button vault-aside-toggle" data-aside-toggle="" aria-expanded={open} aria-controls={controls} aria-label={label} title={label} onClick={onToggle}>
+      {open ? <PanelRightClose size={16} aria-hidden="true" /> : <PanelRight size={16} aria-hidden="true" />}
+    </button>
+  );
+}
+
+const ASIDE_KEY = "synapse.docAside";
+/** La barra derecha se muestra por defecto en escritorio; si la persona la ocultó, se recuerda. */
+function readAsidePreference(): boolean {
+  try { return window.localStorage.getItem(ASIDE_KEY) !== "0"; } catch { return true; }
+}
+function writeAsidePreference(open: boolean): void {
+  try { window.localStorage.setItem(ASIDE_KEY, open ? "1" : "0"); } catch { /* sin almacenamiento no se recuerda */ }
 }
 
 /** UUID en su forma canónica (minúsculas), la única que forman los ids de bóveda. */
@@ -205,7 +225,26 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const sideId = useId();
   /** El contenedor de la barra, para el cierre por click-afuera de la flotante (C-6). */
   const sideRef = useRef<HTMLDivElement>(null);
-  const toggleSidebar = () => setSidebarOpen((v) => !v);
+  const toggleSidebar = () => {
+    if (isMobile && !sidebarOpen) setAsideOpen(false); // en móvil las dos barras flotan en el mismo sitio: una a la vez
+    setSidebarOpen((v) => !v);
+  };
+
+  // Barra derecha (índice de encabezados y tareas ligadas): fija en escritorio y recordada; en tableta y móvil empieza oculta, y en móvil flota.
+  const asideId = useId();
+  const asideRef = useRef<HTMLDivElement>(null);
+  const [asideOpen, setAsideOpen] = useState(() => isDesktop && readAsidePreference());
+  const toggleAside = () => {
+    const next = !asideOpen;
+    setAsideOpen(next);
+    if (next && isMobile) setSidebarOpen(false);
+    if (isDesktop) writeAsidePreference(next);
+  };
+  useEffect(() => {
+    // Al cruzar de ancho se recalcula como la izquierda: escritorio recuerda la preferencia; tableta y móvil, oculta.
+    setAsideOpen(isDesktop && readAsidePreference());
+  }, [isDesktop, isMobile]);
+  const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
 
   // C-7: al cruzar el breakpoint (resize/rotación) se recalcula la visibilidad según el default del
   // nuevo ancho — a escritorio queda visible y fija; a móvil, oculta. La nota abierta (`openId`) vive
@@ -238,6 +277,20 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       document.removeEventListener("keydown", onKey);
     };
   }, [isMobile, sidebarOpen]);
+
+  // Barra derecha flotante (móvil): un clic fuera o Escape la cierran, salvo el clic en su propio botón o en menús y diálogos.
+  useEffect(() => {
+    if (!isMobile || !asideOpen) return;
+    const onDown = (e: globalThis.MouseEvent) => {
+      const el = e.target as Element;
+      if (el?.closest?.(".note-menu, .confirm-dialog, .modal-backdrop, [data-aside-toggle]")) return;
+      if (asideRef.current && !asideRef.current.contains(e.target as Node)) setAsideOpen(false);
+    };
+    const onKey = (e: globalThis.KeyboardEvent) => { if (e.key === "Escape") setAsideOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDown); document.removeEventListener("keydown", onKey); };
+  }, [isMobile, asideOpen]);
 
   // RNF-001 (PLAN-0010 §10.4/§10.5): caché de parseo + programador de precálculo propios de esta
   // bóveda. El `Workspace` está `key`-ado por bóveda, así que montar/desmontar = cambio de bóveda o
@@ -538,6 +591,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-041: un documento de sistema (la skill global, `plantilla-skill`) se abre de solo lectura; va antes que la plantilla.
   const openIsSystem = openId !== null && noteRefs.some((ref) => ref.id === openId && isSystemPath(ref.path));
 
+  // La barra derecha acompaña al documento abierto en la pestaña Documentos (no en la papelera ni en Archivos, Tareas o Filtro por tags).
+  const hasAside = tab === "documentos" && openId !== null && !showTrash;
+  const openPath = openId === null ? null : (noteRefs.find((ref) => ref.id === openId)?.path ?? null);
+
   return (
     <div className="vault-workspace-shell" onKeyDown={onKeyDown}>
       {/* H-027 C4: franja superior con el nombre de la bóveda y el botón de alternar la barra. */}
@@ -547,6 +604,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
         <h1 className="vault-workspace-title" title={vault.name}>
           {vault.name}
         </h1>
+        {hasAside && <AsideToggle open={asideOpen} controls={asideId} onToggle={toggleAside} />}
       </div>
       <div className="vault-workspace">
         <div
@@ -610,7 +668,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             </Suspense>
           )}
           {/* Con la papelera abierta (o en las pestañas Archivos y Tareas) el editor sigue montado (oculto): no se pierde un borrador. */}
-          <div hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
+          <div ref={setContentEl} hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
             {openId === null ? (
               // Estado vacío (SPEC-0009 RF-008): texto centrado.
               <div className="vault-workspace-empty">
@@ -642,6 +700,13 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             )}
           </div>
         </div>
+        {hasAside && openId !== null && (
+          <DocAside
+            ref={asideRef} id={asideId} open={asideOpen} floating={isMobile} accent={colorVar(vaultColor)} content={contentEl} vaultId={vault.id} noteId={openId} notePath={openPath}
+            onOpenTask={(task) => { setFocusTask(task.id); changeTab("tareas"); }}
+            onNavigated={() => setAsideOpen(false)}
+          />
+        )}
       </div>
     </div>
   );

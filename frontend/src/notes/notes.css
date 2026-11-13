@@ -813,6 +813,165 @@ body.is-resizing {
   }
 }
 
+/* --- Barra derecha del documento: índice de encabezados y tareas ligadas ---
+   Mismo comportamiento que la izquierda: fija si cabe, oculta con su botón y, en móvil, ventana flotante anclada a la derecha. */
+.vault-workspace-aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 264px;
+  min-height: 0;
+  border-left: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.vault-workspace-aside:not([data-open]) {
+  display: none;
+}
+
+.vault-aside-toggle {
+  margin-left: auto;
+}
+
+@media (max-width: 640px) {
+  .vault-workspace-aside[data-floating][data-open] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(300px, 88vw);
+    box-shadow: var(--shadow-panel);
+  }
+}
+
+/* Las pestañas son las de la barra izquierda; con solo dos caben con su nombre aunque la barra sea angosta. */
+.vault-tabs--aside .vault-tab {
+  flex: 1 1 0;
+}
+
+.vault-tabs--aside .vault-tab[aria-selected="false"] span {
+  display: inline;
+}
+
+.docaside-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-3) var(--space-2);
+}
+
+.docaside-empty {
+  margin: var(--space-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.docaside-empty code {
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.docaside-outline,
+.docaside-tasks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.docaside-outline li {
+  padding-left: calc(var(--indent, 0) * 12px);
+}
+
+.docaside-heading {
+  display: block;
+  width: 100%;
+  padding: 5px 10px;
+  overflow: hidden;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  cursor: pointer;
+}
+
+.docaside-heading[data-level="1"] {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.docaside-heading:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.docaside-heading[aria-current="location"] {
+  color: var(--vault-icon-color, var(--accent));
+  font-weight: 600;
+  background: color-mix(in srgb, var(--vault-icon-color, var(--accent)) 14%, transparent);
+  border-left-color: var(--vault-icon-color, var(--accent));
+}
+
+.docaside-heading:focus-visible,
+.docaside-task:focus-visible {
+  outline: 2px solid var(--vault-icon-color, var(--accent));
+  outline-offset: -2px;
+}
+
+.docaside-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.docaside-task {
+  --st: var(--text-muted);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px 10px 8px 14px;
+  overflow: hidden;
+  font: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.docaside-task::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--st);
+}
+
+.docaside-task[data-status="in_progress"] { --st: var(--info); }
+.docaside-task[data-status="done"] { --st: var(--success); }
+.docaside-task[data-status="cancelled"] { --st: var(--danger); }
+.docaside-task:hover { border-color: color-mix(in srgb, var(--st) 55%, var(--border)); background: var(--bg-tertiary); }
+.docaside-task.is-closed .docaside-task-title { text-decoration: line-through; color: var(--text-secondary); }
+.docaside-task-parent { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docaside-task-title { font-size: 13px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.docaside-task-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 11px; color: var(--text-secondary); }
+.docaside-status { padding: 0 7px; line-height: 18px; color: var(--st); background: color-mix(in srgb, var(--st) 14%, transparent); border: 1px solid color-mix(in srgb, var(--st) 40%, transparent); border-radius: 999px; font-weight: 600; }
+.docaside-due { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.docaside-due.is-late { color: var(--danger-text); font-weight: 600; }
+.docaside-who { margin-left: auto; display: inline-flex; }
+
 /* --- Conflicto de una nota: dos versiones lado a lado --- */
 .note-conflict-versions {
   display: grid;
