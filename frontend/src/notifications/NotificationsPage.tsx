@@ -1,16 +1,96 @@
-import { useCallback, useEffect, useState } from "react";
-import { CheckCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlarmClock, CalendarClock, CheckCheck, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatDue } from "../tasks/taskModel";
-import { NOTICES_CHANGED, listNotices, markAllRead, markRead, type Notice } from "./notificationsApi";
+import AgentBadge from "../agents/AgentBadge";
+import UserBadge from "../agents/UserBadge";
+import { STATUS_LABEL, PRIORITY_LABEL, addDays, dateKey, formatDay, formatDue, formatTime } from "../tasks/taskModel";
+import VaultChip from "../vaults/VaultChip";
+import {
+  NOTICES_CHANGED, listNoticeVaults, listNotices, markAllRead, markRead, type Notice, type NoticeVault,
+} from "./notificationsApi";
 import "./notifications.css";
 
-/** Pantalla de avisos (H-053): los más nuevos primero; un clic marca el aviso como leído y abre la tarea. */
+const KIND: Record<string, { icon: LucideIcon; label: string }> = {
+  task_assigned: { icon: UserPlus, label: "Tarea asignada" },
+  task_status: { icon: RefreshCw, label: "Cambio de estado" },
+  task_due: { icon: AlarmClock, label: "Vencimiento" },
+};
+
+/** Encabezado del aviso sin repetir el título de la tarea (la tarjeta ya lo muestra): «Vence en 1 h», «aira marcó la tarea como Hecha». */
+export function headline(notice: Notice): string {
+  if (!notice.task) return notice.title;
+  const text = notice.title.replace(/«[^»]*»\s*(\(de [^)]*\)\s*)?/, notice.kind === "task_due" ? "" : "la tarea ").replace(/\s+/g, " ").trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function dayLabel(iso: string, now = new Date()): string {
+  const key = dateKey(iso);
+  const today = dateKey(now.toISOString());
+  if (key === today) return "Hoy";
+  if (key === addDays(today, -1)) return "Ayer";
+  return formatDay(iso);
+}
+
+function groupByDay(items: Notice[]): Array<{ key: string; label: string; items: Notice[] }> {
+  const groups: Array<{ key: string; label: string; items: Notice[] }> = [];
+  for (const notice of items) {
+    const key = dateKey(notice.created_at);
+    const last = groups[groups.length - 1];
+    if (last?.key === key) last.items.push(notice);
+    else groups.push({ key, label: dayLabel(notice.created_at), items: [notice] });
+  }
+  return groups;
+}
+
+function NoticeCard({ notice, vault, onOpen }: { notice: Notice; vault: NoticeVault | undefined; onOpen: (notice: Notice) => void }) {
+  const { icon: Icon, label } = KIND[notice.kind] ?? { icon: RefreshCw, label: "Aviso" };
+  const task = notice.task ?? null;
+  const unread = !notice.read_at;
+  return (
+    <button type="button" className={`notice-card${unread ? " notice-card--unread" : ""}`} data-kind={notice.kind} onClick={() => onOpen(notice)}>
+      <span className="notice-icon" aria-hidden="true"><Icon size={18} /></span>
+      <span className="notice-main">
+        <span className="notice-top">
+          <span className="notice-kind">{label}</span>
+          <span className="notice-headline">{headline(notice)}</span>
+          <time className="notice-time" dateTime={notice.created_at} title={formatDue(notice.created_at)}>{formatTime(notice.created_at)}</time>
+          {unread && <span className="notice-dot" role="img" aria-label="Sin leer" />}
+        </span>
+        <span className="notice-title">{task?.title ?? notice.body ?? notice.title}</span>
+        {task?.description && <span className="notice-desc">{task.description}</span>}
+        <span className="notice-meta">
+          {task ? (
+            <>
+              <span className="notice-chip notice-status" data-status={task.status}>{STATUS_LABEL[task.status]}</span>
+              <span className="notice-owner" title="Responsable">
+                {task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={20} /> : <UserBadge size={20} label="Tú" />}
+              </span>
+              {task.priority === "high" && <span className="notice-chip notice-chip--high">Prioridad {PRIORITY_LABEL.high.toLowerCase()}</span>}
+              {task.due_at && <span className="notice-due"><CalendarClock size={13} aria-hidden="true" />{formatDue(task.due_at)}</span>}
+            </>
+          ) : (
+            <span className="notice-chip notice-gone">Tarea eliminada</span>
+          )}
+          {notice.vault_id && (
+            <span className="notice-vault" title="Bóveda">
+              <VaultChip id={notice.vault_id} name={vault?.name ?? "B"} icon={vault?.icon} />
+              <span className="notice-vault-name">{vault?.name ?? "Bóveda"}</span>
+            </span>
+          )}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/** Pantalla de avisos (H-053): los más nuevos primero, por día; cada aviso trae su tarea (título, descripción, estado, responsable y bóveda). Un clic lo marca leído y abre la tarea. */
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<Notice[] | null>(null);
   const [unread, setUnread] = useState(0);
   const [failed, setFailed] = useState(false);
+  const [vaults, setVaults] = useState<Map<string, NoticeVault>>(new Map());
+  const [onlyUnread, setOnlyUnread] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -25,6 +105,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     void load();
+    listNoticeVaults().then((list) => setVaults(new Map(list.map((v) => [v.id, v])))).catch(() => undefined);
     // Un push que llega con esta pantalla abierta (o un cambio hecho en otro sitio) la actualiza al momento.
     const refresh = () => void load();
     window.addEventListener(NOTICES_CHANGED, refresh);
@@ -37,28 +118,40 @@ export default function NotificationsPage() {
     else await load();
   }
 
+  const shown = useMemo(() => (items ?? []).filter((n) => !onlyUnread || !n.read_at), [items, onlyUnread]);
+  const groups = useMemo(() => groupByDay(shown), [shown]);
+
   return (
     <section className="notices-page" aria-label="Avisos">
       <header className="notices-head">
-        <h1>Avisos</h1>
-        <button type="button" disabled={unread === 0} onClick={() => void markAllRead().then(load)}>
+        <div>
+          <h1>Avisos</h1>
+          <p className="notices-sub">{unread === 0 ? "Estás al día." : `${unread} sin leer`}</p>
+        </div>
+        <button type="button" className="notices-readall" disabled={unread === 0} onClick={() => void markAllRead().then(load)}>
           <CheckCheck size={14} aria-hidden="true" /> Marcar todo como leído
         </button>
       </header>
+      <div className="notices-filter" role="group" aria-label="Filtrar avisos">
+        <button type="button" aria-pressed={!onlyUnread} onClick={() => setOnlyUnread(false)}>Todos</button>
+        <button type="button" aria-pressed={onlyUnread} onClick={() => setOnlyUnread(true)}>Sin leer{unread > 0 ? ` (${unread})` : ""}</button>
+      </div>
       {failed && <p className="tasks-error" role="alert">No se pudieron leer los avisos. <button type="button" onClick={() => void load()}>Reintentar</button></p>}
       {items === null && !failed && <p className="tasks-empty">Cargando avisos…</p>}
       {items !== null && items.length === 0 && <p className="tasks-empty">No tienes avisos.</p>}
-      <ul className="notices-list">
-        {(items ?? []).map((notice) => (
-          <li key={notice.id}>
-            <button type="button" className={`notices-item${notice.read_at ? "" : " notices-item--unread"}`} onClick={() => void open(notice)}>
-              <span className="notices-title">{notice.title}</span>
-              {notice.body && <span className="notices-body">{notice.body}</span>}
-              <span className="notices-time">{formatDue(notice.created_at)}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      {items !== null && items.length > 0 && shown.length === 0 && <p className="tasks-empty">No tienes avisos sin leer.</p>}
+      {groups.map((group) => (
+        <section key={group.key} className="notices-group" aria-label={group.label}>
+          <h2 className="notices-day">{group.label}</h2>
+          <ul className="notices-list">
+            {group.items.map((notice) => (
+              <li key={notice.id}>
+                <NoticeCard notice={notice} vault={notice.vault_id ? vaults.get(notice.vault_id) : undefined} onOpen={(n) => void open(n)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </section>
   );
 }

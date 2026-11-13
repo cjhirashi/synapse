@@ -1,14 +1,61 @@
 /* Pantalla de avisos y contador de la campana (H-053). Solo tokens del tema. */
-.notices-page { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 12px; }
-.notices-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.notices-head h1 { margin: 0; font-size: 20px; }
-.notices-head button { display: inline-flex; align-items: center; gap: 6px; }
-.notices-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.notices-item { width: 100%; text-align: left; display: flex; flex-direction: column; gap: 2px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; cursor: pointer; color: var(--text-primary); }
-.notices-item--unread { border-left: 3px solid var(--accent); background: var(--accent-soft); }
-.notices-title { font-weight: 600; }
-.notices-body { color: var(--text-secondary); font-size: 13px; }
-.notices-time { color: var(--text-muted); font-size: 12px; }
+.notices-page { max-width: 760px; margin: 0 auto; padding: var(--space-6, 24px) 16px; display: flex; flex-direction: column; gap: 14px; }
+.notices-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.notices-head h1 { margin: 0; font-size: 22px; }
+.notices-sub { margin: 2px 0 0; font-size: 13px; color: var(--text-secondary); }
+.notices-readall { display: inline-flex; align-items: center; gap: 6px; }
+.notices-filter { display: inline-flex; align-self: flex-start; padding: 3px; gap: 2px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 999px; }
+.notices-filter button { border: 0; background: transparent; color: var(--text-secondary); font: inherit; font-size: 13px; padding: 4px 14px; border-radius: 999px; cursor: pointer; }
+.notices-filter button[aria-pressed="true"] { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
+.notices-filter button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.notices-group { display: flex; flex-direction: column; gap: 8px; }
+.notices-day { margin: 8px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.notices-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* Tarjeta de aviso: icono del tipo, encabezado del evento, tarea (título, descripción) y fila de datos (estado, responsable, bóveda). */
+.notice-card { --nk: var(--accent); width: 100%; text-align: left; display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md, 10px); color: var(--text-primary); cursor: pointer; font: inherit; transition: border-color .15s, background-color .15s, transform .15s; }
+.notice-card:hover { border-color: var(--border-control); background: color-mix(in srgb, var(--bg-secondary) 92%, var(--text-primary)); }
+.notice-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.notice-card[data-kind="task_status"] { --nk: var(--info); }
+.notice-card[data-kind="task_due"] { --nk: var(--warning); }
+.notice-card--unread { border-color: color-mix(in srgb, var(--nk) 45%, var(--border)); background: color-mix(in srgb, var(--nk) 7%, var(--bg-secondary)); }
+.notice-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; color: var(--nk); background: color-mix(in srgb, var(--nk) 16%, transparent); }
+.notice-card:not(.notice-card--unread) .notice-icon { color: var(--text-muted); background: var(--bg-tertiary); }
+.notice-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.notice-top { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--text-secondary); }
+.notice-kind { flex: none; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; font-size: 11px; color: var(--nk); }
+.notice-card:not(.notice-card--unread) .notice-kind { color: var(--text-muted); }
+.notice-headline { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice-headline::before { content: "·"; margin-right: 8px; color: var(--text-muted); }
+.notice-time { margin-left: auto; flex: none; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.notice-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--nk); }
+.notice-title { font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.notice-card:not(.notice-card--unread) .notice-title { font-weight: 500; }
+.notice-desc { font-size: 13px; line-height: 1.45; color: var(--text-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.notice-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; font-size: 12px; color: var(--text-secondary); }
+.notice-chip { display: inline-flex; align-items: center; padding: 1px 10px; font-size: 12px; line-height: 20px; border: 1px solid transparent; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); }
+.notice-chip--high { color: var(--danger-text); background: var(--danger-bg); border-color: var(--danger-border); }
+.notice-status { font-weight: 600; color: var(--st-text, var(--text-secondary)); background: color-mix(in srgb, var(--st, var(--text-muted)) 14%, transparent); border-color: color-mix(in srgb, var(--st, var(--text-muted)) 40%, transparent); }
+.notice-status[data-status="pending"] { --st: var(--text-muted); --st-text: var(--text-secondary); }
+.notice-status[data-status="in_progress"] { --st: var(--info); --st-text: var(--info-text); }
+.notice-status[data-status="done"] { --st: var(--success); --st-text: var(--success-text); }
+.notice-status[data-status="cancelled"] { --st: var(--danger); --st-text: var(--danger-text); }
+.notice-gone { font-style: italic; }
+.notice-owner, .notice-due, .notice-vault { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
+.notice-due { color: var(--text-secondary); }
+.notice-vault { margin-left: auto; max-width: 100%; color: var(--text-secondary); }
+.notice-vault .vault-chip { width: 18px; height: 18px; font-size: 9px; }
+.notice-vault .vault-chip svg { width: 11px; height: 11px; }
+.notice-vault-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 560px) {
+  .notice-card { padding: 12px; gap: 10px; }
+  .notice-vault { margin-left: 0; }
+  .notices-head { flex-wrap: wrap; align-items: flex-start; }
+  .notice-top { flex-wrap: wrap; row-gap: 2px; }
+  .notice-headline { order: 5; flex-basis: 100%; white-space: normal; }
+  .notice-headline::before { content: none; }
+}
+@media (prefers-reduced-motion: reduce) { .notice-card { transition: none; } }
 .notices-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; }
 /* Configuración de notificaciones (Ajustes): filas con icono, texto e interruptor; todo con tokens del tema. */
 .notices-settings { display: flex; flex-direction: column; }

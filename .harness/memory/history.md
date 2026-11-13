@@ -2224,3 +2224,10 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Verificación (Gantt):** `tsc --noEmit` limpio y 72 pruebas de `src/tasks` pasan; el bundle servido contiene el texto nuevo; la skill 1.3.11 quedó replicada en la bóveda Proyectos.
 - **Riesgos abiertos:** push con la pestaña cerrada en laptop y Android sin validar; presupuesto de bundle de entrada. Cerrado desde el commit `4f76477`: un aviso de horas silenciosas ya no se pierde (queda pendiente y sale al terminar, si tiene menos de 24 h). Corrección de docs del 2026-11-13: el ciclo de fondo corre cada 60 s (los docs decían 300) y `VAPID_*`/`PUSH_*` ya constan en `backend/README.md`.
 - **Modelos:** Sonnet 5 en la sesión principal; sin subagentes.
+
+## 2026-11-13 — H-053: rediseño de la pantalla de avisos (pedido directo de Carlos)
+- **Qué:** `/avisos` pasa de una lista de títulos a tarjetas por día: icono y color por tipo, título y descripción de la tarea, estado, responsable (foto y nombre del agente, o «Tú»), prioridad alta, vencimiento y bóveda (chip con su ícono); filtro «Todos / Sin leer». El encabezado del evento ya no repite el título de la tarea. Un aviso cuya tarea se eliminó dice «Tarea eliminada» y conserva su texto.
+- **Backend:** `GET /notifications` adjunta a cada aviso de tarea el objeto `task` con su estado vigente (una sola consulta por lista, acotada al dueño); sin migración ni cambio de tablas.
+- **Archivos:** `frontend/src/notifications/{NotificationsPage.tsx,notifications.css,notificationsApi.ts,notifications.test.tsx}`, `backend/app/{core/schemas.py,routers/notifications.py,services/notification_service.py,adapters/notification_repository.py}`, `backend/tests/test_h053_notifications.py`, `docs/API.md`, READMEs.
+- **Verificación:** 19 pruebas de avisos en backend y 10 en frontend; `tsc` limpio; capturas en escritorio (claro y oscuro) y móvil con la API simulada.
+- **Modelos:** Sonnet 5 en la sesión principal; sin subagentes.

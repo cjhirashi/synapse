@@ -244,3 +244,15 @@ def test_reminder_labels_and_defaults():
     assert reminders_of(T()) == []
     T.reminders = "[1440, 30]"
     assert reminders_of(T()) == [30, 1440]
+
+
+def test_the_list_carries_the_current_state_of_the_task_of_each_notice(ready_admin):
+    vault, aira = setup_agent(ready_admin)
+    task = aira.post(f"/vaults/{vault}/tasks", json={"title": "Revisar el plan", "description": "Con los números de octubre"}).json()
+    item = inbox(ready_admin)["items"][0]
+    assert item["task"]["title"] == "Revisar el plan" and item["task"]["description"] == "Con los números de octubre"
+    assert item["task"]["status"] == "pending" and item["task"]["assignee_type"] == "user"
+    assert patch(ready_admin, vault, task["id"], status="in_progress").status_code == 200
+    assert inbox(ready_admin)["items"][0]["task"]["status"] == "in_progress"
+    assert ready_admin.delete(f"/vaults/{vault}/tasks/{task['id']}").status_code in (200, 204)
+    assert inbox(ready_admin)["items"][0]["task"] is None

@@ -1,7 +1,21 @@
 /** Cliente de los avisos de la persona (H-053): `/notifications`. Solo con la sesión; las fechas llegan en UTC con `Z`. */
 import { request } from "../api/auth";
 
+import type { AssigneeType, TaskPriority, TaskStatus } from "../tasks/tasksApi";
+
 export type NoticeKind = "task_assigned" | "task_status" | "task_due";
+
+/** La tarea del aviso tal como está ahora; `null` en el aviso si la tarea se eliminó. */
+export interface NoticeTask {
+  id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_at: string | null;
+  assignee_type: AssigneeType;
+  assignee_agent_id: string | null;
+}
 
 export interface Notice {
   id: string;
@@ -14,6 +28,15 @@ export interface Notice {
   url: string | null;
   read_at: string | null;
   created_at: string;
+  task?: NoticeTask | null;
+}
+
+export interface NoticeVault { id: string; name: string; icon: string | null }
+
+/** Nombre e ícono de las bóvedas de la persona (las primeras 200), para rotular de cuál es cada aviso. */
+export async function listNoticeVaults(): Promise<NoticeVault[]> {
+  const page = (await (await request("/vaults?limit=200")).json()) as { items: Array<NoticeVault> };
+  return page.items.map(({ id, name, icon }) => ({ id, name, icon: icon ?? null }));
 }
 
 /** Aviso de que la bandeja cambió (se leyó o se marcó): el contador del riel se relee sin esperar su turno. */

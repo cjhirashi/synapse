@@ -13,7 +13,7 @@ from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import NotificationNotFound, PasswordChangeRequired, PushInvalid
 from app.core.problems import problem_responses
 from app.core.schemas import (
-    NotificationListOut, NotificationOut, NotificationPrefsOut, NotificationPrefsPut, PushStatusOut, PushSubscriptionIn, PushTestOut,
+    NoticeTaskOut, NotificationListOut, NotificationOut, NotificationPrefsOut, NotificationPrefsPut, PushStatusOut, PushSubscriptionIn, PushTestOut,
     TokenPayload, UnreadCountOut,
 )
 from app.routers.auth import SESSION_ERRORS
@@ -37,7 +37,15 @@ def list_notifications(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     service: NotificationService = Depends(get_notification_service),
 ):
-    return NotificationListOut(items=service.list(unread, limit), unread=service.unread_count())
+    notices = service.list(unread, limit)
+    tasks = service.tasks_of(notices)
+    items = []
+    for notice in notices:
+        item = NotificationOut.model_validate(notice)
+        task = tasks.get(notice.resource_id) if notice.resource_type == "task" and notice.resource_id else None
+        item.task = NoticeTaskOut.model_validate(task) if task is not None else None
+        items.append(item)
+    return NotificationListOut(items=items, unread=service.unread_count())
 
 
 @router.get("/unread-count", response_model=UnreadCountOut)

@@ -6,6 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.core.models.notification import Notification, NotificationPref, PushSubscription
+from app.core.models.task import VaultTask
 
 
 class NotificationRepository:
@@ -31,6 +32,12 @@ class NotificationRepository:
         if unread:
             query = query.filter(Notification.read_at.is_(None))
         return query.order_by(Notification.created_at.desc()).limit(limit).all()
+
+    def tasks_by_ids(self, owner_id: str, task_ids: set[str]) -> dict[str, VaultTask]:
+        if not task_ids:
+            return {}
+        rows = self._db.query(VaultTask).filter(VaultTask.owner_id == owner_id, VaultTask.id.in_(task_ids)).all()
+        return {task.id: task for task in rows}
 
     def unread_count(self, owner_id: str) -> int:
         return self._db.query(Notification).filter(Notification.owner_id == owner_id, Notification.read_at.is_(None)).count()

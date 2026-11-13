@@ -13,6 +13,7 @@ from app.core.config import settings
 from app.core.errors import NotificationNotFound, PushInvalid
 from app.core.quiet_hours import parse_hhmm
 from app.core.models.notification import Notification
+from app.core.models.task import VaultTask
 
 KINDS = ("task_assigned", "task_status", "task_due")
 
@@ -43,6 +44,10 @@ class NotificationService:
 
     def list(self, unread: bool = False, limit: int = 50) -> list[Notification]:
         return self._repo.list(self._owner_id, unread, limit)
+
+    def tasks_of(self, notices: list[Notification]) -> dict[str, VaultTask]:
+        """Las tareas vigentes a las que apuntan los avisos, por id (una sola consulta)."""
+        return self._repo.tasks_by_ids(self._owner_id, {n.resource_id for n in notices if n.resource_type == "task" and n.resource_id})
 
     def unread_count(self) -> int:
         return self._repo.unread_count(self._owner_id)

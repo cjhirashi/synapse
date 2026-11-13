@@ -1,17 +1,22 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import NotificationsPage from "./NotificationsPage";
 import NotificationsBell from "./NotificationsBell";
 import * as api from "./notificationsApi";
 
+beforeEach(() => {
+  vi.spyOn(api, "listNoticeVaults").mockResolvedValue([{ id: "v1", name: "Proyectos", icon: null }]);
+});
 afterEach(() => vi.restoreAllMocks());
 
 const notice = (over: Partial<api.Notice> = {}): api.Notice => ({
-  id: "n1", kind: "task_assigned", title: "Te asignaron: Revisar", body: "aira", vault_id: "v1",
+  id: "n1", kind: "task_assigned", title: "aira te asignó una tarea", body: "Revisar el plan", vault_id: "v1",
   resource_type: "task", resource_id: "t1", url: "/vaults/v1?tab=tareas&task=t1", read_at: null,
-  created_at: "2026-11-12T18:00:00Z", ...over,
+  created_at: "2026-11-12T18:00:00Z",
+  task: { id: "t1", title: "Revisar el plan", description: "Con los números de octubre", status: "in_progress", priority: "medium", due_at: null, assignee_type: "agent", assignee_agent_id: "aira" },
+  ...over,
 });
 
 function Where() {
@@ -37,11 +42,41 @@ test("la bandeja lista los avisos y avisa cuando está vacía", async () => {
   expect(screen.getByRole("button", { name: /Marcar todo como leído/ })).toBeDisabled();
 });
 
+test("cada aviso muestra el título y la descripción de la tarea, su estado, su responsable y su bóveda", async () => {
+  vi.spyOn(api, "listNotices").mockResolvedValue({ items: [notice()], unread: 1 });
+  renderPage();
+  const card = await screen.findByRole("button", { name: /Revisar el plan/ });
+  expect(card).toHaveTextContent("Revisar el plan");
+  expect(card).toHaveTextContent("Con los números de octubre");
+  expect(card).toHaveTextContent("En progreso");
+  expect(card).toHaveTextContent("aira");
+  await waitFor(() => expect(card).toHaveTextContent("Proyectos"));
+});
+
+test("sin la tarea (eliminada) el aviso lo dice y conserva su texto; el encabezado no repite el título", async () => {
+  vi.spyOn(api, "listNotices").mockResolvedValue({ items: [
+    notice({ task: null }),
+    notice({ id: "n2", kind: "task_due", title: "«Revisar el plan» (de aira) vence en 1 h", body: "Vence el 13 nov 2026, 18:30" }),
+  ], unread: 2 });
+  renderPage();
+  expect(await screen.findByText("Tarea eliminada")).toBeInTheDocument();
+  expect(await screen.findByText("Vence en 1 h")).toBeInTheDocument();
+});
+
+test("el filtro «Sin leer» oculta los avisos leídos", async () => {
+  vi.spyOn(api, "listNotices").mockResolvedValue({ items: [notice(), notice({ id: "n2", read_at: "2026-11-12T19:00:00Z", task: { ...notice().task!, title: "Ya leída" } })], unread: 1 });
+  renderPage();
+  await screen.findByRole("button", { name: /Ya leída/ });
+  await userEvent.click(screen.getByRole("button", { name: "Sin leer (1)" }));
+  expect(screen.queryByRole("button", { name: /Ya leída/ })).toBeNull();
+  expect(screen.getByRole("button", { name: /Revisar el plan/ })).toBeInTheDocument();
+});
+
 test("abrir un aviso lo marca como leído y lleva a la tarea", async () => {
   vi.spyOn(api, "listNotices").mockResolvedValue({ items: [notice()], unread: 1 });
   const mark = vi.spyOn(api, "markRead").mockResolvedValue();
   renderPage();
-  await userEvent.click(await screen.findByRole("button", { name: /Te asignaron: Revisar/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /Revisar el plan/ }));
   expect(mark).toHaveBeenCalledWith("n1");
   expect(await screen.findByTestId("where")).toHaveTextContent("/vaults/v1?tab=tareas&task=t1");
 });
@@ -50,7 +85,7 @@ test("un aviso ya leído no se vuelve a marcar y una URL externa no navega", asy
   vi.spyOn(api, "listNotices").mockResolvedValue({ items: [notice({ read_at: "2026-11-12T19:00:00Z", url: "https://x.test" })], unread: 0 });
   const mark = vi.spyOn(api, "markRead").mockResolvedValue();
   renderPage();
-  await userEvent.click(await screen.findByRole("button", { name: /Te asignaron/ }));
+  await userEvent.click(await screen.findByRole("button", { name: /Revisar el plan/ }));
   expect(mark).not.toHaveBeenCalled();
   expect(screen.queryByTestId("where")).toBeNull();
 });

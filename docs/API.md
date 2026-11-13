@@ -680,7 +680,7 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 
 | Método y ruta | Qué hace |
 |---|---|
-| `GET /notifications` | Avisos del usuario, del más nuevo al más viejo. Filtros: `unread=true`, `limit` (1 a 200, 50 por defecto). Respuesta `{items, unread}`. |
+| `GET /notifications` | Avisos del usuario, del más nuevo al más viejo. Filtros: `unread=true`, `limit` (1 a 200, 50 por defecto). Respuesta `{items, unread}`; cada aviso de una tarea trae `task` (título, descripción, estado, prioridad, vencimiento y responsable de la tarea tal como está ahora; `null` si se eliminó). |
 | `GET /notifications/unread-count` | `{count}` de avisos sin leer (el contador del riel). |
 | `POST /notifications/{id}/read` | Marca un aviso como leído (404 `notification-not-found` si no existe o es de otro). |
 | `POST /notifications/read-all` | Marca todos como leídos. |

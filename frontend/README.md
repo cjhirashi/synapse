@@ -169,7 +169,7 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
 - `src/agents/` — `AgentBadge`/`UserBadge` (foto y nombre de agentes y personas), `AgentSelect` y el editor de perfil de agente
   (nombre visible y foto por `agent_id`).
 - `src/notes/DocAside.tsx` — barra derecha del documento: pestañas «Índice» (encabezados) y «Tareas» (las ligadas por su `path`).
-- `src/notifications/` — campana, bandeja `/avisos` y cliente de Web Push; `src/settings/NotificationsSettingsPage.tsx` en
+- `src/notifications/` — campana, bandeja `/avisos` (tarjetas agrupadas por día con título, descripción, estado, responsable y bóveda de la tarea; filtro «Sin leer») y cliente de Web Push; `src/settings/NotificationsSettingsPage.tsx` en
   `/settings/notifications` (tipos, horas silenciosas, dispositivos, aviso de prueba).
 - `src/pwa/` y `public/sw.js` — service worker propio (sin Workbox) que guarda solo los assets con huella y atiende los push; cada
   build sella `sw.js` con su versión y la app ofrece «Actualizar» sin recarga automática; busca versiones nuevas al volver a ella y

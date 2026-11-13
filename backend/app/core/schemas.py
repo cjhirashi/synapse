@@ -667,6 +667,21 @@ class TaskListOut(BaseModel):
 
 # --- Avisos (H-053) ---
 
+class NoticeTaskOut(BaseModel):
+    """La tarea a la que se refiere un aviso, tal como está ahora (no al crearse el aviso)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    title: str
+    description: str | None
+    status: str
+    priority: str
+    due_at: UtcDateTime | None
+    assignee_type: str
+    assignee_agent_id: str | None
+
+
 class NotificationOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -680,6 +695,7 @@ class NotificationOut(BaseModel):
     url: str | None
     read_at: UtcDateTime | None
     created_at: UtcDateTime
+    task: NoticeTaskOut | None = None  # solo en la lista; `null` si el aviso no es de una tarea o la tarea ya se eliminó
 
 
 class NotificationListOut(BaseModel):
