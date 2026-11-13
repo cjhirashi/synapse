@@ -31,38 +31,22 @@
   gap: 10px;
   font-weight: 600;
   font-size: 16px;
-  margin-right: var(--space-4);
+  margin-right: auto;
+  color: var(--text-primary);
+  text-decoration: none;
+  border-radius: var(--radius-sm);
   /* Tamaño del logo de marca (SPEC-0011 RF-009: 24–32 px). */
   --brand-logo-size: 28px;
 }
 
-.app-nav-primary {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: 1;
-}
-
-.app-nav-primary a {
-  padding: 8px 14px;
-  border-radius: var(--radius-sm);
-  color: var(--text-secondary);
-  font-size: 14px;
-  font-weight: 500;
-  transition:
-    background var(--dur-fast) var(--ease-standard),
-    color var(--dur-fast) var(--ease-standard);
-}
-
-.app-nav-primary a:hover {
-  color: var(--text-primary);
-  text-decoration: none;
-  background: var(--bg-tertiary);
-}
-
-.app-nav-primary a.active {
+.app-brand:hover {
   color: var(--accent);
-  background: var(--accent-soft);
+  text-decoration: none;
+}
+
+.app-brand:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
 }
 
 .app-nav-account {
@@ -134,29 +118,45 @@
   margin-inline: 0;
 }
 
-/* Barra de sincronización (SyncStatusBar): franja discreta bajo el header, no una tarjeta. */
+/* Barra de sincronización (SyncStatusBar): franja delgada bajo el header, con todo pegado a la derecha y el estado en el borde. */
 .sync-status-bar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-4);
   flex-wrap: wrap;
-  padding: var(--space-2) var(--space-6);
+  min-height: 24px;
+  padding: 2px var(--space-6);
   background: var(--bg-tertiary);
   border-bottom: 1px solid var(--border);
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.4;
   color: var(--text-secondary);
 }
 
-.sync-status-bar [role="status"] {
+.sync-status-bar p {
   margin: 0;
+}
+
+/* Orden visual (el DOM conserva estado → hora → avisos): avisos, hora y, en el borde derecho, el estado. */
+.sync-status-bar > a {
+  order: 1;
+}
+
+.sync-status-bar > p:not([role="status"]) {
+  order: 2;
+}
+
+.sync-status-bar [role="status"] {
+  order: 3;
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
 .sync-status-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--success);
   flex-shrink: 0;
@@ -173,6 +173,10 @@
 @media (max-width: 640px) {
   .app-header {
     padding: var(--space-3) var(--space-4);
+  }
+  .sync-status-bar {
+    padding-inline: var(--space-4);
+    gap: var(--space-3);
   }
   .app-main:has(.settings-page) {
     padding: 0;

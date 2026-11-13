@@ -55,14 +55,14 @@ test("RF-009: muestra la barra de sincronización", () => {
   expect(within(bar).getByRole("status")).toHaveTextContent("Sincronizado");
 });
 
-test("RF-018 / RF-028: «Bóvedas» (navbar) y «Papelera» (riel) llevan a sus secciones", async () => {
+test("RF-018 / RF-028: el logo (enlace a Bóvedas) y «Papelera» (riel) llevan a sus secciones; ya no hay botón «Bóvedas» en la navbar", async () => {
   const user = renderAt(syncValue().value);
-  // H-028 A7: «Papelera» salió de la navbar al riel; «Bóvedas» sigue en la navbar principal.
+  // H-028 A7: «Papelera» salió de la navbar al riel; el botón «Bóvedas» también salió: su enlace es ahora el logo.
+  expect(screen.queryByRole("navigation", { name: "Principal" })).toBeNull();
   const rail = screen.getByRole("navigation", { name: "Bóvedas abiertas" });
   await user.click(within(rail).getByRole("link", { name: "Papelera" }));
   expect(screen.getByText("sección papelera")).toBeInTheDocument();
-  const nav = screen.getByRole("navigation", { name: "Principal" });
-  await user.click(within(nav).getByRole("link", { name: "Bóvedas" }));
+  await user.click(screen.getByRole("link", { name: "Synapse, ir a Bóvedas" }));
   expect(screen.getByText("sección bóvedas")).toBeInTheDocument();
 });
 
@@ -87,22 +87,20 @@ test("RF-008: la marca de la cabecera es primero el logo y después el texto «S
   expect(document.querySelector(".app-brand-mark")).toBeNull();
 });
 
-test("RF-012: el nombre del bloque de marca es exactamente «Synapse» y no es un enlace ni un control enfocable", () => {
+test("RF-012 (actualizado): el bloque de marca muestra exactamente «Synapse», es el enlace a /vaults y su logo es decorativo", () => {
   renderAt(syncValue().value);
 
   const brand = document.querySelector(".app-brand")!;
   expect(brand).toHaveTextContent(/^Synapse$/);
-  expect(brand.querySelector("a, button, input, [tabindex]")).toBeNull();
-  expect(brand.closest("a, button")).toBeNull();
-  // El logo es decorativo: el lector de pantalla lee «Synapse» una sola vez.
-  expect(brand.querySelector(".brand-logo")).toHaveAttribute("aria-hidden", "true");
-  expect(screen.getAllByText("Synapse")).toHaveLength(1);
-  // Nombre accesible: el bloque es un <div> (rol genérico) y su nombre es SÓLO su texto, exactamente «Synapse»
-  // (arriba). Cualquier aria-label/aria-labelledby/title/role lo sustituiría o lo convertiría en un control.
-  for (const attr of ["aria-label", "aria-labelledby", "title", "role"]) expect(brand, `${attr} en el bloque`).not.toHaveAttribute(attr);
-  // El logo no aporta nombre propio: oculto a las tecnologías de asistencia y sin etiqueta ni texto.
+  expect(brand.tagName).toBe("A");
+  expect(brand).toHaveAttribute("href", "/vaults");
+  expect(brand).toHaveAccessibleName("Synapse, ir a Bóvedas");
+  // El logo es decorativo: el nombre accesible sale de la etiqueta del enlace, no del dibujo.
   const logo = brand.querySelector(".brand-logo")!;
+  expect(logo).toHaveAttribute("aria-hidden", "true");
   for (const attr of ["aria-label", "aria-labelledby", "title", "role", "alt"]) expect(logo, `${attr} en el logo`).not.toHaveAttribute(attr);
+  expect(brand.querySelectorAll("a, button, input, [tabindex]")).toHaveLength(0);
+  expect(screen.getAllByText("Synapse")).toHaveLength(1);
 });
 
 test("RF-018: hay un solo logo por pantalla privada, dentro de la cabecera", () => {
