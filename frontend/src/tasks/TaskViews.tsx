@@ -57,18 +57,18 @@ function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
 function TaskMeta({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
     <span className="tasks-meta">
-      <span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span>
-      <span className="tasks-chip" title="Asignada a"><Assignee task={task} /></span>
-      <span className="tasks-chip" title="Creada por">
-        Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={16} /> : task.created_by === "user" ? <UserBadge size={16} /> : "un agente"}
-      </span>
+      <span className="tasks-chip tasks-chip--who" title="Asignada a"><Assignee task={task} /></span>
       {task.due_at && (
-        <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={formatDue(task.due_at)}>
+        <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={isOverdue(task) ? `Vencida: ${formatDue(task.due_at)}` : formatDue(task.due_at)}>
           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
         </span>
       )}
+      <span className="tasks-chip" data-priority={task.priority} title="Prioridad">{PRIORITY_LABEL[task.priority]}</span>
       <PathChip task={task} actions={actions} />
       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
+      <span className="tasks-chip tasks-chip--creator" title="Creada por">
+        Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={16} /> : task.created_by === "user" ? <UserBadge size={16} /> : "un agente"}
+      </span>
     </span>
   );
 }
@@ -78,26 +78,31 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
   const hasKids = !sub && node.children.length > 0;
   const done = node.children.filter(isClosed).length;
   return (
-    <li className={`tasks-item${sub ? " tasks-item--sub" : ""}`}>
+    <li className={`tasks-item${sub ? " tasks-item--sub" : ""}`} data-status={task.status}>
       <div className={`tasks-row${actions.focusId === task.id ? " tasks-row--focus" : ""}${isClosed(task) ? " tasks-row--closed" : ""}`} id={`task-${task.id}`}>
-        {hasKids ? (
-          <button type="button" className="tasks-icon-btn" aria-expanded={open} aria-label={open ? "Plegar subtareas" : "Mostrar subtareas"} onClick={() => setOpen(!open)}>
-            {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        {!sub && (hasKids ? (
+          <button type="button" className="tasks-icon-btn tasks-toggle" aria-expanded={open} aria-label={open ? "Plegar subtareas" : "Mostrar subtareas"} onClick={() => setOpen(!open)}>
+            {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
           </button>
-        ) : <span className="tasks-icon-spacer" />}
+        ) : <span className="tasks-toggle" />)}
         <StatusSelect task={task} locked={hasKids} onStatus={actions.onStatus} />
         <span className="tasks-title">
           <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
-          {hasKids && <span className="tasks-progress"> {done}/{node.children.length}</span>}
+          {hasKids && (
+            <span className="tasks-progress" title={`${done} de ${node.children.length} subtareas cerradas`}>
+              <span className="tasks-progress-bar" aria-hidden="true"><i style={{ width: `${Math.round((done / node.children.length) * 100)}%` }} /></span>
+              {done}/{node.children.length}
+            </span>
+          )}
         </span>
         <TaskMeta task={task} actions={actions} />
+        {task.description && <p className="tasks-desc">{task.description}</p>}
         <span className="tasks-actions">
           {!sub && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
-          <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
-          <button type="button" className="tasks-icon-btn" title="Eliminar" aria-label={`Eliminar ${task.title}`} onClick={() => actions.onDelete(task)}><Trash2 size={14} /></button>
+          <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={15} /></button>
+          <button type="button" className="tasks-icon-btn tasks-icon-btn--danger" title="Eliminar" aria-label={`Eliminar ${task.title}`} onClick={() => actions.onDelete(task)}><Trash2 size={15} /></button>
         </span>
       </div>
-      {task.description && <p className="tasks-desc">{task.description}</p>}
       {hasKids && open && (
         <ul className="tasks-sublist">
           {node.children.map((child) => <Row key={child.id} task={child} node={{ task: child, children: [] }} actions={actions} sub />)}
