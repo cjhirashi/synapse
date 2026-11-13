@@ -2,6 +2,7 @@ import { useId, useState } from "react";
 import { CornerDownRight, ListChecks, Plus, X } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import AgentSelect from "../agents/AgentSelect";
+import UserBadge from "../agents/UserBadge";
 import DialogFrame from "../editor/DialogFrame";
 import ReminderEditor from "./ReminderEditor";
 import { DEFAULT_REMINDERS, PRIORITY_LABEL, STATUS_LABEL, effectiveReminders, fromLocalInput, toLocalInput } from "./taskModel";
@@ -30,7 +31,7 @@ function CreatedBy({ value }: { value: string }) {
   const agent = value.startsWith("agent:") && value !== "agent:general" ? value.slice(6) : null;
   return (
     <span className="tf-created">
-      Creada por {value === "user" ? "ti" : agent ? <AgentBadge agentId={agent} size={16} /> : "un agente (clave general)"}
+      Creada por {value === "user" ? <UserBadge size={16} label="ti" /> : agent ? <AgentBadge agentId={agent} size={16} /> : "un agente (clave general)"}
     </span>
   );
 }

@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, CornerDownRight, User, Users } from "lucide-react";
+import { ChevronDown, CornerDownRight, Users } from "lucide-react";
 import AgentBadge from "./AgentBadge";
+import UserBadge from "./UserBadge";
 import "./agents.css";
 
 export interface AgentSelectProps {
@@ -32,14 +33,7 @@ function OptionLabel({ value }: { value: string }) {
       </span>
     );
   }
-  if (value === "user") {
-    return (
-      <span className="agent-select-item">
-        <span className="agent-select-glyph" aria-hidden="true"><User size={14} /></span>
-        Yo
-      </span>
-    );
-  }
+  if (value === "user") return <UserBadge size={24} />;
   if (value === "inherit") {
     return (
       <span className="agent-select-item">

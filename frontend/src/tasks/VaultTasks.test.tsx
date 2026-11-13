@@ -7,6 +7,7 @@ import * as api from "./tasksApi";
 import * as agentAccess from "../settings/agentAccess";
 import * as profilesApi from "../agents/agentProfilesApi";
 import { resetAgentProfiles } from "../agents/agentProfiles";
+import { MeContext } from "../auth/RequireAuth";
 import { WithSync, syncValue } from "../test-utils/sync";
 import type { Task } from "./tasksApi";
 
@@ -168,7 +169,7 @@ describe("VaultTasks", () => {
     render(<Page />);
     const row = (await screen.findByText("Mía")).closest("li")!;
     expect(await within(row).findByText("liza")).toBeInTheDocument();
-    expect(within(row).getByText(/Creó:/)).toHaveTextContent("Creó: Yo");
+    expect(within(row).getByText(/Creó:/)).toHaveTextContent(/Creó:.*Yo$/);
   });
 
   it("H-053: «Asignada a» es una lista desplegable con los gestores registrados, cada uno con su avatar y su nombre visible (o el id)", async () => {
@@ -188,7 +189,7 @@ describe("VaultTasks", () => {
     await userEvent.click(select);
     expect(select).toHaveAttribute("aria-expanded", "true");
     const list = screen.getByRole("listbox", { name: "Asignada a" });
-    expect(within(list).getAllByRole("option").map((o) => o.textContent)).toEqual(expect.arrayContaining(["Yo"]));
+    expect(within(list).getAllByRole("option").some((o) => /Yo$/.test(o.textContent ?? ""))).toBe(true);
     expect(await within(list).findByRole("option", { name: /Aira · Arquitecta/ })).toBeInTheDocument();
     expect(within(list).getByRole("option", { name: /liza/ })).toBeInTheDocument();
     expect(within(list).queryByRole("option", { name: /suspendido/ })).toBeNull(); // solo gestores activos
@@ -608,7 +609,7 @@ describe("VaultTasks", () => {
       expect(within(form).getByLabelText("Recordatorio 1: cantidad")).toHaveValue(1);
       expect(within(form).getByLabelText("Recordatorio 1: unidad")).toHaveValue("weeks");
       expect(within(form).getByLabelText("Recordatorio 2: cantidad")).toHaveValue(30);
-      expect(form).toHaveTextContent("Creada por ti");
+      expect(form).toHaveTextContent(/Creada por.*ti/);
     });
 
     it("una tarea sin lista propia muestra los de siempre en el detalle; sin fecha no hay sección", async () => {
@@ -622,5 +623,25 @@ describe("VaultTasks", () => {
       await userEvent.click(screen.getByRole("button", { name: "Ver detalle de Sin fecha" }));
       expect(within(await screen.findByRole("dialog", { name: "Sin fecha" })).queryByText("Notificaciones")).toBeNull();
     });
+  });
+
+  it("donde dice «Yo» sale tu foto de perfil (asignada a, creada por, la lista desplegable y el detalle)", async () => {
+    const me = { user_id: "1", email: "c@x.com", role: "admin" as const, must_change_password: false, display_name: "Carlos", photo_url: "/auth/me/photo?v=2" };
+    vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "m", title: "Mía" })]);
+    render(<MeContext.Provider value={me}><Page /></MeContext.Provider>);
+    const row = (await screen.findByText("Mía")).closest("li")!;
+    expect(row.querySelectorAll("img[src='/auth/me/photo?v=2']").length).toBe(2); // asignada a y creó
+    await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+    const dialog = await screen.findByRole("dialog", { name: "Nueva tarea" });
+    expect(within(dialog).getByRole("combobox", { name: "Asignada a" }).querySelector("img[src='/auth/me/photo?v=2']")).not.toBeNull();
+  });
+
+  it("sin foto de perfil, «Yo» sale con tus iniciales", async () => {
+    const me = { user_id: "1", email: "c@x.com", role: "admin" as const, must_change_password: false, display_name: "Carlos Jiménez", photo_url: null };
+    vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "m", title: "Mía" })]);
+    render(<MeContext.Provider value={me}><Page /></MeContext.Provider>);
+    const row = (await screen.findByText("Mía")).closest("li")!;
+    expect(row.querySelector("img")).toBeNull();
+    expect(row.querySelector(".user-badge .settings-avatar-placeholder")).toHaveTextContent("CJ");
   });
 });

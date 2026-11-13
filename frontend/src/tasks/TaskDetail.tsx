@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 import { Bell, CalendarClock, CornerDownRight, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
+import UserBadge from "../agents/UserBadge";
 import DialogFrame from "../editor/DialogFrame";
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, effectiveReminders, formatDue, formatReminder, isClosed, isOverdue, resolvePath, type PathIndex, type PathTarget } from "./taskModel";
 import type { Task, TaskStatus } from "./tasksApi";
@@ -24,12 +25,12 @@ interface Props {
 
 function Person({ task }: { task: Task }) {
   if (task.assignee_type === "agent" && task.assignee_agent_id) return <AgentBadge agentId={task.assignee_agent_id} size={22} />;
-  return <>Yo</>;
+  return <UserBadge size={22} />;
 }
 
 /** Quién la creó: la persona o un agente (el servidor guarda `user` o `agent:<id>`). */
 function Creator({ value }: { value: string }) {
-  if (value === "user") return <>Yo</>;
+  if (value === "user") return <UserBadge size={22} />;
   const id = value.startsWith("agent:") ? value.slice(6) : "";
   return id && id !== "general" ? <AgentBadge agentId={id} size={22} /> : <>Un agente (clave general)</>;
 }
