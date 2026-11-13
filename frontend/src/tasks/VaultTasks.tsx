@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, KanbanSquare, List, Plus } from "lucide-react";
+import { CalendarDays, GanttChartSquare, KanbanSquare, List, Plus } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
@@ -10,6 +10,7 @@ import TaskFilters from "./TaskFilters";
 import TaskDetail from "./TaskDetail";
 import TaskForm from "./TaskForm";
 import { TaskCalendar } from "./TaskCalendar";
+import TaskGantt from "./TaskGantt";
 import { TaskKanban, TaskList, type ViewActions } from "./TaskViews";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, isClosed, type PathTarget, type TaskFilter,
@@ -17,8 +18,8 @@ import {
 import { createTask, deleteTask, listTasks, updateTask, type Task, type TaskInput, type TaskStatus } from "./tasksApi";
 import "./tasks.css";
 
-type View = "list" | "kanban" | "calendar";
-const VIEWS = [["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays]] as const;
+type View = "list" | "kanban" | "calendar" | "gantt";
+const VIEWS = [["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays], ["gantt", "Línea de tiempo", GanttChartSquare]] as const;
 type Dialog = { kind: "form"; task?: Task; parent?: Task } | { kind: "detail"; id: string } | null;
 
 interface Props {
@@ -225,6 +226,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
         {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} />}
         {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
+        {tasks !== null && shownView === "gantt" && <TaskGantt nodes={tree} actions={actions} todayKey={todayKey} />}
         {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
       </div>
       {detailTask && (

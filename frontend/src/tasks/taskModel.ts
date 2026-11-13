@@ -276,3 +276,56 @@ export function resolvePath(path: string, index: PathIndex): PathTarget {
   if (noteId) return { kind: "note", id: noteId };
   return index.folders.has(path) ? { kind: "folder", path } : null;
 }
+
+// --- Línea de tiempo (Gantt) ---
+
+export type GanttScale = "day" | "week" | "month";
+/** Píxeles que mide un día en cada escala. */
+export const GANTT_PX: Record<GanttScale, number> = { day: 44, week: 20, month: 8 };
+
+export interface GanttRow {
+  task: Task;
+  depth: 0 | 1;
+  /** Primer día de la barra (día de creación, o el del vencimiento si este es anterior). */
+  start: string;
+  /** Último día de la barra (el del vencimiento; en una raíz sin fecha, el mayor de sus subtareas); `null` = sin vencimiento. */
+  end: string | null;
+  /** Subtareas cerradas y totales de una raíz, para su avance. */
+  progress: { done: number; total: number } | null;
+}
+
+/** Días de `a` a `b` (ambos `YYYY-MM-DD`); negativo si `b` es anterior. */
+export function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
+
+/** Las tareas como filas del Gantt: cada raíz seguida de sus subtareas. Las tareas no tienen fecha de inicio: la barra va de su creación a su vencimiento. */
+export function ganttRows(nodes: TaskNode[]): GanttRow[] {
+  const rows: GanttRow[] = [];
+  const bounds = (task: Task, fallbackEnd: string | null) => {
+    const created = dateKey(task.created_at);
+    const due = task.due_at ? dateKey(task.due_at) : fallbackEnd;
+    return { start: due !== null && due < created ? due : created, end: due };
+  };
+  for (const { task, children } of nodes) {
+    const childEnds = children.flatMap((c) => (c.due_at ? [dateKey(c.due_at)] : [])).sort();
+    rows.push({
+      task, depth: 0, ...bounds(task, childEnds.length ? childEnds[childEnds.length - 1] : null),
+      progress: children.length ? { done: children.filter(isClosed).length, total: children.length } : null,
+    });
+    for (const child of children) rows.push({ task: child, depth: 1, ...bounds(child, null), progress: null });
+  }
+  return rows;
+}
+
+/** Rango de días que se dibuja: de unos días antes de lo primero (o de hoy) a unos después de lo último, con un mínimo de cinco semanas. */
+export function ganttRange(rows: GanttRow[], todayKey: string): { from: string; days: number } {
+  let from = addDays(todayKey, -3);
+  let to = addDays(todayKey, 30);
+  for (const row of rows) {
+    if (addDays(row.start, -2) < from) from = addDays(row.start, -2);
+    const end = row.end ?? row.start;
+    if (addDays(end, 3) > to) to = addDays(end, 3);
+  }
+  return { from, days: daysBetween(from, to) + 1 };
+}

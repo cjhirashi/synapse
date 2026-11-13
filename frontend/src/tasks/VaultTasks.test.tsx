@@ -112,6 +112,36 @@ describe("VaultTasks", () => {
     expect(within(screen.getByRole("region", { name: "En progreso" })).getByText("Escribir borrador")).toBeInTheDocument();
   });
 
+  it("Línea de tiempo: una barra por tarea y subtarea con su estado; un clic abre el detalle y «sin vencimiento» va punteada", async () => {
+    vi.spyOn(api, "listTasks").mockResolvedValue([
+      task({ id: "r", title: "Raíz", due_at: "2026-11-20T15:00:00Z", created_at: "2026-11-12T00:00:00Z" }),
+      task({ id: "c", parent_id: "r", title: "Hija", status: "done", due_at: "2026-11-18T15:00:00Z", created_at: "2026-11-12T00:00:00Z" }),
+      task({ id: "s", title: "Sin fecha", status: "in_progress", created_at: "2026-11-13T00:00:00Z" }),
+    ]);
+    render(<Page />);
+    await screen.findByText("Raíz");
+    await userEvent.click(screen.getByRole("tab", { name: /Línea de tiempo/ }));
+    const list = screen.getByRole("list", { name: "Línea de tiempo de tareas" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    const open = within(list).getByRole("button", { name: /^Sin fecha, En progreso, .*sin vencimiento$/ });
+    expect(open).toHaveClass("tasks-gantt-item--open");
+    expect(within(list).getByRole("button", { name: /^Raíz, Pendiente,/ })).toHaveClass("tasks-gantt-item--summary"); // su avance sale de la subtarea
+    expect(within(list).getByText("1/1")).toBeInTheDocument();
+    await userEvent.click(within(list).getByRole("button", { name: "Ver detalle de Hija" }));
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("Línea de tiempo: cambiar la escala ajusta el ancho del día", async () => {
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("tab", { name: /Línea de tiempo/ }));
+    const gantt = document.querySelector(".tasks-gantt")!;
+    expect(gantt).toHaveAttribute("data-scale", "day");
+    await userEvent.click(screen.getByRole("button", { name: "Mes" }));
+    expect(gantt).toHaveAttribute("data-scale", "month");
+    expect((gantt as HTMLElement).style.getPropertyValue("--g-day")).toBe("8px");
+  });
+
   it("los filtros viven en la barra lateral y acotan la lista", async () => {
     render(<Page />);
     await screen.findByText("Publicar el plan");
@@ -333,7 +363,7 @@ describe("VaultTasks", () => {
     expect(create).toHaveAttribute("title", "Nueva tarea");
     expect(create.querySelector("svg")).not.toBeNull();
     const tabs = within(toolbar as HTMLElement).getAllByRole("tab");
-    expect(tabs.map((t) => t.textContent?.trim())).toEqual(["Lista", "Kanban", "Calendario"]);
+    expect(tabs.map((t) => t.textContent?.trim())).toEqual(["Lista", "Kanban", "Calendario", "Línea de tiempo"]);
     expect(tabs[0]).toHaveAttribute("aria-selected", "true");
     expect(body).toHaveAttribute("role", "tabpanel");
     expect(body).toHaveAttribute("aria-labelledby", tabs[0].id);
@@ -440,7 +470,7 @@ describe("VaultTasks", () => {
     });
   });
 
-  it("en móvil no hay Kanban: solo Lista y Calendario", async () => {
+  it("en móvil no hay Kanban: solo Lista, Calendario y Línea de tiempo", async () => {
     const original = window.matchMedia;
     window.matchMedia = ((query: string) => ({
       matches: query.includes("max-width: 640px"), media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined,
@@ -449,7 +479,7 @@ describe("VaultTasks", () => {
     try {
       render(<Page />);
       await screen.findByText("Publicar el plan");
-      expect(screen.getAllByRole("tab").map((t) => t.getAttribute("aria-label"))).toEqual(["Lista", "Calendario"]);
+      expect(screen.getAllByRole("tab").map((t) => t.getAttribute("aria-label"))).toEqual(["Lista", "Calendario", "Línea de tiempo"]);
       expect(screen.queryByRole("tab", { name: /Kanban/ })).toBeNull();
       await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
       expect(screen.getByRole("group", { name: "Subvista del calendario" })).toBeInTheDocument();

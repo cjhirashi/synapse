@@ -175,6 +175,61 @@
   .tasks-card[draggable="true"]:hover { transform: none; }
 }
 
+/* Línea de tiempo (Gantt): rejilla de días con la columna de títulos fija a la izquierda y la cabecera fija arriba. */
+.tasks-gantt { --g-label: 240px; --g-row: 44px; flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.tasks-gantt-bar { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.tasks-gantt-scroll { flex: 1; min-height: 240px; overflow: auto; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); overscroll-behavior: contain; }
+.tasks-gantt-grid { width: calc(var(--g-label) + var(--g-days) * var(--g-day)); min-width: 100%; }
+.tasks-gantt-head { position: sticky; top: 0; z-index: 4; display: flex; background: var(--bg-tertiary); border-bottom: 1px solid var(--border); }
+.tasks-gantt-label { position: sticky; left: 0; z-index: 3; flex: none; box-sizing: border-box; width: var(--g-label); display: flex; align-items: center; gap: 8px; min-width: 0; padding: 0 12px; background: inherit; border-right: 1px solid var(--border); }
+.tasks-gantt-head .tasks-gantt-label { z-index: 5; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.tasks-gantt-axis { flex: none; width: calc(var(--g-days) * var(--g-day)); }
+.tasks-gantt-months, .tasks-gantt-days { display: flex; }
+.tasks-gantt-months span { flex: none; box-sizing: border-box; padding: 5px 8px; overflow: hidden; font-size: 12px; font-weight: 600; white-space: nowrap; text-transform: capitalize; color: var(--text-secondary); border-left: 1px solid var(--border); }
+.tasks-gantt-days span { flex: none; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 36px; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-secondary); border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.tasks-gantt-days small { font-size: 9px; line-height: 1; color: var(--text-muted); }
+.tasks-gantt-days .is-weekend { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+.tasks-gantt-days .is-today { font-weight: 700; color: var(--tk-on); background: var(--tk); }
+.tasks-gantt-days .is-today small { color: inherit; }
+.tasks-gantt[data-scale="week"] .tasks-gantt-days span { height: 26px; align-items: flex-start; padding-left: 3px; }
+.tasks-gantt[data-scale="month"] .tasks-gantt-months span { padding: 8px; }
+
+.tasks-gantt-body { position: relative; }
+.tasks-gantt-today { position: absolute; top: 0; bottom: 0; z-index: 2; width: 2px; margin-left: -1px; background: var(--tk); opacity: 0.8; pointer-events: none; }
+.tasks-gantt-row { display: flex; height: var(--g-row); border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); }
+.tasks-gantt-row:hover { background-color: color-mix(in srgb, var(--text-primary) 4%, var(--bg-secondary)); }
+.tasks-gantt-row:hover .tasks-gantt-label { background-color: color-mix(in srgb, var(--text-primary) 4%, var(--bg-secondary)); }
+.tasks-gantt-row .tasks-gantt-label { background-color: var(--bg-secondary); }
+.tasks-gantt-row--sub .tasks-gantt-label { padding-left: 32px; }
+.tasks-gantt-row--sub .tasks-title-btn { font-weight: 400; }
+.tasks-gantt-label .tasks-title-btn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
+.tasks-gantt-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--st); }
+.tasks-gantt-row[data-status="in_progress"] { --st: var(--info); --st-text: var(--info-text); }
+.tasks-gantt-row[data-status="done"] { --st: var(--success); --st-text: var(--success-text); }
+.tasks-gantt-row[data-status="cancelled"] { --st: var(--danger); --st-text: var(--danger-text); }
+.tasks-gantt-row[data-status="pending"] { --st: var(--text-muted); --st-text: var(--text-secondary); }
+.tasks-gantt-dot { background: var(--st); }
+.tasks-gantt-track { position: relative; flex: none; width: calc(var(--g-days) * var(--g-day)); background-image: linear-gradient(to right, color-mix(in srgb, var(--border) 55%, transparent) 1px, transparent 1px); background-size: var(--g-day) 100%; }
+.tasks-gantt[data-scale="month"] .tasks-gantt-track { background-size: calc(var(--g-day) * 7) 100%; }
+
+.tasks-gantt-item { position: absolute; top: 9px; height: calc(var(--g-row) - 18px); box-sizing: border-box; display: flex; align-items: center; gap: 6px; min-width: 14px; padding: 0 6px; overflow: hidden; font: inherit; font-size: 12px; font-weight: 600; text-align: left; color: var(--text-primary); background: color-mix(in srgb, var(--st) 28%, var(--bg-secondary)); border: 1px solid var(--st); border-radius: 6px; cursor: pointer; transition: background .12s, box-shadow .12s; }
+.tasks-gantt-item:hover { background: color-mix(in srgb, var(--st) 42%, var(--bg-secondary)); box-shadow: 0 2px 8px rgb(0 0 0 / 0.25); }
+.tasks-gantt-item:focus-visible { outline: 2px solid var(--tk); outline-offset: 2px; }
+.tasks-gantt-item--open { border-style: dashed; background: transparent; }
+.tasks-gantt-item--summary { top: 11px; height: calc(var(--g-row) - 22px); border-radius: 4px; }
+.tasks-gantt-item--late { box-shadow: 0 0 0 2px var(--danger-bg), 0 0 0 3px var(--danger-border); }
+.tasks-gantt-fill { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--st) 60%, transparent); pointer-events: none; }
+.tasks-gantt-who, .tasks-gantt-text { position: relative; }
+.tasks-gantt-who { flex: none; display: inline-flex; }
+.tasks-gantt-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tasks-gantt-row--sub .tasks-gantt-text { font-weight: 500; }
+.tasks-gantt-after { position: absolute; top: 50%; transform: translateY(-50%); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text-secondary); pointer-events: none; }
+.tasks-row--closed .tasks-gantt-item { opacity: 0.7; }
+.tasks-row--closed .tasks-gantt-label .tasks-title-btn { text-decoration: line-through; color: var(--text-secondary); }
+@media (max-width: 700px) {
+  .tasks-gantt { --g-label: 150px; }
+}
+
 .tasks-calendar { display: flex; flex-direction: column; gap: 12px; }
 .tasks-cal-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .tasks-cal-head h3 { margin: 0; flex: 1; min-width: 0; font-size: 16px; }

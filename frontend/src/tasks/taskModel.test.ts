@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, fromLocalInput, isOverdue, monthGrid, resolvePath, toLocalInput, tasksByDay,
 } from "./taskModel";
-import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
+import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, daysBetween, ganttRange, ganttRows, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
 import type { Task } from "./tasksApi";
 
 let n = 0;
@@ -146,5 +146,38 @@ describe("recordatorios", () => {
     expect(effectiveReminders({ reminders: null })).toEqual([1440, 60]);
     expect(effectiveReminders({ reminders: [30, 10080, 60] })).toEqual([10080, 60, 30]);
     expect(effectiveReminders({ reminders: [] })).toEqual([]);
+  });
+});
+
+describe("línea de tiempo", () => {
+  it("daysBetween cuenta días de calendario, también hacia atrás", () => {
+    expect(daysBetween("2026-11-13", "2026-11-20")).toBe(7);
+    expect(daysBetween("2026-11-13", "2026-11-13")).toBe(0);
+    expect(daysBetween("2026-11-13", "2026-11-10")).toBe(-3);
+    expect(daysBetween("2026-10-30", "2026-11-02")).toBe(3);
+  });
+
+  it("las filas van raíz y sus subtareas; la barra es de la creación al vencimiento (en hora de México) y una raíz sin fecha toma la mayor de sus subtareas", () => {
+    const root = task({ id: "r", created_at: "2026-11-12T20:00:00Z", due_at: null });
+    const kid = task({ id: "k", parent_id: "r", created_at: "2026-11-12T20:00:00Z", due_at: "2026-11-18T03:00:00Z", status: "done" }); // 17 nov 21:00 en México
+    const other = task({ id: "o", created_at: "2026-11-13T12:00:00Z", due_at: null });
+    const rows = ganttRows([{ task: root, children: [kid] }, { task: other, children: [] }]);
+    expect(rows.map((r) => [r.task.id, r.depth])).toEqual([["r", 0], ["k", 1], ["o", 0]]);
+    expect(rows[0]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: { done: 1, total: 1 } });
+    expect(rows[1]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: null });
+    expect(rows[2]).toMatchObject({ start: "2026-11-13", end: null });
+  });
+
+  it("si el vencimiento es anterior a la creación, la barra empieza en el vencimiento", () => {
+    const [row] = ganttRows([{ task: task({ created_at: "2026-11-13T12:00:00Z", due_at: "2026-11-10T12:00:00Z" }), children: [] }]);
+    expect(row).toMatchObject({ start: "2026-11-10", end: "2026-11-10" });
+  });
+
+  it("el rango cubre hoy, lo más antiguo y lo más lejano, con un mínimo de cinco semanas", () => {
+    expect(ganttRange([], "2026-11-13")).toEqual({ from: "2026-11-10", days: 34 });
+    const rows = ganttRows([{ task: task({ created_at: "2026-10-01T12:00:00Z", due_at: "2026-12-25T12:00:00Z" }), children: [] }]);
+    const { from, days } = ganttRange(rows, "2026-11-13");
+    expect(from).toBe("2026-09-29");
+    expect(daysBetween(from, "2026-12-28")).toBe(days - 1);
   });
 });
