@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, fromLocalInput, isOverdue, monthGrid, resolvePath, toLocalInput, tasksByDay,
 } from "./taskModel";
-import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, daysBetween, ganttRange, ganttRows, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
+import { DEFAULT_REMINDERS, effectiveReminders, formatReminder, splitReminder, daysBetween, ganttDelta, ganttDraggable, ganttPatch, ganttPreview, ganttRange, ganttRows, shiftIso, calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
 import type { Task } from "./tasksApi";
 
 let n = 0;
@@ -190,5 +190,48 @@ describe("línea de tiempo", () => {
     const { from, days } = ganttRange(rows, "2026-11-13");
     expect(from).toBe("2026-09-29");
     expect(daysBetween(from, "2026-12-28")).toBe(days - 1);
+  });
+});
+
+describe("arrastrar barras del Gantt", () => {
+  const row = (over: Parameters<typeof task>[0] = {}) => ganttRows([{ task: task({ created_at: "2026-11-01T12:00:00Z", ...over }), children: [] }])[0];
+
+  it("shiftIso corre días de calendario en México y conserva la hora", () => {
+    expect(shiftIso("2026-11-16T15:00:00Z", 2)).toBe("2026-11-18T15:00:00.000Z"); // 09:00 en México
+    expect(shiftIso("2026-11-16T15:00:00Z", -3)).toBe("2026-11-13T15:00:00.000Z");
+    expect(shiftIso("2026-11-30T05:30:00Z", 1)).toBe("2026-12-01T05:30:00.000Z"); // 29 nov 23:30 en México → 30 nov 23:30
+  });
+
+  it("mover desplaza inicio y vencimiento juntos; sin inicio propio lo crea a las 09:00 en el día que se suelta", () => {
+    const withBoth = row({ start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z" });
+    expect(ganttPatch(withBoth, "move", 2)).toEqual({ start_at: "2026-11-18T15:00:00.000Z", due_at: "2026-11-20T15:00:00.000Z" });
+    expect(ganttPreview(withBoth, "move", 2)).toEqual({ start: "2026-11-18", end: "2026-11-20" });
+    const onlyDue = row({ due_at: "2026-11-18T15:00:00Z" }); // empieza el día en que se creó
+    expect(ganttPatch(onlyDue, "move", 1)).toEqual({ start_at: "2026-11-02T15:00:00.000Z", due_at: "2026-11-19T15:00:00.000Z" });
+    const noDue = row({ start_at: "2026-11-16T15:00:00Z" });
+    expect(ganttPatch(noDue, "move", 1)).toEqual({ start_at: "2026-11-17T15:00:00.000Z" }); // sin vencimiento no se inventa uno
+  });
+
+  it("el borde izquierdo cambia solo el inicio y el derecho solo el vencimiento, sin cruzarse", () => {
+    const r = row({ start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z" });
+    expect(ganttPatch(r, "start", -2)).toEqual({ start_at: "2026-11-14T15:00:00.000Z" });
+    expect(ganttPatch(r, "end", 3)).toEqual({ due_at: "2026-11-21T15:00:00.000Z" });
+    expect(ganttDelta(r, "start", 10)).toBe(2); // el inicio no pasa del último día de la barra
+    expect(ganttDelta(r, "end", -10)).toBe(-2); // ni el vencimiento antes del primero
+    expect(ganttPatch(r, "end", -10)).toEqual({ due_at: "2026-11-16T15:00:00.000Z" });
+  });
+
+  it("nunca deja el inicio después del vencimiento el mismo día (la hora también cuenta)", () => {
+    const r = row({ start_at: "2026-11-16T22:00:00Z", due_at: "2026-11-18T15:00:00Z" }); // inicia 16:00, vence el 18 a las 09:00
+    expect(ganttPatch(r, "start", 2)).toEqual({ start_at: "2026-11-18T15:00:00Z" }); // 18 a las 16:00 sería posterior: se recorta al vencimiento
+  });
+
+  it("sin cambio de días no hay parche, y una raíz que solo muestra fechas de sus subtareas no se arrastra", () => {
+    expect(ganttPatch(row({ due_at: "2026-11-18T15:00:00Z" }), "move", 0)).toBeNull();
+    const root = task({ id: "r", created_at: "2026-11-01T12:00:00Z" });
+    const kid = task({ id: "k", parent_id: "r", due_at: "2026-11-18T15:00:00Z", created_at: "2026-11-01T12:00:00Z" });
+    const [summary, child] = ganttRows([{ task: root, children: [kid] }]);
+    expect(ganttDraggable(summary)).toBe(false);
+    expect(ganttDraggable(child)).toBe(true);
   });
 });

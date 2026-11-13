@@ -131,6 +131,83 @@ describe("VaultTasks", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
   });
 
+  describe("línea de tiempo: arrastrar barras", () => {
+    const MOVABLE = task({ id: "m", title: "Mover", start_at: "2026-11-16T15:00:00Z", due_at: "2026-11-18T15:00:00Z", created_at: "2026-11-12T00:00:00Z" });
+    // Los eventos de ventana se envían con `fireEvent` para que React vuelva a dibujar dentro de `act`.
+    const pointer = (type: string, clientX: number, target: Element | Window = window) => {
+      fireEvent(target, new MouseEvent(type, { clientX, button: 0, bubbles: true }));
+    };
+    async function openGantt() {
+      vi.spyOn(api, "listTasks").mockResolvedValue([MOVABLE]);
+      render(<Page />);
+      await screen.findByText("Mover");
+      await userEvent.click(screen.getByRole("tab", { name: /Línea de tiempo/ }));
+      return screen.getByRole("button", { name: /^Mover, Pendiente,/ });
+    }
+
+    it("arrastrar el cuerpo la mueve (2 días = 88 px en escala Día), la dibuja en el momento y guarda inicio y vencimiento", async () => {
+      const update = vi.spyOn(api, "updateTask").mockResolvedValue(MOVABLE);
+      const bar = await openGantt();
+      const left0 = parseFloat(bar.style.left);
+      pointer("pointerdown", 100, bar);
+      pointer("pointermove", 188);
+      expect(parseFloat(bar.style.left)).toBe(left0 + 88);
+      expect(bar).toHaveClass("tasks-gantt-item--dragging");
+      pointer("pointerup", 188);
+      expect(update).toHaveBeenCalledWith("v", MOVABLE, { start_at: "2026-11-18T15:00:00.000Z", due_at: "2026-11-20T15:00:00.000Z" });
+      fireEvent.click(bar); // el clic que sigue a soltar no abre el detalle
+      expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("el borde derecho cambia solo el vencimiento y el izquierdo solo el inicio", async () => {
+      const update = vi.spyOn(api, "updateTask").mockResolvedValue(MOVABLE);
+      const bar = await openGantt();
+      pointer("pointerdown", 0, bar.querySelector(".tasks-gantt-handle--end")!);
+      pointer("pointermove", 44);
+      pointer("pointerup", 44);
+      expect(update).toHaveBeenLastCalledWith("v", MOVABLE, { due_at: "2026-11-19T15:00:00.000Z" });
+      await waitFor(() => expect(vi.mocked(api.listTasks).mock.calls.length).toBeGreaterThanOrEqual(2)); // la relectura (un doble) deja la barra como estaba
+      await waitFor(() => expect(bar.style.width).toBe("132px"));
+      pointer("pointerdown", 0, bar.querySelector(".tasks-gantt-handle--start")!);
+      pointer("pointermove", -44);
+      pointer("pointerup", -44);
+      expect(update).toHaveBeenLastCalledWith("v", MOVABLE, { start_at: "2026-11-15T15:00:00.000Z" });
+    });
+
+    it("un clic sin mover abre el detalle, un movimiento menor al umbral no guarda y cancelar el arrastre deja todo igual", async () => {
+      const update = vi.spyOn(api, "updateTask").mockResolvedValue(MOVABLE);
+      const bar = await openGantt();
+      pointer("pointerdown", 100, bar);
+      pointer("pointermove", 102);
+      pointer("pointerup", 102);
+      expect(update).not.toHaveBeenCalled();
+      await userEvent.click(bar);
+      expect(await screen.findByRole("dialog")).toBeInTheDocument();
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      const left0 = parseFloat(bar.style.left);
+      pointer("pointerdown", 100, bar);
+      pointer("pointermove", 232);
+      pointer("pointercancel", 232);
+      expect(update).not.toHaveBeenCalled();
+      expect(parseFloat(bar.style.left)).toBe(left0);
+    });
+
+    it("con el teclado, Alt + flechas la mueve un día y Alt + Mayús + flecha cambia el vencimiento", async () => {
+      const update = vi.spyOn(api, "updateTask").mockResolvedValue(MOVABLE);
+      const bar = await openGantt();
+      const left0 = parseFloat(bar.style.left);
+      fireEvent.keyDown(bar, { key: "ArrowRight", altKey: true });
+      expect(update).toHaveBeenLastCalledWith("v", MOVABLE, { start_at: "2026-11-17T15:00:00.000Z", due_at: "2026-11-19T15:00:00.000Z" });
+      await waitFor(() => expect(vi.mocked(api.listTasks).mock.calls.length).toBeGreaterThanOrEqual(2)); // el servidor devuelve la tarea sin cambios (es un doble)
+      await waitFor(() => expect(parseFloat(bar.style.left)).toBe(left0));
+      fireEvent.keyDown(bar, { key: "ArrowLeft", altKey: true, shiftKey: true });
+      expect(update).toHaveBeenLastCalledWith("v", MOVABLE, { due_at: "2026-11-17T15:00:00.000Z" });
+      fireEvent.keyDown(bar, { key: "ArrowRight" }); // sin Alt no hace nada
+      expect(update).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it("Línea de tiempo: cambiar la escala ajusta el ancho del día", async () => {
     render(<Page />);
     await screen.findByText("Publicar el plan");

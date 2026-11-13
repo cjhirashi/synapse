@@ -333,3 +333,61 @@ export function ganttRange(rows: GanttRow[], todayKey: string): { from: string; 
   }
   return { from, days: daysBetween(from, to) + 1 };
 }
+
+// --- Arrastrar barras del Gantt ---
+
+export type GanttDragMode = "move" | "start" | "end";
+export interface GanttSpan { start_at?: string | null; due_at?: string | null }
+
+/** Corre un instante `days` días de calendario (en México) conservando su hora. */
+export function shiftIso(iso: string, days: number): string {
+  const local = toLocalInput(iso);
+  return fromLocalInput(`${addDays(local.slice(0, 10), days)}${local.slice(10)}`) as string;
+}
+
+const atTime = (key: string, time: string) => fromLocalInput(`${key}T${time}`) as string;
+const START_TIME = "09:00";
+const END_TIME = "18:00";
+
+/** Una raíz con subtareas y sin fechas propias muestra las de sus subtareas: no hay fecha suya que arrastrar. */
+export function ganttDraggable(row: GanttRow): boolean {
+  return !(row.progress !== null && row.task.start_at === null && row.task.due_at === null);
+}
+
+/** Cuántos días se aplican de verdad: el inicio nunca pasa del último día de la barra ni el fin queda antes del primero. */
+export function ganttDelta(row: GanttRow, mode: GanttDragMode, wanted: number): number {
+  const span = row.end === null ? 0 : daysBetween(row.start, row.end);
+  if (mode === "start") return Math.min(wanted, span);
+  if (mode === "end") return Math.max(wanted, -span);
+  return wanted;
+}
+
+/** Los días de la barra tras arrastrarla (para dibujarla mientras se arrastra). */
+export function ganttPreview(row: GanttRow, mode: GanttDragMode, wanted: number): { start: string; end: string | null } {
+  const d = ganttDelta(row, mode, wanted);
+  if (mode === "move") return { start: addDays(row.start, d), end: row.end === null ? null : addDays(row.end, d) };
+  if (mode === "start") return { start: addDays(row.start, d), end: row.end };
+  return { start: row.start, end: addDays(row.end ?? row.start, d) };
+}
+
+/**
+ * Los campos que cambian al soltar la barra, o `null` si no hay cambio. Se conservan las horas que ya tenía la tarea; una fecha que no existía
+ * toma las 09:00 (inicio) o las 18:00 (vencimiento). Nunca queda el inicio después del vencimiento, ni siquiera el mismo día.
+ */
+export function ganttPatch(row: GanttRow, mode: GanttDragMode, wanted: number): GanttSpan | null {
+  const d = ganttDelta(row, mode, wanted);
+  if (d === 0) return null;
+  const { task } = row;
+  const view = ganttPreview(row, mode, wanted);
+  const patch: GanttSpan = {};
+  if (mode !== "end") patch.start_at = task.start_at ? shiftIso(task.start_at, d) : atTime(view.start, START_TIME);
+  if (mode === "end") patch.due_at = task.due_at ? shiftIso(task.due_at, d) : atTime(view.end as string, END_TIME);
+  else if (mode === "move" && task.due_at) patch.due_at = shiftIso(task.due_at, d);
+  const start = patch.start_at ?? task.start_at;
+  const due = patch.due_at ?? task.due_at;
+  if (start && due && Date.parse(start) > Date.parse(due)) {
+    if (mode === "end") patch.due_at = start;
+    else patch.start_at = due;
+  }
+  return patch;
+}

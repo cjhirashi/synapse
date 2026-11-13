@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
 import type { ViewActions } from "./TaskViews";
 import {
-  GANTT_PX, STATUS_LABEL, addDays, daysBetween, formatDay, formatDue, ganttRange, ganttRows, isClosed, isOverdue, monthName,
-  type GanttScale, type TaskNode,
+  GANTT_PX, STATUS_LABEL, addDays, daysBetween, formatDay, formatDue, ganttDraggable, ganttPatch, ganttPreview, ganttRange, ganttRows, isClosed, isOverdue, monthName,
+  type GanttDragMode, type GanttRow, type GanttScale, type TaskNode,
 } from "./taskModel";
 
 const SCALES: Array<[GanttScale, string]> = [["day", "Día"], ["week", "Semana"], ["month", "Mes"]];
@@ -13,11 +13,18 @@ const DOW = ["D", "L", "M", "M", "J", "V", "S"];
 const TITLE_INSIDE_PX = 120;
 /** Ancho mínimo para mostrar la foto del responsable dentro de la barra. */
 const WHO_INSIDE_PX = 36;
+/** Ancho mínimo para ofrecer los bordes de redimensionar; por debajo, la barra solo se mueve. */
+const HANDLES_PX = 30;
+/** Píxeles que debe moverse el puntero para que sea un arrastre y no un clic. */
+const DRAG_THRESHOLD_PX = 4;
+const MODE_LABEL: Record<GanttDragMode, string> = { move: "mueve", start: "cambia el inicio de", end: "cambia el vencimiento de" };
 
 /** Línea de tiempo: una fila por tarea y subtarea, con su barra de la creación al vencimiento, coloreada por estado. */
 export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNode[]; actions: ViewActions; todayKey: string }) {
   const [scale, setScale] = useState<GanttScale>("day");
   const scroller = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{ id: string; mode: GanttDragMode; delta: number } | null>(null);
+  const dragged = useRef(false); // tras soltar una barra el navegador manda un clic: no debe abrir el detalle
   const rows = useMemo(() => ganttRows(nodes), [nodes]);
   const { from, days } = useMemo(() => ganttRange(rows, todayKey), [rows, todayKey]);
   const px = GANTT_PX[scale];
@@ -42,6 +49,43 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
     return out;
   }, [dayList]);
 
+  /** Arrastre con el puntero: el cuerpo mueve la barra; el borde izquierdo cambia el inicio y el derecho, el vencimiento. */
+  function begin(event: PointerEvent, row: GanttRow, mode: GanttDragMode) {
+    if (event.button !== 0 || !ganttDraggable(row)) return;
+    event.stopPropagation();
+    const originX = event.clientX;
+    let delta = 0;
+    let moved = false;
+    const onMove = (e: globalThis.PointerEvent) => {
+      if (Math.abs(e.clientX - originX) > DRAG_THRESHOLD_PX) moved = true;
+      if (!moved) return;
+      delta = Math.round((e.clientX - originX) / px);
+      setDrag({ id: row.task.id, mode, delta });
+    };
+    const onEnd = (e: globalThis.PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+      setDrag(null);
+      if (!moved) return;
+      dragged.current = true;
+      window.setTimeout(() => { dragged.current = false; }, 0);
+      const patch = e.type === "pointerup" ? ganttPatch(row, mode, delta) : null;
+      if (patch) actions.onDates(row.task, patch);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+  }
+
+  /** Teclado: Alt + flechas mueve la barra un día; Alt + Mayús + flechas cambia el vencimiento. */
+  function onKey(event: KeyboardEvent, row: GanttRow) {
+    if (!event.altKey || !ganttDraggable(row) || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    event.preventDefault();
+    const patch = ganttPatch(row, event.shiftKey ? "end" : "move", event.key === "ArrowRight" ? 1 : -1);
+    if (patch) actions.onDates(row.task, patch);
+  }
+
   if (rows.length === 0) return <p className="tasks-empty">No hay tareas con estos filtros.</p>;
 
   return (
@@ -53,7 +97,7 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
           ))}
         </div>
         <button type="button" className="tasks-cal-step tasks-cal-today" onClick={centerToday}>Hoy</button>
-        <p className="tasks-cal-note">Cada barra va del inicio de la tarea a su vencimiento; sin inicio, desde que se creó.</p>
+        <p className="tasks-cal-note">Cada barra va del inicio de la tarea a su vencimiento; sin inicio, desde que se creó. Arrastra una barra para moverla o sus bordes para cambiar el inicio o el vencimiento.</p>
       </div>
       <div className="tasks-gantt-scroll" ref={scroller}>
         <div className="tasks-gantt-grid" role="list" aria-label="Línea de tiempo de tareas">
@@ -80,12 +124,16 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
           </div>
           <div className="tasks-gantt-body">
             <span className="tasks-gantt-today" style={{ left: `calc(var(--g-label) + ${todayOffset + px / 2}px)` }} aria-hidden="true" />
-            {rows.map(({ task, depth, start, end, progress }) => {
+            {rows.map((row) => {
+              const { task, depth, progress } = row;
+              const live = drag?.id === task.id ? drag : null;
+              const { start, end } = live ? ganttPreview(row, live.mode, live.delta) : row;
               const left = daysBetween(from, start) * px;
               const width = ((end === null ? 0 : daysBetween(start, end)) + 1) * px;
               const outside = width < TITLE_INSIDE_PX;
-              const from_ = formatDay(task.start_at ?? task.created_at);
-              const range = end === null ? `desde ${from_} · sin vencimiento` : `${from_} → ${formatDue(task.due_at ?? `${end}T12:00:00Z`)}`;
+              const draggable = ganttDraggable(row);
+              const from_ = live ? formatDay(`${start}T12:00:00Z`) : formatDay(task.start_at ?? task.created_at);
+              const range = end === null ? `desde ${from_} · sin vencimiento` : `${from_} → ${live ? formatDay(`${end}T12:00:00Z`) : formatDue(task.due_at ?? `${end}T12:00:00Z`)}`;
               return (
                 <div key={task.id} role="listitem" id={`task-${task.id}`} className={`tasks-gantt-row${depth ? " tasks-gantt-row--sub" : ""}${isClosed(task) ? " tasks-row--closed" : ""}${actions.focusId === task.id ? " tasks-row--focus" : ""}`} data-status={task.status}>
                   <div className="tasks-gantt-label">
@@ -95,19 +143,32 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
                   </div>
                   <div className="tasks-gantt-track">
                     <button
-                      type="button" className={`tasks-gantt-item${end === null ? " tasks-gantt-item--open" : ""}${progress ? " tasks-gantt-item--summary" : ""}${isOverdue(task) ? " tasks-gantt-item--late" : ""}`}
-                      style={{ left, width }} title={`${task.title} · ${STATUS_LABEL[task.status]} · ${range}`}
-                      aria-label={`${task.title}, ${STATUS_LABEL[task.status]}, ${range}`} onClick={() => actions.onOpen(task)}
+                      type="button" className={`tasks-gantt-item${end === null ? " tasks-gantt-item--open" : ""}${progress ? " tasks-gantt-item--summary" : ""}${isOverdue(task) ? " tasks-gantt-item--late" : ""}${draggable ? " tasks-gantt-item--drag" : ""}${live ? " tasks-gantt-item--dragging" : ""}`}
+                      data-drag={live ? live.mode : undefined}
+                      style={{ left, width }} title={`${task.title} · ${STATUS_LABEL[task.status]} · ${range}${draggable ? " · arrastra para cambiar las fechas" : ""}`}
+                      aria-label={`${task.title}, ${STATUS_LABEL[task.status]}, ${range}`}
+                      aria-keyshortcuts={draggable ? "Alt+ArrowLeft Alt+ArrowRight Alt+Shift+ArrowRight" : undefined}
+                      onClick={() => { if (!dragged.current) actions.onOpen(task); }}
+                      onPointerDown={(e) => begin(e, row, "move")} onKeyDown={(e) => onKey(e, row)}
                     >
+                      {draggable && width >= HANDLES_PX && (
+                        <span className="tasks-gantt-handle tasks-gantt-handle--start" aria-hidden="true" title={`Arrastra para cambiar el inicio de ${task.title}`}
+                          onPointerDown={(e) => begin(e, row, "start")} onClick={(e) => e.stopPropagation()} />
+                      )}
                       {progress && <i className="tasks-gantt-fill" style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} aria-hidden="true" />}
                       {width >= WHO_INSIDE_PX && (
                         <span className="tasks-gantt-who" aria-hidden="true">
                           {task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={16} showName={false} /> : <UserBadge size={16} label={null} />}
                         </span>
                       )}
-                      {!outside && <span className="tasks-gantt-text">{task.title}</span>}
+                      {!outside && !live && <span className="tasks-gantt-text">{task.title}</span>}
+                      {!outside && live && <span className="tasks-gantt-text">{range}</span>}
+                      {draggable && width >= HANDLES_PX && (
+                        <span className="tasks-gantt-handle tasks-gantt-handle--end" aria-hidden="true" title={`Arrastra para cambiar el vencimiento de ${task.title}`}
+                          onPointerDown={(e) => begin(e, row, "end")} onClick={(e) => e.stopPropagation()} />
+                      )}
                     </button>
-                    {outside && <span className="tasks-gantt-after" style={{ left: left + width + 6 }}>{task.title}</span>}
+                    {outside && <span className={`tasks-gantt-after${live ? " is-live" : ""}`} style={{ left: left + width + 6 }}>{live ? range : task.title}</span>}
                   </div>
                 </div>
               );

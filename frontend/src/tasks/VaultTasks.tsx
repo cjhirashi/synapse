@@ -173,6 +173,10 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const actions: ViewActions = {
     pathIndex: paths,
     focusId: focusTaskId,
+    onDates: (task, span) => {
+      setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, ...span } : t)) : list));
+      void run(() => updateTask(vaultId, task, span));
+    },
     onStatus: (task, status: TaskStatus) => {
       // Mueve la tarjeta al instante; `run` relee del servidor y deja el estado real (o la devuelve si falló).
       setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, status } : t)) : list));

@@ -12,6 +12,8 @@ export interface ViewActions {
   pathIndex: PathIndex;
   focusId: string | null;
   onStatus: (task: Task, status: TaskStatus) => void;
+  /** Cambia el inicio y/o el vencimiento (lo usa la línea de tiempo al arrastrar una barra). */
+  onDates: (task: Task, span: { start_at?: string | null; due_at?: string | null }) => void;
   onEdit: (task: Task) => void;
   /** Abre el detalle completo de la tarea (solo lectura). */
   onOpen: (task: Task) => void;

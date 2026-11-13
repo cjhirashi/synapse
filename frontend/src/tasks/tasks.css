@@ -495,3 +495,17 @@
 .tf-row--dates { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
 .tf-help--error { color: var(--danger-text); }
 @media (max-width: 700px) { .tf-row--dates { grid-template-columns: minmax(0, 1fr); } }
+
+/* Arrastrar barras del Gantt: el cuerpo mueve, los bordes cambian el inicio o el vencimiento. */
+.tasks-gantt-item--drag { cursor: grab; }
+.tasks-gantt-item--dragging { cursor: grabbing; z-index: 3; box-shadow: 0 6px 18px rgb(0 0 0 / 0.35); transition: none; }
+.tasks-gantt-item--dragging[data-drag="start"], .tasks-gantt-item--dragging[data-drag="end"] { cursor: ew-resize; }
+.tasks-gantt-item--drag { touch-action: pan-x pan-y; user-select: none; -webkit-user-select: none; }
+.tasks-gantt-handle { position: absolute; top: 0; bottom: 0; z-index: 2; width: 9px; cursor: ew-resize; touch-action: none; }
+.tasks-gantt-handle::after { content: ""; position: absolute; top: 30%; bottom: 30%; left: 3px; width: 3px; border-radius: 2px; background: currentColor; opacity: 0; transition: opacity .12s; }
+.tasks-gantt-handle--start { left: 0; }
+.tasks-gantt-handle--end { right: 0; }
+.tasks-gantt-handle--end::after { left: auto; right: 3px; }
+.tasks-gantt-item:hover .tasks-gantt-handle::after, .tasks-gantt-item--dragging .tasks-gantt-handle::after { opacity: 0.55; }
+.tasks-gantt-handle:hover::after { opacity: 1 !important; }
+.tasks-gantt-after.is-live { font-weight: 600; color: var(--text-primary); }
