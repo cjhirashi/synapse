@@ -3,6 +3,19 @@
 .settings-page {
   height: 100%;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Franja superior con el botón del menú: solo existe en móvil (la barra es flotante). */
+.settings-titlebar {
+  display: none;
+}
+
+.settings-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
 }
@@ -92,19 +105,25 @@
   border-radius: 999px;
 }
 
-.settings-logout {
+/* Pie de la barra: separado de las secciones, con «Cerrar sesión» como una fila más del menú en tono de peligro. */
+.settings-side-footer {
   margin-top: auto;
-  display: inline-flex;
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border);
+}
+
+.settings-logout {
+  width: 100%;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  font-size: 0.875rem;
+  gap: var(--space-3);
+  padding: 10px var(--space-3);
+  font-size: 0.9375rem;
   font-weight: 500;
   color: var(--danger-text);
   background: transparent;
-  border: 1px solid var(--danger-border);
-  border-radius: var(--radius-sm);
+  border: 0;
+  border-radius: var(--radius-md);
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease-out);
 }
@@ -357,52 +376,67 @@
 }
 
 /* --- Tableta y móvil: navegación como pestañas con scroll horizontal --- */
-@media (max-width: 800px) {
-  .settings-page {
-    display: block;
-    overflow-y: auto;
-  }
-
-  .settings-side {
-    overflow-y: visible;
-    padding: var(--space-3);
-    border-right: 0;
+@media (max-width: 640px) {
+  .settings-titlebar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
   }
 
+  .settings-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 0;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .settings-toggle:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+
+  .settings-toggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .settings-titlebar-name {
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .settings-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Flotante como la barra de una bóveda: sale del flujo y el contenido no se mueve al abrirla. */
+  .settings-side[data-floating]:not([data-open]) {
+    display: none;
+  }
+
+  .settings-side[data-floating][data-open] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(280px, 85vw);
+    box-shadow: var(--shadow-panel);
+  }
+
   .settings-content {
-    overflow-y: visible;
     padding: var(--space-4) var(--space-3) var(--space-8);
-  }
-
-  .settings-identity h1,
-  .settings-email {
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .settings-logout {
-    margin-top: 0;
-    width: 100%;
-  }
-
-  .settings-nav {
-    flex-direction: row;
-    overflow-x: auto;
-    gap: var(--space-2);
-    padding-bottom: var(--space-1);
-  }
-
-  .settings-nav a {
-    flex-shrink: 0;
-    padding: var(--space-2) var(--space-4);
-    white-space: nowrap;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-  }
-
-  .settings-nav a.active {
-    border-color: var(--accent);
   }
 
   .settings-card,

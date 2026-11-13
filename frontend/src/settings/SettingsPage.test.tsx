@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { MeContext, RefreshMeContext } from "../auth/RequireAuth";
 import { syncValue, WithSync } from "../test-utils/sync";
 import SettingsPage from "./SettingsPage";
@@ -109,4 +109,66 @@ test("B1: encabezado muestra el correo si no hay nombre", () => {
   );
 
   expect(screen.getByText("admin@synapse.test")).toBeInTheDocument();
+});
+
+
+test("el botón de cerrar sesión vive en el pie de la barra, separado de las secciones", () => {
+  setup();
+  const footer = document.querySelector(".settings-side-footer");
+  expect(footer).not.toBeNull();
+  expect(footer!.querySelector("button.settings-logout")).toHaveAccessibleName("Cerrar sesión");
+  expect(screen.getByRole("navigation").contains(footer)).toBe(false);
+});
+
+test("en escritorio la barra está siempre visible, con el regreso a «Bóvedas» arriba", () => {
+  setup();
+  const side = document.querySelector(".settings-side")!;
+  expect(side).not.toHaveAttribute("data-floating");
+  expect(screen.getByRole("link", { name: /Volver a bóvedas/ })).toHaveAttribute("href", "/vaults");
+});
+
+describe("móvil (≤ 640 px): barra flotante como la de una bóveda", () => {
+  const original = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 640px"), media: query, onchange: null,
+      addEventListener: () => undefined, removeEventListener: () => undefined,
+      addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => { window.matchMedia = original; });
+
+  const side = () => document.querySelector(".settings-side")!;
+
+  test("empieza oculta; el botón la despliega y marca aria-expanded", async () => {
+    const { user } = setup();
+    expect(side()).toHaveAttribute("data-floating");
+    expect(side()).not.toHaveAttribute("data-open");
+    const toggle = screen.getByRole("button", { name: "Mostrar el menú de ajustes" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(side()).toHaveAttribute("data-open");
+    expect(screen.getByRole("button", { name: "Ocultar el menú de ajustes" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("se cierra con Escape y con un clic fuera, pero no con un clic dentro", async () => {
+    const { user } = setup();
+    await user.click(screen.getByRole("button", { name: "Mostrar el menú de ajustes" }));
+    await user.click(screen.getByRole("heading", { name: "Admin User" }));
+    expect(side()).toHaveAttribute("data-open");
+    await user.keyboard("{Escape}");
+    expect(side()).not.toHaveAttribute("data-open");
+    await user.click(screen.getByRole("button", { name: "Mostrar el menú de ajustes" }));
+    await user.click(document.querySelector(".settings-content")!);
+    expect(side()).not.toHaveAttribute("data-open");
+  });
+
+  test("elegir una sección la cierra y la franja muestra el nombre de la sección actual", async () => {
+    const { user } = setup("/settings/profile");
+    expect(document.querySelector(".settings-titlebar-name")).toHaveTextContent("Perfil");
+    await user.click(screen.getByRole("button", { name: "Mostrar el menú de ajustes" }));
+    await user.click(screen.getByRole("link", { name: "Tema" }));
+    expect(side()).not.toHaveAttribute("data-open");
+    expect(document.querySelector(".settings-titlebar-name")).toHaveTextContent("Tema");
+  });
 });
