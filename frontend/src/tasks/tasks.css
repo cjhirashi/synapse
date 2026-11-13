@@ -145,12 +145,12 @@
 .tasks-column-name { flex: 1; min-width: 0; letter-spacing: 0.02em; }
 .tasks-column-count { min-width: 22px; padding: 0 7px; font-size: 11px; line-height: 20px; text-align: center; color: var(--st-text); background: color-mix(in srgb, var(--st) 16%, transparent); border-radius: 999px; }
 .tasks-column-body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 4px 8px 10px; overflow-y: auto; }
-.tasks-column-empty { margin: 0; padding: 18px 8px; font-size: 12px; text-align: center; color: var(--text-muted); border: 1px dashed color-mix(in srgb, var(--st) 40%, var(--border)); border-radius: var(--radius-sm); }
+.tasks-column-empty { flex: none; margin: 0; padding: 18px 8px; font-size: 12px; text-align: center; color: var(--text-muted); border: 1px dashed color-mix(in srgb, var(--st) 40%, var(--border)); border-radius: var(--radius-sm); }
 .tasks-kanban[data-dragging="true"] .tasks-column { border-style: dashed; border-top-style: solid; }
 .tasks-column[data-over="true"] { background: color-mix(in srgb, var(--st) 18%, var(--bg-secondary)); border-color: var(--st); box-shadow: 0 0 0 2px color-mix(in srgb, var(--st) 45%, transparent); }
 .tasks-column[data-over="true"] .tasks-column-empty { border-color: var(--st); color: var(--st-text); }
 
-.tasks-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); overflow: hidden; transition: box-shadow .15s, transform .15s, opacity .15s, border-color .15s; }
+.tasks-card { flex: none; position: relative; display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 8px 14px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); overflow: hidden; transition: box-shadow .15s, transform .15s, opacity .15s, border-color .15s; }
 .tasks-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--st); }
 .tasks-card[draggable="true"] { cursor: grab; }
 .tasks-card[draggable="true"]:hover { border-color: color-mix(in srgb, var(--st) 55%, var(--border)); box-shadow: 0 3px 10px rgb(0 0 0 / 0.22); transform: translateY(-1px); }
