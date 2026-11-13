@@ -349,13 +349,13 @@ test("la barra de la fila seleccionada o activa de los árboles usa el color de 
 test("las marcas de selección (riel, pestaña, fila, chip) toman el color de la bóveda con respaldo al acento", () => {
   const notes = read("notes.css");
   expect(rule(notes, '.vault-rail-icon[aria-current="page"] .vault-chip::before')).toMatch(/background: var\(--chip-color, var\(--accent\)\)/);
-  expect(rule(notes, '.vault-tab[aria-selected="true"]')).toMatch(/border-bottom-color: var\(--vault-icon-color, var\(--accent\)\)/);
+  expect(rule(notes, '.vault-tab[aria-selected="true"]')).toMatch(/inset 0 2px 0 var\(--vault-icon-color, var\(--accent\)\)/);
   expect(rule(notes, '.note-tree-row[aria-selected="true"]')).toMatch(/color-mix\(in srgb, var\(--vault-icon-color, var\(--accent\)\)/);
 });
 
 test("H-052: en una barra angosta las pestañas inactivas se reducen a su ícono y el encabezado de tags puede envolver", () => {
   const notes = read("notes.css");
   expect(rule(notes, ".vault-tabs")).toMatch(/container-type: inline-size/);
-  expect(notes).toMatch(/@container \(max-width: 340px\)/);
+  expect(notes).toMatch(/@container \(max-width: 500px\)/);
   expect(rule(notes, ".tag-filter-head")).toMatch(/flex-wrap: wrap/);
 });
