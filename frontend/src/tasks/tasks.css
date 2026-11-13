@@ -38,7 +38,7 @@
 .tasks-item[data-status="cancelled"], .tasks-status[data-status="cancelled"] { --st: var(--danger); --st-text: var(--danger-text); }
 
 .tasks-body { container-type: inline-size; container-name: tasks; }
-.tasks-table, .tasks-list { --tasks-cols: minmax(0, 1fr) 156px 158px 96px 132px 152px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.tasks-table, .tasks-list { --tasks-cols: minmax(0, 1fr) 132px 96px 156px 158px 152px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
 .tasks-table > .tasks-list { border: 0; border-radius: 0; background: transparent; }
 .tasks-head { display: grid; grid-template-columns: var(--tasks-cols); column-gap: 12px; padding: 9px 16px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-tertiary); border-bottom: 1px solid var(--border); }
 .tasks-list, .tasks-sublist { list-style: none; margin: 0; padding: 0; }
@@ -115,11 +115,11 @@
   .tasks-item--sub .tasks-cells { padding-left: 32px; }
   .tasks-cell { min-height: 0; }
   .tasks-cell--none { display: none; }
-  .tasks-cell--who { order: 1; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .tasks-cell--who { order: 3; flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
   .tasks-who { min-height: 0; }
-  .tasks-cell--due { order: 2; }
-  .tasks-cell--pri { order: 3; }
-  .tasks-cell--st { order: 4; margin-left: auto; }
+  .tasks-cell--due { order: 4; }
+  .tasks-cell--pri { order: 2; }
+  .tasks-cell--st { order: 1; }
   .tasks-actions { grid-row: 1; grid-column: 2; align-self: start; }
   .tasks-item--sub::after { top: 23px; }
 }
@@ -128,7 +128,6 @@
   .tasks-cells { padding-left: 0; }
   .tasks-item--sub .tasks-cells { padding-left: 22px; }
   .tasks-main > .tasks-desc, .tasks-main > .tasks-notes { margin-left: 0; }
-  .tasks-cell--st { margin-left: 0; }
   .tasks-item--sub .tasks-main { padding-left: 22px; }
   .tasks-item--sub::before { left: 17px; }
   .tasks-item--sub::after { left: 17px; width: 10px; }

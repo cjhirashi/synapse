@@ -69,6 +69,8 @@ function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; act
   const late = isOverdue(task);
   return (
     <div className="tasks-cells">
+      <span className="tasks-cell tasks-cell--st"><StatusSelect task={task} locked={locked} onStatus={actions.onStatus} /></span>
+      <span className="tasks-cell tasks-cell--pri" data-priority={task.priority} title="Prioridad">{PRIORITY_LABEL[task.priority]}</span>
       <span className="tasks-cell tasks-cell--who">
         <span className="tasks-who" title="Asignada a"><Assignee task={task} /></span>
         <span className="tasks-creator" title="Creada por">
@@ -80,8 +82,6 @@ function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; act
           <CalendarClock size={14} aria-hidden="true" /> {formatDue(task.due_at)}
         </span>
       ) : <span className="tasks-cell tasks-cell--due tasks-cell--none" aria-label="Sin vencimiento">—</span>}
-      <span className="tasks-cell tasks-cell--pri" data-priority={task.priority} title="Prioridad">{PRIORITY_LABEL[task.priority]}</span>
-      <span className="tasks-cell tasks-cell--st"><StatusSelect task={task} locked={locked} onStatus={actions.onStatus} /></span>
     </div>
   );
 }
@@ -134,7 +134,7 @@ export function TaskList({ nodes, actions }: { nodes: TaskNode[]; actions: ViewA
   return (
     <div className="tasks-table">
       <div className="tasks-head" aria-hidden="true">
-        <span>Tarea</span><span>Responsable</span><span>Vence</span><span>Prioridad</span><span>Estado</span><span />
+        <span>Tarea</span><span>Estado</span><span>Prioridad</span><span>Responsable</span><span>Vence</span><span />
       </div>
       <ul className="tasks-list">{nodes.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>
     </div>
