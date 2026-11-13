@@ -1,4 +1,6 @@
 /// <reference types="vitest" />
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { configDefaults } from "vitest/config";
@@ -17,8 +19,22 @@ const BACKEND = process.env.BACKEND_URL ?? "http://localhost:8000";
 // su chunk. Sin esto, `cache.request` nunca resuelve y `synapse:precompute-idle` jamás se emite.
 const DNCR_NODE_BUILD = fileURLToPath(new URL("./node_modules/decode-named-character-reference/index.js", import.meta.url));
 
+// Sella `dist/sw.js` con un hash del `index.html` del build (que nombra todos los assets con huella): sin esto el service worker
+// sería idéntico entre despliegues y el navegador nunca ofrecería la actualización.
+const stampServiceWorker = () => ({
+  name: "stamp-service-worker",
+  apply: "build" as const,
+  closeBundle() {
+    const dist = fileURLToPath(new URL("./dist/", import.meta.url));
+    const id = createHash("sha256").update(readFileSync(`${dist}index.html`)).digest("hex").slice(0, 12);
+    const sw = readFileSync(`${dist}sw.js`, "utf8");
+    if (!sw.includes("__BUILD_ID__")) throw new Error("sw.js sin el marcador __BUILD_ID__");
+    writeFileSync(`${dist}sw.js`, sw.replace("__BUILD_ID__", id));
+  },
+});
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), stampServiceWorker()],
   // `dist/.vite/manifest.json` lo lee `scripts/check-bundle.mjs` (presupuesto de bundle, SPEC-0010 RNF-002).
   build: {
     manifest: true,

@@ -196,3 +196,9 @@ def test_service_worker_no_cachea_datos_de_la_api(client):
     for prefix in ("/vaults", "/files", "/sync", "/tasks", "/notifications"):
         assert f'startsWith("{prefix}' not in sw, prefix
     assert 'startsWith("/assets/")' in sw
+
+
+def test_service_worker_va_sellado_con_la_version_del_build(client):
+    sw = client.get("/sw.js").text
+    assert "__BUILD_ID__" not in sw
+    assert 'const BUILD = "' in sw

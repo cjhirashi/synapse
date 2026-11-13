@@ -1,5 +1,7 @@
 /* Service worker de Synapse (H-053). Solo guarda lo que nunca cambia (assets con huella) y la pantalla de arranque
    para abrir sin red; los datos (/vaults, /files, /sync, /auth, /admin, /tasks, /notifications) siempre van a la red. */
+// El build sustituye el marcador por un hash del index.html: cada despliegue cambia este archivo y el navegador detecta la versión nueva.
+const BUILD = "__BUILD_ID__";
 const CACHE = "synapse-shell-v1";
 const SHELL = "/index.html";
 
