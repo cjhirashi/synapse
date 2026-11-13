@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useMatch } from "react-router-dom";
 import BrandLogo from "../brand/BrandLogo";
 import LogoutDialog from "../sync/LogoutDialog";
 import SyncStatusBar from "../sync/SyncStatusBar";
@@ -15,6 +15,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "activ
  * sin confirmar, RF-017); «Cerrar sesión» lo dispara ahora la pantalla de usuario vía `requestLogout()`.
  */
 export default function AppLayout() {
+  // Ajustes de usuario es una pantalla aparte: su barra lateral es la de opciones y no se mezcla con el riel de bóvedas.
+  const inSettings = useMatch("/settings/*") !== null;
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -36,7 +38,7 @@ export default function AppLayout() {
       <SyncStatusBar />
       {/* Riel de bóvedas (SPEC-0008 RF-001) a la izquierda de cada pantalla privada. */}
       <div className="app-body">
-        <VaultRail />
+        {!inSettings && <VaultRail />}
         <main className="app-main">
           <Outlet />
         </main>

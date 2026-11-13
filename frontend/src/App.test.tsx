@@ -40,6 +40,17 @@ test("H-028: la pantalla de usuario ofrece «Cambiar contraseña» y «Cerrar se
   expect(screen.getByRole("button", { name: "Cerrar sesión" })).toBeInTheDocument();
 });
 
+test("la pantalla de usuario es aparte: sin riel de bóvedas y con el regreso a «Bóvedas»; en /vaults el riel sigue", async () => {
+  const { env } = signedIn();
+  const user = renderAt("/settings/profile", env);
+  const back = await screen.findByRole("link", { name: /Volver a bóvedas/ });
+  expect(back).toHaveAttribute("href", "/vaults");
+  expect(screen.queryByRole("navigation", { name: "Bóvedas abiertas" })).not.toBeInTheDocument();
+  await user.click(back);
+  expect(await screen.findByRole("navigation", { name: "Bóvedas abiertas" })).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: /Volver a bóvedas/ })).not.toBeInTheDocument();
+});
+
 test("la pantalla de login no muestra el riel ni la navegación de cuenta", () => {
   renderAt("/login");
   expect(screen.queryByRole("navigation", { name: "Bóvedas abiertas" })).not.toBeInTheDocument();

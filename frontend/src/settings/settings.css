@@ -2,27 +2,55 @@
    Sólo tokens de `styles/tokens.css`. */
 .settings-page {
   height: 100%;
-  overflow-y: auto;
-  padding: var(--space-2) var(--space-6) var(--space-12);
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
 }
 
-.settings-inner {
-  max-width: 980px;
-  margin: 0 auto;
+/* Barra lateral de opciones del usuario: sustituye al riel de bóvedas en esta pantalla. */
+.settings-side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-4);
+  overflow-y: auto;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
 }
 
-/* --- Tarjeta de identidad --- */
+.settings-back {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+
+.settings-back:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.settings-back:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* --- Identidad --- */
 .settings-header {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
 .settings-identity {
@@ -37,12 +65,10 @@
 .settings-identity h1 {
   margin: 0;
   max-width: 100%;
-  font-size: 1.375rem;
+  font-size: 1.0625rem;
   line-height: 1.25;
   color: var(--text-primary);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 
 .settings-email {
@@ -67,8 +93,10 @@
 }
 
 .settings-logout {
+  margin-top: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
   font-size: 0.875rem;
@@ -118,16 +146,7 @@
 }
 
 /* --- Navegación + contenido --- */
-.settings-container {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: start;
-}
-
 .settings-nav {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
@@ -163,6 +182,13 @@
 
 .settings-content {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-8) var(--space-12);
+}
+
+.settings-content > * {
+  max-width: 760px;
 }
 
 .settings-content h2 {
@@ -333,17 +359,20 @@
 /* --- Tableta y móvil: navegación como pestañas con scroll horizontal --- */
 @media (max-width: 800px) {
   .settings-page {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .settings-side {
+    overflow-y: visible;
+    padding: var(--space-3);
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-content {
+    overflow-y: visible;
     padding: var(--space-4) var(--space-3) var(--space-8);
-  }
-
-  .settings-header {
-    flex-wrap: wrap;
-    padding: var(--space-4);
-  }
-
-  .settings-logout {
-    width: 100%;
-    justify-content: center;
   }
 
   .settings-identity h1,
@@ -352,13 +381,12 @@
     overflow-wrap: anywhere;
   }
 
-  .settings-container {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4);
+  .settings-logout {
+    margin-top: 0;
+    width: 100%;
   }
 
   .settings-nav {
-    position: static;
     flex-direction: row;
     overflow-x: auto;
     gap: var(--space-2);
