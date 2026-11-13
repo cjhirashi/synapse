@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, fromLocalInput, isOverdue, monthGrid, resolvePath, toLocalInput, tasksByDay,
 } from "./taskModel";
+import { calendarTitle, formatTime, monthName, shiftAnchor, weekDays, weekStart, weekdayLabel } from "./taskModel";
 import type { Task } from "./tasksApi";
 
 let n = 0;
@@ -83,5 +84,46 @@ describe("rutas indicativas", () => {
     expect(resolvePath("Proyectos/Synapse/Plan", index)).toEqual({ kind: "note", id: "n1" });
     expect(resolvePath("Proyectos/Synapse", index)).toEqual({ kind: "folder", path: "Proyectos/Synapse" });
     expect(resolvePath("No/existe.md", index)).toBeNull();
+  });
+});
+
+describe("subvistas del calendario", () => {
+  it("la semana va de lunes a domingo y cruza meses y años", () => {
+    expect(weekStart("2026-11-13")).toBe("2026-11-09"); // viernes
+    expect(weekStart("2026-11-09")).toBe("2026-11-09"); // lunes
+    expect(weekStart("2026-11-15")).toBe("2026-11-09"); // domingo
+    expect(weekDays("2026-11-13")).toEqual(["2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12", "2026-11-13", "2026-11-14", "2026-11-15"]);
+    expect(weekDays("2027-01-01")[0]).toBe("2026-12-28");
+    expect(weekDays("2027-01-01")[6]).toBe("2027-01-03");
+  });
+
+  it("el ancla se mueve por la unidad de la subvista, sin saltarse meses cortos ni fines de año", () => {
+    expect(shiftAnchor("2026-11-13", "day", 1)).toBe("2026-11-14");
+    expect(shiftAnchor("2026-12-31", "day", 1)).toBe("2027-01-01");
+    expect(shiftAnchor("2026-11-13", "week", -1)).toBe("2026-11-06");
+    expect(shiftAnchor("2026-11-13", "month", 1)).toBe("2026-12-01");
+    expect(shiftAnchor("2026-12-20", "month", 1)).toBe("2027-01-01");
+    expect(shiftAnchor("2026-01-20", "month", -1)).toBe("2025-12-01");
+    expect(shiftAnchor("2026-01-31", "month", 1)).toBe("2026-02-01");
+    expect(shiftAnchor("2026-11-13", "year", 1)).toBe("2027-11-01");
+    expect(shiftAnchor("2026-11-13", "year", -2)).toBe("2024-11-01");
+  });
+
+  it("los encabezados se escriben en español y la semana lo resume en un rango", () => {
+    expect(calendarTitle("2026-11-13", "year")).toBe("2026");
+    expect(calendarTitle("2026-11-13", "month")).toBe("noviembre 2026");
+    expect(calendarTitle("2026-11-13", "day")).toBe("viernes 13 de noviembre de 2026");
+    expect(calendarTitle("2026-11-13", "week")).toBe("9 – 15 nov 2026");
+    expect(calendarTitle("2026-11-30", "week")).toBe("30 nov – 6 dic 2026");
+    expect(calendarTitle("2027-01-01", "week")).toBe("28 dic – 3 ene 2027");
+    expect(monthName(1)).toBe("enero");
+    expect(monthName(12)).toBe("diciembre");
+    expect(weekdayLabel("2026-11-09")).toBe("Lun 9");
+    expect(weekdayLabel("2026-11-15")).toBe("Dom 15");
+  });
+
+  it("la hora de un vencimiento sale en la Ciudad de México", () => {
+    expect(formatTime("2026-11-13T02:00:00Z")).toBe("20:00"); // UTC-6 en noviembre
+    expect(formatTime("2026-11-13T18:30:00Z")).toBe("12:30");
   });
 });

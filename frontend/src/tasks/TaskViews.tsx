@@ -2,8 +2,8 @@ import { useState } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import { CalendarClock, ChevronDown, ChevronRight, FileText, Folder, Pencil, Plus, Trash2 } from "lucide-react";
 import {
-  PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue, monthGrid,
-  resolvePath, tasksByDay, type PathIndex, type PathTarget, type TaskNode,
+  PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue,
+  resolvePath, type PathIndex, type PathTarget, type TaskNode,
 } from "./taskModel";
 import type { Task, TaskStatus } from "./tasksApi";
 
@@ -72,7 +72,7 @@ function TaskMeta({ task, actions }: { task: Task; actions: ViewActions }) {
   );
 }
 
-function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; actions: ViewActions; sub: boolean }) {
+export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; actions: ViewActions; sub: boolean }) {
   const [open, setOpen] = useState(true);
   const hasKids = !sub && node.children.length > 0;
   const done = node.children.filter(isClosed).length;
@@ -144,39 +144,3 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
     </div>
   );
 }
-
-const MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
-
-export function TaskCalendar({ tasks, actions, todayKey }: { tasks: Task[]; actions: ViewActions; todayKey: string }) {
-  const [cursor, setCursor] = useState(() => ({ year: +todayKey.slice(0, 4), month: +todayKey.slice(5, 7) }));
-  const byDay = tasksByDay(tasks);
-  const weeks = monthGrid(cursor.year, cursor.month);
-  const shift = (delta: number) => setCursor(({ year, month }) => {
-    const index = year * 12 + (month - 1) + delta;
-    return { year: Math.floor(index / 12), month: (index % 12) + 1 };
-  });
-  return (
-    <div className="tasks-calendar">
-      <div className="tasks-cal-head">
-        <button type="button" onClick={() => shift(-1)} aria-label="Mes anterior">‹</button>
-        <h3>{MONTHS[cursor.month - 1]} {cursor.year}</h3>
-        <button type="button" onClick={() => shift(1)} aria-label="Mes siguiente">›</button>
-        <button type="button" onClick={() => setCursor({ year: +todayKey.slice(0, 4), month: +todayKey.slice(5, 7) })}>Hoy</button>
-      </div>
-      <div className="tasks-cal-grid" role="grid">
-        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => <div key={d} className="tasks-cal-dow" role="columnheader">{d}</div>)}
-        {weeks.flat().map((cell) => (
-          <div key={cell.key} role="gridcell" className={`tasks-cal-cell${cell.inMonth ? "" : " tasks-cal-cell--out"}${cell.key === todayKey ? " tasks-cal-cell--today" : ""}`} data-date={cell.key}>
-            <span className="tasks-cal-day">{cell.day}</span>
-            {(byDay.get(cell.key) ?? []).map((task) => (
-              <button key={task.id} type="button" className={`tasks-cal-task${isClosed(task) ? " tasks-row--closed" : ""}${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={`${task.title} · ${formatDue(task.due_at as string)}`} onClick={() => actions.onEdit(task)}>
-                {task.title}
-              </button>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-

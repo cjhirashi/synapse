@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
 import VaultTasks from "./VaultTasks";
 import * as api from "./tasksApi";
@@ -336,5 +336,101 @@ describe("VaultTasks", () => {
     const sameBody = document.querySelector(".tasks-body")!;
     await userEvent.click(screen.getByRole("tab", { name: /Kanban/ })); // la misma pestaña no reanima
     expect(document.querySelector(".tasks-body")).toBe(sameBody);
+  });
+
+  describe("calendario: subvistas de año, mes, semana y día", () => {
+    // «Hoy» fijo: viernes 13 de noviembre de 2026 (Ciudad de México). Solo se simula Date para no estorbar a userEvent.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-13T18:00:00Z"));
+    });
+    afterEach(() => vi.useRealTimers());
+
+    const openCalendar = async () => {
+      render(<Page />);
+      await screen.findByText("Publicar el plan");
+      await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
+      return screen.getByRole("group", { name: "Subvista del calendario" });
+    };
+    const mode = (group: HTMLElement, name: string) => within(group).getByRole("button", { name });
+
+    it("ofrece año, mes, semana y día; empieza en el mes y el título sigue a la subvista", async () => {
+      const group = await openCalendar();
+      expect(within(group).getAllByRole("button").map((b) => b.textContent)).toEqual(["Año", "Mes", "Semana", "Día"]);
+      expect(mode(group, "Mes")).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("heading", { name: "noviembre 2026" })).toBeInTheDocument();
+      await userEvent.click(mode(group, "Semana"));
+      expect(screen.getByRole("heading", { name: "9 – 15 nov 2026" })).toBeInTheDocument();
+      expect(mode(group, "Semana")).toHaveAttribute("aria-pressed", "true");
+      expect(mode(group, "Mes")).toHaveAttribute("aria-pressed", "false");
+      await userEvent.click(mode(group, "Día"));
+      expect(screen.getByRole("heading", { name: "viernes 13 de noviembre de 2026" })).toBeInTheDocument();
+      await userEvent.click(mode(group, "Año"));
+      expect(screen.getByRole("heading", { name: "2026" })).toBeInTheDocument();
+    });
+
+    it("semana: siete días, la hora de cada vencimiento y flechas de semana en semana", async () => {
+      const group = await openCalendar();
+      await userEvent.click(mode(group, "Semana"));
+      expect(document.querySelectorAll(".tasks-week-day")).toHaveLength(7);
+      expect(document.querySelector(".tasks-week-day--today")).toHaveAttribute("data-date", "2026-11-13");
+      expect(screen.queryByText("Publicar el plan")).toBeNull(); // vence el 20
+      await userEvent.click(screen.getByRole("button", { name: "Semana siguiente" }));
+      expect(screen.getByRole("heading", { name: "16 – 22 nov 2026" })).toBeInTheDocument();
+      const friday = document.querySelector("[data-date='2026-11-20']") as HTMLElement;
+      expect(within(friday).getByRole("button", { name: /Publicar el plan/ })).toHaveTextContent("09:00"); // 15:00 UTC = 09:00 CDMX
+      await userEvent.click(screen.getByRole("button", { name: "Semana anterior" }));
+      expect(screen.getByRole("heading", { name: "9 – 15 nov 2026" })).toBeInTheDocument();
+    });
+
+    it("año: doce meses con sus días marcados; un día baja a su detalle y un mes a su cuadrícula; «Hoy» vuelve", async () => {
+      const group = await openCalendar();
+      await userEvent.click(mode(group, "Año"));
+      expect(document.querySelectorAll(".tasks-mini")).toHaveLength(12);
+      const marked = document.querySelector("button[data-date='2026-11-20']") as HTMLElement;
+      expect(marked).toHaveAttribute("data-count", "1");
+      expect(marked).toHaveAccessibleName("20 de noviembre: 1 tarea");
+      expect(document.querySelector("button[data-date='2026-11-21']")).toHaveAttribute("data-count", "0");
+      await userEvent.click(marked);
+      expect(screen.getByRole("heading", { name: "viernes 20 de noviembre de 2026" })).toBeInTheDocument();
+      expect(mode(group, "Día")).toHaveAttribute("aria-pressed", "true");
+      const row = screen.getByText("Publicar el plan").closest("li")!;
+      expect(row.parentElement!.parentElement).toHaveTextContent("09:00");
+      await userEvent.click(mode(group, "Año"));
+      await userEvent.click(screen.getByRole("button", { name: "Ver diciembre 2026" }));
+      expect(screen.getByRole("heading", { name: "diciembre 2026" })).toBeInTheDocument();
+      expect(screen.getByRole("grid")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Hoy" }));
+      expect(screen.getByRole("heading", { name: "noviembre 2026" })).toBeInTheDocument();
+    });
+
+    it("día: sin tareas lo dice; con tareas muestra la fila completa y las flechas avanzan de un día", async () => {
+      const group = await openCalendar();
+      await userEvent.click(mode(group, "Día"));
+      expect(screen.getByText("No hay tareas que venzan este día.")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Día siguiente" }));
+      expect(screen.getByRole("heading", { name: "sábado 14 de noviembre de 2026" })).toBeInTheDocument();
+      await userEvent.click(mode(group, "Mes"));
+      await userEvent.click(screen.getByRole("button", { name: "Ver el día 20 de noviembre" }));
+      expect(screen.getByRole("button", { name: "Editar Publicar el plan" })).toBeInTheDocument();
+    });
+  });
+
+  it("en móvil no hay Kanban: solo Lista y Calendario", async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width: 640px"), media: query, onchange: null, addEventListener: () => undefined, removeEventListener: () => undefined,
+      addListener: () => undefined, removeListener: () => undefined, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      render(<Page />);
+      await screen.findByText("Publicar el plan");
+      expect(screen.getAllByRole("tab").map((t) => t.getAttribute("aria-label"))).toEqual(["Lista", "Calendario"]);
+      expect(screen.queryByRole("tab", { name: /Kanban/ })).toBeNull();
+      await userEvent.click(screen.getByRole("tab", { name: /Calendario/ }));
+      expect(screen.getByRole("group", { name: "Subvista del calendario" })).toBeInTheDocument();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

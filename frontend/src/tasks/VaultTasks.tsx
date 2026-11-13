@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { createPortal } from "react-dom";
 import { CalendarDays, KanbanSquare, List, Plus } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
+import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
 import { ApiError } from "../api/problems";
 import { getVaultAgentAccess } from "../settings/agentAccess";
 import TaskFilters from "./TaskFilters";
 import TaskForm from "./TaskForm";
-import { TaskCalendar, TaskKanban, TaskList, type ViewActions } from "./TaskViews";
+import { TaskCalendar } from "./TaskCalendar";
+import { TaskKanban, TaskList, type ViewActions } from "./TaskViews";
 import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, isClosed, type PathTarget, type TaskFilter,
 } from "./taskModel";
@@ -153,9 +155,14 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     }
   }
 
+  // En móvil (≤ 640 px, como la barra flotante de la bóveda) no hay Kanban: solo Lista y Calendario.
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const views = isMobile ? VIEWS.filter(([id]) => id !== "kanban") : VIEWS;
+  const shownView: View = isMobile && view === "kanban" ? "list" : view;
+
   function changeView(next: View) {
-    if (next === view) return;
-    setDirection(VIEWS.findIndex(([id]) => id === next) > VIEWS.findIndex(([id]) => id === view) ? "next" : "prev");
+    if (next === shownView) return;
+    setDirection(views.findIndex(([id]) => id === next) > views.findIndex(([id]) => id === shownView) ? "next" : "prev");
     setView(next);
   }
 
@@ -188,10 +195,10 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
       {sideSlot && createPortal(filters, sideSlot)}
       <header className="tasks-toolbar">
         <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">
-          {VIEWS.map(([id, label, Icon]) => (
+          {views.map(([id, label, Icon]) => (
             <button
               key={id} type="button" role="tab" id={`tasks-tab-${id}`} className="tasks-tab"
-              aria-selected={view === id} aria-controls="tasks-panel" aria-label={label} title={label} onClick={() => changeView(id)}
+              aria-selected={shownView === id} aria-controls="tasks-panel" aria-label={label} title={label} onClick={() => changeView(id)}
             >
               <Icon size={15} aria-hidden="true" /> <span className="tasks-tab-label">{label}</span>
             </button>
@@ -202,13 +209,13 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         </button>
       </header>
       {/* La barra de arriba queda fija; solo este cuerpo se desplaza. `key` lo vuelve a montar al cambiar de vista y se anima la entrada. */}
-      <div key={view} id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${view}`} data-direction={direction}>
+      <div key={shownView} id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${shownView}`} data-direction={direction}>
         {notice && <p className="tasks-error" role="alert">{notice}</p>}
         {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
         {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
-        {tasks !== null && view === "list" && <TaskList nodes={tree} actions={actions} />}
-        {tasks !== null && view === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
-        {tasks !== null && view === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
+        {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} />}
+        {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
+        {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
       </div>
       {dialog?.kind === "form" && (
         <TaskForm

@@ -146,6 +146,66 @@ export function monthGrid(year: number, month: number): CalendarCell[][] {
   return weeks;
 }
 
+// --- Subvistas del calendario: año, mes, semana y día ---
+
+export type CalendarMode = "year" | "month" | "week" | "day";
+
+const utcNoon = (key: string) => new Date(`${key}T12:00:00Z`);
+
+/** Lunes de la semana (lunes a domingo) que contiene `key`. */
+export function weekStart(key: string): string {
+  return addDays(key, -((utcNoon(key).getUTCDay() + 6) % 7));
+}
+
+/** Los siete días (lunes a domingo) de la semana de `key`. */
+export function weekDays(key: string): string[] {
+  const start = weekStart(key);
+  return Array.from({ length: 7 }, (_, i) => addDays(start, i));
+}
+
+/** Mueve el ancla del calendario una unidad de la subvista: ±1 año, mes (al día 1), semana o día. */
+export function shiftAnchor(key: string, mode: CalendarMode, delta: number): string {
+  if (mode === "day") return addDays(key, delta);
+  if (mode === "week") return addDays(key, delta * 7);
+  const year = +key.slice(0, 4);
+  const month = +key.slice(5, 7);
+  if (mode === "year") return `${year + delta}-${String(month).padStart(2, "0")}-01`;
+  const index = year * 12 + (month - 1) + delta;
+  return `${Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}-01`;
+}
+
+const calendarFormat = (options: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("es-MX", { timeZone: "UTC", ...options });
+
+/** Nombre de un mes (1-12) en español, en minúsculas. */
+export function monthName(month: number): string {
+  return calendarFormat({ month: "long" }).format(new Date(Date.UTC(2026, month - 1, 15, 12)));
+}
+
+/** Encabezado de la subvista: «2026», «noviembre 2026», «9 – 15 nov 2026» o «viernes 13 de noviembre de 2026». */
+export function calendarTitle(key: string, mode: CalendarMode): string {
+  const year = key.slice(0, 4);
+  if (mode === "year") return year;
+  if (mode === "month") return `${monthName(+key.slice(5, 7))} ${year}`;
+  if (mode === "day") return calendarFormat({ weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(utcNoon(key)).replace(",", "");
+  const days = weekDays(key);
+  const first = utcNoon(days[0]);
+  const last = utcNoon(days[6]);
+  const short = calendarFormat({ month: "short" });
+  const sameMonth = days[0].slice(0, 7) === days[6].slice(0, 7);
+  return `${first.getUTCDate()}${sameMonth ? "" : ` ${short.format(first).replace(".", "")}`} – ${last.getUTCDate()} ${short.format(last).replace(".", "")} ${days[6].slice(0, 4)}`;
+}
+
+/** Etiqueta corta de un día para la semana: «Lun 9». */
+export function weekdayLabel(key: string): string {
+  const name = calendarFormat({ weekday: "short" }).format(utcNoon(key)).replace(".", "");
+  return `${name.charAt(0).toUpperCase()}${name.slice(1)} ${+key.slice(8)}`;
+}
+
+/** Hora (HH:MM, Ciudad de México) de un vencimiento. */
+export function formatTime(iso: string): string {
+  return new Intl.DateTimeFormat("es-MX", { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso));
+}
+
 export function tasksByDay(tasks: Task[]): Map<string, Task[]> {
   const out = new Map<string, Task[]>();
   for (const t of tasks) {
