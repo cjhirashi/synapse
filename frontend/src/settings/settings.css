@@ -137,33 +137,6 @@
   outline-offset: 2px;
 }
 
-/* --- Avatar (hero y perfil) --- */
-.settings-avatar-container {
-  flex-shrink: 0;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 2px solid var(--border);
-  background: var(--bg-tertiary);
-}
-
-.settings-avatar {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.settings-avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-}
-
 /* --- Navegación + contenido --- */
 .settings-nav {
   display: flex;

@@ -91,7 +91,7 @@ function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; actions
         </span>
         <TaskMeta task={task} actions={actions} />
         <span className="tasks-actions">
-          {!sub && <button type="button" className="tasks-icon-btn" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={14} /></button>}
+          {!sub && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
           <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
           <button type="button" className="tasks-icon-btn" title="Eliminar" aria-label={`Eliminar ${task.title}`} onClick={() => actions.onDelete(task)}><Trash2 size={14} /></button>
         </span>
@@ -132,6 +132,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                   <TaskMeta task={task} actions={actions} />
                   <div className="tasks-card-foot">
                     <StatusSelect task={task} locked={children.length > 0} onStatus={actions.onStatus} />
+                    {!task.parent_id && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
                     <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
                   </div>
                 </article>

@@ -417,12 +417,18 @@ button:focus-visible {
   padding-top: min(16vh, 120px);
 }
 
+/* Con `top` el marco baja `padding-top`: su alto máximo descuenta ese margen, o el pie (los botones) queda fuera de la ventana. */
+.modal-backdrop.dlg-backdrop-top > .dlg {
+  max-height: calc(100dvh - min(16vh, 120px) - var(--space-4));
+}
+
 .modal-backdrop > .dlg {
   display: flex;
   flex-direction: column;
   width: min(var(--dlg-width, 460px), 100%);
   max-width: none;
   max-height: calc(100vh - 2 * var(--space-4));
+  max-height: calc(100dvh - 2 * var(--space-4));
   margin: 0;
   padding: 0;
   overflow: hidden;

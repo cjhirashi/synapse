@@ -1,4 +1,5 @@
 import { initials } from "../vaults/vaultIcon";
+import "./UserAvatar.css";
 
 interface UserAvatarProps {
   photoUrl: string | null;

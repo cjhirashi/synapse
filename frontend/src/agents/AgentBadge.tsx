@@ -8,7 +8,9 @@ export default function AgentBadge({ agentId, size = 18, showName = true }: { ag
   const name = agentName(agentId, profiles);
   return (
     <span className="agent-badge" title={name === agentId ? `Agente ${agentId}` : `${name} (agente ${agentId})`}>
-      <UserAvatar photoUrl={profiles[agentId]?.photo_url ?? null} label={name} size={size} />
+      <span aria-hidden={showName ? "true" : undefined} style={{ display: "inline-flex" }}>
+        <UserAvatar photoUrl={profiles[agentId]?.photo_url ?? null} label={name} size={size} />
+      </span>
       {showName && <span className="agent-badge-name">{name}</span>}
     </span>
   );

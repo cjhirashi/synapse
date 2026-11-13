@@ -58,12 +58,54 @@
 .tasks-side-note { color: var(--text-secondary); font-size: 12px; margin: 4px 0 0; }
 .tasks-side-close { display: none; align-self: flex-end; }
 
-.tasks-form { display: flex; flex-direction: column; gap: 6px; }
-.tasks-form label { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
-.tasks-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.tasks-form-row > div { display: flex; flex-direction: column; gap: 6px; }
+.tasks-add-sub { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; font-size: 12px; color: var(--text-secondary); background: transparent; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
+.tasks-add-sub:hover { color: var(--text-primary); background: var(--bg-tertiary); border-color: var(--border-control); }
+
+/* Formulario de tarea (DialogFrame lg): campos con etiqueta propia, grupos de opciones y subtareas. Solo tokens del tema. */
+.tf { display: flex; flex-direction: column; gap: var(--space-4); padding-top: var(--space-2); }
+.tf-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.tf-field > label, .tf-field > legend { float: none; margin: 0; padding: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.tf-field label small { font-weight: 400; color: var(--text-muted); }
+.tf-field input:not([type="radio"]), .tf-field textarea { width: 100%; margin: 0; }
+.tf-field textarea { resize: vertical; }
+.tf-help { margin: 0; font-size: 12px; line-height: 1.4; color: var(--text-muted); }
+.tf-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4); align-items: start; }
+.tf-inline { display: flex; align-items: center; gap: var(--space-2); }
+.tf-inline > input { flex: 1; min-width: 0; margin: 0; }
+.tf-inline > button { flex: none; display: inline-flex; align-items: center; gap: 4px; }
+.tf-icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 0; color: var(--text-secondary); background: transparent; border: 0; border-radius: var(--radius-sm); cursor: pointer; }
+.tf-icon:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+
+/* Asignada a: una tarjeta por persona o agente, con su foto y nombre. La casilla nativa queda oculta pero operable por teclado. */
+.tf-choices { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tf-choice { position: relative; display: block; margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.tf-choice input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tf-choice-box { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 999px; transition: background .15s, border-color .15s; }
+.tf-choice:hover .tf-choice-box { border-color: var(--border-control); }
+.tf-choice input:checked + .tf-choice-box { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.tf-choice input:focus-visible + .tf-choice-box { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tf-me { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; color: var(--text-secondary); background: var(--bg-secondary); }
+
+/* Prioridad: control segmentado */
+.tf-segments { display: inline-flex; padding: 3px; gap: 2px; background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.tf-segment { position: relative; margin: 0; cursor: pointer; }
+.tf-segment input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.tf-segment span { display: block; padding: 6px 14px; font-size: 13px; color: var(--text-secondary); border-radius: var(--radius-sm); }
+.tf-segment input:checked + span { color: var(--text-primary); background: var(--bg-secondary); box-shadow: 0 1px 3px rgb(0 0 0 / 0.25); font-weight: 600; }
+.tf-segment[data-priority="high"] input:checked + span { color: var(--danger-text); }
+.tf-segment input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Subtareas */
+.tf-subtasks { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); }
+.tf-subtasks h3 { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.tf-subtasks h3 span { padding: 0 7px; font-size: 11px; line-height: 18px; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 999px; }
+.tf-sublist { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.tf-sublist li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; font-size: 13px; background: var(--bg-secondary); border-radius: var(--radius-sm); color: var(--text-secondary); }
+.tf-sub-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+.tf-draft { border: 1px dashed var(--border-control); background: transparent; }
 
 @media (max-width: 700px) {
+  .tf-row { grid-template-columns: minmax(0, 1fr); }
   .tasks-workspace { padding: 10px; }
   .tasks-actions { margin-left: 0; }
   .tasks-side-close { display: inline-block; }

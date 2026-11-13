@@ -76,7 +76,7 @@ describe("VaultTasks", () => {
     await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
     const dialog = await screen.findByRole("dialog");
     await userEvent.type(within(dialog).getByLabelText("Título"), "Revisar");
-    await userEvent.selectOptions(within(dialog).getByLabelText("Asignada a"), "aira");
+    await userEvent.click(within(dialog).getByRole("radio", { name: /aira/ }));
     await userEvent.type(within(dialog).getByLabelText(/Ruta/), "Carpeta/Doc.md");
     await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
     expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ title: "Revisar", assignee_type: "agent", assignee_agent_id: "aira", path: "Carpeta/Doc.md" }), undefined);
@@ -124,5 +124,68 @@ describe("VaultTasks", () => {
     const row = (await screen.findByText("Mía")).closest("li")!;
     expect(await within(row).findByText("liza")).toBeInTheDocument();
     expect(within(row).queryByText(/Creó:/)).toBeNull();
+  });
+
+  it("H-053: el formulario ofrece cada agente con su avatar y su nombre visible (o el id si no lo tiene)", async () => {
+    resetAgentProfiles();
+    vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([{ agent_id: "aira", display_name: "Aira · Arquitecta", photo_url: "/agent-profiles/aira/photo?v=1" }]);
+    vi.spyOn(agentAccess, "getVaultAgentAccess").mockResolvedValue({ mode: "enforce", agents: [
+      { agent_id: "aira", estado: "activo", carpetas: ["*"], note_id: "x", keys: [] }, { agent_id: "liza", estado: "activo", carpetas: ["*"], note_id: "y", keys: [] },
+    ], unregistered_keys: [], unregistered_agent_ids: [] });
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+    const dialog = await screen.findByRole("dialog");
+    const group = within(dialog).getByRole("radiogroup", { name: "Asignada a" });
+    expect(await within(group).findByRole("radio", { name: /Aira · Arquitecta/ })).toBeInTheDocument();
+    expect(within(group).getByRole("radio", { name: /liza/ })).toBeInTheDocument();
+    expect(within(group).getByRole("radio", { name: /Yo/ })).toBeChecked();
+    expect(group.querySelector("img[src='/agent-profiles/aira/photo?v=1']")).not.toBeNull();
+  });
+
+  it("H-053: una tarea nueva crea con ella las subtareas preparadas en el formulario, dentro de la tarea", async () => {
+    const create = vi.spyOn(api, "createTask").mockResolvedValue({ ...ROOT, id: "nueva" });
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("button", { name: /Nueva tarea/ }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Título"), "Lanzamiento");
+    const sub = within(dialog).getByLabelText("Nueva subtarea");
+    await userEvent.type(sub, "Redactar{Enter}");
+    await userEvent.type(sub, "Revisar");
+    await userEvent.click(within(dialog).getByRole("button", { name: /Añadir subtarea/ }));
+    expect(within(dialog).getAllByText("Se crea al guardar")).toHaveLength(2);
+    expect(create).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+    expect(create.mock.calls[0]).toEqual(["v", expect.objectContaining({ title: "Lanzamiento" }), undefined]);
+    expect(create.mock.calls[1]).toEqual(["v", { title: "Redactar" }, "nueva"]);
+    expect(create.mock.calls[2]).toEqual(["v", { title: "Revisar" }, "nueva"]);
+  });
+
+  it("H-053: al editar una tarea, añadir una subtarea la crea al momento y la lista de la tarea la muestra", async () => {
+    const create = vi.spyOn(api, "createTask").mockResolvedValue(task({ id: "s", parent_id: "r", title: "Nueva sub" }));
+    render(<Page />);
+    await userEvent.click(await screen.findByRole("button", { name: "Editar Publicar el plan" }));
+    const dialog = await screen.findByRole("dialog", { name: "Editar tarea" });
+    expect(within(dialog).getByText("Escribir borrador")).toBeInTheDocument(); // ya existente
+    await userEvent.type(within(dialog).getByLabelText("Nueva subtarea"), "Nueva sub{Enter}");
+    expect(create).toHaveBeenCalledWith("v", { title: "Nueva sub" }, "r");
+    expect(dialog).toBeInTheDocument(); // Enter en la subtarea no guarda ni cierra la tarea
+  });
+
+  it("H-053: una subtarea no ofrece subtareas (dos niveles) y el botón visible «Subtarea» abre el formulario dentro de la tarea", async () => {
+    render(<Page />);
+    await userEvent.click(await screen.findByRole("button", { name: "Editar Escribir borrador" }));
+    const edit = await screen.findByRole("dialog", { name: "Editar subtarea" });
+    expect(within(edit).queryByLabelText("Nueva subtarea")).toBeNull();
+    await userEvent.click(within(edit).getByRole("button", { name: "Cancelar" }));
+    const add = screen.getByRole("button", { name: "Añadir subtarea a Publicar el plan" });
+    expect(add).toHaveTextContent("Subtarea");
+    expect(screen.queryByRole("button", { name: "Añadir subtarea a Escribir borrador" })).toBeNull();
+    await userEvent.click(add);
+    const dialog = await screen.findByRole("dialog", { name: "Nueva subtarea" });
+    expect(dialog).toHaveTextContent("Dentro de «Publicar el plan»");
+    expect(within(dialog).queryByLabelText("Nueva subtarea")).toBeNull();
   });
 });
