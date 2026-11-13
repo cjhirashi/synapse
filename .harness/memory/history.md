@@ -2231,3 +2231,4 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Archivos:** `frontend/src/notifications/{NotificationsPage.tsx,notifications.css,notificationsApi.ts,notifications.test.tsx}`, `backend/app/{core/schemas.py,routers/notifications.py,services/notification_service.py,adapters/notification_repository.py}`, `backend/tests/test_h053_notifications.py`, `docs/API.md`, READMEs.
 - **Verificación:** 19 pruebas de avisos en backend y 10 en frontend; `tsc` limpio; capturas en escritorio (claro y oscuro) y móvil con la API simulada.
 - **Modelos:** Sonnet 5 en la sesión principal; sin subagentes.
+- **Ajuste (mismo día):** cada tarjeta sin leer lleva un botón ✓ que marca el aviso como leído sin abrir la tarea; desplegado.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlarmClock, CalendarClock, CheckCheck, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
+import { AlarmClock, CalendarClock, Check, CheckCheck, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
@@ -42,19 +42,19 @@ function groupByDay(items: Notice[]): Array<{ key: string; label: string; items:
   return groups;
 }
 
-function NoticeCard({ notice, vault, onOpen }: { notice: Notice; vault: NoticeVault | undefined; onOpen: (notice: Notice) => void }) {
+function NoticeCard({ notice, vault, onOpen, onRead }: { notice: Notice; vault: NoticeVault | undefined; onOpen: (notice: Notice) => void; onRead: (notice: Notice) => void }) {
   const { icon: Icon, label } = KIND[notice.kind] ?? { icon: RefreshCw, label: "Aviso" };
   const task = notice.task ?? null;
   const unread = !notice.read_at;
   return (
-    <button type="button" className={`notice-card${unread ? " notice-card--unread" : ""}`} data-kind={notice.kind} onClick={() => onOpen(notice)}>
+    <div className={`notice-card${unread ? " notice-card--unread" : ""}`} data-kind={notice.kind}>
+    <button type="button" className="notice-open" onClick={() => onOpen(notice)}>
       <span className="notice-icon" aria-hidden="true"><Icon size={18} /></span>
       <span className="notice-main">
         <span className="notice-top">
           <span className="notice-kind">{label}</span>
           <span className="notice-headline">{headline(notice)}</span>
           <time className="notice-time" dateTime={notice.created_at} title={formatDue(notice.created_at)}>{formatTime(notice.created_at)}</time>
-          {unread && <span className="notice-dot" role="img" aria-label="Sin leer" />}
         </span>
         <span className="notice-title">{task?.title ?? notice.body ?? notice.title}</span>
         {task?.description && <span className="notice-desc">{task.description}</span>}
@@ -80,6 +80,12 @@ function NoticeCard({ notice, vault, onOpen }: { notice: Notice; vault: NoticeVa
         </span>
       </span>
     </button>
+    {unread && (
+      <button type="button" className="notice-read" onClick={() => onRead(notice)} aria-label={`Marcar como leído: ${task?.title ?? notice.title}`} title="Marcar como leído sin abrir la tarea">
+        <Check size={16} aria-hidden="true" />
+      </button>
+    )}
+    </div>
   );
 }
 
@@ -118,6 +124,10 @@ export default function NotificationsPage() {
     else await load();
   }
 
+  async function read(notice: Notice) {
+    await markRead(notice.id).catch(() => undefined);
+  }
+
   const shown = useMemo(() => (items ?? []).filter((n) => !onlyUnread || !n.read_at), [items, onlyUnread]);
   const groups = useMemo(() => groupByDay(shown), [shown]);
 
@@ -146,7 +156,7 @@ export default function NotificationsPage() {
           <ul className="notices-list">
             {group.items.map((notice) => (
               <li key={notice.id}>
-                <NoticeCard notice={notice} vault={notice.vault_id ? vaults.get(notice.vault_id) : undefined} onOpen={(n) => void open(n)} />
+                <NoticeCard notice={notice} vault={notice.vault_id ? vaults.get(notice.vault_id) : undefined} onOpen={(n) => void open(n)} onRead={(n) => void read(n)} />
               </li>
             ))}
           </ul>
