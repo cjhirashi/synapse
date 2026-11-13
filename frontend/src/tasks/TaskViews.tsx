@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AgentBadge from "../agents/AgentBadge";
 import { CalendarClock, ChevronDown, ChevronRight, FileText, Folder, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue, monthGrid,
@@ -16,8 +17,14 @@ export interface ViewActions {
   onOpenPath: (target: NonNullable<PathTarget>) => void;
 }
 
-function assigneeLabel(task: Task): string {
-  return task.assignee_type === "agent" ? (task.assignee_agent_id ?? "agente") : "Yo";
+/** Quién la asigna o la creó, con su foto y nombre cuando es un agente (H-053). */
+function Assignee({ task }: { task: Task }) {
+  if (task.assignee_type !== "agent") return <>Yo</>;
+  return task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={16} /> : <>agente</>;
+}
+
+function creatorAgent(task: Task): string | null {
+  return task.created_by.startsWith("agent:") && task.created_by !== "agent:general" ? task.created_by.slice(6) : null;
 }
 
 function StatusSelect({ task, locked, onStatus }: { task: Task; locked: boolean; onStatus: ViewActions["onStatus"] }) {
@@ -48,7 +55,12 @@ function TaskMeta({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
     <span className="tasks-meta">
       <span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span>
-      <span className="tasks-chip">{assigneeLabel(task)}</span>
+      <span className="tasks-chip" title="Asignada a"><Assignee task={task} /></span>
+      {creatorAgent(task) && (
+        <span className="tasks-chip" title="Creada por">
+          Creó: <AgentBadge agentId={creatorAgent(task)!} size={16} />
+        </span>
+      )}
       {task.due_at && (
         <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={formatDue(task.due_at)}>
           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}

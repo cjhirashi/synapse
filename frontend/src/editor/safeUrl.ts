@@ -6,7 +6,7 @@
  * lista blanca de esquemas; lo demás se quita (devuelve `""`, un `href`/`src` vacío).
  *
  * - Enlaces: `http`, `https`, `mailto` y relativos (sin esquema).
- * - Imágenes: sólo `http` y `https`.
+ * - Imágenes: sólo `http` y `https` (y la foto de un agente de la app, ruta exacta `/agent-profiles/<id>/photo?v=N`).
  */
 
 const SCHEME = /^([a-z][a-z0-9+.-]*):/i;
@@ -31,8 +31,16 @@ export function safeLinkUrl(url: string): string {
   return scheme === null || LINK_SCHEMES.has(scheme) ? url : "";
 }
 
-/** URL de una imagen, o `""` si no es `http`/`https`. */
+/** Foto de un agente de la propia app (H-053): solo esta ruta exacta, sin esquema, y solo como imagen. */
+const AGENT_PHOTO = /^\/agent-profiles\/[a-z0-9][a-z0-9-]{0,31}\/photo\?v=\d{1,9}$/;
+
+export function isAgentPhotoUrl(url: string): boolean {
+  return AGENT_PHOTO.test(url);
+}
+
+/** URL de una imagen, o `""` si no es `http`/`https` ni la foto de un agente de la app. */
 export function safeImageUrl(url: string): string {
+  if (isAgentPhotoUrl(url)) return url;
   const scheme = schemeOf(url);
   return scheme !== null && IMAGE_SCHEMES.has(scheme) ? url : "";
 }

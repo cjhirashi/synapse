@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, expect, test, vi } from "vitest";
@@ -226,4 +226,60 @@ test("tras crear una key ofrece ir a la guía de conexión", async () => {
   await user.click(screen.getByRole("button", { name: "Crear" }));
   await user.click(await screen.findByRole("button", { name: /Ver cómo conectar un agente/ }));
   expect(screen.getByText(/Antes de empezar/)).toBeInTheDocument();
+});
+
+// --- Perfil de agente (H-053) ---
+
+import * as profilesApi from "../agents/agentProfilesApi";
+import { resetAgentProfiles } from "../agents/agentProfiles";
+
+const AIRA_KEY = { id: "k5", label: "op-aira", created_at: "2026-10-01T10:00:00Z", last_used_at: null, revoked_at: null, agent_id: "aira", is_admin: false };
+
+test("una key con agente ofrece «Personalizar» (nombre e imagen) y una general no", async () => {
+  resetAgentProfiles();
+  vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([{ agent_id: "aira", display_name: "Aira · Arquitecta", photo_url: null }]);
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([ACTIVE, AIRA_KEY]);
+  const user = setup();
+  await screen.findByRole("heading", { name: "op-aira" });
+  expect(screen.queryByRole("button", { name: "Personalizar" })).not.toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: /^Personalizar/ })).toHaveLength(1);
+  expect(await screen.findByText(/Se muestra como/)).toHaveTextContent("Aira · Arquitecta");
+  await user.click(screen.getByRole("button", { name: "Personalizar aira" }));
+  expect(screen.getByRole("form", { name: "Personalizar aira" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Nombre visible")).toHaveValue("Aira · Arquitecta");
+});
+
+test("guardar el nombre llama a la API con el agente y el texto recortado; vacío vuelve al id", async () => {
+  resetAgentProfiles();
+  vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+  const save = vi.spyOn(profilesApi, "setAgentName").mockResolvedValue({ agent_id: "aira", display_name: "Aira", photo_url: null });
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([AIRA_KEY]);
+  const user = setup();
+  await user.click(await screen.findByRole("button", { name: "Personalizar aira" }));
+  await user.type(screen.getByLabelText("Nombre visible"), "  Aira  ");
+  await user.click(screen.getByRole("button", { name: "Guardar nombre" }));
+  expect(save).toHaveBeenCalledWith("aira", "Aira");
+  expect(await screen.findByText("Nombre guardado.")).toBeInTheDocument();
+  await user.clear(screen.getByLabelText("Nombre visible"));
+  await user.click(screen.getByRole("button", { name: "Guardar nombre" }));
+  expect(save).toHaveBeenLastCalledWith("aira", null);
+});
+
+test("subir una imagen la manda al servidor y quitarla la borra", async () => {
+  resetAgentProfiles();
+  vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([{ agent_id: "aira", display_name: null, photo_url: "/agent-profiles/aira/photo?v=1" }]);
+  const upload = vi.spyOn(profilesApi, "uploadAgentPhoto").mockResolvedValue({ agent_id: "aira", display_name: null, photo_url: "/agent-profiles/aira/photo?v=2" });
+  const remove = vi.spyOn(profilesApi, "deleteAgentPhoto").mockResolvedValue({ agent_id: "aira", display_name: null, photo_url: null });
+  vi.spyOn(api, "listAgentKeys").mockResolvedValue([AIRA_KEY]);
+  const user = setup();
+  await user.click(await screen.findByRole("button", { name: "Personalizar aira" }));
+  const file = new File([new Uint8Array(16)], "a.png", { type: "image/png" });
+  await user.upload(await screen.findByLabelText("Archivo de imagen del agente"), file);
+  expect(upload).toHaveBeenCalledWith("aira", expect.any(File));
+  expect(await screen.findByText("Imagen guardada.")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Quitar imagen" }));
+  expect(remove).toHaveBeenCalledWith("aira");
+  const bad = new File(["x"], "a.gif", { type: "image/gif" });
+  fireEvent.change(screen.getByLabelText("Archivo de imagen del agente"), { target: { files: [bad] } });
+  expect(await screen.findByRole("alert")).toHaveTextContent(/Formato no admitido/);
 });

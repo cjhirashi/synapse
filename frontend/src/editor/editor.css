@@ -2013,3 +2013,13 @@ fieldset.note-meta-field legend {
   accent-color: var(--accent);
   cursor: pointer;
 }
+
+/* Foto de un agente en la bitácora (H-053): avatar en línea con el nombre. */
+.md-agent-avatar {
+  width: 20px;
+  height: 20px;
+  margin-right: 4px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: -5px;
+}

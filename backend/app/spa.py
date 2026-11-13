@@ -26,7 +26,7 @@ from app.core.problems import CATCH_ALL_ROUTE_NAME
 
 # Prefijos que son API pura: nunca sirven la SPA (RF-005). Una subruta desconocida bajo
 # ellos es un 404 Problem, no HTML. `/sync` se enruta entero en su propio router.
-API_PREFIXES = ("/auth", "/admin", "/sync", "/vaults", "/tasks", "/notifications", "/health")
+API_PREFIXES = ("/auth", "/admin", "/sync", "/vaults", "/tasks", "/notifications", "/agent-profiles", "/health")
 
 # Raíz del build del frontend. Por defecto `frontend/dist` del repo (correr local y tests);
 # en la imagen Docker se fija `FRONTEND_DIST` a la copia del build (ver backend/Dockerfile).

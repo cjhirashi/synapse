@@ -717,3 +717,21 @@ class PushTestOut(BaseModel):
     sent: int
     removed: int
     failed: int
+
+
+class AgentProfilePut(BaseModel):
+    """Cuerpo de `PUT /agent-profiles/{agent_id}`: el nombre visible (`null` o vacío = volver al id del agente)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    display_name: str | None = Field(default=None, max_length=60)
+
+
+class AgentProfileOut(BaseModel):
+    agent_id: str
+    display_name: str | None
+    photo_url: str | None
+
+
+class AgentProfileListOut(BaseModel):
+    items: list[AgentProfileOut]

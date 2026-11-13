@@ -450,6 +450,30 @@ class ProfilePhotoInvalidType(DomainError):
     detail = "Profile photo type not allowed: only PNG, JPEG, and WebP are accepted"
 
 
+# --- Perfil de agente (H-053) ---
+
+class AgentProfileNotFound(DomainError):
+    """El agente no existe para esta persona: ninguna de sus API keys lleva ese `agent_id`."""
+
+    slug = "agent-profile-not-found"
+    title = "Agent not found"
+    status = 404
+    detail = "Agent not found"
+
+
+class AgentProfilePhotoNotFound(DomainError):
+    """GET de la foto de un agente que no tiene."""
+
+    slug = "agent-profile-photo-not-found"
+    title = "Agent photo not found"
+    status = 404
+    detail = "Agent photo not found"
+
+
+class AgentProfileInvalid(ValidationFailed):
+    """Nombre de agente inválido (vacío tras recortar o demasiado largo)."""
+
+
 # --- Fallos internos de puertos (no son entradas del catálogo) ---
 
 # --- Tareas de bóveda (H-053) ---

@@ -1,10 +1,13 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { BookOpen, Check, KeyRound, Plus } from "lucide-react";
+import { BookOpen, Check, KeyRound, Palette, Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import { PROBLEM } from "../api/problems";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { AgentKey, CreatedAgentKey, createAgentKey, listAgentKeys, revokeAgentKey } from "./apiKeys";
+import AgentBadge from "../agents/AgentBadge";
+import AgentProfileEditor from "../agents/AgentProfileEditor";
+import { agentName, useAgentProfiles } from "../agents/agentProfiles";
 import ConnectAgentGuide from "./ConnectAgentGuide";
 import "./agents.css";
 
@@ -37,6 +40,8 @@ export default function ApiKeysPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<"keys" | "connect">("keys");
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+  const profiles = useAgentProfiles();
   const navigate = useNavigate();
 
   // Un 401 aquí es una sesión cerrada (`request()` ya intentó renovarla); el resto se decide
@@ -130,9 +135,13 @@ export default function ApiKeysPage() {
   const keyCard = (k: AgentKey) => (
     <li key={k.id} aria-labelledby={`key-${k.id}`} className={`ag-card${k.revoked_at ? " ag-card--muted" : ""}`}>
       <div className="ag-row">
-        <span className={`ag-icon${k.revoked_at ? "" : " ag-icon--accent"}`} aria-hidden="true">
-          <KeyRound size={18} />
-        </span>
+        {k.agent_id ? (
+          <AgentBadge agentId={k.agent_id} size={40} showName={false} />
+        ) : (
+          <span className={`ag-icon${k.revoked_at ? "" : " ag-icon--accent"}`} aria-hidden="true">
+            <KeyRound size={18} />
+          </span>
+        )}
         <div className="ag-grow">
           <h3 id={`key-${k.id}`}>{k.label}</h3>
           <p className="ag-sub">
@@ -145,13 +154,22 @@ export default function ApiKeysPage() {
         <div className="ag-meta" style={{ flex: 1 }}>
           <span className="ag-chip">Agente: {k.agent_id ? <code>{k.agent_id}</code> : "general"}</span>
           {k.is_admin && <span className="ag-chip">Administrador</span>}
+          {k.agent_id && profiles[k.agent_id]?.display_name && (
+            <span className="ag-chip">Se muestra como <strong>{agentName(k.agent_id, profiles)}</strong></span>
+          )}
         </div>
+        {!k.revoked_at && k.agent_id && (
+          <button type="button" aria-label={`Personalizar ${k.agent_id}`} aria-expanded={editingKey === k.id} onClick={() => setEditingKey(editingKey === k.id ? null : k.id)}>
+            <Palette size={14} aria-hidden="true" /> Personalizar
+          </button>
+        )}
         {!k.revoked_at && (
           <button type="button" className="ag-danger" aria-label={`Revocar ${k.label}`} onClick={() => setRevoking(k)}>
             Revocar
           </button>
         )}
       </div>
+      {editingKey === k.id && k.agent_id && <AgentProfileEditor agentId={k.agent_id} onClose={() => setEditingKey(null)} />}
     </li>
   );
 

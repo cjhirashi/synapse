@@ -697,3 +697,17 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 **Web Push (H-053):** cada aviso nuevo se envía al dispositivo con un hilo despachador (`PUSH_DISPATCH`, `PUSH_POLL_SECONDS`), salvo en las horas silenciosas; el aviso siempre queda en la bandeja. Claves VAPID: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` en `.env`; sin ellas el push está apagado (`GET /notifications/push` → `enabled: false`). Una API key de agente no usa ninguna de estas rutas (401).
 
 **PWA:** `/sw.js` (service worker, `Cache-Control: no-cache`, `Service-Worker-Allowed: /`) y `/manifest.webmanifest` (`application/manifest+json`) se sirven desde el build; el service worker solo guarda `/assets/*` y la pantalla de arranque, nunca datos de la API.
+
+## Perfil de agente (H-053)
+
+Nombre visible y foto de cada agente de la persona, para identificar sus huellas en la app (bitácora, quién crea una tarea y a quién se asigna). El `agent_id` de la API key sigue siendo el identificador técnico: el perfil solo cambia cómo se muestra. **Solo sesión humana** (cookie): una API key de agente no los lee ni los edita (401). Un `agent_id` existe para esta persona si alguna de sus API keys (vigente o revocada) lo lleva; otro responde 404 `agent-profile-not-found`. Cada persona ve solo los suyos.
+
+| Método y ruta | Qué hace |
+|---|---|
+| `GET /agent-profiles` | `{items: [{agent_id, display_name, photo_url}]}` de los agentes con alguna key. `photo_url` lleva la versión (`/agent-profiles/aira/photo?v=2`) para que el navegador no reutilice una foto vieja. |
+| `PUT /agent-profiles/{agent_id}` | `{display_name}` (hasta 60 caracteres; `null` o vacío vuelve al id). 422 si se pasa de largo. |
+| `PUT /agent-profiles/{agent_id}/photo` | Multipart `file`: PNG, JPEG o WebP de hasta 2 MB; el tipo se decide por el contenido (413 y 415 `profile-photo-*`). |
+| `DELETE /agent-profiles/{agent_id}/photo` | Quita la foto. |
+| `GET /agent-profiles/{agent_id}/photo` | La imagen (`Cache-Control: private, no-cache`); 404 `agent-profile-photo-not-found` si no tiene. |
+
+La foto vive en el almacén de objetos (`users/{persona}/agents/{agent_id}/avatar`). La bitácora no guarda estos datos: el servidor escribe el id del agente y la app lo sustituye por el nombre y la foto al mostrarla.

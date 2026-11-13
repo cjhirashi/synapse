@@ -4,6 +4,8 @@
  * edición; el texto se actualiza solo cuando la réplica trae una revisión nueva del día.
  */
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
+import { useAgentProfiles } from "../agents/agentProfiles";
+import { decorateBitacora } from "./bitacoraAuthors";
 import { noteErrorMessage } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
 import type { NoteRef } from "../editor/wikilink";
@@ -24,6 +26,7 @@ export interface BitacoraViewProps {
 export default function BitacoraView({ noteId, notes, notesVersion, vaultColor, noteRefs, onOpenWikilink, sidebarToggle }: BitacoraViewProps) {
   const [note, setNote] = useState<Note | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const profiles = useAgentProfiles();
 
   useEffect(() => {
     let alive = true;
@@ -55,8 +58,8 @@ export default function BitacoraView({ noteId, notes, notesVersion, vaultColor, 
           <Suspense fallback={<p>Cargando la bitácora…</p>}>
             {note !== null && (
               <MilkdownView
-                key={`${noteId}:${note.rev}`}
-                value={note.content}
+                key={`${noteId}:${note.rev}:${JSON.stringify(profiles)}`}
+                value={decorateBitacora(note.content, profiles)}
                 onChange={() => undefined}
                 readOnly
                 label={title}

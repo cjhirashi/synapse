@@ -49,3 +49,19 @@ describe("isExternalHttpLink", () => {
     expect(isExternalHttpLink(url)).toBe(false),
   );
 });
+
+import { isAgentPhotoUrl } from "./safeUrl";
+
+describe("foto de un agente de la app (H-053)", () => {
+  it("solo admite la ruta exacta de la foto, con versión", () => {
+    expect(safeImageUrl("/agent-profiles/aira/photo?v=3")).toBe("/agent-profiles/aira/photo?v=3");
+    for (const bad of [
+      "/agent-profiles/aira/photo", "/agent-profiles/Aira/photo?v=1", "/agent-profiles/aira/photo?v=1&x=1", "//evil.example/agent-profiles/aira/photo?v=1",
+      "/agent-profiles/../files/x/photo?v=1", "/otra/ruta.png", "javascript:alert(1)", "https://x.test/agent-profiles/aira/photo?v=1x",
+    ]) {
+      expect(isAgentPhotoUrl(bad), bad).toBe(false);
+    }
+    expect(safeImageUrl("/otra/ruta.png")).toBe("");
+    expect(safeLinkUrl("/agent-profiles/aira/photo?v=3")).toBe("/agent-profiles/aira/photo?v=3");
+  });
+});

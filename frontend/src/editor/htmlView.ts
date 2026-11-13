@@ -3,6 +3,7 @@
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
+import { isAgentPhotoUrl } from "./safeUrl";
 import { fullscreenButton, openImageViewer } from "./imageViewer";
 import { icon } from "./icons";
 import { parseYoutubeEmbedSrc, parseYoutubeUrl, youtubeEmbedUrl, youtubeWatchUrl } from "./classifyUrl";
@@ -205,7 +206,28 @@ class FullscreenImageView implements NodeView {
   }
 }
 
+/** Foto de un agente (H-053): avatar pequeño en línea con el texto, sin botón de pantalla completa. */
+class AgentAvatarView implements NodeView {
+  readonly dom: HTMLImageElement;
+
+  constructor(node: PMNode) {
+    this.dom = document.createElement("img");
+    this.dom.className = "md-agent-avatar";
+    this.dom.setAttribute("src", String(node.attrs.src ?? ""));
+    this.dom.setAttribute("alt", String(node.attrs.alt ?? ""));
+  }
+
+  update(next: PMNode): boolean {
+    return next.type.name === "image" && isAgentPhotoUrl(String(next.attrs.src ?? "")) && next.attrs.src === this.dom.getAttribute("src");
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
 export const imageViewFactory = (): NodeViewConstructor => (node, _view, _getPos) => {
+  if (isAgentPhotoUrl(String(node.attrs.src ?? ""))) return new AgentAvatarView(node);
   const youtube = parseYoutubeUrl(String(node.attrs.src ?? ""));
   if (youtube) return new YoutubeImageView(node, youtube);
   return new FullscreenImageView(node);

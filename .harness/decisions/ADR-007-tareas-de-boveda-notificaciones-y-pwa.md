@@ -67,3 +67,13 @@ agentes ya está retirado y no tiene PWA ni push.
 **Sustituye a D-11 de la spec 0011** («la app no se vuelve instalable ni offline»): esa decisión dejaba la PWA fuera hasta contar con una
 spec propia, y por orden de Carlos (2026-11-12) este ADR es esa spec. Por eso `brandAssets.test.ts` ya no exige un manifest sin
 `start_url`, `scope` ni `display`.
+
+## Perfil de agente
+
+19. **Nombre visible y foto por `agent_id`** (tabla `agent_profiles`, migración 015, por persona), editables desde API keys («Personalizar»)
+    una vez creada la key. Identifican las huellas del agente: bitácora, creador y asignado de las tareas, API keys y Agentes por bóveda.
+    El `agent_id` técnico no cambia, y la bitácora conserva el id (el servidor no escribe nombres: un cambio de nombre se aplica también a
+    los registros viejos). Una key general (sin `agent_id`) no tiene perfil.
+20. **La bitácora se decora al mostrarla**: la app sustituye `aira (agente)` por `Nombre (aira, agente)` y antepone la foto con una imagen
+    Markdown hacia la ruta exacta `/agent-profiles/<id>/photo?v=N`, única ruta relativa que el editor admite como imagen y que pinta como
+    avatar pequeño, sin pantalla completa. El documento guardado no se modifica.

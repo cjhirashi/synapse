@@ -18,6 +18,8 @@ import {
   putAgentRegistration,
   skillName,
 } from "./agentAccess";
+import AgentBadge from "../agents/AgentBadge";
+import { agentName, useAgentProfiles } from "../agents/agentProfiles";
 import LeaveDialog from "./LeaveDialog";
 import "./agents.css";
 
@@ -55,16 +57,16 @@ interface RowProps {
 function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, registered, busy, onSave, onRemove }: RowProps) {
   const [folders, setFolders] = useState(initialFolders.join("\n"));
   const [estado, setEstado] = useState(initialEstado === "suspendido" ? "suspendido" : "activo");
+  const profiles = useAgentProfiles();
+  const displayName = agentName(agentId, profiles);
   const suspended = initialEstado === "suspendido";
   const status = !registered ? { label: "Sin registrar", tone: "ag-pill--warn" } : suspended ? { label: "Suspendido", tone: "ag-pill--bad" } : { label: "Activo", tone: "ag-pill--ok" };
   return (
     <li aria-label={`Agente ${agentId}`} className="ag-card">
       <div className="ag-row">
-        <span className="ag-icon ag-icon--accent" aria-hidden="true">
-          <Bot size={18} />
-        </span>
+        <AgentBadge agentId={agentId} size={40} showName={false} />
         <div className="ag-grow">
-          <h3>{agentId}</h3>
+          <h3>{displayName}{displayName !== agentId && <code className="ag-chip" style={{ marginLeft: 8 }}>{agentId}</code>}</h3>
           <span className="ag-sub">clave: {keyNames(keys)}</span>
         </div>
         <span className={`ag-pill ${status.tone}`}>{status.label}</span>

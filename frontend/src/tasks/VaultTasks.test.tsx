@@ -5,6 +5,8 @@ import { useState } from "react";
 import VaultTasks from "./VaultTasks";
 import * as api from "./tasksApi";
 import * as agentAccess from "../settings/agentAccess";
+import * as profilesApi from "../agents/agentProfilesApi";
+import { resetAgentProfiles } from "../agents/agentProfiles";
 import { WithSync, syncValue } from "../test-utils/sync";
 import type { Task } from "./tasksApi";
 
@@ -96,5 +98,31 @@ describe("VaultTasks", () => {
     await userEvent.selectOptions(within(side).getByLabelText("Asignada a"), "aira");
     expect(screen.queryByText("Ya terminada")).not.toBeInTheDocument();
     expect(screen.getByText("Escribir borrador")).toBeInTheDocument();
+  });
+
+  it("H-053: la tarea de un agente muestra su nombre visible y foto (asignada a, creada por) y las de la persona no gastan una consulta", async () => {
+    resetAgentProfiles();
+    const list = vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([
+      { agent_id: "aira", display_name: "Aira · Arquitecta", photo_url: "/agent-profiles/aira/photo?v=1" },
+    ]);
+    vi.spyOn(api, "listTasks").mockResolvedValue([
+      task({ id: "a", title: "Hecha por un agente", created_by: "agent:aira", assignee_type: "agent", assignee_agent_id: "aira" }),
+    ]);
+    render(<Page />);
+    const row = (await screen.findByText("Hecha por un agente")).closest("li")!;
+    expect(await within(row).findAllByText("Aira · Arquitecta")).toHaveLength(2); // creó y asignada
+    expect(within(row).getByText(/Creó:/)).toBeInTheDocument();
+    expect(row.querySelector("img[src='/agent-profiles/aira/photo?v=1']")).not.toBeNull();
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
+  it("H-053: sin perfil se muestra el id del agente, y una tarea creada por la persona no lleva «Creó»", async () => {
+    resetAgentProfiles();
+    vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+    vi.spyOn(api, "listTasks").mockResolvedValue([task({ id: "b", title: "Mía", assignee_type: "agent", assignee_agent_id: "liza" })]);
+    render(<Page />);
+    const row = (await screen.findByText("Mía")).closest("li")!;
+    expect(await within(row).findByText("liza")).toBeInTheDocument();
+    expect(within(row).queryByText(/Creó:/)).toBeNull();
   });
 });

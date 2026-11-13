@@ -119,7 +119,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   ejecutables y verifica coherencia OOXML/ODF) y saneo de SVG (`is_safe_svg`, mismo criterio RNF-003 que el editor).
 - `models/file.py` — `File`, metadatos de un archivo subido a MinIO (migraciones 006 y 007, carpeta opcional).
 - `models/task.py` — `VaultTask`, tarea de una bóveda en dos niveles (migración 012): `parent_id`, `path` indicativa, `version` (ETag) y `completed_at` (retención).
-- `models/notification.py` — `Notification` (aviso para la persona, `dedupe_key` única, `pushed_at` como cola del push), `NotificationPref` (tipos apagados y horas silenciosas) y `PushSubscription` (un dispositivo); migraciones 013 y 014. `quiet_hours.py`: regla pura de la ventana silenciosa en America/Mexico_City.
+- `models/notification.py` — `Notification` (aviso para la persona, `dedupe_key` única, `pushed_at` como cola del push), `NotificationPref` (tipos apagados y horas silenciosas) y `PushSubscription` (un dispositivo); migraciones 013 y 014. `models/agent_profile.py` — `AgentProfile` (nombre visible y foto de un agente, por persona); migración 015. `quiet_hours.py`: regla pura de la ventana silenciosa en America/Mexico_City.
 - `task_rules.py` — reglas puras de las tareas (H-053): estados, ruta indicativa, estado derivado de la raíz y permisos por agente (`decide_task`).
 
 ## Subdirectorios
