@@ -92,6 +92,7 @@ class TaskService:
         self._guard.check_task(vault_id, "create", body.title, created_by=None, assignee_agent_id=None)
         path = self._path(body.path)
         agent_id = self._assignee(vault_id, body.assignee_type, body.assignee_agent_id)
+        self._check_span(_naive_utc(body.start_at), _naive_utc(body.due_at))
         now = _now()
         closed = body.status in task_rules.CLOSED_STATUSES
         task = VaultTask(
@@ -100,7 +101,7 @@ class TaskService:
             sort_order=body.sort_order if body.sort_order is not None else self._repo.next_sort_order(
                 self._owner_id, vault_id, parent.id if parent else None),
             title=body.title, description=body.description, notes=body.notes, status=body.status,
-            priority=body.priority, due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
+            priority=body.priority, start_at=_naive_utc(body.start_at), due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
             assignee_agent_id=agent_id, path=path, created_by=self._guard.author, updated_by=self._guard.author,
             version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
         )
@@ -134,8 +135,11 @@ class TaskService:
             if field in sent:
                 setattr(task, field, getattr(body, field))
         was_status, was_assignee = task.status, task.assignee_type
-        if "due_at" in sent:
-            task.due_at = _naive_utc(body.due_at)
+        if "start_at" in sent or "due_at" in sent:  # se valida el par resultante antes de tocar la tarea
+            start = _naive_utc(body.start_at) if "start_at" in sent else task.start_at
+            due = _naive_utc(body.due_at) if "due_at" in sent else task.due_at
+            self._check_span(start, due)
+            task.start_at, task.due_at = start, due
         if "path" in sent:
             task.path = self._path(body.path)
         if "reminders" in sent:  # `null` vuelve a los de siempre; `[]` los quita todos
@@ -213,6 +217,12 @@ class TaskService:
         elif not closed:
             task.completed_at = None
         task.status = status
+
+    @staticmethod
+    def _check_span(start: datetime | None, due: datetime | None) -> None:
+        """El inicio nunca es posterior al vencimiento."""
+        if start is not None and due is not None and start > due:
+            raise _invalid("/start_at", "The start date cannot be after the due date")
 
     def _touch(self, task: VaultTask) -> None:
         task.version += 1

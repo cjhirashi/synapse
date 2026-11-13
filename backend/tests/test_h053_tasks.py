@@ -128,6 +128,23 @@ def test_due_at_is_stored_utc_and_returned_with_z(ready_admin):
     assert patch(ready_admin, vault, task["id"], due_at=None).json()["due_at"] is None
 
 
+def test_start_at_is_stored_utc_optional_and_never_after_the_due_date(ready_admin):
+    vault = vault_of(ready_admin)
+    assert make(ready_admin, vault)["start_at"] is None  # opcional: las tareas sin inicio siguen igual
+    task = make(ready_admin, vault, start_at="2026-11-18T09:00:00-06:00", due_at="2026-11-20T09:00:00-06:00")
+    assert task["start_at"] == "2026-11-18T15:00:00Z" and task["due_at"] == "2026-11-20T15:00:00Z"
+    # Inicio y vencimiento se validan juntos, también contra el valor que ya tenía la tarea.
+    bad = patch(ready_admin, vault, task["id"], start_at="2026-11-21T09:00:00-06:00")
+    assert bad.status_code == 422 and bad.json()["errors"][0]["pointer"] == "/start_at"
+    assert patch(ready_admin, vault, task["id"], due_at="2026-11-17T09:00:00-06:00").status_code == 422
+    assert get(ready_admin, vault, task["id"])["start_at"] == "2026-11-18T15:00:00Z"  # un rechazo no cambia nada
+    both = patch(ready_admin, vault, task["id"], start_at="2026-11-10T09:00:00-06:00", due_at="2026-11-12T09:00:00-06:00")
+    assert both.status_code == 200 and both.json()["due_at"] == "2026-11-12T15:00:00Z"
+    assert patch(ready_admin, vault, task["id"], start_at=None).json()["start_at"] is None  # un null explícito lo vacía
+    res = ready_admin.post(f"/vaults/{vault}/tasks", json={"title": "x", "start_at": "2026-11-21T00:00:00Z", "due_at": "2026-11-20T00:00:00Z"})
+    assert res.status_code == 422 and res.json()["errors"][0]["pointer"] == "/start_at"
+
+
 @pytest.mark.parametrize("body", [{"title": ""}, {"title": "x", "status": "failed"}, {"title": "x", "priority": "urgent"}, {"title": "x", "otro": 1}])
 def test_invalid_bodies_are_422(ready_admin, body):
     vault = vault_of(ready_admin)

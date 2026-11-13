@@ -14,7 +14,7 @@ import type { Task } from "./tasksApi";
 function task(over: Partial<Task>): Task {
   return {
     id: "t", vault_id: "v", parent_id: null, sort_order: 0, title: "T", description: null, notes: null, status: "pending", priority: "medium",
-    due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user", version: 3,
+    start_at: null, due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user", version: 3,
     created_at: "2026-11-12T00:00:00Z", updated_at: "2026-11-12T00:00:00Z", completed_at: null, purge_at: null, ...over,
   };
 }
@@ -519,7 +519,8 @@ describe("VaultTasks", () => {
       render(<Page />);
       await userEvent.click(await screen.findByRole("button", { name: "Ver detalle de Mínima" }));
       const dialog = await screen.findByRole("dialog", { name: "Mínima" });
-      for (const text of ["Sin fecha", "Sin ruta.", "Sin descripción.", "Sin notas de avance.", "Todavía no tiene subtareas."]) {
+      expect(within(dialog).getAllByText("Sin fecha")).toHaveLength(2); // inicio y vencimiento
+      for (const text of ["Sin ruta.", "Sin descripción.", "Sin notas de avance.", "Todavía no tiene subtareas."]) {
         expect(within(dialog).getByText(text)).toBeInTheDocument();
       }
     });
@@ -591,6 +592,20 @@ describe("VaultTasks", () => {
       return screen.findByRole("dialog", { name: "Nueva tarea" });
     };
     const group = (dialog: HTMLElement) => within(dialog).getByRole("group", { name: /Notificaciones/ });
+
+    it("el inicio se guarda junto al vencimiento y uno posterior al vencimiento bloquea «Guardar»", async () => {
+      const create = vi.spyOn(api, "createTask").mockResolvedValue(ROOT);
+      const dialog = await openNew();
+      await userEvent.type(within(dialog).getByLabelText("Título"), "Con inicio");
+      fireEvent.change(within(dialog).getByLabelText(/Inicia/), { target: { value: "2026-11-25T09:00" } });
+      fireEvent.change(within(dialog).getByLabelText(/Vence/), { target: { value: "2026-11-20T09:00" } });
+      expect(within(dialog).getByRole("alert")).toHaveTextContent("El inicio no puede ser posterior al vencimiento");
+      expect(within(dialog).getByRole("button", { name: "Guardar" })).toBeDisabled();
+      fireEvent.change(within(dialog).getByLabelText(/Inicia/), { target: { value: "2026-11-18T09:00" } });
+      expect(within(dialog).queryByRole("alert")).toBeNull();
+      await userEvent.click(within(dialog).getByRole("button", { name: "Guardar" }));
+      expect(create).toHaveBeenCalledWith("v", expect.objectContaining({ start_at: "2026-11-18T15:00:00.000Z", due_at: "2026-11-20T15:00:00.000Z" }), undefined);
+    });
 
     it("sin fecha de vencimiento no hay recordatorios que añadir, y lo explica", async () => {
       const dialog = await openNew();

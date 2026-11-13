@@ -10,7 +10,7 @@ function task(over: Partial<Task> = {}): Task {
   n += 1;
   return {
     id: `t${n}`, vault_id: "v", parent_id: null, sort_order: n, title: `T${n}`, description: null, notes: null, status: "pending",
-    priority: "medium", due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user",
+    priority: "medium", start_at: null, due_at: null, assignee_type: "user", assignee_agent_id: null, path: null, reminders: null, created_by: "user", updated_by: "user",
     version: 1, created_at: "2026-11-12T00:00:00Z", updated_at: "2026-11-12T00:00:00Z", completed_at: null, purge_at: null, ...over,
   };
 }
@@ -166,6 +166,17 @@ describe("línea de tiempo", () => {
     expect(rows[0]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: { done: 1, total: 1 } });
     expect(rows[1]).toMatchObject({ start: "2026-11-12", end: "2026-11-17", progress: null });
     expect(rows[2]).toMatchObject({ start: "2026-11-13", end: null });
+  });
+
+  it("la barra empieza en la fecha de inicio de la tarea; una raíz sin inicio toma el primero de sus subtareas", () => {
+    const root = task({ id: "r", created_at: "2026-11-01T12:00:00Z", due_at: "2026-11-20T18:00:00Z" });
+    const early = task({ id: "a", parent_id: "r", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-15T18:00:00Z", due_at: "2026-11-17T18:00:00Z" });
+    const late = task({ id: "b", parent_id: "r", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-18T18:00:00Z", due_at: "2026-11-20T18:00:00Z" });
+    const own = task({ id: "o", created_at: "2026-11-01T12:00:00Z", start_at: "2026-11-05T18:00:00Z", due_at: "2026-11-08T18:00:00Z" });
+    const rows = ganttRows([{ task: root, children: [late, early] }, { task: own, children: [] }]);
+    expect(rows.map((r) => [r.task.id, r.start, r.end])).toEqual([
+      ["r", "2026-11-15", "2026-11-20"], ["b", "2026-11-18", "2026-11-20"], ["a", "2026-11-15", "2026-11-17"], ["o", "2026-11-05", "2026-11-08"],
+    ]);
   });
 
   it("si el vencimiento es anterior a la creación, la barra empieza en el vencimiento", () => {

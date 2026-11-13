@@ -18,6 +18,8 @@ export interface Task {
   notes: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  /** Inicio opcional (nunca posterior al vencimiento); la línea de tiempo lo usa para empezar la barra. */
+  start_at: string | null;
   due_at: string | null;
   assignee_type: AssigneeType;
   assignee_agent_id: string | null;
@@ -34,13 +36,14 @@ export interface Task {
   purge_at: string | null;
 }
 
-/** Campos editables; `null` vacía descripción, notas, vencimiento y ruta. */
+/** Campos editables; `null` vacía descripción, notas, inicio, vencimiento y ruta. */
 export interface TaskInput {
   title?: string;
   description?: string | null;
   notes?: string | null;
   status?: TaskStatus;
   priority?: TaskPriority;
+  start_at?: string | null;
   due_at?: string | null;
   assignee_type?: AssigneeType;
   assignee_agent_id?: string | null;

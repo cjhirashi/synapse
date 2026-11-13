@@ -286,7 +286,7 @@ export const GANTT_PX: Record<GanttScale, number> = { day: 44, week: 20, month: 
 export interface GanttRow {
   task: Task;
   depth: 0 | 1;
-  /** Primer día de la barra (día de creación, o el del vencimiento si este es anterior). */
+  /** Primer día de la barra: el de inicio de la tarea (o, sin él, el de creación; el del vencimiento si este es anterior). */
   start: string;
   /** Último día de la barra (el del vencimiento; en una raíz sin fecha, el mayor de sus subtareas); `null` = sin vencimiento. */
   end: string | null;
@@ -299,21 +299,25 @@ export function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
-/** Las tareas como filas del Gantt: cada raíz seguida de sus subtareas. Las tareas no tienen fecha de inicio: la barra va de su creación a su vencimiento. */
+/**
+ * Las tareas como filas del Gantt: cada raíz seguida de sus subtareas. La barra empieza en la fecha de inicio de la tarea (si no tiene, en
+ * su creación; una raíz sin inicio toma el primero de sus subtareas) y termina en su vencimiento (una raíz sin fecha, el mayor de sus subtareas).
+ */
 export function ganttRows(nodes: TaskNode[]): GanttRow[] {
   const rows: GanttRow[] = [];
-  const bounds = (task: Task, fallbackEnd: string | null) => {
-    const created = dateKey(task.created_at);
+  const bounds = (task: Task, fallbackStart: string | null, fallbackEnd: string | null) => {
+    const begin = task.start_at ? dateKey(task.start_at) : (fallbackStart ?? dateKey(task.created_at));
     const due = task.due_at ? dateKey(task.due_at) : fallbackEnd;
-    return { start: due !== null && due < created ? due : created, end: due };
+    return { start: due !== null && due < begin ? due : begin, end: due };
   };
   for (const { task, children } of nodes) {
+    const childStarts = children.flatMap((c) => (c.start_at ? [dateKey(c.start_at)] : [])).sort();
     const childEnds = children.flatMap((c) => (c.due_at ? [dateKey(c.due_at)] : [])).sort();
     rows.push({
-      task, depth: 0, ...bounds(task, childEnds.length ? childEnds[childEnds.length - 1] : null),
+      task, depth: 0, ...bounds(task, childStarts[0] ?? null, childEnds.length ? childEnds[childEnds.length - 1] : null),
       progress: children.length ? { done: children.filter(isClosed).length, total: children.length } : null,
     });
-    for (const child of children) rows.push({ task: child, depth: 1, ...bounds(child, null), progress: null });
+    for (const child of children) rows.push({ task: child, depth: 1, ...bounds(child, null, null), progress: null });
   }
   return rows;
 }

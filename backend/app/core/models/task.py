@@ -27,6 +27,8 @@ class VaultTask(Base):
     notes = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, server_default=text("'pending'"), default="pending", index=True)
     priority = Column(String(10), nullable=False, server_default=text("'medium'"), default="medium")
+    # Inicio opcional (para la línea de tiempo); nunca posterior al vencimiento. NULL = sin fecha de inicio.
+    start_at = Column(DateTime, nullable=True)
     due_at = Column(DateTime, nullable=True, index=True)
     assignee_type = Column(String(10), nullable=False, server_default=text("'user'"), default="user")
     assignee_agent_id = Column(String, nullable=True)

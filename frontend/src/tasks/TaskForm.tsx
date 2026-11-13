@@ -62,6 +62,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
   const [description, setDescription] = useState(task?.description ?? "");
   const [notes, setNotes] = useState(task?.notes ?? "");
   const [assignee, setAssignee] = useState(task ? (task.assignee_type === "agent" ? (task.assignee_agent_id ?? "user") : "user") : "user");
+  const [start, setStart] = useState(toLocalInput(task?.start_at ?? null));
   const [due, setDue] = useState(toLocalInput(task?.due_at ?? null));
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [path, setPath] = useState(task?.path ?? "");
@@ -74,7 +75,8 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
 
   // Un agente asignado que ya no está registrado sigue visible para poder cambiarlo.
   const agentChoices = Array.from(new Set([...agents, ...(task?.assignee_agent_id ? [task.assignee_agent_id] : [])]));
-  const canSave = title.trim().length > 0 && !saving;
+  const badSpan = start !== "" && due !== "" && start > due; // `datetime-local` se ordena como texto
+  const canSave = title.trim().length > 0 && !badSpan && !saving;
   const showSubtasks = !parent && !task?.parent_id;
 
   /** La subtarea lista para enviar: «igual que la tarea» toma la asignación que tiene la tarea en este formulario. */
@@ -92,6 +94,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         description: description.trim() || null,
         notes: notes.trim() || null,
         priority,
+        start_at: fromLocalInput(start),
         due_at: fromLocalInput(due),
         assignee_type: assignee === "user" ? "user" : "agent",
         assignee_agent_id: assignee === "user" ? null : assignee,
@@ -164,7 +167,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
           {agentChoices.length === 0 && <p className="tf-help">Para asignarla a un agente, regístralo como gestor en esta bóveda (Ajustes → Agentes por bóveda).</p>}
         </div>
 
-        <div className="tf-row">
+        <div className="tf-row tf-row--dates">
           <fieldset className="tf-field">
             <legend>Prioridad</legend>
             <div className="tf-segments" role="radiogroup" aria-label="Prioridad">
@@ -177,6 +180,13 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
             </div>
           </fieldset>
           <div className="tf-field">
+            <label htmlFor={`${id}-i`}>Inicia <small>(hora de la Ciudad de México)</small></label>
+            <div className="tf-inline">
+              <input id={`${id}-i`} type="datetime-local" value={start} max={due || undefined} aria-invalid={badSpan || undefined} onChange={(e) => setStart(e.target.value)} />
+              {start && <button type="button" className="tf-icon" aria-label="Quitar la fecha de inicio" title="Quitar la fecha" onClick={() => setStart("")}><X size={14} /></button>}
+            </div>
+          </div>
+          <div className="tf-field">
             <label htmlFor={`${id}-v`}>Vence <small>(hora de la Ciudad de México)</small></label>
             <div className="tf-inline">
               <input id={`${id}-v`} type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
@@ -184,6 +194,8 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
             </div>
           </div>
         </div>
+
+        {badSpan && <p className="tf-help tf-help--error" role="alert">El inicio no puede ser posterior al vencimiento.</p>}
 
         <ReminderEditor value={reminders} onChange={setReminders} hasDue={due !== ""} mine={assignee === "user"} />
 

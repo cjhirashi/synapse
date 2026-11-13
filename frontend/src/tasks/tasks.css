@@ -490,3 +490,8 @@
 .tf-created { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .td-reminders { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .td-reminders .tasks-chip { padding: 3px 10px; font-size: 13px; }
+
+/* Inicio y vencimiento: la fila de fechas del formulario tiene tres columnas (prioridad, inicia, vence). */
+.tf-row--dates { grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); }
+.tf-help--error { color: var(--danger-text); }
+@media (max-width: 700px) { .tf-row--dates { grid-template-columns: minmax(0, 1fr); } }

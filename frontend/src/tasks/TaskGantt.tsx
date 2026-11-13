@@ -53,7 +53,7 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
           ))}
         </div>
         <button type="button" className="tasks-cal-step tasks-cal-today" onClick={centerToday}>Hoy</button>
-        <p className="tasks-cal-note">Cada barra va de que se creó la tarea a su vencimiento.</p>
+        <p className="tasks-cal-note">Cada barra va del inicio de la tarea a su vencimiento; sin inicio, desde que se creó.</p>
       </div>
       <div className="tasks-gantt-scroll" ref={scroller}>
         <div className="tasks-gantt-grid" role="list" aria-label="Línea de tiempo de tareas">
@@ -84,7 +84,8 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
               const left = daysBetween(from, start) * px;
               const width = ((end === null ? 0 : daysBetween(start, end)) + 1) * px;
               const outside = width < TITLE_INSIDE_PX;
-              const range = end === null ? `${formatDay(task.created_at)} · sin vencimiento` : `${formatDay(task.created_at)} → ${formatDue(task.due_at ?? `${end}T12:00:00Z`)}`;
+              const from_ = formatDay(task.start_at ?? task.created_at);
+              const range = end === null ? `desde ${from_} · sin vencimiento` : `${from_} → ${formatDue(task.due_at ?? `${end}T12:00:00Z`)}`;
               return (
                 <div key={task.id} role="listitem" id={`task-${task.id}`} className={`tasks-gantt-row${depth ? " tasks-gantt-row--sub" : ""}${isClosed(task) ? " tasks-row--closed" : ""}${actions.focusId === task.id ? " tasks-row--focus" : ""}`} data-status={task.status}>
                   <div className="tasks-gantt-label">

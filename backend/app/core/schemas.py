@@ -593,6 +593,7 @@ class TaskCreate(BaseModel):
     notes: TaskText | None = None
     status: Literal["pending", "in_progress", "done", "cancelled"] = "pending"
     priority: Literal["low", "medium", "high"] = "medium"
+    start_at: datetime | None = None
     due_at: datetime | None = None
     assignee_type: Literal["user", "agent"] = "user"
     assignee_agent_id: AgentId | None = None
@@ -614,6 +615,7 @@ class TaskUpdate(BaseModel):
     notes: TaskText | None = None
     status: Literal["pending", "in_progress", "done", "cancelled"] | None = None
     priority: Literal["low", "medium", "high"] | None = None
+    start_at: datetime | None = None
     due_at: datetime | None = None
     assignee_type: Literal["user", "agent"] | None = None
     assignee_agent_id: AgentId | None = None
@@ -638,6 +640,7 @@ class TaskOut(BaseModel):
     notes: str | None
     status: str
     priority: str
+    start_at: UtcDateTime | None = None
     due_at: UtcDateTime | None
     assignee_type: str
     assignee_agent_id: str | None

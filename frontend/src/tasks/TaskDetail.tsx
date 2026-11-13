@@ -106,6 +106,9 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
         <dl className="td-grid">
           <Field label="Asignada a"><Person task={task} /></Field>
           <Field label="Prioridad"><span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span></Field>
+          <Field label="Inicia">
+            {task.start_at ? <span className="td-due"><CalendarClock size={14} aria-hidden="true" /> {formatDue(task.start_at)}</span> : <span className="td-none">Sin fecha</span>}
+          </Field>
           <Field label="Vence">
             {task.due_at ? (
               <span className={`td-due${overdue ? " td-due--late" : ""}`}>
