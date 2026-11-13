@@ -92,13 +92,57 @@ describe("VaultTasks", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
   });
 
-  it("los filtros viven en la barra lateral", async () => {
+  it("los filtros viven en la barra lateral y acotan la lista", async () => {
     render(<Page />);
     await screen.findByText("Publicar el plan");
     const side = screen.getByTestId("side");
-    await userEvent.selectOptions(within(side).getByLabelText("Asignada a"), "aira");
+    expect(within(side).queryByRole("button", { name: "Limpiar filtros" })).toBeNull(); // sin filtros activos no hay qué limpiar
+    await userEvent.click(within(side).getByRole("combobox", { name: "Asignada a" }));
+    await userEvent.click(within(screen.getByRole("listbox")).getByRole("option", { name: /aira/ }));
     expect(screen.queryByText("Ya terminada")).not.toBeInTheDocument();
     expect(screen.getByText("Escribir borrador")).toBeInTheDocument();
+    expect(within(side).getByLabelText("1 filtro activo")).toBeInTheDocument();
+    await userEvent.click(within(side).getByRole("button", { name: "Limpiar filtros" }));
+    expect(await screen.findByText("Ya terminada")).toBeInTheDocument();
+    expect(within(side).queryByRole("button", { name: "Limpiar filtros" })).toBeNull();
+  });
+
+  it("el estado se filtra con botones que se pueden combinar y muestran cuántas tareas hay en cada uno", async () => {
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    const side = screen.getByTestId("side");
+    const done = within(side).getByRole("button", { name: /Hecha/ });
+    const pending = within(side).getByRole("button", { name: /Pendiente/ });
+    expect(done).toHaveTextContent("1"); // «Ya terminada»
+    expect(pending).toHaveTextContent("2"); // la raíz y la subtarea
+    expect(done).toHaveAttribute("aria-pressed", "false");
+    expect(within(side).getByText(/Sin elegir ninguno se muestran todos los estados/)).toBeInTheDocument();
+    await userEvent.click(done);
+    expect(done).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Ya terminada")).toBeInTheDocument();
+    expect(screen.queryByText("Publicar el plan")).not.toBeInTheDocument();
+    await userEvent.click(pending);
+    expect(screen.getByText("Publicar el plan")).toBeInTheDocument();
+    expect(within(side).getByText(/cualquiera de los estados marcados/)).toBeInTheDocument();
+  });
+
+  it("el vencimiento se elige entre opciones con su contador, y el aviso de vencidas lo selecciona de un clic", async () => {
+    vi.spyOn(api, "listTasks").mockResolvedValue([
+      task({ id: "a", title: "Atrasada", due_at: "2020-01-01T00:00:00Z" }), task({ id: "b", title: "Sin fecha" }),
+    ]);
+    render(<Page />);
+    await screen.findByText("Atrasada");
+    const side = screen.getByTestId("side");
+    const group = within(side).getByRole("radiogroup");
+    expect(within(group).getByRole("radio", { name: /Todas/ })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Vencidas/ }).closest("label")).toHaveTextContent("1");
+    await userEvent.click(within(side).getByRole("button", { name: /1 vencida/ }));
+    expect(within(group).getByRole("radio", { name: /Vencidas/ })).toBeChecked();
+    expect(screen.queryByText("Sin fecha", { selector: ".tasks-title" })).not.toBeInTheDocument();
+    expect(within(side).queryByRole("button", { name: /1 vencida/ })).toBeNull(); // ya filtrado: el atajo sobra
+    await userEvent.click(within(group).getByRole("radio", { name: /Sin fecha/ }));
+    expect(screen.getByText("Sin fecha", { selector: ".tasks-title" })).toBeInTheDocument();
+    expect(within(side).getByText(/de 2 tareas con estos filtros/)).toBeInTheDocument();
   });
 
   it("H-053: la tarea de un agente muestra su nombre visible y foto (asignada a, creada por) y las de la persona no gastan una consulta", async () => {

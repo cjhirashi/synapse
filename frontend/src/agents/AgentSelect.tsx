@@ -1,19 +1,21 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, CornerDownRight, User } from "lucide-react";
+import { ChevronDown, CornerDownRight, User, Users } from "lucide-react";
 import AgentBadge from "./AgentBadge";
 import "./agents.css";
 
 export interface AgentSelectProps {
   /** Nombre accesible del control (también su `aria-label`). */
   label: string;
-  /** `user` (la persona), `inherit` (si se ofrece) o el id de un agente. */
+  /** `all` (si se ofrece), `user` (la persona), `inherit` (si se ofrece) o el id de un agente. */
   value: string;
   onChange: (value: string) => void;
   /** Agentes que se pueden elegir (los registrados como gestores, más el ya asignado). */
   agents: string[];
   /** Ofrece «Igual que la tarea» como primera opción (subtareas). */
   inherit?: boolean;
+  /** Ofrece «Todas» como primera opción (filtros). */
+  all?: boolean;
   id?: string;
 }
 
@@ -22,6 +24,14 @@ interface Option {
 }
 
 function OptionLabel({ value }: { value: string }) {
+  if (value === "all") {
+    return (
+      <span className="agent-select-item">
+        <span className="agent-select-glyph" aria-hidden="true"><Users size={14} /></span>
+        Todas
+      </span>
+    );
+  }
   if (value === "user") {
     return (
       <span className="agent-select-item">
@@ -47,7 +57,7 @@ function OptionLabel({ value }: { value: string }) {
  * anuncia con `aria-activedescendant`. La lista va en un portal con posición fija para que el cuerpo con scroll de una
  * ventana emergente no la recorte; Escape la cierra sin cerrar la ventana que la contiene.
  */
-export default function AgentSelect({ label, value, onChange, agents, inherit = false, id }: AgentSelectProps) {
+export default function AgentSelect({ label, value, onChange, agents, inherit = false, all = false, id }: AgentSelectProps) {
   const base = useId();
   const listId = `${base}-list`;
   const button = useRef<HTMLButtonElement>(null);
@@ -56,7 +66,7 @@ export default function AgentSelect({ label, value, onChange, agents, inherit = 
   const [active, setActive] = useState(0);
   const [place, setPlace] = useState<{ left: number; width: number; top?: number; bottom?: number }>({ left: 0, width: 0 });
 
-  const options: Option[] = [...(inherit ? [{ value: "inherit" }] : []), { value: "user" }, ...agents.map((agent) => ({ value: agent }))];
+  const options: Option[] = [...(all ? [{ value: "all" }] : []), ...(inherit ? [{ value: "inherit" }] : []), { value: "user" }, ...agents.map((agent) => ({ value: agent }))];
   const selected = Math.max(0, options.findIndex((o) => o.value === value));
 
   function show() {

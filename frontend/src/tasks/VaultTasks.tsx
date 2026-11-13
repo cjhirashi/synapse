@@ -5,11 +5,11 @@ import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useSync } from "../sync/useSync";
 import { ApiError } from "../api/problems";
 import { getVaultAgentAccess } from "../settings/agentAccess";
+import TaskFilters from "./TaskFilters";
 import TaskForm from "./TaskForm";
 import { TaskCalendar, TaskKanban, TaskList, type ViewActions } from "./TaskViews";
 import {
-  NO_FILTER, STATUSES, STATUS_LABEL, buildPathIndex, buildTree, dateKey, filterTree, isClosed, isOverdue, type DueFilter,
-  type PathTarget, type TaskFilter,
+  NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, isClosed, type PathTarget, type TaskFilter,
 } from "./taskModel";
 import { createTask, deleteTask, listTasks, updateTask, type Task, type TaskInput, type TaskStatus } from "./tasksApi";
 import "./tasks.css";
@@ -49,10 +49,6 @@ function errorText(error: unknown, fallback: string): string {
   }
   return fallback;
 }
-
-const DUE_LABEL: Record<DueFilter, string> = {
-  all: "Todas", overdue: "Vencidas", today: "Hoy", week: "Próximos 7 días", none: "Sin fecha",
-};
 
 /** Pestaña «Tareas» de una bóveda (H-053): lista con subtareas, Kanban y Calendario, con filtros en la barra lateral. */
 export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = null, onOpenNote, onOpenFolder, onCloseSide, onOpenCount }: Props) {
@@ -167,33 +163,14 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const list = tasks ?? [];
   const tree = useMemo(() => filterTree(buildTree(list), filter), [list, filter]);
   const visible = useMemo(() => tree.flatMap((n) => [n.task, ...n.children]), [tree]);
-  const overdue = list.filter((t) => isOverdue(t)).length;
   const agentIds = Array.from(new Set([...agents, ...list.flatMap((t) => (t.assignee_agent_id ? [t.assignee_agent_id] : []))])).sort();
   const todayKey = dateKey(new Date().toISOString());
   const pathOptions = useMemo(() => [...paths.folders, ...Array.from(paths.notes.keys()).filter((p) => /\.md$/i.test(p))].sort(), [paths]);
 
+  const shownCount = tree.reduce((total, node) => total + 1 + node.children.length, 0);
   const filters = (
-    <div className="tasks-filters" style={{ "--vault-icon-color": accent } as CSSProperties}>
-      <button type="button" className="tasks-side-close" onClick={onCloseSide} aria-label="Cerrar filtros">×</button>
-      <h3>Asignada a</h3>
-      <select aria-label="Asignada a" value={filter.assignee} onChange={(e) => setFilter({ ...filter, assignee: e.target.value })}>
-        <option value="all">Todas</option>
-        <option value="user">Yo</option>
-        {agentIds.map((a) => <option key={a} value={a}>{a}</option>)}
-      </select>
-      <h3>Estado</h3>
-      {STATUSES.map((s) => (
-        <label key={s} className="tasks-check">
-          <input type="checkbox" checked={filter.statuses.includes(s)} onChange={(e) => setFilter({ ...filter, statuses: e.target.checked ? [...filter.statuses, s] : filter.statuses.filter((x) => x !== s) })} />
-          {STATUS_LABEL[s]}
-        </label>
-      ))}
-      <h3>Vence</h3>
-      <select aria-label="Vence" value={filter.due} onChange={(e) => setFilter({ ...filter, due: e.target.value as DueFilter })}>
-        {(Object.keys(DUE_LABEL) as DueFilter[]).map((d) => <option key={d} value={d}>{DUE_LABEL[d]}</option>)}
-      </select>
-      <button type="button" onClick={() => setFilter(NO_FILTER)}>Limpiar filtros</button>
-      <p className="tasks-side-note">{overdue > 0 ? `${overdue} vencida${overdue === 1 ? "" : "s"}. ` : ""}Las tareas cerradas se eliminan 30 días después de cerrarse.</p>
+    <div style={{ "--vault-icon-color": accent } as CSSProperties}>
+      <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} onClose={onCloseSide} />
     </div>
   );
 
