@@ -11,9 +11,32 @@
 .notices-time { color: var(--text-muted); font-size: 12px; }
 .notices-rail-glyph { position: relative; }
 .notices-badge { position: absolute; top: -4px; right: -6px; min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 10px; line-height: 16px; text-align: center; font-weight: 600; }
-.notices-settings { display: flex; flex-direction: column; gap: 12px; }
-.notices-settings label { display: flex; gap: 10px; align-items: flex-start; }
-.notices-settings small { display: block; color: var(--text-secondary); }
+/* Configuración de notificaciones (Ajustes): filas con icono, texto e interruptor; todo con tokens del tema. */
+.notices-settings { display: flex; flex-direction: column; }
+.notices-settings .settings-card { margin-bottom: var(--space-4); }
+.notif-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.notif-rows li + li { border-top: 1px solid var(--border); }
+.notif-row, .notif-device { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding: var(--space-3) 0; font-size: 14px; color: var(--text-primary); }
+label.notif-row { cursor: pointer; }
+.notif-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: var(--radius-md); background: var(--bg-tertiary); color: var(--text-secondary); }
+.notif-icon--on { background: var(--accent-soft); color: var(--accent); }
+.notif-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.notif-title { font-weight: 600; font-size: 14px; color: var(--text-primary); }
+.notif-hint { font-size: 13px; line-height: 1.4; color: var(--text-secondary); }
+.notif-pill { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); font-size: 12px; }
+.notif-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-2); }
+.notif-actions button { display: inline-flex; align-items: center; gap: 6px; }
+.notif-message { margin: var(--space-3) 0 0; font-size: 13px; color: var(--text-secondary); }
+.notif-times { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-top: var(--space-2); padding-left: calc(36px + var(--space-3)); }
+.notif-times label { display: flex; flex-direction: column; gap: 4px; margin: 0; font-size: 12px; color: var(--text-secondary); }
+.notif-times input { width: auto; min-width: 120px; margin: 0; }
+.notif-times input:disabled { opacity: .5; }
 
-.notices-settings h3 { margin: 1.4rem 0 .4rem; font-size: 1rem; }
-.notices-actions { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; }
+/* Interruptor: la casilla nativa (teclado y lectores de pantalla intactos) con aspecto de switch. */
+.notif-switch { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 40px; height: 22px; margin: 0; padding: 0; border-radius: 999px; border: 1px solid var(--border-control); background: var(--bg-tertiary); cursor: pointer; transition: background .15s, border-color .15s; }
+.notif-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-secondary); transition: transform .15s, background .15s; }
+.notif-switch:checked { background: var(--accent); border-color: var(--accent); }
+.notif-switch:checked::after { transform: translateX(18px); background: #fff; }
+.notif-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .notif-switch, .notif-switch::after { transition: none; } }
+@media (max-width: 560px) { .notif-times { padding-left: 0; } .notif-device { flex-wrap: wrap; } }

@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
+import { AlarmClock, BellOff, BellRing, CheckCheck, MonitorSmartphone, Moon, Send, UserPlus, type LucideIcon } from "lucide-react";
 import {
   getPreferences, pushStatus, sendTestPush, setPreference, setQuietHours, type NoticeKind, type Preferences, type PushStatus,
 } from "../notifications/notificationsApi";
 import { currentEndpoint, disablePush, enablePush, supportState, type PushSupport } from "../notifications/pushClient";
 import "../notifications/notifications.css";
 
-const OPTIONS: { kind: NoticeKind; label: string; hint: string }[] = [
-  { kind: "task_assigned", label: "Un agente me asigna una tarea", hint: "Aviso cuando un agente crea o te reasigna una tarea o subtarea." },
-  { kind: "task_status", label: "Un agente cambia el estado de una tarea mía", hint: "Aviso cuando un agente marca como hecha, en progreso o cancelada una tarea que creaste." },
-  { kind: "task_due", label: "Mis tareas vencen", hint: "Avisos a 24 h y a 1 h del vencimiento, y cuando una tarea vence sin cerrarse." },
+const OPTIONS: { kind: NoticeKind; label: string; hint: string; Icon: LucideIcon }[] = [
+  { kind: "task_assigned", label: "Un agente me asigna una tarea", hint: "Cuando un agente crea o te reasigna una tarea o subtarea.", Icon: UserPlus },
+  { kind: "task_status", label: "Un agente cambia el estado de una tarea mía", hint: "Cuando un agente la marca como hecha, en progreso o cancelada.", Icon: CheckCheck },
+  { kind: "task_due", label: "Mis tareas vencen", hint: "A 24 h y a 1 h del vencimiento, y cuando vence sin cerrarse.", Icon: AlarmClock },
 ];
 
 const SUPPORT_TEXT: Record<Exclude<PushSupport, "ready">, string> = {
@@ -65,45 +66,68 @@ export default function NotificationsSettingsPage() {
     await refreshDevice();
   });
 
+  const deviceOn = push?.enabled === true && support === "ready" && subscribed;
+  const quietText = prefs?.quiet.enabled ? `No recibirás notificaciones en el dispositivo de ${prefs.quiet.start} a ${prefs.quiet.end} (hora de Ciudad de México).` : "Recibirás notificaciones a cualquier hora.";
+
   return (
     <section className="notices-settings">
       <h2>Notificaciones</h2>
-      <p className="settings-section-intro">Elige qué avisos recibes en la pantalla Avisos. Un tipo apagado deja de generarse.</p>
+      <p className="settings-section-intro">Decide qué te avisa Synapse y cuándo. Los avisos siempre quedan en la pantalla Avisos.</p>
       {failed && <p className="tasks-error" role="alert">No se pudo leer o guardar la configuración.</p>}
-      {prefs && OPTIONS.map(({ kind, label, hint }) => (
-        <label key={kind}>
-          <input type="checkbox" checked={prefs.kinds[kind] ?? true} onChange={(e) => void toggle(kind, e.target.checked)} />
-          <span>{label}<small>{hint}</small></span>
-        </label>
-      ))}
 
-      <h3>En este dispositivo</h3>
-      {push && !push.enabled && <p className="settings-section-intro">El servidor no tiene configuradas las notificaciones en el dispositivo.</p>}
-      {push?.enabled && support !== "ready" && <p className="settings-section-intro">{SUPPORT_TEXT[support]}</p>}
-      {push?.enabled && support === "ready" && (
-        <p className="notices-actions">
-          {subscribed
-            ? <button type="button" onClick={() => void deactivate()}>Desactivar en este dispositivo</button>
-            : <button type="button" onClick={() => void activate()}>Activar notificaciones</button>}
-          {push.devices > 0 && <button type="button" onClick={() => void test()}>Enviar aviso de prueba</button>}
-        </p>
-      )}
-      {push?.enabled && <p className="settings-section-intro">Dispositivos con notificaciones: {push.devices}.</p>}
-      {message && <p role="status">{message}</p>}
+      <div className="settings-card">
+        <h3>Qué avisos recibo</h3>
+        <ul className="notif-rows">
+          {prefs && OPTIONS.map(({ kind, label, hint, Icon }) => (
+            <li key={kind}>
+              <label className="notif-row">
+                <span className="notif-icon" aria-hidden="true"><Icon size={18} /></span>
+                <span className="notif-text"><span className="notif-title">{label}</span><span className="notif-hint">{hint}</span></span>
+                <input className="notif-switch" type="checkbox" checked={prefs.kinds[kind] ?? true} onChange={(e) => void toggle(kind, e.target.checked)} />
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="settings-card">
+        <h3>En este dispositivo</h3>
+        <div className="notif-device">
+          <span className={`notif-icon notif-icon--${deviceOn ? "on" : "off"}`} aria-hidden="true">{deviceOn ? <BellRing size={18} /> : <BellOff size={18} />}</span>
+          <span className="notif-text">
+            <span className="notif-title">{deviceOn ? "Notificaciones activadas" : "Notificaciones desactivadas"}</span>
+            <span className="notif-hint">
+              {push && !push.enabled && "El servidor no tiene configuradas las notificaciones en el dispositivo."}
+              {push?.enabled && support !== "ready" && SUPPORT_TEXT[support]}
+              {push?.enabled && support === "ready" && (deviceOn ? "Este dispositivo recibirá avisos aunque la app esté cerrada." : "Actívalas para recibir avisos aunque la app esté cerrada.")}
+            </span>
+          </span>
+          {push && push.devices > 0 && <span className="notif-pill"><MonitorSmartphone size={14} aria-hidden="true" /> {push.devices} {push.devices === 1 ? "dispositivo" : "dispositivos"}</span>}
+        </div>
+        {push?.enabled && support === "ready" && (
+          <div className="notif-actions">
+            {subscribed
+              ? <button type="button" onClick={() => void deactivate()}>Desactivar en este dispositivo</button>
+              : <button type="button" className="btn-primary" onClick={() => void activate()}>Activar notificaciones</button>}
+            {push.devices > 0 && <button type="button" onClick={() => void test()}><Send size={14} aria-hidden="true" /> Enviar aviso de prueba</button>}
+          </div>
+        )}
+        {message && <p className="notif-message" role="status">{message}</p>}
+      </div>
 
       {prefs && (
-        <>
+        <div className="settings-card">
           <h3>Horas silenciosas</h3>
-          <p className="settings-section-intro">Dentro de este horario (hora de Ciudad de México) no se envían notificaciones al dispositivo; los avisos siguen en la pantalla Avisos.</p>
-          <label>
-            <input type="checkbox" checked={prefs.quiet.enabled} onChange={(e) => void saveQuiet({ enabled: e.target.checked })} />
-            <span>Activar horas silenciosas</span>
+          <label className="notif-row">
+            <span className="notif-icon" aria-hidden="true"><Moon size={18} /></span>
+            <span className="notif-text"><span className="notif-title">Activar horas silenciosas</span><span className="notif-hint">{quietText}</span></span>
+            <input className="notif-switch" type="checkbox" checked={prefs.quiet.enabled} onChange={(e) => void saveQuiet({ enabled: e.target.checked })} />
           </label>
-          <p className="notices-actions">
-            <label>Desde <input type="time" aria-label="Inicio de horas silenciosas" value={prefs.quiet.start} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ start: e.target.value })} /></label>
-            <label>Hasta <input type="time" aria-label="Fin de horas silenciosas" value={prefs.quiet.end} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ end: e.target.value })} /></label>
-          </p>
-        </>
+          <div className="notif-times">
+            <label>Desde<input type="time" aria-label="Inicio de horas silenciosas" value={prefs.quiet.start} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ start: e.target.value })} /></label>
+            <label>Hasta<input type="time" aria-label="Fin de horas silenciosas" value={prefs.quiet.end} disabled={!prefs.quiet.enabled} onChange={(e) => e.target.value && void saveQuiet({ end: e.target.value })} /></label>
+          </div>
+        </div>
       )}
     </section>
   );
