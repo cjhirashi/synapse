@@ -205,7 +205,7 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
                             </span>
                           )}
                           <span className="docaside-who" title="Asignada a">
-                            {task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={14} showName={false} /> : <UserBadge size={14} label={null} />}
+                            {task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={28} showName={false} /> : <UserBadge size={28} label={null} />}
                           </span>
                         </span>
                       </button>
@@ -220,7 +220,7 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
                           </label>
                           {task.description && <p className="docaside-text">{task.description}</p>}
                           <dl className="docaside-facts">
-                            <div><dt>Responsable</dt><dd>{task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={16} /> : <UserBadge size={16} />}</dd></div>
+                            <div><dt>Responsable</dt><dd>{task.assignee_type === "agent" && task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={28} /> : <UserBadge size={28} />}</dd></div>
                             <div><dt>Prioridad</dt><dd>{PRIORITY_LABEL[task.priority]}</dd></div>
                             <div><dt>Inicia</dt><dd>{task.start_at ? formatDue(task.start_at) : "Sin fecha"}</dd></div>
                             <div><dt>Vence</dt><dd className={isOverdue(task) ? "is-late" : undefined}>{task.due_at ? formatDue(task.due_at) : "Sin fecha"}{isOverdue(task) && " · Vencida"}</dd></div>

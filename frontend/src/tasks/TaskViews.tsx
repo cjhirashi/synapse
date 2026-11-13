@@ -23,9 +23,9 @@ export interface ViewActions {
 }
 
 /** Quién la asigna o la creó, con su foto y nombre cuando es un agente (H-053). */
-function Assignee({ task }: { task: Task }) {
-  if (task.assignee_type !== "agent") return <UserBadge size={16} />;
-  return task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={16} /> : <>agente</>;
+function Assignee({ task, size = 28 }: { task: Task; size?: number }) {
+  if (task.assignee_type !== "agent") return <UserBadge size={size} />;
+  return task.assignee_agent_id ? <AgentBadge agentId={task.assignee_agent_id} size={size} /> : <>agente</>;
 }
 
 function creatorAgent(task: Task): string | null {
@@ -76,7 +76,7 @@ function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; act
       <span className="tasks-cell tasks-cell--who">
         <span className="tasks-who" title="Asignada a"><Assignee task={task} /></span>
         <span className="tasks-creator" title="Creada por">
-          Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={14} /> : task.created_by === "user" ? <UserBadge size={14} /> : "un agente"}
+          Creó: {creatorAgent(task) ? <AgentBadge agentId={creatorAgent(task)!} size={18} /> : task.created_by === "user" ? <UserBadge size={18} /> : "un agente"}
         </span>
       </span>
       {task.due_at ? (

@@ -24,15 +24,15 @@ interface Props {
 }
 
 function Person({ task }: { task: Task }) {
-  if (task.assignee_type === "agent" && task.assignee_agent_id) return <AgentBadge agentId={task.assignee_agent_id} size={22} />;
+  if (task.assignee_type === "agent" && task.assignee_agent_id) return <AgentBadge agentId={task.assignee_agent_id} size={36} />;
   return <UserBadge size={22} />;
 }
 
 /** Quién la creó: la persona o un agente (el servidor guarda `user` o `agent:<id>`). */
 function Creator({ value }: { value: string }) {
-  if (value === "user") return <UserBadge size={22} />;
+  if (value === "user") return <UserBadge size={36} />;
   const id = value.startsWith("agent:") ? value.slice(6) : "";
-  return id && id !== "general" ? <AgentBadge agentId={id} size={22} /> : <>Un agente (clave general)</>;
+  return id && id !== "general" ? <AgentBadge agentId={id} size={36} /> : <>Un agente (clave general)</>;
 }
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -168,7 +168,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
                         <span className={`td-sub-title${isClosed(sub) ? " td-sub-title--closed" : ""}`}>{sub.title}</span>
                         {sub.description && <span className="td-sub-desc">{sub.description}</span>}
                       </span>
-                      {sub.assignee_type === "agent" && sub.assignee_agent_id && <AgentBadge agentId={sub.assignee_agent_id} size={18} />}
+                      {sub.assignee_type === "agent" && sub.assignee_agent_id && <AgentBadge agentId={sub.assignee_agent_id} size={26} />}
                       <span className="tasks-chip" data-status={sub.status}>{STATUS_LABEL[sub.status]}</span>
                     </button>
                   </li>
