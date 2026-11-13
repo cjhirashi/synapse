@@ -93,6 +93,25 @@ describe("VaultTasks", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
   });
 
+  it("Kanban: arrastrar una tarjeta a otra columna cambia su estado; la raíz con subtareas no se arrastra", async () => {
+    const update = vi.spyOn(api, "updateTask").mockResolvedValue(CHILD);
+    render(<Page />);
+    await screen.findByText("Publicar el plan");
+    await userEvent.click(screen.getByRole("tab", { name: /Kanban/ }));
+    const pending = screen.getByRole("region", { name: "Pendiente" });
+    const card = within(pending).getByText("Escribir borrador").closest("article")!;
+    expect(card).toHaveAttribute("draggable", "true");
+    expect(within(pending).getByText("Publicar el plan").closest("article")).toHaveAttribute("draggable", "false");
+    const data = { setData: vi.fn(), getData: () => "c", effectAllowed: "", dropEffect: "" };
+    fireEvent.dragStart(card, { dataTransfer: data });
+    const target = screen.getByRole("region", { name: "En progreso" });
+    fireEvent.dragOver(target, { dataTransfer: data });
+    expect(target).toHaveAttribute("data-over", "true");
+    fireEvent.drop(target, { dataTransfer: data });
+    expect(update).toHaveBeenCalledWith("v", CHILD, { status: "in_progress" });
+    expect(within(screen.getByRole("region", { name: "En progreso" })).getByText("Escribir borrador")).toBeInTheDocument();
+  });
+
   it("los filtros viven en la barra lateral y acotan la lista", async () => {
     render(<Page />);
     await screen.findByText("Publicar el plan");

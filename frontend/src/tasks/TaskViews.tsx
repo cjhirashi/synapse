@@ -1,7 +1,7 @@
 import { useState } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
-import { CalendarClock, ChevronDown, ChevronRight, FileText, Folder, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronRight, FileText, Folder, GripVertical, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue,
   resolvePath, type PathIndex, type PathTarget, type TaskNode,
@@ -112,33 +112,97 @@ export function TaskList({ nodes, actions }: { nodes: TaskNode[]; actions: ViewA
   return <ul className="tasks-list">{nodes.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>;
 }
 
+const COLUMN_HINT: Record<TaskStatus, string> = {
+  pending: "Suelta aquí lo que aún no empieza",
+  in_progress: "Suelta aquí lo que ya está en marcha",
+  done: "Suelta aquí lo que ya terminó",
+  cancelled: "Suelta aquí lo que se descartó",
+};
+
 export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewActions }) {
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [over, setOver] = useState<TaskStatus | null>(null);
   const parents = new Map(tasks.map((t) => [t.id, t]));
-  const kids = buildTree(tasks);
-  const progress = new Map(kids.map((n) => [n.task.id, n.children]));
+  const progress = new Map(buildTree(tasks).map((n) => [n.task.id, n.children]));
+
+  function endDrag() {
+    setDragId(null);
+    setOver(null);
+  }
+
+  function drop(event: React.DragEvent, status: TaskStatus) {
+    event.preventDefault();
+    const id = dragId ?? event.dataTransfer.getData("text/plain");
+    const task = tasks.find((t) => t.id === id);
+    endDrag();
+    if (task && task.status !== status) actions.onStatus(task, status);
+  }
+
   return (
-    <div className="tasks-kanban">
+    <div className="tasks-kanban" data-dragging={dragId ? "true" : undefined}>
       {STATUSES.map((status) => {
         const column = tasks.filter((t) => t.status === status);
+        const dragged = dragId ? tasks.find((t) => t.id === dragId) : undefined;
+        const accepts = !!dragged && dragged.status !== status;
         return (
-          <section key={status} className="tasks-column" aria-label={STATUS_LABEL[status]}>
-            <h3>{STATUS_LABEL[status]} <span>{column.length}</span></h3>
-            {column.map((task) => {
-              const children = progress.get(task.id) ?? [];
-              const parent = task.parent_id ? parents.get(task.parent_id) : undefined;
-              return (
-                <article key={task.id} className={`tasks-card${actions.focusId === task.id ? " tasks-row--focus" : ""}`} id={`task-${task.id}`}>
-                  {parent && <p className="tasks-card-parent">↳ {parent.title}</p>}
-                  <p className="tasks-title"><button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>{children.length > 0 && <span className="tasks-progress"> {children.filter(isClosed).length}/{children.length}</span>}</p>
-                  <TaskMeta task={task} actions={actions} />
-                  <div className="tasks-card-foot">
-                    <StatusSelect task={task} locked={children.length > 0} onStatus={actions.onStatus} />
-                    {!task.parent_id && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
-                    <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
-                  </div>
-                </article>
-              );
-            })}
+          <section
+            key={status} className="tasks-column" data-status={status} aria-label={STATUS_LABEL[status]}
+            data-over={over === status && accepts ? "true" : undefined}
+            onDragOver={(e) => { if (!dragId) return; e.preventDefault(); e.dataTransfer.dropEffect = accepts ? "move" : "none"; if (over !== status) setOver(status); }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver((cur) => (cur === status ? null : cur)); }}
+            onDrop={(e) => drop(e, status)}
+          >
+            <h3 className="tasks-column-head">
+              <span className="tasks-dot" aria-hidden="true" />
+              <span className="tasks-column-name">{STATUS_LABEL[status]}</span>
+              <span className="tasks-column-count">{column.length}</span>
+            </h3>
+            <div className="tasks-column-body">
+              {column.map((task) => {
+                const children = progress.get(task.id) ?? [];
+                const locked = children.length > 0;
+                const parent = task.parent_id ? parents.get(task.parent_id) : undefined;
+                return (
+                  <article
+                    key={task.id} id={`task-${task.id}`} data-status={task.status} data-locked={locked ? "true" : undefined}
+                    data-dragging={dragId === task.id ? "true" : undefined}
+                    className={`tasks-card${actions.focusId === task.id ? " tasks-row--focus" : ""}${isClosed(task) ? " tasks-row--closed" : ""}`}
+                    draggable={!locked}
+                    title={locked ? "Su estado sale de sus subtareas: mueve las subtareas" : undefined}
+                    onDragStart={(e) => { if (locked) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); setDragId(task.id); }}
+                    onDragEnd={endDrag}
+                  >
+                    {parent && <p className="tasks-card-parent">↳ {parent.title}</p>}
+                    <p className="tasks-card-title tasks-title">
+                      {!locked && <GripVertical size={14} className="tasks-grip" aria-hidden="true" />}
+                      {locked && <Lock size={12} className="tasks-lock" aria-hidden="true" />}
+                      <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
+                      {locked && <span className="tasks-progress"> {children.filter(isClosed).length}/{children.length}</span>}
+                    </p>
+                    {task.description && <p className="tasks-card-desc">{task.description}</p>}
+                    <span className="tasks-meta">
+                      <span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span>
+                      {task.due_at && (
+                        <span className={`tasks-chip${isOverdue(task) ? " tasks-chip--overdue" : ""}`} title={formatDue(task.due_at)}>
+                          <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
+                        </span>
+                      )}
+                      <PathChip task={task} actions={actions} />
+                      {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
+                    </span>
+                    <div className="tasks-card-foot">
+                      <span className="tasks-card-who" title="Asignada a"><Assignee task={task} /></span>
+                      <span className="tasks-card-tools">
+                        <StatusSelect task={task} locked={locked} onStatus={actions.onStatus} />
+                        {!task.parent_id && <button type="button" className="tasks-icon-btn" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={14} aria-hidden="true" /></button>}
+                        <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
+                      </span>
+                    </div>
+                  </article>
+                );
+              })}
+              {column.length === 0 && <p className="tasks-column-empty">{dragId ? COLUMN_HINT[status] : "Sin tareas"}</p>}
+            </div>
           </section>
         );
       })}

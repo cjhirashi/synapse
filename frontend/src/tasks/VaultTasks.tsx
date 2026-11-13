@@ -170,7 +170,11 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const actions: ViewActions = {
     pathIndex: paths,
     focusId: focusTaskId,
-    onStatus: (task, status: TaskStatus) => void run(() => updateTask(vaultId, task, { status })),
+    onStatus: (task, status: TaskStatus) => {
+      // Mueve la tarjeta al instante; `run` relee del servidor y deja el estado real (o la devuelve si falló).
+      setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, status } : t)) : list));
+      void run(() => updateTask(vaultId, task, { status }));
+    },
     onOpen: (task) => setDialog({ kind: "detail", id: task.id }),
     onEdit: (task) => { setFormError(null); setDialog({ kind: "form", task }); },
     onAddSubtask: (parent) => { setFormError(null); setDialog({ kind: "form", parent }); },
