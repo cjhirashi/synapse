@@ -654,10 +654,10 @@ Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas
 | `POST /vaults/{id}/tasks` | Crea una tarea; con `parent_id` crea una subtarea. 201 con `ETag`. |
 | `POST /vaults/{id}/tasks/{task_id}/subtasks` | Crea una subtarea bajo `task_id` (manda la ruta). |
 | `GET /vaults/{id}/tasks/{task_id}` | Lee una tarea (`ETag` = `"<version>"`). |
-| `PATCH /vaults/{id}/tasks/{task_id}` | Cambia solo lo enviado (un `null` vacía `description`, `notes`, `due_at` y `path`, y devuelve `reminders` a los de siempre). `If-Match: "<version>"` opcional. |
+| `PATCH /vaults/{id}/tasks/{task_id}` | Cambia solo lo enviado (un `null` vacía `description`, `notes`, `start_at`, `due_at` y `path`, y devuelve `reminders` a los de siempre). `If-Match: "<version>"` opcional. |
 | `DELETE /vaults/{id}/tasks/{task_id}` | Borra la tarea y, si es raíz, sus subtareas. 204. |
 
-**Campos de entrada:** `title` (1 a 255), `description`, `notes` (≤ 20 000), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `due_at` (con zona; se guarda en UTC), `assignee_type` (`user`, `agent`), `assignee_agent_id`, `path`, `reminders`, `sort_order`. Cualquier otro campo → 422.
+**Campos de entrada:** `title` (1 a 255), `description`, `notes` (≤ 20 000), `status` (`pending`, `in_progress`, `done`, `cancelled`), `priority` (`low`, `medium`, `high`), `start_at` (inicio, con zona; se guarda en UTC; nunca posterior a `due_at`, 422 `/start_at`; migración 017), `due_at` (con zona; se guarda en UTC), `assignee_type` (`user`, `agent`), `assignee_agent_id`, `path`, `reminders`, `sort_order`. Cualquier otro campo → 422.
 
 **Salida (`TaskOut`):** los anteriores más `id`, `vault_id`, `parent_id`, `created_by` y `updated_by` (`user` o `agent:<id>`), `version`, `created_at`, `updated_at`, `completed_at` y `purge_at`. Las fechas van en UTC con `Z`.
 
@@ -666,6 +666,7 @@ Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas
 - `assignee_type: agent` exige `assignee_agent_id` de un agente registrado y activo en la bóveda (422, `/assignee_agent_id`). Volver a `user` limpia el agente.
 - Una raíz con subtareas toma su estado de ellas: alguna en curso o hecha → `in_progress`; todas cerradas → `done` (o `cancelled` si todas se cancelaron); si no, `pending`. Cambiarlo a mano da 422 (`/status`). Se recalcula al crear, cambiar o borrar una subtarea.
 - `path` es indicativa: se normaliza (sin `/` en los extremos) y se rechaza solo si tiene niveles vacíos, `.`, `..`, `\` o más de 500 caracteres (422, `/path`); no se comprueba que el documento o la carpeta existan.
+- `start_at` y `due_at` son opcionales y se validan como par: el inicio no puede quedar después del vencimiento (422, `/start_at`), también cuando solo se cambia uno de los dos. La vista **Línea de tiempo (Gantt)** de la app solo dibuja las tareas que tienen ambas; las que no, siguen siendo válidas y se ven en Lista, Kanban y Calendario.
 - `If-Match` con una versión distinta de la vigente → 412 `task-precondition-failed`.
 - **Retención:** una raíz cerrada (`done` o `cancelled`) se elimina con sus subtareas `TASKS_RETENTION_DAYS` (30) días después de `completed_at`, en un ciclo de fondo (`TASKS_JOBS_INTERVAL_SECONDS`, 300). Sin papelera; una subtarea nunca se elimina sola; reabrir la tarea borra `completed_at`. `purge_at` lo informa en las raíces cerradas.
 

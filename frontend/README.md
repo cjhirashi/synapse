@@ -108,7 +108,8 @@ El editor se carga con `React.lazy` al abrir una bóveda: Milkdown y CodeMirror 
 
 - `src/notes/VaultRail.tsx` — riel lateral dividido en dos zonas:
   - **Superior:** lista de bóvedas con scroll vertical (ocupa el espacio disponible).
-  - **Inferior:** tres enlaces fijos (Archivos, Papelera, Usuario) + foto/iniciales del usuario.
+  - **Inferior:** dos enlaces fijos (Papelera, Usuario) + foto/iniciales del usuario. Desde H-052 Archivos es una pestaña de cada
+    bóveda y ya no hay ventana global.
 - `src/layout/AppLayout.tsx` — contenedor principal: navbar (marca + «Bóvedas») + riel +
   contenido. H-028 A7: salen de la navbar los enlaces Archivos/Papelera (al riel), el
   `ThemeToggle` (a `src/settings/ThemePage.tsx`) y el `AccountMenu`, que se elimina (su
@@ -158,6 +159,21 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
   usuario autenticado (reutilizada de SPEC-0002).
 - Rutas en `src/App.tsx`: `/settings` redirige a `/settings/profile`; las demás son
   sub-rutas bajo `<SettingsPage>` (Outlet de React Router dentro de `<AppLayout>`).
+
+## Tareas, avisos y app instalable (H-053)
+
+- `src/tasks/` — pestaña «Tareas» de cada bóveda (`VaultTasks.tsx`): `taskModel.ts` (reglas puras: estados, filas del Gantt, calendario,
+  arrastre de barras), `tasksApi.ts` (cliente de `/vaults/{id}/tasks`), `TaskViews.tsx` (Lista y Kanban), `TaskCalendar.tsx` (año, mes,
+  semana y día), `TaskGantt.tsx` (línea de tiempo: solo dibuja las tareas con inicio y vencimiento; barras arrastrables con puntero y
+  con Alt + flechas), `TaskForm.tsx`, `TaskDetail.tsx`, `TaskFilters.tsx` y `ReminderEditor.tsx`. El Kanban no se ofrece en móvil.
+- `src/agents/` — `AgentBadge`/`UserBadge` (foto y nombre de agentes y personas), `AgentSelect` y el editor de perfil de agente
+  (nombre visible y foto por `agent_id`).
+- `src/notes/DocAside.tsx` — barra derecha del documento: pestañas «Índice» (encabezados) y «Tareas» (las ligadas por su `path`).
+- `src/notifications/` — campana, bandeja `/avisos` y cliente de Web Push; `src/settings/NotificationsSettingsPage.tsx` en
+  `/settings/notifications` (tipos, horas silenciosas, dispositivos, aviso de prueba).
+- `src/pwa/` y `public/sw.js` — service worker propio (sin Workbox) que guarda solo los assets con huella y atiende los push; cada
+  build sella `sw.js` con su versión y la app ofrece «Actualizar» sin recarga automática; busca versiones nuevas al volver a ella y
+  cada 10 minutos.
 
 ## Convenciones
 

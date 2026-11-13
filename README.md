@@ -5,7 +5,7 @@ se editan sin conexión y se sincronizan, más archivos adjuntos. Sin IA interna
 externos (OpenClaw) acceden vía API REST con una API key.
 
 **Stack:** FastAPI · PostgreSQL (control plane: usuarios, sesiones, API keys, metadatos de
-archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos de archivos) · React + TypeScript + Vite  
+archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos de archivos) · React + TypeScript + Vite (app instalable, PWA con service worker propio y Web Push)  
 **Despliegue:** Docker Compose en servidor local Ubuntu (self-hosted); dominio vía `SYNAPSE_DOMAIN`.
 
 ## Qué hace hoy
@@ -29,10 +29,22 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   (conversaciones como carpetas, solo las escriben los agentes). Una **skill global** y una plantilla
   de sistema se publican en todas las bóvedas y no se pueden editar desde la plataforma
   (`backend/app/system_docs/`).
+- **Tareas por bóveda (H-053):** pestaña «Tareas» con dos niveles (tarea y subtareas), asignables a la persona o a un
+  agente, con inicio, vencimiento, hasta 5 recordatorios y una ruta indicativa a un documento o carpeta. Cuatro vistas:
+  **Lista**, **Kanban** (arrastre entre columnas), **Calendario** (año, mes, semana y día) y **Línea de tiempo (Gantt)**, que solo
+  dibuja las tareas con inicio y vencimiento y permite arrastrar sus barras. Cada tarea tiene detalle completo, filtros con
+  contadores, permisos por agente y retención de 30 días tras cerrarse. La barra derecha del documento muestra su índice de
+  encabezados y las tareas ligadas a él.
+- **Avisos y app instalable (H-053):** bandeja de avisos (`/avisos`) por asignación, cambio de estado de un agente y
+  vencimientos; preferencias por tipo y horas silenciosas (22:00–07:00 por defecto, hora de México); la app se instala como PWA y
+  envía Web Push (VAPID) con aviso de versión nueva.
+- **Agentes con nombre y foto:** cada agente tiene nombre visible y foto editables desde API keys; aparecen en tareas, bitácora
+  y listas.
 - **Propiedades de las notas:** metadatos tipados (texto, fecha, selección, selección múltiple)
   separados del cuerpo, sin YAML en el texto.
 - **Cuenta:** login con cookie + refresh, cambio forzado de contraseña, gestión de API keys en
-  `/settings/api-keys`, administración de agentes en `/settings/agent-access`, tema claro/oscuro/sistema.
+  `/settings/api-keys`, administración de agentes en `/settings/agent-access`, notificaciones en
+  `/settings/notifications`, tema claro/oscuro/sistema. Ajustes es una pantalla aparte, con «Volver a bóvedas».
 
 ## Estructura
 
@@ -46,7 +58,7 @@ synapse/
 │   │   ├── services/ # Lógica de negocio
 │   │   ├── adapters/ # Implementaciones concretas (CouchDB, Postgres, MinIO)
 │   │   └── routers/  # Endpoints FastAPI (adaptadores primarios)
-│   ├── alembic/      # Migraciones del control plane (001…009)
+│   ├── alembic/      # Migraciones del control plane (001…017)
 │   ├── scripts/      # Operación: migraciones de datos, claves por agente, purga, publicación de la skill global (ver scripts/README.md)
 │   └── tests/
 ├── frontend/         # React + TypeScript + PouchDB (SPA offline-first)
@@ -72,7 +84,7 @@ curl http://localhost:8000/health
 
 Tests y comandos de cada parte: [`backend/README.md`](backend/README.md) y
 [`frontend/README.md`](frontend/README.md); operación: [`backend/scripts/README.md`](backend/scripts/README.md).
-Cómo se trabaja y qué sigue: `AGENTS.md` y `.harness/backlog.md`. Estado a 2026-11-05: en producción.
+Cómo se trabaja y qué sigue: `AGENTS.md` y `.harness/backlog.md`. Estado a 2026-11-13: en producción.
 
 ## Licencia
 

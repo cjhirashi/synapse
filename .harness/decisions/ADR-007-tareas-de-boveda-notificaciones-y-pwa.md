@@ -77,3 +77,17 @@ spec propia, y por orden de Carlos (2026-11-12) este ADR es esa spec. Por eso `b
 20. **La bitácora se decora al mostrarla**: la app sustituye `aira (agente)` por `Nombre (aira, agente)` y antepone la foto con una imagen
     Markdown hacia la ruta exacta `/agent-profiles/<id>/photo?v=N`, única ruta relativa que el editor admite como imagen y que pinta como
     avatar pequeño, sin pantalla completa. El documento guardado no se modifica.
+
+## Fase 4: vistas de tareas, línea de tiempo y barra del documento
+
+21. **Cuatro vistas sobre las mismas tareas:** Lista (tabla con subtareas en las mismas columnas), Kanban (arrastre entre columnas; no
+    se ofrece en móvil), Calendario (año, mes, semana y día) y Línea de tiempo (Gantt). Filtros combinables con contadores en la barra
+    lateral. La pestaña toma el color de la bóveda.
+22. **Inicio por tarea (`start_at`, migración 017):** columna opcional; el inicio nunca es posterior al vencimiento (422 `/start_at`),
+    también cuando solo se cambia uno de los dos. Sustituye la suposición «la barra empieza al crearse».
+23. **El Gantt solo dibuja tareas con inicio y vencimiento** (orden de Carlos, 2026-11-13). Una tarea sin alguna de las dos fechas sigue
+    siendo válida y aparece en las demás vistas; la línea de tiempo avisa cuántas no se dibujan. Una subtarea con fechas cuya raíz no
+    las tiene se muestra suelta, indicando de cuál cuelga. Las barras se arrastran con el puntero (mover, cambiar inicio o vencimiento) o
+    con el teclado (Alt + flechas) y conservan las horas de cada fecha.
+24. **Barra derecha del documento:** pestañas «Índice» (encabezados, con salto) y «Tareas» (las cuya `path` indicativa es ese documento,
+    con detalle, estado editable y subtareas en su tarjeta); ocultable, y flotante en móvil.
