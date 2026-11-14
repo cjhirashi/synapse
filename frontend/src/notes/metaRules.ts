@@ -43,6 +43,9 @@ export const PDF_PAGE_PX = { carta: [816, 1056], a4: [794, 1123] } as const;
 export const PDF_MARGINS = ["superior", "inferior", "izquierdo", "derecho"] as const;
 export const PDF_MARGIN_MAX_MM = 60;
 export const PDF_FONT_PT = [6, 48] as const;
+export const PDF_HEADING_LEVELS = ["h1", "h2", "h3", "h4"] as const; // H5 y H6 usan el estilo de H4
+export const PDF_LINE_PT = [0.25, 6] as const;
+export const PDF_BAND_MM = [0, 60] as const;
 export const PDF_TEXT_MAX = 200;
 export const PDF_SPECIALS = ["titulo", "fecha", "pagina", "paginas"] as const;
 const PDF_FILE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
@@ -290,21 +293,29 @@ function checkBlock(block: unknown, allowed: Record<string, Check>): boolean {
 
 /** Forma de `estilo.pdf` (H-036). `{}` es válido y significa «sin PDF». */
 export function checkPdfStyle(pdf: unknown): boolean {
+  const color: Check = (v) => typeof v === "string" && PDF_COLOR_RE.test(v);
   const font: Record<string, Check> = {
     familia: (v) => (PDF_FONTS as readonly string[]).includes(v as string),
     tamano_pt: (v) => isNum(v, PDF_FONT_PT[0], PDF_FONT_PT[1]),
-    color: (v) => typeof v === "string" && PDF_COLOR_RE.test(v),
+    color,
   };
+  // `encabezados` admite los cuatro niveles (`h1` a `h4`) y, por compatibilidad con plantillas guardadas antes, la forma plana (vale para H1).
+  const headings: Record<string, Check> = { ...font, ...Object.fromEntries(PDF_HEADING_LEVELS.map((level) => [level, (v: unknown) => checkBlock(v, font)])) };
   const margins = Object.fromEntries(PDF_MARGINS.map((key) => [key, (v: unknown) => isNum(v, 0, PDF_MARGIN_MAX_MM)]));
+  const line: Record<string, Check> = { activa: (v) => typeof v === "boolean", color, grosor_pt: (v) => isNum(v, PDF_LINE_PT[0], PDF_LINE_PT[1]) };
   const band: Record<string, Check> = {
     imagen: (v) => v === null || (typeof v === "string" && PDF_FILE_ID_RE.test(v)),
     izquierda: checkPdfText, centro: checkPdfText, derecha: checkPdfText,
+    fuente: (v) => checkBlock(v, font),
+    linea: (v) => checkBlock(v, line),
+    distancia_mm: (v) => isNum(v, PDF_BAND_MM[0], PDF_BAND_MM[1]),
+    sangria_mm: (v) => isNum(v, PDF_BAND_MM[0], PDF_BAND_MM[1]),
   };
   return checkBlock(pdf, {
     activo: (v) => typeof v === "boolean",
     incluir_atributos: (v) => typeof v === "boolean",
     pagina: (v) => checkBlock(v, { tamano: (t) => (PDF_PAGE_SIZES as readonly string[]).includes(t as string), margenes_mm: (m) => checkBlock(m, margins) }),
-    encabezados: (v) => checkBlock(v, font),
+    encabezados: (v) => checkBlock(v, headings),
     texto: (v) => checkBlock(v, font),
     encabezado: (v) => checkBlock(v, band),
     pie: (v) => checkBlock(v, { ...band, imagen: (image) => image === null }), // el pie no lleva imagen (solo `null` por compatibilidad)

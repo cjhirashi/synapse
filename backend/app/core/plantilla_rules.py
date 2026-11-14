@@ -30,6 +30,9 @@ PDF_PAGE_SIZES = ("carta", "a4")
 PDF_MARGINS = ("superior", "inferior", "izquierdo", "derecho")
 PDF_MARGIN_MAX_MM = 60
 PDF_FONT_PT = (6, 48)
+PDF_HEADING_LEVELS = ("h1", "h2", "h3", "h4")  # H5 y H6 usan el estilo de H4
+PDF_LINE_PT = (0.25, 6)  # grosor de la línea del encabezado y del pie
+PDF_BAND_MM = (0, 60)  # distancia al borde de la hoja y sangría lateral del encabezado y del pie
 PDF_TEXT_MAX = 200
 PDF_SPECIALS = ("titulo", "fecha", "pagina", "paginas")
 PDF_FILE_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -147,20 +150,26 @@ def _check_pdf_block(block: object, allowed: dict) -> bool:
 
 def check_pdf_style(pdf: object) -> bool:
     """Forma de `estilo.pdf` (H-036). `{}` es válido y significa «sin PDF»; todo lo demás es opcional dentro de su bloque."""
-    font = {
-        "familia": lambda v: v in PDF_FONTS, "tamano_pt": lambda v: _is_num(v, *PDF_FONT_PT),
-        "color": lambda v: isinstance(v, str) and PDF_COLOR_RE.fullmatch(v) is not None,
-    }
+    color = lambda v: isinstance(v, str) and PDF_COLOR_RE.fullmatch(v) is not None  # noqa: E731
+    font = {"familia": lambda v: v in PDF_FONTS, "tamano_pt": lambda v: _is_num(v, *PDF_FONT_PT), "color": color}
+    # `encabezados` admite los cuatro niveles (`h1` a `h4`, cada uno con su fuente) y, por compatibilidad con plantillas guardadas antes, la forma
+    # plana (`familia`, `tamano_pt`, `color`) que vale para H1 y de la que se derivan los demás niveles.
+    headings = {**font, **{level: (lambda v: _check_pdf_block(v, font)) for level in PDF_HEADING_LEVELS}}
     margins = {key: (lambda v: _is_num(v, 0, PDF_MARGIN_MAX_MM)) for key in PDF_MARGINS}
+    line = {"activa": lambda v: isinstance(v, bool), "color": color, "grosor_pt": lambda v: _is_num(v, *PDF_LINE_PT)}
     band = {
         "imagen": lambda v: v is None or (isinstance(v, str) and PDF_FILE_ID_RE.fullmatch(v) is not None),
         "izquierda": check_pdf_text, "centro": check_pdf_text, "derecha": check_pdf_text,
+        "fuente": lambda v: _check_pdf_block(v, font),
+        "linea": lambda v: _check_pdf_block(v, line),
+        "distancia_mm": lambda v: _is_num(v, *PDF_BAND_MM),
+        "sangria_mm": lambda v: _is_num(v, *PDF_BAND_MM),
     }
     spec = {
         "activo": lambda v: isinstance(v, bool),
         "incluir_atributos": lambda v: isinstance(v, bool),
         "pagina": lambda v: _check_pdf_block(v, {"tamano": lambda t: t in PDF_PAGE_SIZES, "margenes_mm": lambda m: _check_pdf_block(m, margins)}),
-        "encabezados": lambda v: _check_pdf_block(v, font),
+        "encabezados": lambda v: _check_pdf_block(v, headings),
         "texto": lambda v: _check_pdf_block(v, font),
         "encabezado": lambda v: _check_pdf_block(v, band),
         "pie": lambda v: _check_pdf_block(v, {**band, "imagen": lambda image: image is None}),  # el pie no lleva imagen (solo `null` por compatibilidad)

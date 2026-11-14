@@ -25,6 +25,41 @@ def test_resolve_fills_the_defaults_and_keeps_what_the_template_set():
     assert pdf_style.resolve({})["activo"] is False and pdf_style.resolve(None)["pie"]["derecha"] == ""
 
 
+def test_a_template_saved_with_flat_headings_resolves_the_same_four_levels_as_before():
+    style = pdf_style.resolve({"encabezados": {"familia": "Liberation Serif", "tamano_pt": 20, "color": "#0c3897"}, "texto": {"tamano_pt": 10.5}})
+    heads = style["encabezados"]
+    assert heads["h1"] == {"familia": "Liberation Serif", "tamano_pt": 20, "color": "#0c3897"}
+    assert [heads[level]["tamano_pt"] for level in ("h2", "h3", "h4")] == [16.4, 13.6, 11.6]  # 0,82 / 0,68 / 0,58 de H1, como el CSS anterior
+    assert {heads[level]["familia"] for level in heads} == {"Liberation Serif"} and {heads[level]["color"] for level in heads} == {"#0c3897"}
+    small = pdf_style.resolve({"encabezados": {"tamano_pt": 12}, "texto": {"tamano_pt": 10.5}})["encabezados"]
+    assert small["h4"]["tamano_pt"] == 10.5  # H4 nunca baja del tamaño del texto
+
+
+def test_each_heading_level_can_have_its_own_font_size_and_color():
+    style = pdf_style.resolve({"encabezados": {"h1": {"familia": "Liberation Serif", "tamano_pt": 24, "color": "#111111"}, "h3": {"familia": "Liberation Mono", "tamano_pt": 13, "color": "#047857"}}})
+    heads = style["encabezados"]
+    assert heads["h1"]["tamano_pt"] == 24 and heads["h3"] == {"familia": "Liberation Mono", "tamano_pt": 13, "color": "#047857"}
+    assert heads["h2"] == {"familia": "Liberation Serif", "tamano_pt": 19.7, "color": "#111111"}  # el que falta se deriva de H1
+    css = pdf_style.stylesheet(style, has_header=False, has_footer=False)
+    assert 'h3 { font-family: "Liberation Mono", sans-serif; font-size: 13pt; color: #047857; }' in css
+    assert "h5, h6 { " + pdf_style._font_css(heads["h4"]) + " }" in css
+
+
+def test_the_header_and_footer_have_their_own_font_line_and_position():
+    style = pdf_style.resolve({"texto": {"familia": "Liberation Serif", "tamano_pt": 10}})
+    head, foot = style["encabezado"], style["pie"]
+    assert head["fuente"] == {"familia": "Liberation Serif", "tamano_pt": 8.2, "color": "#475569"}  # por omisión: el texto, a 0,82
+    assert head["linea"]["activa"] is False and foot["linea"]["activa"] is True  # el pie conserva la línea que ya tenía
+    assert (head["distancia_mm"], head["sangria_mm"], foot["distancia_mm"]) == (10, 0, 10)
+    custom = pdf_style.resolve({"encabezado": {"fuente": {"tamano_pt": 14, "color": "#b91c1c"}, "linea": {"activa": True, "color": "#b91c1c", "grosor_pt": 2}, "distancia_mm": 6, "sangria_mm": 12},
+                                "pie": {"linea": {"activa": False}, "distancia_mm": 0}})
+    css = pdf_style.stylesheet(custom, has_header=True, has_footer=True)
+    assert "padding-top: 6mm" in css and "padding-bottom: 0mm" in css  # distancia al borde de la hoja, en el cuadro de margen
+    header_rule = css.split("#pdfhead {")[1].split("}")[0]
+    assert "font-size: 14pt" in header_rule and "color: #b91c1c" in header_rule and "padding-left: 12mm" in header_rule and "border-bottom: 2pt solid #b91c1c" in header_rule
+    assert "border-top" not in css.split("#pdffoot {")[1].split("}")[0]  # línea del pie apagada
+
+
 def test_special_fields_are_resolved_and_the_rest_is_escaped():
     out = pdf_style.expand_text(
         "{{titulo}} <b>x</b> {{atributo:cliente}} {{atributo:etiquetas}} {{atributo:falta}} {{fecha}} {{pagina}}/{{paginas}}",
@@ -366,6 +401,35 @@ def test_weasyprint_prints_header_footer_and_page_numbers_on_every_page():
     assert len(pages) >= 3
     assert all("Acta" in text for text in pages)
     assert "Página 1 de %d" % len(pages) in pages[0] and "Página %d de %d" % (len(pages), len(pages)) in pages[-1]
+
+
+def test_the_band_sits_at_the_chosen_distance_from_the_edge_and_is_not_stretched_to_the_margin():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    style = pdf_style.resolve({
+        "activo": True, "pagina": {"tamano": "a4"},
+        "encabezado": {"izquierda": "{{titulo}}", "derecha": "X", "distancia_mm": 6, "sangria_mm": 10, "linea": {"activa": True, "color": "#ff0000", "grosor_pt": 2}},
+        "pie": {"izquierda": "{{fecha}}", "derecha": "Página {{pagina}} de {{paginas}}", "distancia_mm": 4, "linea": {"activa": True}}})
+    doc = build_document("<p>cuerpo</p>", style, title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    page = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages[0]
+
+    def find(box, wanted):
+        if getattr(getattr(box, "element", None), "get", lambda *_: None)("id") == wanted:
+            return box
+        for child in getattr(box, "children", ()) or ():
+            if (hit := find(child, wanted)) is not None:
+                return hit
+        return None
+
+    px = lambda mm: mm * 96 / 25.4  # noqa: E731
+    head, foot = find(page._page_box, "pdfhead"), find(page._page_box, "pdffoot")
+    assert head.position_y == pytest.approx(px(6), abs=1) and head.border_height() < px(14)  # a 6 mm del borde y de la altura de su texto, no del margen entero (25 mm)
+    assert head.padding_left == pytest.approx(px(10), abs=1)
+    assert page.height - (foot.position_y + foot.border_height()) == pytest.approx(px(4), abs=1) and foot.border_height() < px(14)
 
 
 def test_make_pdf_returns_a_pdf_and_a_blocked_image_does_not_break_it():

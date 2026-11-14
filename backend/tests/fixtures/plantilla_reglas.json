@@ -24,7 +24,21 @@
    "Liberation Serif",
    "Liberation Mono"
   ],
-  "pdf_text_max": 200
+  "pdf_text_max": 200,
+  "pdf_heading_levels": [
+   "h1",
+   "h2",
+   "h3",
+   "h4"
+  ],
+  "pdf_line_pt": [
+   0.25,
+   6
+  ],
+  "pdf_band_mm": [
+   0,
+   60
+  ]
  },
  "definition": [
   {
@@ -837,6 +851,366 @@
     }
    },
    "expected": null
+  },
+  {
+   "name": "pdf encabezados por nivel",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "h1": {
+        "familia": "DejaVu Sans",
+        "tamano_pt": 12,
+        "color": "#112233"
+       },
+       "h2": {
+        "familia": "Liberation Serif",
+        "tamano_pt": 14,
+        "color": "#112233"
+       },
+       "h3": {
+        "familia": "Liberation Mono",
+        "tamano_pt": 12,
+        "color": "#047857"
+       },
+       "h4": {
+        "familia": "DejaVu Serif",
+        "tamano_pt": 11,
+        "color": "#112233"
+       }
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf encabezados en forma plana (formato anterior)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "familia": "DejaVu Sans",
+       "tamano_pt": 12,
+       "color": "#112233"
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf encabezado con fuente, línea, distancia y sangría",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "izquierda": "{{titulo}}",
+       "fuente": {
+        "familia": "Liberation Serif",
+        "tamano_pt": 9,
+        "color": "#475569"
+       },
+       "linea": {
+        "activa": true,
+        "color": "#cbd5e1",
+        "grosor_pt": 0.6
+       },
+       "distancia_mm": 10,
+       "sangria_mm": 5,
+       "imagen": "abc-123"
+      },
+      "pie": {
+       "izquierda": "{{titulo}}",
+       "fuente": {
+        "familia": "Liberation Serif",
+        "tamano_pt": 9,
+        "color": "#475569"
+       },
+       "linea": {
+        "activa": true,
+        "color": "#cbd5e1",
+        "grosor_pt": 0.6
+       },
+       "distancia_mm": 10,
+       "sangria_mm": 5
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf nivel h5 no existe",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "h5": {
+        "familia": "DejaVu Sans",
+        "tamano_pt": 12,
+        "color": "#112233"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf nivel con color inválido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "h2": {
+        "color": "azul"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf nivel con clave extra",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "h1": {
+        "estilo": "x"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf fuente del encabezado fuera de la lista",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "fuente": {
+        "familia": "Arial"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf fuente del pie con tamaño fuera de rango",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "fuente": {
+        "tamano_pt": 5
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf línea con clave extra",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "linea": {
+        "estilo": "punteada"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf línea activa no booleana",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "linea": {
+        "activa": 1
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf línea con color corto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "linea": {
+        "color": "#fff"
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf línea demasiado fina",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "linea": {
+        "grosor_pt": 0.1
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf línea demasiado gruesa",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "linea": {
+        "grosor_pt": 6.5
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf distancia negativa",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "distancia_mm": -1
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf distancia excesiva",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "distancia_mm": 61
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf sangría no numérica",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "sangria_mm": "5"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf sangría booleana",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "sangria_mm": true
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
   }
  ],
  "template_name": [

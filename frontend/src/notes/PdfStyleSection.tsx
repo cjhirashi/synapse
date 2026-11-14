@@ -4,9 +4,9 @@
  */
 import { useEffect, useState } from "react";
 import { listVaultFiles } from "../files/uploadFile";
-import { PDF_FONTS, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
+import { PDF_BAND_MM, PDF_FONTS, PDF_HEADING_LEVELS, PDF_LINE_PT, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
 import PdfPreview from "./PdfPreview";
-import type { PdfBand, PdfDraft, PdfFont, PdfMargin, PdfType } from "./pdfStyle";
+import type { HeadingLevel, PdfBand, PdfDraft, PdfFont, PdfLine, PdfMargin, PdfType } from "./pdfStyle";
 
 const SIZE_LABEL = { carta: "Carta", a4: "A4" } as const;
 const MARGIN_LABEL: Record<PdfMargin, string> = { superior: "Superior", inferior: "Inferior", izquierdo: "Izquierdo", derecho: "Derecho" };
@@ -16,6 +16,9 @@ const SPECIALS: Array<{ token: string; label: string }> = [
   { token: "{{pagina}}", label: "N.º de página" },
   { token: "{{paginas}}", label: "Total de páginas" },
 ];
+const HEADING_LABEL: Record<HeadingLevel, string> = {
+  h1: "Encabezado 1 (H1)", h2: "Encabezado 2 (H2)", h3: "Encabezado 3 (H3)", h4: "Encabezado 4 (H4)",
+};
 type Slot = "izquierda" | "centro" | "derecha";
 const SLOT_LABEL: Record<Slot, string> = { izquierda: "Izquierda", centro: "Centro", derecha: "Derecha" };
 
@@ -33,9 +36,9 @@ function Group({ title, hint, children, ariaLabel }: { title: string; hint?: str
   );
 }
 
-function TypeFields({ label, value, onChange }: { label: string; value: PdfType; onChange: (next: PdfType) => void }) {
+function TypeFields({ label, ariaLabel, value, onChange }: { label: string; ariaLabel?: string; value: PdfType; onChange: (next: PdfType) => void }) {
   return (
-    <div className="tv-type" role="group" aria-label={label}>
+    <div className="tv-type" role="group" aria-label={ariaLabel ?? label}>
       <strong className="tv-type-name">{label}</strong>
       <label className="tv-field tv-field--grow">
         <span>Tipografía</span>
@@ -50,6 +53,25 @@ function TypeFields({ label, value, onChange }: { label: string; value: PdfType;
       <label className="tv-field tv-field--color">
         <span>Color</span>
         <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(value.color) ? value.color : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+      </label>
+    </div>
+  );
+}
+
+function LineFields({ label, value, onChange }: { label: string; value: PdfLine; onChange: (next: PdfLine) => void }) {
+  return (
+    <div className="tv-line" role="group" aria-label={`${label}: línea`}>
+      <label className="tv-check">
+        <input type="checkbox" checked={value.activa} onChange={(event) => onChange({ ...value, activa: event.target.checked })} />
+        Mostrar línea {label.toLowerCase().includes("pie") ? "sobre el pie" : "bajo el encabezado"}
+      </label>
+      <label className="tv-field tv-field--color">
+        <span>Color</span>
+        <input type="color" disabled={!value.activa} value={/^#[0-9a-fA-F]{6}$/.test(value.color) ? value.color : "#cbd5e1"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+      </label>
+      <label className="tv-field tv-field--narrow">
+        <span>Grosor (pt)</span>
+        <input type="number" disabled={!value.activa} min={PDF_LINE_PT[0]} max={PDF_LINE_PT[1]} step={0.25} value={value.grosor} onChange={(event) => onChange({ ...value, grosor: event.target.value })} />
       </label>
     </div>
   );
@@ -100,6 +122,18 @@ function BandFields({ label, imageLabel, imageHint, value, images, attributes, o
           </select>
         )}
       </div>
+      <TypeFields label="Tipografía del texto" ariaLabel={`${label}: tipografía`} value={value.fuente} onChange={(fuente) => onChange({ ...value, fuente })} />
+      <div className="tv-pos" role="group" aria-label={`${label}: posición`}>
+        <label className="tv-field">
+          <span>Distancia al borde de la hoja (mm)</span>
+          <input type="number" min={PDF_BAND_MM[0]} max={PDF_BAND_MM[1]} step={0.5} value={value.distancia} onChange={(event) => onChange({ ...value, distancia: event.target.value })} />
+        </label>
+        <label className="tv-field">
+          <span>Sangría lateral (mm)</span>
+          <input type="number" min={PDF_BAND_MM[0]} max={PDF_BAND_MM[1]} step={0.5} value={value.sangria} onChange={(event) => onChange({ ...value, sangria: event.target.value })} />
+        </label>
+      </div>
+      <LineFields label={label} value={value.linea} onChange={(linea) => onChange({ ...value, linea })} />
     </Group>
   );
 }
@@ -154,8 +188,11 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
             </div>
           </Group>
           <Group title="Tipografía" ariaLabel="Tipografía y color">
-            <TypeFields label="Encabezados" value={draft.encabezados} onChange={(next) => set("encabezados", next)} />
+            {PDF_HEADING_LEVELS.map((level) => (
+              <TypeFields key={level} label={HEADING_LABEL[level]} value={draft.encabezados[level]} onChange={(next) => set("encabezados", { ...draft.encabezados, [level]: next })} />
+            ))}
             <TypeFields label="Texto" value={draft.texto} onChange={(next) => set("texto", next)} />
+            <p className="tv-hint">Los encabezados H5 y H6 usan el estilo del H4.</p>
           </Group>
           <BandFields
             label="Encabezado de página"

@@ -132,7 +132,8 @@ test("guardar no escribe imagen en el pie", async () => {
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
   await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
   const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: { pie: Record<string, unknown> } }).pdf;
-  expect(Object.keys(pdf.pie).sort()).toEqual(["centro", "derecha", "izquierda"]);
+  expect("imagen" in pdf.pie).toBe(false); // el pie no lleva imagen
+  expect(Object.keys(pdf.pie).sort()).toEqual(["centro", "derecha", "distancia_mm", "fuente", "izquierda", "linea", "sangria_mm"]);
 });
 
 test("la vista previa refleja el tamaño de hoja, los textos con valores de ejemplo y el fondo elegido", async () => {
@@ -159,4 +160,69 @@ test("el atributo se puede quitar con su botón y la tabla vuelve a su estado va
   await user.click(screen.getByRole("button", { name: "Quitar el atributo 1" }));
   expect(screen.getByText("Esta plantilla no añade atributos propios.")).toBeInTheDocument();
   expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+});
+
+test("los cuatro encabezados, el texto, el encabezado y el pie tienen cada uno su tipografía, tamaño y color", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  for (const name of ["Encabezado 1 (H1)", "Encabezado 2 (H2)", "Encabezado 3 (H3)", "Encabezado 4 (H4)", "Texto", "Encabezado de página: tipografía", "Pie de página: tipografía"]) {
+    const group = screen.getByRole("group", { name });
+    expect(within(group).getByRole("combobox", { name: "Tipografía" })).toBeInTheDocument();
+    expect(within(group).getByLabelText("Tamaño (pt)")).toBeInTheDocument();
+    expect(within(group).getByLabelText("Color")).toBeInTheDocument();
+  }
+  expect(screen.getByText("Los encabezados H5 y H6 usan el estilo del H4.")).toBeInTheDocument();
+});
+
+test("guarda un estilo distinto por nivel de encabezado y por banda, con su posición y su línea", async () => {
+  const { store, template, user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  await user.selectOptions(within(screen.getByRole("group", { name: "Encabezado 2 (H2)" })).getByRole("combobox", { name: "Tipografía" }), "Liberation Mono");
+  const size = within(screen.getByRole("group", { name: "Encabezado 3 (H3)" })).getByLabelText("Tamaño (pt)");
+  await user.clear(size);
+  await user.type(size, "13");
+  const head = screen.getByRole("group", { name: "Encabezado de página: posición" });
+  await user.clear(within(head).getByLabelText("Distancia al borde de la hoja (mm)"));
+  await user.type(within(head).getByLabelText("Distancia al borde de la hoja (mm)"), "6");
+  await user.clear(within(head).getByLabelText("Sangría lateral (mm)"));
+  await user.type(within(head).getByLabelText("Sangría lateral (mm)"), "12");
+  const headLine = screen.getByRole("group", { name: "Encabezado de página: línea" });
+  await user.click(within(headLine).getByRole("checkbox", { name: /Mostrar línea bajo el encabezado/ }));
+  await user.clear(within(headLine).getByLabelText("Grosor (pt)"));
+  await user.type(within(headLine).getByLabelText("Grosor (pt)"), "2");
+  await user.click(within(screen.getByRole("group", { name: "Pie de página: línea" })).getByRole("checkbox", { name: /Mostrar línea sobre el pie/ })); // el pie la trae encendida
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
+  const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: Record<string, any> }).pdf;
+  expect(pdf.encabezados.h2.familia).toBe("Liberation Mono");
+  expect(pdf.encabezados.h3.tamano_pt).toBe(13);
+  expect(pdf.encabezado).toMatchObject({ distancia_mm: 6, sangria_mm: 12, linea: { activa: true, grosor_pt: 2 } });
+  expect(pdf.pie.linea.activa).toBe(false);
+});
+
+test("una plantilla guardada con los encabezados en forma plana se abre con H1 y los demás niveles derivados", async () => {
+  counter += 1;
+  const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
+  const template = await store.createTemplate(VAULT, "Acta");
+  await store.save(template.id, template.content, template.rev, { ...template.frontmatter, estilo: { publicar: {}, pdf: { activo: true, encabezados: { familia: "Liberation Serif", tamano_pt: 20, color: "#0c3897" }, texto: { familia: "Liberation Serif", tamano_pt: 10.5 } } } });
+  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} />);
+  await waitFor(() => expect(screen.getByRole("checkbox", { name: /Permitir descargar/ })).toBeChecked());
+  expect(within(screen.getByRole("group", { name: "Encabezado 1 (H1)" })).getByLabelText("Tamaño (pt)")).toHaveValue(20);
+  expect(within(screen.getByRole("group", { name: "Encabezado 2 (H2)" })).getByLabelText("Tamaño (pt)")).toHaveValue(16.4);
+  expect(within(screen.getByRole("group", { name: "Encabezado 4 (H4)" })).getByLabelText("Tamaño (pt)")).toHaveValue(11.6);
+});
+
+test("la vista previa dibuja la línea y la posición del encabezado y del pie", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  const head = screen.getByTestId("pdf-preview-head");
+  const foot = screen.getByTestId("pdf-preview-foot");
+  expect(head.style.borderBottom).not.toContain("solid"); // el encabezado no trae línea por omisión
+  expect(foot.style.borderTop).toContain("solid"); // el pie sí
+  await user.click(within(screen.getByRole("group", { name: "Encabezado de página: línea" })).getByRole("checkbox", { name: /Mostrar línea/ }));
+  expect(head.style.borderBottom).toContain("solid");
+  const thickness = within(screen.getByRole("group", { name: "Pie de página: línea" })).getByLabelText("Grosor (pt)");
+  await user.clear(thickness);
+  await user.type(thickness, "3");
+  expect(foot.style.borderTop).toContain("4px"); // 3 pt = 4 px; la posición (cqw) la mide el servidor en el PDF real
 });

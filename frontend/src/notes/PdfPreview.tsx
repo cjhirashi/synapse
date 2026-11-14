@@ -5,7 +5,7 @@
  */
 import type { CSSProperties } from "react";
 import { PDF_PAGE_PX } from "./metaRules";
-import type { PdfDraft, PdfFont } from "./pdfStyle";
+import type { HeadingLevel, PdfBand, PdfDraft, PdfFont, PdfType } from "./pdfStyle";
 
 const FAMILY: Record<PdfFont, string> = {
   "DejaVu Sans": '"DejaVu Sans", Verdana, sans-serif',
@@ -39,13 +39,19 @@ export default function PdfPreview({ draft }: { draft: PdfDraft }) {
   const bottom = num(draft.margenes.inferior, 20);
   const left = num(draft.margenes.izquierdo, 20);
   const right = num(draft.margenes.derecho, 20);
-  const headSize = num(draft.encabezados.tamano, 18);
   const textSize = num(draft.texto.tamano, 10.5);
-  const band = (spec: { izquierda: string; centro: string; derecha: string }, edge: "top" | "bottom"): CSSProperties => ({
-    [edge]: 0, height: mm(edge === "top" ? top : bottom), left: mm(left), right: mm(right), fontSize: pt(textSize * 0.82), fontFamily: FAMILY[draft.texto.familia],
-    visibility: spec.izquierda || spec.centro || spec.derecha ? "visible" : "hidden",
-  });
+  const typeStyle = (font: PdfType, fallbackSize: number): CSSProperties => ({ fontFamily: FAMILY[font.familia], color: font.color, fontSize: pt(num(font.tamano, fallbackSize)) });
+  const band = (spec: PdfBand, edge: "top" | "bottom"): CSSProperties => {
+    const line = spec.linea.activa ? `${Math.max(1, Math.round(((num(spec.linea.grosor, 0.6) * 96) / 72) * 100) / 100)}px solid ${spec.linea.color}` : "none";
+    const lineSide = edge === "top" ? { borderBottom: line, paddingBottom: line === "none" ? 0 : mm(1.5) } : { borderTop: line, paddingTop: line === "none" ? 0 : mm(1.5) };
+    return {
+      [edge]: mm(num(spec.distancia, 10)), left: mm(left), right: mm(right), paddingInline: mm(num(spec.sangria, 0)), boxSizing: "border-box",
+      ...typeStyle(spec.fuente, 8.6), ...lineSide,
+      visibility: spec.izquierda || spec.centro || spec.derecha || spec.linea.activa ? "visible" : "hidden",
+    };
+  };
   const bar = (widthPercent: number): CSSProperties => ({ width: `${widthPercent}%`, height: pt(textSize * 0.55), background: draft.texto.color });
+  const heads: Array<[HeadingLevel, string]> = [["h1", "Título del documento"], ["h2", "Subtítulo de sección"], ["h3", "Apartado"], ["h4", "Detalle"]];
 
   return (
     <figure className="pdfp" aria-label="Vista previa de la hoja">
@@ -54,16 +60,20 @@ export default function PdfPreview({ draft }: { draft: PdfDraft }) {
           {draft.encabezado.imagen !== "" && (
             <div className="pdfp-bg" data-testid="pdf-preview-bg" style={{ backgroundImage: `url("/files/${encodeURIComponent(draft.encabezado.imagen)}")` }} />
           )}
-          <div className="pdfp-band" style={band(draft.encabezado, "top")}>
+          <div className="pdfp-band" data-testid="pdf-preview-head" style={band(draft.encabezado, "top")}>
             <span>{sampleText(draft.encabezado.izquierda)}</span><span>{sampleText(draft.encabezado.centro)}</span><span>{sampleText(draft.encabezado.derecha)}</span>
           </div>
           <div className="pdfp-body" style={{ top: mm(top), bottom: mm(bottom), left: mm(left), right: mm(right) }}>
-            <div className="pdfp-h" style={{ fontFamily: FAMILY[draft.encabezados.familia], color: draft.encabezados.color, fontSize: pt(headSize) }}>Título del documento</div>
-            <div className="pdfp-lines" style={{ gap: pt(textSize * 0.55) }}>
-              {[100, 96, 100, 62, 100, 98, 100, 80, 40].map((percent, index) => <i key={index} style={bar(percent)} />)}
-            </div>
+            {heads.map(([level, text], index) => (
+              <div key={level}>
+                <div className="pdfp-h" style={typeStyle(draft.encabezados[level], 18)}>{text}</div>
+                <div className="pdfp-lines" style={{ gap: pt(textSize * 0.55) }}>
+                  {(index === 0 ? [100, 96, 62] : [100, 70]).map((percent, i) => <i key={i} style={bar(percent)} />)}
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="pdfp-band" style={band(draft.pie, "bottom")}>
+          <div className="pdfp-band" data-testid="pdf-preview-foot" style={band(draft.pie, "bottom")}>
             <span>{sampleText(draft.pie.izquierda)}</span><span>{sampleText(draft.pie.centro)}</span><span>{sampleText(draft.pie.derecha)}</span>
           </div>
         </div>

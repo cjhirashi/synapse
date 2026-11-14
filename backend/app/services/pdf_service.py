@@ -96,7 +96,7 @@ def _band(prefix: str, spec: dict, title: str, attributes: dict, now: datetime) 
 
     La imagen del encabezado no va en la banda: es el fondo de la página (ver `build_document`). El pie no lleva imagen."""
     texts = {slot: pdf_style.expand_text(spec[slot], title=title, attributes=attributes, now=now) for slot in ("izquierda", "centro", "derecha")}
-    if not any(texts.values()):
+    if not any(texts.values()) and not spec["linea"]["activa"]:
         return None
     return f'<div id="{prefix}"><div class="band-text"><span>{texts["izquierda"]}</span><span class="c">{texts["centro"]}</span><span class="r">{texts["derecha"]}</span></div></div>'
 

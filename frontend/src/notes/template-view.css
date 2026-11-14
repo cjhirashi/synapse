@@ -83,11 +83,17 @@
 .tv-row-caption { margin: 0; font-size: 12px; font-weight: 500; color: var(--text-secondary); }
 .tv-type { display: grid; grid-template-columns: minmax(0, 1fr) 5.5rem 3.5rem; gap: var(--space-2) var(--space-3); align-items: end; }
 .tv-type + .tv-type { padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.tv-group > .tv-type { padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.tv-group-head + .tv-type { padding-top: 0; border-top: 0; }
+.tv-pos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.tv-line { display: grid; grid-template-columns: minmax(0, 1fr) 4.5rem 5.5rem; gap: var(--space-3); align-items: end; padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.tv-line .tv-check { align-self: center; }
+.tv-line input:disabled { opacity: .45; }
 .tv-type-name { grid-column: 1 / -1; font-size: 13px; color: var(--text-primary); }
 .tv-field--color input[type="color"] { width: 100%; height: 34px; padding: 3px; background: var(--bg-primary); border: 1px solid var(--border-control); border-radius: var(--radius-sm); cursor: pointer; }
 .tv-group { container-type: inline-size; }
 .tv-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
-@container (max-width: 460px) { .tv-slots { grid-template-columns: 1fr; } }
+@container (max-width: 460px) { .tv-slots, .tv-pos { grid-template-columns: 1fr; } .tv-line { grid-template-columns: 1fr 1fr; } .tv-line .tv-check { grid-column: 1 / -1; } }
 .tv-insert { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
 .tv-insert select { width: auto; min-height: 28px; padding: 2px var(--space-2); font-size: 12px; }
 .tv-chip-btn { padding: 3px 10px; font-size: 12px; color: var(--text-primary); background: var(--bg-secondary); border: 1px solid var(--border-control); border-radius: 999px; cursor: pointer; transition: border-color .15s, background-color .15s; }
@@ -101,11 +107,11 @@
 .pdfp-wrap { container-type: inline-size; width: 100%; }
 .pdfp-page { position: relative; width: 100%; overflow: hidden; background: #fff; color: #111; border-radius: 3px; box-shadow: 0 4px 18px rgba(0, 0, 0, .35); }
 .pdfp-bg { position: absolute; inset: 0; background-repeat: no-repeat; background-position: 0 0; background-size: 100% auto; }
-.pdfp-body { position: absolute; overflow: hidden; outline: 1px dashed rgba(100, 116, 139, .55); display: flex; flex-direction: column; gap: 1.2cqw; }
-.pdfp-h { font-weight: 700; line-height: 1.2; padding-top: 1cqw; }
+.pdfp-body { position: absolute; overflow: hidden; outline: 1px dashed rgba(100, 116, 139, .55); display: flex; flex-direction: column; gap: 0.8cqw; }
+.pdfp-h { font-weight: 700; line-height: 1.2; padding-top: 0.8cqw; }
 .pdfp-lines { display: flex; flex-direction: column; margin-top: 1cqw; }
 .pdfp-lines i { display: block; opacity: .55; border-radius: 1px; }
-.pdfp-band { position: absolute; display: flex; align-items: center; justify-content: space-between; gap: 2cqw; color: #475569; line-height: 1.2; overflow: hidden; }
+.pdfp-band { position: absolute; display: flex; align-items: center; justify-content: space-between; gap: 2cqw; line-height: 1.2; overflow: hidden; }
 .pdfp-band span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pdfp-band span:nth-child(2) { text-align: center; } .pdfp-band span:nth-child(3) { text-align: right; }
 
