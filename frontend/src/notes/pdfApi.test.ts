@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/problems";
 import * as auth from "../api/auth";
-import { fetchNotePdf, pdfErrorMessage, saveBlob } from "./pdfApi";
+import { fetchNotePdf, pdfErrorMessage, restNoteId, saveBlob } from "./pdfApi";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -13,6 +13,16 @@ describe("pdfApi", () => {
     expect(request).toHaveBeenCalledWith("/vaults/v%201/notes/n%2F2/pdf", { method: "POST", body: JSON.stringify({ html: "<p>x</p>" }) });
     expect(file.filename).toBe("Acta-final.pdf");
     expect(file.blob.size).toBeGreaterThan(0);
+  });
+
+  it("usa el uuid de la nota, no el id con prefijo de la réplica local", async () => {
+    const request = vi.spyOn(auth, "request").mockResolvedValue(new Response(new Blob(["x"])));
+    const V = "d5a5d5cf-5fbf-4f7c-9373-14aea36c79a7";
+    const N = "e155b697-f05d-481d-bd10-04bd40da67e2";
+    await fetchNotePdf(V, `note:${V}:${N}`, "<p>x</p>");
+    expect(request).toHaveBeenCalledWith(`/vaults/${V}/notes/${N}/pdf`, expect.anything());
+    expect(restNoteId(`note:${V}:${N}`)).toBe(N);
+    expect(restNoteId(N)).toBe(N);
   });
 
   it("sin Content-Disposition usa un nombre por omisión", async () => {

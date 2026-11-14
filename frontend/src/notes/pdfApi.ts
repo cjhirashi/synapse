@@ -6,8 +6,13 @@ export interface PdfFile { blob: Blob; filename: string }
 
 const FALLBACK_NAME = "documento.pdf";
 
+/** El id de la réplica local es `note:{bóveda}:{uuid}`; la API REST usa solo el uuid. */
+export function restNoteId(id: string): string {
+  return id.replace(/^note:[^:]+:/, "");
+}
+
 export async function fetchNotePdf(vaultId: string, noteId: string, html: string): Promise<PdfFile> {
-  const res = await request(`/vaults/${encodeURIComponent(vaultId)}/notes/${encodeURIComponent(noteId)}/pdf`, { method: "POST", body: JSON.stringify({ html }) });
+  const res = await request(`/vaults/${encodeURIComponent(vaultId)}/notes/${encodeURIComponent(restNoteId(noteId))}/pdf`, { method: "POST", body: JSON.stringify({ html }) });
   const match = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "");
   return { blob: await res.blob(), filename: match?.[1] ?? FALLBACK_NAME };
 }
