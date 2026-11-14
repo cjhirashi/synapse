@@ -97,6 +97,14 @@ def _type_ok(tipo: str, value: object) -> bool:
     return isinstance(value, bool)
 
 
+def estado_names(estados: object) -> list[str]:
+    """Nombres de los `estados` de una plantilla (acepta también el texto suelto de la primera versión)."""
+    if not isinstance(estados, list):
+        return []
+    return [e["nombre"] if isinstance(e, dict) else e
+            for e in estados if isinstance(e, str) or (isinstance(e, dict) and isinstance(e.get("nombre"), str))]
+
+
 def check_estados(estados: object) -> str | None:
     """`estados` de una plantilla: `[{nombre, color}]`, `nombre` como se guarda un estado y sin repetir, `color` de la paleta."""
     if not isinstance(estados, list) or len(estados) > ESTADOS_MAX:

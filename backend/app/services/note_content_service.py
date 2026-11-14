@@ -542,6 +542,8 @@ class NoteContentService:
         ref = frontmatter.get("plantilla") if isinstance(frontmatter, dict) else None
         if not deleted and ref is not None and ref != old_fm.get("plantilla") and not self._template_exists(vault_id, ref):
             raise _field_error("frontmatter", "plantilla:unknown")
+        if not deleted and (code := self.estado_assignment_code(vault_id, path, frontmatter, old_fm)) is not None:
+            raise _field_error("frontmatter", code)
         # Una plantilla con documentos que la usan no se renombra ni se mueve fuera de PLANTILLAS. Borrarla sí se puede (H-054):
         # sus documentos pasan a «sin plantilla» (el cliente los reescribe al borrarla; los que quedan citándola se tratan así al abrirlos).
         if prev_doc is not None and not prev_doc.get("deleted_at") and not deleted:
@@ -550,17 +552,41 @@ class NoteContentService:
             if name is not None and gone and self._count_template_users(vault_id, name, prev_doc["_id"]) > 0:
                 raise _field_error("path", "plantilla:in-use")
 
-    def _template_exists(self, vault_id: str, name: str) -> bool:
+    def _template_doc(self, vault_id: str, name: str) -> dict | None:
         path = plantilla_rules.template_path(name)
         after = None
         while True:
             docs = self._port.list_notes_by_prefix(
                 self._db, vault_id, False, view_key(ag_rules.PLANTILLAS), 100, after)
-            if any(path_key(d["path"]) == path_key(path) for d in docs):
-                return True
+            for d in docs:
+                if path_key(d["path"]) == path_key(path):
+                    return d
             if len(docs) < 100:
-                return False
+                return None
             after = (view_key(docs[-1]["path"]), docs[-1]["_id"])
+
+    def _template_exists(self, vault_id: str, name: str) -> bool:
+        return self._template_doc(vault_id, name) is not None
+
+    def estado_assignment_code(self, vault_id: str, path: str, frontmatter: object, old_fm: dict | None) -> str | None:
+        """H-054: `plantilla:estado` si se asigna o reasigna un `estado` que no es de la plantilla del documento.
+
+        Solo cuando cambia el `estado` o la `plantilla` (un documento que ya traía un estado ajeno se puede seguir
+        editando) y fuera de las carpetas reservadas, donde el estado tiene lógica propia (skills archivadas, mensajes…).
+        Sin estado, o con una plantilla que ya no existe, no hay nada que validar."""
+        if not isinstance(frontmatter, dict) or ag_rules.meta_folder_of(path) is not None or is_index_path(path):
+            return None
+        ref, estado = frontmatter.get("plantilla"), frontmatter.get("estado")
+        if not isinstance(ref, str) or ref == "" or not isinstance(estado, str) or estado == "":
+            return None
+        old = old_fm or {}
+        if estado == old.get("estado") and ref == old.get("plantilla"):
+            return None
+        template = self._template_doc(vault_id, ref)
+        if template is None:
+            return None
+        names = plantilla_rules.estado_names((template.get("frontmatter") or {}).get("estados"))
+        return None if estado in names else "plantilla:estado"
 
     def count_template_users(self, vault_id: str, name: str) -> int:
         return self._count_template_users(vault_id, name, None)

@@ -488,6 +488,11 @@ que la citaban quedan con una referencia huérfana que la app trata como «sin p
 opcionales que el documento tenía en el atributo reservado `atributos_ocultos` (un objeto; una plantilla no puede definirlo como atributo)
 y los devuelve a su sitio al quitar la plantilla. Otros códigos:
 `plantilla:path|alcance|atributos|estados|instrucciones|estilo`.
+Un documento con `plantilla` solo puede tener un `estado` de los `estados` de esa plantilla: al crear o editar, REST y `/sync` rechazan
+con 422 `plantilla:estado` un estado ajeno, pero solo cuando se asigna o reasigna el `estado` o se cambia la `plantilla` (un documento que ya
+traía un estado ajeno se sigue editando sin tocarlo; vaciarlo, quitando `estado`, siempre vale). No se comprueba en las carpetas reservadas
+(`AG - SKILLS`, `AG - MENSAJES`…), ni si la plantilla ya no existe. `scripts/clear_invalid_estados.py` deja sin estado a los documentos que ya
+tenían uno ajeno (`--apply`; sin él solo informa).
 
 **Documentos de sistema (H-041).** Dos documentos los publica Synapse en toda bóveda, existente y nueva: la skill global
 `AG - SKILLS/skill-bovedas-synapse.md` (para todo agente; sin propietario ni invitados) y la plantilla

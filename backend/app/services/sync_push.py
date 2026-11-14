@@ -613,6 +613,14 @@ class SyncPushService:
                 NoteContentService(self._port, self._db)._count_template_users, vault_id, name, doc["_id"])
             if users > 0:
                 raise Rejected("plantilla:in-use")
+        if not deleted:
+            from app.services.note_content_service import NoteContentService
+
+            code = await to_thread.run_sync(
+                NoteContentService(self._port, self._db).estado_assignment_code, doc["_id"].split(":")[1], doc["path"],
+                doc.get("frontmatter"), (previous.get("frontmatter") if previous else None))
+            if code is not None:
+                raise Rejected(code)
 
     async def _check_skill_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-041 E3: propietario, invitados y estado de una skill de `AG - SKILLS`. A diferencia de la REST, aquí no se

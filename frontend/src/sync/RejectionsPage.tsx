@@ -45,6 +45,7 @@ const REASONS = new Map<string, string>([
   ["plantilla:atributos", "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos."],
   ["plantilla:estados", "Cada estado de una plantilla necesita un nombre de 1 a 32 caracteres, sin repetir (hasta 20), y un color: gris, azul, verde o rojo."],
   ["plantilla:instrucciones", "Las instrucciones de una plantilla deben ser texto de hasta 20 000 caracteres."],
+  ["plantilla:estado", "El estado del documento no es uno de los estados de su plantilla: elige uno de ellos o déjalo vacío."],
   ["plantilla:estilo", "El estilo de una plantilla debe estar vacío (reservado para web/PDF)."],
   ["plantilla:in-use", "No se puede renombrar ni mover una plantilla mientras algún documento la use."],
   ["plantilla:unknown", "La plantilla referida en el documento no existe."],
