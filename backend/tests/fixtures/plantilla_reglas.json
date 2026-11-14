@@ -1211,6 +1211,128 @@
     }
    },
    "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tema con color primario",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {
+       "primario": "#0c3897"
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf tema con color de encabezado a mano",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {
+       "primario": "#0c3897"
+      },
+      "encabezados": {
+       "h2": {
+        "familia": "DejaVu Sans",
+        "tamano_pt": 14
+       }
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf tema sin primario",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {}
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf tema con color inválido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {
+       "primario": "azul"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tema con color corto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {
+       "primario": "#fff"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tema con clave extra",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": {
+       "primario": "#0c3897",
+       "secundario": "#ff0000"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tema no objeto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "tema": "#0c3897"
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
   }
  ],
  "template_name": [

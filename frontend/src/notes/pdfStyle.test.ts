@@ -1,7 +1,8 @@
 // H-036: borrador de estilo.pdf ↔ estilo.pdf guardado. Las derivaciones tienen que coincidir con las del servidor (`pdf_style.resolve`).
 import { describe, expect, it } from "vitest";
+import { palette } from "./colorTheme";
 import { checkPdfStyle } from "./metaRules";
-import { DEFAULT_PDF_DRAFT, pdfDraftFrom, pdfDraftTo } from "./pdfStyle";
+import { DEFAULT_PDF_DRAFT, headingColor, pdfDraftFrom, pdfDraftTo, themeColors } from "./pdfStyle";
 
 describe("pdfDraftFrom", () => {
   it("una plantilla sin formato da el borrador por omisión (y se guarda como {})", () => {
@@ -52,5 +53,39 @@ describe("pdfDraftTo", () => {
   it("ida y vuelta: lo que se guarda se vuelve a leer igual", () => {
     const first = pdfDraftFrom({ activo: true, pagina: { tamano: "a4" }, encabezados: { familia: "DejaVu Serif", tamano_pt: 22, color: "#112233" } });
     expect(pdfDraftFrom(pdfDraftTo(first))).toEqual(first);
+  });
+});
+
+describe("tema de color", () => {
+  it("sin tema los encabezados son planos como antes y no hay colores de tema", () => {
+    const draft = pdfDraftFrom({ activo: true, encabezados: { familia: "DejaVu Sans", tamano_pt: 18, color: "#111827" } });
+    expect(draft.tema.activo).toBe(false);
+    expect(themeColors(draft)).toBeNull();
+    expect(["h1", "h2", "h3", "h4"].map((level) => draft.encabezados[level as "h1"].color)).toEqual(["#111827", "#111827", "#111827", "#111827"]);
+    expect(pdfDraftTo(draft)).not.toHaveProperty("tema");
+  });
+
+  it("con tema, el color de encabezado que no se fijó queda automático y sale del tema", () => {
+    const draft = pdfDraftFrom({ activo: true, tema: { primario: "#0c3897" }, encabezados: { h2: { familia: "DejaVu Sans", tamano_pt: 14, color: "#ff0000" } } });
+    expect(draft.tema).toEqual({ activo: true, primario: "#0c3897" });
+    expect(draft.encabezados.h1.color).toBe("");
+    expect(draft.encabezados.h2.color).toBe("#ff0000"); // fijado a mano
+    const colors = palette("#0c3897", draft.texto.color);
+    expect(headingColor(draft, "h1")).toBe(colors.h1);
+    expect(headingColor(draft, "h2")).toBe("#ff0000");
+    expect(headingColor(draft, "h3")).toBe(colors.h3);
+  });
+
+  it("guarda el tema y omite el color automático de los encabezados; el resultado es válido", () => {
+    const draft = pdfDraftFrom({ activo: true, tema: { primario: "#7c3aed" } });
+    const out = pdfDraftTo(draft) as Record<string, any>;
+    expect(out.tema).toEqual({ primario: "#7c3aed" });
+    for (const level of ["h1", "h2", "h3", "h4"]) expect(out.encabezados[level]).not.toHaveProperty("color");
+    expect(checkPdfStyle(out)).toBe(true);
+    expect(pdfDraftFrom(out)).toEqual(draft);
+  });
+
+  it("un primario guardado inválido se ignora", () => {
+    expect(pdfDraftFrom({ tema: { primario: "azul" } }).tema.activo).toBe(false);
   });
 });

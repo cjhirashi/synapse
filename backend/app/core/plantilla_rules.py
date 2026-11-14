@@ -169,6 +169,7 @@ def check_pdf_style(pdf: object) -> bool:
         "activo": lambda v: isinstance(v, bool),
         "incluir_atributos": lambda v: isinstance(v, bool),
         "pagina": lambda v: _check_pdf_block(v, {"tamano": lambda t: t in PDF_PAGE_SIZES, "margenes_mm": lambda m: _check_pdf_block(m, margins)}),
+        "tema": lambda v: _check_pdf_block(v, {"primario": color}),  # color primario: de él se derivan el secundario, el terciario y los colores del documento
         "encabezados": lambda v: _check_pdf_block(v, headings),
         "texto": lambda v: _check_pdf_block(v, font),
         "encabezado": lambda v: _check_pdf_block(v, band),

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { listVaultFiles } from "../files/uploadFile";
 import { PDF_BAND_MM, PDF_FONTS, PDF_HEADING_LEVELS, PDF_LINE_PT, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
 import PdfPreview from "./PdfPreview";
-import type { HeadingLevel, PdfBand, PdfDraft, PdfFont, PdfLine, PdfMargin, PdfType } from "./pdfStyle";
+import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfLine, type PdfMargin, type PdfType } from "./pdfStyle";
 
 const SIZE_LABEL = { carta: "Carta", a4: "A4" } as const;
 const MARGIN_LABEL: Record<PdfMargin, string> = { superior: "Superior", inferior: "Inferior", izquierdo: "Izquierdo", derecho: "Derecho" };
@@ -36,7 +36,13 @@ function Group({ title, hint, children, ariaLabel }: { title: string; hint?: str
   );
 }
 
-function TypeFields({ label, ariaLabel, value, onChange }: { label: string; ariaLabel?: string; value: PdfType; onChange: (next: PdfType) => void }) {
+function TypeFields({ label, ariaLabel, value, onChange, autoColor }: {
+  label: string; ariaLabel?: string; value: PdfType; onChange: (next: PdfType) => void;
+  /** Con tema de color: el color que da el tema a este nivel. `value.color === ""` significa «automático». */
+  autoColor?: string;
+}) {
+  const auto = autoColor !== undefined && value.color === "";
+  const shown = auto ? autoColor : value.color;
   return (
     <div className="tv-type" role="group" aria-label={ariaLabel ?? label}>
       <strong className="tv-type-name">{label}</strong>
@@ -52,9 +58,56 @@ function TypeFields({ label, ariaLabel, value, onChange }: { label: string; aria
       </label>
       <label className="tv-field tv-field--color">
         <span>Color</span>
-        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(value.color) ? value.color : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(shown) ? shown : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
       </label>
+      {autoColor !== undefined && (
+        <span className="tv-auto">
+          {auto ? <em>Color automático del tema</em> : (
+            <button type="button" className="tv-chip-btn" aria-label={`${label}: volver al color automático`} onClick={() => onChange({ ...value, color: "" })}>Usar el del tema</button>
+          )}
+        </span>
+      )}
     </div>
+  );
+}
+
+function ThemeFields({ draft, onChange }: { draft: PdfDraft; onChange: (next: PdfDraft) => void }) {
+  const colors = themeColors(draft);
+  const toggle = (active: boolean) => {
+    if (active) {
+      // Al encender el tema los encabezados pasan a «automático».
+      const encabezados = Object.fromEntries(PDF_HEADING_LEVELS.map((level) => [level, { ...draft.encabezados[level], color: "" }])) as PdfDraft["encabezados"];
+      onChange({ ...draft, tema: { ...draft.tema, activo: true }, encabezados });
+    } else {
+      // Al apagarlo cada nivel conserva el color que se veía: nada «salta».
+      const encabezados = Object.fromEntries(PDF_HEADING_LEVELS.map((level) => [level, { ...draft.encabezados[level], color: headingColor(draft, level) }])) as PdfDraft["encabezados"];
+      onChange({ ...draft, tema: { ...draft.tema, activo: false }, encabezados });
+    }
+  };
+  return (
+    <Group title="Color del documento" hint="Elige un color primario y el sistema calcula el secundario y el terciario para encabezados, negrita, cursiva, enlaces, código, listas, citas y tablas, igual que en el Markdown de Synapse.">
+      <label className="tv-check">
+        <input type="checkbox" checked={draft.tema.activo} onChange={(event) => toggle(event.target.checked)} />
+        Usar un color primario para todo el documento
+      </label>
+      {colors && (
+        <div className="tv-theme">
+          <label className="tv-field tv-field--color">
+            <span>Color primario</span>
+            <input type="color" value={draft.tema.primario} onChange={(event) => onChange({ ...draft, tema: { ...draft.tema, primario: event.target.value } })} />
+          </label>
+          <ul className="tv-swatches" aria-label="Colores calculados del tema">
+            {([["Primario", colors.primario], ["Secundario", colors.secundario], ["Terciario", colors.terciario]] as const).map(([name, color]) => (
+              <li key={name} title={`${name}: ${color}`}>
+                <i style={{ background: color }} aria-hidden="true" />
+                <span>{name}</span>
+                <code>{color}</code>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Group>
   );
 }
 
@@ -187,9 +240,13 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
               ))}
             </div>
           </Group>
+          <ThemeFields draft={draft} onChange={onChange} />
           <Group title="Tipografía" ariaLabel="Tipografía y color">
             {PDF_HEADING_LEVELS.map((level) => (
-              <TypeFields key={level} label={HEADING_LABEL[level]} value={draft.encabezados[level]} onChange={(next) => set("encabezados", { ...draft.encabezados, [level]: next })} />
+              <TypeFields
+                key={level} label={HEADING_LABEL[level]} value={draft.encabezados[level]} autoColor={themeColors(draft)?.[level]}
+                onChange={(next) => set("encabezados", { ...draft.encabezados, [level]: next })}
+              />
             ))}
             <TypeFields label="Texto" value={draft.texto} onChange={(next) => set("texto", next)} />
             <p className="tv-hint">Los encabezados H5 y H6 usan el estilo del H4.</p>

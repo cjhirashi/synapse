@@ -161,6 +161,8 @@ def test_pdf_style_accepts_a_full_definition_and_rejects_loose_ends():
     assert pl.check_definition({**GOOD, "estilo": {"pdf": {"pie": {"izquierda": "}}{{pagina}}"}}}}) == "plantilla:estilo"
     assert pl.check_definition({**GOOD, "estilo": {"pdf": {"pie": {"imagen": "abc"}}}}) == "plantilla:estilo"  # el pie no lleva imagen
     assert pl.check_definition({**GOOD, "estilo": {"pdf": {"pie": {"imagen": None}}}}) is None
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": {"tema": {"primario": "#0c3897"}}}}) is None
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": {"tema": {"primario": "azul"}}}}) == "plantilla:estilo"
 
 
 def test_template_definition_defaults_and_values():

@@ -60,6 +60,58 @@ def test_the_header_and_footer_have_their_own_font_line_and_position():
     assert "border-top" not in css.split("#pdffoot {")[1].split("}")[0]  # línea del pie apagada
 
 
+# --- Tema de color ---
+
+def test_the_color_theme_is_shared_with_the_client_and_follows_the_markdown_rules():
+    import json
+    from pathlib import Path
+
+    from app.core import color_theme as ct
+
+    spec = json.loads((Path(__file__).parent / "fixtures" / "tema_colores.json").read_text())
+    for item in spec["casos"]:
+        assert ct.palette(item["primario"], item["texto"]) == item["esperado"], item["primario"]
+    # el secundario es el primario girado +30° y el terciario otros +30° (OKLCH: conservan luminosidad e intensidad)
+    for primary in ("#0891b2", "#f99a4b", "#7c3aed"):
+        lightness, chroma, hue = ct.hex_to_oklch(primary)
+        secondary, tertiary = ct.rotate(primary), ct.rotate(ct.rotate(primary))
+        assert abs((ct.hex_to_oklch(secondary)[2] - hue - 30 + 180) % 360 - 180) < 1.5
+        assert abs((ct.hex_to_oklch(tertiary)[2] - hue - 60 + 180) % 360 - 180) < 1.5
+        assert abs(ct.hex_to_oklch(secondary)[0] - lightness) < 0.02
+    assert ct.tone600("#0c3897") == "#0c3897"  # un primario ya oscuro es su propio tono 600
+    assert ct.hex_to_oklch(ct.tone600("#facc15"))[0] <= 0.63 and ct.hex_to_oklch(ct.tone400("#0c3897"))[0] >= 0.71
+    assert ct.mix("#ff0000", "#0000ff", 60) == "#990066" and ct.mix("#000000", "#ffffff", 10) == "#e6e6e6"
+
+
+def test_a_template_without_theme_keeps_the_flat_colors_and_one_with_theme_colors_each_element():
+    plain = pdf_style.resolve({"encabezados": {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "#111827"}})
+    assert plain["tema"] == {"primario": None, "colores": None}
+    assert {plain["encabezados"][level]["color"] for level in plain["encabezados"]} == {"#111827"}  # como antes: todos como H1
+    themed = pdf_style.resolve({"tema": {"primario": "#0c3897"}, "texto": {"color": "#1f2937"}})
+    colors = themed["tema"]["colores"]
+    assert [themed["encabezados"][level]["color"] for level in ("h1", "h2", "h3", "h4")] == [colors["h1"], colors["h2"], colors["h3"], colors["h4"]]
+    assert len({colors["h1"], colors["h2"], colors["h3"], colors["h4"]}) == 4
+    pinned = pdf_style.resolve({"tema": {"primario": "#0c3897"}, "encabezados": {"h2": {"color": "#ff0000"}}})
+    assert pinned["encabezados"]["h2"]["color"] == "#ff0000" and pinned["encabezados"]["h1"]["color"] == pinned["tema"]["colores"]["h1"]  # lo fijado a mano manda
+    # los colores dependen del texto: cambiarlo cambia los mezclados con él
+    assert pdf_style.resolve({"tema": {"primario": "#0c3897"}, "texto": {"color": "#000000"}})["tema"]["colores"]["negrita"] != colors["negrita"]
+
+
+def test_the_stylesheet_paints_every_element_with_the_theme_only_when_there_is_one():
+    style = pdf_style.resolve({"tema": {"primario": "#0c3897"}, "texto": {"color": "#1f2937"}})
+    c = style["tema"]["colores"]
+    css = pdf_style.stylesheet(style, has_header=False, has_footer=False)
+    for expected in (
+        f"strong, b {{ color: {c['negrita']}; }}", f"em, i {{ color: {c['cursiva']}; }}", f"a {{ color: {c['enlace']}; }}",
+        f"code {{ color: {c['codigo']}; background: {c['codigo_fondo']}; }}", f"li::marker {{ color: {c['marcador']}; }}",
+        f"th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}", f"border-left-color: {c['cita']}",
+        f"tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}",
+    ):
+        assert expected in css, expected
+    legacy = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    assert "li::marker" not in legacy and "strong, b {" not in legacy  # sin tema el CSS es el de siempre
+
+
 def test_special_fields_are_resolved_and_the_rest_is_escaped():
     out = pdf_style.expand_text(
         "{{titulo}} <b>x</b> {{atributo:cliente}} {{atributo:etiquetas}} {{atributo:falta}} {{fecha}} {{pagina}}/{{paginas}}",
@@ -430,6 +482,34 @@ def test_the_band_sits_at_the_chosen_distance_from_the_edge_and_is_not_stretched
     assert head.position_y == pytest.approx(px(6), abs=1) and head.border_height() < px(14)  # a 6 mm del borde y de la altura de su texto, no del margen entero (25 mm)
     assert head.padding_left == pytest.approx(px(10), abs=1)
     assert page.height - (foot.position_y + foot.border_height()) == pytest.approx(px(4), abs=1) and foot.border_height() < px(14)
+
+
+def test_a_themed_pdf_renders_with_the_derived_colors():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    style = pdf_style.resolve({"activo": True, "tema": {"primario": "#0c3897"}})
+    body = "<h1>Uno</h1><h2>Dos</h2><p><strong>negrita</strong> <em>cursiva</em> <a href=\"https://x.test\">enlace</a> <code>código</code></p><ul><li>punto</li></ul><table><tr><th>A</th></tr><tr><td>b</td></tr></table>"
+    doc = build_document(body, style, title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    page = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages[0]
+
+    def colors(box, out):
+        element = getattr(box, "element", None)
+        if element is not None and getattr(box, "style", None) is not None and element.tag in ("h1", "h2", "strong", "em", "a", "code", "th"):
+            r, g, b, _alpha = tuple(box.style["color"])  # tinycss2 Color: canales 0-1
+            out[element.tag] = "#" + "".join(f"{round(v * 255):02x}" for v in (r, g, b))
+        for child in getattr(box, "children", ()) or ():
+            colors(child, out)
+        return out
+
+    got = colors(page._page_box, {})
+    expected = style["tema"]["colores"]
+    assert got["h1"] == expected["h1"] and got["h2"] == expected["h2"]
+    assert got["strong"] == expected["negrita"] and got["em"] == expected["cursiva"] and got["a"] == expected["enlace"] and got["code"] == expected["codigo"]
+    assert got["th"] == expected["tabla_cabecera_texto"]
 
 
 def test_make_pdf_returns_a_pdf_and_a_blocked_image_does_not_break_it():

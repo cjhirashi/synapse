@@ -315,6 +315,7 @@ export function checkPdfStyle(pdf: unknown): boolean {
     activo: (v) => typeof v === "boolean",
     incluir_atributos: (v) => typeof v === "boolean",
     pagina: (v) => checkBlock(v, { tamano: (t) => (PDF_PAGE_SIZES as readonly string[]).includes(t as string), margenes_mm: (m) => checkBlock(m, margins) }),
+    tema: (v) => checkBlock(v, { primario: color }), // color primario del documento: de él salen el secundario, el terciario y los colores
     encabezados: (v) => checkBlock(v, headings),
     texto: (v) => checkBlock(v, font),
     encabezado: (v) => checkBlock(v, band),

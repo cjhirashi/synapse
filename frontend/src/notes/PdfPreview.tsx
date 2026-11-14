@@ -5,7 +5,7 @@
  */
 import type { CSSProperties } from "react";
 import { PDF_PAGE_PX } from "./metaRules";
-import type { HeadingLevel, PdfBand, PdfDraft, PdfFont, PdfType } from "./pdfStyle";
+import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfType } from "./pdfStyle";
 
 const FAMILY: Record<PdfFont, string> = {
   "DejaVu Sans": '"DejaVu Sans", Verdana, sans-serif',
@@ -51,6 +51,8 @@ export default function PdfPreview({ draft }: { draft: PdfDraft }) {
     };
   };
   const bar = (widthPercent: number): CSSProperties => ({ width: `${widthPercent}%`, height: pt(textSize * 0.55), background: draft.texto.color });
+  const theme = themeColors(draft);
+  const inline = (color: string | undefined, extra?: CSSProperties): CSSProperties => ({ ...(color ? { color } : {}), ...extra });
   const heads: Array<[HeadingLevel, string]> = [["h1", "Título del documento"], ["h2", "Subtítulo de sección"], ["h3", "Apartado"], ["h4", "Detalle"]];
 
   return (
@@ -66,12 +68,15 @@ export default function PdfPreview({ draft }: { draft: PdfDraft }) {
           <div className="pdfp-body" style={{ top: mm(top), bottom: mm(bottom), left: mm(left), right: mm(right) }}>
             {heads.map(([level, text], index) => (
               <div key={level}>
-                <div className="pdfp-h" style={typeStyle(draft.encabezados[level], 18)}>{text}</div>
+                <div className="pdfp-h" style={{ ...typeStyle(draft.encabezados[level], 18), color: headingColor(draft, level) }}>{text}</div>
                 <div className="pdfp-lines" style={{ gap: pt(textSize * 0.55) }}>
                   {(index === 0 ? [100, 96, 62] : [100, 70]).map((percent, i) => <i key={i} style={bar(percent)} />)}
                 </div>
               </div>
             ))}
+            <p className="pdfp-sample" data-testid="pdf-preview-sample" style={{ fontFamily: FAMILY[draft.texto.familia], fontSize: pt(textSize), color: draft.texto.color }}>
+              Texto con <b style={inline(theme?.negrita)}>negrita</b>, <i style={inline(theme?.cursiva)}>cursiva</i>, un <u style={inline(theme?.enlace)}>enlace</u> y <code style={inline(theme?.codigo, theme ? { background: theme.codigo_fondo } : undefined)}>código</code>.
+            </p>
           </div>
           <div className="pdfp-band" data-testid="pdf-preview-foot" style={band(draft.pie, "bottom")}>
             <span>{sampleText(draft.pie.izquierda)}</span><span>{sampleText(draft.pie.centro)}</span><span>{sampleText(draft.pie.derecha)}</span>

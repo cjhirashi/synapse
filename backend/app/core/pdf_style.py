@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from app.core import color_theme
 from app.core.plantilla_rules import PDF_MARGINS
 
 CDMX = ZoneInfo("America/Mexico_City")
@@ -39,14 +40,17 @@ def _merge(raw: object, default: dict) -> dict:
     return {key: (raw[key] if raw.get(key) is not None else value) for key, value in default.items()}
 
 
-def _headings(raw: object, body: dict) -> dict:
-    """Los cuatro niveles. Con la forma plana anterior (`familia`, `tamano_pt`, `color`) esos valores son los de H1 y el resto se deriva de él."""
+def _headings(raw: object, body: dict, theme: dict | None) -> dict:
+    """Los cuatro niveles. Con la forma plana anterior (`familia`, `tamano_pt`, `color`) esos valores son los de H1 y el resto se deriva de él.
+
+    Con un tema de color (`theme`), el color de cada nivel que la plantilla no fija sale del tema (como el Markdown del editor); un color fijado a mano manda."""
     raw = raw if isinstance(raw, dict) else {}
-    h1 = _merge(raw.get("h1") if isinstance(raw.get("h1"), dict) else {k: raw.get(k) for k in H1_DEFAULT}, H1_DEFAULT)
+    h1_raw = raw.get("h1") if isinstance(raw.get("h1"), dict) else {k: raw.get(k) for k in H1_DEFAULT}
+    h1 = _merge(h1_raw, {**H1_DEFAULT, **({"color": theme["h1"]} if theme else {})})
     out = {"h1": h1}
     for level, scale in HEADING_SCALE.items():
         derived = round(max(float(body["tamano_pt"]), float(h1["tamano_pt"]) * scale) if level == "h4" else float(h1["tamano_pt"]) * scale, 1)
-        out[level] = _merge(raw.get(level), {"familia": h1["familia"], "tamano_pt": derived, "color": h1["color"]})
+        out[level] = _merge(raw.get(level), {"familia": h1["familia"], "tamano_pt": derived, "color": theme[level] if theme else h1["color"]})
     return out
 
 
@@ -71,7 +75,10 @@ def resolve(raw: object) -> dict:
     default_margins = DEFAULTS["pagina"]["margenes_mm"]
     out["pagina"] = {"tamano": page.get("tamano", DEFAULTS["pagina"]["tamano"]), "margenes_mm": {m: margins.get(m, default_margins[m]) for m in PDF_MARGINS}}
     out["texto"] = _merge(raw.get("texto"), DEFAULTS["texto"])
-    out["encabezados"] = _headings(raw.get("encabezados"), out["texto"])
+    tema = raw.get("tema") if isinstance(raw.get("tema"), dict) else {}
+    primary = tema.get("primario") if isinstance(tema.get("primario"), str) else None
+    out["tema"] = {"primario": primary, "colores": color_theme.palette(primary, out["texto"]["color"]) if primary else None}
+    out["encabezados"] = _headings(raw.get("encabezados"), out["texto"], out["tema"]["colores"])
     out["encabezado"] = _band(raw.get("encabezado"), out["texto"], line_on=False, image=True)
     out["pie"] = _band(raw.get("pie"), out["texto"], line_on=True, image=False)
     return out
@@ -127,6 +134,23 @@ def _band_css(prefix: str, band: dict, *, edge: str) -> str:
             f"padding-left: {band['sangria_mm']}mm; padding-right: {band['sangria_mm']}mm; {_font_css(band['fuente'])} {rule} }}")
 
 
+def _theme_css(c: dict) -> str:
+    """Colores del tema para los elementos del documento (los mismos que el tema claro del Markdown del editor)."""
+    return f"""
+strong, b {{ color: {c['negrita']}; }}
+em, i {{ color: {c['cursiva']}; }}
+strong em, em strong, b i, i b {{ color: {c['negrita_cursiva']}; }}
+a {{ text-decoration: underline; text-decoration-thickness: 0.5pt; text-underline-offset: 1.5pt; }}
+code {{ color: {c['codigo']}; background: {c['codigo_fondo']}; }}
+pre {{ background: {c['codigo_fondo']}; }}
+pre code {{ color: {c['codigo']}; background: none; }}
+li::marker {{ color: {c['marcador']}; }}
+blockquote {{ border-left-color: {c['cita']}; background: {c['cita_fondo']}; color: inherit; font-style: italic; }}
+th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}
+tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}
+"""
+
+
 def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: str | None = None) -> str:
     """CSS del PDF a partir del formato resuelto. Todos los valores ya pasaron la validación de la plantilla."""
     page, heads, body = style["pagina"], style["encabezados"], style["texto"]
@@ -145,6 +169,8 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: s
     sheet_width = PAGE_PX[page["tamano"]][0]
     bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {sheet_width}px auto; ' if background else "")
     heading_css = "\n".join(f"{level} {{ {_font_css(heads[level])} }}" for level in ("h1", "h2", "h3", "h4"))
+    theme_css = _theme_css(style["tema"]["colores"]) if style["tema"]["colores"] else ""
+    link_color = style["tema"]["colores"]["enlace"] if style["tema"]["colores"] else heads["h1"]["color"]
     return f"""
 @page {{ {bg}size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
 html {{ font-family: "{body['familia']}", sans-serif; font-size: {base}pt; color: {body['color']}; line-height: 1.45; }}
@@ -152,7 +178,7 @@ h1, h2, h3, h4, h5, h6 {{ line-height: 1.2; margin: 1.1em 0 0.4em; break-after: 
 {heading_css}
 h5, h6 {{ {_font_css(heads['h4'])} }}
 p {{ margin: 0 0 0.7em; }} ul, ol {{ margin: 0 0 0.7em; padding-left: 1.6em; }} li {{ margin: 0.15em 0; }}
-a {{ color: {heads['h1']['color']}; }} img {{ max-width: 100%; height: auto; }}
+a {{ color: {link_color}; }} img {{ max-width: 100%; height: auto; }}
 blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0 0.2em 0.9em; border-left: 3pt solid #cbd5e1; color: #475569; }}
 pre {{ font-family: "Liberation Mono", monospace; font-size: {round(base * 0.88, 1)}pt; background: #f1f5f9; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
 code {{ font-family: "Liberation Mono", monospace; font-size: 0.92em; background: #f1f5f9; padding: 0 0.2em; border-radius: 2pt; }}
@@ -166,6 +192,7 @@ hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-attrs th {{ width: 28%; }}
 {_band_css('pdfhead', head_band, edge='top')}
 {_band_css('pdffoot', foot_band, edge='bottom')}
+{theme_css}
 /* Tres columnas con una tabla: un `display: flex` anidado en el cuadro de margen estira la banda en WeasyPrint y aleja la línea del texto. */
 .band-text {{ display: table; table-layout: fixed; width: 100%; }}
 .band-text > span {{ display: table-cell; width: 33.333%; vertical-align: middle; }}

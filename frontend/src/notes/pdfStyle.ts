@@ -3,12 +3,14 @@
  * Los valores por omisión y las derivaciones son los mismos que usa el servidor (`backend/app/core/pdf_style.py`), para que la vista previa
  * del formulario y el PDF coincidan, también con plantillas guardadas con el formato anterior (encabezados en forma plana).
  */
+import { palette, type ThemeColors } from "./colorTheme";
 import { PDF_FONTS, PDF_HEADING_LEVELS, PDF_MARGINS } from "./metaRules";
 
 export type PdfFont = (typeof PDF_FONTS)[number];
 export type PdfMargin = (typeof PDF_MARGINS)[number];
 export type HeadingLevel = (typeof PDF_HEADING_LEVELS)[number];
 
+/** En los encabezados, `color: ""` significa «automático»: lo da el tema de color (solo con el tema activo). */
 export interface PdfType { familia: PdfFont; tamano: string; color: string }
 export interface PdfLine { activa: boolean; color: string; grosor: string }
 export interface PdfBand {
@@ -23,8 +25,11 @@ export interface PdfBand {
   /** Sangría lateral respecto a los márgenes de la página, en mm. */
   sangria: string;
 }
+/** Tema de color: con `activo`, el secundario, el terciario y los colores de cada elemento salen del primario (`colorTheme.ts`). */
+export interface PdfTheme { activo: boolean; primario: string }
 export interface PdfDraft {
   activo: boolean;
+  tema: PdfTheme;
   incluirAtributos: boolean;
   tamano: "carta" | "a4";
   margenes: Record<PdfMargin, string>;
@@ -40,6 +45,7 @@ const HEADING_SCALE = { h2: 0.82, h3: 0.68, h4: 0.58 } as const;
 
 export const DEFAULT_PDF_DRAFT: PdfDraft = {
   activo: false,
+  tema: { activo: false, primario: "#0891b2" },
   incluirAtributos: false,
   tamano: "carta",
   margenes: { superior: "25", inferior: "20", izquierdo: "20", derecho: "20" },
@@ -74,16 +80,24 @@ function readType(raw: unknown, base: PdfType): PdfType {
   return { familia, tamano: num(r.tamano_pt, base.tamano), color: str(r.color, base.color) };
 }
 
-/** Los cuatro niveles: nivel a nivel, o, con la forma plana anterior, H1 con esos valores y el resto derivado de él. */
-function readHeadings(raw: unknown, text: PdfType): Record<HeadingLevel, PdfType> {
+/** Los cuatro niveles: nivel a nivel, o, con la forma plana anterior, H1 con esos valores y el resto derivado de él. Con el tema activo, el color que no se fijó queda «automático» (""). */
+function readHeadings(raw: unknown, text: PdfType, themed: boolean): Record<HeadingLevel, PdfType> {
   const r = obj(raw);
-  const h1 = readType("h1" in r ? r.h1 : r, DEFAULT_PDF_DRAFT.encabezados.h1);
+  const source = "h1" in r ? obj(r.h1) : r;
+  const h1 = readType(source, DEFAULT_PDF_DRAFT.encabezados.h1);
+  if (themed) h1.color = typeof source.color === "string" ? source.color : "";
   const size = Number(h1.tamano);
   const derived = (level: "h2" | "h3" | "h4"): PdfType => {
     const scaled = size * HEADING_SCALE[level];
-    return { familia: h1.familia, color: h1.color, tamano: Number.isFinite(scaled) ? round1(level === "h4" ? Math.max(Number(text.tamano), scaled) : scaled) : DEFAULT_PDF_DRAFT.encabezados[level].tamano };
+    return { familia: h1.familia, color: themed ? "" : h1.color, tamano: Number.isFinite(scaled) ? round1(level === "h4" ? Math.max(Number(text.tamano), scaled) : scaled) : DEFAULT_PDF_DRAFT.encabezados[level].tamano };
   };
-  return { h1, h2: readType(r.h2, derived("h2")), h3: readType(r.h3, derived("h3")), h4: readType(r.h4, derived("h4")) };
+  const level = (key: "h2" | "h3" | "h4"): PdfType => {
+    const base = derived(key);
+    const one = readType(r[key], base);
+    if (themed && typeof obj(r[key]).color !== "string") one.color = "";
+    return one;
+  };
+  return { h1, h2: level("h2"), h3: level("h3"), h4: level("h4") };
 }
 
 function readBand(raw: unknown, text: PdfType, base: PdfBand): PdfBand {
@@ -108,14 +122,16 @@ export function pdfDraftFrom(raw: unknown): PdfDraft {
   const base = DEFAULT_PDF_DRAFT;
   const bare = Object.keys(r).length === 0;
   const texto = readType(r.texto, base.texto);
+  const primary = typeof obj(r.tema).primario === "string" && /^#[0-9a-fA-F]{6}$/.test(obj(r.tema).primario as string) ? (obj(r.tema).primario as string) : null;
   // Una plantilla sin formato guardado no trae pie: la numeración por omisión solo se ofrece al activar el PDF.
   const footBase: PdfBand = bare ? base.pie : { ...base.pie, derecha: "" };
   return {
     activo: r.activo === true,
+    tema: { activo: primary !== null, primario: primary ?? base.tema.primario },
     incluirAtributos: r.incluir_atributos === true,
     tamano: page.tamano === "a4" ? "a4" : "carta",
     margenes: Object.fromEntries(PDF_MARGINS.map((key) => [key, num(margins[key], base.margenes[key])])) as Record<PdfMargin, string>,
-    encabezados: readHeadings(r.encabezados, texto),
+    encabezados: readHeadings(r.encabezados, texto, primary !== null),
     texto,
     encabezado: readBand(r.encabezado, texto, base.encabezado),
     pie: readBand(r.pie, texto, footBase),
@@ -124,6 +140,8 @@ export function pdfDraftFrom(raw: unknown): PdfDraft {
 
 const toNumber = (text: string): number => (text.trim() === "" ? Number.NaN : Number(text));
 const typeOut = (t: PdfType) => ({ familia: t.familia, tamano_pt: toNumber(t.tamano), color: t.color.trim() });
+/** Encabezado de un nivel: el color "automático" no se guarda (lo da el tema). */
+const headingOut = (t: PdfType) => ({ familia: t.familia, tamano_pt: toNumber(t.tamano), ...(t.color.trim() === "" ? {} : { color: t.color.trim() }) });
 const lineOut = (l: PdfLine) => ({ activa: l.activa, color: l.color.trim(), grosor_pt: toNumber(l.grosor) });
 const bandOut = (b: PdfBand) => ({
   izquierda: b.izquierda, centro: b.centro, derecha: b.derecha,
@@ -135,14 +153,25 @@ export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
   if (JSON.stringify(draft) === JSON.stringify(DEFAULT_PDF_DRAFT)) return {};
   return {
     activo: draft.activo,
+    ...(draft.tema.activo ? { tema: { primario: draft.tema.primario } } : {}),
     incluir_atributos: draft.incluirAtributos,
     pagina: {
       tamano: draft.tamano,
       margenes_mm: Object.fromEntries(PDF_MARGINS.map((key) => [key, toNumber(draft.margenes[key])])),
     },
-    encabezados: Object.fromEntries(PDF_HEADING_LEVELS.map((level) => [level, typeOut(draft.encabezados[level])])),
+    encabezados: Object.fromEntries(PDF_HEADING_LEVELS.map((level) => [level, headingOut(draft.encabezados[level])])),
     texto: typeOut(draft.texto),
     encabezado: { imagen: draft.encabezado.imagen === "" ? null : draft.encabezado.imagen, ...bandOut(draft.encabezado) },
     pie: bandOut(draft.pie),
   };
+}
+
+/** Colores del tema del borrador, o `null` si no usa tema. Los mismos que imprime el servidor. */
+export function themeColors(draft: PdfDraft): ThemeColors | null {
+  return draft.tema.activo ? palette(draft.tema.primario, draft.texto.color) : null;
+}
+
+/** Color con el que se ve (y se imprime) un nivel de encabezado: el fijado a mano o, en automático, el del tema. */
+export function headingColor(draft: PdfDraft, level: HeadingLevel): string {
+  return draft.encabezados[level].color || themeColors(draft)?.[level] || DEFAULT_PDF_DRAFT.encabezados[level].color;
 }

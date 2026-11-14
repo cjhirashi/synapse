@@ -1,9 +1,10 @@
 // H-030b: formulario de una plantilla (dónde se usa, atributos, diseño del PDF, estructura).
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import TemplateView from "./TemplateView";
+import { palette } from "./colorTheme";
 import * as uploadFile from "../files/uploadFile";
 import { createNoteStore } from "./noteStore";
 
@@ -225,4 +226,49 @@ test("la vista previa dibuja la línea y la posición del encabezado y del pie",
   await user.clear(thickness);
   await user.type(thickness, "3");
   expect(foot.style.borderTop).toContain("4px"); // 3 pt = 4 px; la posición (cqw) la mide el servidor en el PDF real
+});
+
+test("el color primario calcula el secundario y el terciario y deja los encabezados en automático", async () => {
+  const { store, template, user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  expect(screen.queryByRole("list", { name: "Colores calculados del tema" })).toBeNull();
+  await user.click(screen.getByRole("checkbox", { name: /Usar un color primario para todo el documento/ }));
+  const swatches = screen.getByRole("list", { name: "Colores calculados del tema" });
+  expect(within(swatches).getAllByRole("listitem").map((li) => li.textContent?.replace(/#\w+/, "").trim())).toEqual(["Primario", "Secundario", "Terciario"]);
+  const colors = palette("#0891b2", "#1f2937");
+  expect(swatches).toHaveTextContent(colors.secundario);
+  expect(swatches).toHaveTextContent(colors.terciario);
+  for (const name of ["Encabezado 1 (H1)", "Encabezado 2 (H2)", "Encabezado 3 (H3)", "Encabezado 4 (H4)"]) {
+    expect(within(screen.getByRole("group", { name })).getByText("Color automático del tema")).toBeInTheDocument();
+  }
+  const sample = screen.getByTestId("pdf-preview-sample");
+  expect(within(sample).getByText("negrita")).toHaveStyle({ color: colors.negrita });
+  expect(within(sample).getByText("enlace")).toHaveStyle({ color: colors.enlace });
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).toHaveProperty("tema"));
+  const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: Record<string, any> }).pdf;
+  expect(pdf.tema).toEqual({ primario: "#0891b2" });
+  expect(pdf.encabezados.h1).not.toHaveProperty("color");
+});
+
+test("un color de encabezado fijado a mano se puede devolver al automático del tema", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  await user.click(screen.getByRole("checkbox", { name: /Usar un color primario para todo el documento/ }));
+  const h2 = screen.getByRole("group", { name: "Encabezado 2 (H2)" });
+  fireEvent.change(within(h2).getByLabelText("Color"), { target: { value: "#ff0000" } });
+  expect(within(h2).queryByText("Color automático del tema")).toBeNull();
+  await user.click(within(h2).getByRole("button", { name: "Encabezado 2 (H2): volver al color automático" }));
+  expect(within(h2).getByText("Color automático del tema")).toBeInTheDocument();
+});
+
+test("apagar el tema deja los encabezados con el color que se veía", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  const toggle = screen.getByRole("checkbox", { name: /Usar un color primario para todo el documento/ });
+  await user.click(toggle);
+  const seen = palette("#0891b2", "#1f2937").h2;
+  await user.click(toggle);
+  expect(within(screen.getByRole("group", { name: "Encabezado 2 (H2)" })).getByLabelText("Color")).toHaveValue(seen);
+  expect(screen.queryByRole("list", { name: "Colores calculados del tema" })).toBeNull();
 });
