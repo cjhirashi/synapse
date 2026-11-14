@@ -7,6 +7,7 @@
 
 ## En curso
 
+- [~] H-054 — Plantilla en cada documento: control en los atributos, atributos de plantilla obligatorios (pueden ir vacíos), sin alta de atributos con plantilla, opcionales ocultos que reaparecen, carga de la estructura (aviso si hay contenido) y borrar plantilla = documentos sin plantilla → `implemented` (2026-11-14, pedido de Carlos); falta despliegue y checkpoint visual de Carlos. Detalle en `.harness/memory/history.md`.
 - [~] H-002.5 — Ventana de configuración para que Carlos cree/revoque sus propias API keys desde el frontend (corrige el alcance original de SPEC-0013, que las dejaba fuera) → `historias/0013-ui-gestion-api-keys/`, Gate 1 pasado ("así es", 2026-10-28)
 - [~] H-008 — Riel de bóvedas expandible + chips rellenos con degradado + paleta Tailwind extendida a 17 colores → `historias/h008-riel-boveda-rediseño/`, `implemented` (2026-10-29; 6 pasos TDD verdes, build + suite 1692/1692 OK); falta checkpoint demostrable de Carlos + push/merge para `verified`
 

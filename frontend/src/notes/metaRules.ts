@@ -62,6 +62,7 @@ const NOT_EXTRA = new Set([
   "fecha_actualizacion",
   "plantilla",
   "sistema",
+  "atributos_ocultos", // H-054: almacén de los opcionales ocultos mientras hay plantilla
   "ruta", // RESERVED_KEYS del servidor
 ]);
 

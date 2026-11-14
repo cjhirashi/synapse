@@ -202,6 +202,25 @@
    "expected": "plantilla:atributos"
   },
   {
+   "name": "atributo reservado de los ocultos (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [
+     {
+      "nombre": "atributos_ocultos",
+      "tipo": "texto"
+     }
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:atributos"
+  },
+  {
    "name": "atributo tipo inválido",
    "frontmatter": {
     "alcance": [

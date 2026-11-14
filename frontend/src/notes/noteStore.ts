@@ -24,6 +24,7 @@ import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
 import { canonicalBase, canonicalPath, isCanonical } from "./docNames";
 import { ARCHIVED, checkShape as checkSkillShape, isSkillPath } from "./skillRules";
+import { detachTemplate, seedValue } from "../editor/templateAttrs";
 import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName, PLANTILLA_NAME_MAX, TEMPLATE_PREFIX } from "./metaRules";
 
 // Los errores viven en `errors.ts` (los comparte `sync/conflicts.ts`); se reexportan aquí.
@@ -61,15 +62,6 @@ export interface TemplateSeed {
   name: string;
   content: string;
   atributos: ReadonlyArray<{ nombre: string; tipo: string; valor?: unknown }>;
-}
-
-/** Valor con que nace un atributo de plantilla: su valor inicial o uno vacío del tipo (P3: los nuevos aparecen vacíos). */
-function seedValue(attr: { tipo: string; valor?: unknown }): unknown {
-  if (attr.valor !== undefined && attr.valor !== null) return attr.valor;
-  if (attr.tipo === "texto") return "";
-  if (attr.tipo === "lista") return [];
-  if (attr.tipo === "booleano") return false;
-  return undefined; // numero y fecha sin valor inicial no se escriben
 }
 
 /** Lo que muestra el árbol: sin `content` (puede pesar hasta 2 MiB por nota). */
@@ -399,12 +391,26 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     ).length;
   }
 
-  /** Una plantilla en uso no sale de su nombre (renombrar, mover o borrar): `plantilla:in-use` del servidor. */
-  async function assertTemplateFree(doc: NoteDoc, newPath: string | null): Promise<void> {
+  /** Una plantilla en uso no cambia de nombre ni sale de PLANTILLAS (renombrar o mover): `plantilla:in-use` del servidor. */
+  async function assertTemplateFree(doc: NoteDoc, newPath: string): Promise<void> {
     const name = templateName(doc.path);
-    if (name === null || (newPath !== null && templateName(newPath) === name)) return;
+    if (name === null || templateName(newPath) === name) return;
     const users = await templateUsers(doc.vault_id, name, doc._id);
     if (users > 0) throw new TemplateInUseError(users);
+  }
+
+  /** H-054: al borrar una plantilla sus documentos pasan a «sin plantilla»; los atributos de la plantilla con contenido quedan como opcionales. */
+  async function releaseTemplateUsers(doc: NoteDoc): Promise<void> {
+    const name = templateName(doc.path);
+    if (name === null) return;
+    const atributos = Array.isArray(doc.frontmatter?.atributos) ? (doc.frontmatter.atributos as Array<{ nombre: string; tipo: string }>) : [];
+    const users = (await summaries(doc.vault_id)).filter(
+      (note) => note.deleted_at === null && note.id !== doc._id && note.frontmatter?.plantilla === name,
+    );
+    for (const user of users) {
+      const current = await load(user.id, false);
+      await write({ ...current, frontmatter: detachTemplate(current.frontmatter, { name, atributos }), updated_at: now() });
+    }
   }
 
   /**
@@ -442,7 +448,7 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (checkNoteWrite({ path: doc.path, prevPath: doc.path, deleted: true, actorKind: "human" }) !== null) {
       throw new NoteValidationError(["path"]);
     }
-    await assertTemplateFree(doc, null);
+    await releaseTemplateUsers(doc);
     const timestamp = now();
     return write({ ...doc, deleted_at: timestamp, updated_at: timestamp });
   }

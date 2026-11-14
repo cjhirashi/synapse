@@ -189,31 +189,29 @@ def test_a_note_can_only_cite_an_existing_template(ready_admin):
     assert post_note(ready_admin, vault_id, "Doc.md", "", {"plantilla": "base"}).status_code == 201
 
 
-def test_a_template_in_use_cannot_be_deleted_or_renamed_until_the_relation_disappears(ready_admin):
+def test_a_template_in_use_cannot_be_renamed_but_can_be_deleted(ready_admin):
     vault_id = vault_of(ready_admin)
     template = make_template(ready_admin, vault_id)
     t = {"id": template.json()["id"], "etag": template.headers["ETag"]}
     doc = post_note(ready_admin, vault_id, "Doc.md", "", {"plantilla": "base"})
-    d = {"id": doc.json()["id"], "etag": doc.headers["ETag"]}
-    assert ready_admin.delete(f"/vaults/{vault_id}/notes/{t['id']}", headers={"If-Match": t["etag"]}).status_code == 422
     res = patch(ready_admin, vault_id, t, path="PLANTILLAS/plantilla-otra.md")
     assert detail(res) == "plantilla:in-use"
     assert patch(ready_admin, vault_id, t, content="# Nueva estructura").status_code == 200  # editar sí (P3)
     t["etag"] = find(ready_admin, vault_id, "PLANTILLAS/plantilla-base.md")["etag"]
-    # La relación desaparece cuando el documento deja de citarla.
-    assert patch(ready_admin, vault_id, d, frontmatter={"titulo": "x"}).status_code == 200
+    # H-054: borrar una plantilla en uso se permite; sus documentos pasan a «sin plantilla» (el cliente los reescribe).
     assert ready_admin.delete(f"/vaults/{vault_id}/notes/{t['id']}", headers={"If-Match": t["etag"]}).status_code == 204
+    assert ready_admin.get(f"/vaults/{vault_id}/notes/{doc.json()['id']}").status_code == 200
 
 
-def test_a_template_in_use_cannot_be_deleted_over_sync(vault, ready_admin):
+def test_a_template_in_use_can_be_deleted_over_sync_but_not_renamed(vault, ready_admin):
     vault_id = vault["id"]
     template = note_doc(vault_id, path="PLANTILLAS/plantilla-base.md", frontmatter=TEMPLATE)
     assert push(ready_admin, [template]).json() == []
     doc = note_doc(vault_id, path="Doc.md", frontmatter={"plantilla": "base"})
     assert push(ready_admin, [doc]).json() == []
+    renamed = child_of(template, path="PLANTILLAS/plantilla-otra.md")
+    assert reasons(push(ready_admin, [renamed])) == ["plantilla:in-use"]
     gone = child_of(template, deleted_at="2026-11-05T10:00:00.000000Z")
-    assert reasons(push(ready_admin, [gone])) == ["plantilla:in-use"]
-    assert push(ready_admin, [child_of(doc, frontmatter={})]).json() == []
     assert push(ready_admin, [gone]).json() == []
 
 

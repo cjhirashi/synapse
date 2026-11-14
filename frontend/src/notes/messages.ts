@@ -67,7 +67,7 @@ export function noteErrorMessage(err: unknown): string {
   }
   if (err instanceof NotePathTakenError) return PATH_TAKEN;
   if (err instanceof TemplateInUseError) {
-    return `No se puede borrar, renombrar ni mover la plantilla: ${err.users === 1 ? "1 documento la usa" : `${err.users} documentos la usan`}. Quita la plantilla de esos documentos primero.`;
+    return `No se puede renombrar ni mover la plantilla: ${err.users === 1 ? "1 documento la usa" : `${err.users} documentos la usan`}. Quita la plantilla de esos documentos primero.`;
   }
   if (err instanceof NoteChangedError) return NOTE_CHANGED;
   if (err instanceof NoteNotFoundError) return NOTE_NOT_FOUND;
@@ -101,7 +101,7 @@ export function noteReasonText(code: string): string {
   if (code === "plantilla:alcance") return "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda).";
   if (code === "plantilla:atributos") return "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos.";
   if (code === "plantilla:estilo") return "El estilo de una plantilla debe estar vacío (reservado para web/PDF).";
-  if (code === "plantilla:in-use") return "No se puede borrar, renombrar ni mover una plantilla mientras algún documento la use.";
+  if (code === "plantilla:in-use") return "No se puede renombrar ni mover una plantilla mientras algún documento la use.";
   if (code === "plantilla:unknown") return "La plantilla referida en el documento no existe.";
   if (code.startsWith("meta-folder:")) return "Las carpetas reservadas (AG - …, BITACORA, PLANTILLAS) no se renombran y su INDICE no se borra.";
   if (code.startsWith("ag-mensajes:")) return "La nota no respeta el formato de AG - MENSAJES o es un mensaje que no se puede cambiar.";

@@ -590,7 +590,7 @@ class SyncPushService:
 
     async def _check_meta_rules(self, doc: dict, leaves: dict[str, dict]) -> None:
         """H-030b: BITACORA de solo lectura, forma de las plantillas, skill de cajón solo para la sesión humana y
-        plantilla en uso (no se borra, renombra ni saca de PLANTILLAS mientras algún documento la use).
+        plantilla en uso (no se renombra ni saca de PLANTILLAS mientras algún documento la use; borrarla sí, H-054).
 
         La existencia de la plantilla que cita un documento no se comprueba aquí (un cliente sin conexión puede
         crear la plantilla y el documento en lotes distintos); la protege el borrado de plantillas en uso."""
@@ -604,8 +604,8 @@ class SyncPushService:
                 actor_kind=kind)) is not None:
             raise Rejected(code)
         name = plantilla_rules.template_name(prev_path) if prev_path else None
-        if name is not None and previous is not None and not previous.get("deleted_at") and (
-                deleted or plantilla_rules.template_name(doc["path"]) != name):
+        if name is not None and previous is not None and not previous.get("deleted_at") and not deleted and (
+                plantilla_rules.template_name(doc["path"]) != name):
             from app.services.note_content_service import NoteContentService
 
             vault_id = doc["_id"].split(":")[1]

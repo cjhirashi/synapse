@@ -38,11 +38,17 @@ test("una nota nace de una plantilla con su cuerpo, sus atributos (los sin valor
   expect(note.frontmatter).not.toHaveProperty("fecha_limite");
 });
 
-test("una plantilla en uso no se borra ni se renombra; sin usuarios, sí", async () => {
-  const template = await store.createTemplate(VAULT, "Acta");
-  const doc = await store.create(VAULT, "Reunión", "", { name: "acta", content: "", atributos: [] });
-  await expect(store.softDelete(template.id, template.rev)).rejects.toBeInstanceOf(TemplateInUseError);
+test("una plantilla en uso no se renombra; borrarla deja sus documentos sin plantilla y conserva sus atributos con contenido (H-054)", async () => {
+  const created = await store.createTemplate(VAULT, "Acta");
+  const atributos = [{ nombre: "cliente", tipo: "texto" }, { nombre: "invitados", tipo: "lista" }];
+  const template = await store.save(created.id, created.content, created.rev, { ...created.frontmatter, atributos });
+  const doc = await store.create(VAULT, "Reunión", "", { name: "acta", content: "", atributos });
   await expect(store.rename(template.id, "PLANTILLAS/plantilla-otra", template.rev)).rejects.toBeInstanceOf(TemplateInUseError);
-  await store.save(doc.id, "", doc.rev, { titulo: "Reunión" }); // el documento deja de citarla
+  const saved = await store.save(doc.id, "", doc.rev, { ...doc.frontmatter, cliente: "Ana", nota: "x" });
   await expect(store.softDelete(template.id, template.rev)).resolves.toMatchObject({ deleted_at: expect.any(String) });
+  const after = await store.get(doc.id);
+  expect(after.rev).not.toBe(saved.rev);
+  expect(after.frontmatter).toMatchObject({ cliente: "Ana", nota: "x" });
+  expect(after.frontmatter).not.toHaveProperty("plantilla");
+  expect(after.frontmatter).not.toHaveProperty("invitados"); // vacío: no se conserva
 });

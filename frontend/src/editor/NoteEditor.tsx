@@ -18,7 +18,7 @@
  */
 import { Notice, noticeText } from "./Notice";
 import { splitLegacyBlock } from "./legacyBlock";
-import { ChangeEvent, ClipboardEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { ChangeEvent, ClipboardEvent, ComponentType, DragEvent, KeyboardEvent, ReactNode, UIEvent as ReactUIEvent, forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -64,6 +64,10 @@ import { useSync } from "../sync/useSync";
 import { buildPdfHtml } from "../notes/pdfHtml";
 import { fetchNotePdf, pdfErrorMessage, saveBlob } from "../notes/pdfApi";
 import { usePdfEnabled } from "../notes/usePdfEnabled";
+import { useTemplateOptions, type TemplateOption } from "../notes/useTemplateOptions";
+import { appliesTo } from "../notes/metaRules";
+import { folderOf } from "../notes/indexRules";
+import { changeTemplate, isEmptyBody } from "./templateAttrs";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import AttachDialog from "./AttachDialog";
@@ -261,6 +265,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   /** H-036: el botón «PDF» solo existe si la plantilla del documento lo activa; mientras se genera queda deshabilitado. */
   const pdfEnabled = usePdfEnabled(notes, note?.vault_id ?? "", note?.id ?? null, notesVersion);
   const [pdfBusy, setPdfBusy] = useState(false);
+  /** H-054: plantillas que se pueden asignar a este documento (existen y su alcance cubre su carpeta; la vigente siempre sale). */
+  const allTemplates = useTemplateOptions(notes, note?.vault_id ?? "", notesVersion);
+  const templateOptions = useMemo(() => {
+    if (allTemplates === null || note === null) return null;
+    const folder = folderOf(note.path);
+    return allTemplates.filter((option) => appliesTo(option.alcance, folder) || option.name === props.plantilla);
+  }, [allTemplates, note, props.plantilla]);
+  /** Estructura de la plantilla elegida a la espera de la respuesta (el documento ya tiene contenido). */
+  const [structureAsk, setStructureAsk] = useState<{ content: string } | null>(null);
   /** Línea (1-based, en el texto compuesto) del error de YAML para ofrecer «Ir a la línea N». */
   const [errorLine, setErrorLine] = useState<number | null>(null);
 
@@ -602,6 +615,35 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     setProps(next);
     setSaved(false);
   }, []);
+
+  /** Pone `body` como contenido del documento en la vista que esté abierta (la vista Visual lo recarga al ver otro `value`). */
+  function replaceBody(body: string) {
+    if (viewRef.current === "code") onCodeChange(body);
+    else onDraft(prefix + body);
+  }
+
+  /** H-054: la persona eligió otra plantilla (`""` = sin plantilla). */
+  async function onTemplateChange(name: string) {
+    const current = noteRef.current;
+    if (current === null || templateOptions === null) return;
+    const edit = currentEdit();
+    const fromName = typeof edit.props.plantilla === "string" ? edit.props.plantilla : "";
+    if (fromName === name) return;
+    const defOf = (option: TemplateOption | undefined) => (option ? { name: option.name, atributos: option.atributos } : null);
+    const from = defOf(templateOptions.find((option) => option.name === fromName));
+    const target = name === "" ? undefined : templateOptions.find((option) => option.name === name);
+    if (name !== "" && target === undefined) return;
+    const next = changeTemplate(edit.props, from, defOf(target), { keep: new Set(Object.keys(attributes ?? {})) });
+    propsRef.current = next;
+    setProps(next);
+    setSaved(false);
+    setFormKey((k) => k + 1);
+    if (target === undefined) return;
+    const template = await notes.get(target.id);
+    if (noteRef.current !== current || template.content === "") return;
+    if (isEmptyBody(currentEdit().body)) replaceBody(template.content);
+    else setStructureAsk({ content: template.content });
+  }
 
   /** La vista Código (verdad mientras se está en ella, RF-021) cambió su texto compuesto. */
   const onCodeChange = useCallback((value: string) => {
@@ -1294,6 +1336,30 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </ConfirmDialog>
           )}
 
+          {structureAsk !== null && (
+            <ConfirmDialog
+              titleId="note-structure-title"
+              title="¿Quieres actualizar la estructura de contenido en el documento o prefieres conservar el contenido actual?"
+              tone="warning"
+              body={<p>Si aceptas perderás el contenido actual del documento.</p>}
+              onCancel={() => setStructureAsk(null)}
+            >
+              <button type="button" data-autofocus onClick={() => setStructureAsk(null)}>
+                Conservar contenido actual
+              </button>
+              <button
+                type="button"
+                className="btn-danger"
+                onClick={() => {
+                  replaceBody(structureAsk.content);
+                  setStructureAsk(null);
+                }}
+              >
+                Actualizar estructura
+              </button>
+            </ConfirmDialog>
+          )}
+
           {blocker.state === "blocked" && (
             <ConfirmDialog titleId="note-leave-title" title="Esta nota tiene cambios sin guardar." tone="warning" onCancel={() => blocker.reset()}>
               <button type="button" className="btn-primary" onClick={() => void saveAndLeave()} disabled={saving}>
@@ -1332,7 +1398,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} attributes={attributes} />}
           {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
               `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
-          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} />}
+          {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}-${templateOptions === null ? "n" : "t"}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} templates={templateOptions} onTemplateChange={(name) => void onTemplateChange(name)} />}
 
           {mode === "read" ? (
             <>

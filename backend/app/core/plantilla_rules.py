@@ -13,7 +13,7 @@ La especificación compartida con el cliente vive en `tests/fixtures/plantilla_r
 import re
 
 from app.core.ag_rules import PLANTILLAS, meta_folder_of
-from app.core.attribute_rules import PLANTILLA_NAME_MAX, PLANTILLA_NAME_RE, RESERVED_KEYS, normalize_key
+from app.core.attribute_rules import HIDDEN_KEY, PLANTILLA_NAME_MAX, PLANTILLA_NAME_RE, RESERVED_KEYS, normalize_key
 from app.core.index_rules import is_index_path
 from app.core.note_prefix import check_prefix
 
@@ -41,7 +41,7 @@ _PDF_FIELD_RE = re.compile(r"\{\{([^{}]*)\}\}")
 # Claves que ya son atributos generales (o del sistema): una plantilla no las redefine como extra.
 NOT_EXTRA = {
     "titulo", "descripcion", "tags", "estado", "fecha_creacion", "fecha_actualizacion", "plantilla", "sistema",
-    *RESERVED_KEYS,
+    HIDDEN_KEY, *RESERVED_KEYS,
 }
 
 

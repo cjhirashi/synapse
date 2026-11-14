@@ -341,7 +341,7 @@ Códigos `reason` de un rechazo (orden en que se comprueban):
 | `immutable-field:cerrada_el` | (H-030) la cabecera de una conversación trae un `cerrada_el` distinto del que tenía: lo sella el servidor |
 | `meta-folder:case` | (H-030b) una carpeta reservada escrita con otras mayúsculas (`Plantillas/…`) |
 | `bitacora:readonly` | (H-030b) escribir, mover o borrar una nota de `BITACORA/` (solo la escribe el servidor) |
-| `plantilla:<path\|alcance\|atributos\|estilo\|in-use\|unknown>` | (H-030b) plantilla mal ubicada o mal definida; en uso por algún documento; plantilla citada que no existe |
+| `plantilla:<path\|alcance\|atributos\|estilo\|in-use\|unknown>` | (H-030b) plantilla mal ubicada o mal definida; en uso por algún documento (renombrar o mover; borrarla se permite desde H-054); plantilla citada que no existe |
 | `sistema:readonly` | (H-041) crear, editar, mover, renombrar, borrar o restaurar un documento de sistema (la skill global o `plantilla-skill`), con cualquier actor y modo |
 | `skill:name` | (H-041 E2) una skill sin nombre válido (sin letras ni dígitos, solo el prefijo, o de más de 64 caracteres con el prefijo); en `/sync`, un nombre que no es canónico |
 | `skill:propietario` | (H-041 E3) skill activa sin propietario o con uno mal formado, o propietario que el usuario introduce y no es gestor |

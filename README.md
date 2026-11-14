@@ -41,6 +41,13 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   abrir la tarea, y hay filtro «Sin leer» y «Marcar todo como leído». Preferencias por tipo y horas silenciosas (22:00–07:00 por
   defecto, hora de México); la app se instala como PWA y envía Web Push (VAPID) con la misma estructura de la tarjeta (título
   «Tipo · evento» y, en el cuerpo, la tarea, su descripción, «estado · responsable · bóveda» y el vencimiento) y con aviso de versión nueva.
+- **Plantilla en cada documento (H-054):** el formulario de atributos de un documento lleva el control **Plantilla** (obligatorio: «Sin plantilla»
+  es un valor válido). Lista las plantillas de la bóveda cuyo alcance cubre la carpeta del documento. Con plantilla, el formulario muestra solo los
+  atributos generales y los de la plantilla (siempre existen, pueden ir vacíos) y ya no permite crear atributos; los opcionales que el documento ya
+  tenía quedan ocultos en `atributos_ocultos` y reaparecen al quitar la plantilla (si uno coincide en nombre y tipo con un atributo de la plantilla,
+  pasa a ser ese atributo con su valor). Al asignar o cambiar la plantilla, la estructura de contenido se carga sola si el documento está vacío; si
+  tiene contenido, un aviso pregunta si se actualiza (pierde el contenido actual) o se conserva. Borrar una plantilla deja sus documentos sin plantilla
+  y sus atributos con contenido pasan a opcionales.
 - **Plantillas y descarga en PDF (H-036):** cada plantilla (`PLANTILLAS/plantilla-<nombre>.md`) define dónde se ofrece, sus
   atributos y, en «Diseño del PDF», el formato con el que se descargan sus documentos: hoja Carta o A4 y márgenes, tipografía, tamaño y
   color por nivel de encabezado (H1 a H4) y para el texto, un **color primario** del que el servidor calcula el secundario y el

@@ -44,7 +44,7 @@ const REASONS = new Map<string, string>([
   ["plantilla:alcance", "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda)."],
   ["plantilla:atributos", "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos."],
   ["plantilla:estilo", "El estilo de una plantilla debe estar vacío (reservado para web/PDF)."],
-  ["plantilla:in-use", "No se puede borrar, renombrar ni mover una plantilla mientras algún documento la use."],
+  ["plantilla:in-use", "No se puede renombrar ni mover una plantilla mientras algún documento la use."],
   ["plantilla:unknown", "La plantilla referida en el documento no existe."],
   ["ag-agentes:registro", "Un registro de AG - AGENTES necesita un estado (activo o suspendido) y la lista de carpetas."],
   ["immutable-field:cerrada_el", "La hora de cierre de una conversación la fija el servidor."],

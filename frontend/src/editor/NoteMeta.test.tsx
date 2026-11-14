@@ -13,19 +13,19 @@ function lastEmit(spy: ReturnType<typeof vi.fn>) {
 }
 
 describe("NoteMeta · lectura", () => {
-  it("muestra los siete generales en orden fijo", () => {
+  it("muestra los generales y la plantilla en orden fijo", () => {
     render(<NoteMeta mode="read" frontmatter={FULL} path="Carpeta/Nota.md" />);
     const group = screen.getByRole("group", { name: "Atributos generales" });
     const labels = within(group).getAllByRole("term").map((t) => t.textContent);
-    expect(labels).toEqual(["Título", "Descripción", "Ruta", "Fecha de creación", "Fecha de actualización", "Etiquetas", "Estado"]);
+    expect(labels).toEqual(["Título", "Descripción", "Ruta", "Fecha de creación", "Fecha de actualización", "Etiquetas", "Estado", "Plantilla"]);
     const values = within(group).getAllByRole("definition").map((d) => d.textContent);
-    expect(values).toEqual(["Mi nota", "Resumen", "Carpeta/Nota.md", "2026-07-06", "2026-07-15", "iaanálisis", "aprobado"]);
+    expect(values).toEqual(["Mi nota", "Resumen", "Carpeta/Nota.md", "2026-07-06", "2026-07-15", "iaanálisis", "aprobado", "—"]);
   });
 
   it("sin atributos muestra «—» y la ruta del sistema", () => {
     render(<NoteMeta mode="read" frontmatter={null} path="Nota.md" />);
     const group = screen.getByRole("group", { name: "Atributos generales" });
-    expect(within(group).getAllByText("—")).toHaveLength(6);
+    expect(within(group).getAllByText("—")).toHaveLength(7);
     expect(within(group).getByText("Nota.md")).toBeInTheDocument();
   });
 

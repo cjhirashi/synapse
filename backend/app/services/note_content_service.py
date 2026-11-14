@@ -542,10 +542,11 @@ class NoteContentService:
         ref = frontmatter.get("plantilla") if isinstance(frontmatter, dict) else None
         if not deleted and ref is not None and ref != old_fm.get("plantilla") and not self._template_exists(vault_id, ref):
             raise _field_error("frontmatter", "plantilla:unknown")
-        # Una plantilla con documentos que la usan no se renombra, no se mueve fuera de PLANTILLAS ni se borra.
-        if prev_doc is not None and not prev_doc.get("deleted_at"):
+        # Una plantilla con documentos que la usan no se renombra ni se mueve fuera de PLANTILLAS. Borrarla sí se puede (H-054):
+        # sus documentos pasan a «sin plantilla» (el cliente los reescribe al borrarla; los que quedan citándola se tratan así al abrirlos).
+        if prev_doc is not None and not prev_doc.get("deleted_at") and not deleted:
             name = plantilla_rules.template_name(prev_doc["path"])
-            gone = deleted or plantilla_rules.template_name(path) != name
+            gone = plantilla_rules.template_name(path) != name
             if name is not None and gone and self._count_template_users(vault_id, name, prev_doc["_id"]) > 0:
                 raise _field_error("path", "plantilla:in-use")
 

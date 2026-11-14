@@ -16,6 +16,8 @@ ESTADO_MAX_LEN = 32
 ESTADOS_ESTANDAR = ("borrador", "en proceso", "en revisión", "aprobado", "en implementación", "implementado")
 # `ruta` es del sistema (se calcula desde la ubicación de la nota): no se guarda en el frontmatter.
 RESERVED_KEYS = ("ruta",)
+# H-054: atributos opcionales que quedan guardados (y ocultos) mientras el documento tiene plantilla; reaparecen al quitarla.
+HIDDEN_KEY = "atributos_ocultos"
 # `plantilla` (H-030b): nombre de la plantilla de la que nació el documento, sin el prefijo `plantilla-`.
 PLANTILLA_NAME_MAX = 64
 PLANTILLA_NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")

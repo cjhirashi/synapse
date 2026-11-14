@@ -479,7 +479,11 @@ automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los camb
 `texto|numero|fecha|lista|booleano`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` reservado para H-035; `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
 estructura Markdown base. Un documento creado desde una plantilla guarda su nombre en el atributo general `plantilla`; se
 rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plantilla no toca los documentos que la usan; una
-plantilla con documentos vivos que la citen no se borra, renombra ni saca de `PLANTILLAS` (`plantilla:in-use`). Otros códigos:
+plantilla con documentos vivos que la citen no se renombra ni sale de `PLANTILLAS` (`plantilla:in-use`). Borrarla sí se puede (H-054):
+la app deja sus documentos sin plantilla y sus atributos de plantilla con contenido pasan a opcionales; por REST o `/sync` los documentos
+que la citaban quedan con una referencia huérfana que la app trata como «sin plantilla». Con plantilla asignada, la app guarda los
+opcionales que el documento tenía en el atributo reservado `atributos_ocultos` (un objeto; una plantilla no puede definirlo como atributo)
+y los devuelve a su sitio al quitar la plantilla. Otros códigos:
 `plantilla:path|alcance|atributos|estilo`.
 
 **Documentos de sistema (H-041).** Dos documentos los publica Synapse en toda bóveda, existente y nueva: la skill global

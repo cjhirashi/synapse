@@ -42,7 +42,7 @@ export class NoteChangedError extends Error {
   }
 }
 
-/** Una plantilla con documentos vivos que la citan no se borra, renombra ni mueve (`plantilla:in-use` del servidor). */
+/** Una plantilla con documentos vivos que la citan no se renombra ni mueve (`plantilla:in-use` del servidor). */
 export class TemplateInUseError extends Error {
   constructor(readonly users: number) {
     super(`la plantilla la usan ${users} documentos`);

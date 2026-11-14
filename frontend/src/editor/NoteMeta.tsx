@@ -14,9 +14,13 @@ import {
 } from "./attributeRules";
 import { PropertiesForm } from "./PropertiesForm";
 import { PropertiesPanel } from "./PropertiesPanel";
+import { TemplateAttributes } from "./TemplateAttributes";
+import { HIDDEN_KEY, detachTemplate } from "./templateAttrs";
+import type { TemplateOption } from "../notes/useTemplateOptions";
 import type { AttributeCatalog, AttributeDef } from "../sync/vaultRules";
 
-const GENERAL_KEYS = new Set(["titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags", "estado"]);
+// `plantilla` y los opcionales ocultos (H-054) no son propiedades libres: los gestiona el control «Plantilla».
+const GENERAL_KEYS = new Set(["titulo", "descripcion", "ruta", "fecha_creacion", "fecha_actualizacion", "tags", "estado", "plantilla", HIDDEN_KEY]);
 /** Valor del `<select>` de estado para «sin estado» y para «crear uno nuevo» (un estado guardado nunca los usa: `_` pasa a espacio). */
 const NO_ESTADO = "";
 const OTHER_ESTADO = "__otro__";
@@ -33,6 +37,10 @@ interface NoteMetaProps {
   onNewEstado?: (estado: string) => void;
   /** Catálogo de atributos tipados de la bóveda (H-029). Solo se usa en edición. */
   attributes?: AttributeCatalog | null;
+  /** Plantillas que se pueden elegir para este documento (H-054). Sin ellas (`undefined`/`null`) no hay control de plantilla. */
+  templates?: readonly TemplateOption[] | null;
+  /** La persona eligió otra plantilla (`""` = sin plantilla): el editor reescribe los atributos y, si procede, la estructura. */
+  onTemplateChange?: (name: string) => void;
 }
 
 interface Values {
@@ -75,10 +83,10 @@ function fileTitle(path: string): string {
   return (path.split("/").pop() ?? path).replace(/\.md$/i, "");
 }
 
-export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado, attributes }: NoteMetaProps) {
+export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado, attributes, templates, onTemplateChange }: NoteMetaProps) {
   const fm = frontmatter ?? {};
   if (mode === "read") return <ReadMeta fm={fm} path={path} />;
-  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} />;
+  return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} templates={templates} onTemplateChange={onTemplateChange} />;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -117,6 +125,7 @@ function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
             )}
           </Row>
           <Row label="Estado">{text(fm.estado) || dash}</Row>
+          <Row label="Plantilla">{text(fm.plantilla) || dash}</Row>
         </dl>
       </div>
       <PropertiesPanel frontmatter={free} />
@@ -124,8 +133,14 @@ function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
   );
 }
 
-function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado, attributes }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
+function EditMeta({ fm: fmRaw, path, onChange, estadoOptions, onNewEstado, attributes, templates, onTemplateChange }: Omit<NoteMetaProps, "mode" | "frontmatter"> & { fm: Record<string, unknown> }) {
   const uid = useId();
+  const currentTemplate = text(fmRaw.plantilla);
+  const activeTemplate = templates?.find((option) => option.name === currentTemplate) ?? null;
+  // Una plantilla que ya no existe (borrada) deja el documento sin plantilla: sus opcionales reaparecen.
+  const fm = templates && currentTemplate !== "" && activeTemplate === null ? detachTemplate(fmRaw, null) : fmRaw;
+  // Los opcionales ocultos viajan intactos: solo cambian al asignar o quitar la plantilla.
+  const hidden = useRef(fm[HIDDEN_KEY]).current;
   const initial = useRef({
     free: freeProperties(fm, attributes),
     fechaCreacion: text(fm.fecha_creacion),
@@ -169,6 +184,10 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado, attributes }
     if (initial.fechaActualizacion) out.fecha_actualizacion = initial.fechaActualizacion;
     if (next.tags.length > 0) out.tags = next.tags;
     if (next.estado) out.estado = next.estado;
+    // Sin lista de plantillas (aún no cargada) la referencia se conserva tal cual.
+    if (activeTemplate) out.plantilla = activeTemplate.name;
+    else if (!templates && currentTemplate !== "") out.plantilla = currentTemplate;
+    if (hidden !== undefined) out[HIDDEN_KEY] = hidden;
     onChange?.({ ...out, ...nextFree, ...nextTyped });
   }
 
@@ -422,13 +441,43 @@ function EditMeta({ fm, path, onChange, estadoOptions, onNewEstado, attributes }
           )}
           {estadoError && <p id={`${uid}-estado-err`} role="alert" className="note-meta-error">{estadoError}</p>}
         </div>
+        {templates && (
+          <div className="note-meta-field">
+            <label htmlFor={`${uid}-plantilla`}>Plantilla</label>
+            <select id={`${uid}-plantilla`} value={activeTemplate?.name ?? ""} onChange={(event) => onTemplateChange?.(event.target.value)}>
+              <option value="">Sin plantilla</option>
+              {templates.map((option) => (
+                <option key={option.name} value={option.name}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       {typedAttributesContent && (
         <div role="group" aria-label="Atributos de la bóveda" className="note-properties props-form note-meta-form">
           {typedAttributesContent}
         </div>
       )}
-      <PropertiesForm frontmatter={initial.free} onChange={(next) => commit({}, next, typedValuesState)} />
+      {activeTemplate ? (
+        activeTemplate.atributos.length > 0 && (
+          <div role="group" aria-label={`Atributos de la plantilla ${activeTemplate.label}`} className="note-properties props-form note-meta-form">
+            <TemplateAttributes
+              attrs={activeTemplate.atributos}
+              values={free.current}
+              onChange={(nombre, value) => {
+                const next = { ...free.current };
+                if (value === undefined) delete next[nombre];
+                else next[nombre] = value;
+                commit({}, next, typedValuesState);
+              }}
+            />
+          </div>
+        )
+      ) : (
+        <PropertiesForm frontmatter={initial.free} onChange={(next) => commit({}, next, typedValuesState)} />
+      )}
     </div>
   );
 }
