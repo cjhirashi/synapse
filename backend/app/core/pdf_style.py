@@ -163,6 +163,7 @@ strong em, em strong, b i, i b {{ color: {c['negrita_cursiva']}; }}
 a {{ text-decoration: underline; text-decoration-thickness: 0.5pt; text-underline-offset: 1.5pt; }}
 code {{ color: {c['codigo']}; background: {code_bg}; }}
 pre {{ background: {code_bg}; }}
+.code-block {{ background: {code_bg}; }}
 pre code {{ color: {c['codigo']}; background: none; }}
 li::marker {{ color: {c['marcador']}; }}
 blockquote {{ border-left-color: {c['cita']}; background: {quote_bg}; }}
@@ -206,6 +207,9 @@ blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 
 pre {{ font-family: {CODE_FONT}; font-size: {round(base * 0.88, 1)}pt; background: {CODE_BG}; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
 code {{ font-family: {CODE_FONT}; font-size: 0.92em; background: {CODE_BG}; padding: 0 0.2em; border-radius: 2pt; }}
 pre code {{ background: none; padding: 0; }}
+.code-block {{ margin: 0 0 0.8em; border: 0.6pt solid #cbd5e1; border-radius: {RADIUS}; background: {CODE_BG}; }}
+.code-block-header {{ padding: 0.35em 0.8em; border-bottom: 0.6pt solid #cbd5e1; font-family: {CODE_FONT}; font-size: {round(base * 0.8, 1)}pt; line-height: 1.2; color: {quote_color}; }}
+.code-block pre {{ margin: 0; background: transparent; border-radius: 0; }}
 table {{ border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
 th, td {{ border: 0.6pt solid #cbd5e1; border-top-width: 0; border-left-width: 0; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}
 th {{ background: #f1f5f9; font-weight: 700; }}

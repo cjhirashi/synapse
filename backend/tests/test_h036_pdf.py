@@ -722,3 +722,18 @@ def test_code_uses_the_editor_code_font_and_code_and_quote_backgrounds_are_not_t
     if shutil.which("fc-match"):
         family = subprocess.run(["fc-match", "-f", "%{family}", "JetBrains Mono"], capture_output=True, text=True, check=True).stdout
         assert "JetBrains Mono" in family, family
+
+
+def test_a_code_block_keeps_its_language_as_a_header_inside_the_box():
+    from app.services.pdf_service import build_document
+    style = pdf_style.resolve({"activo": True})
+    html = ('<div class="code-block" data-language="python"><div class="code-block-header" contenteditable="false">'
+            '<span class="code-block-label">python</span></div><pre><code>var = 1</code></pre></div>')
+    doc = build_document(html, style, title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    assert '<div class="code-block"><div class="code-block-header"><span class="code-block-label">python</span></div><pre><code>var = 1</code></pre></div>' in doc
+    css = pdf_style.stylesheet(style, has_header=False, has_footer=False)
+    assert ".code-block {" in css and ".code-block-header {" in css and ".code-block pre { margin: 0; background: transparent;" in css
+    assert "border-bottom: 0.6pt solid #cbd5e1" in css.split(".code-block-header {")[1].split("}")[0]
+    assert 'font-family: "JetBrains Mono"' in css.split(".code-block-header {")[1].split("}")[0]
+    themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    assert f".code-block {{ background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed
