@@ -76,7 +76,7 @@ def test_the_document_carries_header_footer_attributes_and_sanitized_body():
         read_image=lambda file_id: (b"\x89PNG", "image/png") if file_id == "img-1" else None, now=NOW)
     assert 'id="pdfhead"' in doc and 'id="pdffoot"' in doc
     css = doc.split("<style>")[1].split("</style>")[0]
-    assert 'background-image: url("data:image/png;base64,' in css and "background-repeat: no-repeat" in css and "background-size: auto" in css
+    assert 'background-image: url("data:image/png;base64,' in css and "background-repeat: no-repeat" in css and "background-size: 816px auto" in css
     assert "background-position: -20mm -25mm" in css  # compensa los márgenes: arranca en la esquina de la hoja
     assert "<img" not in doc.split("<article>")[0]  # la imagen no es una miniatura dentro de la banda
     assert "Acta" in doc and "Acme" in doc and "13 nov 2026" in doc and 'class="pn"' in doc
@@ -86,7 +86,7 @@ def test_the_document_carries_header_footer_attributes_and_sanitized_body():
     assert "pdfhead" not in bare.split("<body>")[1] and "@top-left" not in bare
 
 
-def test_the_header_image_is_the_page_background_at_real_size_from_the_sheet_corner():
+def test_the_header_image_is_the_page_background_816px_wide_with_proportional_height():
     pytest.importorskip("weasyprint")
     pytest.importorskip("nh3")
     import struct, zlib
@@ -101,13 +101,14 @@ def test_the_header_image_is_the_page_background_at_real_size_from_the_sheet_cor
             return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
         return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
 
-    image = (solid_png(816, 200), "image/png")  # 816 px = ancho de una hoja Carta a 96 ppp; 200 px de alto
-    style = pdf_style.resolve({"activo": True, "encabezado": {"imagen": "bg"}})
-    doc = build_document("<p>x</p>" * 3, style, title="T", frontmatter={}, read_image=lambda i: image if i == "bg" else None, now=NOW)
-    pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
-    assert len(pages) == 1 and pages[0].width == pytest.approx(816) and pages[0].height == pytest.approx(1056)
-    css = doc.split("<style>")[1].split("</style>")[0]
-    assert "background-size: auto" in css and "no-repeat" in css  # tamaño real, sin escalar ni repetir
+    for width, height, expected_height in ((1080, 1350, 1020), (408, 100, 200), (816, 200, 200)):  # 816 / ancho * alto
+        style = pdf_style.resolve({"activo": True, "pagina": {"tamano": "a4"}, "encabezado": {"imagen": "bg"}})
+        image = (solid_png(width, height), "image/png")
+        doc = build_document("<p>x</p>" * 3, style, title="T", frontmatter={}, read_image=lambda i: image if i == "bg" else None, now=NOW)
+        rendered = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render()
+        layer = rendered.pages[0]._page_box.background.layers[0]
+        assert len(rendered.pages) == 1
+        assert layer.size == (pytest.approx(816), pytest.approx(expected_height)), (width, height, layer.size)  # ancho fijo, alto proporcional, sin deformar
     bare = build_document("<p>x</p>", pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
     assert "background-image" not in bare
 

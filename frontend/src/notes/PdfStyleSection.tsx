@@ -138,7 +138,7 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
         </div>
         <TypeFields label="Encabezados" value={draft.encabezados} onChange={(next) => set("encabezados", next)} />
         <TypeFields label="Texto" value={draft.texto} onChange={(next) => set("texto", next)} />
-        <BandFields label="Encabezado de página" imageLabel="Imagen de fondo de la página (archivo de la bóveda)" imageHint="La imagen se pone como fondo de cada página, desde la esquina superior izquierda y en su tamaño real (sin redimensionar): una imagen del tamaño de la página la cubre completa. Los textos de abajo se imprimen encima." value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)} />
+        <BandFields label="Encabezado de página" imageLabel="Imagen de fondo de la página (archivo de la bóveda)" imageHint="La imagen se pone como fondo de cada página, desde la esquina superior izquierda, con 816 px de ancho (el de una hoja Carta) y la altura proporcional: no se deforma. Los textos de abajo se imprimen encima." value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)} />
         <BandFields label="Pie de página" imageLabel="Imagen del pie (archivo de la bóveda)" value={draft.pie} images={images} attributes={names} onChange={(next) => set("pie", next)} />
         <label className="pdf-style-toggle">
           <input type="checkbox" checked={draft.incluirAtributos} onChange={(event) => set("incluirAtributos", event.target.checked)} />

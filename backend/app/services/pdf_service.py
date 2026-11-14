@@ -126,7 +126,7 @@ def build_document(
     attributes = {key: value for key, value in frontmatter.items()}
     head = _band("pdfhead", style["encabezado"], read_image, title, attributes, now, with_image=False)
     foot = _band("pdffoot", style["pie"], read_image, title, attributes, now)
-    background = _image_data_uri(read_image, style["encabezado"]["imagen"])  # fondo de cada página, tamaño real, desde la esquina superior izquierda
+    background = _image_data_uri(read_image, style["encabezado"]["imagen"])  # fondo de cada página: 816 px de ancho, alto proporcional, desde la esquina superior izquierda
     css = pdf_style.stylesheet(style, has_header=head is not None, has_footer=foot is not None, background=background)
     attrs = _attributes_table(frontmatter) if style["incluir_atributos"] else ""
     return (

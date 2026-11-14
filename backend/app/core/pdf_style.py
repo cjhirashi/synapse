@@ -15,6 +15,8 @@ CDMX = ZoneInfo("America/Mexico_City")
 MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 PAGE_SIZES = {"carta": "Letter", "a4": "A4"}
 HEADER_IMAGE_MAX_MM = 15
+# Ancho con el que se imprime la imagen de fondo del encabezado (816 px = 8,5 in a 96 ppp, una hoja Carta); la altura sigue la proporción de la imagen.
+BACKGROUND_WIDTH_PX = 816
 
 DEFAULTS = {
     "activo": False,
@@ -101,10 +103,10 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: s
         boxes.append("@top-left { content: element(pdfhead); width: 100%; vertical-align: middle; }")
     if has_footer:
         boxes.append("@bottom-left { content: element(pdffoot); width: 100%; vertical-align: middle; }")
-    # H-036: la imagen del encabezado es el fondo de la página: esquina superior izquierda de la HOJA, tamaño real (1 px de la imagen = 1 px CSS), sin repetir ni escalar.
+    # H-036: la imagen del encabezado es el fondo de la página: esquina superior izquierda de la HOJA, escalada a BACKGROUND_WIDTH_PX de ancho (alto proporcional), sin repetir.
     # WeasyPrint posiciona el fondo de @page desde el área de contenido (dentro de los márgenes), por eso se compensa con ellos.
     left, top = m["izquierdo"], m["superior"]
-    bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: auto; ' if background else "")
+    bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {BACKGROUND_WIDTH_PX}px auto; ' if background else "")
     return f"""
 @page {{ {bg}size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
 html {{ font-family: "{body['familia']}", sans-serif; font-size: {base}pt; color: {body['color']}; line-height: 1.45; }}
