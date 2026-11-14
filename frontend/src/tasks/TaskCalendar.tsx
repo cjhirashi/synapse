@@ -38,11 +38,12 @@ function CalendarTask({ task, actions, time = false }: { task: Task; actions: Vi
     <button
       type="button" data-status={task.status}
       className={`tasks-cal-task${isClosed(task) ? " tasks-row--closed" : ""}${isOverdue(task) ? " tasks-chip--overdue" : ""}`}
-      title={`${task.title} · ${formatDue(task.due_at as string)}`}
+      title={`${task.title} · ${formatDue(task.due_at as string)}${actions.global ? ` · ${actions.global.vaultName(task)}` : ""}`}
       onClick={() => actions.onOpen(task)}
     >
       {time && <span className="tasks-cal-time">{formatTime(task.due_at as string)}</span>}
       <span className="tasks-cal-title">{task.title}</span>
+      {actions.global && <span className="tasks-cal-vault">{actions.global.vaultName(task)}</span>}
       <CalendarWho task={task} />
     </button>
   );

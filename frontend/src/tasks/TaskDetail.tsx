@@ -1,5 +1,5 @@
 import { useId, type ReactNode, type CSSProperties } from "react";
-import { Bell, CalendarClock, CornerDownRight, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bell, CalendarClock, CornerDownRight, ExternalLink, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
 import DialogFrame from "../editor/DialogFrame";
@@ -21,6 +21,8 @@ interface Props {
   onOpenTask: (task: Task) => void;
   onOpenPath: (target: NonNullable<PathTarget>) => void;
   onClose: () => void;
+  /** Ventana global (H-056): muestra la bóveda y, en vez de editar o borrar aquí, abre la tarea en su bóveda. */
+  global?: { vaultName: string; onOpenInVault: () => void };
 }
 
 function Person({ task }: { task: Task }) {
@@ -51,7 +53,7 @@ const when = (iso: string | null) => (iso ? formatDue(iso) : null);
  * a quién se asigna, quién la creó, vencimiento, ruta, descripción, notas de avance, subtareas y fechas. Editar, añadir una
  * subtarea y eliminar son acciones aparte.
  */
-export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose }: Props) {
+export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose, global }: Props) {
   const id = useId();
   const isRoot = task.parent_id === null;
   const locked = isRoot && subtasks.length > 0; // el estado de una raíz sale de sus subtareas
@@ -76,17 +78,23 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
       size="lg"
       showClose
       onCancel={onClose}
-      footerStart={
+      footerStart={global ? undefined : (
         <button type="button" className="ag-danger td-delete" onClick={() => onDelete(task)}>
           <Trash2 size={14} aria-hidden="true" /> Eliminar
         </button>
-      }
+      )}
       actions={
         <>
           <button type="button" data-autofocus onClick={onClose}>Cerrar</button>
-          <button type="button" className="btn-primary" onClick={() => onEdit(task)}>
-            <Pencil size={14} aria-hidden="true" /> Editar
-          </button>
+          {global ? (
+            <button type="button" className="btn-primary" onClick={global.onOpenInVault}>
+              <ExternalLink size={14} aria-hidden="true" /> Abrir en la bóveda
+            </button>
+          ) : (
+            <button type="button" className="btn-primary" onClick={() => onEdit(task)}>
+              <Pencil size={14} aria-hidden="true" /> Editar
+            </button>
+          )}
         </>
       }
     >
@@ -104,6 +112,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
         </section>
 
         <dl className="td-grid">
+          {global && <Field label="Bóveda"><span className="tasks-chip tasks-chip--vault">{global.vaultName}</span></Field>}
           <Field label="Asignada a"><Person task={task} /></Field>
           <Field label="Prioridad"><span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span></Field>
           <Field label="Inicia">
@@ -175,9 +184,11 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
                 ))}
               </ul>
             )}
-            <button type="button" className="td-add" onClick={() => onAddSubtask(task)}>
-              <Plus size={14} aria-hidden="true" /> Añadir subtarea
-            </button>
+            {!global && (
+              <button type="button" className="td-add" onClick={() => onAddSubtask(task)}>
+                <Plus size={14} aria-hidden="true" /> Añadir subtarea
+              </button>
+            )}
           </section>
         )}
 

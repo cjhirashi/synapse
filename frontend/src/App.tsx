@@ -19,6 +19,7 @@ import TrashPage from "./vaults/TrashPage";
 import VaultForm from "./vaults/VaultForm";
 import VaultListPage from "./vaults/VaultListPage";
 
+const AllTasks = lazy(() => import("./tasks/AllTasks"));
 const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
 const NotificationsSettingsPage = lazy(() => import("./settings/NotificationsSettingsPage"));
 
@@ -100,6 +101,8 @@ export default function App({ syncEnv }: Props) {
         {/* Bóveda abierta: sidebar de notas + editor (SPEC-0008). `new` y `trash` ganan por ser estáticas. */}
         <Route path="/vaults/:id" element={<VaultWorkspacePage />} />
         {/* Lo que la sincronización deja al usuario (SPEC-0005 RF-006, RF-013). */}
+        {/* H-056: las tareas de todas las bóvedas en un mismo lugar. */}
+        <Route path="/tareas" element={<Suspense fallback={null}><AllTasks /></Suspense>} />
         <Route path="/avisos" element={<Suspense fallback={null}><NotificationsPage /></Suspense>} />
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />

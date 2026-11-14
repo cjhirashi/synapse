@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
-import type { ViewActions } from "./TaskViews";
+import { VaultTag, type ViewActions } from "./TaskViews";
 import {
   GANTT_PX, STATUS_LABEL, addDays, daysBetween, formatDay, formatDue, ganttPatch, ganttPreview, ganttRange, ganttRows, isClosed, isOverdue, monthName,
   type GanttDragMode, type GanttRow, type GanttScale, type TaskNode,
@@ -146,6 +146,7 @@ export default function TaskGantt({ nodes, actions, todayKey }: { nodes: TaskNod
                     <span className="tasks-gantt-dot" aria-hidden="true" />
                     {row.parentTitle && <span className="tasks-gantt-parent" title={`Subtarea de ${row.parentTitle}`} aria-hidden="true">↳</span>}
                     <button type="button" className="tasks-title-btn" title="Ver el detalle" aria-label={`Ver detalle de ${task.title}`} onClick={() => actions.onOpen(task)}>{task.title}</button>
+                    <VaultTag task={task} actions={actions} />
                     {progress && <span className="tasks-progress">{progress.done}/{progress.total}</span>}
                   </div>
                   <div className="tasks-gantt-track">

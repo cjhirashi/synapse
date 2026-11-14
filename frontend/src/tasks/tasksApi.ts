@@ -59,6 +59,11 @@ export async function listTasks(vaultId: string): Promise<Task[]> {
   return ((await res.json()) as { items: Task[] }).items;
 }
 
+/** Las tareas de todas las bóvedas de la persona (la ventana global; cada una trae su `vault_id`). */
+export async function listAllTasks(): Promise<Task[]> {
+  return ((await (await request("/tasks")).json()) as { items: Task[] }).items;
+}
+
 /** Tareas abiertas asignadas a la persona (para el contador de la pestaña). */
 export async function listMyOpenTasks(vaultId: string): Promise<Task[]> {
   const query = new URLSearchParams({ assignee: "user" });

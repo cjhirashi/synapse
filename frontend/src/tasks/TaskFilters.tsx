@@ -21,14 +21,16 @@ interface Props {
   /** Tareas que se muestran con el filtro actual. */
   shown: number;
   onClose: () => void;
+  /** Ventana global (H-056): las bóvedas que se pueden elegir; sin ellas no hay grupo «Bóveda». */
+  vaults?: Array<{ id: string; name: string }>;
 }
 
 /**
  * Filtros de las tareas (Lista, Kanban y Calendario comparten el mismo). Una tarea raíz se muestra si ella o alguna de
  * sus subtareas cumple. Cada grupo acota por una sola cosa y todos se combinan (Y): quién, en qué estado y cuándo vence.
  */
-export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, onClose }: Props) {
-  const active = (filter.assignee !== "all" ? 1 : 0) + (filter.statuses.length > 0 ? 1 : 0) + (filter.due !== "all" ? 1 : 0);
+export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, onClose, vaults }: Props) {
+  const active = (filter.vault && filter.vault !== "all" ? 1 : 0) + (filter.assignee !== "all" ? 1 : 0) + (filter.statuses.length > 0 ? 1 : 0) + (filter.due !== "all" ? 1 : 0);
   const count = (partial: Partial<TaskFilter>) => tasks.filter((t) => matchesFilter(t, { ...NO_FILTER, ...partial })).length;
   const overdue = count({ due: "overdue" });
 
@@ -49,6 +51,20 @@ export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, 
           <span>{overdue} vencida{overdue === 1 ? "" : "s"}</span>
           <span className="tf-panel-alert-go">Ver</span>
         </button>
+      )}
+
+      {vaults && (
+        <section className="tf-panel-group" aria-labelledby="tfp-vault">
+          <h4 id="tfp-vault">Bóveda</h4>
+          <select aria-label="Bóveda" value={filter.vault ?? "all"} onChange={(event) => onChange({ ...filter, vault: event.target.value })}>
+            <option value="all">Todas las bóvedas</option>
+            {vaults.map((vault) => (
+              <option key={vault.id} value={vault.id}>
+                {vault.name} ({tasks.filter((t) => t.vault_id === vault.id).length})
+              </option>
+            ))}
+          </select>
+        </section>
       )}
 
       <section className="tf-panel-group" aria-labelledby="tfp-who">

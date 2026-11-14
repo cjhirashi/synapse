@@ -1,7 +1,7 @@
 import { useState } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
-import { CalendarClock, ChevronDown, ChevronRight, FileText, Folder, GripVertical, Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, ChevronRight, ExternalLink, FileText, Folder, GripVertical, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import {
   PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue,
   resolvePath, type PathIndex, type PathTarget, type TaskNode,
@@ -20,6 +20,14 @@ export interface ViewActions {
   onAddSubtask: (parent: Task) => void;
   onDelete: (task: Task) => void;
   onOpenPath: (target: NonNullable<PathTarget>) => void;
+  /** Ventana global (H-056): muestra la bóveda de cada tarea y, en vez de editar o borrar aquí, la abre en su bóveda. */
+  global?: { vaultName: (task: Task) => string; onOpenInVault: (task: Task) => void };
+}
+
+/** «Bóveda: X», solo en la ventana global. */
+export function VaultTag({ task, actions }: { task: Task; actions: ViewActions }) {
+  if (!actions.global) return null;
+  return <span className="tasks-chip tasks-chip--vault" title="Bóveda de la tarea">Bóveda: {actions.global.vaultName(task)}</span>;
 }
 
 /** Quién la asigna o la creó, con su foto y nombre cuando es un agente (H-053). */
@@ -45,7 +53,7 @@ function StatusSelect({ task, locked, onStatus }: { task: Task; locked: boolean;
 }
 
 function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
-  if (!task.path) return null;
+  if (!task.path || actions.global) return null;
   const target = resolvePath(task.path, actions.pathIndex);
   if (!target) return <span className="tasks-chip tasks-chip--missing" title="La ruta no existe en la bóveda (es solo indicativa)">{task.path}</span>;
   const Icon = target.kind === "note" ? FileText : Folder;
@@ -60,6 +68,7 @@ function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
 function TaskNotes({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
     <span className="tasks-notes">
+      <VaultTag task={task} actions={actions} />
       <PathChip task={task} actions={actions} />
       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
     </span>
@@ -117,9 +126,15 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
         </div>
         <TaskCells task={task} locked={hasKids} actions={actions} />
         <span className="tasks-actions">
+          {actions.global ? (
+            <button type="button" className="tasks-add-sub" title="Abrir la tarea en su bóveda" aria-label={`Abrir ${task.title} en su bóveda`} onClick={() => actions.global!.onOpenInVault(task)}>
+              <ExternalLink size={13} aria-hidden="true" /> En la bóveda
+            </button>
+          ) : (<>
           {!sub && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
           <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={15} /></button>
           <button type="button" className="tasks-icon-btn tasks-icon-btn--danger" title="Eliminar" aria-label={`Eliminar ${task.title}`} onClick={() => actions.onDelete(task)}><Trash2 size={15} /></button>
+          </>)}
         </span>
       </div>
       {hasKids && open && (
@@ -218,6 +233,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
                         </span>
                       )}
+                      <VaultTag task={task} actions={actions} />
                       <PathChip task={task} actions={actions} />
                       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
                     </span>
@@ -225,8 +241,12 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                       <span className="tasks-card-who" title="Asignada a"><Assignee task={task} /></span>
                       <span className="tasks-card-tools">
                         <StatusSelect task={task} locked={locked} onStatus={actions.onStatus} />
+                        {actions.global ? (
+                          <button type="button" className="tasks-icon-btn" title="Abrir la tarea en su bóveda" aria-label={`Abrir ${task.title} en su bóveda`} onClick={() => actions.global!.onOpenInVault(task)}><ExternalLink size={14} /></button>
+                        ) : (<>
                         {!task.parent_id && <button type="button" className="tasks-icon-btn" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={14} aria-hidden="true" /></button>}
                         <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
+                        </>)}
                       </span>
                     </div>
                   </article>

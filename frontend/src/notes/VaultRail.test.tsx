@@ -278,14 +278,14 @@ function bottomLinks(rail: HTMLElement): HTMLElement[] {
   return within(bottom).queryAllByRole("link");
 }
 
-test("A2/A4/A5: la zona inferior trae Papelera y Usuario (al final) —los avisos salieron al navbar— con sus rutas, y ya no hay entrada global de Archivos (H-052)", async () => {
+test("A2/A4/A5 (H-056): la zona inferior trae Tareas, Papelera y Usuario (al final) —los avisos salieron al navbar— con sus rutas, y ya no hay entrada global de Archivos (H-052)", async () => {
   const { value } = syncValue();
   renderRail(value);
   const rail = await screen.findByRole("navigation", { name: "Bóvedas abiertas" });
   const links = bottomLinks(rail);
-  expect(links.map((l) => l.getAttribute("href"))).toEqual(["/vaults/trash", "/settings"]);
+  expect(links.map((l) => l.getAttribute("href"))).toEqual(["/tareas", "/vaults/trash", "/settings"]);
   // Usuario es la última entrada (A2).
-  expect(links[1]).toHaveAttribute("href", "/settings");
+  expect(links[2]).toHaveAttribute("href", "/settings");
   expect(within(rail).queryByRole("link", { name: /^Avisos/ })).toBeNull();
   expect(within(rail).queryByRole("link", { name: "Archivos" })).toBeNull();
   expect(within(rail).getByRole("link", { name: "Papelera" })).toHaveAttribute("href", "/vaults/trash");

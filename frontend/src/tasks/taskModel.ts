@@ -73,12 +73,15 @@ export interface TaskFilter {
   assignee: "all" | "user" | string; // `all`, `user` o el id de un agente
   statuses: TaskStatus[]; // vacío = todos
   due: DueFilter;
+  /** Solo en la ventana global: el id de una bóveda; ausente o `all` = todas. */
+  vault?: string;
 }
 export const NO_FILTER: TaskFilter = { assignee: "all", statuses: [], due: "all" };
 
 export function matchesFilter(task: Task, filter: TaskFilter, now: Date = new Date()): boolean {
   if (filter.assignee === "user" && task.assignee_type !== "user") return false;
   if (filter.assignee !== "all" && filter.assignee !== "user" && task.assignee_agent_id !== filter.assignee) return false;
+  if (filter.vault && filter.vault !== "all" && task.vault_id !== filter.vault) return false;
   if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) return false;
   if (filter.due === "none") return task.due_at === null;
   if (filter.due === "all") return true;
