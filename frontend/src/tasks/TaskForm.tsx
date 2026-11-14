@@ -6,6 +6,7 @@ import UserBadge from "../agents/UserBadge";
 import DialogFrame from "../editor/DialogFrame";
 import ReminderEditor from "./ReminderEditor";
 import { DEFAULT_REMINDERS, PRIORITY_LABEL, STATUS_LABEL, effectiveReminders, fromLocalInput, toLocalInput } from "./taskModel";
+import type { Project } from "./projectsApi";
 import type { Task, TaskInput, TaskPriority } from "./tasksApi";
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   agents: string[];
   /** Tareas de la bóveda que pueden bloquear a esta (H-057): sin ella misma, su tarea padre ni sus subtareas. */
   blockerOptions?: Task[];
+  /** Proyectos de la bóveda (H-058): la tarea raíz elige uno; una subtarea toma el de su raíz. */
+  projects?: Project[];
   pathOptions: string[];
   accent: string;
   error: string | null;
@@ -58,7 +61,7 @@ const assignment = (assignee: string) => ({
  * Alta y edición de una tarea o subtarea. La ruta es indicativa: se sugiere, pero se acepta cualquiera con forma válida.
  * Solo una tarea raíz tiene subtareas (dos niveles): una subtarea no muestra esa sección.
  */
-export default function TaskForm({ task, parent, subtasks = [], agents, blockerOptions = [], pathOptions, accent, error, saving, onSave, onAddSubtask, onCancel }: Props) {
+export default function TaskForm({ task, parent, subtasks = [], agents, blockerOptions = [], projects = [], pathOptions, accent, error, saving, onSave, onAddSubtask, onCancel }: Props) {
   const id = useId();
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -70,6 +73,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, blockerO
   const [path, setPath] = useState(task?.path ?? "");
   const [reminders, setReminders] = useState<number[]>(() => (task ? effectiveReminders(task) : [...DEFAULT_REMINDERS]));
   const [blockedBy, setBlockedBy] = useState<string[]>(task?.blocked_by ?? []);
+  const [projectId, setProjectId] = useState(task?.project_id ?? parent?.project_id ?? "");
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [newSub, setNewSub] = useState("");
   const [newSubDescription, setNewSubDescription] = useState("");
@@ -105,6 +109,8 @@ export default function TaskForm({ task, parent, subtasks = [], agents, blockerO
         // Sin vencimiento no hay recordatorios: se vuelve a los de siempre. Las repetidas se unen y el servidor las ordena.
         reminders: due ? Array.from(new Set(reminders)) : null,
         ...(blockedBy.length > 0 || (task && task.blocked_by.length > 0) ? { blocked_by: blockedBy } : {}),
+        // Solo una tarea raíz elige proyecto; una subtarea toma el de su raíz (el servidor lo hereda).
+        ...(showSubtasks && projectId !== (task?.project_id ?? "") ? { project_id: projectId || null } : {}),
       },
       drafts.map(subtaskInput),
     );
@@ -202,6 +208,20 @@ export default function TaskForm({ task, parent, subtasks = [], agents, blockerO
         {badSpan && <p className="tf-help tf-help--error" role="alert">El inicio no puede ser posterior al vencimiento.</p>}
 
         <ReminderEditor value={reminders} onChange={setReminders} hasDue={due !== ""} mine={assignee === "user"} />
+
+        {projects.length > 0 && (
+          <div className="tf-field">
+            <label htmlFor={`${id}-pj`}>Proyecto</label>
+            {showSubtasks ? (
+              <select id={`${id}-pj`} value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+                <option value="">Sin proyecto</option>
+                {projects.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            ) : (
+              <p className="tf-help">{projects.find((p) => p.id === projectId)?.title ?? "Sin proyecto"} (el de su tarea)</p>
+            )}
+          </div>
+        )}
 
         {blockerOptions.length + blockedBy.length > 0 && (
           <div className="tf-field">

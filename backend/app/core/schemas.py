@@ -610,6 +610,7 @@ class TaskCreate(BaseModel):
     parent_id: str | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
     blocked_by: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] | None = Field(default=None, max_length=30)
+    project_id: str | None = None
 
     _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
@@ -632,6 +633,7 @@ class TaskUpdate(BaseModel):
     reminders: list[ReminderMinutes] | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
     blocked_by: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] | None = Field(default=None, max_length=30)
+    project_id: str | None = None  # un `null` explícito saca la tarea de su proyecto
 
     _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
@@ -663,6 +665,7 @@ class TaskOut(BaseModel):
     updated_at: UtcDateTime
     completed_at: UtcDateTime | None
     purge_at: UtcDateTime | None = None  # cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz
+    project_id: str | None = None  # el proyecto de la tarea (H-058); una subtarea toma el de su raíz
     blocked_by: list[str] = []  # ids de las tareas que debe esperar (H-057); solo de su bóveda
     blocked: bool = False  # alguna de ellas no está hecha: la tarea no se puede dar por hecha todavía
 
@@ -791,3 +794,65 @@ class AgentProfileOut(BaseModel):
 
 class AgentProfileListOut(BaseModel):
     items: list[AgentProfileOut]
+
+
+# --- Proyectos de bóveda (H-058) ---
+
+ProjectColor = Literal["gray", "blue", "green", "red", "orange", "yellow", "purple", "pink"]
+ProjectStatus = Literal["active", "on_hold", "completed"]
+
+
+class ProjectCreate(BaseModel):
+    """Cuerpo de `POST /vaults/{id}/projects`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle
+    description: TaskText | None = None
+    status: ProjectStatus = "active"
+    color: ProjectColor = "blue"
+    assignee_type: Literal["user", "agent"] = "user"
+    assignee_agent_id: AgentId | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+
+class ProjectUpdate(BaseModel):
+    """Cuerpo de `PATCH /vaults/{id}/projects/{project_id}`: solo cambia lo enviado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    title: TaskTitle | None = None
+    description: TaskText | None = None
+    status: ProjectStatus | None = None
+    color: ProjectColor | None = None
+    assignee_type: Literal["user", "agent"] | None = None
+    assignee_agent_id: AgentId | None = None
+    sort_order: int | None = Field(default=None, ge=0, le=100000)
+
+
+class ProjectOut(BaseModel):
+    """Un proyecto de bóveda con su avance (de sus tareas raíz). Fechas en UTC con `Z`."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    vault_id: str
+    sort_order: int
+    title: str
+    description: str | None
+    status: str
+    color: str
+    assignee_type: str
+    assignee_agent_id: str | None
+    created_by: str
+    updated_by: str
+    version: int
+    created_at: UtcDateTime
+    updated_at: UtcDateTime
+    tasks_total: int = 0  # tareas raíz del proyecto
+    tasks_done: int = 0  # las que están hechas
+
+
+class ProjectListOut(BaseModel):
+    items: list[ProjectOut]
+    total: int

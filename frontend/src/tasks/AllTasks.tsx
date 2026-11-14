@@ -17,6 +17,7 @@ import TaskGantt from "./TaskGantt";
 import { TaskKanban, TaskList, type ViewActions } from "./TaskViews";
 import { NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, type TaskFilter } from "./taskModel";
 import { listAllTasks, updateTask, type Task, type TaskStatus } from "./tasksApi";
+import { listAllProjects, type Project } from "./projectsApi";
 import "./tasks.css";
 
 type View = "list" | "kanban" | "calendar" | "gantt";
@@ -38,6 +39,7 @@ export default function AllTasks() {
   const { vaults, dataVersion } = useSync();
   const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [failed, setFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [vaultList, setVaultList] = useState<Vault[]>([]);
@@ -49,9 +51,10 @@ export default function AllTasks() {
 
   const reload = useCallback(async () => {
     try {
-      const list = await listAllTasks();
+      const [list, projectList] = await Promise.all([listAllTasks(), listAllProjects().catch(() => [] as Project[])]);
       if (!alive.current) return;
       setTasks(list);
+      setProjects(projectList);
       setFailed(false);
     } catch {
       if (alive.current) setFailed(true);
@@ -96,6 +99,7 @@ export default function AllTasks() {
     focusId: null,
     global: { vaultName, onOpenInVault: openInVault },
     titleOf: (id) => tasks?.find((t) => t.id === id)?.title,
+    projectOf: (task) => projects.find((p) => p.id === task.project_id),
     onDates: (task, span) => {
       setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, ...span } : t)) : list));
       void run(() => updateTask(task.vault_id, task, span));
@@ -122,6 +126,10 @@ export default function AllTasks() {
   const shownCount = tree.reduce((total, node) => total + 1 + node.children.length, 0);
   const agentIds = Array.from(new Set(list.flatMap((t) => (t.assignee_agent_id ? [t.assignee_agent_id] : [])))).sort();
   const todayKey = dateKey(new Date().toISOString());
+  const projectOptions = useMemo(
+    () => projects.map((project) => ({ id: project.id, title: `${names.get(project.vault_id) ?? "Bóveda"} · ${project.title}` })),
+    [projects, names],
+  );
   const filterVaults = useMemo(
     () => vaultList.filter((vault) => vault.deleted_at === null).map((vault) => ({ id: vault.id, name: vault.name })),
     [vaultList],
@@ -132,7 +140,7 @@ export default function AllTasks() {
       {showFilters && (
         <aside className="tasks-global-side" aria-label="Filtros de tareas">
           <div className="tf-panel-host">
-            <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} vaults={filterVaults} onClose={() => setShowFilters(false)} />
+            <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} vaults={filterVaults} projects={projectOptions} onClose={() => setShowFilters(false)} />
           </div>
         </aside>
       )}
@@ -168,6 +176,7 @@ export default function AllTasks() {
             onStatus={actions.onStatus} onEdit={openInVault} onAddSubtask={openInVault} onDelete={openInVault}
             onOpenTask={actions.onOpen} onOpenPath={() => undefined} onClose={() => setDetailId(null)}
             global={{ vaultName: vaultName(detail), onOpenInVault: () => openInVault(detail) }}
+            project={projects.find((p) => p.id === detail.project_id)}
             blockedBy={detail.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detail.id))}
           />
         )}

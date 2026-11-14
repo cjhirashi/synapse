@@ -716,6 +716,21 @@ Cada bóveda tiene un gestor de tareas en dos niveles (una tarea y sus subtareas
 
 **Errores:** 404 `task-not-found` (también si la tarea es de otra bóveda o de otro usuario), 412 `task-precondition-failed`, 403 `agent-access-denied`, 422 (con `errors[].pointer`), más los de sesión y `vault-not-found`.
 
+## Proyectos de bóveda (H-058)
+
+Un proyecto agrupa las tareas de **su** bóveda (como en Asana): título, descripción, responsable (la persona o un agente registrado y activo en la bóveda), estado y color. Borrar un proyecto no borra sus tareas: quedan sin proyecto. Mismos permisos por agente que las tareas (un agente registrado crea, cambia el estado de los que tiene asignados y edita o borra solo los que creó).
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /vaults/{id}/projects` | Proyectos de la bóveda con su avance (`tasks_total`, `tasks_done`: tareas raíz). Filtro `status` (repetible). Respuesta `{items, total}`. |
+| `GET /projects` | Lo mismo en todas las bóvedas del dueño. |
+| `POST /vaults/{id}/projects` | Crea un proyecto. 201 con `ETag`. |
+| `GET /vaults/{id}/projects/{project_id}` | Lee un proyecto (`ETag` = `"<version>"`). |
+| `PATCH /vaults/{id}/projects/{project_id}` | Cambia solo lo enviado (`description: null` la vacía). `If-Match: "<version>"` opcional (412 `project-precondition-failed`). |
+| `DELETE /vaults/{id}/projects/{project_id}` | Borra el proyecto; sus tareas quedan con `project_id: null`. 204. |
+
+**Campos de entrada:** `title` (1 a 255), `description` (≤ 20 000), `status` (`active`, `on_hold`, `completed`; por omisión `active`), `color` (`gray`, `blue`, `green`, `red`, `orange`, `yellow`, `purple`, `pink`; por omisión `blue`), `assignee_type` (`user` o `agent`), `assignee_agent_id` y `sort_order`. **Tareas:** `project_id` en `POST` y `PATCH` de una tarea raíz pone o quita (`null`) su proyecto, que debe ser de la misma bóveda (422 con `/project_id`); una subtarea toma el de su raíz y no tiene uno propio, y mover la raíz mueve a sus subtareas. `GET /vaults/{id}/tasks` y `GET /tasks` aceptan `project_id=<id>` o `project_id=none` (sin proyecto). Cada tarea devuelve `project_id`.
+
 ## Avisos y preferencias (H-053)
 
 Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key de agente no los lee ni los marca (401).

@@ -23,14 +23,16 @@ interface Props {
   onClose: () => void;
   /** Ventana global (H-056): las bóvedas que se pueden elegir; sin ellas no hay grupo «Bóveda». */
   vaults?: Array<{ id: string; name: string }>;
+  /** Proyectos que se pueden elegir (H-058); sin ellos no hay grupo «Proyecto». */
+  projects?: Array<{ id: string; title: string }>;
 }
 
 /**
  * Filtros de las tareas (Lista, Kanban y Calendario comparten el mismo). Una tarea raíz se muestra si ella o alguna de
  * sus subtareas cumple. Cada grupo acota por una sola cosa y todos se combinan (Y): quién, en qué estado y cuándo vence.
  */
-export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, onClose, vaults }: Props) {
-  const active = (filter.vault && filter.vault !== "all" ? 1 : 0) + (filter.assignee !== "all" ? 1 : 0) + (filter.statuses.length > 0 ? 1 : 0) + (filter.due !== "all" ? 1 : 0);
+export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, onClose, vaults, projects }: Props) {
+  const active = (filter.vault && filter.vault !== "all" ? 1 : 0) + (filter.project && filter.project !== "all" ? 1 : 0) + (filter.assignee !== "all" ? 1 : 0) + (filter.statuses.length > 0 ? 1 : 0) + (filter.due !== "all" ? 1 : 0);
   const count = (partial: Partial<TaskFilter>) => tasks.filter((t) => matchesFilter(t, { ...NO_FILTER, ...partial })).length;
   const overdue = count({ due: "overdue" });
 
@@ -63,6 +65,17 @@ export default function TaskFilters({ tasks, filter, onChange, agentIds, shown, 
                 {vault.name} ({tasks.filter((t) => t.vault_id === vault.id).length})
               </option>
             ))}
+          </select>
+        </section>
+      )}
+
+      {projects && projects.length > 0 && (
+        <section className="tf-panel-group" aria-labelledby="tfp-project">
+          <h4 id="tfp-project">Proyecto</h4>
+          <select aria-label="Proyecto" value={filter.project ?? "all"} onChange={(event) => onChange({ ...filter, project: event.target.value })}>
+            <option value="all">Todos los proyectos</option>
+            <option value="none">Sin proyecto</option>
+            {projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}
           </select>
         </section>
       )}

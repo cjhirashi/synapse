@@ -4,6 +4,7 @@ import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
 import DialogFrame from "../editor/DialogFrame";
 import { PRIORITY_LABEL, STATUSES, STATUS_LABEL, effectiveReminders, formatDue, formatReminder, isClosed, isOverdue, resolvePath, type PathIndex, type PathTarget } from "./taskModel";
+import { PROJECT_COLOR_CSS, type Project } from "./projectsApi";
 import type { Task, TaskStatus } from "./tasksApi";
 
 interface Props {
@@ -26,6 +27,8 @@ interface Props {
   /** Las tareas que esta espera y las que la esperan a ella (H-057), de la misma bóveda. */
   blockedBy?: Task[];
   blocks?: Task[];
+  /** El proyecto de la tarea (H-058). */
+  project?: Project;
 }
 
 function Person({ task }: { task: Task }) {
@@ -56,7 +59,7 @@ const when = (iso: string | null) => (iso ? formatDue(iso) : null);
  * a quién se asigna, quién la creó, vencimiento, ruta, descripción, notas de avance, subtareas y fechas. Editar, añadir una
  * subtarea y eliminar son acciones aparte.
  */
-export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose, global, blockedBy = [], blocks = [] }: Props) {
+export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose, global, blockedBy = [], blocks = [], project }: Props) {
   const id = useId();
   const isRoot = task.parent_id === null;
   const locked = isRoot && subtasks.length > 0; // el estado de una raíz sale de sus subtareas
@@ -117,6 +120,11 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
 
         <dl className="td-grid">
           {global && <Field label="Bóveda"><span className="tasks-chip tasks-chip--vault">{global.vaultName}</span></Field>}
+          {project && (
+            <Field label="Proyecto">
+              <span className="tasks-chip tasks-chip--project"><i className="pj-dot pj-dot--chip" style={{ background: PROJECT_COLOR_CSS[project.color] }} aria-hidden="true" /> {project.title}</span>
+            </Field>
+          )}
           <Field label="Asignada a"><Person task={task} /></Field>
           <Field label="Prioridad"><span className="tasks-chip" data-priority={task.priority}>{PRIORITY_LABEL[task.priority]}</span></Field>
           <Field label="Inicia">

@@ -79,10 +79,11 @@ def list_vault_tasks(
     assignee: Annotated[str | None, Query(description="`user` o el id de un agente")] = None,
     due_after: datetime | None = None,
     due_before: datetime | None = None,
+    project_id: Annotated[str | None, Query(description="Id de un proyecto, o `none` para las tareas sin proyecto")] = None,
     service: TaskService = Depends(get_task_service),
 ):
     """Tareas de la bóveda (raíces y subtareas, planas: la jerarquía va en `parent_id`)."""
-    tasks = service.list(vault_id, statuses=status_in, assignee=assignee, due_after=due_after, due_before=due_before)
+    tasks = service.list(vault_id, statuses=status_in, assignee=assignee, due_after=due_after, due_before=due_before, project_id=project_id)
     return _listing(service, tasks)
 
 
@@ -92,10 +93,11 @@ def list_my_tasks(
     assignee: Annotated[str | None, Query(description="`user` o el id de un agente")] = None,
     due_after: datetime | None = None,
     due_before: datetime | None = None,
+    project_id: Annotated[str | None, Query(description="Id de un proyecto, o `none` para las tareas sin proyecto")] = None,
     service: TaskService = Depends(get_task_service),
 ):
     """Tareas del dueño en todas sus bóvedas (p. ej. «mis tareas» o las pendientes de un agente)."""
-    tasks = service.list(None, statuses=status_in, assignee=assignee, due_after=due_after, due_before=due_before)
+    tasks = service.list(None, statuses=status_in, assignee=assignee, due_after=due_after, due_before=due_before, project_id=project_id)
     return _listing(service, tasks)
 
 

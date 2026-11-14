@@ -17,6 +17,7 @@ from app.routers.notes import router as notes_router
 from app.routers.notifications import router as notifications_router
 from app.routers.agent_profiles import router as agent_profiles_router
 from app.routers.sync import router as sync_router
+from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 from app.routers.vaults import get_vault_port, router as vaults_router
 from app.services.system_docs_service import sync_all_in_background
@@ -57,6 +58,7 @@ app.include_router(folders_router)
 app.include_router(files_router)
 app.include_router(file_folders_router)
 app.include_router(tasks_router)
+app.include_router(projects_router)
 app.include_router(notifications_router)
 app.include_router(agent_profiles_router)
 app.include_router(sync_router)

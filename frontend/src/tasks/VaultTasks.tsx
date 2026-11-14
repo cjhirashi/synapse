@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, GanttChartSquare, KanbanSquare, List, Plus } from "lucide-react";
+import { CalendarDays, FolderKanban, GanttChartSquare, KanbanSquare, List, Plus } from "lucide-react";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
@@ -9,6 +9,8 @@ import { getVaultAgentAccess } from "../settings/agentAccess";
 import TaskFilters from "./TaskFilters";
 import TaskDetail from "./TaskDetail";
 import TaskForm from "./TaskForm";
+import ProjectForm from "./ProjectForm";
+import ProjectsDialog from "./ProjectsDialog";
 import { TaskCalendar } from "./TaskCalendar";
 import TaskGantt from "./TaskGantt";
 import { TaskKanban, TaskList, type ViewActions } from "./TaskViews";
@@ -16,11 +18,14 @@ import {
   NO_FILTER, buildPathIndex, buildTree, dateKey, filterTree, isClosed, type PathTarget, type TaskFilter,
 } from "./taskModel";
 import { createTask, deleteTask, listTasks, updateTask, type Task, type TaskInput, type TaskStatus } from "./tasksApi";
+import { createProject, deleteProject, listProjects, updateProject, type Project, type ProjectInput } from "./projectsApi";
 import "./tasks.css";
 
 type View = "list" | "kanban" | "calendar" | "gantt";
 const VIEWS = [["list", "Lista", List], ["kanban", "Kanban", KanbanSquare], ["calendar", "Calendario", CalendarDays], ["gantt", "Línea de tiempo", GanttChartSquare]] as const;
-type Dialog = { kind: "form"; task?: Task; parent?: Task } | { kind: "detail"; id: string } | null;
+type Dialog =
+  | { kind: "form"; task?: Task; parent?: Task } | { kind: "detail"; id: string }
+  | { kind: "projects" } | { kind: "project-form"; project?: Project } | null;
 
 interface Props {
   vaultId: string;
@@ -49,6 +54,7 @@ function errorText(error: unknown, fallback: string): string {
       if (pointer === "/assignee_agent_id") return "El agente no está registrado y activo en esta bóveda.";
       if (pointer === "/path") return "La ruta no es válida (sin «..», «\\» ni niveles vacíos).";
       if (pointer === "/status") return error.errors[0]?.detail?.includes("blocked") ? "La tarea está bloqueada: sus tareas bloqueadoras deben estar hechas primero." : "El estado de una tarea con subtareas sale de ellas.";
+      if (pointer === "/project_id") return "El proyecto debe ser de esta bóveda (una subtarea toma el de su tarea).";
       if (pointer === "/blocked_by") return "Las bloqueadoras deben ser de esta bóveda, sin ciclos ni su tarea padre o sus subtareas.";
       return "Revisa los datos de la tarea.";
     }
@@ -60,6 +66,8 @@ function errorText(error: unknown, fallback: string): string {
 export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = null, onOpenNote, onOpenFolder, onCloseSide, onOpenCount }: Props) {
   const { notes, notesVersion } = useSync();
   const [tasks, setTasks] = useState<Task[] | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [projectConfirm, setProjectConfirm] = useState<Project | null>(null);
   const [failed, setFailed] = useState(false);
   const [view, setView] = useState<View>("list");
   // Hacia dónde se mueve la vista nueva: entra desde la derecha si la pestaña está más a la derecha, y al revés.
@@ -77,9 +85,10 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
 
   const reload = useCallback(async () => {
     try {
-      const list = await listTasks(vaultId);
+      const [list, projectList] = await Promise.all([listTasks(vaultId), listProjects(vaultId).catch(() => [] as Project[])]);
       if (!alive.current) return;
       setTasks(list);
+      setProjects(projectList);
       setFailed(false);
       onOpenCount(list.filter((t) => t.assignee_type === "user" && !isClosed(t)).length);
     } catch {
@@ -148,6 +157,22 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     }
   }
 
+  async function saveProject(input: ProjectInput & { title: string }) {
+    if (dialog?.kind !== "project-form") return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (dialog.project) await updateProject(vaultId, dialog.project, input);
+      else await createProject(vaultId, input);
+      setDialog({ kind: "projects" });
+      await reload();
+    } catch (error) {
+      setFormError(errorText(error, "No se pudo guardar el proyecto."));
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function addSubtask(parent: Task, input: TaskInput & { title: string }) {
     setFormError(null);
     try {
@@ -175,6 +200,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
     pathIndex: paths,
     focusId: focusTaskId,
     titleOf: (id) => tasks?.find((t) => t.id === id)?.title,
+    projectOf: (task) => projects.find((p) => p.id === task.project_id),
     onDates: (task, span) => {
       setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, ...span } : t)) : list));
       void run(() => updateTask(vaultId, task, span));
@@ -203,7 +229,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const shownCount = tree.reduce((total, node) => total + 1 + node.children.length, 0);
   const filters = (
     <div className="tf-panel-host" style={{ "--vault-icon-color": accent } as CSSProperties}>
-      <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} onClose={onCloseSide} />
+      <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} onClose={onCloseSide} projects={projects} />
     </div>
   );
 
@@ -221,6 +247,9 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
             </button>
           ))}
         </div>
+        <button type="button" className="tasks-projects" title="Proyectos de la bóveda" aria-label="Proyectos" onClick={() => setDialog({ kind: "projects" })}>
+          <FolderKanban size={16} aria-hidden="true" /> <span className="tasks-tab-label">Proyectos</span>
+        </button>
         <button type="button" className="tasks-new" title="Nueva tarea" aria-label="Nueva tarea" onClick={() => { setFormError(null); setDialog({ kind: "form" }); }}>
           <Plus size={18} aria-hidden="true" />
         </button>
@@ -230,7 +259,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         {notice && <p className="tasks-error" role="alert">{notice}</p>}
         {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
         {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
-        {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} />}
+        {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} projects={projects} />}
         {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
         {tasks !== null && shownView === "gantt" && <TaskGantt nodes={tree} actions={actions} todayKey={todayKey} />}
         {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
@@ -239,6 +268,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         <TaskDetail
           key={detailTask.id} task={detailTask} parent={detailTask.parent_id ? list.find((t) => t.id === detailTask.parent_id) : undefined}
           subtasks={list.filter((t) => t.parent_id === detailTask.id)} pathIndex={paths} accent={accent}
+          project={projects.find((p) => p.id === detailTask.project_id)}
           blockedBy={detailTask.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detailTask.id))}
           onStatus={actions.onStatus} onEdit={actions.onEdit} onAddSubtask={actions.onAddSubtask} onDelete={setConfirm}
           onOpenTask={actions.onOpen}
@@ -251,9 +281,33 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
           key={dialog.task?.id ?? dialog.parent?.id ?? "new"} task={dialog.task} parent={dialog.parent} agents={agents}
           subtasks={dialog.task ? list.filter((t) => t.parent_id === dialog.task!.id) : []}
           onAddSubtask={dialog.task ? (input) => addSubtask(dialog.task!, input) : undefined}
+          projects={projects}
           blockerOptions={list.filter((t) => t.id !== dialog.task?.id && t.id !== (dialog.task?.parent_id ?? dialog.parent?.id) && !(dialog.task && t.parent_id === dialog.task.id))}
           pathOptions={pathOptions} accent={accent} error={formError} saving={saving} onSave={(input, drafts) => void save(input, drafts)} onCancel={() => setDialog(null)}
         />
+      )}
+      {dialog?.kind === "projects" && (
+        <ProjectsDialog
+          projects={projects} accent={accent}
+          onNew={() => { setFormError(null); setDialog({ kind: "project-form" }); }}
+          onEdit={(project) => { setFormError(null); setDialog({ kind: "project-form", project }); }}
+          onDelete={setProjectConfirm} onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog?.kind === "project-form" && (
+        <ProjectForm
+          key={dialog.project?.id ?? "new"} project={dialog.project} agents={agents} accent={accent} error={formError} saving={saving}
+          onSave={(input) => void saveProject(input)} onCancel={() => { setFormError(null); setDialog({ kind: "projects" }); }}
+        />
+      )}
+      {projectConfirm && (
+        <ConfirmDialog
+          titleId="project-delete-title" title={`Eliminar el proyecto «${projectConfirm.title}»`} tone="danger" onCancel={() => setProjectConfirm(null)}
+          body={projectConfirm.tasks_total > 0 ? `Sus ${projectConfirm.tasks_total} tareas no se borran: quedan sin proyecto.` : "El proyecto no tiene tareas."}
+        >
+          <button type="button" onClick={() => setProjectConfirm(null)}>Cancelar</button>
+          <button type="button" className="btn-danger" onClick={() => { const target = projectConfirm; setProjectConfirm(null); void run(() => deleteProject(vaultId, target.id)); }}>Eliminar</button>
+        </ConfirmDialog>
       )}
       {confirm && (
         <ConfirmDialog

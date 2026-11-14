@@ -95,6 +95,7 @@ class TaskService:
         self._check_span(_naive_utc(body.start_at), _naive_utc(body.due_at))
         blockers = self._resolve_blockers(vault_id, None, parent, body.blocked_by)
         self._check_not_blocked(body.status, blockers)
+        project_id = self._project_for(vault_id, parent, body.project_id)
         now = _now()
         closed = body.status in task_rules.CLOSED_STATUSES
         task = VaultTask(
@@ -103,7 +104,7 @@ class TaskService:
             sort_order=body.sort_order if body.sort_order is not None else self._repo.next_sort_order(
                 self._owner_id, vault_id, parent.id if parent else None),
             title=body.title, description=body.description, notes=body.notes, status=body.status,
-            priority=body.priority, start_at=_naive_utc(body.start_at), due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
+            project_id=project_id, priority=body.priority, start_at=_naive_utc(body.start_at), due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
             assignee_agent_id=agent_id, path=path, created_by=self._guard.author, updated_by=self._guard.author,
             version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
         )
@@ -132,6 +133,11 @@ class TaskService:
         if "status" in sent and body.status != task.status and self._repo.children(task.id):
             raise _invalid("/status", "A task with subtasks takes its status from them")
         blockers = self._resolve_blockers(vault_id, task, None, body.blocked_by or []) if "blocked_by" in sent else None
+        if "project_id" in sent:
+            project_id = self._project_for(vault_id, self._repo.get(task.parent_id, self._owner_id) if task.parent_id else None, body.project_id)
+            task.project_id = project_id
+            for child in self._repo.children(task.id):
+                child.project_id = project_id
         if "status" in sent and body.status != task.status:
             self._check_not_blocked(body.status, task.blockers if blockers is None else blockers)
         for field in ("title", "priority", "sort_order"):
@@ -227,6 +233,19 @@ class TaskService:
                 raise _invalid("/blocked_by", "Blocking tasks cannot form a cycle")
             found.append(blocker)
         return found
+
+    def _project_for(self, vault_id: str, parent: VaultTask | None, project_id: str | None) -> str | None:
+        """El proyecto de una tarea (H-058): de su misma bóveda. Una subtarea toma el de su raíz y no tiene uno propio."""
+        if parent is not None:
+            if project_id is not None and project_id != parent.project_id:
+                raise _invalid("/project_id", "A subtask takes the project of its task")
+            return parent.project_id
+        if project_id is None:
+            return None
+        project = self._repo.project(project_id, self._owner_id)
+        if project is None or project.vault_id != vault_id:
+            raise _invalid("/project_id", "The project must exist in the same vault")
+        return project.id
 
     @staticmethod
     def _reaches(start: VaultTask, target_id: str) -> bool:

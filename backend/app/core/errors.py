@@ -496,6 +496,26 @@ class TaskPreconditionFailed(DomainError):
     detail = "Task has changed"
 
 
+# --- Proyectos de bóveda (H-058) ---
+
+class ProjectNotFound(DomainError):
+    """Proyecto inexistente, de otra bóveda o de otro usuario: mismo cuerpo siempre."""
+
+    slug = "project-not-found"
+    title = "Project not found"
+    status = 404
+    detail = "Project not found"
+
+
+class ProjectPreconditionFailed(DomainError):
+    """`If-Match` distinto de la `version` vigente del proyecto: alguien lo cambió antes."""
+
+    slug = "project-precondition-failed"
+    title = "Project precondition failed"
+    status = 412
+    detail = "Project has changed"
+
+
 class NotificationNotFound(DomainError):
     """Aviso inexistente o de otro usuario: mismo cuerpo siempre."""
 

@@ -41,6 +41,8 @@ class VaultTask(Base):
     assignee_type = Column(String(10), nullable=False, server_default=text("'user'"), default="user")
     assignee_agent_id = Column(String, nullable=True)
     path = Column(String(500), nullable=True)
+    # H-058: el proyecto de una raíz (las subtareas toman el de su raíz). Borrar el proyecto deja la tarea sin proyecto.
+    project_id = Column(String, ForeignKey("vault_projects.id", ondelete="SET NULL"), nullable=True, index=True)
     # Recordatorios de vencimiento: JSON con los minutos antes de `due_at` (p. ej. `[1440, 60]`). NULL = los de siempre (1 día y 1 hora);
     # `[]` = ninguno. El aviso de «venció» no depende de esta lista.
     reminders = Column(Text, nullable=True)

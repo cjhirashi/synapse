@@ -6,6 +6,7 @@ import {
   PRIORITY_LABEL, STATUSES, STATUS_LABEL, buildTree, formatDay, formatDue, isClosed, isOverdue,
   resolvePath, type PathIndex, type PathTarget, type TaskNode,
 } from "./taskModel";
+import { PROJECT_COLOR_CSS, PROJECT_STATUS_LABEL, type Project } from "./projectsApi";
 import type { Task, TaskStatus } from "./tasksApi";
 
 export interface ViewActions {
@@ -24,6 +25,19 @@ export interface ViewActions {
   global?: { vaultName: (task: Task) => string; onOpenInVault: (task: Task) => void };
   /** Título de una tarea por su id (para nombrar a sus bloqueadoras, H-057). */
   titleOf?: (id: string) => string | undefined;
+  /** El proyecto de una tarea (H-058). */
+  projectOf?: (task: Task) => Project | undefined;
+}
+
+/** El proyecto de la tarea con su color (H-058). */
+export function ProjectChip({ task, actions }: { task: Task; actions: ViewActions }) {
+  const project = actions.projectOf?.(task);
+  if (!project) return null;
+  return (
+    <span className="tasks-chip tasks-chip--project" title={`Proyecto: ${project.title}`}>
+      <i className="pj-dot pj-dot--chip" style={{ background: PROJECT_COLOR_CSS[project.color] }} aria-hidden="true" /> {project.title}
+    </span>
+  );
 }
 
 /** «Bloqueada por …» (H-057): la tarea espera a otras que aún no están hechas. */
@@ -82,6 +96,7 @@ function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
 function TaskNotes({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
     <span className="tasks-notes">
+      <ProjectChip task={task} actions={actions} />
       <BlockedChip task={task} actions={actions} />
       <VaultTag task={task} actions={actions} />
       <PathChip task={task} actions={actions} />
@@ -161,14 +176,35 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
   );
 }
 
-export function TaskList({ nodes, actions }: { nodes: TaskNode[]; actions: ViewActions }) {
-  if (nodes.length === 0) return <p className="tasks-empty">No hay tareas con estos filtros.</p>;
+export function TaskList({ nodes, actions, projects }: { nodes: TaskNode[]; actions: ViewActions; projects?: Project[] }) {
+  const header = (
+    <div className="tasks-head" aria-hidden="true">
+      <span>Tarea</span><span>Estado</span><span>Prioridad</span><span>Responsable</span><span>Vence</span><span />
+    </div>
+  );
+  const rows = (list: TaskNode[]) => <ul className="tasks-list">{list.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>;
+  if (nodes.length === 0 && !(projects && projects.length > 0)) return <p className="tasks-empty">No hay tareas con estos filtros.</p>;
+  if (!projects || projects.length === 0) return <div className="tasks-table">{header}{rows(nodes)}</div>;
+  // Con proyectos (H-058) la lista se agrupa: un bloque por proyecto y, al final, las tareas sin proyecto.
+  const known = new Set(projects.map((p) => p.id));
+  const groups = [
+    ...projects.map((project) => ({ project, nodes: nodes.filter((n) => n.task.project_id === project.id) })),
+    { project: null as Project | null, nodes: nodes.filter((n) => n.task.project_id === null || !known.has(n.task.project_id)) },
+  ].filter((group) => group.nodes.length > 0 || group.project !== null);
   return (
     <div className="tasks-table">
-      <div className="tasks-head" aria-hidden="true">
-        <span>Tarea</span><span>Estado</span><span>Prioridad</span><span>Responsable</span><span>Vence</span><span />
-      </div>
-      <ul className="tasks-list">{nodes.map((n) => <Row key={n.task.id} task={n.task} node={n} actions={actions} sub={false} />)}</ul>
+      {header}
+      {groups.map(({ project, nodes: list }) => (
+        <section key={project?.id ?? "none"} className="tasks-group" aria-label={project ? `Proyecto ${project.title}` : "Sin proyecto"}>
+          <h3 className="tasks-group-head">
+            <i className="pj-dot" style={{ background: project ? PROJECT_COLOR_CSS[project.color] : "var(--text-muted)" }} aria-hidden="true" />
+            <span>{project ? project.title : "Sin proyecto"}</span>
+            {project && <span className="tasks-chip" data-project-status={project.status}>{PROJECT_STATUS_LABEL[project.status]}</span>}
+            {project && <span className="tasks-group-count">{project.tasks_done}/{project.tasks_total}</span>}
+          </h3>
+          {list.length === 0 ? <p className="tasks-group-empty">Sin tareas todavía.</p> : rows(list)}
+        </section>
+      ))}
     </div>
   );
 }
@@ -248,6 +284,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
                         </span>
                       )}
+                      <ProjectChip task={task} actions={actions} />
                       <BlockedChip task={task} actions={actions} />
                       <VaultTag task={task} actions={actions} />
                       <PathChip task={task} actions={actions} />

@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.models.project import VaultProject
 from app.core.models.task import VaultTask
 
 MAX_LIST = 1000
@@ -23,6 +24,10 @@ class TaskRepository:
         task = self._db.get(VaultTask, task_id)
         return task if task is not None and task.owner_id == owner_id else None
 
+    def project(self, project_id: str, owner_id: str) -> VaultProject | None:
+        project = self._db.get(VaultProject, project_id)
+        return project if project is not None and project.owner_id == owner_id else None
+
     def children(self, parent_id: str) -> list[VaultTask]:
         return self._db.query(VaultTask).filter(VaultTask.parent_id == parent_id).order_by(VaultTask.sort_order, VaultTask.created_at).all()
 
@@ -34,7 +39,7 @@ class TaskRepository:
 
     def list(
         self, owner_id: str, vault_id: str | None = None, statuses: list[str] | None = None, assignee: str | None = None,
-        due_after: datetime | None = None, due_before: datetime | None = None,
+        due_after: datetime | None = None, due_before: datetime | None = None, project_id: str | None = None,
     ) -> list[VaultTask]:
         """Tareas del dueño (de una bóveda o de todas) con filtros. `assignee`: `user` o el id de un agente."""
         query = self._db.query(VaultTask).filter(VaultTask.owner_id == owner_id)
@@ -46,6 +51,10 @@ class TaskRepository:
             query = query.filter(VaultTask.assignee_type == "user")
         elif assignee:
             query = query.filter(VaultTask.assignee_type == "agent", VaultTask.assignee_agent_id == assignee)
+        if project_id == "none":
+            query = query.filter(VaultTask.project_id.is_(None))
+        elif project_id:
+            query = query.filter(VaultTask.project_id == project_id)
         if due_after is not None:
             query = query.filter(VaultTask.due_at >= due_after)
         if due_before is not None:

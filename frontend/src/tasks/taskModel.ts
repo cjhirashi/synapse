@@ -75,6 +75,8 @@ export interface TaskFilter {
   due: DueFilter;
   /** Solo en la ventana global: el id de una bóveda; ausente o `all` = todas. */
   vault?: string;
+  /** Un proyecto (id), `none` (sin proyecto) o ausente/`all` (todos). */
+  project?: string;
 }
 export const NO_FILTER: TaskFilter = { assignee: "all", statuses: [], due: "all" };
 
@@ -82,6 +84,7 @@ export function matchesFilter(task: Task, filter: TaskFilter, now: Date = new Da
   if (filter.assignee === "user" && task.assignee_type !== "user") return false;
   if (filter.assignee !== "all" && filter.assignee !== "user" && task.assignee_agent_id !== filter.assignee) return false;
   if (filter.vault && filter.vault !== "all" && task.vault_id !== filter.vault) return false;
+  if (filter.project && filter.project !== "all" && (filter.project === "none" ? task.project_id !== null : task.project_id !== filter.project)) return false;
   if (filter.statuses.length > 0 && !filter.statuses.includes(task.status)) return false;
   if (filter.due === "none") return task.due_at === null;
   if (filter.due === "all") return true;

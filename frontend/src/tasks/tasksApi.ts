@@ -34,6 +34,8 @@ export interface Task {
   completed_at: string | null;
   /** Cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz. */
   purge_at: string | null;
+  /** El proyecto de la tarea (H-058); una subtarea toma el de su raíz. */
+  project_id: string | null;
   /** Ids de las tareas de la misma bóveda que debe esperar (H-057). */
   blocked_by: string[];
   /** Alguna de ellas no está hecha: la tarea puede ponerse en curso, pero no darse por hecha todavía. */
@@ -56,6 +58,8 @@ export interface TaskInput {
   reminders?: number[] | null;
   /** Reemplaza el conjunto completo de bloqueadoras (`[]` o `null` las quita); ausente = no cambia. */
   blocked_by?: string[] | null;
+  /** El proyecto de una tarea raíz (`null` la saca del proyecto); las subtareas no lo cambian. */
+  project_id?: string | null;
 }
 
 const base = (vaultId: string) => `/vaults/${encodeURIComponent(vaultId)}/tasks`;
