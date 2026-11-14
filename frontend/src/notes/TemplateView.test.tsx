@@ -273,28 +273,44 @@ test("apagar el tema deja los encabezados con el color que se veía", async () =
   expect(screen.queryByRole("list", { name: "Colores calculados del tema" })).toBeNull();
 });
 
-test("los estados que se marcan o se añaden se guardan en la plantilla (H-054)", async () => {
+test("los estados se añaden con nombre y color, y se guardan en la plantilla (H-054)", async () => {
   const { store, template, user } = await open();
   const group = screen.getByRole("group", { name: "Estados del documento" });
-  await user.click(within(group).getByRole("checkbox", { name: "borrador" }));
-  await user.click(within(group).getByRole("checkbox", { name: "aprobado" }));
-  await user.type(within(group).getByLabelText("Nuevo estado"), "En Pausa{Enter}");
-  expect(within(group).getByRole("checkbox", { name: "en pausa" })).toBeChecked();
+  expect(within(group).getByText("Esta plantilla aún no tiene estados.")).toBeInTheDocument();
+  await user.click(within(group).getByRole("button", { name: "Añadir estado" }));
+  await user.type(within(group).getByLabelText("Nombre del estado 1"), "En Revisión");
+  await user.selectOptions(within(group).getByLabelText("Color del estado 1"), "azul");
+  await user.click(within(group).getByRole("button", { name: "Añadir estado" }));
+  await user.type(within(group).getByLabelText("Nombre del estado 2"), "cerrado");
+  await user.selectOptions(within(group).getByLabelText("Color del estado 2"), "rojo");
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
-  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estados).toEqual(["borrador", "aprobado", "en pausa"]));
+  await waitFor(async () =>
+    expect((await store.get(template.id)).frontmatter.estados).toEqual([{ nombre: "en revisión", color: "azul" }, { nombre: "cerrado", color: "rojo" }]));
 });
 
-test("una plantilla con estados los muestra marcados y se pueden quitar todos", async () => {
+test("los estados guardados se muestran con su color y se pueden quitar (H-054)", async () => {
   counter += 1;
   const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
   const created = await store.createTemplate(VAULT, "Acta");
-  const template = await store.save(created.id, created.content, created.rev, { ...created.frontmatter, estados: ["aprobado"] });
-  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} estadoOptions={["en pausa"]} />);
+  const template = await store.save(created.id, created.content, created.rev, { ...created.frontmatter, estados: [{ nombre: "aprobado", color: "verde" }, { nombre: "borrador", color: "gris" }] });
+  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} />);
   await screen.findByRole("heading", { name: "Plantilla acta" });
   const group = screen.getByRole("group", { name: "Estados del documento" });
-  expect(within(group).getByRole("checkbox", { name: "aprobado" })).toBeChecked();
-  expect(within(group).getByRole("checkbox", { name: "en pausa" })).not.toBeChecked();
-  await userEvent.click(within(group).getByRole("checkbox", { name: "aprobado" }));
+  expect(within(group).getByLabelText("Nombre del estado 1")).toHaveValue("aprobado");
+  expect(within(group).getByLabelText("Color del estado 1")).toHaveValue("verde");
+  await userEvent.click(within(group).getByRole("button", { name: "Quitar el estado 1" }));
   await userEvent.click(screen.getByRole("button", { name: "Guardar plantilla" }));
-  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estados).toEqual([]));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estados).toEqual([{ nombre: "borrador", color: "gris" }]));
+});
+
+test("las instrucciones van aparte de la estructura y no se mezclan con el cuerpo (H-054)", async () => {
+  const { store, template, user } = await open();
+  const instrucciones = screen.getByLabelText(/Instrucciones de uso de la plantilla/);
+  expect(instrucciones.compareDocumentPosition(screen.getByLabelText(/Markdown con el que nace/)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  await user.type(instrucciones, "Úsala para actas.");
+  await user.clear(screen.getByLabelText(/Markdown con el que nace/));
+  await user.type(screen.getByLabelText(/Markdown con el que nace/), "# Asistentes");
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).content).toBe("# Asistentes"));
+  expect((await store.get(template.id)).frontmatter.instrucciones).toBe("Úsala para actas.");
 });

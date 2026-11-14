@@ -1,0 +1,12 @@
+/* Estados con color (H-054): gris, azul, verde y rojo. Solo tokens del tema. */
+.estado-select { display: flex; align-items: center; gap: var(--space-2); }
+.estado-select select { flex: 1; min-width: 0; }
+.estado-dot { flex: none; width: 10px; height: 10px; border-radius: 999px; background: var(--text-muted); }
+.estado-dot--gris { background: var(--text-muted); }
+.estado-dot--azul { background: var(--info); }
+.estado-dot--verde { background: var(--success); }
+.estado-dot--rojo { background: var(--danger); }
+.estado-pill { display: inline-flex; align-items: center; padding: 2px 10px; font-size: 0.75rem; font-weight: 600; border-radius: 999px; background: var(--bg-tertiary); color: var(--text-secondary); }
+.estado-pill--azul { color: var(--info-text); background: color-mix(in srgb, var(--info) 16%, transparent); }
+.estado-pill--verde { color: var(--success-text); background: color-mix(in srgb, var(--success) 16%, transparent); }
+.estado-pill--rojo { color: var(--danger-text); background: var(--danger-bg); }

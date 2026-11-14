@@ -17,6 +17,7 @@ import { PropertiesPanel } from "./PropertiesPanel";
 import { TemplateAttributes } from "./TemplateAttributes";
 import { HIDDEN_KEY, detachTemplate } from "./templateAttrs";
 import type { TemplateOption } from "../notes/useTemplateOptions";
+import "./estado.css";
 import type { AttributeCatalog, AttributeDef } from "../sync/vaultRules";
 
 // `plantilla` y los opcionales ocultos (H-054) no son propiedades libres: los gestiona el control «Plantilla».
@@ -85,8 +86,13 @@ function fileTitle(path: string): string {
 
 export function NoteMeta({ mode, frontmatter, path, onChange, estadoOptions, onNewEstado, attributes, templates, onTemplateChange }: NoteMetaProps) {
   const fm = frontmatter ?? {};
-  if (mode === "read") return <ReadMeta fm={fm} path={path} />;
+  if (mode === "read") return <ReadMeta fm={fm} path={path} templates={templates} />;
   return <EditMeta fm={fm} path={path} onChange={onChange} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} templates={templates} onTemplateChange={onTemplateChange} />;
+}
+
+/** Color con que la plantilla del documento pinta su estado, si lo tiene. */
+function estadoColorOf(fm: Record<string, unknown>, templates?: readonly TemplateOption[] | null): string | undefined {
+  return templates?.find((option) => option.name === fm.plantilla)?.estados.find((e) => e.nombre === fm.estado)?.color;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -98,7 +104,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
+function ReadMeta({ fm, path, templates }: { fm: Record<string, unknown>; path: string; templates?: readonly TemplateOption[] | null }) {
   const dash = <span className="note-prop-empty">—</span>;
   const tags = Array.isArray(fm.tags) ? fm.tags.filter((t): t is string => typeof t === "string") : [];
   const free = freeProperties(fm, null);
@@ -124,7 +130,13 @@ function ReadMeta({ fm, path }: { fm: Record<string, unknown>; path: string }) {
               </ul>
             )}
           </Row>
-          <Row label="Estado">{text(fm.estado) || dash}</Row>
+          <Row label="Estado">
+            {text(fm.estado) ? (
+              <span className={`estado-pill${estadoColorOf(fm, templates) ? ` estado-pill--${estadoColorOf(fm, templates)}` : ""}`}>{text(fm.estado)}</span>
+            ) : (
+              dash
+            )}
+          </Row>
           <Row label="Plantilla">{text(fm.plantilla) || dash}</Row>
         </dl>
       </div>
@@ -166,12 +178,13 @@ function EditMeta({ fm: fmRaw, path, onChange, estadoOptions, onNewEstado, attri
     );
   const [typedValuesState, setTypedValuesState] = useState(initTypedValues);
 
-  // H-054: una plantilla con estados limita los del documento (el vigente se muestra aunque ya no esté en la lista) y no deja crear otros.
-  const restricted = activeTemplate !== null && activeTemplate.estados.length > 0;
+  // H-054: con plantilla, el documento solo tiene los estados de la plantilla (o ninguno); el vigente se muestra aunque ya no esté en su lista.
+  const restricted = activeTemplate !== null;
   const estados = [...new Set<string>([
-    ...(restricted ? activeTemplate.estados : [...ESTADOS_ESTANDAR, ...(estadoOptions ?? [])]),
+    ...(activeTemplate ? activeTemplate.estados.map((e) => e.nombre) : [...ESTADOS_ESTANDAR, ...(estadoOptions ?? [])]),
     ...(values.estado ? [values.estado] : []),
   ])];
+  const estadoColor = activeTemplate?.estados.find((e) => e.nombre === values.estado)?.color;
 
   const tituloError = points(values.titulo) > TITULO_MAX ? `Máximo ${TITULO_MAX} caracteres` : "";
   const descripcionError = points(values.descripcion) > DESCRIPCION_MAX ? `Máximo ${DESCRIPCION_MAX} caracteres` : "";
@@ -413,15 +426,18 @@ function EditMeta({ fm: fmRaw, path, onChange, estadoOptions, onNewEstado, attri
         </div>
         <div className="note-meta-field">
           <label htmlFor={`${uid}-estado`}>Estado</label>
-          <select id={`${uid}-estado`} value={creatingEstado ? OTHER_ESTADO : values.estado} onChange={(event) => chooseEstado(event.target.value)}>
-            <option value={NO_ESTADO}>Sin estado</option>
-            {estados.map((estado) => (
-              <option key={estado} value={estado}>
-                {estado}
-              </option>
-            ))}
-            {!restricted && <option value={OTHER_ESTADO}>Otro estado…</option>}
-          </select>
+          <div className="estado-select">
+            {estadoColor && <span className={`estado-dot estado-dot--${estadoColor}`} aria-hidden="true" />}
+            <select id={`${uid}-estado`} value={creatingEstado ? OTHER_ESTADO : values.estado} onChange={(event) => chooseEstado(event.target.value)}>
+              <option value={NO_ESTADO}>Sin estado</option>
+              {estados.map((estado) => (
+                <option key={estado} value={estado}>
+                  {estado}
+                </option>
+              ))}
+              {!restricted && <option value={OTHER_ESTADO}>Otro estado…</option>}
+            </select>
+          </div>
           {creatingEstado && (
             <input
               aria-label="Nuevo estado"

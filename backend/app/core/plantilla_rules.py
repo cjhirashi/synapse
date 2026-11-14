@@ -5,7 +5,9 @@ definición y su cuerpo es la estructura Markdown de partida:
 
 - `alcance`: lista de carpetas donde se puede usar (`["*"]` = toda la bóveda).
 - `atributos`: atributos opcionales extra, cada uno `{nombre, tipo, valor?}`.
-- `estados` (H-054, opcional): los estados que puede tener un documento con esta plantilla; vacío o ausente = cualquiera.
+- `estados` (H-054, opcional): los estados que puede tener un documento con esta plantilla, cada uno `{nombre, color}` (`gris|azul|verde|rojo`).
+  Una plantilla no trae estados de serie: sin `estados`, sus documentos no tienen estado que elegir.
+- `instrucciones` (H-054, opcional): texto de uso de la plantilla (para personas y agentes); no se copia al documento. El cuerpo es solo la estructura.
 - `estilo`: `publicar` (reservado para H-035, vacío) y `pdf` (H-036: formato del PDF del documento, ver `check_pdf_style`).
 
 Cada documento creado desde una plantilla guarda su nombre (sin el prefijo) en el atributo general `plantilla`.
@@ -23,6 +25,8 @@ ALL_FOLDERS = "*"
 ALCANCE_MAX = 50
 ATRIBUTOS_MAX = 30
 ESTADOS_MAX = 20
+ESTADO_COLORES = ("gris", "azul", "verde", "rojo")
+INSTRUCCIONES_MAX = 20000
 TIPOS = ("texto", "numero", "fecha", "lista", "booleano")
 ESTILO_KEYS = ("publicar", "pdf")
 
@@ -93,6 +97,21 @@ def _type_ok(tipo: str, value: object) -> bool:
     return isinstance(value, bool)
 
 
+def check_estados(estados: object) -> str | None:
+    """`estados` de una plantilla: `[{nombre, color}]`, `nombre` como se guarda un estado y sin repetir, `color` de la paleta."""
+    if not isinstance(estados, list) or len(estados) > ESTADOS_MAX:
+        return "plantilla:estados"
+    seen: set[str] = set()
+    for item in estados:
+        if not isinstance(item, dict) or set(item) != {"nombre", "color"}:
+            return "plantilla:estados"
+        nombre = item["nombre"]
+        if normalize_estado(nombre) != nombre or nombre in seen or item["color"] not in ESTADO_COLORES:
+            return "plantilla:estados"
+        seen.add(nombre)
+    return None
+
+
 def check_definition(frontmatter: object) -> str | None:
     """Forma de la definición de una plantilla. Devuelve `plantilla:<campo>` o `None`."""
     if not isinstance(frontmatter, dict):
@@ -117,10 +136,11 @@ def check_definition(frontmatter: object) -> str | None:
         if "valor" in item and item["valor"] is not None and not _type_ok(tipo, item["valor"]):
             return "plantilla:atributos"
         seen.add(nombre)
-    estados = frontmatter.get("estados", [])
-    if (not isinstance(estados, list) or len(estados) > ESTADOS_MAX or len(set(map(str, estados))) != len(estados)
-            or any(normalize_estado(e) != e for e in estados)):
+    if check_estados(frontmatter.get("estados", [])) is not None:
         return "plantilla:estados"
+    instrucciones = frontmatter.get("instrucciones", "")
+    if not isinstance(instrucciones, str) or len(instrucciones) > INSTRUCCIONES_MAX:
+        return "plantilla:instrucciones"
     estilo = frontmatter.get("estilo", {})
     if not isinstance(estilo, dict) or not set(estilo) <= set(ESTILO_KEYS):
         return "plantilla:estilo"

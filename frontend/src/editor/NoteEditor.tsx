@@ -629,7 +629,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     const edit = currentEdit();
     const fromName = typeof edit.props.plantilla === "string" ? edit.props.plantilla : "";
     if (fromName === name) return;
-    const defOf = (option: TemplateOption | undefined) => (option ? { name: option.name, atributos: option.atributos } : null);
+    const defOf = (option: TemplateOption | undefined) => (option ? { name: option.name, atributos: option.atributos, estados: option.estados.map((e) => e.nombre) } : null);
     const from = defOf(templateOptions.find((option) => option.name === fromName));
     const target = name === "" ? undefined : templateOptions.find((option) => option.name === name);
     if (name !== "" && target === undefined) return;
@@ -1395,7 +1395,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           )}
 
           {/* Propiedades de la nota (RF-009): los 7 generales + propiedades libres. */}
-          {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} attributes={attributes} />}
+          {mode === "read" && <NoteMeta mode="read" frontmatter={note.frontmatter} path={note.path} estadoOptions={estadoOptions} attributes={attributes} templates={allTemplates} />}
           {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
               `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
           {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}-${templateOptions === null ? "n" : "t"}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} templates={templateOptions} onTemplateChange={(name) => void onTemplateChange(name)} />}

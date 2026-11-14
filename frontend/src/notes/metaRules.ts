@@ -33,6 +33,9 @@ export const PLANTILLA_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export const ALCANCE_MAX = 50;
 export const ATRIBUTOS_MAX = 30;
 export const ESTADOS_MAX = 20;
+export const ESTADO_COLORES = ["gris", "azul", "verde", "rojo"] as const;
+export type EstadoColor = (typeof ESTADO_COLORES)[number];
+export const INSTRUCCIONES_MAX = 20000;
 export const TIPOS = ["texto", "numero", "fecha", "lista", "booleano"] as const;
 export const ESTILO_KEYS = ["publicar", "pdf"] as const;
 
@@ -194,6 +197,23 @@ function _typeOk(tipo: string, value: unknown): boolean {
   return false;
 }
 
+/** `estados` de una plantilla: `[{nombre, color}]` con nombre como se guarda un estado, sin repetir, y color de la paleta. */
+function checkEstados(estados: unknown): boolean {
+  if (!Array.isArray(estados) || estados.length > ESTADOS_MAX) return false;
+  const seen = new Set<string>();
+  for (const item of estados) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+    const e = item as Record<string, unknown>;
+    const keys = Object.keys(e);
+    if (keys.length !== 2 || !("nombre" in e) || !("color" in e)) return false;
+    const nombre = e.nombre;
+    if (typeof nombre !== "string" || normalizeEstado(nombre) !== nombre || seen.has(nombre)) return false;
+    if (!(ESTADO_COLORES as readonly unknown[]).includes(e.color)) return false;
+    seen.add(nombre);
+  }
+  return true;
+}
+
 /** Código de rechazo de la definición de una plantilla (frontmatter). */
 export function checkDefinition(frontmatter: unknown): string | null {
   if (!frontmatter || typeof frontmatter !== "object" || Array.isArray(frontmatter)) {
@@ -220,13 +240,9 @@ export function checkDefinition(frontmatter: unknown): string | null {
   }
 
   // Validar `estados` (H-054).
-  const estados = fm.estados ?? [];
-  if (
-    !Array.isArray(estados) || estados.length > ESTADOS_MAX || new Set(estados).size !== estados.length
-    || estados.some((e) => normalizeEstado(e) !== e)
-  ) {
-    return "plantilla:estados";
-  }
+  if (!checkEstados(fm.estados ?? [])) return "plantilla:estados";
+  const instrucciones = fm.instrucciones ?? "";
+  if (typeof instrucciones !== "string" || instrucciones.length > INSTRUCCIONES_MAX) return "plantilla:instrucciones";
 
   // Validar `atributos`.
   const atributos = fm.atributos ?? [];

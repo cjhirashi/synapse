@@ -9,8 +9,10 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Folder, Plus, Trash2 } from "lucide-react";
 import { isIndexPath } from "./indexRules";
 import { isMetaFolderPath } from "./metaFolders";
-import { checkDefinition, ESTADOS_MAX, templateName, TIPOS } from "./metaRules";
-import { ESTADOS_ESTANDAR, ESTADO_MAX_LEN, normalizeEstado } from "../editor/attributeRules";
+import { checkDefinition, ESTADOS_MAX, ESTADO_COLORES, INSTRUCCIONES_MAX, templateName, TIPOS, type EstadoColor } from "./metaRules";
+import { ESTADO_MAX_LEN, normalizeEstado } from "../editor/attributeRules";
+import { estadosOf, type TemplateEstado } from "./useTemplateOptions";
+import "../editor/estado.css";
 import { noteErrorMessage, noteReasonText } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
 import "./template-view.css";
@@ -24,6 +26,8 @@ interface AttrRow {
   tipo: Tipo;
   valor: string;
 }
+
+const COLOR_LABEL: Record<EstadoColor, string> = { gris: "Gris", azul: "Azul", verde: "Verde", rojo: "Rojo" };
 
 const TIPO_LABEL: Record<Tipo, string> = {
   texto: "Texto",
@@ -62,11 +66,9 @@ export interface TemplateViewProps {
   notes: NoteStore;
   notesVersion: number;
   sidebarToggle?: ReactNode;
-  /** Estados propios de la bóveda, además de los estándar (H-054: los que se pueden ofrecer a los documentos de la plantilla). */
-  estadoOptions?: readonly string[];
 }
 
-export default function TemplateView({ noteId, vault, notes, notesVersion, sidebarToggle, estadoOptions }: TemplateViewProps) {
+export default function TemplateView({ noteId, vault, notes, notesVersion, sidebarToggle }: TemplateViewProps) {
   const [note, setNote] = useState<Note | null>(null);
   const [folders, setFolders] = useState<string[]>([]);
   const [titulo, setTitulo] = useState("");
@@ -74,9 +76,8 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
   const [all, setAll] = useState(true);
   const [alcance, setAlcance] = useState<string[]>([]);
   const [rows, setRows] = useState<AttrRow[]>([]);
-  const [estados, setEstados] = useState<string[]>([]);
-  const [newEstado, setNewEstado] = useState("");
-  const [estadoError, setEstadoError] = useState("");
+  const [estados, setEstados] = useState<TemplateEstado[]>([]);
+  const [instrucciones, setInstrucciones] = useState("");
   const [estructura, setEstructura] = useState("");
   const [pdf, setPdf] = useState<PdfDraft>(DEFAULT_PDF_DRAFT);
   const [dirty, setDirty] = useState(false);
@@ -113,7 +114,8 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     setAll(scope.includes("*"));
     setAlcance(scope.filter((item) => item !== "*"));
     setRows(toRows(fm.atributos));
-    setEstados(Array.isArray(fm.estados) ? fm.estados.filter((item): item is string => typeof item === "string") : []);
+    setEstados(estadosOf(fm.estados));
+    setInstrucciones(typeof fm.instrucciones === "string" ? fm.instrucciones : "");
     const style = fm.estilo && typeof fm.estilo === "object" ? (fm.estilo as Record<string, unknown>) : {};
     setPdf(pdfDraftFrom(style.pdf));
     setEstructura(note.content);
@@ -131,22 +133,8 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     edit(setAlcance)(alcance.includes(path) ? alcance.filter((item) => item !== path) : [...alcance, path]);
   }
 
-  const estadoChoices = useMemo(
-    () => [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...estados])],
-    [estadoOptions, estados],
-  );
-
-  function toggleEstado(estado: string) {
-    edit(setEstados)(estados.includes(estado) ? estados.filter((item) => item !== estado) : [...estados, estado]);
-  }
-
-  function addEstado() {
-    const estado = normalizeEstado(newEstado);
-    if (estado === null) return setEstadoError(`Escribe un estado de 1 a ${ESTADO_MAX_LEN} caracteres`);
-    if (estados.length >= ESTADOS_MAX && !estados.includes(estado)) return setEstadoError(`Máximo ${ESTADOS_MAX} estados`);
-    setEstadoError("");
-    setNewEstado("");
-    if (!estados.includes(estado)) edit(setEstados)([...estados, estado]);
+  function updateEstado(index: number, changes: Partial<TemplateEstado>) {
+    edit(setEstados)(estados.map((estado, i) => (i === index ? { ...estado, ...changes } : estado)));
   }
 
   function updateRow(index: number, changes: Partial<AttrRow>) {
@@ -161,7 +149,10 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
       descripcion,
       alcance: all ? ["*"] : alcance,
       atributos: toAttributes(rows),
-      estados,
+      estados: estados
+        .filter((estado) => estado.nombre.trim() !== "")
+        .map((estado) => ({ nombre: normalizeEstado(estado.nombre) ?? estado.nombre.trim(), color: estado.color })),
+      instrucciones,
       estilo: { publicar: {}, pdf: pdfDraftTo(pdf) },
     };
     const code = checkDefinition(frontmatter);
@@ -303,36 +294,49 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
             <div className="tv-estados" role="group" aria-label="Estados del documento">
               <h4>Estados del documento</h4>
               <p className="tv-empty">
-                Los estados que podrá elegir un documento con esta plantilla. Sin ninguno marcado, el documento puede usar cualquiera.
+                Los estados que podrá tener un documento con esta plantilla, cada uno con su color. La plantilla no trae estados de serie: sin
+                estados, sus documentos quedan sin estado. Si un documento cambia a una plantilla que no tiene su estado, el estado se vacía.
               </p>
-              <div className="tv-folders">
-                {estadoChoices.map((estado) => (
-                  <label key={estado} className="tv-folder">
-                    <input type="checkbox" checked={estados.includes(estado)} onChange={() => toggleEstado(estado)} />
-                    <span>{estado}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="tv-estado-new">
-                <input
-                  aria-label="Nuevo estado"
-                  placeholder="Otro estado (Enter)"
-                  maxLength={ESTADO_MAX_LEN}
-                  value={newEstado}
-                  aria-invalid={estadoError ? true : undefined}
-                  onChange={(event) => {
-                    setNewEstado(event.target.value);
-                    if (estadoError) setEstadoError("");
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      addEstado();
-                    }
-                  }}
-                />
-                {estadoError && <p role="alert" className="tv-empty">{estadoError}</p>}
-              </div>
+              {estados.length === 0 ? (
+                <p className="tv-empty tv-empty--box">Esta plantilla aún no tiene estados.</p>
+              ) : (
+                <div className="tv-estado-rows">
+                  {estados.map((estado, index) => (
+                    <div className="tv-estado-row" key={index} role="group" aria-label={`Estado ${index + 1}`}>
+                      <span className={`estado-dot estado-dot--${estado.color}`} aria-hidden="true" />
+                      <input
+                        aria-label={`Nombre del estado ${index + 1}`}
+                        placeholder="nombre del estado"
+                        maxLength={ESTADO_MAX_LEN}
+                        value={estado.nombre}
+                        onChange={(event) => updateEstado(index, { nombre: event.target.value })}
+                      />
+                      <select
+                        aria-label={`Color del estado ${index + 1}`}
+                        value={estado.color}
+                        onChange={(event) => updateEstado(index, { color: event.target.value as EstadoColor })}
+                      >
+                        {ESTADO_COLORES.map((color) => (
+                          <option key={color} value={color}>
+                            {COLOR_LABEL[color]}
+                          </option>
+                        ))}
+                      </select>
+                      <button type="button" className="tv-icon-btn" aria-label={`Quitar el estado ${index + 1}`} title="Quitar" onClick={() => edit(setEstados)(estados.filter((_, i) => i !== index))}>
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                className="tv-add"
+                disabled={estados.length >= ESTADOS_MAX}
+                onClick={() => edit(setEstados)([...estados, { nombre: "", color: "gris" }])}
+              >
+                <Plus size={15} aria-hidden="true" /> Añadir estado
+              </button>
             </div>
           </TemplateSection>
 
@@ -340,7 +344,19 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
             <PdfStyleSection vaultId={vault.id} draft={pdf} attributeNames={rows.map((row) => row.nombre.trim())} onChange={edit(setPdf)} />
           </TemplateSection>
 
-          <TemplateSection step={4} title="Estructura base" description="El Markdown con el que nace cada documento nuevo: encabezados y contenido de partida.">
+          <TemplateSection step={4} title="Estructura base" description="Las instrucciones de uso de la plantilla y, aparte, el Markdown con el que nace cada documento nuevo.">
+            <label className="tv-field">
+              <span>Instrucciones</span>
+              <textarea
+                className="tv-instructions"
+                aria-label="Instrucciones de uso de la plantilla (no se copian al documento)"
+                value={instrucciones}
+                maxLength={INSTRUCCIONES_MAX}
+                rows={6}
+                placeholder="Cuándo usar la plantilla y cómo llenarla. Estas instrucciones no se copian al documento: aquí van solo para quien use la plantilla, persona o agente."
+                onChange={(event) => edit(setInstrucciones)(event.target.value)}
+              />
+            </label>
             <label className="tv-field">
               <span className="tv-sr">Markdown con el que nace cada documento nuevo (encabezados y contenido de partida)</span>
               <textarea

@@ -100,7 +100,8 @@ export function noteReasonText(code: string): string {
   if (code === "plantilla:path") return "Las plantillas van en PLANTILLAS/, planas y con nombre plantilla-<nombre>.md.";
   if (code === "plantilla:alcance") return "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda).";
   if (code === "plantilla:atributos") return "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos.";
-  if (code === "plantilla:estados") return "Los estados de una plantilla deben ser textos de 1 a 32 caracteres, sin repetir (hasta 20).";
+  if (code === "plantilla:estados") return "Cada estado de una plantilla necesita un nombre de 1 a 32 caracteres, sin repetir (hasta 20), y un color: gris, azul, verde o rojo.";
+  if (code === "plantilla:instrucciones") return "Las instrucciones de una plantilla deben ser texto de hasta 20 000 caracteres.";
   if (code === "plantilla:estilo") return "El estilo de una plantilla debe estar vacío (reservado para web/PDF).";
   if (code === "plantilla:in-use") return "No se puede renombrar ni mover una plantilla mientras algún documento la use.";
   if (code === "plantilla:unknown") return "La plantilla referida en el documento no existe.";

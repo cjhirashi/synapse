@@ -92,3 +92,17 @@ describe("quitar o cambiar la plantilla", () => {
     expect(out[HIDDEN_KEY]).toEqual({ autor: 7 });
   });
 });
+
+describe("estado al cambiar de plantilla", () => {
+  const conEstados = { ...base, estados: ["borrador", "aprobado"] };
+  it("se conserva si la plantilla nueva lo tiene", () => {
+    expect(changeTemplate({ estado: "aprobado" }, null, conEstados).estado).toBe("aprobado");
+  });
+  it("queda vacío si la plantilla nueva no lo tiene o no trae estados", () => {
+    expect("estado" in changeTemplate({ estado: "en revisión" }, null, conEstados)).toBe(false);
+    expect("estado" in changeTemplate({ estado: "aprobado" }, null, { ...base, estados: [] })).toBe(false);
+  });
+  it("quitar la plantilla no toca el estado", () => {
+    expect(changeTemplate({ plantilla: "informe", estado: "aprobado" }, conEstados, null).estado).toBe("aprobado");
+  });
+});

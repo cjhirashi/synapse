@@ -4,7 +4,7 @@
  * Un documento con plantilla muestra solo los atributos generales y los de la plantilla (que siempre existen,
  * pueden ir vacíos). Los atributos opcionales que ya tenía no se borran: quedan en `atributos_ocultos` y
  * reaparecen al quitar la plantilla. Un opcional que coincide en nombre y tipo con uno de la plantilla pasa
- * a ser ese atributo con su valor.
+ * a ser ese atributo con su valor. Si el estado del documento no es uno de los de la plantilla nueva, queda vacío.
  */
 
 export const HIDDEN_KEY = "atributos_ocultos";
@@ -18,6 +18,8 @@ export interface TemplateAttr {
 export interface TemplateDef {
   name: string;
   atributos: ReadonlyArray<TemplateAttr>;
+  /** Nombres de los estados de la plantilla. Con plantilla, el estado del documento es uno de ellos o ninguno (H-054). */
+  estados?: ReadonlyArray<string>;
 }
 
 export interface TemplateOptions {
@@ -105,6 +107,7 @@ function attachTemplate(fm: Record<string, unknown>, to: TemplateDef, options: T
     if (value !== undefined) out[attr.nombre] = value;
   }
   if (Object.keys(hidden).length > 0) out[HIDDEN_KEY] = hidden;
+  if (to.estados !== undefined && typeof out.estado === "string" && !to.estados.includes(out.estado)) delete out.estado;
   out.plantilla = to.name;
   return out;
 }

@@ -13,7 +13,7 @@ function Visual({ value, readOnly }: ViewProps) {
 }
 const views: NoteEditorViews = { Visual, Code: Visual };
 
-async function makeTemplate(value: ReturnType<typeof syncValue>["value"], name: string, content: string, alcance: string[], atributos: unknown[], estados: string[] = []) {
+async function makeTemplate(value: ReturnType<typeof syncValue>["value"], name: string, content: string, alcance: string[], atributos: unknown[], estados: Array<{ nombre: string; color: string }> = []) {
   const created = await value.notes.createTemplate(VAULT, name);
   await value.notes.save(created.id, content, created.rev, { ...created.frontmatter, alcance, atributos, estados });
 }
@@ -21,7 +21,7 @@ async function makeTemplate(value: ReturnType<typeof syncValue>["value"], name: 
 async function setup(body: string, frontmatter: Record<string, unknown> = {}) {
   const { value } = syncValue({}, memoryDb());
   await makeTemplate(value, "Acta", "# Asistentes\n", ["*"], [{ nombre: "cliente", tipo: "texto" }, { nombre: "prioridad", tipo: "numero" }]);
-  await makeTemplate(value, "Informe", "# Resumen\n", ["*"], [{ nombre: "autor", tipo: "texto" }], ["borrador", "aprobado"]);
+  await makeTemplate(value, "Informe", "# Resumen\n", ["*"], [{ nombre: "autor", tipo: "texto" }], [{ nombre: "borrador", color: "gris" }, { nombre: "aprobado", color: "verde" }]);
   await makeTemplate(value, "Solo ventas", "# Ventas\n", ["Ventas"], []);
   const note = await value.notes.create(VAULT, "Mi nota", "Proyectos");
   await value.notes.save(note.id, body, note.rev, { ...note.frontmatter, ...frontmatter });
@@ -82,7 +82,7 @@ describe("control Plantilla", () => {
     expect(screen.getByRole("button", { name: "Añadir propiedad" })).toBeInTheDocument();
   });
 
-  it("una plantilla con estados limita los del documento y no deja crear otros (H-054)", async () => {
+  it("con plantilla el documento solo tiene los estados de la plantilla, sin crear otros (H-054)", async () => {
     await setup("");
     const estado = () => screen.getAllByRole("combobox", { name: "Estado" })[0];
     expect(screen.getByRole("option", { name: "Otro estado…" })).toBeInTheDocument();
@@ -90,6 +90,18 @@ describe("control Plantilla", () => {
     await waitFor(() => expect(screen.queryByRole("option", { name: "Otro estado…" })).toBeNull());
     expect(within(estado()).getAllByRole("option").map((o) => o.textContent)).toEqual(["Sin estado", "borrador", "aprobado"]);
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "Acta");
-    expect(await screen.findByRole("option", { name: "Otro estado…" })).toBeInTheDocument();
+    // «Acta» no trae estados de serie: el documento no tiene estado que elegir.
+    await waitFor(() => expect(within(estado()).getAllByRole("option").map((o) => o.textContent)).toEqual(["Sin estado"]));
+  });
+
+  it("al asignar una plantilla que no tiene el estado del documento, el estado queda vacío; si lo tiene, se conserva (H-054)", async () => {
+    await setup("", { estado: "aprobado" });
+    const estado = () => screen.getAllByRole("combobox", { name: "Estado" })[0];
+    expect(estado()).toHaveValue("aprobado");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "Informe");
+    await waitFor(() => expect(screen.getByRole("option", { name: "borrador" })).toBeInTheDocument());
+    expect(estado()).toHaveValue("aprobado");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "Acta");
+    await waitFor(() => expect(estado()).toHaveValue(""));
   });
 });
