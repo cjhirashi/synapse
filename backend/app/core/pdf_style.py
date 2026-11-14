@@ -14,9 +14,9 @@ from app.core.plantilla_rules import PDF_MARGINS
 CDMX = ZoneInfo("America/Mexico_City")
 MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 PAGE_SIZES = {"carta": "Letter", "a4": "A4"}
-HEADER_IMAGE_MAX_MM = 15
-# Ancho con el que se imprime la imagen de fondo del encabezado (816 px = 8,5 in a 96 ppp, una hoja Carta); la altura sigue la proporción de la imagen.
-BACKGROUND_WIDTH_PX = 816
+# Hoja en píxeles a 96 ppp (Carta 8,5 x 11 in; A4 210 x 297 mm). La imagen de fondo del encabezado se imprime con el ancho de la hoja elegida
+# y la altura proporcional: una imagen de esas medidas la cubre exacta. El formulario de la plantilla muestra las mismas cifras (`pdfStyle.ts`).
+PAGE_PX = {"carta": (816, 1056), "a4": (794, 1123)}
 
 DEFAULTS = {
     "activo": False,
@@ -103,10 +103,11 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: s
         boxes.append("@top-left { content: element(pdfhead); width: 100%; vertical-align: middle; }")
     if has_footer:
         boxes.append("@bottom-left { content: element(pdffoot); width: 100%; vertical-align: middle; }")
-    # H-036: la imagen del encabezado es el fondo de la página: esquina superior izquierda de la HOJA, escalada a BACKGROUND_WIDTH_PX de ancho (alto proporcional), sin repetir.
+    # H-036: la imagen del encabezado es el fondo de la página: esquina superior izquierda de la HOJA, con el ancho de la hoja (alto proporcional), sin repetir.
     # WeasyPrint posiciona el fondo de @page desde el área de contenido (dentro de los márgenes), por eso se compensa con ellos.
     left, top = m["izquierdo"], m["superior"]
-    bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {BACKGROUND_WIDTH_PX}px auto; ' if background else "")
+    sheet_width = PAGE_PX[page["tamano"]][0]
+    bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {sheet_width}px auto; ' if background else "")
     return f"""
 @page {{ {bg}size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
 html {{ font-family: "{body['familia']}", sans-serif; font-size: {base}pt; color: {body['color']}; line-height: 1.45; }}
@@ -129,7 +130,6 @@ hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 #pdfhead, #pdffoot {{ display: flex; align-items: center; gap: 4mm; font-family: "{body['familia']}", sans-serif; font-size: {round(base * 0.82, 1)}pt; color: #475569; width: 100%; }}
 #pdfhead {{ position: running(pdfhead); {'' if background else 'border-bottom: 0.6pt solid #cbd5e1; padding-bottom: 1.5mm;'} }}
 #pdffoot {{ position: running(pdffoot); border-top: 0.6pt solid #cbd5e1; padding-top: 1.5mm; }}
-#pdfhead img, #pdffoot img {{ flex: none; max-height: {HEADER_IMAGE_MAX_MM}mm; max-width: 40mm; width: auto; }}
 .band-text {{ flex: 1; display: flex; }}
 .band-text span {{ flex: 1; }}
 .band-text .c {{ text-align: center; }} .band-text .r {{ text-align: right; }}

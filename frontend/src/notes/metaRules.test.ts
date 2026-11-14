@@ -122,6 +122,8 @@ describe("metaRules", () => {
       expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { ...pdf, activo: 1 } } })).toBe("plantilla:estilo");
       expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { texto: { familia: "Comic Sans" } } } })).toBe("plantilla:estilo");
       expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { pie: { centro: "{{usuario}}" } } } })).toBe("plantilla:estilo");
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { pie: { imagen: "abc" } } } })).toBe("plantilla:estilo");
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { pie: { imagen: null } } } })).toBeNull();
     });
 
     it("rechaza estilo con contenido", () => {

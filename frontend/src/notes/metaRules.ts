@@ -38,6 +38,8 @@ export const ESTILO_KEYS = ["publicar", "pdf"] as const;
 // H-036: formato del PDF (espejo de `plantilla_rules.py`).
 export const PDF_FONTS = ["DejaVu Sans", "DejaVu Serif", "Liberation Sans", "Liberation Serif", "Liberation Mono"] as const;
 export const PDF_PAGE_SIZES = ["carta", "a4"] as const;
+/** Hoja en píxeles a 96 ppp (ancho, alto): lo que mide la imagen de fondo para cubrirla exacta (espejo de `PAGE_PX` en `pdf_style.py`). */
+export const PDF_PAGE_PX = { carta: [816, 1056], a4: [794, 1123] } as const;
 export const PDF_MARGINS = ["superior", "inferior", "izquierdo", "derecho"] as const;
 export const PDF_MARGIN_MAX_MM = 60;
 export const PDF_FONT_PT = [6, 48] as const;
@@ -305,7 +307,7 @@ export function checkPdfStyle(pdf: unknown): boolean {
     encabezados: (v) => checkBlock(v, font),
     texto: (v) => checkBlock(v, font),
     encabezado: (v) => checkBlock(v, band),
-    pie: (v) => checkBlock(v, band),
+    pie: (v) => checkBlock(v, { ...band, imagen: (image) => image === null }), // el pie no lleva imagen (solo `null` por compatibilidad)
   });
 }
 

@@ -163,7 +163,7 @@ def check_pdf_style(pdf: object) -> bool:
         "encabezados": lambda v: _check_pdf_block(v, font),
         "texto": lambda v: _check_pdf_block(v, font),
         "encabezado": lambda v: _check_pdf_block(v, band),
-        "pie": lambda v: _check_pdf_block(v, band),
+        "pie": lambda v: _check_pdf_block(v, {**band, "imagen": lambda image: image is None}),  # el pie no lleva imagen (solo `null` por compatibilidad)
     }
     return _check_pdf_block(pdf, spec)
 

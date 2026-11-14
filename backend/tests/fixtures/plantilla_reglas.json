@@ -802,6 +802,41 @@
     }
    },
    "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf pie con imagen",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "imagen": "abc-123"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf pie con imagen null",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "imagen": null,
+       "derecha": "{{pagina}}"
+      }
+     }
+    }
+   },
+   "expected": null
   }
  ],
  "template_name": [

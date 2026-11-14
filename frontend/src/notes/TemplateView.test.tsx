@@ -112,3 +112,25 @@ test("una plantilla con PDF guardado lo muestra encendido con sus valores", asyn
   expect(screen.getByRole("combobox", { name: "Tamaño" })).toHaveValue("a4");
   expect(screen.getByRole("group", { name: "Texto" })).toHaveTextContent("Liberation Mono");
 });
+
+test("la imagen del encabezado indica las medidas de la hoja elegida y el pie no tiene imagen", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  const header = screen.getByRole("group", { name: "Encabezado de página" });
+  expect(within(header).getByRole("combobox", { name: /816 × 1056 px/ })).toBeInTheDocument(); // Carta por omisión
+  expect(header).toHaveTextContent("816 px en Carta");
+  await user.selectOptions(screen.getByRole("combobox", { name: "Tamaño" }), "a4");
+  expect(within(header).getByRole("combobox", { name: /794 × 1123 px/ })).toBeInTheDocument();
+  expect(header).toHaveTextContent("794 px en A4");
+  const footer = screen.getByRole("group", { name: "Pie de página" });
+  expect(within(footer).queryByRole("combobox", { name: /Imagen/ })).toBeNull();
+});
+
+test("guardar no escribe imagen en el pie", async () => {
+  const { store, template, user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
+  const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: { pie: Record<string, unknown> } }).pdf;
+  expect(Object.keys(pdf.pie).sort()).toEqual(["centro", "derecha", "izquierda"]);
+});

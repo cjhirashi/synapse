@@ -75,6 +75,8 @@ const typeOut = (t: PdfType) => ({ familia: t.familia, tamano_pt: toNumber(t.tam
 const bandOut = (b: PdfBand) => ({
   imagen: b.imagen === "" ? null : b.imagen, izquierda: b.izquierda, centro: b.centro, derecha: b.derecha,
 });
+/** El pie no lleva imagen: solo sus tres textos. */
+const footOut = (b: PdfBand) => ({ izquierda: b.izquierda, centro: b.centro, derecha: b.derecha });
 
 /** Borrador → `estilo.pdf`. Un borrador intacto (PDF apagado y sin tocar) se guarda como `{}`. */
 export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
@@ -89,6 +91,6 @@ export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
     encabezados: typeOut(draft.encabezados),
     texto: typeOut(draft.texto),
     encabezado: bandOut(draft.encabezado),
-    pie: bandOut(draft.pie),
+    pie: footOut(draft.pie),
   };
 }

@@ -86,7 +86,7 @@ def test_the_document_carries_header_footer_attributes_and_sanitized_body():
     assert "pdfhead" not in bare.split("<body>")[1] and "@top-left" not in bare
 
 
-def test_the_header_image_is_the_page_background_816px_wide_with_proportional_height():
+def test_the_header_image_is_the_page_background_as_wide_as_the_sheet_with_proportional_height():
     pytest.importorskip("weasyprint")
     pytest.importorskip("nh3")
     import struct, zlib
@@ -101,16 +101,30 @@ def test_the_header_image_is_the_page_background_816px_wide_with_proportional_he
             return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
         return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
 
-    for width, height, expected_height in ((1080, 1350, 1020), (408, 100, 200), (816, 200, 200)):  # 816 / ancho * alto
-        style = pdf_style.resolve({"activo": True, "pagina": {"tamano": "a4"}, "encabezado": {"imagen": "bg"}})
+    # (hoja, px de la imagen, ancho y alto con que se imprime): ancho de la hoja (Carta 816, A4 794), alto proporcional
+    for sheet, (width, height), expected in (
+        ("carta", (1080, 1350), (816, 1020)), ("carta", (816, 1056), (816, 1056)), ("carta", (408, 100), (816, 200)),
+        ("a4", (1080, 1350), (794, 992.5)), ("a4", (794, 1123), (794, 1123)), ("a4", (397, 100), (794, 200)),
+    ):
+        style = pdf_style.resolve({"activo": True, "pagina": {"tamano": sheet}, "encabezado": {"imagen": "bg"}})
         image = (solid_png(width, height), "image/png")
         doc = build_document("<p>x</p>" * 3, style, title="T", frontmatter={}, read_image=lambda i: image if i == "bg" else None, now=NOW)
         rendered = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render()
         layer = rendered.pages[0]._page_box.background.layers[0]
         assert len(rendered.pages) == 1
-        assert layer.size == (pytest.approx(816), pytest.approx(expected_height)), (width, height, layer.size)  # ancho fijo, alto proporcional, sin deformar
+        assert layer.size == (pytest.approx(expected[0]), pytest.approx(expected[1], abs=1)), (sheet, width, height, layer.size)
     bare = build_document("<p>x</p>", pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
     assert "background-image" not in bare
+
+
+def test_the_footer_never_carries_an_image():
+    pytest.importorskip("nh3")
+    from app.services.pdf_service import build_document
+
+    style = pdf_style.resolve({"activo": True, "pie": {"izquierda": "{{fecha}}"}})
+    style["pie"]["imagen"] = "algo"  # aunque una plantilla vieja la trajera, no se imprime
+    doc = build_document("<p>x</p>", style, title="T", frontmatter={}, read_image=lambda _: (b"\x89PNG", "image/png"), now=NOW)
+    assert 'id="pdffoot"' in doc and "<img" not in doc.split("<article>")[0] and "background-image" not in doc
 
 
 def test_the_fetcher_serves_own_files_data_images_and_public_web_images_only():
