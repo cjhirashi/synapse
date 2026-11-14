@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 import pytest
 
 from app.core import pdf_style
+from app.core.plantilla_rules import PDF_FONTS
 from app.services.note_pdf_service import file_name
 from tests.test_h030_api import agent_client, post_note, vault_of
 
@@ -681,3 +682,16 @@ def test_the_copy_link_of_a_private_file_prints_through_the_endpoint(ready_admin
         assert f'src="/files/{file_id}"' in seen["document"] and seen["bytes"] == (png, "image/png")
     finally:
         app.dependency_overrides.pop(get_object_storage, None)
+
+
+@pytest.mark.parametrize("family", PDF_FONTS)
+def test_every_listed_font_has_a_real_italic_in_the_image(family):
+    """Sin la variante cursiva instalada, el PDF imprime el `<em>` en recto (DejaVu Sans y Serif la traen en `fonts-dejavu-extra`)."""
+    import shutil
+    import subprocess
+    if shutil.which("fc-match") is None:
+        pytest.skip("fontconfig solo está en la imagen del backend")
+    for weight in ("", ":bold"):
+        out = subprocess.run(["fc-match", "-f", "%{style}|%{file}", f"{family}:italic{weight}"], capture_output=True, text=True, check=True).stdout
+        style = out.split("|")[0].lower()
+        assert "italic" in style or "oblique" in style, f"{family}{weight}: sin cursiva real ({out})"

@@ -18,9 +18,9 @@ RUN npm run build
 # Etapa 2 — backend FastAPI; sirve `/auth`, `/admin`, `/sync`, `/vaults` y además la SPA.
 FROM python:3.11-slim
 WORKDIR /app
-# H-036: WeasyPrint dibuja los PDF con Pango; las tipografías de la lista cerrada de las plantillas (DejaVu y Liberation) van en la imagen.
+# H-036: WeasyPrint dibuja los PDF con Pango; las tipografías de la lista cerrada de las plantillas (DejaVu y Liberation) van en la imagen. `fonts-dejavu-extra` trae la cursiva de DejaVu Sans y Serif (sin ella el PDF imprime la cursiva en recto).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu-core fonts-liberation \
+    && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 fonts-dejavu-core fonts-dejavu-extra fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
