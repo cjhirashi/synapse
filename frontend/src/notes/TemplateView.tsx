@@ -6,12 +6,15 @@
  * Editar una plantilla no toca los documentos que ya nacieron de ella: conservan sus valores (P3).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Folder, Plus, Trash2 } from "lucide-react";
 import { isIndexPath } from "./indexRules";
 import { isMetaFolderPath } from "./metaFolders";
 import { checkDefinition, templateName, TIPOS } from "./metaRules";
 import { noteErrorMessage, noteReasonText } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
+import "./template-view.css";
 import PdfStyleSection from "./PdfStyleSection";
+import TemplateSection from "./TemplateSection";
 import { DEFAULT_PDF_DRAFT, pdfDraftFrom, pdfDraftTo, type PdfDraft } from "./pdfStyle";
 
 type Tipo = (typeof TIPOS)[number];
@@ -159,125 +162,138 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
       <header className="note-editor-header template-view-header">
         {sidebarToggle}
         <h2 className="template-view-title">{label}</h2>
-        <button type="button" onClick={() => void save()} disabled={!dirty || saving}>
+        {dirty && <span className="tv-dirty" role="status">Cambios sin guardar</span>}
+        <button type="button" className="tv-save" onClick={() => void save()} disabled={!dirty || saving}>
           {saving ? "Guardando…" : "Guardar plantilla"}
         </button>
       </header>
       <div className="note-editor-body">
-        <div className="note-editor-column template-view-form">
+        <div className="note-editor-column template-view-form tv-form">
           {error && (
             <p className="note-editor-notice" role="alert">
               {error}
             </p>
           )}
-          <p className="template-view-hint">
-            Editar la plantilla no cambia los documentos que ya nacieron de ella: conservan sus valores.
-          </p>
-          <div className="template-view-general">
-            <label>
-              Título
-              <input value={titulo} maxLength={200} onChange={(event) => edit(setTitulo)(event.target.value)} />
-            </label>
-            <label>
-              Descripción
-              <textarea value={descripcion} maxLength={1000} rows={2} onChange={(event) => edit(setDescripcion)(event.target.value)} />
-            </label>
-          </div>
+          <p className="tv-banner">Editar la plantilla no cambia los documentos que ya nacieron de ella: conservan sus valores.</p>
 
-          <fieldset className="template-view-section">
-            <legend>1. Dónde se usa</legend>
-            <label>
-              <input type="radio" name="alcance" checked={all} onChange={() => edit(setAll)(true)} />
-              En toda la bóveda
-            </label>
-            <label>
-              <input type="radio" name="alcance" checked={!all} onChange={() => edit(setAll)(false)} />
-              Solo en estas carpetas
-            </label>
+          <section className="tv-card tv-card--plain" aria-label="Datos de la plantilla">
+            <div className="tv-general">
+              <label className="tv-field">
+                <span>Título</span>
+                <input value={titulo} maxLength={200} onChange={(event) => edit(setTitulo)(event.target.value)} />
+              </label>
+              <label className="tv-field">
+                <span>Descripción</span>
+                <textarea value={descripcion} maxLength={1000} rows={2} onChange={(event) => edit(setDescripcion)(event.target.value)} />
+              </label>
+            </div>
+          </section>
+
+          <TemplateSection step={1} title="Dónde se usa" description="Las carpetas donde se ofrece esta plantilla al crear un documento.">
+            <div className="tv-seg" role="radiogroup" aria-label="Alcance de la plantilla">
+              <label>
+                <input type="radio" name="alcance" checked={all} onChange={() => edit(setAll)(true)} />
+                <span>En toda la bóveda</span>
+              </label>
+              <label>
+                <input type="radio" name="alcance" checked={!all} onChange={() => edit(setAll)(false)} />
+                <span>Solo en estas carpetas</span>
+              </label>
+            </div>
             {!all && (
-              <div className="template-view-folders" role="group" aria-label="Carpetas donde se ofrece la plantilla">
-                {options.length === 0 && <p>La bóveda aún no tiene carpetas.</p>}
+              <div className="tv-folders" role="group" aria-label="Carpetas donde se ofrece la plantilla">
+                {options.length === 0 && <p className="tv-empty">La bóveda aún no tiene carpetas.</p>}
                 {options.map((path) => (
-                  <label key={path}>
+                  <label key={path} className="tv-folder">
                     <input type="checkbox" checked={alcance.includes(path)} onChange={() => toggleFolder(path)} />
-                    {path}
+                    <Folder size={14} aria-hidden="true" />
+                    <span>{path}</span>
                   </label>
                 ))}
               </div>
             )}
-          </fieldset>
+          </TemplateSection>
 
-          <fieldset className="template-view-section">
-            <legend>2. Atributos opcionales</legend>
-            <p className="template-view-hint">
-              Además de los atributos generales (título, descripción, etiquetas, estado y fechas) que todo documento ya tiene.
-            </p>
-            {rows.map((row, index) => (
-              <div className="template-view-attr" key={index} role="group" aria-label={`Atributo ${index + 1}`}>
-                <input
-                  aria-label={`Nombre del atributo ${index + 1}`}
-                  placeholder="nombre_en_minusculas"
-                  value={row.nombre}
-                  onChange={(event) => updateRow(index, { nombre: event.target.value })}
-                />
-                <select
-                  aria-label={`Tipo del atributo ${index + 1}`}
-                  value={row.tipo}
-                  onChange={(event) => updateRow(index, { tipo: event.target.value as Tipo, valor: "" })}
-                >
-                  {TIPOS.map((tipo) => (
-                    <option key={tipo} value={tipo}>
-                      {TIPO_LABEL[tipo]}
-                    </option>
-                  ))}
-                </select>
-                {row.tipo === "booleano" ? (
-                  <select
-                    aria-label={`Valor inicial del atributo ${index + 1}`}
-                    value={row.valor}
-                    onChange={(event) => updateRow(index, { valor: event.target.value })}
-                  >
-                    <option value="">Sin valor inicial</option>
-                    <option value="true">Sí</option>
-                    <option value="false">No</option>
-                  </select>
-                ) : (
-                  <input
-                    aria-label={`Valor inicial del atributo ${index + 1}`}
-                    type={row.tipo === "numero" ? "number" : row.tipo === "fecha" ? "date" : "text"}
-                    placeholder="Valor inicial (opcional)"
-                    value={row.valor}
-                    onChange={(event) => updateRow(index, { valor: event.target.value })}
-                  />
-                )}
-                <button type="button" onClick={() => edit(setRows)(rows.filter((_, i) => i !== index))}>
-                  Quitar
-                </button>
+          <TemplateSection
+            step={2}
+            title="Atributos opcionales"
+            description="Además de los generales que todo documento ya tiene: título, descripción, etiquetas, estado y fechas."
+          >
+            {rows.length === 0 ? (
+              <p className="tv-empty tv-empty--box">Esta plantilla no añade atributos propios.</p>
+            ) : (
+              <div className="tv-attrs">
+                <div className="tv-attr tv-attr--head" aria-hidden="true">
+                  <span>Nombre</span><span>Tipo</span><span>Valor inicial</span><span />
+                </div>
+                {rows.map((row, index) => (
+                  <div className="tv-attr" key={index} role="group" aria-label={`Atributo ${index + 1}`}>
+                    <input
+                      aria-label={`Nombre del atributo ${index + 1}`}
+                      placeholder="nombre_en_minusculas"
+                      value={row.nombre}
+                      onChange={(event) => updateRow(index, { nombre: event.target.value })}
+                    />
+                    <select
+                      aria-label={`Tipo del atributo ${index + 1}`}
+                      value={row.tipo}
+                      onChange={(event) => updateRow(index, { tipo: event.target.value as Tipo, valor: "" })}
+                    >
+                      {TIPOS.map((tipo) => (
+                        <option key={tipo} value={tipo}>
+                          {TIPO_LABEL[tipo]}
+                        </option>
+                      ))}
+                    </select>
+                    {row.tipo === "booleano" ? (
+                      <select
+                        aria-label={`Valor inicial del atributo ${index + 1}`}
+                        value={row.valor}
+                        onChange={(event) => updateRow(index, { valor: event.target.value })}
+                      >
+                        <option value="">Sin valor inicial</option>
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                      </select>
+                    ) : (
+                      <input
+                        aria-label={`Valor inicial del atributo ${index + 1}`}
+                        type={row.tipo === "numero" ? "number" : row.tipo === "fecha" ? "date" : "text"}
+                        placeholder="Valor inicial (opcional)"
+                        value={row.valor}
+                        onChange={(event) => updateRow(index, { valor: event.target.value })}
+                      />
+                    )}
+                    <button type="button" className="tv-icon-btn" aria-label={`Quitar el atributo ${index + 1}`} title="Quitar" onClick={() => edit(setRows)(rows.filter((_, i) => i !== index))}>
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-            <button type="button" onClick={() => edit(setRows)([...rows, { nombre: "", tipo: "texto", valor: "" }])}>
-              Añadir atributo
+            )}
+            <button type="button" className="tv-add" onClick={() => edit(setRows)([...rows, { nombre: "", tipo: "texto", valor: "" }])}>
+              <Plus size={15} aria-hidden="true" /> Añadir atributo
             </button>
-          </fieldset>
+          </TemplateSection>
 
-          <PdfStyleSection vaultId={vault.id} draft={pdf} attributeNames={rows.map((row) => row.nombre.trim())} onChange={edit(setPdf)} />
+          <TemplateSection step={3} title="Diseño del PDF" description="Cómo se ve el documento al descargarlo como PDF: página, tipografías, encabezado y pie.">
+            <PdfStyleSection vaultId={vault.id} draft={pdf} attributeNames={rows.map((row) => row.nombre.trim())} onChange={edit(setPdf)} />
+          </TemplateSection>
 
-          <fieldset className="template-view-section">
-            <legend>4. Estructura base</legend>
-            <label>
-              Markdown con el que nace cada documento nuevo (encabezados y contenido de partida)
+          <TemplateSection step={4} title="Estructura base" description="El Markdown con el que nace cada documento nuevo: encabezados y contenido de partida.">
+            <label className="tv-field">
+              <span className="tv-sr">Markdown con el que nace cada documento nuevo (encabezados y contenido de partida)</span>
               <textarea
-                className="template-view-structure"
+                className="tv-structure"
                 value={estructura}
                 rows={14}
                 spellCheck={false}
                 onChange={(event) => edit(setEstructura)(event.target.value)}
               />
             </label>
-          </fieldset>
+          </TemplateSection>
         </div>
       </div>
     </section>
   );
 }
-

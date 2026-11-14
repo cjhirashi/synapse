@@ -34,8 +34,8 @@ async function open() {
 
 test("muestra las cuatro secciones y deja el diseño del PDF apagado", async () => {
   await open();
-  for (const legend of ["1. Dónde se usa", "2. Atributos opcionales", "3. Diseño del PDF", "4. Estructura base"]) {
-    expect(screen.getByText(legend)).toBeInTheDocument();
+  for (const title of ["Dónde se usa", "Atributos opcionales", "Diseño del PDF", "Estructura base"]) {
+    expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
   }
   expect(screen.getByRole("radio", { name: "En toda la bóveda" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: /Permitir descargar/ })).not.toBeChecked();
@@ -133,4 +133,30 @@ test("guardar no escribe imagen en el pie", async () => {
   await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
   const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: { pie: Record<string, unknown> } }).pdf;
   expect(Object.keys(pdf.pie).sort()).toEqual(["centro", "derecha", "izquierda"]);
+});
+
+test("la vista previa refleja el tamaño de hoja, los textos con valores de ejemplo y el fondo elegido", async () => {
+  const { user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  const preview = screen.getByRole("figure", { name: "Vista previa de la hoja" });
+  expect(preview).toHaveTextContent("Carta · 816 × 1056 px");
+  expect(screen.queryByTestId("pdf-preview-bg")).toBeNull();
+  await user.selectOptions(screen.getByRole("combobox", { name: "Tamaño" }), "a4");
+  expect(preview).toHaveTextContent("A4 · 794 × 1123 px");
+  const header = screen.getByRole("group", { name: "Encabezado de página" });
+  await user.type(screen.getByLabelText("Encabezado de página, izquierda"), "{{{{titulo}} · {{{{atributo:cliente}}");
+  expect(preview).toHaveTextContent("Título del documento · ‹cliente›");
+  expect(preview).toHaveTextContent("Página 1 de 3"); // el pie de la plantilla nueva
+  await user.selectOptions(await within(header).findByRole("combobox", { name: /Imagen de fondo/ }), "img-1");
+  expect(screen.getByTestId("pdf-preview-bg")).toHaveStyle({ backgroundImage: 'url("/files/img-1")' });
+});
+
+test("el atributo se puede quitar con su botón y la tabla vuelve a su estado vacío", async () => {
+  const { user } = await open();
+  expect(screen.getByText("Esta plantilla no añade atributos propios.")).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
+  await user.type(screen.getByLabelText("Nombre del atributo 1"), "cliente");
+  await user.click(screen.getByRole("button", { name: "Quitar el atributo 1" }));
+  expect(screen.getByText("Esta plantilla no añade atributos propios.")).toBeInTheDocument();
+  expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
 });
