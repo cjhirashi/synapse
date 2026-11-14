@@ -122,6 +122,11 @@ def test_quotes_and_tables_have_rounded_corners_like_the_markdown():
     assert "blockquote blockquote { background: transparent; }" in themed
 
 
+def test_task_items_have_no_bullet_because_their_box_is_text():
+    css = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    assert "li.note-task { list-style: none;" in css
+
+
 def test_special_fields_are_resolved_and_the_rest_is_escaped():
     out = pdf_style.expand_text(
         "{{titulo}} <b>x</b> {{atributo:cliente}} {{atributo:etiquetas}} {{atributo:falta}} {{fecha}} {{pagina}}/{{paginas}}",

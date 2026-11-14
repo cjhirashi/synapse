@@ -84,6 +84,15 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
     if (img) svg.replaceWith(img);
     else svg.remove();
   }
+  // Listas de tareas: en Lectura la casilla es un `span` dibujado con CSS (el estado va en `data-checked` del `li`); en el PDF pasa a ☑ o ☐ al inicio de la tarea.
+  for (const item of Array.from(copy.querySelectorAll("li.note-task"))) {
+    const done = item.getAttribute("data-checked") === "true";
+    const body = item.querySelector(".note-task-body");
+    item.querySelector(".note-task-slot")?.remove();
+    item.querySelectorAll(".sr-only").forEach((node) => node.remove());
+    (body?.firstElementChild ?? body)?.prepend(doc.createTextNode(done ? "☑ " : "☐ "));
+    body?.replaceWith(...Array.from(body.childNodes));
+  }
   copy.querySelectorAll(CONTROLS).forEach((node) => node.remove());
   for (const img of Array.from(copy.querySelectorAll("img"))) {
     const src = img.getAttribute("src");

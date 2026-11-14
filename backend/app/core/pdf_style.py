@@ -193,6 +193,7 @@ h1, h2, h3, h4, h5, h6 {{ line-height: 1.2; margin: 1.1em 0 0.4em; break-after: 
 {heading_css}
 h5, h6 {{ {_font_css(heads['h4'])} }}
 p {{ margin: 0 0 0.7em; }} ul, ol {{ margin: 0 0 0.7em; padding-left: 1.6em; }} li {{ margin: 0.15em 0; }}
+li.note-task {{ list-style: none; margin-left: -1.1em; }}
 a {{ color: {link_color}; }} img {{ max-width: 100%; height: auto; }}
 blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 3pt solid #cbd5e1; border-radius: {RADIUS}; color: #475569; }}
 pre {{ font-family: "Liberation Mono", monospace; font-size: {round(base * 0.88, 1)}pt; background: #f1f5f9; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}

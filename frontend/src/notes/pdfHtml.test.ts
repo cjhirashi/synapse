@@ -51,6 +51,19 @@ describe("buildPdfHtml", () => {
   });
 });
 
+describe("listas de tareas", () => {
+  it("la casilla de Lectura pasa a ☑ o ☐ al inicio de la tarea y el elemento no duplica la viñeta", () => {
+    const out = html(
+      '<ul><li class="note-task" data-checked="true"><span class="note-task-slot"><span class="note-task-mark" role="img" aria-label="Completada"></span></span><div class="note-task-body"><p>Revisar el plan</p></div><span class="sr-only" role="status"></span></li>'
+      + '<li class="note-task" data-checked="false"><span class="note-task-slot"><span class="note-task-mark" role="img" aria-label="Pendiente"></span></span><div class="note-task-body"><p>Confirmar accesos</p></div></li>'
+      + "<li>Elemento normal</li></ul>");
+    expect(out).toContain("<p>☑ Revisar el plan</p>");
+    expect(out).toContain("<p>☐ Confirmar accesos</p>");
+    expect(out).toContain("<li>Elemento normal</li>");
+    expect(out).not.toMatch(/note-task-slot|note-task-body|sr-only|role="img"/);
+  });
+});
+
 describe("enlaces e imágenes", () => {
   it("normalizeImageSrc y embedLink", () => {
     expect(normalizeImageSrc("/files/a?x=1", ORIGIN)).toBe("/files/a");
