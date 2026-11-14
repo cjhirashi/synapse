@@ -37,6 +37,7 @@ import {
   Italic,
   List,
   ListOrdered,
+  FileDown,
   Minus,
   Pencil,
   Quote,
@@ -60,6 +61,9 @@ import type { PaletteKey } from "../vaults/vaultIcon";
 import type { ParseCache } from "./markdown/parseCache";
 import type { AttributeCatalog } from "../sync/vaultRules";
 import { useSync } from "../sync/useSync";
+import { buildPdfHtml } from "../notes/pdfHtml";
+import { fetchNotePdf, pdfErrorMessage, saveBlob } from "../notes/pdfApi";
+import { usePdfEnabled } from "../notes/usePdfEnabled";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import AttachDialog from "./AttachDialog";
@@ -254,6 +258,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** H-036: el botón «PDF» solo existe si la plantilla del documento lo activa; mientras se genera queda deshabilitado. */
+  const pdfEnabled = usePdfEnabled(notes, note?.vault_id ?? "", note?.id ?? null, notesVersion);
+  const [pdfBusy, setPdfBusy] = useState(false);
   /** Línea (1-based, en el texto compuesto) del error de YAML para ofrecer «Ir a la línea N». */
   const [errorLine, setErrorLine] = useState<number | null>(null);
 
@@ -541,6 +548,21 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
 
   // Aviso del navegador al cerrar o recargar con cambios sin guardar. Queda registrado mientras haya una
   // nota en edición y decide con el estado síncrono: no espera a que `dirty` se vea en un render (E-7).
+  async function downloadPdf() {
+    const current = noteRef.current;
+    const root = editorBodyRef.current?.querySelector(".milkdown-view .ProseMirror");
+    if (!current || !root || pdfBusy) return;
+    setPdfBusy(true);
+    setError(null);
+    try {
+      saveBlob(await fetchNotePdf(current.vault_id, current.id, buildPdfHtml(root)));
+    } catch (err) {
+      setError(pdfErrorMessage(err));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
+
   const editing = note !== null && mode === "edit";
   useEffect(() => {
     if (!editing) return;
@@ -1044,6 +1066,19 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         <NoteBreadcrumb path={note.path} onRevealFolder={(folder) => onRevealFolder?.(folder)} />
         {/* Fila 1 (H-009 + H-010 C-1): el lápiz Editar/Leer y el menú ⋮ cierran la fila de título, como hijos
             directos del header (el botón de sidebar sigue siendo el primer hijo, H-009 C-1). */}
+        {mode === "read" && pdfEnabled && (
+          <button
+            type="button"
+            className="note-nav-button"
+            aria-label="Descargar como PDF"
+            title={pdfBusy ? "Generando el PDF…" : "Descargar como PDF"}
+            aria-busy={pdfBusy}
+            disabled={pdfBusy}
+            onClick={() => void downloadPdf()}
+          >
+            <FileDown size={16} aria-hidden="true" />
+          </button>
+        )}
         {mode === "read" ? (
           <button
             type="button"

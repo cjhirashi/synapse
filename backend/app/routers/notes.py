@@ -1,17 +1,23 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response, status
+from sqlalchemy.orm import Session
 
+from app.adapters.database import get_db
+from app.adapters.file_repository import FileRepository
+from app.adapters.minio_adapter import get_object_storage
 from app.core.agent_access import actor_of
-from app.core.dependencies import get_current_principal, require_password_changed
+from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
 from app.core.errors import (
-    AgentAccessDenied, AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PreconditionFailed,
-    PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
+    AgentAccessDenied, AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PdfBusy, PdfNotEnabled,
+    PdfRenderFailed, PdfTimeout, PreconditionFailed, PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
+from app.core.ports.object_storage_port import ObjectStoragePort
+from app.services.note_pdf_service import NotePdfService
 from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
-from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, TokenPayload
+from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, PdfIn, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -102,6 +108,26 @@ def get_note(
     service: NoteContentService = Depends(get_note_content_service),
 ):
     return _respond(service.get(vault_id, note_id), response)
+
+
+@router.post(
+    "/{note_id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}, "description": "El documento como PDF."}}
+    | problem_responses(NoteNotFound, VaultNotFound, PdfNotEnabled, PdfBusy, PdfTimeout, PdfRenderFailed, StorageUnavailable),
+)
+def note_pdf(
+    vault_id: VaultId,
+    note_id: NoteId,
+    body: PdfIn,
+    user: TokenPayload = Depends(get_current_user),
+    service: NoteContentService = Depends(get_note_content_service),
+    db: Session = Depends(get_db),
+    storage: ObjectStoragePort = Depends(get_object_storage),
+):
+    """PDF de un documento (H-036). Solo la persona (sesión): el HTML es el de Lectura y el formato sale de la plantilla del documento."""
+    pdf, name = NotePdfService(service, FileRepository(db), storage, user.sub).generate(vault_id, note_id, body.html)
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
 
 
 @router.post(

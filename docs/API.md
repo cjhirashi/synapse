@@ -433,6 +433,31 @@ Después reescribe los wikilinks de la bóveda como el `PATCH` de nota (§4). Si
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
 
+## PDF de documentos (H-036)
+
+`POST /vaults/{vault_id}/notes/{note_id}/pdf` con `{"html": "<…>"}` (hasta 5 MB) devuelve `application/pdf` (`Content-Disposition: attachment`,
+`Cache-Control: no-store`). **Solo sesión de la persona**: una API key de agente recibe 401. El HTML es el que la app dibuja en Lectura
+(los iframes, videos y audio ya vienen sustituidos por un recuadro con título y enlace); el servidor lo vuelve a limpiar con una lista
+cerrada de etiquetas y atributos, y WeasyPrint solo carga imágenes `data:` y archivos propios de la persona (`/files/<id>`); cualquier otra
+URL se bloquea. Los estilos salen **siempre** de la plantilla del documento (atributo `plantilla`), nunca de la petición.
+
+Errores: `409 pdf-not-enabled` (el documento no tiene plantilla o su plantilla no activa el PDF), `404` (nota o bóveda inexistentes),
+`422` (cuerpo inválido o más de 5 MB), `503 pdf-busy` (ya hay 2 PDF generándose; el servidor espera 5 s por un turno), `504 pdf-timeout`
+(más de 60 s), `500 pdf-render-failed`.
+
+`estilo.pdf` de la plantilla (todo opcional; `{}` = sin PDF; clave o valor fuera de lo siguiente → `422 plantilla:estilo`):
+
+| Clave | Valor |
+|---|---|
+| `activo` | booleano; enciende el botón «PDF» en los documentos de la plantilla |
+| `incluir_atributos` | booleano; imprime una tabla con los atributos del documento al inicio (apagado por omisión) |
+| `pagina` | `tamano`: `carta` (omisión) o `a4`; `margenes_mm`: `superior` 25, `inferior` 20, `izquierdo` 20, `derecho` 20 por omisión, de 0 a 60 |
+| `encabezados`, `texto` | `familia`: `DejaVu Sans`, `DejaVu Serif`, `Liberation Sans`, `Liberation Serif` o `Liberation Mono`; `tamano_pt` de 6 a 48; `color` `#rrggbb` |
+| `encabezado`, `pie` | `imagen`: id de un archivo de imagen de la persona o `null`; `izquierda`, `centro`, `derecha`: hasta 200 caracteres |
+
+Campos especiales en los textos de encabezado y pie: `{{titulo}}`, `{{fecha}}` (día de CDMX), `{{pagina}}`, `{{paginas}}` y
+`{{atributo:<nombre>}}` (un atributo vacío o inexistente se imprime vacío; las listas se unen con comas). Cualquier otro `{{…}}` es inválido.
+
 ## BITACORA automática y PLANTILLAS (H-030b)
 
 **BITACORA.** El servidor registra cada cambio de cada documento (crear, editar, renombrar, mover, borrar, restaurar), sea del
@@ -446,7 +471,7 @@ automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los camb
 
 **PLANTILLAS.** Cada plantilla es `PLANTILLAS/plantilla-<nombre>.md` (plana; `<nombre>` en minúsculas, dígitos y guiones,
 ≤ 64). Frontmatter de la definición: `alcance` (lista de carpetas o `["*"]`), `atributos` (`[{nombre, tipo, valor?}]`, `tipo`:
-`texto|numero|fecha|lista|booleano`) y `estilo` (`{publicar: {}, pdf: {}}`, reservado para H-035/H-036). El cuerpo es la
+`texto|numero|fecha|lista|booleano`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` reservado para H-035; `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
 estructura Markdown base. Un documento creado desde una plantilla guarda su nombre en el atributo general `plantilla`; se
 rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plantilla no toca los documentos que la usan; una
 plantilla con documentos vivos que la citen no se borra, renombra ni saca de `PLANTILLAS` (`plantilla:in-use`). Otros códigos:

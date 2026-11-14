@@ -1,12 +1,23 @@
-// H-030b: formulario de una plantilla (dónde se usa, atributos, estilo reservado, estructura).
-import { render, screen, waitFor } from "@testing-library/react";
+// H-030b: formulario de una plantilla (dónde se usa, atributos, diseño del PDF, estructura).
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PouchDB from "pouchdb-browser";
 import memory from "pouchdb-adapter-memory";
 import TemplateView from "./TemplateView";
+import * as uploadFile from "../files/uploadFile";
 import { createNoteStore } from "./noteStore";
 
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
 PouchDB.plugin(memory);
+
+beforeEach(() => {
+  vi.spyOn(uploadFile, "listVaultFiles").mockResolvedValue([
+    { id: "img-1", name: "logo.png", content_type: "image/png" } as uploadFile.VaultFile,
+    { id: "doc-1", name: "manual.pdf", content_type: "application/pdf" } as uploadFile.VaultFile,
+  ]);
+});
+afterEach(() => vi.restoreAllMocks());
 
 const VAULT = "11111111-1111-4111-8111-111111111111";
 let counter = 0;
@@ -21,13 +32,14 @@ async function open() {
   return { store, template, user: userEvent.setup() };
 }
 
-test("muestra las cuatro secciones y deja el estilo reservado e inactivo", async () => {
+test("muestra las cuatro secciones y deja el diseño del PDF apagado", async () => {
   await open();
-  for (const legend of ["1. Dónde se usa", "2. Atributos opcionales", "3. Estilo", "4. Estructura base"]) {
+  for (const legend of ["1. Dónde se usa", "2. Atributos opcionales", "3. Diseño del PDF", "4. Estructura base"]) {
     expect(screen.getByText(legend)).toBeInTheDocument();
   }
   expect(screen.getByRole("radio", { name: "En toda la bóveda" })).toBeChecked();
-  expect(screen.getByLabelText("Publicar en la web")).toBeDisabled();
+  expect(screen.getByRole("checkbox", { name: /Permitir descargar/ })).not.toBeChecked();
+  expect(screen.getByRole("combobox", { name: "Tamaño" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
 });
 
@@ -55,4 +67,48 @@ test("una definición inválida (nombre de atributo con mayúsculas) no se guard
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(/atributos/i);
   expect((await store.get(template.id)).frontmatter.atributos).toEqual([]);
+});
+
+test("activar el PDF y diseñarlo guarda estilo.pdf completo, con campos especiales y la imagen elegida", async () => {
+  const { store, template, user } = await open();
+  await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
+  await user.type(screen.getByLabelText("Nombre del atributo 1"), "cliente");
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  await user.selectOptions(screen.getByRole("combobox", { name: "Tamaño" }), "a4");
+  const header = screen.getByRole("group", { name: "Encabezado de página" });
+  await user.selectOptions(await within(header).findByRole("combobox", { name: /Imagen/ }), "img-1");
+  await waitFor(() => expect(within(header).getByRole("option", { name: "logo.png" })).toBeInTheDocument());
+  await user.click(screen.getByLabelText("Encabezado de página, izquierda"));
+  await user.click(within(header).getByRole("button", { name: "Título" }));
+  await user.selectOptions(within(header).getByRole("combobox", { name: "Insertar un atributo" }), "cliente");
+  await user.click(screen.getByRole("checkbox", { name: /Imprimir los atributos/ }));
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
+  const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: Record<string, unknown> }).pdf;
+  expect(pdf).toMatchObject({
+    activo: true, incluir_atributos: true, pagina: { tamano: "a4", margenes_mm: { superior: 25 } },
+    encabezado: { imagen: "img-1", izquierda: "{{titulo}}{{atributo:cliente}}" },
+    pie: { derecha: "Página {{pagina}} de {{paginas}}" },
+  });
+});
+
+test("un campo especial desconocido en el encabezado no se guarda y explica el motivo", async () => {
+  const { store, template, user } = await open();
+  await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  await user.type(screen.getByLabelText("Pie de página, centro"), "{{{{usuario}}");
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  expect(await screen.findByRole("alert")).toBeInTheDocument();
+  expect((await store.get(template.id)).frontmatter.estilo).toEqual({ publicar: {}, pdf: {} });
+});
+
+test("una plantilla con PDF guardado lo muestra encendido con sus valores", async () => {
+  counter += 1;
+  const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
+  const template = await store.createTemplate(VAULT, "Acta");
+  await store.save(template.id, template.content, template.rev, { ...template.frontmatter, estilo: { publicar: {}, pdf: { activo: true, pagina: { tamano: "a4" }, texto: { familia: "Liberation Mono", tamano_pt: 9 } } } });
+  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} />);
+  await screen.findByRole("heading", { name: "Plantilla acta" });
+  await waitFor(() => expect(screen.getByRole("checkbox", { name: /Permitir descargar/ })).toBeChecked());
+  expect(screen.getByRole("combobox", { name: "Tamaño" })).toHaveValue("a4");
+  expect(screen.getByRole("group", { name: "Texto" })).toHaveTextContent("Liberation Mono");
 });

@@ -251,6 +251,14 @@ class NoteOut(BaseModel):
     deleted_at: str | None
 
 
+class PdfIn(BaseModel):
+    """HTML del documento tal como la app lo dibuja en Lectura (H-036). El servidor lo vuelve a limpiar; los estilos salen de la plantilla."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    html: str = Field(max_length=5_000_000)
+
+
 class NoteListItem(BaseModel):
     id: str
     vault_id: str

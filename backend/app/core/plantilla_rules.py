@@ -5,7 +5,7 @@ definición y su cuerpo es la estructura Markdown de partida:
 
 - `alcance`: lista de carpetas donde se puede usar (`["*"]` = toda la bóveda).
 - `atributos`: atributos opcionales extra, cada uno `{nombre, tipo, valor?}`.
-- `estilo`: reservado para publicar en la web y para PDF (H-035/H-036): `{publicar: {}, pdf: {}}`, vacíos.
+- `estilo`: `publicar` (reservado para H-035, vacío) y `pdf` (H-036: formato del PDF del documento, ver `check_pdf_style`).
 
 Cada documento creado desde una plantilla guarda su nombre (sin el prefijo) en el atributo general `plantilla`.
 La especificación compartida con el cliente vive en `tests/fixtures/plantilla_reglas.json`.
@@ -23,6 +23,18 @@ ALCANCE_MAX = 50
 ATRIBUTOS_MAX = 30
 TIPOS = ("texto", "numero", "fecha", "lista", "booleano")
 ESTILO_KEYS = ("publicar", "pdf")
+
+# H-036: formato del PDF. Todo opcional; lo que falta toma el valor de `pdf_service.DEFAULTS`.
+PDF_FONTS = ("DejaVu Sans", "DejaVu Serif", "Liberation Sans", "Liberation Serif", "Liberation Mono")
+PDF_PAGE_SIZES = ("carta", "a4")
+PDF_MARGINS = ("superior", "inferior", "izquierdo", "derecho")
+PDF_MARGIN_MAX_MM = 60
+PDF_FONT_PT = (6, 48)
+PDF_TEXT_MAX = 200
+PDF_SPECIALS = ("titulo", "fecha", "pagina", "paginas")
+PDF_FILE_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
+PDF_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
+_PDF_FIELD_RE = re.compile(r"\{\{([^{}]*)\}\}")
 # Claves que ya son atributos generales (o del sistema): una plantilla no las redefine como extra.
 NOT_EXTRA = {
     "titulo", "descripcion", "tags", "estado", "fecha_creacion", "fecha_actualizacion", "plantilla", "sistema",
@@ -103,9 +115,57 @@ def check_definition(frontmatter: object) -> str | None:
     estilo = frontmatter.get("estilo", {})
     if not isinstance(estilo, dict) or not set(estilo) <= set(ESTILO_KEYS):
         return "plantilla:estilo"
-    if any(not isinstance(v, dict) or v for v in estilo.values()):
+    if estilo.get("publicar", {}) != {} or not check_pdf_style(estilo.get("pdf", {})):
         return "plantilla:estilo"
     return None
+
+
+def _is_num(value: object, low: float, high: float) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and low <= value <= high
+
+
+def check_pdf_text(value: object) -> bool:
+    """Texto de encabezado o pie: hasta 200 caracteres y solo con los campos especiales conocidos."""
+    if not isinstance(value, str) or len(value) > PDF_TEXT_MAX:
+        return False
+    if value.count("{{") != len(_PDF_FIELD_RE.findall(value)) or value.count("}}") != value.count("{{"):
+        return False
+    for field in _PDF_FIELD_RE.findall(value):
+        if field in PDF_SPECIALS:
+            continue
+        name = field.removeprefix("atributo:") if field.startswith("atributo:") else None
+        if name is None or not name or normalize_key(name) != name:
+            return False
+    return True
+
+
+def _check_pdf_block(block: object, allowed: dict) -> bool:
+    if not isinstance(block, dict) or not set(block) <= set(allowed):
+        return False
+    return all(allowed[key](value) for key, value in block.items())
+
+
+def check_pdf_style(pdf: object) -> bool:
+    """Forma de `estilo.pdf` (H-036). `{}` es válido y significa «sin PDF»; todo lo demás es opcional dentro de su bloque."""
+    font = {
+        "familia": lambda v: v in PDF_FONTS, "tamano_pt": lambda v: _is_num(v, *PDF_FONT_PT),
+        "color": lambda v: isinstance(v, str) and PDF_COLOR_RE.fullmatch(v) is not None,
+    }
+    margins = {key: (lambda v: _is_num(v, 0, PDF_MARGIN_MAX_MM)) for key in PDF_MARGINS}
+    band = {
+        "imagen": lambda v: v is None or (isinstance(v, str) and PDF_FILE_ID_RE.fullmatch(v) is not None),
+        "izquierda": check_pdf_text, "centro": check_pdf_text, "derecha": check_pdf_text,
+    }
+    spec = {
+        "activo": lambda v: isinstance(v, bool),
+        "incluir_atributos": lambda v: isinstance(v, bool),
+        "pagina": lambda v: _check_pdf_block(v, {"tamano": lambda t: t in PDF_PAGE_SIZES, "margenes_mm": lambda m: _check_pdf_block(m, margins)}),
+        "encabezados": lambda v: _check_pdf_block(v, font),
+        "texto": lambda v: _check_pdf_block(v, font),
+        "encabezado": lambda v: _check_pdf_block(v, band),
+        "pie": lambda v: _check_pdf_block(v, band),
+    }
+    return _check_pdf_block(pdf, spec)
 
 
 def applies_to(alcance: list[str], folder: str) -> bool:

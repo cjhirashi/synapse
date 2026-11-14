@@ -160,6 +160,12 @@ imagen del backend vive en `backend/Dockerfile` (ver `backend/README.md`).
 - Rutas en `src/App.tsx`: `/settings` redirige a `/settings/profile`; las demás son
   sub-rutas bajo `<SettingsPage>` (Outlet de React Router dentro de `<AppLayout>`).
 
+## PDF de documentos (H-036)
+
+La plantilla define el formato en su sección «Diseño del PDF» (`notes/PdfStyleSection.tsx`) y, si lo activa, sus documentos muestran el botón «PDF» junto a «Editar».
+El cliente manda al servidor el HTML que ya dibuja en Lectura (`notes/pdfHtml.ts`: iframes, videos y audio pasan a un recuadro con título y enlace) y descarga el PDF
+que el servidor genera con el formato de la plantilla. Requiere conexión; sin ella el botón avisa.
+
 ## Tareas, avisos y app instalable (H-053)
 
 - `src/tasks/` — pestaña «Tareas» de cada bóveda (`VaultTasks.tsx`): `taskModel.ts` (reglas puras: estados, filas del Gantt, calendario,

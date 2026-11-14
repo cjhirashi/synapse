@@ -16,7 +16,15 @@
    "pdf"
   ],
   "all_folders": "*",
-  "prefix": "plantilla-"
+  "prefix": "plantilla-",
+  "pdf_fonts": [
+   "DejaVu Sans",
+   "DejaVu Serif",
+   "Liberation Sans",
+   "Liberation Serif",
+   "Liberation Mono"
+  ],
+  "pdf_text_max": 200
  },
  "definition": [
   {
@@ -411,6 +419,389 @@
    "name": "no objeto",
    "frontmatter": null,
    "expected": "plantilla:alcance"
+  },
+  {
+   "name": "pdf completo válido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "activo": true,
+      "incluir_atributos": false,
+      "pagina": {
+       "tamano": "carta",
+       "margenes_mm": {
+        "superior": 25,
+        "inferior": 20,
+        "izquierdo": 20,
+        "derecho": 20
+       }
+      },
+      "encabezados": {
+       "familia": "DejaVu Sans",
+       "tamano_pt": 16,
+       "color": "#112233"
+      },
+      "texto": {
+       "familia": "Liberation Serif",
+       "tamano_pt": 11,
+       "color": "#000000"
+      },
+      "encabezado": {
+       "imagen": "abc-123",
+       "izquierda": "{{titulo}}",
+       "centro": "",
+       "derecha": "{{atributo:cliente}}"
+      },
+      "pie": {
+       "imagen": null,
+       "izquierda": "{{fecha}}",
+       "derecha": "Página {{pagina}} de {{paginas}}"
+      }
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf solo activo",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "activo": true
+     }
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "pdf clave extra",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "activo": true,
+      "otro": 1
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf activo no booleano",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "activo": "si"
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tamaño de página inválido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pagina": {
+       "tamano": "oficio"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf margen negativo",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pagina": {
+       "margenes_mm": {
+        "superior": -1
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf margen excesivo",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pagina": {
+       "margenes_mm": {
+        "izquierdo": 61
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf margen desconocido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pagina": {
+       "margenes_mm": {
+        "arriba": 10
+       }
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tipografía fuera de la lista",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "texto": {
+       "familia": "Comic Sans"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tamaño de letra fuera de rango",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "texto": {
+       "tamano_pt": 5
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf tamaño de letra enorme",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezados": {
+       "tamano_pt": 49
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf color inválido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "texto": {
+       "color": "red"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf color corto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "texto": {
+       "color": "#fff"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf imagen con ruta",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "encabezado": {
+       "imagen": "../x"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf campo especial desconocido",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": "{{usuario}}"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf llave sin cerrar",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": "{{pagina"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf atributo sin nombre",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": "{{atributo:}}"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf atributo no canónico",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": "{{atributo:Cliente}}"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf texto demasiado largo",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf texto no cadena",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {
+      "pie": {
+       "centro": 5
+      }
+     }
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "pdf no objeto",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": []
+    }
+   },
+   "expected": "plantilla:estilo"
   }
  ],
  "template_name": [

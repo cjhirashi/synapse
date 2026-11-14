@@ -34,6 +34,17 @@ export const ALCANCE_MAX = 50;
 export const ATRIBUTOS_MAX = 30;
 export const TIPOS = ["texto", "numero", "fecha", "lista", "booleano"] as const;
 export const ESTILO_KEYS = ["publicar", "pdf"] as const;
+
+// H-036: formato del PDF (espejo de `plantilla_rules.py`).
+export const PDF_FONTS = ["DejaVu Sans", "DejaVu Serif", "Liberation Sans", "Liberation Serif", "Liberation Mono"] as const;
+export const PDF_PAGE_SIZES = ["carta", "a4"] as const;
+export const PDF_MARGINS = ["superior", "inferior", "izquierdo", "derecho"] as const;
+export const PDF_MARGIN_MAX_MM = 60;
+export const PDF_FONT_PT = [6, 48] as const;
+export const PDF_TEXT_MAX = 200;
+export const PDF_SPECIALS = ["titulo", "fecha", "pagina", "paginas"] as const;
+const PDF_FILE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+const PDF_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 export const ALL_FOLDERS = "*";
 
 // Atributos que no se pueden redefinir como extra en una plantilla.
@@ -244,12 +255,58 @@ export function checkDefinition(frontmatter: unknown): string | null {
     if (!ESTILO_KEYS.includes(key as typeof ESTILO_KEYS[number])) {
       return "plantilla:estilo";
     }
-    if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 0) {
-      return "plantilla:estilo";
-    }
+    if (!value || typeof value !== "object" || Array.isArray(value)) return "plantilla:estilo";
+    if (key === "publicar" && Object.keys(value).length > 0) return "plantilla:estilo";
+    if (key === "pdf" && !checkPdfStyle(value)) return "plantilla:estilo";
   }
 
   return null;
+}
+
+type Check = (value: unknown) => boolean;
+
+const isNum = (value: unknown, low: number, high: number): boolean =>
+  typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
+
+/** Texto de encabezado o pie: hasta 200 caracteres y solo con los campos especiales conocidos. */
+export function checkPdfText(value: unknown): boolean {
+  if (typeof value !== "string" || value.length > PDF_TEXT_MAX) return false;
+  const fields = [...value.matchAll(/\{\{([^{}]*)\}\}/g)].map((m) => m[1]);
+  if (value.split("{{").length - 1 !== fields.length || value.split("}}").length - 1 !== fields.length) return false;
+  return fields.every((field) => {
+    if ((PDF_SPECIALS as readonly string[]).includes(field)) return true;
+    if (!field.startsWith("atributo:")) return false;
+    const name = field.slice("atributo:".length);
+    return name !== "" && normalizeKey(name) === name;
+  });
+}
+
+function checkBlock(block: unknown, allowed: Record<string, Check>): boolean {
+  if (!block || typeof block !== "object" || Array.isArray(block)) return false;
+  return Object.entries(block).every(([key, value]) => key in allowed && allowed[key](value));
+}
+
+/** Forma de `estilo.pdf` (H-036). `{}` es válido y significa «sin PDF». */
+export function checkPdfStyle(pdf: unknown): boolean {
+  const font: Record<string, Check> = {
+    familia: (v) => (PDF_FONTS as readonly string[]).includes(v as string),
+    tamano_pt: (v) => isNum(v, PDF_FONT_PT[0], PDF_FONT_PT[1]),
+    color: (v) => typeof v === "string" && PDF_COLOR_RE.test(v),
+  };
+  const margins = Object.fromEntries(PDF_MARGINS.map((key) => [key, (v: unknown) => isNum(v, 0, PDF_MARGIN_MAX_MM)]));
+  const band: Record<string, Check> = {
+    imagen: (v) => v === null || (typeof v === "string" && PDF_FILE_ID_RE.test(v)),
+    izquierda: checkPdfText, centro: checkPdfText, derecha: checkPdfText,
+  };
+  return checkBlock(pdf, {
+    activo: (v) => typeof v === "boolean",
+    incluir_atributos: (v) => typeof v === "boolean",
+    pagina: (v) => checkBlock(v, { tamano: (t) => (PDF_PAGE_SIZES as readonly string[]).includes(t as string), margenes_mm: (m) => checkBlock(m, margins) }),
+    encabezados: (v) => checkBlock(v, font),
+    texto: (v) => checkBlock(v, font),
+    encabezado: (v) => checkBlock(v, band),
+    pie: (v) => checkBlock(v, band),
+  });
 }
 
 /** Valor del atributo general `plantilla` de un documento. */

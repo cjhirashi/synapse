@@ -19,7 +19,8 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
   `GET /vaults/{vault_id}/files` (lista paginada de los archivos de la bóveda, 404 si no es del usuario).
 - `notes.py` (historia 0014, H-029): notas de una bóveda para agentes —listar con cursor, leer, crear,
   actualizar parcial (`PATCH`), borrar y restaurar— con `ETag`; delega en `NoteContentService`. Las fechas
-  de la nota las sella el servidor (día de CDMX) cuando escribe un agente.
+  de la nota las sella el servidor (día de CDMX) cuando escribe un agente. `POST /vaults/{vault}/notes/{id}/pdf`
+  (H-036, solo sesión de la persona): HTML de Lectura + formato de la plantilla del documento → PDF (`NotePdfService`).
 - `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campos opcionales `folder` y `visibility` —`private` por defecto o `public`, a elegir al subir—), `GET /files/{id}`
   (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
   `PATCH /files/{id}` (nombre, carpeta —H-046: `folder` mueve el archivo; `""` es la raíz— y visibilidad; la visibilidad solo la cambia la persona con su sesión: una API key recibe `403` `file-visibility-user-only`) y `DELETE /files/{id}`. MinIO nunca se expone directo.

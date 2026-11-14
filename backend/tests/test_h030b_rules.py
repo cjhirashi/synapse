@@ -152,6 +152,15 @@ def test_template_definition_is_validated_by_shape(changes, code):
     assert pl.check_definition({**GOOD, **changes}) == code
 
 
+def test_pdf_style_accepts_a_full_definition_and_rejects_loose_ends():
+    good = {"activo": True, "pagina": {"tamano": "a4", "margenes_mm": {"superior": 20}}, "texto": {"familia": "Liberation Mono", "tamano_pt": 10.5, "color": "#0a0A0a"},
+            "pie": {"derecha": "{{pagina}}/{{paginas}} · {{atributo:cliente_final}}"}}
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": good}}) is None
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": {**good, "activo": 1}}}) == "plantilla:estilo"
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": {"texto": {"tamano_pt": True}}}}) == "plantilla:estilo"
+    assert pl.check_definition({**GOOD, "estilo": {"pdf": {"pie": {"izquierda": "}}{{pagina}}"}}}}) == "plantilla:estilo"
+
+
 def test_template_definition_defaults_and_values():
     assert pl.check_definition({"alcance": ["Proyectos/Notas", "Otra"]}) is None
     full = {"alcance": ["*"], "atributos": [

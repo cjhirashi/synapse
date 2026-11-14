@@ -519,3 +519,37 @@ class RevisionConflict(Exception):
     Lo lanza `VaultPort` y el servicio siempre lo convierte en `VaultNameTaken` o
     `PreconditionFailed`; no hereda de `DomainError` porque nunca llega al cliente así.
     """
+
+
+# --- PDF de documentos (H-036) ---
+
+class PdfNotEnabled(DomainError):
+    """La plantilla del documento no tiene el PDF activo (o el documento no nació de una plantilla)."""
+
+    slug = "pdf-not-enabled"
+    title = "PDF not enabled"
+    status = 409
+    detail = "This document's template does not enable PDF download"
+
+
+class PdfBusy(DomainError):
+    """Ya hay el máximo de PDF generándose a la vez."""
+
+    slug = "pdf-busy"
+    title = "PDF generation busy"
+    status = 503
+    detail = "Too many PDF files are being generated; try again in a few seconds"
+
+
+class PdfTimeout(DomainError):
+    slug = "pdf-timeout"
+    title = "PDF generation timed out"
+    status = 504
+    detail = "The PDF took too long to generate"
+
+
+class PdfRenderFailed(DomainError):
+    slug = "pdf-render-failed"
+    title = "PDF generation failed"
+    status = 500
+    detail = "The PDF could not be generated"

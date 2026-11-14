@@ -1,5 +1,50 @@
 components:
   schemas:
+    NoticeTaskOut:
+      description: La tarea a la que se refiere un aviso, tal como está ahora (no
+        al crearse el aviso).
+      properties:
+        assignee_agent_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Assignee Agent Id
+        assignee_type:
+          title: Assignee Type
+          type: string
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        due_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Due At
+        id:
+          title: Id
+          type: string
+        priority:
+          title: Priority
+          type: string
+        status:
+          title: Status
+          type: string
+        title:
+          title: Title
+          type: string
+      required:
+      - id
+      - title
+      - description
+      - status
+      - priority
+      - due_at
+      - assignee_type
+      - assignee_agent_id
+      title: NoticeTaskOut
+      type: object
     NotificationListOut:
       properties:
         items:
@@ -46,6 +91,10 @@ components:
           - type: string
           - type: 'null'
           title: Resource Type
+        task:
+          anyOf:
+          - $ref: '#/components/schemas/NoticeTaskOut'
+          - type: 'null'
         title:
           title: Title
           type: string

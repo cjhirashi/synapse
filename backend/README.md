@@ -69,6 +69,10 @@ El `Dockerfile` (multi-stage, contexto = raíz del repo) compila la SPA con Node
 `/app/static`; `FRONTEND_DIST` apunta ahí. En dev sin build la app arranca como API pura
 (RF-006) y la SPA la sirve Vite en el host.
 
+La imagen también trae Pango y las tipografías DejaVu y Liberation (H-036): WeasyPrint las usa para generar el PDF de los documentos. Las pruebas que dibujan un PDF
+(`tests/test_h036_pdf.py`) se omiten fuera de la imagen; se corren dentro con
+`docker run --rm --network host --entrypoint pytest synapse-backend tests/test_h036_pdf.py` (con el CouchDB de pruebas en `localhost:15984`).
+
 ## Despliegue: requisitos de red
 
 El repo no trae proxy inverso (sin nginx, enmienda del GATE 3 de SPEC-0005). El backend (8000)

@@ -1,7 +1,7 @@
 /**
  * Vista de una plantilla (H-030b): `PLANTILLAS/plantilla-<nombre>.md`. Un formulario con las cuatro secciones de la
- * definición —dónde se usa, atributos opcionales, estilo y estructura base— en lugar del editor de documentos.
- * El estilo (publicar en la web y PDF) está reservado: lo definirán H-035 y H-036.
+ * definición —dónde se usa, atributos opcionales, diseño del PDF y estructura base— en lugar del editor de documentos.
+ * El diseño del PDF (H-036) vive en `PdfStyleSection`; publicar en la web queda reservado para H-035.
  *
  * Editar una plantilla no toca los documentos que ya nacieron de ella: conservan sus valores (P3).
  */
@@ -11,6 +11,8 @@ import { isMetaFolderPath } from "./metaFolders";
 import { checkDefinition, templateName, TIPOS } from "./metaRules";
 import { noteErrorMessage, noteReasonText } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
+import PdfStyleSection from "./PdfStyleSection";
+import { DEFAULT_PDF_DRAFT, pdfDraftFrom, pdfDraftTo, type PdfDraft } from "./pdfStyle";
 
 type Tipo = (typeof TIPOS)[number];
 interface AttrRow {
@@ -67,6 +69,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
   const [alcance, setAlcance] = useState<string[]>([]);
   const [rows, setRows] = useState<AttrRow[]>([]);
   const [estructura, setEstructura] = useState("");
+  const [pdf, setPdf] = useState<PdfDraft>(DEFAULT_PDF_DRAFT);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -101,6 +104,8 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     setAll(scope.includes("*"));
     setAlcance(scope.filter((item) => item !== "*"));
     setRows(toRows(fm.atributos));
+    const style = fm.estilo && typeof fm.estilo === "object" ? (fm.estilo as Record<string, unknown>) : {};
+    setPdf(pdfDraftFrom(style.pdf));
     setEstructura(note.content);
   }, [note, dirty]);
 
@@ -128,7 +133,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
       descripcion,
       alcance: all ? ["*"] : alcance,
       atributos: toAttributes(rows),
-      estilo: { publicar: {}, pdf: {} },
+      estilo: { publicar: {}, pdf: pdfDraftTo(pdf) },
     };
     const code = checkDefinition(frontmatter);
     if (code !== null) {
@@ -255,20 +260,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
             </button>
           </fieldset>
 
-          <fieldset className="template-view-section" disabled>
-            <legend>3. Estilo</legend>
-            <p className="template-view-hint">
-              Reservado: cuando existan la publicación en la web y la descarga en PDF, aquí se definirá cómo se ven.
-            </p>
-            <label>
-              Publicar en la web
-              <input value="Próximamente" readOnly />
-            </label>
-            <label>
-              Descargar como PDF
-              <input value="Próximamente" readOnly />
-            </label>
-          </fieldset>
+          <PdfStyleSection vaultId={vault.id} draft={pdf} attributeNames={rows.map((row) => row.nombre.trim())} onChange={edit(setPdf)} />
 
           <fieldset className="template-view-section">
             <legend>4. Estructura base</legend>

@@ -212,6 +212,19 @@ components:
           type: string
       title: NoteUpdate
       type: object
+    PdfIn:
+      additionalProperties: false
+      description: HTML del documento tal como la app lo dibuja en Lectura (H-036).
+        El servidor lo vuelve a limpiar; los estilos salen de la plantilla.
+      properties:
+        html:
+          maxLength: 5000000
+          title: Html
+          type: string
+      required:
+      - html
+      title: PdfIn
+      type: object
     Problem:
       additionalProperties: false
       description: 'RFC 9457 Problem Details: body of every API error response.'
@@ -794,6 +807,91 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Update Note
+      tags:
+      - notes
+  /vaults/{vault_id}/notes/{note_id}/pdf:
+    post:
+      description: 'PDF de un documento (H-036). Solo la persona (sesión): el HTML
+        es el de Lectura y el formato sale de la plantilla del documento.'
+      operationId: note_pdf_vaults__vault_id__notes__note_id__pdf_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PdfIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/pdf:
+              schema:
+                format: binary
+                type: string
+          description: El documento como PDF.
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: PDF not enabled
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: PDF generation busy / Storage unavailable
+        '504':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: PDF generation timed out
+      summary: Note Pdf
       tags:
       - notes
   /vaults/{vault_id}/notes/{note_id}/restore:

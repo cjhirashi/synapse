@@ -116,6 +116,14 @@ describe("metaRules", () => {
       );
     });
 
+    it("valida estilo.pdf", () => {
+      const pdf = { activo: true, pagina: { tamano: "a4", margenes_mm: { superior: 20 } }, pie: { derecha: "{{pagina}}/{{paginas}} {{atributo:cliente}}" } };
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf } })).toBeNull();
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { ...pdf, activo: 1 } } })).toBe("plantilla:estilo");
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { texto: { familia: "Comic Sans" } } } })).toBe("plantilla:estilo");
+      expect(checkDefinition({ alcance: ["*"], estilo: { pdf: { pie: { centro: "{{usuario}}" } } } })).toBe("plantilla:estilo");
+    });
+
     it("rechaza estilo con contenido", () => {
       expect(checkDefinition({ alcance: ["*"], estilo: { publicar: { x: 1 } } })).toBe("plantilla:estilo");
     });

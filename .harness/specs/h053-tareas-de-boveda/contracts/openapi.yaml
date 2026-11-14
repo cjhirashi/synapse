@@ -123,6 +123,12 @@ components:
             type: integer
           - type: 'null'
           title: Sort Order
+        start_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Start At
         status:
           default: pending
           enum:
@@ -225,6 +231,11 @@ components:
         sort_order:
           title: Sort Order
           type: integer
+        start_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Start At
         status:
           title: Status
           type: string
@@ -333,6 +344,12 @@ components:
             type: integer
           - type: 'null'
           title: Sort Order
+        start_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Start At
         status:
           anyOf:
           - enum:

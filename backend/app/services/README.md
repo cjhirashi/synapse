@@ -10,6 +10,10 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   tumba la petición); `list`/`revoke` scoped por `owner_id` (ajena → `AgentKeyNotFound`). Sin
   dependencia de CouchDB: sólo identidad en el control plane.
 - `auth_service.py` (`AuthService`, SPEC-0002): login, refresh y logout, cambio de contraseña, alta de usuarios (provisiona su base en CouchDB) y siembra del administrador (`bootstrap_admin`).
+- `pdf_service.py` y `note_pdf_service.py` (H-036): PDF de un documento. `NotePdfService` lee la nota y el `estilo.pdf` de su plantilla; `pdf_service` limpia
+  el HTML recibido (`nh3`, lista cerrada), arma el documento con la hoja de estilos de `core/pdf_style.py` (encabezado y pie como elementos corrientes con `counter(page)`),
+  y lo dibuja con WeasyPrint con un `url_fetcher` cerrado (solo `data:` de imagen y `/files/<id>` de la persona). Como mucho 2 a la vez y 60 s por PDF. Necesita Pango
+  y las fuentes de la imagen (Dockerfile); las pruebas que dibujan se corren dentro de la imagen.
 - `file_service.py` (`FileService`, H-015/H-016): reglas de archivos. Comprueba que la bóveda sea del
   usuario, el tamaño (5 MB imágenes, 25 MB documentos), el tipo por **firma de bytes** (nunca por el
   `Content-Type` del cliente), sanea SVG y valida el nombre y la carpeta. Opera sobre el repositorio de
