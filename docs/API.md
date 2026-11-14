@@ -476,7 +476,8 @@ automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los camb
 
 **PLANTILLAS.** Cada plantilla es `PLANTILLAS/plantilla-<nombre>.md` (plana; `<nombre>` en minúsculas, dígitos y guiones,
 ≤ 64). Frontmatter de la definición: `alcance` (lista de carpetas o `["*"]`), `atributos` (`[{nombre, tipo, valor?}]`, `tipo`:
-`texto|numero|fecha|lista|booleano`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` reservado para H-035; `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
+`texto|numero|fecha|lista|booleano`), `estados` (H-054, opcional: hasta 20 estados normalizados y sin repetir que puede tener un documento
+con la plantilla; vacío o ausente = cualquiera; 422 `plantilla:estados`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` reservado para H-035; `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
 estructura Markdown base. Un documento creado desde una plantilla guarda su nombre en el atributo general `plantilla`; se
 rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plantilla no toca los documentos que la usan; una
 plantilla con documentos vivos que la citen no se renombra ni sale de `PLANTILLAS` (`plantilla:in-use`). Borrarla sí se puede (H-054):
@@ -484,7 +485,7 @@ la app deja sus documentos sin plantilla y sus atributos de plantilla con conten
 que la citaban quedan con una referencia huérfana que la app trata como «sin plantilla». Con plantilla asignada, la app guarda los
 opcionales que el documento tenía en el atributo reservado `atributos_ocultos` (un objeto; una plantilla no puede definirlo como atributo)
 y los devuelve a su sitio al quitar la plantilla. Otros códigos:
-`plantilla:path|alcance|atributos|estilo`.
+`plantilla:path|alcance|atributos|estados|estilo`.
 
 **Documentos de sistema (H-041).** Dos documentos los publica Synapse en toda bóveda, existente y nueva: la skill global
 `AG - SKILLS/skill-bovedas-synapse.md` (para todo agente; sin propietario ni invitados) y la plantilla

@@ -272,3 +272,29 @@ test("apagar el tema deja los encabezados con el color que se veía", async () =
   expect(within(screen.getByRole("group", { name: "Encabezado 2 (H2)" })).getByLabelText("Color")).toHaveValue(seen);
   expect(screen.queryByRole("list", { name: "Colores calculados del tema" })).toBeNull();
 });
+
+test("los estados que se marcan o se añaden se guardan en la plantilla (H-054)", async () => {
+  const { store, template, user } = await open();
+  const group = screen.getByRole("group", { name: "Estados del documento" });
+  await user.click(within(group).getByRole("checkbox", { name: "borrador" }));
+  await user.click(within(group).getByRole("checkbox", { name: "aprobado" }));
+  await user.type(within(group).getByLabelText("Nuevo estado"), "En Pausa{Enter}");
+  expect(within(group).getByRole("checkbox", { name: "en pausa" })).toBeChecked();
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estados).toEqual(["borrador", "aprobado", "en pausa"]));
+});
+
+test("una plantilla con estados los muestra marcados y se pueden quitar todos", async () => {
+  counter += 1;
+  const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
+  const created = await store.createTemplate(VAULT, "Acta");
+  const template = await store.save(created.id, created.content, created.rev, { ...created.frontmatter, estados: ["aprobado"] });
+  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} estadoOptions={["en pausa"]} />);
+  await screen.findByRole("heading", { name: "Plantilla acta" });
+  const group = screen.getByRole("group", { name: "Estados del documento" });
+  expect(within(group).getByRole("checkbox", { name: "aprobado" })).toBeChecked();
+  expect(within(group).getByRole("checkbox", { name: "en pausa" })).not.toBeChecked();
+  await userEvent.click(within(group).getByRole("checkbox", { name: "aprobado" }));
+  await userEvent.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estados).toEqual([]));
+});

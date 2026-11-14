@@ -9,7 +9,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Folder, Plus, Trash2 } from "lucide-react";
 import { isIndexPath } from "./indexRules";
 import { isMetaFolderPath } from "./metaFolders";
-import { checkDefinition, templateName, TIPOS } from "./metaRules";
+import { checkDefinition, ESTADOS_MAX, templateName, TIPOS } from "./metaRules";
+import { ESTADOS_ESTANDAR, ESTADO_MAX_LEN, normalizeEstado } from "../editor/attributeRules";
 import { noteErrorMessage, noteReasonText } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
 import "./template-view.css";
@@ -61,9 +62,11 @@ export interface TemplateViewProps {
   notes: NoteStore;
   notesVersion: number;
   sidebarToggle?: ReactNode;
+  /** Estados propios de la bóveda, además de los estándar (H-054: los que se pueden ofrecer a los documentos de la plantilla). */
+  estadoOptions?: readonly string[];
 }
 
-export default function TemplateView({ noteId, vault, notes, notesVersion, sidebarToggle }: TemplateViewProps) {
+export default function TemplateView({ noteId, vault, notes, notesVersion, sidebarToggle, estadoOptions }: TemplateViewProps) {
   const [note, setNote] = useState<Note | null>(null);
   const [folders, setFolders] = useState<string[]>([]);
   const [titulo, setTitulo] = useState("");
@@ -71,6 +74,9 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
   const [all, setAll] = useState(true);
   const [alcance, setAlcance] = useState<string[]>([]);
   const [rows, setRows] = useState<AttrRow[]>([]);
+  const [estados, setEstados] = useState<string[]>([]);
+  const [newEstado, setNewEstado] = useState("");
+  const [estadoError, setEstadoError] = useState("");
   const [estructura, setEstructura] = useState("");
   const [pdf, setPdf] = useState<PdfDraft>(DEFAULT_PDF_DRAFT);
   const [dirty, setDirty] = useState(false);
@@ -107,6 +113,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     setAll(scope.includes("*"));
     setAlcance(scope.filter((item) => item !== "*"));
     setRows(toRows(fm.atributos));
+    setEstados(Array.isArray(fm.estados) ? fm.estados.filter((item): item is string => typeof item === "string") : []);
     const style = fm.estilo && typeof fm.estilo === "object" ? (fm.estilo as Record<string, unknown>) : {};
     setPdf(pdfDraftFrom(style.pdf));
     setEstructura(note.content);
@@ -124,6 +131,24 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     edit(setAlcance)(alcance.includes(path) ? alcance.filter((item) => item !== path) : [...alcance, path]);
   }
 
+  const estadoChoices = useMemo(
+    () => [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...estados])],
+    [estadoOptions, estados],
+  );
+
+  function toggleEstado(estado: string) {
+    edit(setEstados)(estados.includes(estado) ? estados.filter((item) => item !== estado) : [...estados, estado]);
+  }
+
+  function addEstado() {
+    const estado = normalizeEstado(newEstado);
+    if (estado === null) return setEstadoError(`Escribe un estado de 1 a ${ESTADO_MAX_LEN} caracteres`);
+    if (estados.length >= ESTADOS_MAX && !estados.includes(estado)) return setEstadoError(`Máximo ${ESTADOS_MAX} estados`);
+    setEstadoError("");
+    setNewEstado("");
+    if (!estados.includes(estado)) edit(setEstados)([...estados, estado]);
+  }
+
   function updateRow(index: number, changes: Partial<AttrRow>) {
     edit(setRows)(rows.map((row, i) => (i === index ? { ...row, ...changes } : row)));
   }
@@ -136,6 +161,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
       descripcion,
       alcance: all ? ["*"] : alcance,
       atributos: toAttributes(rows),
+      estados,
       estilo: { publicar: {}, pdf: pdfDraftTo(pdf) },
     };
     const code = checkDefinition(frontmatter);
@@ -274,6 +300,40 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
             <button type="button" className="tv-add" onClick={() => edit(setRows)([...rows, { nombre: "", tipo: "texto", valor: "" }])}>
               <Plus size={15} aria-hidden="true" /> Añadir atributo
             </button>
+            <div className="tv-estados" role="group" aria-label="Estados del documento">
+              <h4>Estados del documento</h4>
+              <p className="tv-empty">
+                Los estados que podrá elegir un documento con esta plantilla. Sin ninguno marcado, el documento puede usar cualquiera.
+              </p>
+              <div className="tv-folders">
+                {estadoChoices.map((estado) => (
+                  <label key={estado} className="tv-folder">
+                    <input type="checkbox" checked={estados.includes(estado)} onChange={() => toggleEstado(estado)} />
+                    <span>{estado}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="tv-estado-new">
+                <input
+                  aria-label="Nuevo estado"
+                  placeholder="Otro estado (Enter)"
+                  maxLength={ESTADO_MAX_LEN}
+                  value={newEstado}
+                  aria-invalid={estadoError ? true : undefined}
+                  onChange={(event) => {
+                    setNewEstado(event.target.value);
+                    if (estadoError) setEstadoError("");
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      addEstado();
+                    }
+                  }}
+                />
+                {estadoError && <p role="alert" className="tv-empty">{estadoError}</p>}
+              </div>
+            </div>
           </TemplateSection>
 
           <TemplateSection step={3} title="Diseño del PDF" description="Cómo se ve el documento al descargarlo como PDF: página, tipografías, encabezado y pie.">

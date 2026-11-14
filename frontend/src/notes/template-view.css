@@ -42,6 +42,11 @@
 .tv-seg label:has(input:checked) span { background: var(--bg-secondary); color: var(--text-primary); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, .25); }
 .tv-seg label:has(input:focus-visible) span { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* Estados del documento (H-054) */
+.tv-estados { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border-control); }
+.tv-estados h4 { margin: 0; font-size: 14px; color: var(--text-primary); }
+.tv-estado-new { display: flex; flex-direction: column; gap: 4px; max-width: 18rem; }
+
 /* Carpetas como chips */
 .tv-folders { display: flex; flex-wrap: wrap; gap: var(--space-2); max-height: 14rem; overflow-y: auto; padding: 2px; }
 .tv-folder { position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 5px 12px; font-size: 13px; color: var(--text-secondary); background: var(--bg-primary); border: 1px solid var(--border-control); border-radius: 999px; cursor: pointer; transition: background-color .15s, border-color .15s, color .15s; }

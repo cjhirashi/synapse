@@ -43,6 +43,7 @@ const REASONS = new Map<string, string>([
   ["plantilla:path", "Las plantillas van en PLANTILLAS/, planas y con nombre plantilla-<nombre>.md."],
   ["plantilla:alcance", "Una plantilla necesita un alcance válido (carpetas o '*' para toda la bóveda)."],
   ["plantilla:atributos", "Los atributos extra de una plantilla deben tener nombre, tipo y valor válidos."],
+  ["plantilla:estados", "Los estados de una plantilla deben ser textos de 1 a 32 caracteres, sin repetir (hasta 20)."],
   ["plantilla:estilo", "El estilo de una plantilla debe estar vacío (reservado para web/PDF)."],
   ["plantilla:in-use", "No se puede renombrar ni mover una plantilla mientras algún documento la use."],
   ["plantilla:unknown", "La plantilla referida en el documento no existe."],

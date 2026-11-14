@@ -38,7 +38,8 @@
   "pdf_band_mm": [
    0,
    60
-  ]
+  ],
+  "estados_max": 20
  },
  "definition": [
   {
@@ -1352,6 +1353,144 @@
     }
    },
    "expected": "plantilla:estilo"
+  },
+  {
+   "name": "estados válidos (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": [
+     "borrador",
+     "en revisión",
+     "aprobado"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "name": "estados vacíos (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": []
+   },
+   "expected": null
+  },
+  {
+   "name": "estados no es lista (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": "borrador"
+   },
+   "expected": "plantilla:estados"
+  },
+  {
+   "name": "estado repetido (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": [
+     "borrador",
+     "borrador"
+    ]
+   },
+   "expected": "plantilla:estados"
+  },
+  {
+   "name": "estado sin normalizar (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": [
+     "En Revisión"
+    ]
+   },
+   "expected": "plantilla:estados"
+  },
+  {
+   "name": "estado que no es texto (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": [
+     3
+    ]
+   },
+   "expected": "plantilla:estados"
+  },
+  {
+   "name": "demasiados estados (H-054)",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "atributos": [],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    },
+    "estados": [
+     "estado 0",
+     "estado 1",
+     "estado 2",
+     "estado 3",
+     "estado 4",
+     "estado 5",
+     "estado 6",
+     "estado 7",
+     "estado 8",
+     "estado 9",
+     "estado 10",
+     "estado 11",
+     "estado 12",
+     "estado 13",
+     "estado 14",
+     "estado 15",
+     "estado 16",
+     "estado 17",
+     "estado 18",
+     "estado 19",
+     "estado 20"
+    ]
+   },
+   "expected": "plantilla:estados"
   }
  ],
  "template_name": [

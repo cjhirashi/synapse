@@ -47,7 +47,8 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   tenía quedan ocultos en `atributos_ocultos` y reaparecen al quitar la plantilla (si uno coincide en nombre y tipo con un atributo de la plantilla,
   pasa a ser ese atributo con su valor). Al asignar o cambiar la plantilla, la estructura de contenido se carga sola si el documento está vacío; si
   tiene contenido, un aviso pregunta si se actualiza (pierde el contenido actual) o se conserva. Borrar una plantilla deja sus documentos sin plantilla
-  y sus atributos con contenido pasan a opcionales.
+  y sus atributos con contenido pasan a opcionales. La plantilla puede fijar los **estados** que tendrán sus documentos (campo «Estados del
+  documento» en sus atributos): el selector de estado del documento muestra solo esos y no permite crear otros; sin ninguno marcado, vale cualquiera.
 - **Plantillas y descarga en PDF (H-036):** cada plantilla (`PLANTILLAS/plantilla-<nombre>.md`) define dónde se ofrece, sus
   atributos y, en «Diseño del PDF», el formato con el que se descargan sus documentos: hoja Carta o A4 y márgenes, tipografía, tamaño y
   color por nivel de encabezado (H1 a H4) y para el texto, un **color primario** del que el servidor calcula el secundario y el

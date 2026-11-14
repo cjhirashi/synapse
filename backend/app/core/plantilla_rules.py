@@ -5,6 +5,7 @@ definición y su cuerpo es la estructura Markdown de partida:
 
 - `alcance`: lista de carpetas donde se puede usar (`["*"]` = toda la bóveda).
 - `atributos`: atributos opcionales extra, cada uno `{nombre, tipo, valor?}`.
+- `estados` (H-054, opcional): los estados que puede tener un documento con esta plantilla; vacío o ausente = cualquiera.
 - `estilo`: `publicar` (reservado para H-035, vacío) y `pdf` (H-036: formato del PDF del documento, ver `check_pdf_style`).
 
 Cada documento creado desde una plantilla guarda su nombre (sin el prefijo) en el atributo general `plantilla`.
@@ -13,7 +14,7 @@ La especificación compartida con el cliente vive en `tests/fixtures/plantilla_r
 import re
 
 from app.core.ag_rules import PLANTILLAS, meta_folder_of
-from app.core.attribute_rules import HIDDEN_KEY, PLANTILLA_NAME_MAX, PLANTILLA_NAME_RE, RESERVED_KEYS, normalize_key
+from app.core.attribute_rules import HIDDEN_KEY, PLANTILLA_NAME_MAX, PLANTILLA_NAME_RE, RESERVED_KEYS, normalize_estado, normalize_key
 from app.core.index_rules import is_index_path
 from app.core.note_prefix import check_prefix
 
@@ -21,6 +22,7 @@ PREFIX = "plantilla-"
 ALL_FOLDERS = "*"
 ALCANCE_MAX = 50
 ATRIBUTOS_MAX = 30
+ESTADOS_MAX = 20
 TIPOS = ("texto", "numero", "fecha", "lista", "booleano")
 ESTILO_KEYS = ("publicar", "pdf")
 
@@ -115,6 +117,10 @@ def check_definition(frontmatter: object) -> str | None:
         if "valor" in item and item["valor"] is not None and not _type_ok(tipo, item["valor"]):
             return "plantilla:atributos"
         seen.add(nombre)
+    estados = frontmatter.get("estados", [])
+    if (not isinstance(estados, list) or len(estados) > ESTADOS_MAX or len(set(map(str, estados))) != len(estados)
+            or any(normalize_estado(e) != e for e in estados)):
+        return "plantilla:estados"
     estilo = frontmatter.get("estilo", {})
     if not isinstance(estilo, dict) or not set(estilo) <= set(ESTILO_KEYS):
         return "plantilla:estilo"

@@ -166,7 +166,12 @@ function EditMeta({ fm: fmRaw, path, onChange, estadoOptions, onNewEstado, attri
     );
   const [typedValuesState, setTypedValuesState] = useState(initTypedValues);
 
-  const estados = [...new Set<string>([...ESTADOS_ESTANDAR, ...(estadoOptions ?? []), ...(values.estado ? [values.estado] : [])])];
+  // H-054: una plantilla con estados limita los del documento (el vigente se muestra aunque ya no esté en la lista) y no deja crear otros.
+  const restricted = activeTemplate !== null && activeTemplate.estados.length > 0;
+  const estados = [...new Set<string>([
+    ...(restricted ? activeTemplate.estados : [...ESTADOS_ESTANDAR, ...(estadoOptions ?? [])]),
+    ...(values.estado ? [values.estado] : []),
+  ])];
 
   const tituloError = points(values.titulo) > TITULO_MAX ? `Máximo ${TITULO_MAX} caracteres` : "";
   const descripcionError = points(values.descripcion) > DESCRIPCION_MAX ? `Máximo ${DESCRIPCION_MAX} caracteres` : "";
@@ -415,7 +420,7 @@ function EditMeta({ fm: fmRaw, path, onChange, estadoOptions, onNewEstado, attri
                 {estado}
               </option>
             ))}
-            <option value={OTHER_ESTADO}>Otro estado…</option>
+            {!restricted && <option value={OTHER_ESTADO}>Otro estado…</option>}
           </select>
           {creatingEstado && (
             <input

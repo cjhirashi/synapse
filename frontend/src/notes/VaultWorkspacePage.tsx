@@ -688,7 +688,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 ) : openIsSystem ? (
                   <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
                 ) : openIsTemplate ? (
-                  <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} />
+                  <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} estadoOptions={estadoOptions} />
                 ) : openIsBitacora ? (
                   <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
                 ) : openIsMensaje ? (

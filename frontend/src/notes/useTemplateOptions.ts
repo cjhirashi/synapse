@@ -10,6 +10,8 @@ export interface TemplateOption {
   label: string;
   alcance: string[];
   atributos: TemplateAttr[];
+  /** Estados que puede tener un documento con esta plantilla; vacío = cualquiera (H-054). */
+  estados: string[];
 }
 
 const isAttr = (item: unknown): item is TemplateAttr =>
@@ -28,9 +30,10 @@ export function useTemplateOptions(notes: NoteStore, vaultId: string, version: n
         if (name === null || !Array.isArray(alcance)) return [];
         const titulo = item.frontmatter?.titulo;
         const atributos = Array.isArray(item.frontmatter?.atributos) ? (item.frontmatter?.atributos as unknown[]).filter(isAttr) : [];
+        const estados = Array.isArray(item.frontmatter?.estados) ? (item.frontmatter?.estados as unknown[]).filter((e): e is string => typeof e === "string") : [];
         return [{
           id: item.id, name, label: typeof titulo === "string" && titulo ? titulo : name,
-          alcance: alcance.filter((a): a is string => typeof a === "string"), atributos,
+          alcance: alcance.filter((a): a is string => typeof a === "string"), atributos, estados,
         }];
       });
       setState({ vaultId, options });

@@ -11,7 +11,7 @@
  */
 import { pathKey, checkPath } from "./noteRules";
 import { isIndexPath, folderOf } from "./indexRules";
-import { normalizeKey } from "../editor/attributeRules";
+import { normalizeEstado, normalizeKey } from "../editor/attributeRules";
 
 // Carpetas reservadas (mismo orden que el servidor).
 export const AG_SKILLS = "AG - SKILLS";
@@ -32,6 +32,7 @@ export const PLANTILLA_NAME_MAX = 64;
 export const PLANTILLA_NAME_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 export const ALCANCE_MAX = 50;
 export const ATRIBUTOS_MAX = 30;
+export const ESTADOS_MAX = 20;
 export const TIPOS = ["texto", "numero", "fecha", "lista", "booleano"] as const;
 export const ESTILO_KEYS = ["publicar", "pdf"] as const;
 
@@ -216,6 +217,15 @@ export function checkDefinition(frontmatter: unknown): string | null {
     if (typeof a !== "string" || (a !== ALL_FOLDERS && checkPath(`${a}/x.md`) !== null)) {
       return "plantilla:alcance";
     }
+  }
+
+  // Validar `estados` (H-054).
+  const estados = fm.estados ?? [];
+  if (
+    !Array.isArray(estados) || estados.length > ESTADOS_MAX || new Set(estados).size !== estados.length
+    || estados.some((e) => normalizeEstado(e) !== e)
+  ) {
+    return "plantilla:estados";
   }
 
   // Validar `atributos`.

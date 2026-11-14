@@ -1,5 +1,5 @@
 // H-054: control «Plantilla» del documento — atributos de la plantilla, sin alta de atributos con plantilla y carga de la estructura.
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { DataMemoryRouter } from "../test-utils/router";
@@ -13,15 +13,15 @@ function Visual({ value, readOnly }: ViewProps) {
 }
 const views: NoteEditorViews = { Visual, Code: Visual };
 
-async function makeTemplate(value: ReturnType<typeof syncValue>["value"], name: string, content: string, alcance: string[], atributos: unknown[]) {
+async function makeTemplate(value: ReturnType<typeof syncValue>["value"], name: string, content: string, alcance: string[], atributos: unknown[], estados: string[] = []) {
   const created = await value.notes.createTemplate(VAULT, name);
-  await value.notes.save(created.id, content, created.rev, { ...created.frontmatter, alcance, atributos });
+  await value.notes.save(created.id, content, created.rev, { ...created.frontmatter, alcance, atributos, estados });
 }
 
 async function setup(body: string, frontmatter: Record<string, unknown> = {}) {
   const { value } = syncValue({}, memoryDb());
   await makeTemplate(value, "Acta", "# Asistentes\n", ["*"], [{ nombre: "cliente", tipo: "texto" }, { nombre: "prioridad", tipo: "numero" }]);
-  await makeTemplate(value, "Informe", "# Resumen\n", ["*"], [{ nombre: "autor", tipo: "texto" }]);
+  await makeTemplate(value, "Informe", "# Resumen\n", ["*"], [{ nombre: "autor", tipo: "texto" }], ["borrador", "aprobado"]);
   await makeTemplate(value, "Solo ventas", "# Ventas\n", ["Ventas"], []);
   const note = await value.notes.create(VAULT, "Mi nota", "Proyectos");
   await value.notes.save(note.id, body, note.rev, { ...note.frontmatter, ...frontmatter });
@@ -80,5 +80,16 @@ describe("control Plantilla", () => {
     await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "");
     expect(await screen.findByDisplayValue("hola")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Añadir propiedad" })).toBeInTheDocument();
+  });
+
+  it("una plantilla con estados limita los del documento y no deja crear otros (H-054)", async () => {
+    await setup("");
+    const estado = () => screen.getAllByRole("combobox", { name: "Estado" })[0];
+    expect(screen.getByRole("option", { name: "Otro estado…" })).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "Informe");
+    await waitFor(() => expect(screen.queryByRole("option", { name: "Otro estado…" })).toBeNull());
+    expect(within(estado()).getAllByRole("option").map((o) => o.textContent)).toEqual(["Sin estado", "borrador", "aprobado"]);
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Plantilla" }), "Acta");
+    expect(await screen.findByRole("option", { name: "Otro estado…" })).toBeInTheDocument();
   });
 });
