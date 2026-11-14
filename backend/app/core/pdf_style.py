@@ -159,7 +159,7 @@ code {{ color: {c['codigo']}; background: {c['codigo_fondo']}; }}
 pre {{ background: {c['codigo_fondo']}; }}
 pre code {{ color: {c['codigo']}; background: none; }}
 li::marker {{ color: {c['marcador']}; }}
-blockquote {{ border-left-color: {c['cita']}; background: {c['cita_fondo']}; color: inherit; font-style: italic; }}
+blockquote {{ border-left-color: {c['cita']}; background: {c['cita_fondo']}; }}
 blockquote blockquote {{ background: transparent; }}
 th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}
 tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}
@@ -183,6 +183,7 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: s
     left, top = m["izquierdo"], m["superior"]
     sheet_width = PAGE_PX[page["tamano"]][0]
     bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {sheet_width}px auto; ' if background else "")
+    quote_color = color_theme.mix(body["color"], "#ffffff", 72)  # el texto de la cita va más claro que el del cuerpo (el `--text-secondary` del editor)
     heading_css = "\n".join(f"{level} {{ {_font_css(heads[level])} }}" for level in ("h1", "h2", "h3", "h4"))
     theme_css = _theme_css(style["tema"]["colores"]) if style["tema"]["colores"] else ""
     link_color = style["tema"]["colores"]["enlace"] if style["tema"]["colores"] else heads["h1"]["color"]
@@ -195,7 +196,7 @@ h5, h6 {{ {_font_css(heads['h4'])} }}
 p {{ margin: 0 0 0.7em; }} ul, ol {{ margin: 0 0 0.7em; padding-left: 1.6em; }} li {{ margin: 0.15em 0; }}
 li.note-task {{ list-style: none; margin-left: -1.1em; }}
 a {{ color: {link_color}; }} img {{ max-width: 100%; height: auto; }}
-blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 3pt solid #cbd5e1; border-radius: {RADIUS}; color: #475569; }}
+blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 3pt solid #cbd5e1; border-radius: {RADIUS}; color: {quote_color}; font-style: italic; }}
 pre {{ font-family: "Liberation Mono", monospace; font-size: {round(base * 0.88, 1)}pt; background: #f1f5f9; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
 code {{ font-family: "Liberation Mono", monospace; font-size: 0.92em; background: #f1f5f9; padding: 0 0.2em; border-radius: 2pt; }}
 pre code {{ background: none; padding: 0; }}

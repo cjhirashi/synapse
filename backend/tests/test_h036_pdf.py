@@ -123,6 +123,16 @@ def test_quotes_and_tables_have_rounded_corners_like_the_markdown():
     assert "blockquote blockquote { background: transparent; }" in themed
 
 
+def test_quote_text_is_italic_and_lighter_than_the_body_in_both_modes():
+    for raw in ({}, {"tema": {"primario": "#0c3897"}}):
+        style = pdf_style.resolve(raw)
+        css = pdf_style.stylesheet(style, has_header=False, has_footer=False)
+        rules = [chunk.split("}")[0] for chunk in css.split("blockquote {")[1:]]
+        assert "font-style: italic" in rules[0] and "color: #5e656f" in rules[0], rules[0]  # 72 % del color del cuerpo (#1f2937) sobre blanco
+        assert not any("color: inherit" in rule for rule in rules)  # el tema no devuelve la cita al color del cuerpo
+        assert style["texto"]["color"] == "#1f2937" and "color: #1f2937" not in rules[0]
+
+
 def test_task_items_have_no_bullet_because_their_box_is_text():
     css = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
     assert "li.note-task { list-style: none;" in css
