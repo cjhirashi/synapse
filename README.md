@@ -36,8 +36,20 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   contadores, permisos por agente y retención de 30 días tras cerrarse. La barra derecha del documento muestra su índice de
   encabezados y las tareas ligadas a él.
 - **Avisos y app instalable (H-053):** bandeja de avisos (`/avisos`) por asignación, cambio de estado de un agente y
-  vencimientos; preferencias por tipo y horas silenciosas (22:00–07:00 por defecto, hora de México); la app se instala como PWA y
-  envía Web Push (VAPID) con aviso de versión nueva.
+  vencimientos. Cada aviso es una tarjeta, agrupada por día, con el tipo y el evento, el título y la descripción de la tarea,
+  su estado, su responsable (con nombre y foto), la prioridad, el vencimiento y la bóveda; se marca como leído con su casilla ✓ sin
+  abrir la tarea, y hay filtro «Sin leer» y «Marcar todo como leído». Preferencias por tipo y horas silenciosas (22:00–07:00 por
+  defecto, hora de México); la app se instala como PWA y envía Web Push (VAPID) con la misma estructura de la tarjeta (título
+  «Tipo · evento» y, en el cuerpo, la tarea, su descripción, «estado · responsable · bóveda» y el vencimiento) y con aviso de versión nueva.
+- **Plantillas y descarga en PDF (H-036):** cada plantilla (`PLANTILLAS/plantilla-<nombre>.md`) define dónde se ofrece, sus
+  atributos y, en «Diseño del PDF», el formato con el que se descargan sus documentos: hoja Carta o A4 y márgenes, tipografía, tamaño y
+  color por nivel de encabezado (H1 a H4) y para el texto, un **color primario** del que el servidor calcula el secundario y el
+  terciario y los colores de negrita, cursiva, enlaces, código, listas, citas y tablas (la misma regla del Markdown), una imagen de
+  membrete como fondo de cada página (816 × 1056 px en Carta, 794 × 1123 px en A4), y encabezado y pie con fuente, línea y posición
+  propias y campos automáticos (`{{titulo}}`, `{{fecha}}`, `{{pagina}}`, `{{paginas}}`, `{{atributo:x}}`). El documento muestra el botón «PDF» junto
+  a «Editar»; el PDF sale del mismo HTML que se ve en Lectura (tablas y citas redondeadas, casillas de tareas, imágenes propias, privadas incluidas,
+  imágenes públicas de la web y SVG animados en su último fotograma) y lo genera el servidor con WeasyPrint. Detalle en [`docs/API.md`](docs/API.md)
+  (sección «PDF de documentos») y en el ADR-008.
 - **Agentes con nombre y foto:** cada agente tiene nombre visible y foto editables desde API keys; aparecen en tareas, bitácora
   y listas.
 - **Propiedades de las notas:** metadatos tipados (texto, fecha, selección, selección múltiple)

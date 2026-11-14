@@ -46,6 +46,7 @@ backend no arranca si falta alguna de las obligatorias (ver `.env.example` en la
 | `TASKS_JOBS_INTERVAL_SECONDS` | (H-053) Cada cuánto corre ese ciclo. 60 por defecto. |
 | `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` | (H-053) Claves y contacto de Web Push (VAPID), solo en `.env`. Sin ellas el push queda apagado y los avisos siguen llegando a la bandeja. |
 | `PUSH_DISPATCH` (`true`), `PUSH_POLL_SECONDS` (30) | (H-053) El hilo que envía los avisos pendientes como push y cada cuántos segundos los revisa; `PUSH_DISPATCH=false` lo apaga (las pruebas lo apagan). |
+| `OWN_HOSTS` | (H-036) Nombres con los que se llega a esta misma Synapse, separados por comas (`synapse.cjhirashi.com` por defecto). Un enlace `https://<nombre>/files/<id>` dentro de un documento (el de «Copiar link» de Archivos) se lee como archivo propio al generar el PDF: con la sesión de la persona, también si es privado y sin salir a internet. |
 | `SEED_AG_FOLDERS` (`true`) | Las bóvedas nuevas nacen con las carpetas reservadas (`AG - *`, `BITACORA`, `PLANTILLAS`) |
 | `SYSTEM_DOCS_SYNC` (`true`) | Al arrancar replica en segundo plano la skill global y `plantilla-skill` en todas las bóvedas (idempotente) |
 | `BITACORA_DOCS` (`true`) | Genera los documentos diarios de `BITACORA/` desde el registro de cambios (`change_log`, que se escribe siempre) |

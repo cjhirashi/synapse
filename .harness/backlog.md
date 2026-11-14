@@ -48,7 +48,7 @@
 - [ ] H-033 — Archivos de bóvedas: explorador de carpetas y compartir (antes H-0035) — análisis ronda 1
 - [ ] H-034 — Mapa de relación de documentos (antes H-0036) — análisis ronda 1
 - [ ] H-035 — Publicar documento (antes H-0038; propone absorber H-020 y partir publicar/compartir) — análisis ronda 1
-- [ ] H-036 — Descargar documento como PDF (antes H-0039) — análisis ronda 1
+- [x] H-036 — Descargar documento como PDF (antes H-0039) — **hecha y desplegada 2026-11-13 (CDMX), con ajustes hasta 2026-11-14**: botón «PDF» junto a «Editar» en los documentos cuya plantilla lo activa; la plantilla define página y márgenes, tipografía por nivel de encabezado (H1 a H4), color primario con secundario y terciario calculados, imagen de membrete como fondo de página (ancho de la hoja), encabezado y pie con fuente, línea y posición propias y campos automáticos; citas y tablas redondeadas; imágenes propias (también privadas) y públicas de la web (solo IP públicas); SVG animados en su último fotograma. Plan aprobado por Carlos 2026-11-13, ADR-008, nota `H-036` de la bóveda Proyectos. **Pendiente de desplegar:** las casillas ☑/☐ de las listas de tareas (commit `346f373`).
 
 ## Por tomar (orden = prioridad — validado por Carlos 2026-10-28)
 
