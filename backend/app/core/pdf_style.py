@@ -44,6 +44,10 @@ DEFAULTS = {
     "pagina": {"tamano": "carta", "margenes_mm": {"superior": 25, "inferior": 20, "izquierdo": 20, "derecho": 20}},
     "texto": {"familia": "DejaVu Sans", "tamano_pt": 10.5, "color": "#1f2937"},
 }
+CODE_FONT = '"JetBrains Mono", "Liberation Mono", monospace'  # la del editor; la segunda cubre una imagen sin JetBrains Mono
+CODE_BG = "#e2e8f0"  # fondo del código sin tema de color
+CODE_BG_PERCENT = 18  # con tema: color del texto sobre blanco
+QUOTE_BG_PERCENT = 16  # con tema: secundario de la cita sobre blanco
 H1_DEFAULT = {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "#111827"}
 
 _FIELD_RE = re.compile(r"\{\{([^{}]*)\}\}")
@@ -148,18 +152,20 @@ def _band_css(prefix: str, band: dict, *, edge: str) -> str:
             f"padding-left: {band['sangria_mm']}mm; padding-right: {band['sangria_mm']}mm; {_font_css(band['fuente'])} {rule} }}")
 
 
-def _theme_css(c: dict) -> str:
-    """Colores del tema para los elementos del documento (los mismos que el tema claro del Markdown del editor)."""
+def _theme_css(c: dict, text: str) -> str:
+    """Colores del tema para los elementos del documento (los del tema claro del Markdown del editor; los fondos de código y cita, más marcados porque el papel los aclara)."""
+    code_bg = color_theme.mix(text, color_theme.WHITE, CODE_BG_PERCENT)
+    quote_bg = color_theme.mix(c["cita"], color_theme.WHITE, QUOTE_BG_PERCENT)
     return f"""
 strong, b {{ color: {c['negrita']}; }}
 em, i {{ color: {c['cursiva']}; }}
 strong em, em strong, b i, i b {{ color: {c['negrita_cursiva']}; }}
 a {{ text-decoration: underline; text-decoration-thickness: 0.5pt; text-underline-offset: 1.5pt; }}
-code {{ color: {c['codigo']}; background: {c['codigo_fondo']}; }}
-pre {{ background: {c['codigo_fondo']}; }}
+code {{ color: {c['codigo']}; background: {code_bg}; }}
+pre {{ background: {code_bg}; }}
 pre code {{ color: {c['codigo']}; background: none; }}
 li::marker {{ color: {c['marcador']}; }}
-blockquote {{ border-left-color: {c['cita']}; background: {c['cita_fondo']}; }}
+blockquote {{ border-left-color: {c['cita']}; background: {quote_bg}; }}
 blockquote blockquote {{ background: transparent; }}
 th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}
 tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}
@@ -185,7 +191,7 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: s
     bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: {sheet_width}px auto; ' if background else "")
     quote_color = color_theme.mix(body["color"], "#ffffff", 72)  # el texto de la cita va más claro que el del cuerpo (el `--text-secondary` del editor)
     heading_css = "\n".join(f"{level} {{ {_font_css(heads[level])} }}" for level in ("h1", "h2", "h3", "h4"))
-    theme_css = _theme_css(style["tema"]["colores"]) if style["tema"]["colores"] else ""
+    theme_css = _theme_css(style["tema"]["colores"], body["color"]) if style["tema"]["colores"] else ""
     link_color = style["tema"]["colores"]["enlace"] if style["tema"]["colores"] else heads["h1"]["color"]
     return f"""
 @page {{ {bg}size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
@@ -197,8 +203,8 @@ p {{ margin: 0 0 0.7em; }} ul, ol {{ margin: 0 0 0.7em; padding-left: 1.6em; }} 
 li.note-task {{ list-style: none; margin-left: -1.1em; }}
 a {{ color: {link_color}; }} img {{ max-width: 100%; height: auto; }}
 blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 3pt solid #cbd5e1; border-radius: {RADIUS}; color: {quote_color}; font-style: italic; }}
-pre {{ font-family: "Liberation Mono", monospace; font-size: {round(base * 0.88, 1)}pt; background: #f1f5f9; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
-code {{ font-family: "Liberation Mono", monospace; font-size: 0.92em; background: #f1f5f9; padding: 0 0.2em; border-radius: 2pt; }}
+pre {{ font-family: {CODE_FONT}; font-size: {round(base * 0.88, 1)}pt; background: {CODE_BG}; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
+code {{ font-family: {CODE_FONT}; font-size: 0.92em; background: {CODE_BG}; padding: 0 0.2em; border-radius: 2pt; }}
 pre code {{ background: none; padding: 0; }}
 table {{ border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
 th, td {{ border: 0.6pt solid #cbd5e1; border-top-width: 0; border-left-width: 0; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}

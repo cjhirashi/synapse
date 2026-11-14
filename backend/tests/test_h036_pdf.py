@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.core import pdf_style
+from app.core import color_theme, pdf_style
 from app.core.plantilla_rules import PDF_FONTS
 from app.services.note_pdf_service import file_name
 from tests.test_h030_api import agent_client, post_note, vault_of
@@ -104,7 +104,7 @@ def test_the_stylesheet_paints_every_element_with_the_theme_only_when_there_is_o
     css = pdf_style.stylesheet(style, has_header=False, has_footer=False)
     for expected in (
         f"strong, b {{ color: {c['negrita']}; }}", f"em, i {{ color: {c['cursiva']}; }}", f"a {{ color: {c['enlace']}; }}",
-        f"code {{ color: {c['codigo']}; background: {c['codigo_fondo']}; }}", f"li::marker {{ color: {c['marcador']}; }}",
+        f"code {{ color: {c['codigo']}; background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}", f"li::marker {{ color: {c['marcador']}; }}",
         f"th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}", f"border-left-color: {c['cita']}",
         f"tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}",
     ):
@@ -705,3 +705,20 @@ def test_every_listed_font_has_a_real_italic_in_the_image(family):
         out = subprocess.run(["fc-match", "-f", "%{style}|%{file}", f"{family}:italic{weight}"], capture_output=True, text=True, check=True).stdout
         style = out.split("|")[0].lower()
         assert "italic" in style or "oblique" in style, f"{family}{weight}: sin cursiva real ({out})"
+
+
+def test_code_uses_the_editor_code_font_and_code_and_quote_backgrounds_are_not_too_light():
+    import shutil
+    import subprocess
+    plain = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    for css in (plain, themed):
+        assert 'code { font-family: "JetBrains Mono", "Liberation Mono", monospace;' in css
+        assert 'pre { font-family: "JetBrains Mono", "Liberation Mono", monospace;' in css
+        assert "#f1f5f9" not in css.split("code {")[1].split("}")[0] and "#f1f5f9" not in css.split("pre {")[1].split("}")[0]
+    assert f"background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed.split("code { color:")[1]  # 18 % del texto (#1f2937) sobre blanco
+    quote_bg = themed.split("blockquote { border-left-color:")[1].split("background: ")[1].split(";")[0]
+    assert quote_bg == color_theme.mix(pdf_style.resolve({"tema": {"primario": "#0c3897"}})["tema"]["colores"]["cita"], "#ffffff", 16)
+    if shutil.which("fc-match"):
+        family = subprocess.run(["fc-match", "-f", "%{family}", "JetBrains Mono"], capture_output=True, text=True, check=True).stdout
+        assert "JetBrains Mono" in family, family
