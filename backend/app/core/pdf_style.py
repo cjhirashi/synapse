@@ -46,6 +46,25 @@ DEFAULTS = {
 }
 CODE_FONT = '"JetBrains Mono", "Liberation Mono", monospace'  # la del editor; la segunda cubre una imagen sin JetBrains Mono
 CODE_BG = "#e2e8f0"  # fondo del código sin tema de color
+SYNTAX_CSS = """
+.sx-keyword { color: #0e7490; font-weight: 600; }
+.sx-string { color: #15803d; }
+.sx-number, .sx-atom { color: #b45309; }
+.sx-type { color: #0369a1; }
+.sx-function { color: #0f172a; font-weight: 600; }
+.sx-plain { color: #475569; }
+.sx-comment { color: #475569; font-style: italic; }
+.sx-deletion { color: #b91c1c; text-decoration: line-through; }
+.sx-heading1 { color: #0f172a; font-weight: 700; }
+.sx-heading { color: #0f172a; font-weight: 600; }
+.sx-meta, .sx-url { color: #475569; }
+.sx-strong { color: #0e7490; font-weight: 600; }
+.sx-emphasis { color: #0f172a; font-style: italic; }
+.sx-link { color: #0369a1; text-decoration: underline; }
+.sx-code { color: #b45309; }
+.sx-task { color: #0e7490; }
+.sx-quote { color: #475569; font-style: italic; }
+"""  # colores del resaltado del editor (tema claro, `editor/syntax.css`); las clases `sx-*` llegan en el HTML de Lectura
 CODE_BG_PERCENT = 18  # con tema: color del texto sobre blanco
 QUOTE_BG_PERCENT = 16  # con tema: secundario de la cita sobre blanco
 H1_DEFAULT = {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "#111827"}
@@ -210,6 +229,7 @@ pre code {{ background: none; padding: 0; }}
 .code-block {{ margin: 0 0 0.8em; border: 0.6pt solid #cbd5e1; border-radius: {RADIUS}; background: {CODE_BG}; }}
 .code-block-header {{ padding: 0.35em 0.8em; border-bottom: 0.6pt solid #cbd5e1; font-family: {CODE_FONT}; font-size: {round(base * 0.8, 1)}pt; line-height: 1.2; color: {quote_color}; }}
 .code-block pre {{ margin: 0; background: transparent; border-radius: 0; }}
+{SYNTAX_CSS}
 table {{ border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
 th, td {{ border: 0.6pt solid #cbd5e1; border-top-width: 0; border-left-width: 0; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}
 th {{ background: #f1f5f9; font-weight: 700; }}

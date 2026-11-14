@@ -716,7 +716,7 @@ def test_code_uses_the_editor_code_font_and_code_and_quote_backgrounds_are_not_t
         assert 'code { font-family: "JetBrains Mono", "Liberation Mono", monospace;' in css
         assert 'pre { font-family: "JetBrains Mono", "Liberation Mono", monospace;' in css
         assert "#f1f5f9" not in css.split("code {")[1].split("}")[0] and "#f1f5f9" not in css.split("pre {")[1].split("}")[0]
-    assert f"background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed.split("code { color:")[1]  # 18 % del texto (#1f2937) sobre blanco
+    assert f"background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed.split("\ncode { color:")[1]  # 18 % del texto (#1f2937) sobre blanco
     quote_bg = themed.split("blockquote { border-left-color:")[1].split("background: ")[1].split(";")[0]
     assert quote_bg == color_theme.mix(pdf_style.resolve({"tema": {"primario": "#0c3897"}})["tema"]["colores"]["cita"], "#ffffff", 16)
     if shutil.which("fc-match"):
@@ -737,3 +737,16 @@ def test_a_code_block_keeps_its_language_as_a_header_inside_the_box():
     assert 'font-family: "JetBrains Mono"' in css.split(".code-block-header {")[1].split("}")[0]
     themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
     assert f".code-block {{ background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed
+
+
+def test_code_block_syntax_colors_reach_the_pdf():
+    from app.services.pdf_service import build_document
+    style = pdf_style.resolve({"activo": True})
+    html = '<div class="code-block"><pre><code><span class="sx-plain">var</span> <span class="sx-keyword">def</span> <span class="sx-string">"x"</span> <span class="sx-number">1</span></code></pre></div>'
+    doc = build_document(html, style, title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    for cls in ("sx-plain", "sx-keyword", "sx-string", "sx-number"):
+        assert f'<span class="{cls}">' in doc, cls
+    for rule in (".sx-keyword { color: #0e7490; font-weight: 600; }", ".sx-string { color: #15803d; }", ".sx-number, .sx-atom { color: #b45309; }", ".sx-comment { color: #475569; font-style: italic; }"):
+        assert rule in doc, rule
+    themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    assert ".sx-keyword {" in themed  # también con tema de color
