@@ -1,8 +1,8 @@
 """PDF de un documento (H-036): el HTML que la app ya dibuja en Lectura + el formato de la plantilla → PDF con WeasyPrint.
 
 El servidor no confía en el HTML que recibe: lo vuelve a limpiar con una lista cerrada de etiquetas y atributos (`nh3`) y WeasyPrint solo
-puede cargar imágenes `data:` y archivos propios de la persona (`/files/<id>`); cualquier otra URL se bloquea, así el servidor no sirve para
-leer direcciones internas. Los estilos salen siempre de la plantilla, nunca del cliente. `weasyprint` se importa al usarlo: carga Pango.
+puede cargar imágenes `data:`, archivos propios de la persona (`/files/<id>`) e imágenes públicas de la web (la persona responde de lo que pone en su documento);
+nunca una dirección interna (ver `external_image`), así el servidor no sirve para leer su red. Los SVG animados se imprimen en su último fotograma. Los estilos salen siempre de la plantilla, nunca del cliente. `weasyprint` se importa al usarlo: carga Pango.
 """
 import base64
 import html
@@ -13,8 +13,9 @@ from datetime import UTC, datetime
 from typing import Callable
 from urllib.parse import urlsplit
 
-from app.core import pdf_style
+from app.core import pdf_style, svg_freeze
 from app.core.errors import PdfBusy, PdfRenderFailed, PdfTimeout
+from app.services import external_image
 
 MAX_CONCURRENT = 2
 WAIT_FOR_SLOT_SECONDS = 5
@@ -45,10 +46,15 @@ _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT)
 _POOL = ThreadPoolExecutor(max_workers=MAX_CONCURRENT, thread_name_prefix="pdf")
 
 
+EXTERNAL_IMAGE_RE = re.compile(r"^https?://[^/@\s]+(/|$)", re.IGNORECASE)  # sin credenciales en la URL
+MAX_EXTERNAL_IMAGES = 60
+MAX_EXTERNAL_BYTES = 40 * 1024 * 1024
+
+
 def _filter_attribute(tag: str, attribute: str, value: str) -> str | None:
-    """`img src` solo `data:image/...;base64` o `/files/<id>`; `a href` solo http(s), mailto o ancla; todo lo demás se quita."""
+    """`img src`: `data:image/...;base64`, `/files/<id>` o una imagen http(s) de la web; `a href` solo http(s), mailto o ancla; todo lo demás se quita."""
     if tag == "img" and attribute == "src":
-        return value if _DATA_RE.match(value) or FILE_PATH_RE.match(value) else None
+        return value if _DATA_RE.match(value) or FILE_PATH_RE.match(value) or EXTERNAL_IMAGE_RE.match(value) else None
     if tag == "a" and attribute == "href":
         return value if re.match(r"^(https?://|mailto:|#)", value, re.IGNORECASE) else None
     return value
@@ -111,24 +117,42 @@ def build_document(
         f"<body>{head or ''}{foot or ''}{attrs}<article>{sanitize(body)}</article></body></html>")
 
 
-def _fetcher(read_image: ReadImage):
+def _fetcher(read_image: ReadImage, *, fetch_external=external_image.fetch):
     from weasyprint.urls import URLFetcher, URLFetcherResponse
 
+    budget = {"count": 0, "bytes": 0}
+
+    def served(url: str, body: bytes, content_type: str):
+        if content_type == "image/svg+xml":
+            body = svg_freeze.freeze(body)  # el SVG animado se imprime en su último fotograma
+        return URLFetcherResponse(url, body, {"Content-Type": content_type})
+
     class Closed(URLFetcher):
-        """Solo `data:` de imagen y `/files/<id>` de la persona; todo lo demás lanza (WeasyPrint lo trata como recurso ausente)."""
+        """Sirve `data:` de imagen, `/files/<id>` de la persona e imágenes públicas de la web; todo lo demás lanza (WeasyPrint lo trata como recurso ausente)."""
 
         def fetch(self, url, headers=None):
             if url.lower().startswith("data:"):
                 match = _DATA_RE.match(url)
                 if match is None or match.group(1).lower() not in IMAGE_TYPES:
                     raise ValueError("data: no admitido")
-                return URLFetcherResponse(url, base64.b64decode(re.sub(r"\s", "", match.group(2))), {"Content-Type": match.group(1).lower()})
+                return served(url, base64.b64decode(re.sub(r"\s", "", match.group(2))), match.group(1).lower())
             parts = urlsplit(url)
-            hit = FILE_PATH_RE.match(parts.path) if (parts.scheme, parts.netloc) == ("https", "synapse.invalid") else None
-            found = read_image(hit.group(1)) if hit else None
-            if found is None or found[1] not in IMAGE_TYPES:
-                raise ValueError("recurso bloqueado")
-            return URLFetcherResponse(url, found[0], {"Content-Type": found[1]})
+            if (parts.scheme, parts.netloc) == ("https", "synapse.invalid"):
+                hit = FILE_PATH_RE.match(parts.path)
+                found = read_image(hit.group(1)) if hit else None
+                if found is None or found[1] not in IMAGE_TYPES:
+                    raise ValueError("recurso bloqueado")
+                return served(url, found[0], found[1])
+            if parts.scheme in ("http", "https") and EXTERNAL_IMAGE_RE.match(url):
+                if budget["count"] >= MAX_EXTERNAL_IMAGES or budget["bytes"] >= MAX_EXTERNAL_BYTES:
+                    raise ValueError("demasiadas imágenes externas")
+                budget["count"] += 1
+                found = fetch_external(url, IMAGE_TYPES)
+                if found is None:
+                    raise ValueError("imagen externa no disponible")
+                budget["bytes"] += len(found[0])
+                return served(url, found[0], found[1])
+            raise ValueError("recurso bloqueado")
 
     return Closed()
 

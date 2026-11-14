@@ -2242,3 +2242,4 @@ CMD: python3 .claude/skills/ui-ux-pro-max/scripts/search.py "form validation err
 - **Hallazgos:** (1) `cjhirashi-career` fija `weasyprint==69.0`, con PYSEC-2026-3940 y 4311: subir a 70.0. (2) Los contratos `h053-notificaciones` y `h053-tareas` estaban desactualizados desde el rediseño de avisos (campo `task`); se regeneraron aquí.
 - **Pendiente:** despliegue (reinicia el backend; se avisa antes) y comprobar el botón en producción.
 - **Modelos:** Sonnet 5 en la sesión principal; sin subagentes.
+- **Ajuste antes de desplegar (2026-11-13, pedido de Carlos):** las imágenes externas de la web SÍ se imprimen (descarga con tope, solo IP públicas, redirecciones reverificadas; `services/external_image.py`) y los SVG animados se imprimen en su último fotograma (`core/svg_freeze.py`: SMIL y `@keyframes`). 23 pruebas de H-036 dentro de la imagen; comprobado en red real (python.org sí; 127.0.0.1, 169.254.169.254, synapse-couchdb y synapse-minio no).
