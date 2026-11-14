@@ -523,3 +523,7 @@
   .tasks-global { flex-direction: column; }
   .tasks-global-side { width: auto; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--border); }
 }
+
+/* Bloqueo entre tareas (H-057). */
+.tasks-chip--blocked { color: var(--warning-text); background: color-mix(in srgb, var(--warning) 16%, transparent); }
+.tf-blockers { margin: 0 0 6px; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px; }

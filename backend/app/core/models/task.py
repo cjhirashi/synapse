@@ -1,7 +1,15 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Table, Text, text
 from sqlalchemy.orm import relationship
 
 from app.adapters.database import Base
+
+
+# H-057: una tarea bloqueada por otras (de su misma bóveda). Una fila = «`task_id` no se puede hacer hasta que `blocker_id` esté hecha».
+task_blockers = Table(
+    "task_blockers", Base.metadata,
+    Column("task_id", String, ForeignKey("vault_tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("blocker_id", String, ForeignKey("vault_tasks.id", ondelete="CASCADE"), primary_key=True, index=True),
+)
 
 
 class VaultTask(Base):
@@ -42,6 +50,20 @@ class VaultTask(Base):
     created_at = Column(DateTime, nullable=False)
     updated_at = Column(DateTime, nullable=False)
     completed_at = Column(DateTime, nullable=True, index=True)
+
+    # H-057: las tareas que esta espera (`blockers`) y las que esperan a esta (`blocking`).
+    blockers = relationship(
+        "VaultTask", secondary=task_blockers, primaryjoin=lambda: VaultTask.id == task_blockers.c.task_id,
+        secondaryjoin=lambda: VaultTask.id == task_blockers.c.blocker_id, backref="blocking")
+
+    @property
+    def blocked_by(self) -> list[str]:
+        return sorted(blocker.id for blocker in self.blockers)
+
+    @property
+    def blocked(self) -> bool:
+        """Bloqueada = alguna de sus bloqueadoras no está hecha (una cancelada tampoco la libera)."""
+        return any(blocker.status != "done" for blocker in self.blockers)
 
     # Borrar la raíz borra sus subtareas también en SQLite (donde las FK no cascadan solas).
     children = relationship("VaultTask", cascade="all, delete-orphan", order_by="VaultTask.sort_order")

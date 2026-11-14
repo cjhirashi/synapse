@@ -8,7 +8,7 @@ deriva de ellas al escribir; no hay planificador. Lanza errores de dominio de `c
 import re
 import json
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime, timedelta
 
 from app.adapters.task_repository import TaskRepository
@@ -93,6 +93,8 @@ class TaskService:
         path = self._path(body.path)
         agent_id = self._assignee(vault_id, body.assignee_type, body.assignee_agent_id)
         self._check_span(_naive_utc(body.start_at), _naive_utc(body.due_at))
+        blockers = self._resolve_blockers(vault_id, None, parent, body.blocked_by)
+        self._check_not_blocked(body.status, blockers)
         now = _now()
         closed = body.status in task_rules.CLOSED_STATUSES
         task = VaultTask(
@@ -106,6 +108,7 @@ class TaskService:
             version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
         )
         self._repo.add(task)
+        task.blockers = blockers
         if parent is not None:
             self._refresh_parent(parent)
         if task.assignee_type == "user":
@@ -128,6 +131,9 @@ class TaskService:
             raise _invalid("/status", "Status cannot be empty")
         if "status" in sent and body.status != task.status and self._repo.children(task.id):
             raise _invalid("/status", "A task with subtasks takes its status from them")
+        blockers = self._resolve_blockers(vault_id, task, None, body.blocked_by or []) if "blocked_by" in sent else None
+        if "status" in sent and body.status != task.status:
+            self._check_not_blocked(body.status, task.blockers if blockers is None else blockers)
         for field in ("title", "priority", "sort_order"):
             if field in sent and getattr(body, field) is not None:
                 setattr(task, field, getattr(body, field))
@@ -149,6 +155,8 @@ class TaskService:
             agent_id = body.assignee_agent_id if "assignee_agent_id" in sent else task.assignee_agent_id
             task.assignee_agent_id = self._assignee(vault_id, kind, agent_id)
             task.assignee_type = kind
+        if blockers is not None:
+            task.blockers = blockers
         if "status" in sent and body.status is not None:
             self._set_status(task, body.status)
         self._touch(task)
@@ -159,6 +167,10 @@ class TaskService:
         self._repo.flush()  # la sesión no vuelca sola: la raíz debe ver el estado nuevo de esta subtarea
         if task.parent_id is not None:
             self._refresh_parent(self._owned(vault_id, task.parent_id))
+        elif blockers is not None:
+            self._refresh_parent(task)
+        if task.status != was_status:
+            self._refresh_dependents([task])
         return self._save(task)
 
     def delete(self, vault_id: str, task_id: str) -> None:
@@ -167,6 +179,7 @@ class TaskService:
         self._guard.check_task(
             vault_id, "delete", task.title, created_by=task.created_by, assignee_agent_id=task.assignee_agent_id)
         parent_id = task.parent_id
+        dependents = {dep.id for gone in [task, *self._repo.children(task.id)] for dep in gone.blocking}
         self._repo.delete(task)
         self._repo.commit()
         if parent_id is not None:
@@ -174,6 +187,9 @@ class TaskService:
             if parent is not None:
                 self._refresh_parent(parent)
                 self._repo.commit()
+        # Las tareas que esperaban a la borrada (o a sus subtareas) pueden quedar libres.
+        self._refresh_dependents([dep for dep in (self._repo.get(i, self._owner_id) for i in dependents) if dep is not None])
+        self._repo.commit()
 
     # --- Reglas ---
 
@@ -191,6 +207,54 @@ class TaskService:
         if parent.parent_id is not None:
             raise _invalid("/parent_id", "A subtask cannot have subtasks")
         return parent
+
+    def _resolve_blockers(
+        self, vault_id: str, task: VaultTask | None, parent: VaultTask | None, ids: Sequence[str] | None,
+    ) -> Sequence[VaultTask]:
+        """Las tareas que bloquean a `task` (o a la que se va a crear bajo `parent`): de su misma bóveda, sin ciclos y
+        sin la relación padre-hija (la raíz ya espera a sus subtareas y una subtarea no puede esperar a su raíz)."""
+        found = []
+        parent_id = parent.id if parent is not None else (task.parent_id if task is not None else None)
+        for blocker_id in dict.fromkeys(ids or []):
+            if task is not None and blocker_id == task.id:
+                raise _invalid("/blocked_by", "A task cannot block itself")
+            blocker = self._repo.get(blocker_id, self._owner_id)
+            if blocker is None or blocker.vault_id != vault_id:
+                raise _invalid("/blocked_by", "A blocking task must exist in the same vault")
+            if blocker.id == parent_id or (task is not None and blocker.parent_id == task.id):
+                raise _invalid("/blocked_by", "A task cannot be blocked by its parent task or by its own subtasks")
+            if task is not None and self._reaches(blocker, task.id):
+                raise _invalid("/blocked_by", "Blocking tasks cannot form a cycle")
+            found.append(blocker)
+        return found
+
+    @staticmethod
+    def _reaches(start: VaultTask, target_id: str) -> bool:
+        """¿`start` espera, directa o indirectamente, a la tarea `target_id`?"""
+        seen: set[str] = set()
+        pending = [start]
+        while pending:
+            current = pending.pop()
+            if current.id == target_id:
+                return True
+            if current.id in seen:
+                continue
+            seen.add(current.id)
+            pending.extend(current.blockers)
+        return False
+
+    @staticmethod
+    def _check_not_blocked(status: str | None, blockers: Sequence[VaultTask]) -> None:
+        """Una tarea con bloqueadoras sin hacer puede ponerse en curso, pero no darse por hecha."""
+        if status == "done" and any(blocker.status != "done" for blocker in blockers):
+            raise _invalid("/status", "This task is blocked: its blocking tasks must be done first")
+
+    def _refresh_dependents(self, tasks: Sequence[VaultTask]) -> None:
+        """Las raíces con subtareas que esperaban a `tasks` recalculan su estado: pueden haber quedado libres."""
+        for task in tasks:
+            for dependent in list(task.blocking):
+                if dependent.parent_id is None and self._repo.children(dependent.id):
+                    self._refresh_parent(dependent)
 
     def _path(self, path: str | None) -> str | None:
         try:
@@ -232,6 +296,8 @@ class TaskService:
     def _refresh_parent(self, parent: VaultTask) -> None:
         """Recalcula el estado de la raíz a partir de sus subtareas (vigentes en la sesión)."""
         derived = task_rules.derive_parent_status(c.status for c in self._repo.children(parent.id))
+        if derived == "done" and parent.status != "done" and parent.blocked:
+            derived = "in_progress"  # una raíz bloqueada no se da por hecha sola aunque sus subtareas lo estén
         if derived is not None and derived != parent.status:
             self._set_status(parent, derived)
             self._touch(parent)

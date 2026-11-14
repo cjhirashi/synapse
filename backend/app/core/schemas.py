@@ -609,6 +609,7 @@ class TaskCreate(BaseModel):
     reminders: list[ReminderMinutes] | None = None
     parent_id: str | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
+    blocked_by: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] | None = Field(default=None, max_length=30)
 
     _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
@@ -630,6 +631,7 @@ class TaskUpdate(BaseModel):
     path: TaskPath | None = None
     reminders: list[ReminderMinutes] | None = None
     sort_order: int | None = Field(default=None, ge=0, le=100000)
+    blocked_by: list[Annotated[str, StringConstraints(min_length=1, max_length=64)]] | None = Field(default=None, max_length=30)
 
     _reminders = field_validator("reminders", mode="after")(_clean_reminders)
 
@@ -661,6 +663,8 @@ class TaskOut(BaseModel):
     updated_at: UtcDateTime
     completed_at: UtcDateTime | None
     purge_at: UtcDateTime | None = None  # cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz
+    blocked_by: list[str] = []  # ids de las tareas que debe esperar (H-057); solo de su bóveda
+    blocked: bool = False  # alguna de ellas no está hecha: la tarea no se puede dar por hecha todavía
 
     @field_validator("reminders", mode="before")
     @classmethod

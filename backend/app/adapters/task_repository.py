@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.models.task import VaultTask
 
@@ -50,7 +50,7 @@ class TaskRepository:
             query = query.filter(VaultTask.due_at >= due_after)
         if due_before is not None:
             query = query.filter(VaultTask.due_at <= due_before)
-        return query.order_by(VaultTask.sort_order, VaultTask.created_at).limit(MAX_LIST).all()
+        return query.options(selectinload(VaultTask.blockers)).order_by(VaultTask.sort_order, VaultTask.created_at).limit(MAX_LIST).all()
 
     def delete(self, task: VaultTask) -> None:
         self._db.delete(task)

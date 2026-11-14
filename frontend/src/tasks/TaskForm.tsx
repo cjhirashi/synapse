@@ -15,6 +15,8 @@ interface Props {
   /** Subtareas ya guardadas de la tarea que se edita. */
   subtasks?: Task[];
   agents: string[];
+  /** Tareas de la bóveda que pueden bloquear a esta (H-057): sin ella misma, su tarea padre ni sus subtareas. */
+  blockerOptions?: Task[];
   pathOptions: string[];
   accent: string;
   error: string | null;
@@ -56,7 +58,7 @@ const assignment = (assignee: string) => ({
  * Alta y edición de una tarea o subtarea. La ruta es indicativa: se sugiere, pero se acepta cualquiera con forma válida.
  * Solo una tarea raíz tiene subtareas (dos niveles): una subtarea no muestra esa sección.
  */
-export default function TaskForm({ task, parent, subtasks = [], agents, pathOptions, accent, error, saving, onSave, onAddSubtask, onCancel }: Props) {
+export default function TaskForm({ task, parent, subtasks = [], agents, blockerOptions = [], pathOptions, accent, error, saving, onSave, onAddSubtask, onCancel }: Props) {
   const id = useId();
   const [title, setTitle] = useState(task?.title ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
@@ -67,6 +69,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
   const [priority, setPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [path, setPath] = useState(task?.path ?? "");
   const [reminders, setReminders] = useState<number[]>(() => (task ? effectiveReminders(task) : [...DEFAULT_REMINDERS]));
+  const [blockedBy, setBlockedBy] = useState<string[]>(task?.blocked_by ?? []);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [newSub, setNewSub] = useState("");
   const [newSubDescription, setNewSubDescription] = useState("");
@@ -101,6 +104,7 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         path: path.trim() || null,
         // Sin vencimiento no hay recordatorios: se vuelve a los de siempre. Las repetidas se unen y el servidor las ordena.
         reminders: due ? Array.from(new Set(reminders)) : null,
+        ...(blockedBy.length > 0 || (task && task.blocked_by.length > 0) ? { blocked_by: blockedBy } : {}),
       },
       drafts.map(subtaskInput),
     );
@@ -198,6 +202,33 @@ export default function TaskForm({ task, parent, subtasks = [], agents, pathOpti
         {badSpan && <p className="tf-help tf-help--error" role="alert">El inicio no puede ser posterior al vencimiento.</p>}
 
         <ReminderEditor value={reminders} onChange={setReminders} hasDue={due !== ""} mine={assignee === "user"} />
+
+        {blockerOptions.length + blockedBy.length > 0 && (
+          <div className="tf-field">
+            <label htmlFor={`${id}-b`}>Bloqueada por <small>(opcional: no se da por hecha hasta que esas tareas lo estén)</small></label>
+            {blockedBy.length > 0 && (
+              <ul className="note-chips tf-blockers">
+                {blockedBy.map((blockerId) => {
+                  const other = blockerOptions.find((t) => t.id === blockerId);
+                  return (
+                    <li key={blockerId} className="note-chip">
+                      {other?.title ?? "Tarea"}
+                      <button type="button" className="note-chip-remove" aria-label={`Quitar el bloqueo de ${other?.title ?? "la tarea"}`} onClick={() => setBlockedBy((current) => current.filter((x) => x !== blockerId))}>
+                        <X size={12} aria-hidden="true" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <select id={`${id}-b`} aria-label="Añadir una tarea bloqueadora" value="" onChange={(e) => { if (e.target.value) setBlockedBy((current) => [...current, e.target.value]); }}>
+              <option value="">Elige una tarea…</option>
+              {blockerOptions.filter((t) => !blockedBy.includes(t.id)).map((t) => (
+                <option key={t.id} value={t.id}>{t.parent_id ? "↳ " : ""}{t.title} ({STATUS_LABEL[t.status]})</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="tf-field">
           <label htmlFor={`${id}-r`}>Ruta <small>(documento o carpeta donde se trabaja; solo indicativa)</small></label>

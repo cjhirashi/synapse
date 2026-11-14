@@ -34,6 +34,10 @@ export interface Task {
   completed_at: string | null;
   /** Cuándo se elimina una raíz cerrada (retención); las subtareas salen con su raíz. */
   purge_at: string | null;
+  /** Ids de las tareas de la misma bóveda que debe esperar (H-057). */
+  blocked_by: string[];
+  /** Alguna de ellas no está hecha: la tarea puede ponerse en curso, pero no darse por hecha todavía. */
+  blocked: boolean;
 }
 
 /** Campos editables; `null` vacía descripción, notas, inicio, vencimiento y ruta. */
@@ -50,6 +54,8 @@ export interface TaskInput {
   path?: string | null;
   /** Minutos antes del vencimiento (hasta 5, de 1 a 40 320); `null` = los de siempre, `[]` = ninguno. */
   reminders?: number[] | null;
+  /** Reemplaza el conjunto completo de bloqueadoras (`[]` o `null` las quita); ausente = no cambia. */
+  blocked_by?: string[] | null;
 }
 
 const base = (vaultId: string) => `/vaults/${encodeURIComponent(vaultId)}/tasks`;

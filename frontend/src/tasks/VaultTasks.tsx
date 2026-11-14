@@ -48,7 +48,8 @@ function errorText(error: unknown, fallback: string): string {
       const pointer = error.errors[0]?.pointer;
       if (pointer === "/assignee_agent_id") return "El agente no está registrado y activo en esta bóveda.";
       if (pointer === "/path") return "La ruta no es válida (sin «..», «\\» ni niveles vacíos).";
-      if (pointer === "/status") return "El estado de una tarea con subtareas sale de ellas.";
+      if (pointer === "/status") return error.errors[0]?.detail?.includes("blocked") ? "La tarea está bloqueada: sus tareas bloqueadoras deben estar hechas primero." : "El estado de una tarea con subtareas sale de ellas.";
+      if (pointer === "/blocked_by") return "Las bloqueadoras deben ser de esta bóveda, sin ciclos ni su tarea padre o sus subtareas.";
       return "Revisa los datos de la tarea.";
     }
   }
@@ -173,6 +174,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
   const actions: ViewActions = {
     pathIndex: paths,
     focusId: focusTaskId,
+    titleOf: (id) => tasks?.find((t) => t.id === id)?.title,
     onDates: (task, span) => {
       setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, ...span } : t)) : list));
       void run(() => updateTask(vaultId, task, span));
@@ -237,6 +239,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
         <TaskDetail
           key={detailTask.id} task={detailTask} parent={detailTask.parent_id ? list.find((t) => t.id === detailTask.parent_id) : undefined}
           subtasks={list.filter((t) => t.parent_id === detailTask.id)} pathIndex={paths} accent={accent}
+          blockedBy={detailTask.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detailTask.id))}
           onStatus={actions.onStatus} onEdit={actions.onEdit} onAddSubtask={actions.onAddSubtask} onDelete={setConfirm}
           onOpenTask={actions.onOpen}
           onOpenPath={(target) => { setDialog(null); actions.onOpenPath(target); }}
@@ -248,6 +251,7 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
           key={dialog.task?.id ?? dialog.parent?.id ?? "new"} task={dialog.task} parent={dialog.parent} agents={agents}
           subtasks={dialog.task ? list.filter((t) => t.parent_id === dialog.task!.id) : []}
           onAddSubtask={dialog.task ? (input) => addSubtask(dialog.task!, input) : undefined}
+          blockerOptions={list.filter((t) => t.id !== dialog.task?.id && t.id !== (dialog.task?.parent_id ?? dialog.parent?.id) && !(dialog.task && t.parent_id === dialog.task.id))}
           pathOptions={pathOptions} accent={accent} error={formError} saving={saving} onSave={(input, drafts) => void save(input, drafts)} onCancel={() => setDialog(null)}
         />
       )}

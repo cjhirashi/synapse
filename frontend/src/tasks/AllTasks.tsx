@@ -29,7 +29,7 @@ function errorText(error: unknown): string {
     if (error.status === 412) return "La tarea cambió en otro lugar; se recargó con su versión actual.";
     if (error.status === 403) return "Este agente no puede hacer ese cambio.";
     if (error.status === 404) return "La tarea ya no existe.";
-    if (error.status === 422) return "El estado de una tarea con subtareas sale de ellas.";
+    if (error.status === 422) return error.errors[0]?.detail?.includes("blocked") ? "La tarea está bloqueada: sus tareas bloqueadoras deben estar hechas primero." : "El estado de una tarea con subtareas sale de ellas.";
   }
   return "No se pudo completar el cambio.";
 }
@@ -95,6 +95,7 @@ export default function AllTasks() {
     pathIndex: NO_PATHS,
     focusId: null,
     global: { vaultName, onOpenInVault: openInVault },
+    titleOf: (id) => tasks?.find((t) => t.id === id)?.title,
     onDates: (task, span) => {
       setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, ...span } : t)) : list));
       void run(() => updateTask(task.vault_id, task, span));
@@ -167,6 +168,7 @@ export default function AllTasks() {
             onStatus={actions.onStatus} onEdit={openInVault} onAddSubtask={openInVault} onDelete={openInVault}
             onOpenTask={actions.onOpen} onOpenPath={() => undefined} onClose={() => setDetailId(null)}
             global={{ vaultName: vaultName(detail), onOpenInVault: () => openInVault(detail) }}
+            blockedBy={detail.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detail.id))}
           />
         )}
       </section>

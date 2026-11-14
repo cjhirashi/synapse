@@ -22,6 +22,20 @@ export interface ViewActions {
   onOpenPath: (target: NonNullable<PathTarget>) => void;
   /** Ventana global (H-056): muestra la bóveda de cada tarea y, en vez de editar o borrar aquí, la abre en su bóveda. */
   global?: { vaultName: (task: Task) => string; onOpenInVault: (task: Task) => void };
+  /** Título de una tarea por su id (para nombrar a sus bloqueadoras, H-057). */
+  titleOf?: (id: string) => string | undefined;
+}
+
+/** «Bloqueada por …» (H-057): la tarea espera a otras que aún no están hechas. */
+export function BlockedChip({ task, actions }: { task: Task; actions: ViewActions }) {
+  if (!task.blocked) return null;
+  const names = task.blocked_by.map((id) => actions.titleOf?.(id)).filter((name): name is string => !!name);
+  const label = names.length > 0 ? `Bloqueada por «${names[0]}»${names.length > 1 ? ` y ${names.length - 1} más` : ""}` : "Bloqueada";
+  return (
+    <span className="tasks-chip tasks-chip--blocked" title={names.length > 0 ? `No se puede dar por hecha hasta que estén hechas: ${names.join(", ")}` : "Espera a otras tareas"}>
+      <Lock size={12} aria-hidden="true" /> {label}
+    </span>
+  );
 }
 
 /** «Bóveda: X», solo en la ventana global. */
@@ -47,7 +61,7 @@ function StatusSelect({ task, locked, onStatus }: { task: Task; locked: boolean;
       title={locked ? "Su estado sale de sus subtareas" : "Estado"} aria-label={`Estado de ${task.title}`}
       onChange={(e) => onStatus(task, e.target.value as TaskStatus)}
     >
-      {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
+      {STATUSES.map((s) => <option key={s} value={s} disabled={s === "done" && task.blocked && task.status !== "done"}>{STATUS_LABEL[s]}</option>)}
     </select>
   );
 }
@@ -68,6 +82,7 @@ function PathChip({ task, actions }: { task: Task; actions: ViewActions }) {
 function TaskNotes({ task, actions }: { task: Task; actions: ViewActions }) {
   return (
     <span className="tasks-notes">
+      <BlockedChip task={task} actions={actions} />
       <VaultTag task={task} actions={actions} />
       <PathChip task={task} actions={actions} />
       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
@@ -181,7 +196,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
     const id = dragId ?? event.dataTransfer.getData("text/plain");
     const task = tasks.find((t) => t.id === id);
     endDrag();
-    if (task && task.status !== status) actions.onStatus(task, status);
+    if (task && task.status !== status && !(status === "done" && task.blocked)) actions.onStatus(task, status);
   }
 
   return (
@@ -189,7 +204,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
       {STATUSES.map((status) => {
         const column = tasks.filter((t) => t.status === status);
         const dragged = dragId ? tasks.find((t) => t.id === dragId) : undefined;
-        const accepts = !!dragged && dragged.status !== status;
+        const accepts = !!dragged && dragged.status !== status && !(status === "done" && dragged.blocked);
         return (
           <section
             key={status} className="tasks-column" data-status={status} aria-label={STATUS_LABEL[status]}
@@ -233,6 +248,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                           <CalendarClock size={12} aria-hidden="true" /> {formatDue(task.due_at)}
                         </span>
                       )}
+                      <BlockedChip task={task} actions={actions} />
                       <VaultTag task={task} actions={actions} />
                       <PathChip task={task} actions={actions} />
                       {task.purge_at && <span className="tasks-chip tasks-chip--purge">Se elimina el {formatDay(task.purge_at)}</span>}
