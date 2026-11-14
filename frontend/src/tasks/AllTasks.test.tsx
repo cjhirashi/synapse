@@ -1,5 +1,5 @@
 // H-056: ventana global de tareas — todas las bóvedas juntas, cada tarea con su bóveda.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -95,5 +95,60 @@ describe("AllTasks", () => {
     expect(within(dialog).getByText("Proyectos", { selector: ".tasks-chip--vault" })).toBeInTheDocument();
     await userEvent.click(within(dialog).getByRole("button", { name: /Abrir en la bóveda/ }));
     expect(screen.getByTestId("where")).toHaveTextContent(`/vaults/${ids.Proyectos}?tab=tareas&task=b`);
+  });
+});
+
+// H-056: la barra de filtros es la misma barra lateral colapsable de la bóveda (`WorkspaceShell`): fija y visible en
+// escritorio y tableta, flotante y oculta por defecto en móvil, con su botón en la franja superior.
+describe("AllTasks: barra lateral como la de la bóveda", () => {
+  const original = window.matchMedia;
+  function viewport(mobile: boolean) {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("640") ? mobile : false,
+      media: query, onchange: null, addListener: () => {}, removeListener: () => {},
+      addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  }
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    resetAgentProfiles();
+    vi.spyOn(profilesApi, "listAgentProfiles").mockResolvedValue([]);
+  });
+  afterEach(() => { window.matchMedia = original; vi.restoreAllMocks(); });
+
+  const side = () => document.querySelector(".vault-workspace-side") as HTMLElement;
+
+  it("en escritorio está abierta y fija, y el botón de la franja superior la oculta y la muestra", async () => {
+    viewport(false);
+    await renderPage();
+    expect(side()).toHaveAttribute("data-open");
+    expect(side()).not.toHaveAttribute("data-floating");
+    expect(screen.getByRole("heading", { level: 1, name: "Tareas de todas las bóvedas" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Ocultar los filtros" }));
+    expect(side()).not.toHaveAttribute("data-open");
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar los filtros" }));
+    expect(side()).toHaveAttribute("data-open");
+  });
+
+  it("en móvil flota sobre el contenido, empieza oculta y se cierra con Escape o con la X de los filtros", async () => {
+    viewport(true);
+    await renderPage();
+    expect(side()).toHaveAttribute("data-floating");
+    expect(side()).not.toHaveAttribute("data-open");
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar los filtros" }));
+    expect(side()).toHaveAttribute("data-open");
+    act(() => { fireEvent.keyDown(document, { key: "Escape" }); });
+    expect(side()).not.toHaveAttribute("data-open");
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar los filtros" }));
+    await userEvent.click(within(side()).getByRole("button", { name: "Cerrar filtros" }));
+    expect(side()).not.toHaveAttribute("data-open");
+  });
+
+  it("usa el mismo marco que la bóveda: franja superior, barra y zona principal", async () => {
+    viewport(false);
+    await renderPage();
+    expect(document.querySelector(".vault-workspace-shell > .vault-workspace-titlebar")).not.toBeNull();
+    expect(document.querySelector(".vault-workspace-shell > .vault-workspace > .vault-workspace-side")).not.toBeNull();
+    expect(document.querySelector(".vault-workspace > .vault-workspace-main .tasks-workspace")).not.toBeNull();
   });
 });

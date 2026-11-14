@@ -9,6 +9,8 @@ sprint_actual: 2
 
 ## Correcciones del usuario (lo primero)
 
+
+- 🔴 **Reutilizar los componentes y los marcos del proyecto; no armar uno propio por pantalla (Carlos, 2026-11-14).** Antes de construir una pantalla, lista, formulario, diálogo, barra o cápsula, busca su equivalente ya existente y úsalo o extráelo a un componente compartido. Caso real: la ventana global de tareas armó su propia barra de filtros y en móvil quedaba arriba del contenido en vez de ser la barra lateral colapsable de la bóveda; se corrigió extrayendo `layout/WorkspaceShell`, `layout/useCollapsibleSidebar` y `layout/SidebarToggle`, que ahora usan las dos. Lo mismo vale para diálogos (`DialogFrame`/`ConfirmDialog`), formularios de tarea, cápsulas (`estado.css`) y filtros (`TaskFilters`). Una pantalla nueva que se parece a otra debe comportarse igual en escritorio, tableta y móvil; si no hay componente compartido, se crea y se migra la pantalla vieja en el mismo cambio.
 - **Synapse = almacén de bóvedas puro.** Sin IA interna (sin RAG, LangGraph, LiteLLM,
   Ollama). Los agentes OpenClaw (AIRA, Paulina, Liza, main…) acceden vía API.
 - **Fuente de verdad:** este `state.md` y las specs, por encima de la cola de Cowork y de

@@ -512,17 +512,10 @@
 .tasks-card-who .agent-badge-name { font-size: 13px; }
 .tasks-gantt-parent { flex: none; margin-left: -4px; color: var(--text-secondary); }
 
-/* Ventana global de tareas (H-056): filtros a la izquierda y la vista a la derecha. */
-.tasks-global { display: flex; height: 100%; min-height: 0; background: var(--bg-primary); }
-.tasks-global-side { flex: none; width: 18rem; overflow-y: auto; border-right: 1px solid var(--border); background: var(--bg-secondary); }
-.tasks-global .tasks-workspace { flex: 1 1 auto; min-width: 0; }
-.tasks-global-title { margin: 0 0 6px auto; font-size: 0.95rem; font-weight: 600; color: var(--text-secondary); }
+/* Ventana global de tareas (H-056): usa el marco `WorkspaceShell` de la bóveda (barra lateral colapsable). */
 .tasks-chip--vault { color: var(--info-text); background: color-mix(in srgb, var(--info) 14%, transparent); }
 .tasks-cal-vault { flex: none; margin-left: 6px; font-size: 0.7rem; color: var(--text-secondary); }
-@media (max-width: 640px) {
-  .tasks-global { flex-direction: column; }
-  .tasks-global-side { width: auto; max-height: 40vh; border-right: 0; border-bottom: 1px solid var(--border); }
-}
+
 
 /* Bloqueo entre tareas (H-057). */
 .tasks-chip--blocked { color: var(--warning-text); background: color-mix(in srgb, var(--warning) 16%, transparent); }

@@ -12,7 +12,7 @@
  *   descarga (P-3).
  */
 import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
-import { FileText, FolderOpen, PanelLeft, PanelLeftClose, PanelRight, PanelRightClose } from "lucide-react";
+import { FileText, FolderOpen, PanelRight, PanelRightClose } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MeContext } from "../auth/RequireAuth";
 import { whenIdle } from "../editor/deferred/idle";
@@ -33,8 +33,8 @@ import VaultTabs, { TAB_ORDER } from "./VaultTabs";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
 const VaultTasks = lazy(() => import("../tasks/VaultTasks"));
-import SidebarResizeHandle from "./SidebarResizeHandle";
-import { useSidebarWidth } from "./useSidebarWidth";
+import WorkspaceShell from "../layout/WorkspaceShell";
+import { useCollapsibleSidebar } from "../layout/useCollapsibleSidebar";
 import { readMemory, writeMemory, forgetNote, type VaultTab } from "./workspaceMemory";
 import { isIndexPath } from "./indexRules";
 import { isInBitacora, isInMensajes } from "./metaFolders";
@@ -55,30 +55,6 @@ const BitacoraView = lazy(() => import("./BitacoraView"));
 const MensajeView = lazy(() => import("./MensajeView"));
 const SystemDocView = lazy(() => import("./SystemDocView"));
 const TemplateView = lazy(() => import("./TemplateView"));
-
-/**
- * Botón de alternar la barra de notas (H-009 C-1/C-8). Un único origen de marcado (icono, etiqueta,
- * `aria-expanded`/`aria-controls`) usado en dos sitios: la fila de título del editor (`NoteEditor`,
- * como primer elemento) y, sin nota abierta, flotando sobre el panel vacío. `floating` conmuta el
- * estilo: el del editor reutiliza `note-nav-button` (editor.css), el flotante se estiliza aparte en
- * `notes.css` (siempre cargado, aunque el chunk del editor no).
- */
-function SidebarToggle({ open, controls, onToggle, floating = false }: { open: boolean; controls: string; onToggle: () => void; floating?: boolean }) {
-  const label = open ? "Ocultar la barra de notas" : "Mostrar la barra de notas";
-  return (
-    <button
-      type="button"
-      className={floating ? "vault-sidebar-toggle vault-sidebar-toggle--floating" : "note-nav-button vault-sidebar-toggle"}
-      aria-expanded={open}
-      aria-controls={controls}
-      aria-label={label}
-      title={label}
-      onClick={onToggle}
-    >
-      {open ? <PanelLeftClose size={16} aria-hidden="true" /> : <PanelLeft size={16} aria-hidden="true" />}
-    </button>
-  );
-}
 
 /** Botón de la barra derecha del documento (índice y tareas ligadas), en el extremo derecho de la franja superior. */
 function AsideToggle({ open, controls, onToggle }: { open: boolean; controls: string; onToggle: () => void }) {
@@ -211,20 +187,11 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     [vaults, vault.id],
   );
 
-  // H-009: la barra de notas es fija/dockeada en tableta y escritorio (> 640 px) y flotante en móvil
-  // (≤ 640 px). `isMobile` decide el MODO; `sidebarOpen` la visibilidad. Mismo media query que usa
-  // `NoteSidebar` para su bloque de creación compacto (640 px), vía el mismo `useMediaQuery`.
-  const isMobile = useMediaQuery("(max-width: 640px)");
-  // H-023 C-4/C-6: el ancho es ajustable sólo en escritorio; tableta y móvil quedan en la hoja (240 px).
-  // El estado vive aquí y no en el asa, así sobrevive a ocultar la barra (C-8).
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const { width: sidebarWidth, setWidth: setSidebarWidth, reset: resetSidebarWidth } = useSidebarWidth();
-  // Default por ancho (C-3/C-4): oculta en móvil, visible en tableta/escritorio. Sin persistencia
-  // entre sesiones (Descartes): cada apertura de bóveda usa el default del ancho actual.
-  const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile);
-  const sideId = useId();
-  /** El contenedor de la barra, para el cierre por click-afuera de la flotante (C-6). */
-  const sideRef = useRef<HTMLDivElement>(null);
+  // H-009: la barra de notas es fija/dockeada en tableta y escritorio (> 640 px) y flotante en móvil (≤ 640 px);
+  // su comportamiento (ancho, visibilidad, cierre al hacer clic fuera) es el de `useCollapsibleSidebar`, el mismo de la
+  // ventana global de tareas.
+  const sidebar = useCollapsibleSidebar();
+  const { isMobile, isDesktop, open: sidebarOpen, setOpen: setSidebarOpen } = sidebar;
   const toggleSidebar = () => {
     if (isMobile && !sidebarOpen) setAsideOpen(false); // en móvil las dos barras flotan en el mismo sitio: una a la vez
     setSidebarOpen((v) => !v);
@@ -245,38 +212,6 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     setAsideOpen(isDesktop && readAsidePreference());
   }, [isDesktop, isMobile]);
   const [contentEl, setContentEl] = useState<HTMLDivElement | null>(null);
-
-  // C-7: al cruzar el breakpoint (resize/rotación) se recalcula la visibilidad según el default del
-  // nuevo ancho — a escritorio queda visible y fija; a móvil, oculta. La nota abierta (`openId`) vive
-  // en otro estado y no se toca, así que no se pierde. Sin persistir la preferencia (Descartes).
-  useEffect(() => {
-    setSidebarOpen(!isMobile);
-  }, [isMobile]);
-
-  // C-6/C-8: sólo cuando la barra es flotante y está abierta (móvil), un click fuera de ella o
-  // `Escape` la cierran — cierre por mousedown + keydown en `document`. Fija
-  // (tableta/escritorio) no se cierra así: sólo el botón la oculta.
-  // H-028 C5: ignora clics dentro de menús portaled (.note-menu) o diálogos modales (.confirm-dialog, .modal-backdrop).
-  useEffect(() => {
-    if (!isMobile || !sidebarOpen) return;
-    const onDown = (e: globalThis.MouseEvent) => {
-      const el = e.target as Element;
-      // Ignora clics dentro de elementos portaled (menú, diálogos de confirmación).
-      if (el?.closest?.(".note-menu") || el?.closest?.(".confirm-dialog") || el?.closest?.(".modal-backdrop")) {
-        return;
-      }
-      if (sideRef.current && !sideRef.current.contains(e.target as Node)) setSidebarOpen(false);
-    };
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") setSidebarOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [isMobile, sidebarOpen]);
 
   // Barra derecha flotante (móvil): un clic fuera o Escape la cierran, salvo el clic en su propio botón o en menús y diálogos.
   useEffect(() => {
@@ -596,118 +531,103 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const openPath = openId === null ? null : (noteRefs.find((ref) => ref.id === openId)?.path ?? null);
 
   return (
-    <div className="vault-workspace-shell" onKeyDown={onKeyDown}>
-      {/* H-027 C4: franja superior con el nombre de la bóveda y el botón de alternar la barra. */}
-      <div className="vault-workspace-titlebar">
-        <SidebarToggle open={sidebarOpen} controls={sideId} onToggle={toggleSidebar} />
-        <VaultChip id={vault.id} name={vault.name} icon={vault.icon} />
-        <h1 className="vault-workspace-title" title={vault.name}>
-          {vault.name}
-        </h1>
-        {hasAside && <AsideToggle open={asideOpen} controls={asideId} onToggle={toggleAside} />}
-      </div>
-      <div className="vault-workspace">
-        <div
-          className="vault-workspace-side"
-          ref={sideRef}
-          id={sideId}
-          // `data-open`/`data-floating` gobiernan el árbol vía CSS: dockeado en > 640 px, overlay
-          // `position: absolute` (anclado a `.vault-workspace`, no al viewport — ver nota en notes.css)
-          // en móvil (C-2/C-5).
-          data-open={sidebarOpen ? "" : undefined}
-          data-floating={isMobile ? "" : undefined}
-          data-moved={tabMotion.moved ? "" : undefined}
-          data-direction={tabMotion.dir}
-          style={{ "--vault-icon-color": colorVar(vaultColor), ...(isDesktop ? { "--side-width": `${sidebarWidth}px` } : {}) } as CSSProperties}
-        >
-          <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} taskCount={taskCount} />
-          {/* Documentos sigue montado (oculto) al cambiar de pestaña: conserva carpetas desplegadas y el estado que lee el editor. */}
-          <div id={tab === "documentos" ? panelId : undefined} role="tabpanel" className="vault-tab-panel" hidden={tab !== "documentos"}>
-            <NoteSidebar
-              ref={sidebarRef}
-              vaultId={vault.id}
-              vaultColor={vaultColor}
-              openId={openId}
-              onOpen={open}
-              onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
-              onShowTrash={() => setShowTrash(true)}
-              confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
-              onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
-              initialExpanded={remembered.current?.expanded}
-              onExpandedChange={rememberExpanded}
-            />
-          </div>
-          {tab === "tags" && (
-            <div id={panelId} role="tabpanel" className="vault-tab-panel">
-              <TagFilterPanel vaultId={vault.id} vaultColor={vaultColor} openId={openId} onOpen={open} />
+    <WorkspaceShell
+      sidebar={sidebar}
+      onToggle={toggleSidebar}
+      shellProps={{ onKeyDown }}
+      accent={colorVar(vaultColor)}
+      titleStart={<VaultChip id={vault.id} name={vault.name} icon={vault.icon} />}
+      title={vault.name}
+      titleEnd={hasAside ? <AsideToggle open={asideOpen} controls={asideId} onToggle={toggleAside} /> : undefined}
+      sideProps={{ "data-moved": tabMotion.moved ? "" : undefined, "data-direction": tabMotion.dir }}
+      side={
+        <>
+            <VaultTabs tab={tab} onChange={changeTab} panelId={panelId} taskCount={taskCount} />
+            {/* Documentos sigue montado (oculto) al cambiar de pestaña: conserva carpetas desplegadas y el estado que lee el editor. */}
+            <div id={tab === "documentos" ? panelId : undefined} role="tabpanel" className="vault-tab-panel" hidden={tab !== "documentos"}>
+              <NoteSidebar
+                ref={sidebarRef}
+                vaultId={vault.id}
+                vaultColor={vaultColor}
+                openId={openId}
+                onOpen={open}
+                onDeleted={(id) => setOpenId((current) => (current === id ? null : current))}
+                onShowTrash={() => setShowTrash(true)}
+                confirmDelete={() => editorRef.current?.confirmDiscard() ?? Promise.resolve(true)}
+                onPrefetch={(id) => parsing?.scheduler.prioritize(id)}
+                initialExpanded={remembered.current?.expanded}
+                onExpandedChange={rememberExpanded}
+              />
             </div>
-          )}
-          {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
-          {tab === "tareas" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setTasksSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
-          {isDesktop && sidebarOpen && (
-            <SidebarResizeHandle width={sidebarWidth} onChange={setSidebarWidth} onReset={resetSidebarWidth} />
-          )}
-        </div>
-        <div className="vault-workspace-main">
-          {showTrash && (
-            <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
-          )}
-          {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} accent={colorVar(vaultColor)} onCloseSide={() => setSidebarOpen(false)} />}
-          {tab === "tareas" && (
-            <Suspense fallback={<p className="tasks-empty">Cargando tareas…</p>}>
-            <VaultTasks
-              vaultId={vault.id}
-              accent={colorVar(vaultColor)}
-              sideSlot={tasksSlot}
-              focusTaskId={focusTask}
-              onOpenNote={(id) => { changeTab("documentos"); open(id); }}
-              onOpenFolder={(path) => { changeTab("documentos"); requestAnimationFrame(() => sidebarRef.current?.revealFolder(path)); }}
-              onCloseSide={() => setSidebarOpen(false)}
-              onOpenCount={setTaskCount}
-            />
+            {tab === "tags" && (
+              <div id={panelId} role="tabpanel" className="vault-tab-panel">
+                <TagFilterPanel vaultId={vault.id} vaultColor={vaultColor} openId={openId} onOpen={open} />
+              </div>
+            )}
+            {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
+            {tab === "tareas" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setTasksSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
+        </>
+      }
+    >
+      <div className="vault-workspace-main">
+        {showTrash && (
+          <NoteTrash vaultId={vault.id} onRestored={() => undefined} onClose={() => setShowTrash(false)} />
+        )}
+        {tab === "archivos" && <VaultFiles vaultId={vault.id} sideSlot={filesSlot} accent={colorVar(vaultColor)} onCloseSide={() => setSidebarOpen(false)} />}
+        {tab === "tareas" && (
+          <Suspense fallback={<p className="tasks-empty">Cargando tareas…</p>}>
+          <VaultTasks
+            vaultId={vault.id}
+            accent={colorVar(vaultColor)}
+            sideSlot={tasksSlot}
+            focusTaskId={focusTask}
+            onOpenNote={(id) => { changeTab("documentos"); open(id); }}
+            onOpenFolder={(path) => { changeTab("documentos"); requestAnimationFrame(() => sidebarRef.current?.revealFolder(path)); }}
+            onCloseSide={() => setSidebarOpen(false)}
+            onOpenCount={setTaskCount}
+          />
+          </Suspense>
+        )}
+        {/* Con la papelera abierta (o en las pestañas Archivos y Tareas) el editor sigue montado (oculto): no se pierde un borrador. */}
+        <div ref={setContentEl} hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
+          {openId === null ? (
+            // Estado vacío (SPEC-0009 RF-008): texto centrado.
+            <div className="vault-workspace-empty">
+              <FileText size={32} aria-hidden="true" data-icon="file-text" />
+              <p>Abre o crea una nota para empezar.</p>
+            </div>
+          ) : (
+            <Suspense
+              fallback={
+                <div className="vault-workspace-empty">
+                  <p>Cargando el editor…</p>
+                </div>
+              }
+            >
+              {openIsIndex ? (
+                <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+              ) : openIsSystem ? (
+                <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+              ) : openIsTemplate ? (
+                <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} />
+              ) : openIsBitacora ? (
+                <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+              ) : openIsMensaje ? (
+                <MensajeView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+              ) : (
+                <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
+              )}
             </Suspense>
           )}
-          {/* Con la papelera abierta (o en las pestañas Archivos y Tareas) el editor sigue montado (oculto): no se pierde un borrador. */}
-          <div ref={setContentEl} hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
-            {openId === null ? (
-              // Estado vacío (SPEC-0009 RF-008): texto centrado.
-              <div className="vault-workspace-empty">
-                <FileText size={32} aria-hidden="true" data-icon="file-text" />
-                <p>Abre o crea una nota para empezar.</p>
-              </div>
-            ) : (
-              <Suspense
-                fallback={
-                  <div className="vault-workspace-empty">
-                    <p>Cargando el editor…</p>
-                  </div>
-                }
-              >
-                {openIsIndex ? (
-                  <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
-                ) : openIsSystem ? (
-                  <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
-                ) : openIsTemplate ? (
-                  <TemplateView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} />
-                ) : openIsBitacora ? (
-                  <BitacoraView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
-                ) : openIsMensaje ? (
-                  <MensajeView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
-                ) : (
-                  <NoteEditor ref={editorRef} noteId={openId} editOnOpen={editOnOpen} onCancelOpen={onCancelOpen} onOpened={onOpened} canBack={canStep(history, -1, isLive)} canForward={canStep(history, 1, isLive)} onBack={() => void go(-1)} onForward={() => void go(1)} onDirtyDraft={onDirtyDraft} parseCache={parsing?.cache ?? null} vaultNotes={noteRefs} vaultColor={vaultColor} estadoOptions={estadoOptions} onNewEstado={(estado) => void addEstadoToCatalog(estado)} attributes={vault.attributes} onOpenWikilink={openWikilink} onRevealFolder={(folder) => sidebarRef.current?.revealFolder(folder)} onRename={() => openId && sidebarRef.current?.startRename(openId)} onDelete={() => openId && void sidebarRef.current?.remove(openId)} initialScroll={scrollTarget?.noteId === openId ? scrollTarget.px : undefined} onScroll={rememberScroll} />
-                )}
-              </Suspense>
-            )}
-          </div>
         </div>
-        {hasAside && openId !== null && (
-          <DocAside
-            ref={asideRef} id={asideId} open={asideOpen} floating={isMobile} accent={colorVar(vaultColor)} content={contentEl} vaultId={vault.id} noteId={openId} notePath={openPath}
-            onOpenTask={(task) => { setFocusTask(task.id); changeTab("tareas"); }}
-            onNavigated={() => setAsideOpen(false)}
-          />
-        )}
       </div>
-    </div>
+      {hasAside && openId !== null && (
+        <DocAside
+          ref={asideRef} id={asideId} open={asideOpen} floating={isMobile} accent={colorVar(vaultColor)} content={contentEl} vaultId={vault.id} noteId={openId} notePath={openPath}
+          onOpenTask={(task) => { setFocusTask(task.id); changeTab("tareas"); }}
+          onNavigated={() => setAsideOpen(false)}
+        />
+      )}
+    </WorkspaceShell>
   );
 }

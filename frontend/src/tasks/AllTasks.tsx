@@ -4,9 +4,11 @@
  * fechas; crear, editar o borrar se hace en la bóveda de cada tarea (`En la bóveda`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { CalendarDays, Filter, GanttChartSquare, KanbanSquare, List } from "lucide-react";
+import { CalendarDays, GanttChartSquare, KanbanSquare, List, ListChecks } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useCollapsibleSidebar } from "../layout/useCollapsibleSidebar";
 import { useMediaQuery } from "../layout/useMediaQuery";
+import WorkspaceShell from "../layout/WorkspaceShell";
 import { useSync } from "../sync/useSync";
 import { ApiError } from "../api/problems";
 import type { Vault } from "../sync/vaultStore";
@@ -45,7 +47,7 @@ export default function AllTasks() {
   const [vaultList, setVaultList] = useState<Vault[]>([]);
   const [view, setView] = useState<View>("list");
   const [filter, setFilter] = useState<TaskFilter>({ ...NO_FILTER, vault: "all" });
-  const [showFilters, setShowFilters] = useState(true);
+  const sidebar = useCollapsibleSidebar();
   const [detailId, setDetailId] = useState<string | null>(null);
   const alive = useRef(true);
 
@@ -136,51 +138,57 @@ export default function AllTasks() {
   );
 
   return (
-    <div className="tasks-global" style={{ "--vault-icon-color": "var(--accent)" } as CSSProperties}>
-      {showFilters && (
-        <aside className="tasks-global-side" aria-label="Filtros de tareas">
-          <div className="tf-panel-host">
-            <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} vaults={filterVaults} projects={projectOptions} onClose={() => setShowFilters(false)} />
+    <WorkspaceShell
+      sidebar={sidebar}
+      noun="los filtros"
+      accent="var(--accent)"
+      titleStart={
+        <span className="vault-chip" style={{ "--chip-color": "var(--accent)" } as CSSProperties} aria-hidden="true">
+          <ListChecks size={18} strokeWidth={2} />
+        </span>
+      }
+      title="Tareas de todas las bóvedas"
+      side={
+        <div className="vault-tab-panel files-workspace" style={{ "--vault-icon-color": "var(--accent)" } as CSSProperties}>
+          <div className="tf-panel-host" style={{ "--vault-icon-color": "var(--accent)" } as CSSProperties}>
+            <TaskFilters tasks={list} filter={filter} onChange={setFilter} agentIds={agentIds} shown={shownCount} vaults={filterVaults} projects={projectOptions} onClose={() => sidebar.setOpen(false)} />
           </div>
-        </aside>
-      )}
-      <section className="tasks-workspace" aria-label="Tareas de todas las bóvedas">
-        <header className="tasks-toolbar">
-          <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">
-            {views.map(([id, label, Icon]) => (
-              <button key={id} type="button" role="tab" id={`tasks-tab-${id}`} className="tasks-tab" aria-selected={shownView === id} aria-controls="tasks-panel" aria-label={label} title={label} onClick={() => setView(id)}>
-                <Icon size={15} aria-hidden="true" /> <span className="tasks-tab-label">{label}</span>
-              </button>
-            ))}
-          </div>
-          <h1 className="tasks-global-title">Tareas de todas las bóvedas</h1>
-          {!showFilters && (
-            <button type="button" className="tasks-new" title="Mostrar filtros" aria-label="Mostrar filtros" onClick={() => setShowFilters(true)}>
-              <Filter size={18} aria-hidden="true" />
-            </button>
-          )}
-        </header>
-        <div id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${shownView}`}>
-          {notice && <p className="tasks-error" role="alert">{notice}</p>}
-          {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
-          {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
-          {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} />}
-          {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
-          {tasks !== null && shownView === "gantt" && <TaskGantt nodes={tree} actions={actions} todayKey={todayKey} />}
-          {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
         </div>
-        {detail && (
-          <TaskDetail
-            key={detail.id} task={detail} parent={detail.parent_id ? list.find((t) => t.id === detail.parent_id) : undefined}
-            subtasks={list.filter((t) => t.parent_id === detail.id)} pathIndex={NO_PATHS} accent="var(--accent)"
-            onStatus={actions.onStatus} onEdit={openInVault} onAddSubtask={openInVault} onDelete={openInVault}
-            onOpenTask={actions.onOpen} onOpenPath={() => undefined} onClose={() => setDetailId(null)}
-            global={{ vaultName: vaultName(detail), onOpenInVault: () => openInVault(detail) }}
-            project={projects.find((p) => p.id === detail.project_id)}
-            blockedBy={detail.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detail.id))}
-          />
-        )}
-      </section>
-    </div>
+      }
+    >
+      <div className="vault-workspace-main">
+        <section className="tasks-workspace" aria-label="Tareas de todas las bóvedas" style={{ "--vault-icon-color": "var(--accent)" } as CSSProperties}>
+          <header className="tasks-toolbar">
+            <div className="tasks-tabs" role="tablist" aria-label="Vista de tareas">
+              {views.map(([id, label, Icon]) => (
+                <button key={id} type="button" role="tab" id={`tasks-tab-${id}`} className="tasks-tab" aria-selected={shownView === id} aria-controls="tasks-panel" aria-label={label} title={label} onClick={() => setView(id)}>
+                  <Icon size={15} aria-hidden="true" /> <span className="tasks-tab-label">{label}</span>
+                </button>
+              ))}
+            </div>
+          </header>
+          <div id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${shownView}`}>
+            {notice && <p className="tasks-error" role="alert">{notice}</p>}
+            {failed && <p className="tasks-error" role="alert">No se pudieron leer las tareas. <button type="button" onClick={() => void reload()}>Reintentar</button></p>}
+            {tasks === null && !failed && <p className="tasks-empty">Cargando tareas…</p>}
+            {tasks !== null && shownView === "list" && <TaskList nodes={tree} actions={actions} projects={projects} />}
+            {tasks !== null && shownView === "kanban" && <TaskKanban tasks={visible} actions={actions} />}
+            {tasks !== null && shownView === "gantt" && <TaskGantt nodes={tree} actions={actions} todayKey={todayKey} />}
+            {tasks !== null && shownView === "calendar" && <TaskCalendar tasks={visible} actions={actions} todayKey={todayKey} />}
+          </div>
+          {detail && (
+            <TaskDetail
+              key={detail.id} task={detail} parent={detail.parent_id ? list.find((t) => t.id === detail.parent_id) : undefined}
+              subtasks={list.filter((t) => t.parent_id === detail.id)} pathIndex={NO_PATHS} accent="var(--accent)"
+              onStatus={actions.onStatus} onEdit={openInVault} onAddSubtask={openInVault} onDelete={openInVault}
+              onOpenTask={actions.onOpen} onOpenPath={() => undefined} onClose={() => setDetailId(null)}
+              global={{ vaultName: vaultName(detail), onOpenInVault: () => openInVault(detail) }}
+              project={projects.find((p) => p.id === detail.project_id)}
+              blockedBy={detail.blocked_by.flatMap((id) => list.find((t) => t.id === id) ?? [])} blocks={list.filter((t) => t.blocked_by.includes(detail.id))}
+            />
+          )}
+        </section>
+      </div>
+    </WorkspaceShell>
   );
 }
