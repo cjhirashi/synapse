@@ -41,6 +41,7 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   abrir la tarea, y hay filtro «Sin leer» y «Marcar todo como leído». Preferencias por tipo y horas silenciosas (22:00–07:00 por
   defecto, hora de México); la app se instala como PWA y envía Web Push (VAPID) con la misma estructura de la tarjeta (título
   «Tipo · evento» y, en el cuerpo, la tarea, su descripción, «estado · responsable · bóveda» y el vencimiento) y con aviso de versión nueva.
+- **Índices con cápsulas de estado (H-055):** la vista de un INDICE lista subcarpetas y documentos con su descripción, tags, fecha y columnas adicionales, y el estado de cada documento va en una cápsula del color que le da su plantilla (gris si no tiene plantilla o su estado no figura en ella). El cuerpo que leen los agentes con `note_get` sigue siendo el markdown de siempre.
 - **Plantilla en cada documento (H-054):** el formulario de atributos de un documento lleva el control **Plantilla** (obligatorio: «Sin plantilla»
   es un valor válido). Lista las plantillas de la bóveda cuyo alcance cubre la carpeta del documento. Con plantilla, el formulario muestra solo los
   atributos generales y los de la plantilla (siempre existen, pueden ir vacíos) y ya no permite crear atributos; los opcionales que el documento ya

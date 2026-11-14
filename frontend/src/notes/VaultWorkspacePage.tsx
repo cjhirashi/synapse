@@ -684,7 +684,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
                 }
               >
                 {openIsIndex ? (
-                  <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
+                  <IndexView noteId={openId} vault={vault} notes={notes} notesVersion={notesVersion} userId={userId} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
                 ) : openIsSystem ? (
                   <SystemDocView noteId={openId} notes={notes} notesVersion={notesVersion} vaultColor={vaultColor} noteRefs={noteRefs} onOpenWikilink={openWikilink} />
                 ) : openIsTemplate ? (

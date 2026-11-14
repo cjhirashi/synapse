@@ -3,16 +3,18 @@
  * guarda es la `descripcion` de sus atributos. Las columnas generales siempre se ven; las demás se muestran u
  * ocultan y la preferencia se recuerda por dispositivo, usuario y bóveda.
  */
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { renderIndexBody } from "./indexBody";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { indexModel, type IndexModel } from "./indexBody";
+import IndexList from "./IndexList";
 import { folderOf } from "./indexRules";
 import { isInMensajes } from "./metaFolders";
+import type { EstadoColor } from "./metaRules";
+import { templateName } from "./metaRules";
 import { noteErrorMessage } from "./messages";
 import type { Note, NoteStore } from "./noteStore";
+import { pathKey } from "./noteRules";
+import { estadosOf } from "./useTemplateOptions";
 import type { NoteRef } from "../editor/wikilink";
-import type { PaletteKey } from "../vaults/vaultIcon";
-
-const MilkdownView = lazy(() => import("../editor/MilkdownView").then((module) => ({ default: module.MilkdownView })));
 
 const GENERAL = new Set(["titulo", "descripcion", "estado", "tags", "fecha_creacion", "fecha_actualizacion"]);
 const DESCRIPCION_MAX = 1000;
@@ -34,15 +36,15 @@ export interface IndexViewProps {
   notes: NoteStore;
   notesVersion: number;
   userId: string | null;
-  vaultColor: PaletteKey;
   noteRefs: readonly NoteRef[];
   onOpenWikilink: (link: { resolvedId: string | null; target: string }) => void;
   sidebarToggle?: ReactNode;
 }
 
-export default function IndexView({ noteId, vault, notes, notesVersion, userId, vaultColor, noteRefs, onOpenWikilink, sidebarToggle }: IndexViewProps) {
+export default function IndexView({ noteId, vault, notes, notesVersion, userId, noteRefs, onOpenWikilink, sidebarToggle }: IndexViewProps) {
   const [note, setNote] = useState<Note | null>(null);
-  const [body, setBody] = useState<string | null>(null);
+  const [model, setModel] = useState<IndexModel | null>(null);
+  const [colors, setColors] = useState<ReadonlyMap<string, ReadonlyMap<string, EstadoColor>>>(new Map());
   const [available, setAvailable] = useState<string[]>([]);
   const [shown, setShown] = useState<string[]>(() => readColumns(userId, vault.id));
   const [draft, setDraft] = useState<string | null>(null);
@@ -59,12 +61,31 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
       for (const item of active) for (const key of Object.keys(item.frontmatter ?? {})) if (!GENERAL.has(key)) keys.add(key);
       setNote(current);
       setAvailable([...keys].sort());
-      setBody(renderIndexBody(vault.name, folderOf(current.path), active, shown.filter((key) => keys.has(key))));
+      setModel(indexModel(vault.name, folderOf(current.path), active));
+      const byTemplate = new Map<string, ReadonlyMap<string, EstadoColor>>();
+      for (const item of active) {
+        const name = templateName(item.path);
+        if (name !== null) byTemplate.set(name, new Map(estadosOf(item.frontmatter?.estados).map((e) => [e.nombre, e.color])));
+      }
+      setColors(byTemplate);
     })().catch((err) => alive && setError(noteErrorMessage(err)));
     return () => {
       alive = false;
     };
-  }, [notes, noteId, vault.id, vault.name, notesVersion, shown]);
+  }, [notes, noteId, vault.id, vault.name, notesVersion]);
+
+  const colorOf = useCallback(
+    (fm: Record<string, unknown>) => (typeof fm.plantilla === "string" && typeof fm.estado === "string" ? colors.get(fm.plantilla)?.get(fm.estado) : undefined),
+    [colors],
+  );
+  const openPath = useCallback(
+    (path: string) => {
+      const key = pathKey(path);
+      const found = noteRefs.find((ref) => pathKey(ref.path) === key);
+      if (found) onOpenWikilink({ resolvedId: found.id, target: path });
+    },
+    [noteRefs, onOpenWikilink],
+  );
 
   const toggleColumn = useCallback(
     (key: string) => {
@@ -146,20 +167,9 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
               </div>
             </details>
           )}
-          <Suspense fallback={<p>Cargando el índice…</p>}>
-            {body !== null && (
-              <MilkdownView
-                key={noteId}
-                value={body}
-                onChange={() => undefined}
-                readOnly
-                label={label}
-                notes={noteRefs}
-                onWikilinkClick={onOpenWikilink}
-                vaultColor={vaultColor}
-              />
-            )}
-          </Suspense>
+          {model !== null && (
+            <IndexList model={model} extra={shown.filter((key) => available.includes(key))} colorOf={colorOf} onOpen={openPath} />
+          )}
         </div>
       </div>
     </section>

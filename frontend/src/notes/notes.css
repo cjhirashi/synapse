@@ -1047,6 +1047,12 @@ body.is-resizing {
 .index-view-description textarea { width: 100%; resize: vertical; font: inherit; }
 .index-view-description button { justify-self: start; }
 .index-view-columns { margin: 0 0 0.75rem; }
+.index-list h1 { font-size: 1.4rem; margin: 0.25rem 0 0.75rem; }
+.index-list h2 { font-size: 1.05rem; margin: 1rem 0 0.4rem; }
+.index-list ul { margin: 0; padding-left: 1.25rem; display: grid; gap: 0.35rem; }
+.index-list .index-link { all: unset; cursor: pointer; color: var(--info-text); text-decoration: underline; text-underline-offset: 2px; }
+.index-list .index-link:hover { color: var(--text-primary); }
+.index-list .index-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 .index-view-columns summary { cursor: pointer; }
 .index-view-columns-list { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; padding: 0.4rem 0; max-height: 9rem; overflow-y: auto; }
 .index-view-columns label { display: inline-flex; align-items: center; gap: 0.3rem; }
