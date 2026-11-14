@@ -20,6 +20,20 @@ PAGE_SIZES = {"carta": "Letter", "a4": "A4"}
 PAGE_PX = {"carta": (816, 1056), "a4": (794, 1123)}
 
 BAND_TEXT_COLOR = "#475569"
+# Esquinas redondeadas de citas y tablas, como el Markdown del editor (`--radius-sm`, 6 px = 4,5 pt). `border-radius` no se aplica con `border-collapse: collapse`:
+# la tabla usa bordes separados, cada celda dibuja solo su borde derecho e inferior, el superior lo pone la primera fila y el izquierdo la primera columna
+# (sin líneas dobles) y el redondeo va en las celdas de las cuatro esquinas. Los selectores cubren tablas con o sin `thead`/`tbody`.
+RADIUS = "4.5pt"
+_FIRST = "table > :first-child > tr:first-child, table > tr:first-child"
+_LAST = "table > :last-child > tr:last-child, table > tr:last-child"
+TABLE_ROUNDING = "\n".join((
+    f"{', '.join(f'{part} > *' for part in _FIRST.split(', '))} {{ border-top-width: 0.6pt; }}",
+    "table tr > *:first-child { border-left-width: 0.6pt; }",
+    f"{', '.join(f'{part} > *:first-child' for part in _FIRST.split(', '))} {{ border-top-left-radius: {RADIUS}; }}",
+    f"{', '.join(f'{part} > *:last-child' for part in _FIRST.split(', '))} {{ border-top-right-radius: {RADIUS}; }}",
+    f"{', '.join(f'{part} > *:first-child' for part in _LAST.split(', '))} {{ border-bottom-left-radius: {RADIUS}; }}",
+    f"{', '.join(f'{part} > *:last-child' for part in _LAST.split(', '))} {{ border-bottom-right-radius: {RADIUS}; }}",
+))
 BAND_LINE = {"color": "#cbd5e1", "grosor_pt": 0.6}
 # Tamaños de los encabezados H2 a H4 cuando la plantilla solo trae el estilo plano de H1 (formato anterior): proporción de H1; H4 no baja del texto.
 HEADING_SCALE = {"h2": 0.82, "h3": 0.68, "h4": 0.58}
@@ -146,6 +160,7 @@ pre {{ background: {c['codigo_fondo']}; }}
 pre code {{ color: {c['codigo']}; background: none; }}
 li::marker {{ color: {c['marcador']}; }}
 blockquote {{ border-left-color: {c['cita']}; background: {c['cita_fondo']}; color: inherit; font-style: italic; }}
+blockquote blockquote {{ background: transparent; }}
 th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}
 tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}
 """
@@ -179,13 +194,14 @@ h1, h2, h3, h4, h5, h6 {{ line-height: 1.2; margin: 1.1em 0 0.4em; break-after: 
 h5, h6 {{ {_font_css(heads['h4'])} }}
 p {{ margin: 0 0 0.7em; }} ul, ol {{ margin: 0 0 0.7em; padding-left: 1.6em; }} li {{ margin: 0.15em 0; }}
 a {{ color: {link_color}; }} img {{ max-width: 100%; height: auto; }}
-blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0 0.2em 0.9em; border-left: 3pt solid #cbd5e1; color: #475569; }}
+blockquote {{ margin: 0 0 0.7em; padding: 0.2em 0.9em 0.2em 0.9em; border-left: 3pt solid #cbd5e1; border-radius: {RADIUS}; color: #475569; }}
 pre {{ font-family: "Liberation Mono", monospace; font-size: {round(base * 0.88, 1)}pt; background: #f1f5f9; padding: 0.6em 0.8em; border-radius: 3pt; white-space: pre-wrap; overflow-wrap: anywhere; break-inside: avoid; }}
 code {{ font-family: "Liberation Mono", monospace; font-size: 0.92em; background: #f1f5f9; padding: 0 0.2em; border-radius: 2pt; }}
 pre code {{ background: none; padding: 0; }}
-table {{ border-collapse: collapse; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
-th, td {{ border: 0.6pt solid #cbd5e1; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}
+table {{ border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
+th, td {{ border: 0.6pt solid #cbd5e1; border-top-width: 0; border-left-width: 0; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}
 th {{ background: #f1f5f9; font-weight: 700; }}
+{TABLE_ROUNDING}
 hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-embed {{ border: 0.8pt dashed #94a3b8; border-radius: 3pt; padding: 0.5em 0.8em; margin: 0 0 0.8em; break-inside: avoid; }}
 .pdf-attrs {{ margin: 0 0 1em; font-size: {round(base * 0.92, 1)}pt; }}

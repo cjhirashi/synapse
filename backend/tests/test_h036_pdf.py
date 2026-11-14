@@ -112,6 +112,16 @@ def test_the_stylesheet_paints_every_element_with_the_theme_only_when_there_is_o
     assert "li::marker" not in legacy and "strong, b {" not in legacy  # sin tema el CSS es el de siempre
 
 
+def test_quotes_and_tables_have_rounded_corners_like_the_markdown():
+    css = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    assert "border-radius: 4.5pt" in css.split("blockquote {")[1].split("}")[0]  # la cita (6 px del editor)
+    assert "border-collapse: separate" in css and "border-spacing: 0" in css and "border-collapse: collapse" not in css  # el redondeo no se aplica con collapse
+    for corner in ("top-left", "top-right", "bottom-left", "bottom-right"):
+        assert f"border-{corner}-radius: 4.5pt" in css, corner
+    themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    assert "blockquote blockquote { background: transparent; }" in themed
+
+
 def test_special_fields_are_resolved_and_the_rest_is_escaped():
     out = pdf_style.expand_text(
         "{{titulo}} <b>x</b> {{atributo:cliente}} {{atributo:etiquetas}} {{atributo:falta}} {{fecha}} {{pagina}}/{{paginas}}",
@@ -510,6 +520,46 @@ def test_a_themed_pdf_renders_with_the_derived_colors():
     assert got["h1"] == expected["h1"] and got["h2"] == expected["h2"]
     assert got["strong"] == expected["negrita"] and got["em"] == expected["cursiva"] and got["a"] == expected["enlace"] and got["code"] == expected["codigo"]
     assert got["th"] == expected["tabla_cabecera_texto"]
+
+
+def test_only_the_four_corner_cells_of_a_table_are_rounded_and_the_borders_do_not_double():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    def cells(box, out):
+        element = getattr(box, "element", None)
+        if element is not None and element.tag in ("td", "th") and type(box).__name__ == "TableCellBox":  # el texto de la celda comparte el elemento pero no el estilo
+            out.append(box)
+        for child in getattr(box, "children", ()) or ():
+            cells(child, out)
+        return out
+
+    def radii(body):
+        doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+        page = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages[0]
+        found = {}
+        for box in cells(page._page_box, []):
+            key = (box.element.text or "").strip()
+            style = box.style
+            found[key] = (
+                [bool(style[f"border_{c}_radius"][0].value) for c in ("top_left", "top_right", "bottom_left", "bottom_right")],
+                (style["border_top_width"], style["border_left_width"], style["border_bottom_width"], style["border_right_width"]),
+            )
+        return found
+
+    plain = radii("<table><tr><th>a1</th><th>a2</th><th>a3</th></tr><tr><td>b1</td><td>b2</td><td>b3</td></tr><tr><td>c1</td><td>c2</td><td>c3</td></tr></table>")
+    assert plain["a1"][0] == [True, False, False, False] and plain["a3"][0] == [False, True, False, False]
+    assert plain["c1"][0] == [False, False, True, False] and plain["c3"][0] == [False, False, False, True]
+    assert plain["b2"][0] == [False, False, False, False] and plain["a2"][0] == [False, False, False, False]
+    assert plain["a1"][1][0] > 0 and plain["b1"][1][0] == 0 and plain["b2"][1][1] == 0 and plain["b1"][1][1] > 0  # borde superior solo en la 1.ª fila, izquierdo solo en la 1.ª columna
+    # con `thead` y `tbody` (HTML escrito a mano) las esquinas siguen siendo las cuatro del conjunto y no hay línea doble entre ambos
+    split = radii("<table><thead><tr><th>h1</th><th>h2</th></tr></thead><tbody><tr><td>x1</td><td>x2</td></tr><tr><td>y1</td><td>y2</td></tr></tbody></table>")
+    assert split["h1"][0] == [True, False, False, False] and split["h2"][0] == [False, True, False, False]
+    assert split["y1"][0] == [False, False, True, False] and split["y2"][0] == [False, False, False, True] and split["x1"][0] == [False, False, False, False]
+    assert split["x1"][1][0] == 0  # la primera fila de tbody no repite el borde superior
 
 
 def test_make_pdf_returns_a_pdf_and_a_blocked_image_does_not_break_it():
