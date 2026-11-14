@@ -74,12 +74,42 @@ def test_the_document_carries_header_footer_attributes_and_sanitized_body():
     doc = build_document(
         "<h2>Hola</h2><script>x</script>", style, title="Acta", frontmatter={"cliente": "Acme", "plantilla": "acta", "tags": ["a"], "estado": ""},
         read_image=lambda file_id: (b"\x89PNG", "image/png") if file_id == "img-1" else None, now=NOW)
-    assert 'id="pdfhead"' in doc and 'id="pdffoot"' in doc and "<img src=\"data:image/png;base64," in doc
+    assert 'id="pdfhead"' in doc and 'id="pdffoot"' in doc
+    css = doc.split("<style>")[1].split("</style>")[0]
+    assert 'background-image: url("data:image/png;base64,' in css and "background-repeat: no-repeat" in css and "background-size: auto" in css
+    assert "background-position: -20mm -25mm" in css  # compensa los márgenes: arranca en la esquina de la hoja
+    assert "<img" not in doc.split("<article>")[0]  # la imagen no es una miniatura dentro de la banda
     assert "Acta" in doc and "Acme" in doc and "13 nov 2026" in doc and 'class="pn"' in doc
     assert "<h2>Hola</h2>" in doc and "<script" not in doc
     assert "<th>Cliente</th>" in doc and "<th>Etiquetas</th>" in doc and "plantilla" not in doc.split("<article>")[0].split("<body>")[1]
     bare = build_document("<p>x</p>", pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
     assert "pdfhead" not in bare.split("<body>")[1] and "@top-left" not in bare
+
+
+def test_the_header_image_is_the_page_background_at_real_size_from_the_sheet_corner():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    import struct, zlib
+
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    def solid_png(width, height):
+        raw = b"".join(b"\x00" + b"\xdc\x26\x26" * width for _ in range(height))
+        def chunk(kind, data):
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF)
+        return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+    image = (solid_png(816, 200), "image/png")  # 816 px = ancho de una hoja Carta a 96 ppp; 200 px de alto
+    style = pdf_style.resolve({"activo": True, "encabezado": {"imagen": "bg"}})
+    doc = build_document("<p>x</p>" * 3, style, title="T", frontmatter={}, read_image=lambda i: image if i == "bg" else None, now=NOW)
+    pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
+    assert len(pages) == 1 and pages[0].width == pytest.approx(816) and pages[0].height == pytest.approx(1056)
+    css = doc.split("<style>")[1].split("</style>")[0]
+    assert "background-size: auto" in css and "no-repeat" in css  # tamaño real, sin escalar ni repetir
+    bare = build_document("<p>x</p>", pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    assert "background-image" not in bare
 
 
 def test_the_fetcher_serves_own_files_data_images_and_public_web_images_only():

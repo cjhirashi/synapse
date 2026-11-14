@@ -456,7 +456,7 @@ Errores: `409 pdf-not-enabled` (el documento no tiene plantilla o su plantilla n
 | `incluir_atributos` | booleano; imprime una tabla con los atributos del documento al inicio (apagado por omisión) |
 | `pagina` | `tamano`: `carta` (omisión) o `a4`; `margenes_mm`: `superior` 25, `inferior` 20, `izquierdo` 20, `derecho` 20 por omisión, de 0 a 60 |
 | `encabezados`, `texto` | `familia`: `DejaVu Sans`, `DejaVu Serif`, `Liberation Sans`, `Liberation Serif` o `Liberation Mono`; `tamano_pt` de 6 a 48; `color` `#rrggbb` |
-| `encabezado`, `pie` | `imagen`: id de un archivo de imagen de la persona o `null`; `izquierda`, `centro`, `derecha`: hasta 200 caracteres |
+| `encabezado`, `pie` | `imagen`: id de un archivo de imagen de la persona o `null`; `izquierda`, `centro`, `derecha`: hasta 200 caracteres. **La imagen del `encabezado` es el fondo de cada página**: pegada a la esquina superior izquierda de la hoja, en su tamaño real (1 px de la imagen = 1 px a 96 ppp; una imagen de 816×1056 px cubre una hoja Carta), sin escalar ni repetir; los textos del encabezado se imprimen encima. La imagen del `pie` es una miniatura dentro de la banda del pie. |
 
 Campos especiales en los textos de encabezado y pie: `{{titulo}}`, `{{fecha}}` (día de CDMX), `{{pagina}}`, `{{paginas}}` y
 `{{atributo:<nombre>}}` (un atributo vacío o inexistente se imprime vacío; las listas se unen con comas). Cualquier otro `{{…}}` es inválido.

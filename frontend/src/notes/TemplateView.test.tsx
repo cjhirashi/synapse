@@ -76,7 +76,7 @@ test("activar el PDF y diseñarlo guarda estilo.pdf completo, con campos especia
   await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
   await user.selectOptions(screen.getByRole("combobox", { name: "Tamaño" }), "a4");
   const header = screen.getByRole("group", { name: "Encabezado de página" });
-  await user.selectOptions(await within(header).findByRole("combobox", { name: /Imagen/ }), "img-1");
+  await user.selectOptions(await within(header).findByRole("combobox", { name: /Imagen de fondo/ }), "img-1");
   await waitFor(() => expect(within(header).getByRole("option", { name: "logo.png" })).toBeInTheDocument());
   await user.click(screen.getByLabelText("Encabezado de página, izquierda"));
   await user.click(within(header).getByRole("button", { name: "Título" }));

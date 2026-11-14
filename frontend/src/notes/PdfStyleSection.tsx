@@ -42,8 +42,8 @@ function TypeFields({ label, value, onChange }: { label: string; value: PdfType;
   );
 }
 
-function BandFields({ label, value, images, attributes, onChange }: {
-  label: string; value: PdfBand; images: ImageOption[]; attributes: string[]; onChange: (next: PdfBand) => void;
+function BandFields({ label, imageLabel, imageHint, value, images, attributes, onChange }: {
+  label: string; imageLabel: string; imageHint?: string; value: PdfBand; images: ImageOption[]; attributes: string[]; onChange: (next: PdfBand) => void;
 }) {
   const [slot, setSlot] = useState<Slot>("izquierda");
   const insert = (token: string) => onChange({ ...value, [slot]: value[slot] + token });
@@ -52,13 +52,14 @@ function BandFields({ label, value, images, attributes, onChange }: {
     <div className="pdf-style-band" role="group" aria-label={label}>
       <strong>{label}</strong>
       <label>
-        Imagen (archivo de la bóveda)
+        {imageLabel}
         <select value={value.imagen} onChange={(event) => onChange({ ...value, imagen: event.target.value })}>
           <option value="">Sin imagen</option>
           {value.imagen !== "" && !known && <option value={value.imagen}>Archivo {value.imagen} (no encontrado)</option>}
           {images.map((image) => <option key={image.id} value={image.id}>{image.name}</option>)}
         </select>
       </label>
+      {imageHint && <p className="template-view-hint">{imageHint}</p>}
       <div className="pdf-style-slots">
         {(Object.keys(SLOT_LABEL) as Slot[]).map((key) => (
           <label key={key}>
@@ -137,8 +138,8 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
         </div>
         <TypeFields label="Encabezados" value={draft.encabezados} onChange={(next) => set("encabezados", next)} />
         <TypeFields label="Texto" value={draft.texto} onChange={(next) => set("texto", next)} />
-        <BandFields label="Encabezado de página" value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)} />
-        <BandFields label="Pie de página" value={draft.pie} images={images} attributes={names} onChange={(next) => set("pie", next)} />
+        <BandFields label="Encabezado de página" imageLabel="Imagen de fondo de la página (archivo de la bóveda)" imageHint="La imagen se pone como fondo de cada página, desde la esquina superior izquierda y en su tamaño real (sin redimensionar): una imagen del tamaño de la página la cubre completa. Los textos de abajo se imprimen encima." value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)} />
+        <BandFields label="Pie de página" imageLabel="Imagen del pie (archivo de la bóveda)" value={draft.pie} images={images} attributes={names} onChange={(next) => set("pie", next)} />
         <label className="pdf-style-toggle">
           <input type="checkbox" checked={draft.incluirAtributos} onChange={(event) => set("incluirAtributos", event.target.checked)} />
           Imprimir los atributos del documento al inicio

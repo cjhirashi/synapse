@@ -91,9 +91,11 @@ def _image_data_uri(read_image: ReadImage, file_id: str | None) -> str | None:
     return f"data:{found[1]};base64,{base64.b64encode(found[0]).decode()}"
 
 
-def _band(prefix: str, spec: dict, read_image: ReadImage, title: str, attributes: dict, now: datetime) -> str | None:
-    """Encabezado (`pdfhead`) o pie (`pdffoot`): imagen opcional y tres textos. `None` si no hay nada que imprimir."""
-    image = _image_data_uri(read_image, spec["imagen"])
+def _band(prefix: str, spec: dict, read_image: ReadImage, title: str, attributes: dict, now: datetime, *, with_image: bool = True) -> str | None:
+    """Encabezado (`pdfhead`) o pie (`pdffoot`): imagen opcional y tres textos. `None` si no hay nada que imprimir.
+
+    `with_image=False` (encabezado): la imagen no va en la banda, es el fondo de la página (ver `build_document`)."""
+    image = _image_data_uri(read_image, spec["imagen"]) if with_image else None
     texts = {slot: pdf_style.expand_text(spec[slot], title=title, attributes=attributes, now=now) for slot in ("izquierda", "centro", "derecha")}
     if image is None and not any(texts.values()):
         return None
@@ -122,9 +124,10 @@ def build_document(
 ) -> str:
     now = now or datetime.now(UTC)
     attributes = {key: value for key, value in frontmatter.items()}
-    head = _band("pdfhead", style["encabezado"], read_image, title, attributes, now)
+    head = _band("pdfhead", style["encabezado"], read_image, title, attributes, now, with_image=False)
     foot = _band("pdffoot", style["pie"], read_image, title, attributes, now)
-    css = pdf_style.stylesheet(style, has_header=head is not None, has_footer=foot is not None)
+    background = _image_data_uri(read_image, style["encabezado"]["imagen"])  # fondo de cada página, tamaño real, desde la esquina superior izquierda
+    css = pdf_style.stylesheet(style, has_header=head is not None, has_footer=foot is not None, background=background)
     attrs = _attributes_table(frontmatter) if style["incluir_atributos"] else ""
     return (
         f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>{html.escape(title)}</title><style>{css}</style></head>'

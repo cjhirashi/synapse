@@ -33,6 +33,7 @@ campos especiales (metadatos, fecha, numeración de páginas), todo definido en 
    (o un documento sin plantilla) responde `409 pdf-not-enabled`.
 5. **`estilo.pdf` tiene un esquema cerrado**, validado igual en servidor y cliente con los mismos casos (`tests/fixtures/plantilla_reglas.json`): tipografías de lista cerrada (no hay
    fuentes propias), página Carta o A4 con márgenes, colores `#rrggbb`, textos de hasta 200 caracteres con campos especiales conocidos. `estilo.publicar` sigue reservado para H-035.
+5 bis. **La imagen del encabezado es el fondo de la página (pedido de Carlos, 2026-11-14).** Se pone como fondo de cada hoja, desde su esquina superior izquierda, en tamaño real (sin escalar ni repetir); los textos del encabezado van encima. WeasyPrint posiciona el fondo de `@page` desde el área de contenido, así que se compensa con los márgenes izquierdo y superior. La imagen del pie sigue siendo una miniatura en su banda.
 6. **Interactivos como recuadro.** Iframes (Archify, Plotly, YouTube), videos y audio no se imprimen: el PDF muestra un recuadro con el título y el enlace.
 7. **Solo la persona (sesión) genera PDF**; una API key de agente recibe 401.
 8. **Límites:** HTML de hasta 5 MB, 60 s por PDF, 2 a la vez (un tercero espera 5 s y recibe `503 pdf-busy`). Se genera al pedirlo, sin cola.

@@ -88,7 +88,7 @@ def expand_text(text: str, *, title: str, attributes: dict, now: datetime) -> st
     return _FIELD_RE.sub(field, html.escape(text, quote=False))
 
 
-def stylesheet(style: dict, *, has_header: bool, has_footer: bool) -> str:
+def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: str | None = None) -> str:
     """CSS del PDF a partir del formato resuelto. Todos los valores ya pasaron la validación de la plantilla."""
     page, head, body = style["pagina"], style["encabezados"], style["texto"]
     m = page["margenes_mm"]
@@ -101,8 +101,12 @@ def stylesheet(style: dict, *, has_header: bool, has_footer: bool) -> str:
         boxes.append("@top-left { content: element(pdfhead); width: 100%; vertical-align: middle; }")
     if has_footer:
         boxes.append("@bottom-left { content: element(pdffoot); width: 100%; vertical-align: middle; }")
+    # H-036: la imagen del encabezado es el fondo de la página: esquina superior izquierda de la HOJA, tamaño real (1 px de la imagen = 1 px CSS), sin repetir ni escalar.
+    # WeasyPrint posiciona el fondo de @page desde el área de contenido (dentro de los márgenes), por eso se compensa con ellos.
+    left, top = m["izquierdo"], m["superior"]
+    bg = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{left}mm -{top}mm; background-size: auto; ' if background else "")
     return f"""
-@page {{ size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
+@page {{ {bg}size: {PAGE_SIZES[page['tamano']]}; margin: {m['superior']}mm {m['derecho']}mm {m['inferior']}mm {m['izquierdo']}mm; {' '.join(boxes)} }}
 html {{ font-family: "{body['familia']}", sans-serif; font-size: {base}pt; color: {body['color']}; line-height: 1.45; }}
 h1, h2, h3, h4, h5, h6 {{ font-family: "{head['familia']}", sans-serif; color: {head['color']}; line-height: 1.2; margin: 1.1em 0 0.4em; break-after: avoid; }}
 h1 {{ font-size: {sizes['h1']}pt; }} h2 {{ font-size: {sizes['h2']}pt; }} h3 {{ font-size: {sizes['h3']}pt; }}
@@ -121,7 +125,7 @@ hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-attrs {{ margin: 0 0 1em; font-size: {round(base * 0.92, 1)}pt; }}
 .pdf-attrs th {{ width: 28%; }}
 #pdfhead, #pdffoot {{ display: flex; align-items: center; gap: 4mm; font-family: "{body['familia']}", sans-serif; font-size: {round(base * 0.82, 1)}pt; color: #475569; width: 100%; }}
-#pdfhead {{ position: running(pdfhead); border-bottom: 0.6pt solid #cbd5e1; padding-bottom: 1.5mm; }}
+#pdfhead {{ position: running(pdfhead); {'' if background else 'border-bottom: 0.6pt solid #cbd5e1; padding-bottom: 1.5mm;'} }}
 #pdffoot {{ position: running(pdffoot); border-top: 0.6pt solid #cbd5e1; padding-top: 1.5mm; }}
 #pdfhead img, #pdffoot img {{ flex: none; max-height: {HEADER_IMAGE_MAX_MM}mm; max-width: 40mm; width: auto; }}
 .band-text {{ flex: 1; display: flex; }}
