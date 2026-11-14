@@ -251,15 +251,20 @@ test("el color primario calcula el secundario y el terciario y deja los encabeza
   expect(pdf.encabezados.h1).not.toHaveProperty("color");
 });
 
-test("un color de encabezado fijado a mano se puede devolver al automático del tema", async () => {
+test("con el tema activo los selectores de color de los encabezados quedan bloqueados (H-054)", async () => {
   const { user } = await open();
   await user.click(screen.getByRole("checkbox", { name: /Permitir descargar/ }));
+  const h2 = () => screen.getByRole("group", { name: "Encabezado 2 (H2)" });
+  expect(within(h2()).getByLabelText("Color")).toBeEnabled();
   await user.click(screen.getByRole("checkbox", { name: /Usar un color primario para todo el documento/ }));
-  const h2 = screen.getByRole("group", { name: "Encabezado 2 (H2)" });
-  fireEvent.change(within(h2).getByLabelText("Color"), { target: { value: "#ff0000" } });
-  expect(within(h2).queryByText("Color automático del tema")).toBeNull();
-  await user.click(within(h2).getByRole("button", { name: "Encabezado 2 (H2): volver al color automático" }));
-  expect(within(h2).getByText("Color automático del tema")).toBeInTheDocument();
+  for (const name of ["Encabezado 1 (H1)", "Encabezado 2 (H2)", "Encabezado 3 (H3)", "Encabezado 4 (H4)"]) {
+    const group = screen.getByRole("group", { name });
+    expect(within(group).getByLabelText("Color")).toBeDisabled();
+    expect(within(group).getByText("Color automático del tema")).toBeInTheDocument();
+    expect(within(group).queryByRole("button", { name: /volver al color automático/ })).toBeNull();
+  }
+  await user.click(screen.getByRole("checkbox", { name: /Usar un color primario para todo el documento/ }));
+  expect(within(h2()).getByLabelText("Color")).toBeEnabled();
 });
 
 test("apagar el tema deja los encabezados con el color que se veía", async () => {

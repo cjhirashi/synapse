@@ -65,14 +65,14 @@ describe("tema de color", () => {
     expect(pdfDraftTo(draft)).not.toHaveProperty("tema");
   });
 
-  it("con tema, el color de encabezado que no se fijó queda automático y sale del tema", () => {
+  it("con tema, el color de los encabezados es siempre automático (uno fijado antes se ignora) y sale del tema", () => {
     const draft = pdfDraftFrom({ activo: true, tema: { primario: "#0c3897" }, encabezados: { h2: { familia: "DejaVu Sans", tamano_pt: 14, color: "#ff0000" } } });
     expect(draft.tema).toEqual({ activo: true, primario: "#0c3897" });
     expect(draft.encabezados.h1.color).toBe("");
-    expect(draft.encabezados.h2.color).toBe("#ff0000"); // fijado a mano
+    expect(draft.encabezados.h2.color).toBe(""); // uno fijado a mano antes se ignora
     const colors = palette("#0c3897", draft.texto.color);
     expect(headingColor(draft, "h1")).toBe(colors.h1);
-    expect(headingColor(draft, "h2")).toBe("#ff0000");
+    expect(headingColor(draft, "h2")).toBe(colors.h2);
     expect(headingColor(draft, "h3")).toBe(colors.h3);
   });
 

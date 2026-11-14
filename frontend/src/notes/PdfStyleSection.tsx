@@ -38,11 +38,11 @@ function Group({ title, hint, children, ariaLabel }: { title: string; hint?: str
 
 function TypeFields({ label, ariaLabel, value, onChange, autoColor }: {
   label: string; ariaLabel?: string; value: PdfType; onChange: (next: PdfType) => void;
-  /** Con tema de color: el color que da el tema a este nivel. `value.color === ""` significa «automático». */
+  /** Con tema de color: el color que da el tema a este nivel. El selector queda bloqueado mientras el tema esté activo. */
   autoColor?: string;
 }) {
-  const auto = autoColor !== undefined && value.color === "";
-  const shown = auto ? autoColor : value.color;
+  const locked = autoColor !== undefined;
+  const shown = locked ? autoColor : value.color;
   return (
     <div className="tv-type" role="group" aria-label={ariaLabel ?? label}>
       <strong className="tv-type-name">{label}</strong>
@@ -58,13 +58,11 @@ function TypeFields({ label, ariaLabel, value, onChange, autoColor }: {
       </label>
       <label className="tv-field tv-field--color">
         <span>Color</span>
-        <input type="color" value={/^#[0-9a-fA-F]{6}$/.test(shown) ? shown : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+        <input type="color" disabled={locked} value={/^#[0-9a-fA-F]{6}$/.test(shown) ? shown : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
       </label>
-      {autoColor !== undefined && (
+      {locked && (
         <span className="tv-auto">
-          {auto ? <em>Color automático del tema</em> : (
-            <button type="button" className="tv-chip-btn" aria-label={`${label}: volver al color automático`} onClick={() => onChange({ ...value, color: "" })}>Usar el del tema</button>
-          )}
+          <em>Color automático del tema</em>
         </span>
       )}
     </div>

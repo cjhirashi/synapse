@@ -80,12 +80,12 @@ function readType(raw: unknown, base: PdfType): PdfType {
   return { familia, tamano: num(r.tamano_pt, base.tamano), color: str(r.color, base.color) };
 }
 
-/** Los cuatro niveles: nivel a nivel, o, con la forma plana anterior, H1 con esos valores y el resto derivado de él. Con el tema activo, el color que no se fijó queda «automático» (""). */
+/** Los cuatro niveles: nivel a nivel, o, con la forma plana anterior, H1 con esos valores y el resto derivado de él. Con el tema activo el color de los encabezados es siempre «automático» ("") y no se edita. */
 function readHeadings(raw: unknown, text: PdfType, themed: boolean): Record<HeadingLevel, PdfType> {
   const r = obj(raw);
   const source = "h1" in r ? obj(r.h1) : r;
   const h1 = readType(source, DEFAULT_PDF_DRAFT.encabezados.h1);
-  if (themed) h1.color = typeof source.color === "string" ? source.color : "";
+  if (themed) h1.color = "";
   const size = Number(h1.tamano);
   const derived = (level: "h2" | "h3" | "h4"): PdfType => {
     const scaled = size * HEADING_SCALE[level];
@@ -94,7 +94,7 @@ function readHeadings(raw: unknown, text: PdfType, themed: boolean): Record<Head
   const level = (key: "h2" | "h3" | "h4"): PdfType => {
     const base = derived(key);
     const one = readType(r[key], base);
-    if (themed && typeof obj(r[key]).color !== "string") one.color = "";
+    if (themed) one.color = "";
     return one;
   };
   return { h1, h2: level("h2"), h3: level("h3"), h4: level("h4") };
