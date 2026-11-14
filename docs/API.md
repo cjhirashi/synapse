@@ -439,7 +439,7 @@ Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.y
 `Cache-Control: no-store`). **Solo sesión de la persona**: una API key de agente recibe 401. El HTML es el que la app dibuja en Lectura
 (los iframes, videos y audio ya vienen sustituidos por un recuadro con título y enlace); el servidor lo vuelve a limpiar con una lista
 cerrada de etiquetas y atributos. WeasyPrint carga imágenes `data:`, archivos propios de la persona (`/files/<id>`) e **imágenes públicas de la web**
-(la persona responde de lo que pone en su documento): el servidor las descarga con tope de 8 MB y 8 s cada una (hasta 60 y 40 MB por PDF), con
+(la persona responde de lo que pone en su documento). Un enlace a un archivo de esta misma Synapse (`https://<OWN_HOSTS>/files/<id>`, el que da «Copiar link» de Archivos) se lee directo con la sesión, también si el archivo es privado, sin salir a internet. El servidor descarga las demás con tope de 8 MB y 8 s cada una (hasta 60 y 40 MB por PDF), con
 redirecciones comprobadas una a una. Nunca se conecta a una dirección interna (loopback, red privada, enlace local, metadatos de la nube, los otros
 contenedores): esas imágenes quedan sin imprimir. Un SVG animado (SMIL o `@keyframes`) se imprime en su **último fotograma**; no cubre animación con
 JavaScript. Los estilos salen **siempre** de la plantilla del documento (atributo `plantilla`), nunca de la petición.

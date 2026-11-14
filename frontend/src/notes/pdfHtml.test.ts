@@ -55,6 +55,8 @@ describe("enlaces e imágenes", () => {
   it("normalizeImageSrc y embedLink", () => {
     expect(normalizeImageSrc("/files/a?x=1", ORIGIN)).toBe("/files/a");
     expect(normalizeImageSrc("https://otro.test/p.png", ORIGIN)).toBe("https://otro.test/p.png");
+    // «Copiar link» de Archivos: absoluto con el dominio de producción, aunque la app se abra por otro nombre.
+    expect(normalizeImageSrc("https://synapse.cjhirashi.com/files/abc-1?x=1", "http://localhost:5173")).toBe("/files/abc-1");
     expect(embedLink(null, ORIGIN)).toBeNull();
     expect(embedLink("javascript:alert(1)", ORIGIN)).toBeNull();
     expect(embedLink("data:text/html,x", ORIGIN)).toBeNull();

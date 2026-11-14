@@ -5,12 +5,14 @@
  * El servidor vuelve a limpiar todo esto: aquí solo se arma, no se confía.
  */
 import { parseYoutubeEmbedSrc, youtubeWatchUrl } from "../editor/classifyUrl";
+import { FILE_URL_BASE } from "../files/uploadFile";
 
 const CONTROLS = "button, input, textarea, select, script, style, link, .md-embed-open, .md-embed-link, [contenteditable='false'] > .md-embed-open-wrap > a";
 
 /** Ruta de la app de un archivo propio (`/files/<id>`), o la URL sin tocar. Así el servidor puede reconocer sus imágenes. */
 export function normalizeImageSrc(src: string, origin: string): string {
-  if (src.startsWith(`${origin}/files/`)) return src.slice(origin.length).split(/[?#]/)[0];
+  // El enlace «Copiar link» de Archivos es absoluto (`FILE_URL_BASE`) aunque la app se abra por otro nombre.
+  for (const base of [`${origin}/files/`, `${FILE_URL_BASE}/`]) if (src.startsWith(base)) return `/files/${src.slice(base.length).split(/[?#]/)[0]}`;
   if (src.startsWith("/files/")) return src.split(/[?#]/)[0];
   return src;
 }

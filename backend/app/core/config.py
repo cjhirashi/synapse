@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     # H-053 Web Push: claves VAPID (en `.env`, nunca en el repo). Sin ellas el push queda apagado y los avisos siguen
     # llegando a la bandeja. `PUSH_DISPATCH=false` apaga el hilo que envía (las pruebas lo apagan).
     VAPID_PRIVATE_KEY: str = ""
+    # H-036: nombres con los que se llega a esta misma Synapse (separados por comas). Un enlace `https://<host>/files/<id>` en un documento es un archivo propio.
+    OWN_HOSTS: str = "synapse.cjhirashi.com"
     VAPID_PUBLIC_KEY: str = ""
     VAPID_SUBJECT: str = ""
     PUSH_DISPATCH: bool = True

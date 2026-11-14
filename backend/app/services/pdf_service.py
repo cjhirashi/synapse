@@ -14,6 +14,7 @@ from typing import Callable
 from urllib.parse import urlsplit
 
 from app.core import pdf_style, svg_freeze
+from app.core.config import settings
 from app.core.errors import PdfBusy, PdfRenderFailed, PdfTimeout
 from app.services import external_image
 
@@ -46,6 +47,16 @@ _SLOTS = threading.BoundedSemaphore(MAX_CONCURRENT)
 _POOL = ThreadPoolExecutor(max_workers=MAX_CONCURRENT, thread_name_prefix="pdf")
 
 
+_OWN_URL_RE = re.compile(r"^https?://([^/@:\s]+)(?::\d+)?(/files/[A-Za-z0-9_-]{1,64})(?:[?#].*)?$", re.IGNORECASE)
+
+
+def own_file_path(url: str) -> str | None:
+    """`/files/<id>` si `url` es un enlace a un archivo de esta misma Synapse (por cualquiera de sus nombres), si no `None`."""
+    match = _OWN_URL_RE.match(url)
+    hosts = {host.strip().lower() for host in settings.OWN_HOSTS.split(",") if host.strip()}
+    return match.group(2) if match and match.group(1).lower() in hosts else None
+
+
 EXTERNAL_IMAGE_RE = re.compile(r"^https?://[^/@\s]+(/|$)", re.IGNORECASE)  # sin credenciales en la URL
 MAX_EXTERNAL_IMAGES = 60
 MAX_EXTERNAL_BYTES = 40 * 1024 * 1024
@@ -54,6 +65,9 @@ MAX_EXTERNAL_BYTES = 40 * 1024 * 1024
 def _filter_attribute(tag: str, attribute: str, value: str) -> str | None:
     """`img src`: `data:image/...;base64`, `/files/<id>` o una imagen http(s) de la web; `a href` solo http(s), mailto o ancla; todo lo demás se quita."""
     if tag == "img" and attribute == "src":
+        own = own_file_path(value)
+        if own is not None:  # el enlace «Copiar link» de Archivos: se lee directo, con la sesión, no por internet
+            return own
         return value if _DATA_RE.match(value) or FILE_PATH_RE.match(value) or EXTERNAL_IMAGE_RE.match(value) else None
     if tag == "a" and attribute == "href":
         return value if re.match(r"^(https?://|mailto:|#)", value, re.IGNORECASE) else None
@@ -143,7 +157,11 @@ def _fetcher(read_image: ReadImage, *, fetch_external=external_image.fetch):
                 if found is None or found[1] not in IMAGE_TYPES:
                     raise ValueError("recurso bloqueado")
                 return served(url, found[0], found[1])
-            if parts.scheme in ("http", "https") and EXTERNAL_IMAGE_RE.match(url):
+            own = own_file_path(url)
+            found = read_image(FILE_PATH_RE.match(own).group(1)) if own else None
+            if found is not None and found[1] in IMAGE_TYPES:
+                return served(url, found[0], found[1])
+            if parts.scheme in ("http", "https") and EXTERNAL_IMAGE_RE.match(url):  # no es un archivo de la persona: se trata como imagen de la web
                 if budget["count"] >= MAX_EXTERNAL_IMAGES or budget["bytes"] >= MAX_EXTERNAL_BYTES:
                     raise ValueError("demasiadas imágenes externas")
                 budget["count"] += 1

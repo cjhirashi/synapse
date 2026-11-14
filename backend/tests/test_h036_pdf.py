@@ -101,6 +101,27 @@ def test_the_fetcher_serves_own_files_data_images_and_public_web_images_only():
             fetcher.fetch(blocked)
 
 
+def test_a_link_to_an_own_file_is_read_with_the_session_not_over_the_internet():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from app.services.pdf_service import _fetcher, own_file_path, sanitize
+
+    link = "https://synapse.cjhirashi.com/files/abc-123"
+    assert own_file_path(link) == "/files/abc-123" and own_file_path(link + "?v=2#x") == "/files/abc-123"
+    assert own_file_path("http://SYNAPSE.cjhirashi.com:443/files/abc-123") == "/files/abc-123"
+    assert own_file_path("https://otro.test/files/abc-123") is None and own_file_path("https://synapse.cjhirashi.com.evil.test/files/a") is None
+    assert own_file_path("https://synapse.cjhirashi.com/files/a/b") is None and own_file_path("https://u:p@synapse.cjhirashi.com/files/a") is None
+    assert f'src="/files/abc-123"' in sanitize(f'<img src="{link}?v=2">')
+
+    web = []
+    private = {"abc-123": (b"PRIVATE", "image/png")}
+    fetcher = _fetcher(lambda file_id: private.get(file_id), fetch_external=lambda url, allowed: web.append(url) or None)
+    assert fetcher.fetch(link).read() == b"PRIVATE" and web == []  # nunca salió a internet
+    with pytest.raises(ValueError):
+        fetcher.fetch("https://synapse.cjhirashi.com/files/de-otro")  # no es suyo: se intenta como imagen pública de la web
+    assert web == ["https://synapse.cjhirashi.com/files/de-otro"]
+
+
 def test_the_fetcher_caps_how_many_web_images_one_pdf_can_pull():
     pytest.importorskip("weasyprint")
     from app.services import pdf_service
@@ -382,3 +403,37 @@ def test_the_endpoint_is_for_the_person_only_and_validates_its_input(ready_admin
     assert ready_admin.post(f"/vaults/{vault_id}/notes/{note_id}/pdf", json={"html": "x" * 5_000_001}).status_code == 422
     assert ready_admin.post(f"/vaults/{vault_id}/notes/{note_id}/pdf", json={"html": "x", "css": "y"}).status_code == 422
     assert ready_admin.post(f"/vaults/{vault_id}/notes/00000000-0000-4000-8000-000000000000/pdf", json={"html": "x"}).status_code == 404
+
+
+def test_the_copy_link_of_a_private_file_prints_through_the_endpoint(ready_admin, monkeypatch):
+    pytest.importorskip("nh3")
+    import base64
+
+    from app.main import app
+    from app.routers.files import get_object_storage
+    from app.services import external_image, pdf_service
+    from tests.fake_object_storage import FakeObjectStorage
+
+    fake = FakeObjectStorage()
+    app.dependency_overrides[get_object_storage] = lambda: fake
+    try:
+        vault_id = vault_of(ready_admin)
+        png = base64.b64decode(PNG.split(",", 1)[1])
+        uploaded = ready_admin.post("/files", data={"vault_id": vault_id}, files={"file": ("foto.png", png, "image/png")})
+        assert uploaded.status_code == 201, uploaded.text
+        file_id = uploaded.json()["id"]
+        _template(ready_admin, vault_id, {"activo": True})
+        note_id = _doc(ready_admin, vault_id, plantilla="acta")
+        monkeypatch.setattr(external_image, "fetch", lambda *a, **k: pytest.fail("un archivo propio no debe salir a internet"))
+        seen = {}
+
+        def fake_make_pdf(document, read_image):
+            seen["document"], seen["bytes"] = document, read_image(file_id)
+            return b"%PDF-fake"
+
+        monkeypatch.setattr(pdf_service, "make_pdf", fake_make_pdf)
+        res = ready_admin.post(f"/vaults/{vault_id}/notes/{note_id}/pdf", json={"html": f'<p>x</p><img src="https://synapse.cjhirashi.com/files/{file_id}">'})
+        assert res.status_code == 200, res.text
+        assert f'src="/files/{file_id}"' in seen["document"] and seen["bytes"] == (png, "image/png")
+    finally:
+        app.dependency_overrides.pop(get_object_storage, None)
