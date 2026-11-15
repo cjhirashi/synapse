@@ -970,3 +970,24 @@ def test_a_table_that_continues_on_the_next_page_repeats_its_header_row():
         return found
 
     assert all(any("CABECERA-A" in text for text in texts(page._page_box)) for page in pages)  # la cabecera sale en cada página
+
+
+def test_every_index_entry_is_a_clickable_link_to_the_page_of_its_heading():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    body = (
+        '<section class="pdf-portada"><h1>Portada</h1></section><div class="pdf-indice"></div>'
+        '<h1>Uno</h1><p>a</p><div class="pdf-salto"></div><h2>Dos</h2><p>b</p><div class="pdf-salto"></div><h1>Tres</h1><p>c</p>'
+    )
+    doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
+    page_of = {name: number for number, page in enumerate(pages, 1) for name in page.anchors}
+    # Los encabezados se numeran en orden (la portada es el primero, fuera del índice): Uno, Dos y Tres son pdf-h2, pdf-h3 y pdf-h4, cada uno en su hoja.
+    wanted = {"pdf-h2": 3, "pdf-h3": 4, "pdf-h4": 5}
+    clickable = {target for kind, target, _, _ in pages[1].links if kind == "internal"}  # el índice es la hoja 2
+    assert clickable == set(wanted), "cada entrada del índice enlaza a su encabezado"
+    assert {name: page_of[name] for name in wanted} == wanted, "y el encabezado está en la hoja que el índice muestra"
