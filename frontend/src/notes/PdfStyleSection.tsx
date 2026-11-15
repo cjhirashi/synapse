@@ -2,11 +2,13 @@
  * Contenido de la sección «Diseño del PDF» de la vista de plantilla (H-036): interruptor del botón PDF y, con él encendido, la página,
  * las tipografías, el encabezado y el pie, junto a una vista previa a escala. Formulario controlado sobre `PdfDraft` (ver `pdfStyle.ts`).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { BookOpenText, TableOfContents, type LucideIcon } from "lucide-react";
 import { listVaultFiles } from "../files/uploadFile";
 import { PDF_BAND_MM, PDF_FONTS, PDF_INDEX_LEVELS, PDF_INDEX_TITLE_MAX, PDF_HEADING_LEVELS, PDF_LINE_PT, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
 import PdfPreview from "./PdfPreview";
-import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfLine, type PdfIndex, type PdfMargin, type PdfSheet, type PdfType } from "./pdfStyle";
+import PdfSheetPreview from "./PdfSheetPreview";
+import { headingColor, inheritedSheetStyle, shownSheetStyle, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfLine, type PdfMargin, type PdfType } from "./pdfStyle";
 
 const SIZE_LABEL = { carta: "Carta", a4: "A4" } as const;
 const MARGIN_LABEL: Record<PdfMargin, string> = { superior: "Superior", inferior: "Inferior", izquierdo: "Izquierdo", derecho: "Derecho" };
@@ -36,31 +38,35 @@ function Group({ title, hint, children, ariaLabel }: { title: string; hint?: str
   );
 }
 
-function TypeFields({ label, ariaLabel, value, onChange, autoColor }: {
+function TypeFields({ label, ariaLabel, fieldPrefix, value, onChange, autoColor, disabled = false }: {
   label: string; ariaLabel?: string; value: PdfType; onChange: (next: PdfType) => void;
+  /** Con prefijo, cada campo lleva nombre accesible propio (`prefijo: tipografía`); sin él, el rótulo visible. */
+  fieldPrefix?: string;
+  /** Muestra los valores sin dejar cambiarlos (p. ej. los que una hoja hereda del documento). */
+  disabled?: boolean;
   /** Con tema de color: el color que da el tema a este nivel. El selector queda bloqueado mientras el tema esté activo. */
   autoColor?: string;
 }) {
-  const locked = autoColor !== undefined;
-  const shown = locked ? autoColor : value.color;
+  const locked = autoColor !== undefined || disabled;
+  const shown = autoColor ?? value.color;
   return (
     <div className="tv-type" role="group" aria-label={ariaLabel ?? label}>
       <strong className="tv-type-name">{label}</strong>
       <label className="tv-field tv-field--grow">
         <span>Tipografía</span>
-        <select value={value.familia} onChange={(event) => onChange({ ...value, familia: event.target.value as PdfFont })}>
+        <select disabled={disabled} aria-label={fieldPrefix && `${fieldPrefix}: tipografía`} value={value.familia} onChange={(event) => onChange({ ...value, familia: event.target.value as PdfFont })}>
           {PDF_FONTS.map((font) => <option key={font} value={font}>{font}</option>)}
         </select>
       </label>
       <label className="tv-field tv-field--narrow">
         <span>Tamaño (pt)</span>
-        <input type="number" min={6} max={48} step={0.5} value={value.tamano} onChange={(event) => onChange({ ...value, tamano: event.target.value })} />
+        <input type="number" disabled={disabled} aria-label={fieldPrefix && `${fieldPrefix}: tamaño`} min={6} max={48} step={0.5} value={value.tamano} onChange={(event) => onChange({ ...value, tamano: event.target.value })} />
       </label>
       <label className="tv-field tv-field--color">
         <span>Color</span>
-        <input type="color" disabled={locked} value={/^#[0-9a-fA-F]{6}$/.test(shown) ? shown : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+        <input type="color" disabled={locked} aria-label={fieldPrefix && `${fieldPrefix}: color`} value={/^#[0-9a-fA-F]{6}$/.test(shown) ? shown : "#000000"} onChange={(event) => onChange({ ...value, color: event.target.value })} />
       </label>
-      {locked && (
+      {autoColor !== undefined && (
         <span className="tv-auto">
           <em>Color automático del tema</em>
         </span>
@@ -189,46 +195,100 @@ function BandFields({ label, imageLabel, imageHint, value, images, attributes, o
   );
 }
 
-function SheetFields({ label, hint, value, images, onChange, index, onIndexChange }: {
-  label: string; hint: string; value: PdfSheet; images: ImageOption[]; onChange: (next: PdfSheet) => void;
-  /** Solo el índice: título y niveles que lista. */
-  index?: PdfIndex; onIndexChange?: (next: PdfIndex) => void;
-}) {
-  const known = images.some((image) => image.id === value.imagen);
+const SHEET_INFO: Record<"portada" | "indice", { title: string; Icon: LucideIcon; hint: ReactNode; headings: string; headingsHint: string; text: string }> = {
+  portada: {
+    title: "Portada", Icon: BookOpenText, headings: "Encabezados", text: "Texto",
+    hint: <>Lo que quede entre las marcas <code>&lt;!-- pdf:portada --&gt;</code> y <code>&lt;!-- /pdf:portada --&gt;</code> del documento va en la primera hoja. No lleva encabezado ni pie ni cuenta en la numeración.</>,
+    headingsHint: "El tamaño es el del H1; H2 a H4 se escalan desde él.",
+  },
+  indice: {
+    title: "Índice", Icon: TableOfContents, headings: "Encabezado (título del índice)", text: "Contenido (entradas)",
+    hint: <>La marca <code>&lt;!-- pdf:indice --&gt;</code> lista los encabezados del documento con su página. No lleva encabezado ni pie; la numeración empieza después de la portada y del índice.</>,
+    headingsHint: "",
+  },
+};
+
+function SheetFields({ kind, draft, images, onChange }: { kind: "portada" | "indice"; draft: PdfDraft; images: ImageOption[]; onChange: (next: PdfDraft) => void }) {
+  const info = SHEET_INFO[kind];
+  const sheet = draft[kind];
+  const known = images.some((image) => image.id === sheet.imagen);
+  const hasPageImage = draft.encabezado.imagen !== "";
   const hex = (color: string, fallback: string) => (/^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback);
+  const patch = (next: Partial<PdfDraft["portada"]> | Partial<PdfDraft["indice"]>) => onChange({ ...draft, [kind]: { ...sheet, ...next } });
+  const shown = shownSheetStyle(draft, kind);
+  const borrowHint = sheet.imagen !== "" ? "La imagen propia de esta hoja ya cubre el fondo." : !hasPageImage ? "Primero elige la imagen de fondo en «Encabezado de página»." : "Apagado: la hoja usa solo su color.";
   return (
-    <Group title={label} hint={hint}>
-      <div className="tv-row">
-        <label className="tv-field tv-field--color">
-          <span>Color de fondo</span>
-          <input type="color" aria-label={`${label}: color de fondo`} value={hex(value.fondo, "#ffffff")} onChange={(event) => onChange({ ...value, fondo: event.target.value })} />
-        </label>
-        <label className="tv-field tv-field--color">
-          <span>Color del texto</span>
-          <input type="color" aria-label={`${label}: color del texto`} value={hex(value.color, "#000000")} onChange={(event) => onChange({ ...value, color: event.target.value })} />
-        </label>
-        <label className="tv-field tv-field--grow">
-          <span>Imagen de fondo (opcional)</span>
-          <select aria-label={`${label}: imagen de fondo`} value={value.imagen} onChange={(event) => onChange({ ...value, imagen: event.target.value })}>
-            <option value="">Sin imagen</option>
-            {value.imagen !== "" && !known && <option value={value.imagen}>Archivo {value.imagen} (no encontrado)</option>}
-            {images.map((image) => <option key={image.id} value={image.id}>{image.name}</option>)}
-          </select>
-        </label>
-      </div>
-      {index && onIndexChange && (
-        <div className="tv-row">
-          <label className="tv-field tv-field--grow">
-            <span>Título del índice</span>
-            <input aria-label="Índice: título" maxLength={PDF_INDEX_TITLE_MAX} value={index.titulo} onChange={(event) => onIndexChange({ ...index, titulo: event.target.value })} />
-          </label>
-          <label className="tv-field tv-field--narrow">
-            <span>Niveles (H1 a H…)</span>
-            <input aria-label="Índice: niveles" type="number" min={PDF_INDEX_LEVELS[0]} max={PDF_INDEX_LEVELS[1]} step={1} value={index.niveles} onChange={(event) => onIndexChange({ ...index, niveles: event.target.value })} />
-          </label>
+    <div className="tv-sheet-wrap">
+    <section className="tv-sheet" role="group" aria-label={info.title}>
+      <header className="tv-sheet-head">
+        <span className="tv-sheet-icon" aria-hidden="true"><info.Icon size={18} /></span>
+        <div className="tv-sheet-title">
+          <strong>{info.title}</strong>
+          <p>{info.hint}</p>
         </div>
-      )}
-    </Group>
+      </header>
+      <aside className="tv-sheet-side" aria-label={`Vista previa: ${info.title.toLowerCase()}`}>
+        <PdfSheetPreview draft={draft} kind={kind} />
+      </aside>
+        <div className="tv-sheet-controls">
+          <div className="tv-sheet-block" role="group" aria-label={`${info.title}: fondo`}>
+            <h4 className="tv-sheet-label">Fondo</h4>
+            <div className="tv-sheet-bg">
+              <label className="tv-field tv-field--color">
+                <span>Color</span>
+                <input type="color" aria-label={`${info.title}: color de fondo`} value={hex(sheet.fondo, "#ffffff")} onChange={(event) => patch({ fondo: event.target.value })} />
+              </label>
+              <label className="tv-field tv-field--grow">
+                <span>Imagen (opcional)</span>
+                <select aria-label={`${info.title}: imagen de fondo`} value={sheet.imagen} onChange={(event) => patch({ imagen: event.target.value })}>
+                  <option value="">Sin imagen: solo el color</option>
+                  {sheet.imagen !== "" && !known && <option value={sheet.imagen}>Archivo {sheet.imagen} (no encontrado)</option>}
+                  {images.map((image) => <option key={image.id} value={image.id}>{image.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <label className="tv-sheet-switch">
+              <span className="tv-sheet-switch-text">
+                <strong>Usar la imagen de fondo de las páginas</strong>
+                <span>{borrowHint}</span>
+              </span>
+              <input type="checkbox" className="tv-switch" aria-label={`${info.title}: usar la imagen de fondo de las páginas`} disabled={sheet.imagen !== "" || !hasPageImage} checked={sheet.imagenPrincipal && sheet.imagen === "" && hasPageImage} onChange={(event) => patch({ imagenPrincipal: event.target.checked })} />
+            </label>
+          </div>
+          {kind === "indice" && (
+            <div className="tv-sheet-block" role="group" aria-label="Índice: contenido">
+              <h4 className="tv-sheet-label">Lista</h4>
+              <div className="tv-row tv-sheet-index">
+                <label className="tv-field tv-field--grow">
+                  <span>Título del índice</span>
+                  <input aria-label="Índice: título" maxLength={PDF_INDEX_TITLE_MAX} value={draft.indice.titulo} onChange={(event) => onChange({ ...draft, indice: { ...draft.indice, titulo: event.target.value } })} />
+                </label>
+                <label className="tv-field tv-field--narrow">
+                  <span>Niveles (H1 a H…)</span>
+                  <input aria-label="Índice: niveles" type="number" min={PDF_INDEX_LEVELS[0]} max={PDF_INDEX_LEVELS[1]} step={1} value={draft.indice.niveles} onChange={(event) => onChange({ ...draft, indice: { ...draft.indice, niveles: event.target.value } })} />
+                </label>
+              </div>
+            </div>
+          )}
+          <div className="tv-sheet-block" role="group" aria-label={`${info.title}: tipografía y color`}>
+            <div className="tv-sheet-switch tv-sheet-switch--head">
+              <h4 className="tv-sheet-label">Tipografía y color</h4>
+              <label className="tv-sheet-toggle">
+                <span>Personalizar</span>
+                <input
+                  type="checkbox" className="tv-switch" aria-label={`${info.title}: personalizar tipografía y color`} checked={sheet.personalizar}
+                  onChange={(event) => patch(event.target.checked ? { personalizar: true, ...inheritedSheetStyle(draft, kind) } : { personalizar: false })}
+                />
+              </label>
+            </div>
+            <p className="tv-hint">{sheet.personalizar ? "Estilos propios de esta hoja." : "Usa los estilos de encabezados y de texto del documento; enciende «Personalizar» para cambiarlos solo aquí."}</p>
+            <TypeFields label={info.headings} ariaLabel={`${info.title}: encabezados`} fieldPrefix={`${info.title}: encabezados`} value={shown.encabezados} disabled={!sheet.personalizar} onChange={(next) => patch({ encabezados: next })} />
+            {info.headingsHint && <p className="tv-hint">{info.headingsHint}</p>}
+            <TypeFields label={info.text} ariaLabel={`${info.title}: texto`} fieldPrefix={`${info.title}: texto`} value={shown.texto} disabled={!sheet.personalizar} onChange={(next) => patch({ texto: next })} />
+          </div>
+        </div>
+    </section>
+    </div>
   );
 }
 
@@ -299,15 +359,8 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
             value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)}
           />
           <BandFields label="Pie de página" value={draft.pie} images={images} attributes={names} onChange={(next) => set("pie", next)} />
-          <SheetFields
-            label="Portada" hint="Se activa con las marcas <!-- pdf:portada --> y <!-- /pdf:portada --> del documento; lo que quede entre ambas va en la portada. No lleva encabezado ni pie ni cuenta en la numeración. La imagen cubre toda la hoja (mismo tamaño que arriba)."
-            value={draft.portada} images={images} onChange={(next) => set("portada", next)}
-          />
-          <SheetFields
-            label="Índice" hint="Se activa con la marca <!-- pdf:indice --> del documento: lista los encabezados con su página. No lleva encabezado ni pie. La numeración de las hojas empieza después de la portada y del índice."
-            value={draft.indice} images={images} onChange={(next) => set("indice", { ...draft.indice, ...next })}
-            index={draft.indice} onIndexChange={(next) => set("indice", next)}
-          />
+          <SheetFields kind="portada" draft={draft} images={images} onChange={onChange} />
+          <SheetFields kind="indice" draft={draft} images={images} onChange={onChange} />
           <label className="tv-check">
             <input type="checkbox" checked={draft.incluirAtributos} onChange={(event) => set("incluirAtributos", event.target.checked)} />
             Imprimir los atributos del documento al inicio

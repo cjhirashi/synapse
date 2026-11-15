@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { palette } from "./colorTheme";
 import { checkPdfStyle } from "./metaRules";
-import { DEFAULT_PDF_DRAFT, headingColor, pdfDraftFrom, pdfDraftTo, themeColors } from "./pdfStyle";
+import { DEFAULT_PDF_DRAFT, headingColor, inheritedSheetStyle, pdfDraftFrom, pdfDraftTo, shownSheetStyle, themeColors } from "./pdfStyle";
 
 describe("pdfDraftFrom", () => {
   it("una plantilla sin formato da el borrador por omisión (y se guarda como {})", () => {
@@ -93,20 +93,57 @@ describe("tema de color", () => {
 describe("portada e índice (marcas pdf:portada y pdf:indice)", () => {
   it("el borrador los lee y los guarda con sus valores por omisión, y el servidor los acepta", () => {
     const draft = pdfDraftFrom({ activo: true, portada: { fondo: "#112233", imagen: "img-1" }, indice: { titulo: "Contenido", niveles: 2 } });
-    expect(draft.portada).toEqual({ fondo: "#112233", imagen: "img-1", color: "#f8fafc" });
-    expect(draft.indice).toEqual({ fondo: "#f1f5f9", imagen: "", color: "#1f2937", titulo: "Contenido", niveles: "2" });
-    const saved = pdfDraftTo(draft) as Record<string, unknown>;
-    expect(saved.portada).toEqual({ fondo: "#112233", imagen: "img-1", color: "#f8fafc" });
-    expect(saved.indice).toEqual({ fondo: "#f1f5f9", imagen: null, color: "#1f2937", titulo: "Contenido", niveles: 2 });
+    expect(draft.portada).toEqual({ ...DEFAULT_PDF_DRAFT.portada, fondo: "#112233", imagen: "img-1" });
+    expect(draft.indice).toEqual({ ...DEFAULT_PDF_DRAFT.indice, titulo: "Contenido", niveles: "2" });
+    expect(draft.portada.personalizar).toBe(false);
+    expect(draft.portada.imagenPrincipal).toBe(false);
+    const saved = pdfDraftTo(draft) as Record<string, any>;
+    expect(saved.portada).toEqual({
+      fondo: "#112233", imagen: "img-1", imagen_principal: false, personalizar: false,
+      encabezados: { familia: "DejaVu Sans", tamano_pt: 30, color: "#111827" }, texto: { familia: "DejaVu Sans", tamano_pt: 12, color: "#1f2937" },
+    });
+    expect(saved.indice).toMatchObject({ fondo: "#f1f5f9", imagen: null, titulo: "Contenido", niveles: 2 });
     expect(checkPdfStyle(saved)).toBe(true);
   });
 
-  it("el validador rechaza colores, niveles y títulos fuera de regla", () => {
+  it("ida y vuelta con estilos propios y la imagen principal de las páginas", () => {
+    const first = pdfDraftFrom({ activo: true });
+    first.portada = { ...first.portada, imagenPrincipal: true, personalizar: true, encabezados: { familia: "Liberation Serif", tamano: "40", color: "#ff0000" }, texto: { familia: "Liberation Mono", tamano: "14", color: "#00ff00" } };
+    const saved = pdfDraftTo(first) as Record<string, any>;
+    expect(saved.portada).toMatchObject({ imagen_principal: true, personalizar: true, encabezados: { familia: "Liberation Serif", tamano_pt: 40, color: "#ff0000" } });
+    expect(checkPdfStyle(saved)).toBe(true);
+    expect(pdfDraftFrom(saved)).toEqual(first);
+  });
+
+  it("el formato anterior (un solo color) se lee como «personalizar» encendido con la tipografía del documento, igual que el servidor", () => {
+    const draft = pdfDraftFrom({ texto: { familia: "Liberation Serif", tamano_pt: 11 }, encabezados: { h1: { familia: "Liberation Serif", tamano_pt: 20 } }, portada: { fondo: "#0f172a", color: "#f8fafc" }, indice: { color: "#1f2937" } });
+    expect(draft.portada.personalizar).toBe(true);
+    expect(draft.portada.encabezados).toEqual({ familia: "Liberation Serif", tamano: "20", color: "#f8fafc" });
+    expect(draft.portada.texto).toEqual({ familia: "Liberation Serif", tamano: "11", color: "#f8fafc" });
+    expect(draft.indice.personalizar).toBe(true);
+    expect(pdfDraftFrom({ portada: { color: "#000000", personalizar: false } }).portada.personalizar).toBe(false);
+    expect(checkPdfStyle({ portada: { fondo: "#000000", color: "#ffffff" } })).toBe(true);
+  });
+
+  it("sin personalizar, la hoja muestra los estilos del documento (H1 en la portada, H2 en el índice) y con ellos parte al personalizar", () => {
+    const draft = pdfDraftFrom({ tema: { primario: "#0c3897" }, encabezados: { h1: { tamano_pt: 22 } } });
+    expect(shownSheetStyle(draft, "portada").encabezados).toEqual({ ...draft.encabezados.h1, color: headingColor(draft, "h1") });
+    expect(shownSheetStyle(draft, "indice").encabezados.tamano).toBe(draft.encabezados.h2.tamano);
+    expect(inheritedSheetStyle(draft, "portada").texto).toEqual(draft.texto);
+    const own = { ...draft, portada: { ...draft.portada, personalizar: true, encabezados: { familia: "Liberation Mono" as const, tamano: "9", color: "#123456" } } };
+    expect(shownSheetStyle(own, "portada").encabezados.color).toBe("#123456");
+  });
+
+  it("el validador rechaza colores, niveles, títulos e interruptores fuera de regla", () => {
     expect(checkPdfStyle({ portada: { fondo: "rojo" } })).toBe(false);
     expect(checkPdfStyle({ portada: { otra: 1 } })).toBe(false);
+    expect(checkPdfStyle({ portada: { personalizar: "si" } })).toBe(false);
+    expect(checkPdfStyle({ portada: { imagen_principal: 1 } })).toBe(false);
+    expect(checkPdfStyle({ portada: { encabezados: { familia: "Comic Sans" } } })).toBe(false);
+    expect(checkPdfStyle({ portada: { texto: { tamano_pt: 200 } } })).toBe(false);
     expect(checkPdfStyle({ indice: { niveles: 0 } })).toBe(false);
     expect(checkPdfStyle({ indice: { niveles: 5 } })).toBe(false);
     expect(checkPdfStyle({ indice: { titulo: "x".repeat(81) } })).toBe(false);
-    expect(checkPdfStyle({ indice: { titulo: "Índice", niveles: 4 }, portada: { imagen: null } })).toBe(true);
+    expect(checkPdfStyle({ indice: { titulo: "Índice", niveles: 4 }, portada: { imagen: null, imagen_principal: true, personalizar: true } })).toBe(true);
   });
 });

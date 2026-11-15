@@ -63,7 +63,7 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   imágenes públicas de la web y SVG animados en su último fotograma) y lo genera el servidor con WeasyPrint. El documento puede llevar **portada**
   (`<!-- pdf:portada -->`…`<!-- /pdf:portada -->`), **índice** automático (`<!-- pdf:indice -->`), **saltos de página** (`<!-- pdf:salto -->`),
   **alineación** (`<div align="center">`) y **columnas** (`<div class="cols-2">`), con botones en la barra del editor; la portada y el índice tienen
-  fondo propio en la plantilla y la numeración empieza después de ellos. Detalle en [`docs/API.md`](docs/API.md)
+  fondo propio en la plantilla (color o imagen, con estilos de encabezados y texto propios o los del documento) y la numeración empieza después de ellos. Los **comentarios de revisión** (`<div class="comentario" data-autor="…">`) se ven como ventanas grises con la foto y el nombre del autor en Lectura y edición, y nunca salen en el PDF. Detalle en [`docs/API.md`](docs/API.md)
   (sección «PDF de documentos») y en el ADR-008.
 - **Agentes con nombre y foto:** cada agente tiene nombre visible y foto editables desde API keys; aparecen en tareas, bitácora
   y listas.

@@ -310,13 +310,14 @@ describe("cabecera del editor en 3 filas (H-010)", () => {
     const row3 = header(container).querySelector<HTMLElement>(".note-editor-row-3")!;
     const groups = within(row3).getAllByRole("group");
     expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual([
-      "Estilo de texto", "Párrafo y encabezados", "Listas", "Alineación del texto", "Columnas", "Insertar", "Páginas del PDF",
+      "Estilo de texto", "Párrafo y encabezados", "Listas", "Alineación del texto", "Columnas", "Insertar", "Páginas del PDF", "Comentarios",
     ]);
     const names = (label: string) => within(within(row3).getByRole("group", { name: label })).getAllByRole("button").map((button) => button.getAttribute("aria-label"));
     expect(names("Estilo de texto")).toEqual(["Negritas", "Cursiva", "Tachado", "Código en línea"]);
     expect(names("Párrafo y encabezados")).toEqual(["Párrafo", "Encabezado 1", "Encabezado 2", "Encabezado 3", "Encabezado 4", "Cita"]);
     expect(names("Alineación del texto")).toHaveLength(4);
     expect(names("Páginas del PDF")).toEqual(["Portada", "Índice", "Salto de página"]);
+    expect(names("Comentarios")).toEqual(["Comentario"]);
   });
 
   it("C-1: lápiz y ⋮ en Fila 1; Visual/Código/Guardar en Fila 2; tabla en Fila 3", async () => {
@@ -391,6 +392,7 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
       "setParagraph",
       "togglePdfBlock",
       "insertPdfMark",
+      "toggleComment",
       "insertHr",
       "wrapBulletList",
       "wrapOrderedList",
@@ -463,6 +465,8 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
     expect(spies.insertPdfMark).toHaveBeenLastCalledWith("indice");
     await click("Salto de página");
     expect(spies.insertPdfMark).toHaveBeenLastCalledWith("salto");
+    await click("Comentario");
+    expect(spies.toggleComment).toHaveBeenLastCalledWith("usuario", expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/));
     await click("Línea horizontal");
     expect(spies.insertHr).toHaveBeenCalledTimes(1);
     await click("Lista con viñetas");

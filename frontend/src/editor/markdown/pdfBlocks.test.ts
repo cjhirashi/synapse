@@ -37,4 +37,19 @@ describe("marcas de formato del documento", () => {
     expect(groupBlocks([html('<div align="right">'), text("x")])).toEqual([html('<div align="right">'), text("x")]);
     expect(groupBlocks([html('<div align="right">'), html("</div>")])[0].children).toEqual([{ type: "paragraph", children: [] }]);
   });
+
+  it("el comentario lleva autor y fecha opcionales, valida su forma y se escribe de vuelta igual", () => {
+    expect(parseOpening('<div class="comentario" data-autor="aira" data-fecha="2026-11-15">')).toEqual({ kind: "comment", value: "aira", date: "2026-11-15" });
+    expect(parseOpening('<div class="comentario" data-autor="usuario">')).toEqual({ kind: "comment", value: "usuario", date: "" });
+    expect(parseOpening('<div class="comentario">')).toEqual({ kind: "comment", value: "", date: "" });
+    for (const bad of ['<div class="comentario" data-autor="A b">', '<div class="comentario" data-autor="x" onclick="y">', '<div class="comentario" data-fecha="15/11/2026">', '<div class="comentarios">']) {
+      expect(parseOpening(bad)).toBeNull();
+    }
+    expect(blockTags("comment", "aira", "2026-11-15")).toEqual(['<div class="comentario" data-autor="aira" data-fecha="2026-11-15">', "</div>"]);
+    expect(blockTags("comment", "usuario")).toEqual(['<div class="comentario" data-autor="usuario">', "</div>"]);
+    const out = groupBlocks([html('<div class="comentario" data-autor="aira" data-fecha="2026-11-15">'), text("revisa la sección 3"), wrapped('<div align="center">'), text("x"), html("</div>"), html("</div>"), text("fuera")]);
+    expect(out[0]).toMatchObject({ type: "pdfBlock", kind: "comment", value: "aira", date: "2026-11-15" });
+    expect(out[0].children?.[1]).toMatchObject({ type: "pdfBlock", kind: "align", value: "center" });
+    expect(out[1]).toEqual(text("fuera"));
+  });
 });

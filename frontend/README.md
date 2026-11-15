@@ -169,7 +169,7 @@ que el servidor genera con el formato de la plantilla. Requiere conexión; sin e
 **Marcas de formato** (`editor/markdown/pdfBlocks.ts`): portada (`<!-- pdf:portada -->`…`<!-- /pdf:portada -->`), índice (`<!-- pdf:indice -->`), salto de página (`<!-- pdf:salto -->`),
 alineación (`<div align="center">…</div>`) y columnas (`<div class="cols-2">…</div>`) viven en el Markdown como HTML. Un transformador remark agrupa cada pareja apertura/cierre
 en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al guardar se escriben igual. Sus botones están en la barra del editor
-(`editor/markdown/pdfBlockCommands.ts`; la barra va agrupada por categorías, en una sola fila con scroll horizontal: estilo de texto, párrafo y encabezados, listas, alineación, columnas, insertar y páginas del PDF) y `notes/pdfHtml.ts` pasa el índice y el salto al servidor como marcadores.
+(`editor/markdown/pdfBlockCommands.ts`; la barra va agrupada por categorías, en una sola fila con scroll horizontal: estilo de texto, párrafo y encabezados, listas, alineación, columnas, insertar y páginas del PDF) y `notes/pdfHtml.ts` pasa el índice y el salto al servidor como marcadores. En Lectura el índice, el salto y la portada se muestran con un indicador (`editor.css`). Los **comentarios de revisión** (`<div class="comentario" data-autor="aira" data-fecha="2026-11-15">`) son otro tipo de `pdf_block` que dibuja `editor/commentView.ts` (foto y nombre del autor de los perfiles de agente o de la sesión); `pdfHtml.ts` los quita del PDF.
 
 ## Tareas, avisos y app instalable (H-053)
 

@@ -35,6 +35,15 @@ function subscribe(fn: () => void): () => void {
   return () => listeners.delete(fn);
 }
 
+/** Lectura sin React (vistas de nodo del editor): perfiles ya cargados, aviso de cambios y carga si aún no se hizo. */
+export function peekAgentProfiles(): ProfileMap {
+  return cache ?? EMPTY;
+}
+export function subscribeAgentProfiles(fn: () => void): () => void {
+  if (cache === null) load();
+  return subscribe(fn);
+}
+
 /** Todos los perfiles de agente de la persona (se leen una vez y se refrescan al cambiar alguno). */
 export function useAgentProfiles(): ProfileMap {
   const current = useSyncExternalStore(subscribe, () => cache, () => null);

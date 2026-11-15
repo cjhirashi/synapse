@@ -7,7 +7,7 @@ import type { CSSProperties } from "react";
 import { PDF_PAGE_PX } from "./metaRules";
 import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfType } from "./pdfStyle";
 
-const FAMILY: Record<PdfFont, string> = {
+export const FAMILY: Record<PdfFont, string> = {
   "DejaVu Sans": '"DejaVu Sans", Verdana, sans-serif',
   "DejaVu Serif": '"DejaVu Serif", Georgia, serif',
   "Liberation Sans": '"Liberation Sans", Arial, sans-serif',

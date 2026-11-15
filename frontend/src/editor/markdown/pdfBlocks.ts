@@ -6,6 +6,9 @@
  *   <!-- pdf:salto -->                                lo que sigue empieza en página nueva
  *   <div align="center"> … </div>                     alineación: left, center, right, justify
  *   <div class="cols-2"> … </div>                     columnas: 2, 3 o 4
+ *   <div class="comentario" data-autor="aira" data-fecha="2026-11-15"> … </div>
+ *                                                      comentario de revisión: una ventana gris con la foto y el nombre de quien lo dejó;
+ *                                                      se ve en Lectura, edición y Código, nunca en el PDF ni en una publicación
  *
  * Milkdown las lee como líneas de HTML sueltas, sin envolver lo que hay entre la apertura y el cierre. Este transformador
  * (fase «run» de remark: corre igual en frío y con el mdast cacheado) agrupa cada pareja en un contenedor `pdfBlock`, y los
@@ -16,7 +19,7 @@ import { $nodeSchema, $remark } from "@milkdown/utils";
 
 export const PDF_ALIGNMENTS = ["left", "center", "right", "justify"] as const;
 export const PDF_COLUMNS = ["2", "3", "4"] as const;
-export type PdfBlockKind = "cover" | "align" | "cols";
+export type PdfBlockKind = "cover" | "align" | "cols" | "comment";
 export type PdfMarkKind = "indice" | "salto";
 
 const BLOCK_MDAST = "pdfBlock";
@@ -25,11 +28,13 @@ const MARK_MDAST = "pdfMark";
 const OPEN_ALIGN = /^<div align="(left|center|right|justify)">$/;
 const OPEN_COLS = /^<div class="cols-([234])">$/;
 const OPEN_COVER = /^<!--\s*pdf:portada\s*-->$/;
+/** `data-autor`: el id del agente o `usuario` (la persona); `data-fecha`: día en que se dejó (AAAA-MM-DD). Ambos opcionales, en ese orden. */
+const OPEN_COMMENT = /^<div class="comentario"(?: data-autor="([a-z0-9][a-z0-9_-]{0,31})")?(?: data-fecha="(\d{4}-\d{2}-\d{2})")?>$/;
 const CLOSE_COVER = /^<!--\s*\/pdf:portada\s*-->$/;
 const CLOSE_DIV = /^<\/div>$/;
 const MARK = /^<!--\s*pdf:(indice|salto)\s*-->$/;
 
-interface Opening { kind: PdfBlockKind; value: string }
+interface Opening { kind: PdfBlockKind; value: string; date?: string }
 
 /** Lo que abre una línea de HTML, o `null` si no es una de nuestras aperturas. */
 export function parseOpening(html: string): Opening | null {
@@ -38,12 +43,15 @@ export function parseOpening(html: string): Opening | null {
   if (align) return { kind: "align", value: align[1] };
   const cols = OPEN_COLS.exec(text);
   if (cols) return { kind: "cols", value: cols[1] };
+  const comment = OPEN_COMMENT.exec(text);
+  if (comment) return { kind: "comment", value: comment[1] ?? "", date: comment[2] ?? "" };
   return OPEN_COVER.test(text) ? { kind: "cover", value: "" } : null;
 }
 
-/** HTML de apertura y de cierre de un contenedor. */
-export function blockTags(kind: PdfBlockKind, value: string): [string, string] {
+/** HTML de apertura y de cierre de un contenedor (`date` solo lo usa el comentario). */
+export function blockTags(kind: PdfBlockKind, value: string, date = ""): [string, string] {
   if (kind === "cover") return ["<!-- pdf:portada -->", "<!-- /pdf:portada -->"];
+  if (kind === "comment") return [`<div class="comentario"${value ? ` data-autor="${value}"` : ""}${date ? ` data-fecha="${date}"` : ""}>`, "</div>"];
   return [kind === "align" ? `<div align="${value}">` : `<div class="cols-${value}">`, "</div>"];
 }
 
@@ -93,7 +101,7 @@ export function groupBlocks(nodes: Mdast[]): Mdast[] {
       continue;
     }
     const inner = groupBlocks(nodes.slice(i + 1, end));
-    out.push({ type: BLOCK_MDAST, kind: opening.kind, value: opening.value, children: inner.length ? inner : [{ type: "paragraph", children: [] }] });
+    out.push({ type: BLOCK_MDAST, kind: opening.kind, value: opening.value, date: opening.date ?? "", children: inner.length ? inner : [{ type: "paragraph", children: [] }] });
     i = end;
   }
   return out;
@@ -104,17 +112,19 @@ export const pdfBlocksRemark = $remark("synapsePdfBlocks", () => () => (tree: un
   if (Array.isArray(root.children)) root.children = groupBlocks(root.children);
 });
 
-const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" ? value : "cover");
+const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" || value === "comment" ? value : "cover");
 
-/** Contenedor: portada, alineación o columnas. Su contenido es Markdown normal. */
+/** Contenedor: portada, alineación, columnas o comentario. Su contenido es Markdown normal. */
 export const pdfBlockSchema = $nodeSchema("pdf_block", () => ({
   group: "block",
   content: "block+",
   defining: true,
-  attrs: { kind: { default: "cover" }, value: { default: "" } },
+  attrs: { kind: { default: "cover" }, value: { default: "" }, date: { default: "" } },
   toDOM: (node) => {
     const kind = kindOf(node.attrs.kind);
     const value = String(node.attrs.value ?? "");
+    // El comentario lo dibuja su vista (`commentView.ts`); esta es la forma sin vista (copiar y pegar, pruebas).
+    if (kind === "comment") return ["div", { class: "comentario", "data-autor": value, "data-fecha": String(node.attrs.date ?? "") }, 0];
     if (kind === "cover") return ["section", { class: "pdf-portada", "data-pdf-label": "Portada" }, 0];
     if (kind === "align") return ["div", { align: value, "data-pdf-label": `Alineación: ${value}` }, 0];
     return ["div", { class: `cols-${value}`, "data-pdf-label": `${value} columnas` }, 0];
@@ -123,13 +133,13 @@ export const pdfBlockSchema = $nodeSchema("pdf_block", () => ({
     match: (node) => node.type === BLOCK_MDAST,
     runner: (state, node, type) => {
       const block = node as unknown as Mdast;
-      state.openNode(type, { kind: kindOf(block.kind), value: String(block.value ?? "") }).next(block.children).closeNode();
+      state.openNode(type, { kind: kindOf(block.kind), value: String(block.value ?? ""), date: String(block.date ?? "") }).next(block.children).closeNode();
     },
   },
   toMarkdown: {
     match: (node) => node.type.name === "pdf_block",
     runner: (state, node) => {
-      const [open, close] = blockTags(kindOf(node.attrs.kind), String(node.attrs.value ?? ""));
+      const [open, close] = blockTags(kindOf(node.attrs.kind), String(node.attrs.value ?? ""), String(node.attrs.date ?? ""));
       state.addNode("html", undefined, open);
       state.next(node.content);
       state.addNode("html", undefined, close);
@@ -145,7 +155,9 @@ export const pdfMarkSchema = $nodeSchema("pdf_mark", () => ({
   attrs: { kind: { default: "salto" } },
   toDOM: (node) => {
     const kind = node.attrs.kind === "indice" ? "indice" : "salto";
-    return ["div", { class: "pdf-mark", "data-pdf-mark": kind, "data-pdf-label": kind === "indice" ? "Índice" : "Salto de página" }];
+    const label = kind === "indice" ? "Índice del PDF" : "Salto de página";
+    const hint = kind === "indice" ? "aquí se arma el índice con los encabezados" : "lo que sigue empieza en hoja nueva";
+    return ["div", { class: "pdf-mark", "data-pdf-mark": kind, "data-pdf-label": label, "data-pdf-hint": hint, role: "separator", "aria-label": `${label}: ${hint}` }];
   },
   parseMarkdown: {
     match: (node) => node.type === MARK_MDAST,

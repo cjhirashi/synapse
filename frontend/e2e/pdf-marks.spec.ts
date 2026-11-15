@@ -46,16 +46,24 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("button", { name: "Salto de página" }).click();
     await expect(editor.locator('.pdf-mark[data-pdf-mark="indice"]')).toHaveCount(indexBefore + 1);
     await expect(editor.locator('.pdf-mark[data-pdf-mark="salto"]')).toHaveCount(breakBefore + 1);
+    // Comentario de revisión: una ventana con el nombre de quien lo deja (la persona) y el día.
+    await page.getByRole("button", { name: "Comentario", exact: true }).click();
+    await expect(editor.locator("div.comentario")).toHaveCount(1);
+    await expect(editor.locator("div.comentario .comentario-head")).toContainText(/\S/);
+    await expect(editor.locator("div.comentario .comentario-fecha")).toHaveText(/\d{1,2} \w{3} \d{4}/);
+    await expect(editor.locator("div.comentario")).toHaveCSS("border-top-style", "solid");
     await shot(page, `pdf-marcas-edicion-${theme}`);
 
     // El Markdown guardado lleva las etiquetas HTML.
     await page.getByRole("button", { name: "Código", exact: true }).click();
     const source = await page.locator(".cm-content").innerText();
-    for (const tag of ['<div align="center">', '<div class="cols-4">', "<!-- pdf:portada -->", "<!-- /pdf:portada -->", "<!-- pdf:indice -->", "<!-- pdf:salto -->"]) expect(source).toContain(tag);
+    for (const tag of ['<div align="center">', '<div class="cols-4">', "<!-- pdf:portada -->", "<!-- /pdf:portada -->", "<!-- pdf:indice -->", "<!-- pdf:salto -->", '<div class="comentario" data-autor="usuario" data-fecha="']) expect(source).toContain(tag);
     await page.getByRole("button", { name: "Visual", exact: true }).click();
 
     // Quitar cada uno repitiendo el botón con el cursor dentro.
     await mine("p").click();
+    await page.getByRole("button", { name: "Comentario", exact: true }).click();
+    await expect(editor.locator("div.comentario")).toHaveCount(0);
     await page.getByRole("button", { name: "Portada", exact: true }).click();
     await expect(editor.locator("section.pdf-portada")).toHaveCount(0);
     await page.getByRole("button", { name: "4 columnas" }).click();
@@ -63,10 +71,28 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("button", { name: "Alinear a la izquierda" }).click();
     await expect(editor.locator('div[align="center"]')).toHaveCount(0);
 
-    // Lectura: la marca de índice y de salto no se ven; la portada sí tiene su recuadro.
+    // Lectura: el índice y el salto de página se ven con su mensajito (sin entrar a editar) y el comentario como ventana gris.
+    await page.getByRole("button", { name: "Comentario", exact: true }).click();
     await page.getByRole("button", { name: "Leer", exact: true }).click().catch(() => undefined);
     await waitForSynced(page);
+    const reading = page.locator('.milkdown-view[data-mode="read"] .ProseMirror');
+    await expect(reading.locator('.pdf-mark[data-pdf-mark="indice"]').first()).toBeVisible();
+    await expect(reading.locator('.pdf-mark[data-pdf-mark="salto"]').first()).toBeVisible();
+    const before = (selector: string) => reading.locator(selector).first().evaluate((el) => getComputedStyle(el, "::before").content);
+    expect(await before('.pdf-mark[data-pdf-mark="indice"]')).toContain("Índice del PDF · aquí se arma el índice");
+    expect(await before('.pdf-mark[data-pdf-mark="salto"]')).toContain("Salto de página · lo que sigue empieza en hoja nueva");
+    await expect(reading.locator("div.comentario")).toHaveCount(1);
+    await expect(reading.locator("div.comentario .comentario-head")).toBeVisible();
     await shot(page, `pdf-marcas-lectura-${theme}`);
+
+    // La nota queda como estaba: se quita el comentario que se dejó para leerlo.
+    await page.getByRole("button", { name: "Editar", exact: true }).click();
+    await editor.locator("div.comentario .comentario-body").click();
+    await page.getByRole("button", { name: "Comentario", exact: true }).click();
+    await expect(editor.locator("div.comentario")).toHaveCount(0);
+    await page.getByRole("button", { name: "Leer", exact: true }).click(); // al salir de la edición se guarda
+    await waitForSynced(page);
+    await expect(page.locator('.milkdown-view[data-mode="read"] .ProseMirror div.comentario')).toHaveCount(0);
     expect(errors, "sin errores de página").toEqual([]);
     await context.close();
   });

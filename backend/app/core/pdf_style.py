@@ -70,9 +70,13 @@ CODE_BG_PERCENT = 18  # con tema: color del texto sobre blanco
 QUOTE_BG_PERCENT = 16  # con tema: opacidad del secundario de la cita (translúcido: deja ver el fondo del documento)
 TABLE_HEAD_PERCENT = 15  # con tema: opacidad del primario en la cabecera de las tablas
 TABLE_STRIPE_PERCENT = 7  # con tema: opacidad del primario en las filas pares
-# Hojas especiales (marcas `<!-- pdf:portada -->` y `<!-- pdf:indice -->`): fondo propio, imagen opcional que cubre la hoja y color del texto.
-COVER_DEFAULT = {"fondo": "#0f172a", "imagen": None, "color": "#f8fafc"}
-INDEX_DEFAULT = {"fondo": "#f1f5f9", "imagen": None, "color": "#1f2937", "titulo": "Índice", "niveles": 3}
+# Hojas especiales (marcas `<!-- pdf:portada -->` y `<!-- pdf:indice -->`): su fondo es un color o, si se cargó una, su imagen (que cubre la hoja); `imagen_principal`
+# presta la imagen de fondo de las páginas (la del encabezado). Con `personalizar` apagado usan los estilos de encabezados y texto del documento; encendido, los suyos.
+COVER_DEFAULT = {"fondo": "#ffffff", "imagen": None, "imagen_principal": False, "personalizar": False,
+                 "encabezados": {"familia": "DejaVu Sans", "tamano_pt": 30, "color": "#111827"}, "texto": {"familia": "DejaVu Sans", "tamano_pt": 12, "color": "#1f2937"}}
+INDEX_DEFAULT = {"fondo": "#f1f5f9", "imagen": None, "imagen_principal": False, "personalizar": False,
+                 "encabezados": {"familia": "DejaVu Sans", "tamano_pt": 20, "color": "#111827"}, "texto": {"familia": "DejaVu Sans", "tamano_pt": 10.5, "color": "#1f2937"},
+                 "titulo": "Índice", "niveles": 3}
 H1_DEFAULT = {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "#111827"}
 
 _FIELD_RE = re.compile(r"\{\{([^{}]*)\}\}")
@@ -97,10 +101,24 @@ def _headings(raw: object, body: dict, theme: dict | None) -> dict:
     return out
 
 
-def _sheet(raw: object, default: dict) -> dict:
-    """Portada o índice: lo que la plantilla fijó (ya validado) sobre los valores por omisión; la imagen no tiene valor por omisión."""
+def _sheet(raw: object, default: dict, heads: dict, body: dict) -> dict:
+    """Portada o índice: lo que la plantilla fijó (ya validado) sobre los valores por omisión; la imagen no tiene valor por omisión.
+
+    Una plantilla del formato anterior traía un solo `color` para todo el texto: se lee como «personalizar» encendido con ese color en encabezados y texto
+    y con la tipografía y el tamaño del documento, para que se imprima igual que antes."""
     raw = raw if isinstance(raw, dict) else {}
-    return {key: (raw[key] if key in raw and (raw[key] is not None or key == "imagen") else value) for key, value in default.items()}
+    legacy = raw.get("color") if isinstance(raw.get("color"), str) else None
+    heads_base = {"familia": heads["h1"]["familia"], "tamano_pt": heads["h1"]["tamano_pt"], "color": legacy} if legacy else default["encabezados"]
+    text_base = {"familia": body["familia"], "tamano_pt": body["tamano_pt"], "color": legacy} if legacy else default["texto"]
+    out = {
+        "fondo": raw["fondo"] if isinstance(raw.get("fondo"), str) else default["fondo"],
+        "imagen": raw["imagen"] if isinstance(raw.get("imagen"), str) else None,
+        "imagen_principal": raw.get("imagen_principal") is True,
+        "personalizar": raw["personalizar"] if isinstance(raw.get("personalizar"), bool) else legacy is not None,
+        "encabezados": _merge(raw.get("encabezados"), heads_base),
+        "texto": _merge(raw.get("texto"), text_base),
+    }
+    return {**out, **{key: (raw[key] if raw.get(key) is not None else default[key]) for key in ("titulo", "niveles") if key in default}}
 
 
 def _band(raw: object, body: dict, *, line_on: bool, image: bool) -> dict:
@@ -130,8 +148,8 @@ def resolve(raw: object) -> dict:
     out["encabezados"] = _headings(raw.get("encabezados"), out["texto"], out["tema"]["colores"])
     out["encabezado"] = _band(raw.get("encabezado"), out["texto"], line_on=False, image=True)
     out["pie"] = _band(raw.get("pie"), out["texto"], line_on=True, image=False)
-    out["portada"] = _sheet(raw.get("portada"), COVER_DEFAULT)
-    out["indice"] = _sheet(raw.get("indice"), INDEX_DEFAULT)
+    out["portada"] = _sheet(raw.get("portada"), COVER_DEFAULT, out["encabezados"], out["texto"])
+    out["indice"] = _sheet(raw.get("indice"), INDEX_DEFAULT, out["encabezados"], out["texto"])
     return out
 
 
@@ -212,31 +230,68 @@ tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {_alpha(c['prima
 """
 
 
-def _sheet_css(name: str, spec: dict, page: dict, background: str | None, *, has_header: bool, has_footer: bool) -> str:
-    """`@page` de la portada o del índice: fondo propio (color e imagen que cubre la hoja), sin encabezado ni pie y sin contar en la numeración."""
+def _sheet_page_css(name: str, spec: dict, page: dict, own_image: str | None, main_image: str | None, *, has_header: bool, has_footer: bool) -> str:
+    """`@page` de la portada o del índice: fondo propio, sin encabezado ni pie y sin contar en la numeración.
+
+    El fondo es el color y, encima, la imagen propia (cubre la hoja) o, solo si `imagen_principal` está encendido, la de las páginas. Una hoja con nombre hereda el
+    `background-image` de `@page` si no se le dice otra cosa, por eso sin imagen lleva `none` explícito: su color llena la hoja."""
     m = page["margenes_mm"]
     width, height = PAGE_PX[page["tamano"]]
-    image = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{m["izquierdo"]}mm -{m["superior"]}mm; '
-             f"background-size: {width}px {height}px; " if background else "")
+    place = f"background-repeat: no-repeat; background-position: -{m['izquierdo']}mm -{m['superior']}mm; "
+    if own_image:
+        image = f'background-image: url("{own_image}"); {place}background-size: {width}px {height}px; '
+    elif spec["imagen_principal"] and main_image:
+        image = f'background-image: url("{main_image}"); {place}background-size: {width}px auto; '
+    else:
+        image = "background-image: none; " if main_image else ""  # sin imagen en las páginas no hay nada que heredar
     boxes = ("@top-left { content: none; } " if has_header else "") + ("@bottom-left { content: none; } " if has_footer else "")
     return f"@page {name} {{ background-color: {spec['fondo']}; {image}counter-increment: page 0; {boxes}}}"
 
 
-def _marks_css(style: dict) -> str:
+# Etiquetas de texto corrido de una hoja con estilos propios: el color del documento (tema: negrita, cursiva, enlaces) no debe pisar el de la hoja.
+_SHEET_TEXT_TAGS = ("p", "li", "td", "th", "blockquote", "strong", "b", "em", "i", "a", "span", "u", "s", "del", "ins", "mark", "small", "q", "dd", "dt")
+
+
+def _sheet_style_css(scope: str, spec: dict, *, title: str | None = None) -> str:
+    """Tipografía y color propios de la portada (`scope`: `section.pdf-portada`) o del índice, solo con `personalizar` encendido.
+
+    Los encabezados H2 a H4 de la hoja se escalan del tamaño del H1 como en el documento; en el índice el único encabezado es su título (`title`) y lleva el tamaño tal cual."""
+    if not spec["personalizar"]:
+        return ""
+    heads, text = spec["encabezados"], spec["texto"]
+    rules = [f"{scope} {{ font-family: \"{text['familia']}\", sans-serif; font-size: {text['tamano_pt']}pt; color: {text['color']}; }}",
+             f"{', '.join(f'{scope} {tag}' for tag in _SHEET_TEXT_TAGS)}, {scope} li::marker {{ color: {text['color']}; }}"]
+    if title:
+        rules.append(f"{title}, {title} * {{ font-family: \"{heads['familia']}\", sans-serif; color: {heads['color']}; }} {title} {{ font-size: {heads['tamano_pt']}pt; }}")
+    else:
+        h1 = float(heads["tamano_pt"])
+        sizes = {"h1": h1, **{level: round(h1 * scale, 1) for level, scale in HEADING_SCALE.items()}}
+        sizes["h4"] = max(sizes["h4"], float(text["tamano_pt"]))
+        sizes["h5"] = sizes["h6"] = sizes["h4"]
+        for level, size in sizes.items():
+            rules.append(f"{scope} {level}, {scope} {level} * {{ font-family: \"{heads['familia']}\", sans-serif; color: {heads['color']}; }} {scope} {level} {{ font-size: {size:g}pt; }}")
+    return "\n".join(rules)
+
+
+def _marks_css(style: dict, body: dict) -> str:
     """Marcas del documento (`pdf:portada`, `pdf:indice`, `pdf:salto`), alineación y columnas. Los números de página del índice los pone WeasyPrint (`target-counter`)."""
     cover, index = style["portada"], style["indice"]
+    # Con los estilos del documento el índice se lee como texto corrido (sus entradas son enlaces: sin esto saldrían con el color del enlace).
+    entries = "" if index["personalizar"] else f"nav.pdf-indice a {{ color: {body['color']}; }}"
     return f"""
 section.pdf-portada {{ page: portada; break-after: page; padding-top: 60mm; }}
-section.pdf-portada, section.pdf-portada * {{ color: {cover['color']}; }}
+{_sheet_style_css('section.pdf-portada', cover)}
 nav.pdf-indice {{ page: indice; break-after: page; }}
-nav.pdf-indice, nav.pdf-indice * {{ color: {index['color']}; }}
 nav.pdf-indice .pdf-indice-titulo {{ margin-top: 0; }}
 nav.pdf-indice ol {{ list-style: none; margin: 0; padding: 0; }}
 nav.pdf-indice li {{ margin: 0.35em 0; }}
 nav.pdf-indice li.lv2 {{ margin-left: 1.4em; }} nav.pdf-indice li.lv3 {{ margin-left: 2.8em; }} nav.pdf-indice li.lv4 {{ margin-left: 4.2em; }}
 nav.pdf-indice a {{ text-decoration: none; }}
+{entries}
+{_sheet_style_css('nav.pdf-indice', index, title='nav.pdf-indice .pdf-indice-titulo')}
 nav.pdf-indice a::after {{ content: leader('.') ' ' target-counter(attr(href), page); }}
 .pdf-salto {{ break-before: page; height: 0; margin: 0; padding: 0; }}
+div.comentario {{ display: none; }}
 div[align="left"] {{ text-align: left; }} div[align="center"] {{ text-align: center; }}
 div[align="right"] {{ text-align: right; }} div[align="justify"] {{ text-align: justify; }}
 div.cols-2 {{ column-count: 2; column-gap: 8mm; }} div.cols-3 {{ column-count: 3; column-gap: 8mm; }} div.cols-4 {{ column-count: 4; column-gap: 8mm; }}
@@ -291,9 +346,9 @@ hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-embed {{ border: 0.8pt dashed #94a3b8; border-radius: 3pt; padding: 0.5em 0.8em; margin: 0 0 0.8em; break-inside: avoid; }}
 .pdf-attrs {{ margin: 0 0 1em; font-size: {round(base * 0.92, 1)}pt; }}
 .pdf-attrs th {{ width: 28%; }}
-{_sheet_css('portada', style['portada'], page, cover_background, has_header=has_header, has_footer=has_footer)}
-{_sheet_css('indice', style['indice'], page, index_background, has_header=has_header, has_footer=has_footer)}
-{_marks_css(style)}
+{_sheet_page_css('portada', style['portada'], page, cover_background, background, has_header=has_header, has_footer=has_footer)}
+{_sheet_page_css('indice', style['indice'], page, index_background, background, has_header=has_header, has_footer=has_footer)}
+{_marks_css(style, body)}
 {_band_css('pdfhead', head_band, edge='top')}
 {_band_css('pdffoot', foot_band, edge='bottom')}
 {theme_css}

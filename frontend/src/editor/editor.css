@@ -1464,23 +1464,73 @@
   user-select: none;
 }
 
-.milkdown-view .ProseMirror .pdf-mark { display: none; }
-.milkdown-view[data-mode="edit"] .ProseMirror .pdf-mark {
+/* Índice y salto de página: un indicador en su lugar, también en Lectura (así se ve dónde quedaron sin entrar a editar). En Lectura el mensajito explica qué hace; en edición basta la etiqueta. */
+.milkdown-view .ProseMirror .pdf-mark {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   margin: var(--space-3) 0;
   font-size: 12px;
+  line-height: 1.3;
   color: var(--text-secondary);
   cursor: default;
+  user-select: none;
 }
-.milkdown-view[data-mode="edit"] .ProseMirror .pdf-mark::before { content: attr(data-pdf-label); }
-.milkdown-view[data-mode="edit"] .ProseMirror .pdf-mark::after {
+.milkdown-view .ProseMirror .pdf-mark::before {
+  content: attr(data-pdf-label);
+  flex: none;
+  padding: 2px 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+.milkdown-view[data-mode="read"] .ProseMirror .pdf-mark::before { content: attr(data-pdf-label) " · " attr(data-pdf-hint); font-weight: 500; }
+.milkdown-view .ProseMirror .pdf-mark::after {
   content: "";
   flex: 1;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-control, var(--border));
+}
+.milkdown-view[data-mode="read"] .ProseMirror section.pdf-portada::before {
+  content: "Portada del PDF · lo que está aquí va en la primera hoja";
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  user-select: none;
 }
 .milkdown-view .ProseMirror .pdf-mark.ProseMirror-selectednode { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Comentario de revisión (`div.comentario`, `commentView.ts`): ventana gris con la foto y el nombre de quien lo dejó. Solo existe en el Markdown: el PDF lo omite. */
+.milkdown-view .ProseMirror div.comentario {
+  margin: var(--space-4) 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  overflow: hidden;
+  break-inside: avoid;
+}
+.milkdown-view .ProseMirror .comentario-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--space-2);
+  padding: 6px var(--space-3);
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--text-secondary) 13%, var(--bg-tertiary));
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+.milkdown-view .ProseMirror .comentario-autor { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--text-primary); }
+.milkdown-view .ProseMirror .comentario-tipo { color: var(--text-secondary); white-space: nowrap; }
+.milkdown-view .ProseMirror .comentario-fecha { margin-left: auto; color: var(--text-secondary); white-space: nowrap; }
+.milkdown-view .ProseMirror .comentario-avatar { flex: none; }
+.milkdown-view .ProseMirror .comentario-body { padding: var(--space-3) var(--space-4); color: var(--text-primary); }
+.milkdown-view .ProseMirror .comentario-body > :first-child { margin-top: 0; }
+.milkdown-view .ProseMirror .comentario-body > :last-child { margin-bottom: 0; }
 
 /* Tablas (SPEC-0010 RF-026; R-7): ancho del contenido con mínimo del 100 %, celdas de 4/12 y sin margen
    en el párrafo de la celda (esa era la causa de las filas de ~62 px). El scroll horizontal es del

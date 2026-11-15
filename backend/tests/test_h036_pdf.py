@@ -759,25 +759,76 @@ def test_cover_and_index_have_their_own_defaults_and_template_validation():
     from app.core.plantilla_rules import check_pdf_style
 
     style = pdf_style.resolve({"portada": {"fondo": "#112233"}, "indice": {"titulo": "Contenido", "niveles": 2}})
-    assert style["portada"] == {"fondo": "#112233", "imagen": None, "color": "#f8fafc"}
-    assert style["indice"] == {"fondo": "#f1f5f9", "imagen": None, "color": "#1f2937", "titulo": "Contenido", "niveles": 2}
-    assert pdf_style.resolve({})["indice"]["niveles"] == 3
-    assert check_pdf_style({"portada": {"fondo": "#000000", "imagen": "img-1", "color": "#ffffff"}, "indice": {"titulo": "Índice", "niveles": 4}})
+    cover = style["portada"]
+    assert cover["fondo"] == "#112233" and cover["imagen"] is None and cover["imagen_principal"] is False and cover["personalizar"] is False
+    assert cover["encabezados"] == {"familia": "DejaVu Sans", "tamano_pt": 30, "color": "#111827"} and cover["texto"]["tamano_pt"] == 12
+    assert style["indice"]["fondo"] == "#f1f5f9" and style["indice"]["titulo"] == "Contenido" and style["indice"]["niveles"] == 2 and style["indice"]["personalizar"] is False
+    assert pdf_style.resolve({})["indice"]["niveles"] == 3 and pdf_style.resolve({})["portada"]["fondo"] == "#ffffff"
+    font = {"familia": "Liberation Serif", "tamano_pt": 24, "color": "#ffffff"}
+    assert check_pdf_style({"portada": {"fondo": "#000000", "imagen": "img-1", "imagen_principal": True, "personalizar": True, "encabezados": font, "texto": font},
+                            "indice": {"titulo": "Índice", "niveles": 4, "personalizar": False, "texto": {"color": "#000000"}}})
+    assert check_pdf_style({"portada": {"fondo": "#000000", "imagen": "img-1", "color": "#ffffff"}})  # formato anterior
     for bad in ({"portada": {"fondo": "rojo"}}, {"portada": {"extra": 1}}, {"indice": {"niveles": 0}}, {"indice": {"niveles": 5}},
-                {"indice": {"titulo": "x" * 81}}, {"indice": {"titulo": "a\nb"}}, {"indice": {"niveles": True}}, {"portada": {"imagen": "../x"}}):
+                {"indice": {"titulo": "x" * 81}}, {"indice": {"titulo": "a\nb"}}, {"indice": {"niveles": True}}, {"portada": {"imagen": "../x"}},
+                {"portada": {"personalizar": "si"}}, {"portada": {"imagen_principal": 1}}, {"portada": {"encabezados": {"familia": "Comic Sans"}}},
+                {"portada": {"texto": {"tamano_pt": 200}}}, {"indice": {"encabezados": {"extra": 1}}}):
         assert not check_pdf_style(bad), bad
 
 
+def test_a_cover_saved_in_the_old_format_prints_as_before_with_its_single_color():
+    style = pdf_style.resolve({"texto": {"familia": "Liberation Serif", "tamano_pt": 11}, "encabezados": {"h1": {"familia": "Liberation Serif", "tamano_pt": 20}},
+                               "portada": {"fondo": "#0f172a", "color": "#f8fafc"}, "indice": {"color": "#1f2937"}})
+    cover = style["portada"]
+    assert cover["personalizar"] is True  # un solo color para todo el texto = estilos propios encendidos
+    assert cover["encabezados"] == {"familia": "Liberation Serif", "tamano_pt": 20, "color": "#f8fafc"}
+    assert cover["texto"] == {"familia": "Liberation Serif", "tamano_pt": 11, "color": "#f8fafc"}  # tipografía y tamaño del documento, el color de la hoja
+    assert style["indice"]["personalizar"] is True and style["indice"]["texto"]["color"] == "#1f2937"
+    assert pdf_style.resolve({"portada": {"fondo": "#fff000", "color": "#000000", "personalizar": False}})["portada"]["personalizar"] is False  # lo explícito manda
+
+
 def test_the_stylesheet_gives_cover_and_index_their_page_and_leaves_them_out_of_the_numbering():
-    css = pdf_style.stylesheet(pdf_style.resolve({"portada": {"fondo": "#112233"}}), has_header=True, has_footer=True, cover_background="data:image/png;base64,AAAA")
+    css = pdf_style.stylesheet(pdf_style.resolve({"portada": {"fondo": "#112233"}}), has_header=True, has_footer=True, background="data:image/png;base64,PAGE", cover_background="data:image/png;base64,AAAA")
     cover = css.split("@page portada {")[1].split("section.pdf-portada")[0]
     assert "background-color: #112233" in cover and "counter-increment: page 0" in cover and "@top-left { content: none; }" in cover and "@bottom-left { content: none; }" in cover
     assert 'background-image: url("data:image/png;base64,AAAA")' in cover and "background-position: -20mm -25mm" in cover and "background-size: 816px 1056px" in cover
     index = css.split("@page indice {")[1].split("}")[0]
-    assert "background-color: #f1f5f9" in index and "counter-increment: page 0" in index and "background-image" not in index
+    assert "background-color: #f1f5f9" in index and "counter-increment: page 0" in index and "background-image: none" in index
     for expected in ("section.pdf-portada { page: portada;", "nav.pdf-indice { page: indice;", "target-counter(attr(href), page)", ".pdf-salto { break-before: page;",
-                     'div[align="center"] { text-align: center; }', "div.cols-4 { column-count: 4;"):
+                     'div[align="center"] { text-align: center; }', "div.cols-4 { column-count: 4;", "div.comentario { display: none; }"):
         assert expected in css, expected
+
+
+def test_a_sheet_without_its_own_image_does_not_inherit_the_page_background_image():
+    # Una hoja con nombre hereda el `background-image` de `@page`: sin imagen propia lleva `none` y su color llena la hoja; la imagen principal solo se presta con el interruptor.
+    main = "data:image/png;base64,MAIN"
+    plain = pdf_style.stylesheet(pdf_style.resolve({"portada": {"fondo": "#112233"}}), has_header=False, has_footer=False, background=main)
+    cover = plain.split("@page portada {")[1].split("}")[0]
+    assert "background-image: none" in cover and "MAIN" not in cover and "background-color: #112233" in cover
+    assert "MAIN" in plain.split("@page {")[1].split("}")[0]  # las páginas del cuerpo sí llevan la imagen
+    shared = pdf_style.stylesheet(pdf_style.resolve({"portada": {"imagen_principal": True}, "indice": {"imagen_principal": True}}), has_header=False, has_footer=False, background=main)
+    for name in ("portada", "indice"):
+        sheet = shared.split(f"@page {name} {{")[1].split("}")[0]
+        assert f'background-image: url("{main}")' in sheet and "background-size: 816px auto" in sheet
+    own = pdf_style.stylesheet(pdf_style.resolve({"portada": {"imagen_principal": True}}), has_header=False, has_footer=False, background=main, cover_background="data:image/png;base64,OWN")
+    assert "OWN" in own.split("@page portada {")[1].split("}")[0] and "MAIN" not in own.split("@page portada {")[1].split("}")[0]  # la propia gana a la principal
+    nothing = pdf_style.stylesheet(pdf_style.resolve({"portada": {"imagen_principal": True}}), has_header=False, has_footer=False)
+    assert "background-image" not in nothing.split("@page portada {")[1].split("}")[0]  # sin imagen principal que prestar ni que heredar, solo el color
+
+
+def test_a_sheet_uses_the_document_styles_unless_it_customizes_its_own():
+    off = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    assert "section.pdf-portada h1" not in off and "section.pdf-portada p" not in off  # sin estilos propios, la portada hereda los del documento
+    assert "nav.pdf-indice a { color: #1f2937; }" in off  # las entradas del índice se leen como texto corrido, no con el color de los enlaces
+    on = pdf_style.stylesheet(pdf_style.resolve({"portada": {"personalizar": True, "encabezados": {"familia": "Liberation Serif", "tamano_pt": 40, "color": "#ff0000"},
+                                                             "texto": {"familia": "Liberation Mono", "tamano_pt": 14, "color": "#00ff00"}},
+                                                  "indice": {"personalizar": True, "encabezados": {"tamano_pt": 22, "color": "#0000ff"}, "texto": {"tamano_pt": 9, "color": "#123456"}}}),
+                              has_header=False, has_footer=False)
+    assert 'section.pdf-portada { font-family: "Liberation Mono", sans-serif; font-size: 14pt; color: #00ff00; }' in on
+    assert "section.pdf-portada p, section.pdf-portada li" in on and "section.pdf-portada strong" in on and "section.pdf-portada li::marker { color: #00ff00; }" in on
+    assert 'section.pdf-portada h1 { font-size: 40pt; }' in on and 'section.pdf-portada h2 { font-size: 32.8pt; }' in on and "section.pdf-portada h4 { font-size: 23.2pt; }" in on
+    assert 'section.pdf-portada h1, section.pdf-portada h1 * { font-family: "Liberation Serif", sans-serif; color: #ff0000; }' in on
+    assert "nav.pdf-indice .pdf-indice-titulo { font-size: 22pt; }" in on and "color: #0000ff" in on and "nav.pdf-indice { font-family: \"DejaVu Sans\", sans-serif; font-size: 9pt; color: #123456; }" in on
+    assert "nav.pdf-indice a { color: #1f2937; }" not in on
 
 
 def test_the_sanitizer_keeps_the_marks_alignment_and_columns_but_not_anything_else():
@@ -821,6 +872,62 @@ def test_a_pdf_with_cover_and_index_numbers_from_the_first_body_page_and_has_no_
     names = [page._page_box.page_type.name for page in rendered.pages]
     assert names[:2] == ["portada", "indice"] and set(names[2:]) == {""}  # el cuerpo vuelve a la hoja normal
     assert make_pdf(doc, lambda _: None).startswith(b"%PDF")
+
+
+def test_the_cover_pages_are_a_flat_color_and_only_borrow_the_page_image_with_the_switch():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    def backgrounds(raw):
+        style = pdf_style.resolve({"activo": True, "encabezado": {"imagen": "main"}, **raw})
+        body = '<section class="pdf-portada"><h1>Portada</h1></section><div class="pdf-indice"></div><h1>Uno</h1><p>a</p>'
+        doc = build_document(body, style, title="T", frontmatter={}, read_image=lambda _: (open_png(), "image/png"), now=NOW)
+        pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: (open_png(), "image/png"))).render().pages
+        return [bool(page._page_box.style["background_image"]) and page._page_box.style["background_image"][0][0] != "none" for page in pages]
+
+    def open_png():
+        import base64
+        return base64.b64decode(PNG.split(",")[1])
+
+    assert backgrounds({}) == [False, False, True]  # portada e índice: solo su color; el cuerpo lleva la imagen de las páginas
+    assert backgrounds({"portada": {"imagen_principal": True}}) == [True, False, True]
+    assert backgrounds({"indice": {"imagen_principal": True}}) == [False, True, True]
+    assert backgrounds({"portada": {"imagen": "own"}, "indice": {"imagen": "own"}}) == [True, True, True]
+
+
+def test_a_cover_with_its_own_styles_prints_them_and_without_them_the_document_ones():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    def colors(raw):
+        doc = build_document('<section class="pdf-portada"><h1>Titulo</h1><p>Texto</p></section><h1>Uno</h1><p>a</p>',
+                             pdf_style.resolve({"activo": True, **raw}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+        pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
+
+        def walk(box, found):
+            if hasattr(box, "text") and box.text.strip():
+                found[box.text.strip()] = (tuple(round(c, 2) for c in box.style["color"][:3]), round(box.style["font_size"], 1))
+            for child in getattr(box, "children", ()) or ():
+                walk(child, found)
+            return found
+
+        found: dict = {}
+        for page in pages:
+            walk(page._page_box, found)
+        return found
+
+    plain = colors({"encabezados": {"h1": {"tamano_pt": 18, "color": "#111827"}}, "texto": {"tamano_pt": 10.5, "color": "#1f2937"}})
+    assert plain["Titulo"][1] == 24.0 and plain["Texto"][1] == 14.0  # tamaños del documento (pt a px: 18 pt = 24 px)
+    custom = colors({"portada": {"personalizar": True, "encabezados": {"familia": "DejaVu Sans", "tamano_pt": 30, "color": "#ff0000"},
+                                 "texto": {"familia": "DejaVu Sans", "tamano_pt": 12, "color": "#00ff00"}}})
+    assert custom["Titulo"] == ((1.0, 0.0, 0.0), 40.0) and custom["Texto"] == ((0.0, 1.0, 0.0), 16.0)
+    assert custom["Uno"] != custom["Titulo"]  # el cuerpo del documento no cambia
 
 
 # --- Tablas ---

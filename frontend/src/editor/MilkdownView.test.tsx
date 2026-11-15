@@ -811,6 +811,52 @@ describe("MilkdownView · comandos de formato (H-010)", () => {
     expect(out).toContain("<!-- pdf:salto -->");
   });
 
+  it("comentario: se inserta con autor y fecha, se pinta como ventana con el nombre del autor, se quita sin cambiar de autor y se guarda con las mismas etiquetas", async () => {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    let flush: (() => void) | null = null;
+    const saved: string[] = [];
+    const { container } = render(<MilkdownView value="revisa esto" readOnly={false} onChange={(markdown) => saved.push(markdown)} label="Visual" registerCommands={(c) => (commands = c)} onView={(v) => (view = v)} registerFlush={(f) => (flush = f)} />);
+    await waitFor(() => expect(view !== null && commands !== null).toBe(true));
+    const cmd = commands as unknown as EditorCommands;
+    const markdown = () => {
+      act(() => flush?.());
+      return saved[saved.length - 1];
+    };
+    act(() => cmd.toggleComment("usuario", "2026-11-15"));
+    expect(markdown()).toBe('<div class="comentario" data-autor="usuario" data-fecha="2026-11-15">\n\nrevisa esto\n\n</div>\n');
+    const box = container.querySelector<HTMLElement>("div.comentario")!;
+    expect(box).not.toBeNull();
+    expect(box.querySelector(".comentario-head")).toHaveTextContent("Yo");
+    expect(box.querySelector(".comentario-head time")).toHaveTextContent("15 nov 2026");
+    expect(box.querySelector(".comentario-body")).toHaveTextContent("revisa esto");
+    expect(box).toHaveAccessibleName("Comentario de Yo, 15 nov 2026");
+    act(() => cmd.toggleComment("aira", "2026-11-16")); // con el cursor dentro, quita el comentario aunque el autor sea otro
+    expect(markdown()).toBe("revisa esto\n");
+  });
+
+  it("los comentarios de un documento se leen con su autor, y en Lectura se muestran sin poder editarse", async () => {
+    const source = '<div class="comentario" data-autor="aira" data-fecha="2026-11-14">\n\nrevisa la **sección 3**\n\n</div>\n\ntexto';
+    const { container } = render(<MilkdownView value={source} readOnly onChange={() => undefined} label="Lectura" />);
+    await waitFor(() => expect(container.querySelector("div.comentario")).not.toBeNull());
+    const box = container.querySelector<HTMLElement>("div.comentario")!;
+    expect(box.querySelector(".comentario-autor")).toHaveTextContent("aira");
+    expect(box.querySelector(".comentario-tipo")).toHaveTextContent("comentario de agente");
+    expect(box.querySelector(".comentario-body strong")).toHaveTextContent("sección 3");
+    expect(box.querySelector(".comentario-head")).toHaveAttribute("contenteditable", "false");
+  });
+
+  it("índice y salto de página llevan en Lectura un indicador con su explicación (sin entrar a editar)", async () => {
+    const { container } = render(<MilkdownView value={"uno\n\n<!-- pdf:indice -->\n\n<!-- pdf:salto -->\n\ndos"} readOnly onChange={() => undefined} label="Lectura" />);
+    await waitFor(() => expect(container.querySelectorAll(".pdf-mark")).toHaveLength(2));
+    const [index, jump] = Array.from(container.querySelectorAll<HTMLElement>(".pdf-mark"));
+    expect(index).toHaveAttribute("data-pdf-label", "Índice del PDF");
+    expect(index.getAttribute("data-pdf-hint")).toMatch(/encabezados/);
+    expect(index).toHaveAttribute("role", "separator");
+    expect(jump).toHaveAttribute("data-pdf-label", "Salto de página");
+    expect(jump.getAttribute("data-pdf-hint")).toMatch(/hoja nueva/);
+  });
+
   it("cita, línea horizontal, lista con viñetas y lista numerada insertan su nodo (C-5)", async () => {
     let ctx = await mountCommands("texto");
     act(() => ctx.commands.toggleBlockquote());

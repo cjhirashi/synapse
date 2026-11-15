@@ -202,7 +202,11 @@ def check_pdf_style(pdf: object) -> bool:
         "sangria_mm": lambda v: _is_num(v, *PDF_BAND_MM),
     }
     image = lambda v: v is None or (isinstance(v, str) and PDF_FILE_ID_RE.fullmatch(v) is not None)  # noqa: E731
-    cover = {"fondo": color, "imagen": image, "color": color}  # hoja de portada: fondo, imagen de fondo y color del texto
+    # Hoja de portada: fondo, imagen de fondo (o la imagen principal de las páginas) y, con `personalizar`, sus propios encabezados y texto.
+    # `color` es el formato anterior (un solo color para todo el texto): se sigue aceptando y se lee como «personalizar» encendido.
+    boolean = lambda v: isinstance(v, bool)  # noqa: E731
+    cover = {"fondo": color, "imagen": image, "color": color, "imagen_principal": boolean, "personalizar": boolean,
+             "encabezados": lambda v: _check_pdf_block(v, font), "texto": lambda v: _check_pdf_block(v, font)}
     index = {
         **cover, "titulo": lambda v: isinstance(v, str) and len(v) <= PDF_INDEX_TITLE_MAX and "\n" not in v,
         "niveles": lambda v: isinstance(v, int) and not isinstance(v, bool) and PDF_INDEX_LEVELS[0] <= v <= PDF_INDEX_LEVELS[1],

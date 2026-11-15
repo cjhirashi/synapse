@@ -36,6 +36,7 @@ import {
   Pilcrow,
   ImagePlus,
   BookOpenText,
+  MessageSquareText,
   Columns2,
   Columns3,
   Columns4,
@@ -97,6 +98,7 @@ import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
 import AttachDialog from "./AttachDialog";
 import { MilkdownView, type EditorCommands } from "./MilkdownView";
+import { COMMENT_PERSON, today } from "./commentView";
 import { WikilinkPreview, type WikilinkHoverTarget } from "./WikilinkPreview";
 import { NoteBreadcrumb } from "./NoteBreadcrumb";
 import { NoteMenu } from "./NoteMenu";
@@ -1301,6 +1303,11 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
               </button>
               <button type="button" className="note-nav-button" aria-label="Salto de página" title="Salto de página: lo que sigue empieza en hoja nueva" onClick={() => editorCommands.current?.insertPdfMark("salto")}>
                 <SeparatorHorizontal size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="note-tool-group" role="group" aria-label="Comentarios">
+              <button type="button" className="note-nav-button" aria-label="Comentario" title="Comentario de revisión: una ventana gris con tu nombre y foto, visible solo en Lectura y edición, nunca en el PDF (otra vez para quitarlo)" onClick={() => editorCommands.current?.toggleComment(COMMENT_PERSON, today())}>
+                <MessageSquareText size={16} aria-hidden="true" />
               </button>
             </div>
             <input

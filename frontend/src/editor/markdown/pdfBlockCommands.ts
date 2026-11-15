@@ -16,20 +16,21 @@ function enclosing(state: EditorState, kind: PdfBlockKind) {
 
 /**
  * Envuelve la selección en un contenedor de esa clase y valor. Si el cursor ya está en uno de la misma clase: con el mismo valor
- * lo quita, con otro valor lo cambia. `value === ""` solo quita (p. ej. alineación a la izquierda).
+ * lo quita, con otro valor lo cambia. `value === ""` solo quita (p. ej. alineación a la izquierda). El comentario siempre se quita sin cambiar de autor:
+ * `value` es quien lo deja y `date` el día (AAAA-MM-DD).
  */
-export function togglePdfBlock(view: EditorView, kind: PdfBlockKind, value: string): void {
+export function togglePdfBlock(view: EditorView, kind: PdfBlockKind, value: string, date = ""): void {
   const { state } = view;
   const found = enclosing(state, kind);
   if (found) {
-    if (found.node.attrs.value === value || value === "") {
+    if (found.node.attrs.value === value || value === "" || kind === "comment") {
       // Al quitar el contenedor el contenido sube un nivel (una posición menos): el cursor se queda donde estaba, no salta a otro bloque.
       const { from, to } = state.selection;
       const tr = state.tr.replaceWith(found.pos, found.pos + found.node.nodeSize, found.node.content);
       view.dispatch(tr.setSelection(TextSelection.between(tr.doc.resolve(from - 1), tr.doc.resolve(to - 1))));
     } else view.dispatch(state.tr.setNodeMarkup(found.pos, undefined, { ...found.node.attrs, value }));
   } else if (value !== "" || kind === "cover") {
-    wrapIn(state.schema.nodes.pdf_block, { kind, value })(state, view.dispatch);
+    wrapIn(state.schema.nodes.pdf_block, { kind, value, date })(state, view.dispatch);
   }
   view.focus();
 }

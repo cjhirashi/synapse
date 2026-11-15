@@ -62,6 +62,9 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
   const copy = root.cloneNode(true) as Element;
   const doc = copy.ownerDocument;
 
+  // Comentarios de revisión (`div.comentario`): son para quien edita el documento y nunca se imprimen.
+  copy.querySelectorAll("div.comentario").forEach((node) => node.remove());
+
   // Incrustados: el contenedor completo se cambia por un recuadro (si no, quedaría el envoltorio vacío).
   const handled = new Set<Element>();
   for (const iframe of Array.from(copy.querySelectorAll("iframe"))) {

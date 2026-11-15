@@ -14,7 +14,7 @@
  * - Seguridad (Art. 5): el contenido viene de la réplica. Los enlaces y las imágenes pasan por
  *   `safeUrl`; el nodo `html` de commonmark ya se pinta como texto (nunca como HTML).
  */
-import { useEffect, useRef, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, type CSSProperties } from "react";
 import { colorVar, shadeVar, type PaletteKey } from "../vaults/vaultIcon";
 import { type CmdKey, Editor, commandsCtx, defaultValueCtx, editorStateOptionsCtx, editorViewCtx, editorViewOptionsCtx, nodeViewCtx, prosePluginsCtx, rootCtx, serializerCtx } from "@milkdown/core";
 import { clipboard } from "@milkdown/plugin-clipboard";
@@ -60,6 +60,8 @@ import { vscodeMarkdownPaste } from "./markdown/vscodePaste";
 import { linkPastePlugin } from "./markdown/linkPaste";
 import { tableViewFactory } from "./tableView";
 import { taskItemViewFactory } from "./taskItemView";
+import { commentViewFactory, type CommentPerson } from "./commentView";
+import { MeContext } from "../auth/RequireAuth";
 import { htmlViewFactory, imageViewFactory } from "./htmlView";
 import { isExternalHttpLink, safeImageUrl, safeLinkUrl } from "./safeUrl";
 import { htmlEmbedMarkup } from "../files/embed";
@@ -242,6 +244,8 @@ export interface EditorCommands {
   togglePdfBlock: (kind: PdfBlockKind, value: string) => void;
   /** Inserta el índice o el salto de página tras el bloque del cursor. */
   insertPdfMark: (kind: PdfMarkKind) => void;
+  /** Envuelve la selección en un comentario de `author` (`usuario` o un agente) con la fecha dada; con el cursor dentro de uno, lo quita. */
+  toggleComment: (author: string, date: string) => void;
   /** Convierte el bloque del cursor en una lista con viñetas. */
   wrapBulletList: () => void;
   /** Convierte el bloque del cursor en una lista numerada. */
@@ -346,6 +350,10 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
   const notesRef = useRef<readonly NoteRef[]>(notes ?? []);
   notesRef.current = notes ?? [];
+  /** Quién es «usuario» en los comentarios del documento (nombre y foto de la sesión); la lee la vista del comentario al pintar. */
+  const me = useContext(MeContext);
+  const personRef = useRef<CommentPerson | null>(null);
+  personRef.current = me ? { name: me.display_name || me.email, photoUrl: me.photo_url ?? null } : null;
   /** El markdown que tiene el editor ahora (SIN el `prefix`): el último recibido del padre o emitido por él. */
   const current = useRef(value);
   const onChangeRef = useRef(onChange);
@@ -478,6 +486,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           ["table", tableViewFactory()] as [string, NodeViewConstructor],
           ["html", htmlViewFactory()] as [string, NodeViewConstructor],
           ["image", imageViewFactory()] as [string, NodeViewConstructor],
+          ["pdf_block", commentViewFactory(() => personRef.current)] as [string, NodeViewConstructor],
         ]);
         // RNF-001 (PLAN-0010 §10.1): el documento nace con los ids de encabezado ya puestos. El
         // `editorStateOptionsCtx` recibe el documento recién parseado (por `parserCtx`) justo antes de
@@ -699,6 +708,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           insertHr: () => run(insertHrCommand.key),
           togglePdfBlock: (kind: PdfBlockKind, value: string) => togglePdfBlock(view, kind, value),
           insertPdfMark: (kind: PdfMarkKind) => insertPdfMark(view, kind),
+          toggleComment: (author: string, date: string) => togglePdfBlock(view, "comment", author, date),
           wrapBulletList: () => run(wrapInBulletListCommand.key),
           wrapOrderedList: () => run(wrapInOrderedListCommand.key),
           // H-015: inserta la imagen subida en el cursor; el markdown queda `![alt](url)` y la

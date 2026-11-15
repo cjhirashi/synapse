@@ -30,6 +30,11 @@ describe("buildPdfHtml", () => {
     expect(out).not.toContain("pdf-mark");
   });
 
+  it("los comentarios de revisión nunca llegan al PDF, ni con encabezados dentro", () => {
+    const out = html('<h1>Uno</h1><div class="comentario" data-autor="aira"><div class="comentario-head">AIRA</div><div class="comentario-body"><h2>Revisar</h2><p>pendiente</p></div></div><p>texto</p>');
+    expect(out).toBe("<h1>Uno</h1><p>texto</p>");
+  });
+
   it("sustituye un iframe de YouTube por un recuadro con el enlace del video", () => {
     const out = html('<p>antes</p><div class="md-embed md-embed-video"><div class="md-embed-frame"><iframe title="Mi video" src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=30"></iframe></div><a class="md-embed-link" href="x">Abrir en YouTube</a></div>');
     expect(out).not.toContain("iframe");

@@ -27,8 +27,12 @@ export interface PdfBand {
 }
 /** Tema de color: con `activo`, el secundario, el terciario y los colores de cada elemento salen del primario (`colorTheme.ts`). */
 export interface PdfTheme { activo: boolean; primario: string }
-/** Hoja de portada o de índice (marcas `pdf:portada` y `pdf:indice`): fondo, imagen de fondo (id de archivo) y color del texto. */
-export interface PdfSheet { fondo: string; imagen: string; color: string }
+/**
+ * Hoja de portada o de índice (marcas `pdf:portada` y `pdf:indice`). El fondo es el color o, si se cargó una, su imagen (id de archivo);
+ * `imagenPrincipal` presta la imagen de fondo de las páginas. Con `personalizar` apagado usa los estilos de encabezados y texto del documento
+ * (`encabezados` y `texto` quedan guardados, sin efecto); encendido, los suyos.
+ */
+export interface PdfSheet { fondo: string; imagen: string; imagenPrincipal: boolean; personalizar: boolean; encabezados: PdfType; texto: PdfType }
 export interface PdfIndex extends PdfSheet { titulo: string; niveles: string }
 export interface PdfDraft {
   activo: boolean;
@@ -71,8 +75,15 @@ export const DEFAULT_PDF_DRAFT: PdfDraft = {
     fuente: { familia: "DejaVu Sans", tamano: "8.6", color: BAND_TEXT_COLOR },
     linea: { activa: true, color: LINE_COLOR, grosor: "0.6" }, distancia: "10", sangria: "0",
   },
-  portada: { fondo: "#0f172a", imagen: "", color: "#f8fafc" },
-  indice: { fondo: "#f1f5f9", imagen: "", color: "#1f2937", titulo: "Índice", niveles: "3" },
+  portada: {
+    fondo: "#ffffff", imagen: "", imagenPrincipal: false, personalizar: false,
+    encabezados: { familia: "DejaVu Sans", tamano: "30", color: "#111827" }, texto: { familia: "DejaVu Sans", tamano: "12", color: "#1f2937" },
+  },
+  indice: {
+    fondo: "#f1f5f9", imagen: "", imagenPrincipal: false, personalizar: false,
+    encabezados: { familia: "DejaVu Sans", tamano: "20", color: "#111827" }, texto: { familia: "DejaVu Sans", tamano: "10.5", color: "#1f2937" },
+    titulo: "Índice", niveles: "3",
+  },
 };
 
 type Raw = Record<string, unknown>;
@@ -121,9 +132,18 @@ function readBand(raw: unknown, text: PdfType, base: PdfBand): PdfBand {
   };
 }
 
-function readSheet<T extends PdfSheet>(raw: unknown, base: T): T {
+/** Hoja guardada → borrador. El formato anterior traía un solo `color` para todo el texto: se lee como «personalizar» encendido con ese color en encabezados y texto y la tipografía del documento (igual que el servidor). */
+function readSheet<T extends PdfSheet>(raw: unknown, base: T, h1: PdfType, text: PdfType): T {
   const r = obj(raw);
-  return { ...base, fondo: str(r.fondo, base.fondo), imagen: str(r.imagen, base.imagen), color: str(r.color, base.color) };
+  const legacy = typeof r.color === "string" ? r.color : null;
+  const headsBase: PdfType = legacy ? { familia: h1.familia, tamano: h1.tamano, color: legacy } : base.encabezados;
+  const textBase: PdfType = legacy ? { familia: text.familia, tamano: text.tamano, color: legacy } : base.texto;
+  return {
+    ...base,
+    fondo: str(r.fondo, base.fondo), imagen: str(r.imagen, base.imagen), imagenPrincipal: r.imagen_principal === true,
+    personalizar: typeof r.personalizar === "boolean" ? r.personalizar : legacy !== null,
+    encabezados: readType(r.encabezados, headsBase), texto: readType(r.texto, textBase),
+  };
 }
 
 /** `estilo.pdf` guardado → borrador del formulario (lo que falta toma el valor por omisión). */
@@ -137,18 +157,19 @@ export function pdfDraftFrom(raw: unknown): PdfDraft {
   const primary = typeof obj(r.tema).primario === "string" && /^#[0-9a-fA-F]{6}$/.test(obj(r.tema).primario as string) ? (obj(r.tema).primario as string) : null;
   // Una plantilla sin formato guardado no trae pie: la numeración por omisión solo se ofrece al activar el PDF.
   const footBase: PdfBand = bare ? base.pie : { ...base.pie, derecha: "" };
+  const encabezados = readHeadings(r.encabezados, texto, primary !== null);
   return {
     activo: r.activo === true,
     tema: { activo: primary !== null, primario: primary ?? base.tema.primario },
     incluirAtributos: r.incluir_atributos === true,
     tamano: page.tamano === "a4" ? "a4" : "carta",
     margenes: Object.fromEntries(PDF_MARGINS.map((key) => [key, num(margins[key], base.margenes[key])])) as Record<PdfMargin, string>,
-    encabezados: readHeadings(r.encabezados, texto, primary !== null),
+    encabezados,
     texto,
     encabezado: readBand(r.encabezado, texto, base.encabezado),
     pie: readBand(r.pie, texto, footBase),
-    portada: readSheet(r.portada, base.portada),
-    indice: { ...readSheet(r.indice, base.indice), titulo: str(obj(r.indice).titulo, base.indice.titulo), niveles: num(obj(r.indice).niveles, base.indice.niveles) },
+    portada: readSheet(r.portada, base.portada, encabezados.h1, texto),
+    indice: { ...readSheet(r.indice, base.indice, encabezados.h1, texto), titulo: str(obj(r.indice).titulo, base.indice.titulo), niveles: num(obj(r.indice).niveles, base.indice.niveles) },
   };
 }
 
@@ -162,7 +183,10 @@ const bandOut = (b: PdfBand) => ({
   fuente: typeOut(b.fuente), linea: lineOut(b.linea), distancia_mm: toNumber(b.distancia), sangria_mm: toNumber(b.sangria),
 });
 
-const sheetOut = (sheet: PdfSheet) => ({ fondo: sheet.fondo.trim(), imagen: sheet.imagen === "" ? null : sheet.imagen, color: sheet.color.trim() });
+const sheetOut = (sheet: PdfSheet) => ({
+  fondo: sheet.fondo.trim(), imagen: sheet.imagen === "" ? null : sheet.imagen, imagen_principal: sheet.imagenPrincipal, personalizar: sheet.personalizar,
+  encabezados: typeOut(sheet.encabezados), texto: typeOut(sheet.texto),
+});
 
 /** Borrador → `estilo.pdf`. Un borrador intacto (PDF apagado y sin tocar) se guarda como `{}`. El pie no lleva imagen. */
 export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
@@ -192,4 +216,19 @@ export function themeColors(draft: PdfDraft): ThemeColors | null {
 /** Color con el que se ve (y se imprime) un nivel de encabezado: el fijado a mano o, en automático, el del tema. */
 export function headingColor(draft: PdfDraft, level: HeadingLevel): string {
   return draft.encabezados[level].color || themeColors(draft)?.[level] || DEFAULT_PDF_DRAFT.encabezados[level].color;
+}
+
+/**
+ * Estilos de encabezados y texto que la hoja hereda del documento cuando no personaliza: el H1 en la portada (el servidor escala H2 a H4 desde él) y el H2 en el
+ * índice (su título es un H2). Con ellos se muestran los campos bloqueados y desde ellos parten al encender «personalizar».
+ */
+export function inheritedSheetStyle(draft: PdfDraft, kind: "portada" | "indice"): { encabezados: PdfType; texto: PdfType } {
+  const level: HeadingLevel = kind === "portada" ? "h1" : "h2";
+  return { encabezados: { ...draft.encabezados[level], color: headingColor(draft, level) }, texto: { ...draft.texto } };
+}
+
+/** Estilos que de verdad se imprimen en la hoja: los propios con «personalizar» encendido o los heredados del documento. */
+export function shownSheetStyle(draft: PdfDraft, kind: "portada" | "indice"): { encabezados: PdfType; texto: PdfType } {
+  const sheet = draft[kind];
+  return sheet.personalizar ? { encabezados: sheet.encabezados, texto: sheet.texto } : inheritedSheetStyle(draft, kind);
 }

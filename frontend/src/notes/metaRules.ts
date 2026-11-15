@@ -341,7 +341,10 @@ export function checkPdfStyle(pdf: unknown): boolean {
     sangria_mm: (v) => isNum(v, PDF_BAND_MM[0], PDF_BAND_MM[1]),
   };
   const image: Check = (v) => v === null || (typeof v === "string" && PDF_FILE_ID_RE.test(v));
-  const cover: Record<string, Check> = { fondo: color, imagen: image, color }; // hoja de portada: fondo, imagen de fondo y color del texto
+  // Hoja de portada: fondo, imagen de fondo (o la imagen principal de las páginas) y, con `personalizar`, sus propios encabezados y texto.
+  // `color` es el formato anterior (un solo color para todo el texto): se sigue aceptando.
+  const bool: Check = (v) => typeof v === "boolean";
+  const cover: Record<string, Check> = { fondo: color, imagen: image, color, imagen_principal: bool, personalizar: bool, encabezados: (v) => checkBlock(v, font), texto: (v) => checkBlock(v, font) };
   const index: Record<string, Check> = {
     ...cover,
     titulo: (v) => typeof v === "string" && v.length <= PDF_INDEX_TITLE_MAX && !v.includes("\n"),
