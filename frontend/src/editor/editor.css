@@ -51,12 +51,8 @@
 }
 
 /* Los controles de formato van por categorías (estilo de texto, párrafo y encabezados, listas, alineación, columnas, insertar,
-   páginas del PDF): cada grupo es una unidad con una raya a su izquierda, y la barra envuelve por grupos en vez de recortarse. */
-.note-editor-row-3:has(.note-tool-group) {
-  flex-wrap: wrap;
-  overflow-x: visible;
-  row-gap: var(--space-2);
-}
+   páginas del PDF) en UNA sola fila con scroll horizontal (así no le quitan alto al documento, sobre todo en el móvil con el
+   teclado abierto); cada grupo lleva una raya a su izquierda. */
 .note-tool-group {
   display: inline-flex;
   align-items: center;
