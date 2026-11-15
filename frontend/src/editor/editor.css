@@ -50,6 +50,23 @@
   flex-shrink: 0;
 }
 
+/* Los controles de formato van por categorías (estilo de texto, párrafo y encabezados, listas, alineación, columnas, insertar,
+   páginas del PDF): cada grupo es una unidad con una raya a su izquierda, y la barra envuelve por grupos en vez de recortarse. */
+.note-editor-row-3:has(.note-tool-group) {
+  flex-wrap: wrap;
+  overflow-x: visible;
+  row-gap: var(--space-2);
+}
+.note-tool-group {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.note-tool-group + .note-tool-group {
+  padding-left: var(--space-2);
+  border-left: 1px solid var(--border);
+}
+
 /* ≤ 480 px (T-049, H-1): sin flechas (siguen Alt+←/→) y con el nombre de la nota ocupando lo que queda (≥ 96 px);
    los ancestros ya vienen colapsados a «…» desde `NoteBreadcrumb`. */
 @media (max-width: 480px) {

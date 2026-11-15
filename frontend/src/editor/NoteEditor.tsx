@@ -1212,81 +1212,97 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             (P-7: Tab en la última celda no las crea). */}
         {mode === "edit" && view === "visual" && (
           <div className="note-editor-row-3">
-            <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => editorCommands.current?.insertTable()}>
-              <Table size={16} aria-hidden="true" />
-            </button>
-            {inTable && (
-              <>
-                <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => editorCommands.current?.addRowAfter()}>
-                  <BetweenHorizontalEnd size={16} aria-hidden="true" />
-                </button>
-                <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => editorCommands.current?.addColAfter()}>
-                  <BetweenVerticalEnd size={16} aria-hidden="true" />
-                </button>
-              </>
-            )}
-            {/* H-010 C-3/C-5/C-6: los 9 controles de formato Markdown, cada uno disparando su comando de
-                `EditorCommands` sobre la selección/posición actual (el foco vuelve al editor en MilkdownView). */}
-            <button type="button" className="note-nav-button" aria-label="Negritas" title="Negritas" onClick={() => editorCommands.current?.toggleBold()}>
-              <Bold size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Cursiva" title="Cursiva" onClick={() => editorCommands.current?.toggleItalic()}>
-              <Italic size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Tachado" title="Tachado" onClick={() => editorCommands.current?.toggleStrikethrough()}>
-              <Strikethrough size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Código en línea" title="Código en línea" onClick={() => editorCommands.current?.toggleInlineCode()}>
-              <InlineCodeIcon size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Párrafo" title="Párrafo normal" onClick={() => editorCommands.current?.setParagraph()}>
-              <Pilcrow size={16} aria-hidden="true" />
-            </button>
-            {([1, 2, 3, 4] as const).map((level) => {
-              const HeadingIcon = { 1: Heading1, 2: Heading2, 3: Heading3, 4: Heading4 }[level];
-              return (
-                <button key={level} type="button" className="note-nav-button" aria-label={`Encabezado ${level}`} title={`Encabezado ${level}`} onClick={() => editorCommands.current?.setHeading(level)}>
-                  <HeadingIcon size={16} aria-hidden="true" />
-                </button>
-              );
-            })}
-            <button type="button" className="note-nav-button" aria-label="Cita" title="Cita" onClick={() => editorCommands.current?.toggleBlockquote()}>
-              <Quote size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Línea horizontal" title="Línea horizontal" onClick={() => editorCommands.current?.insertHr()}>
-              <Minus size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Lista con viñetas" title="Lista con viñetas" onClick={() => editorCommands.current?.wrapBulletList()}>
-              <List size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
-              <ListOrdered size={16} aria-hidden="true" />
-            </button>
-            {/* Formato del documento (marcas HTML en el Markdown, ver `markdown/pdfBlocks.ts`): alineación, columnas, portada, índice y salto de página del PDF. */}
-            {PDF_ALIGN_BUTTONS.map(({ value, label, Icon }) => (
-              <button key={value} type="button" className="note-nav-button" aria-label={label} title={label} onClick={() => editorCommands.current?.togglePdfBlock("align", value === "left" ? "" : value)}>
-                <Icon size={16} aria-hidden="true" />
+            {/* H-010 C-3/C-5/C-6: los controles de formato Markdown, cada uno disparando su comando de `EditorCommands` sobre la
+                selección/posición actual (el foco vuelve al editor en MilkdownView). Separados por categoría. */}
+            <div className="note-tool-group" role="group" aria-label="Estilo de texto">
+              <button type="button" className="note-nav-button" aria-label="Negritas" title="Negritas" onClick={() => editorCommands.current?.toggleBold()}>
+                <Bold size={16} aria-hidden="true" />
               </button>
-            ))}
-            {PDF_COLUMN_BUTTONS.map(({ value, Icon }) => (
-              <button key={value} type="button" className="note-nav-button" aria-label={`${value} columnas`} title={`${value} columnas (otra vez para quitarlas)`} onClick={() => editorCommands.current?.togglePdfBlock("cols", value)}>
-                <Icon size={16} aria-hidden="true" />
+              <button type="button" className="note-nav-button" aria-label="Cursiva" title="Cursiva" onClick={() => editorCommands.current?.toggleItalic()}>
+                <Italic size={16} aria-hidden="true" />
               </button>
-            ))}
-            <button type="button" className="note-nav-button" aria-label="Portada" title="Portada del PDF: envuelve lo seleccionado (otra vez para quitarla)" onClick={() => editorCommands.current?.togglePdfBlock("cover", "")}>
-              <BookOpenText size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Índice" title="Insertar el índice del PDF" onClick={() => editorCommands.current?.insertPdfMark("indice")}>
-              <TableOfContents size={16} aria-hidden="true" />
-            </button>
-            <button type="button" className="note-nav-button" aria-label="Salto de página" title="Salto de página: lo que sigue empieza en hoja nueva" onClick={() => editorCommands.current?.insertPdfMark("salto")}>
-              <SeparatorHorizontal size={16} aria-hidden="true" />
-            </button>
-            {/* H-015/H-016/H-025: adjuntar archivo o URL (H-025 paso 7: diálogo con dos opciones).
-                El input de archivo va oculto y se dispara desde el diálogo. */}
-            <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => setAttachOpen(true)}>
-              <ImagePlus size={16} aria-hidden="true" />
-            </button>
+              <button type="button" className="note-nav-button" aria-label="Tachado" title="Tachado" onClick={() => editorCommands.current?.toggleStrikethrough()}>
+                <Strikethrough size={16} aria-hidden="true" />
+              </button>
+              <button type="button" className="note-nav-button" aria-label="Código en línea" title="Código en línea" onClick={() => editorCommands.current?.toggleInlineCode()}>
+                <InlineCodeIcon size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="note-tool-group" role="group" aria-label="Párrafo y encabezados">
+              <button type="button" className="note-nav-button" aria-label="Párrafo" title="Párrafo normal" onClick={() => editorCommands.current?.setParagraph()}>
+                <Pilcrow size={16} aria-hidden="true" />
+              </button>
+              {([1, 2, 3, 4] as const).map((level) => {
+                const HeadingIcon = { 1: Heading1, 2: Heading2, 3: Heading3, 4: Heading4 }[level];
+                return (
+                  <button key={level} type="button" className="note-nav-button" aria-label={`Encabezado ${level}`} title={`Encabezado ${level}`} onClick={() => editorCommands.current?.setHeading(level)}>
+                    <HeadingIcon size={16} aria-hidden="true" />
+                  </button>
+                );
+              })}
+              <button type="button" className="note-nav-button" aria-label="Cita" title="Cita" onClick={() => editorCommands.current?.toggleBlockquote()}>
+                <Quote size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="note-tool-group" role="group" aria-label="Listas">
+              <button type="button" className="note-nav-button" aria-label="Lista con viñetas" title="Lista con viñetas" onClick={() => editorCommands.current?.wrapBulletList()}>
+                <List size={16} aria-hidden="true" />
+              </button>
+              <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
+                <ListOrdered size={16} aria-hidden="true" />
+              </button>
+            </div>
+            {/* Formato del documento (marcas HTML en el Markdown, ver `markdown/pdfBlocks.ts`): alineación y columnas. */}
+            <div className="note-tool-group" role="group" aria-label="Alineación del texto">
+              {PDF_ALIGN_BUTTONS.map(({ value, label, Icon }) => (
+                <button key={value} type="button" className="note-nav-button" aria-label={label} title={label} onClick={() => editorCommands.current?.togglePdfBlock("align", value === "left" ? "" : value)}>
+                  <Icon size={16} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+            <div className="note-tool-group" role="group" aria-label="Columnas">
+              {PDF_COLUMN_BUTTONS.map(({ value, Icon }) => (
+                <button key={value} type="button" className="note-nav-button" aria-label={`${value} columnas`} title={`${value} columnas (otra vez para quitarlas)`} onClick={() => editorCommands.current?.togglePdfBlock("cols", value)}>
+                  <Icon size={16} aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+            {/* Insertar tabla (RF-025): con el cursor en una tabla se ofrecen además añadir fila y columna (P-7: Tab en la última
+                celda no las crea). */}
+            <div className="note-tool-group" role="group" aria-label="Insertar">
+              <button type="button" className="note-nav-button" aria-label="Insertar tabla" title="Insertar tabla" onClick={() => editorCommands.current?.insertTable()}>
+                <Table size={16} aria-hidden="true" />
+              </button>
+              {inTable && (
+                <>
+                  <button type="button" className="note-nav-button" aria-label="Añadir fila debajo" title="Añadir fila debajo" onClick={() => editorCommands.current?.addRowAfter()}>
+                    <BetweenHorizontalEnd size={16} aria-hidden="true" />
+                  </button>
+                  <button type="button" className="note-nav-button" aria-label="Añadir columna a la derecha" title="Añadir columna a la derecha" onClick={() => editorCommands.current?.addColAfter()}>
+                    <BetweenVerticalEnd size={16} aria-hidden="true" />
+                  </button>
+                </>
+              )}
+              <button type="button" className="note-nav-button" aria-label="Línea horizontal" title="Línea horizontal" onClick={() => editorCommands.current?.insertHr()}>
+                <Minus size={16} aria-hidden="true" />
+              </button>
+              {/* H-015/H-016/H-025: adjuntar archivo o URL (H-025 paso 7: diálogo con dos opciones).
+                  El input de archivo va oculto y se dispara desde el diálogo. */}
+              <button type="button" className="note-nav-button" aria-label="Adjuntar archivo" title="Adjuntar archivo" onClick={() => setAttachOpen(true)}>
+                <ImagePlus size={16} aria-hidden="true" />
+              </button>
+            </div>
+            <div className="note-tool-group" role="group" aria-label="Páginas del PDF">
+              <button type="button" className="note-nav-button" aria-label="Portada" title="Portada del PDF: envuelve lo seleccionado (otra vez para quitarla)" onClick={() => editorCommands.current?.togglePdfBlock("cover", "")}>
+                <BookOpenText size={16} aria-hidden="true" />
+              </button>
+              <button type="button" className="note-nav-button" aria-label="Índice" title="Insertar el índice del PDF" onClick={() => editorCommands.current?.insertPdfMark("indice")}>
+                <TableOfContents size={16} aria-hidden="true" />
+              </button>
+              <button type="button" className="note-nav-button" aria-label="Salto de página" title="Salto de página: lo que sigue empieza en hoja nueva" onClick={() => editorCommands.current?.insertPdfMark("salto")}>
+                <SeparatorHorizontal size={16} aria-hidden="true" />
+              </button>
+            </div>
             <input
               ref={imageInputRef}
               type="file"

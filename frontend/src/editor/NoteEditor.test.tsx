@@ -304,6 +304,21 @@ describe("cabecera del editor en 3 filas (H-010)", () => {
 
   // C-1: ningún control de edición/formato queda en la Fila 1 — el lápiz y el ⋮ son hijos directos del
   // header, mientras que Visual/Código/Guardar viven en la Fila 2 y la tabla en la Fila 3.
+  it("los controles de formato van agrupados por categoría, cada grupo con su nombre", async () => {
+    const { container } = await setup();
+    await userEvent.click(screen.getByRole("button", { name: "Editar" }));
+    const row3 = header(container).querySelector<HTMLElement>(".note-editor-row-3")!;
+    const groups = within(row3).getAllByRole("group");
+    expect(groups.map((group) => group.getAttribute("aria-label"))).toEqual([
+      "Estilo de texto", "Párrafo y encabezados", "Listas", "Alineación del texto", "Columnas", "Insertar", "Páginas del PDF",
+    ]);
+    const names = (label: string) => within(within(row3).getByRole("group", { name: label })).getAllByRole("button").map((button) => button.getAttribute("aria-label"));
+    expect(names("Estilo de texto")).toEqual(["Negritas", "Cursiva", "Tachado", "Código en línea"]);
+    expect(names("Párrafo y encabezados")).toEqual(["Párrafo", "Encabezado 1", "Encabezado 2", "Encabezado 3", "Encabezado 4", "Cita"]);
+    expect(names("Alineación del texto")).toHaveLength(4);
+    expect(names("Páginas del PDF")).toEqual(["Portada", "Índice", "Salto de página"]);
+  });
+
   it("C-1: lápiz y ⋮ en Fila 1; Visual/Código/Guardar en Fila 2; tabla en Fila 3", async () => {
     const { container } = await setup();
     await userEvent.click(screen.getByRole("button", { name: "Editar" }));
@@ -318,7 +333,7 @@ describe("cabecera del editor en 3 filas (H-010)", () => {
     expect(within(row3).getByRole("button", { name: "Insertar tabla" })).toBeInTheDocument();
     // Y esos controles NO son hijos directos del header (están anidados en sus filas).
     expect(within(h).getByRole("button", { name: "Guardar" }).parentElement).toBe(row2);
-    expect(within(h).getByRole("button", { name: "Insertar tabla" }).parentElement).toBe(row3);
+    expect(within(h).getByRole("button", { name: "Insertar tabla" }).closest(".note-editor-row-3")).toBe(row3);
   });
 
   // C-2: la Fila 2 aparece en edición y persiste en Código (no sólo en Visual).
