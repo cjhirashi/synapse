@@ -58,7 +58,7 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   color por nivel de encabezado (H1 a H4) y para el texto, un **color primario** del que el servidor calcula el secundario y el
   terciario y los colores de negrita, cursiva, enlaces, código, listas, citas y tablas (la misma regla del Markdown), una imagen de
   membrete como fondo de cada página (816 × 1056 px en Carta, 794 × 1123 px en A4), y encabezado y pie con fuente, línea y posición
-  propias y campos automáticos (`{{titulo}}`, `{{fecha}}`, `{{pagina}}`, `{{paginas}}`, `{{atributo:x}}`). El documento muestra el botón «PDF» junto
+  propias y campos automáticos (`{{titulo}}`, `{{fecha}}`, `{{pagina}}`, `{{paginas}}`, `{{atributo:x}}`, con `estado` siempre disponible en el selector). El documento muestra el botón «PDF» junto
   a «Editar»; el PDF sale del mismo HTML que se ve en Lectura (tablas y citas redondeadas, casillas de tareas, imágenes propias, privadas incluidas,
   imágenes públicas de la web y SVG animados en su último fotograma) y lo genera el servidor con WeasyPrint. El documento puede llevar **portada**
   (`<!-- pdf:portada -->`…`<!-- /pdf:portada -->`), **índice** automático (`<!-- pdf:indice -->`), **saltos de página** (`<!-- pdf:salto -->`),

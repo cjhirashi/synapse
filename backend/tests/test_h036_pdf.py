@@ -991,3 +991,13 @@ def test_every_index_entry_is_a_clickable_link_to_the_page_of_its_heading():
     clickable = {target for kind, target, _, _ in pages[1].links if kind == "internal"}  # el índice es la hoja 2
     assert clickable == set(wanted), "cada entrada del índice enlaza a su encabezado"
     assert {name: page_of[name] for name in wanted} == wanted, "y el encabezado está en la hoja que el índice muestra"
+
+
+def test_the_estado_of_the_document_prints_in_the_header_and_the_template_accepts_it():
+    from app.core.plantilla_rules import check_pdf_style
+
+    text = "Estado: {{atributo:estado}} · {{titulo}}"
+    assert check_pdf_style({"encabezado": {"izquierda": text}, "pie": {"derecha": "{{atributo:estado}}"}})
+    out = pdf_style.expand_text(text, title="Doc", attributes={"estado": "en revisión"}, now=NOW)
+    assert out == "Estado: en revisión · Doc"
+    assert pdf_style.expand_text("{{atributo:estado}}", title="Doc", attributes={}, now=NOW) == ""  # sin estado se imprime vacío

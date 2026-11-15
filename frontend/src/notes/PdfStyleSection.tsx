@@ -310,7 +310,8 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
   }, [vaultId]);
 
   const set = <K extends keyof PdfDraft>(key: K, value: PdfDraft[K]) => onChange({ ...draft, [key]: value });
-  const names = attributeNames.filter((name) => name.trim() !== "");
+  // `estado` es un atributo general de todo documento (no lo declara la plantilla) y el servidor lo resuelve igual que a los propios: siempre se ofrece.
+  const names = ["estado", ...attributeNames.filter((name) => name.trim() !== "" && name.trim() !== "estado")];
   const [width, height] = PDF_PAGE_PX[draft.tamano];
 
   return (

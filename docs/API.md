@@ -479,7 +479,7 @@ Las marcas con cierre se pueden anidar (alineación dentro de columnas); una ape
 y del índice, y `{{paginas}}` descuenta esas hojas (el servidor maqueta una segunda vez cuando las hay). El servidor solo deja pasar `align` con esos cuatro valores, las clases de las marcas y `section`/`div`.
 
 Campos especiales en los textos de encabezado y pie: `{{titulo}}`, `{{fecha}}` (día de CDMX), `{{pagina}}`, `{{paginas}}` y
-`{{atributo:<nombre>}}` (un atributo vacío o inexistente se imprime vacío; las listas se unen con comas). Cualquier otro `{{…}}` es inválido.
+`{{atributo:<nombre>}}` (un atributo vacío o inexistente se imprime vacío; las listas se unen con comas; vale cualquier metadato del documento, también `estado`, que el selector de la plantilla ofrece siempre). Cualquier otro `{{…}}` es inválido.
 
 ## BITACORA automática y PLANTILLAS (H-030b)
 

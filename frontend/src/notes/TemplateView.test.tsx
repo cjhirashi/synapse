@@ -81,14 +81,17 @@ test("activar el PDF y diseñarlo guarda estilo.pdf completo, con campos especia
   await waitFor(() => expect(within(header).getByRole("option", { name: "logo.png" })).toBeInTheDocument());
   await user.click(screen.getByLabelText("Encabezado de página, izquierda"));
   await user.click(within(header).getByRole("button", { name: "Título" }));
-  await user.selectOptions(within(header).getByRole("combobox", { name: "Insertar un atributo" }), "cliente");
+  const picker = within(header).getByRole("combobox", { name: "Insertar un atributo" });
+  expect(within(picker).getAllByRole("option").map((option) => option.textContent)).toEqual(["Atributo…", "estado", "cliente"]); // el estado va siempre, sin declararlo
+  await user.selectOptions(picker, "cliente");
+  await user.selectOptions(picker, "estado");
   await user.click(screen.getByRole("checkbox", { name: /Imprimir los atributos/ }));
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
   await waitFor(async () => expect(((await store.get(template.id)).frontmatter.estilo as { pdf: object }).pdf).not.toEqual({}));
   const pdf = ((await store.get(template.id)).frontmatter.estilo as { pdf: Record<string, unknown> }).pdf;
   expect(pdf).toMatchObject({
     activo: true, incluir_atributos: true, pagina: { tamano: "a4", margenes_mm: { superior: 25 } },
-    encabezado: { imagen: "img-1", izquierda: "{{titulo}}{{atributo:cliente}}" },
+    encabezado: { imagen: "img-1", izquierda: "{{titulo}}{{atributo:cliente}}{{atributo:estado}}" },
     pie: { derecha: "Página {{pagina}} de {{paginas}}" },
   });
 });
