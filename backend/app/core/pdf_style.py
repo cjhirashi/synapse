@@ -67,6 +67,9 @@ SYNTAX_CSS = """
 """  # colores del resaltado del editor (tema claro, `editor/syntax.css`); las clases `sx-*` llegan en el HTML de Lectura
 CODE_BG_PERCENT = 18  # con tema: color del texto sobre blanco
 QUOTE_BG_PERCENT = 16  # con tema: secundario de la cita sobre blanco
+# Hojas especiales (marcas `<!-- pdf:portada -->` y `<!-- pdf:indice -->`): fondo propio, imagen opcional que cubre la hoja y color del texto.
+COVER_DEFAULT = {"fondo": "#0f172a", "imagen": None, "color": "#f8fafc"}
+INDEX_DEFAULT = {"fondo": "#f1f5f9", "imagen": None, "color": "#1f2937", "titulo": "Índice", "niveles": 3}
 H1_DEFAULT = {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "#111827"}
 
 _FIELD_RE = re.compile(r"\{\{([^{}]*)\}\}")
@@ -89,6 +92,12 @@ def _headings(raw: object, body: dict, theme: dict | None) -> dict:
         derived = round(max(float(body["tamano_pt"]), float(h1["tamano_pt"]) * scale) if level == "h4" else float(h1["tamano_pt"]) * scale, 1)
         out[level] = _merge(raw.get(level), {"familia": h1["familia"], "tamano_pt": derived, "color": theme[level] if theme else h1["color"]})
     return out
+
+
+def _sheet(raw: object, default: dict) -> dict:
+    """Portada o índice: lo que la plantilla fijó (ya validado) sobre los valores por omisión; la imagen no tiene valor por omisión."""
+    raw = raw if isinstance(raw, dict) else {}
+    return {key: (raw[key] if key in raw and (raw[key] is not None or key == "imagen") else value) for key, value in default.items()}
 
 
 def _band(raw: object, body: dict, *, line_on: bool, image: bool) -> dict:
@@ -118,6 +127,8 @@ def resolve(raw: object) -> dict:
     out["encabezados"] = _headings(raw.get("encabezados"), out["texto"], out["tema"]["colores"])
     out["encabezado"] = _band(raw.get("encabezado"), out["texto"], line_on=False, image=True)
     out["pie"] = _band(raw.get("pie"), out["texto"], line_on=True, image=False)
+    out["portada"] = _sheet(raw.get("portada"), COVER_DEFAULT)
+    out["indice"] = _sheet(raw.get("indice"), INDEX_DEFAULT)
     return out
 
 
@@ -192,7 +203,39 @@ tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_p
 """
 
 
-def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: str | None = None) -> str:
+def _sheet_css(name: str, spec: dict, page: dict, background: str | None, *, has_header: bool, has_footer: bool) -> str:
+    """`@page` de la portada o del índice: fondo propio (color e imagen que cubre la hoja), sin encabezado ni pie y sin contar en la numeración."""
+    m = page["margenes_mm"]
+    width, height = PAGE_PX[page["tamano"]]
+    image = (f'background-image: url("{background}"); background-repeat: no-repeat; background-position: -{m["izquierdo"]}mm -{m["superior"]}mm; '
+             f"background-size: {width}px {height}px; " if background else "")
+    boxes = ("@top-left { content: none; } " if has_header else "") + ("@bottom-left { content: none; } " if has_footer else "")
+    return f"@page {name} {{ background-color: {spec['fondo']}; {image}counter-increment: page 0; {boxes}}}"
+
+
+def _marks_css(style: dict) -> str:
+    """Marcas del documento (`pdf:portada`, `pdf:indice`, `pdf:salto`), alineación y columnas. Los números de página del índice los pone WeasyPrint (`target-counter`)."""
+    cover, index = style["portada"], style["indice"]
+    return f"""
+section.pdf-portada {{ page: portada; break-after: page; padding-top: 60mm; }}
+section.pdf-portada, section.pdf-portada * {{ color: {cover['color']}; }}
+nav.pdf-indice {{ page: indice; break-after: page; }}
+nav.pdf-indice, nav.pdf-indice * {{ color: {index['color']}; }}
+nav.pdf-indice .pdf-indice-titulo {{ margin-top: 0; }}
+nav.pdf-indice ol {{ list-style: none; margin: 0; padding: 0; }}
+nav.pdf-indice li {{ margin: 0.35em 0; }}
+nav.pdf-indice li.lv2 {{ margin-left: 1.4em; }} nav.pdf-indice li.lv3 {{ margin-left: 2.8em; }} nav.pdf-indice li.lv4 {{ margin-left: 4.2em; }}
+nav.pdf-indice a {{ text-decoration: none; }}
+nav.pdf-indice a::after {{ content: leader('.') ' ' target-counter(attr(href), page); }}
+.pdf-salto {{ break-before: page; height: 0; margin: 0; padding: 0; }}
+div[align="left"] {{ text-align: left; }} div[align="center"] {{ text-align: center; }}
+div[align="right"] {{ text-align: right; }} div[align="justify"] {{ text-align: justify; }}
+div.cols-2 {{ column-count: 2; column-gap: 8mm; }} div.cols-3 {{ column-count: 3; column-gap: 8mm; }} div.cols-4 {{ column-count: 4; column-gap: 8mm; }}
+"""
+
+
+def stylesheet(style: dict, *, has_header: bool, has_footer: bool, background: str | None = None,
+               cover_background: str | None = None, index_background: str | None = None) -> str:
     """CSS del PDF a partir del formato resuelto. Todos los valores ya pasaron la validación de la plantilla."""
     page, heads, body = style["pagina"], style["encabezados"], style["texto"]
     head_band, foot_band = style["encabezado"], style["pie"]
@@ -238,6 +281,9 @@ hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-embed {{ border: 0.8pt dashed #94a3b8; border-radius: 3pt; padding: 0.5em 0.8em; margin: 0 0 0.8em; break-inside: avoid; }}
 .pdf-attrs {{ margin: 0 0 1em; font-size: {round(base * 0.92, 1)}pt; }}
 .pdf-attrs th {{ width: 28%; }}
+{_sheet_css('portada', style['portada'], page, cover_background, has_header=has_header, has_footer=has_footer)}
+{_sheet_css('indice', style['indice'], page, index_background, has_header=has_header, has_footer=has_footer)}
+{_marks_css(style)}
 {_band_css('pdfhead', head_band, edge='top')}
 {_band_css('pdffoot', foot_band, edge='bottom')}
 {theme_css}

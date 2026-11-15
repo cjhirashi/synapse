@@ -1,0 +1,162 @@
+/**
+ * Marcas de formato del documento (portada, índice, salto de página, alineación y columnas), guardadas como HTML dentro del Markdown:
+ *
+ *   <!-- pdf:portada --> … <!-- /pdf:portada -->     portada (hoja propia en el PDF)
+ *   <!-- pdf:indice -->                               índice automático
+ *   <!-- pdf:salto -->                                lo que sigue empieza en página nueva
+ *   <div align="center"> … </div>                     alineación: left, center, right, justify
+ *   <div class="cols-2"> … </div>                     columnas: 2, 3 o 4
+ *
+ * Milkdown las lee como líneas de HTML sueltas, sin envolver lo que hay entre la apertura y el cierre. Este transformador
+ * (fase «run» de remark: corre igual en frío y con el mdast cacheado) agrupa cada pareja en un contenedor `pdfBlock`, y los
+ * comentarios de una sola línea quedan como `pdfMark`. Al guardar se vuelven a escribir exactamente como estaban, con una línea
+ * en blanco alrededor (así el Markdown de dentro sigue interpretándose en cualquier visor). Una apertura sin su cierre se deja como HTML.
+ */
+import { $nodeSchema, $remark } from "@milkdown/utils";
+
+export const PDF_ALIGNMENTS = ["left", "center", "right", "justify"] as const;
+export const PDF_COLUMNS = ["2", "3", "4"] as const;
+export type PdfBlockKind = "cover" | "align" | "cols";
+export type PdfMarkKind = "indice" | "salto";
+
+const BLOCK_MDAST = "pdfBlock";
+const MARK_MDAST = "pdfMark";
+
+const OPEN_ALIGN = /^<div align="(left|center|right|justify)">$/;
+const OPEN_COLS = /^<div class="cols-([234])">$/;
+const OPEN_COVER = /^<!--\s*pdf:portada\s*-->$/;
+const CLOSE_COVER = /^<!--\s*\/pdf:portada\s*-->$/;
+const CLOSE_DIV = /^<\/div>$/;
+const MARK = /^<!--\s*pdf:(indice|salto)\s*-->$/;
+
+interface Opening { kind: PdfBlockKind; value: string }
+
+/** Lo que abre una línea de HTML, o `null` si no es una de nuestras aperturas. */
+export function parseOpening(html: string): Opening | null {
+  const text = html.trim();
+  const align = OPEN_ALIGN.exec(text);
+  if (align) return { kind: "align", value: align[1] };
+  const cols = OPEN_COLS.exec(text);
+  if (cols) return { kind: "cols", value: cols[1] };
+  return OPEN_COVER.test(text) ? { kind: "cover", value: "" } : null;
+}
+
+/** HTML de apertura y de cierre de un contenedor. */
+export function blockTags(kind: PdfBlockKind, value: string): [string, string] {
+  if (kind === "cover") return ["<!-- pdf:portada -->", "<!-- /pdf:portada -->"];
+  return [kind === "align" ? `<div align="${value}">` : `<div class="cols-${value}">`, "</div>"];
+}
+
+export const markTag = (kind: PdfMarkKind): string => `<!-- pdf:${kind} -->`;
+
+type Mdast = { type: string; value?: string; children?: Mdast[]; [key: string]: unknown };
+
+/** Valor HTML de un nodo de bloque: `html` suelto o un párrafo que solo lo contiene (Milkdown envuelve el HTML de bloque en un párrafo). */
+function htmlOf(node: Mdast): string | null {
+  if (node.type === "html" && typeof node.value === "string") return node.value;
+  if (node.type === "paragraph" && node.children?.length === 1 && node.children[0].type === "html") return node.children[0].value ?? null;
+  return null;
+}
+
+const closes = (opening: Opening, html: string): boolean => (opening.kind === "cover" ? CLOSE_COVER.test(html.trim()) : CLOSE_DIV.test(html.trim()));
+
+/** Agrupa las parejas apertura/cierre de `nodes` (recursivo: los contenedores se anidan). */
+export function groupBlocks(nodes: Mdast[]): Mdast[] {
+  const out: Mdast[] = [];
+  for (let i = 0; i < nodes.length; i += 1) {
+    const html = htmlOf(nodes[i]);
+    const mark = html === null ? null : MARK.exec(html.trim());
+    if (mark) {
+      out.push({ type: MARK_MDAST, kind: mark[1] });
+      continue;
+    }
+    const opening = html === null ? null : parseOpening(html);
+    if (!opening) {
+      out.push(nodes[i]);
+      continue;
+    }
+    // Cierre que le corresponde: `</div>` cierra el contenedor `div` más reciente (contando los anidados); la portada, su comentario.
+    let depth = 0;
+    let end = -1;
+    for (let j = i + 1; j < nodes.length && end < 0; j += 1) {
+      const inner = htmlOf(nodes[j]);
+      if (inner === null) continue;
+      const nested = parseOpening(inner);
+      if (nested && nested.kind !== "cover" && opening.kind !== "cover") depth += 1;
+      else if (closes(opening, inner)) {
+        if (depth === 0) end = j;
+        else depth -= 1;
+      }
+    }
+    if (end < 0) {
+      out.push(nodes[i]);
+      continue;
+    }
+    const inner = groupBlocks(nodes.slice(i + 1, end));
+    out.push({ type: BLOCK_MDAST, kind: opening.kind, value: opening.value, children: inner.length ? inner : [{ type: "paragraph", children: [] }] });
+    i = end;
+  }
+  return out;
+}
+
+export const pdfBlocksRemark = $remark("synapsePdfBlocks", () => () => (tree: unknown) => {
+  const root = tree as Mdast;
+  if (Array.isArray(root.children)) root.children = groupBlocks(root.children);
+});
+
+const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" ? value : "cover");
+
+/** Contenedor: portada, alineación o columnas. Su contenido es Markdown normal. */
+export const pdfBlockSchema = $nodeSchema("pdf_block", () => ({
+  group: "block",
+  content: "block+",
+  defining: true,
+  attrs: { kind: { default: "cover" }, value: { default: "" } },
+  toDOM: (node) => {
+    const kind = kindOf(node.attrs.kind);
+    const value = String(node.attrs.value ?? "");
+    if (kind === "cover") return ["section", { class: "pdf-portada", "data-pdf-label": "Portada" }, 0];
+    if (kind === "align") return ["div", { align: value, "data-pdf-label": `Alineación: ${value}` }, 0];
+    return ["div", { class: `cols-${value}`, "data-pdf-label": `${value} columnas` }, 0];
+  },
+  parseMarkdown: {
+    match: (node) => node.type === BLOCK_MDAST,
+    runner: (state, node, type) => {
+      const block = node as unknown as Mdast;
+      state.openNode(type, { kind: kindOf(block.kind), value: String(block.value ?? "") }).next(block.children).closeNode();
+    },
+  },
+  toMarkdown: {
+    match: (node) => node.type.name === "pdf_block",
+    runner: (state, node) => {
+      const [open, close] = blockTags(kindOf(node.attrs.kind), String(node.attrs.value ?? ""));
+      state.addNode("html", undefined, open);
+      state.next(node.content);
+      state.addNode("html", undefined, close);
+    },
+  },
+}));
+
+/** Marca de una sola línea: índice o salto de página. */
+export const pdfMarkSchema = $nodeSchema("pdf_mark", () => ({
+  group: "block",
+  atom: true,
+  selectable: true,
+  attrs: { kind: { default: "salto" } },
+  toDOM: (node) => {
+    const kind = node.attrs.kind === "indice" ? "indice" : "salto";
+    return ["div", { class: "pdf-mark", "data-pdf-mark": kind, "data-pdf-label": kind === "indice" ? "Índice" : "Salto de página" }];
+  },
+  parseMarkdown: {
+    match: (node) => node.type === MARK_MDAST,
+    runner: (state, node, type) => {
+      state.addNode(type, { kind: (node as unknown as Mdast).kind === "indice" ? "indice" : "salto" });
+    },
+  },
+  toMarkdown: {
+    match: (node) => node.type.name === "pdf_mark",
+    runner: (state, node) => {
+      state.addNode("html", undefined, markTag(node.attrs.kind === "indice" ? "indice" : "salto"));
+    },
+  },
+}));

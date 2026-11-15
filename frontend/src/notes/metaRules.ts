@@ -51,6 +51,8 @@ export const PDF_HEADING_LEVELS = ["h1", "h2", "h3", "h4"] as const; // H5 y H6 
 export const PDF_LINE_PT = [0.25, 6] as const;
 export const PDF_BAND_MM = [0, 60] as const;
 export const PDF_TEXT_MAX = 200;
+export const PDF_INDEX_TITLE_MAX = 80;
+export const PDF_INDEX_LEVELS = [1, 4] as const; // niveles de encabezado que entran al índice (H1 hasta H<n>)
 export const PDF_SPECIALS = ["titulo", "fecha", "pagina", "paginas"] as const;
 const PDF_FILE_ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
 const PDF_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
@@ -338,7 +340,16 @@ export function checkPdfStyle(pdf: unknown): boolean {
     distancia_mm: (v) => isNum(v, PDF_BAND_MM[0], PDF_BAND_MM[1]),
     sangria_mm: (v) => isNum(v, PDF_BAND_MM[0], PDF_BAND_MM[1]),
   };
+  const image: Check = (v) => v === null || (typeof v === "string" && PDF_FILE_ID_RE.test(v));
+  const cover: Record<string, Check> = { fondo: color, imagen: image, color }; // hoja de portada: fondo, imagen de fondo y color del texto
+  const index: Record<string, Check> = {
+    ...cover,
+    titulo: (v) => typeof v === "string" && v.length <= PDF_INDEX_TITLE_MAX && !v.includes("\n"),
+    niveles: (v) => typeof v === "number" && Number.isInteger(v) && v >= PDF_INDEX_LEVELS[0] && v <= PDF_INDEX_LEVELS[1],
+  };
   return checkBlock(pdf, {
+    portada: (v) => checkBlock(v, cover),
+    indice: (v) => checkBlock(v, index),
     activo: (v) => typeof v === "boolean",
     incluir_atributos: (v) => typeof v === "boolean",
     pagina: (v) => checkBlock(v, { tamano: (t) => (PDF_PAGE_SIZES as readonly string[]).includes(t as string), margenes_mm: (m) => checkBlock(m, margins) }),

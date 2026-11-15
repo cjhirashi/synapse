@@ -59,7 +59,10 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
   membrete como fondo de cada página (816 × 1056 px en Carta, 794 × 1123 px en A4), y encabezado y pie con fuente, línea y posición
   propias y campos automáticos (`{{titulo}}`, `{{fecha}}`, `{{pagina}}`, `{{paginas}}`, `{{atributo:x}}`). El documento muestra el botón «PDF» junto
   a «Editar»; el PDF sale del mismo HTML que se ve en Lectura (tablas y citas redondeadas, casillas de tareas, imágenes propias, privadas incluidas,
-  imágenes públicas de la web y SVG animados en su último fotograma) y lo genera el servidor con WeasyPrint. Detalle en [`docs/API.md`](docs/API.md)
+  imágenes públicas de la web y SVG animados en su último fotograma) y lo genera el servidor con WeasyPrint. El documento puede llevar **portada**
+  (`<!-- pdf:portada -->`…`<!-- /pdf:portada -->`), **índice** automático (`<!-- pdf:indice -->`), **saltos de página** (`<!-- pdf:salto -->`),
+  **alineación** (`<div align="center">`) y **columnas** (`<div class="cols-2">`), con botones en la barra del editor; la portada y el índice tienen
+  fondo propio en la plantilla y la numeración empieza después de ellos. Detalle en [`docs/API.md`](docs/API.md)
   (sección «PDF de documentos») y en el ADR-008.
 - **Agentes con nombre y foto:** cada agente tiene nombre visible y foto editables desde API keys; aparecen en tareas, bitácora
   y listas.

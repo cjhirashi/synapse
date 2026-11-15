@@ -166,6 +166,11 @@ La plantilla define el formato en su sección «Diseño del PDF» (`notes/PdfSty
 El cliente manda al servidor el HTML que ya dibuja en Lectura (`notes/pdfHtml.ts`: iframes, videos y audio pasan a un recuadro con título y enlace) y descarga el PDF
 que el servidor genera con el formato de la plantilla. Requiere conexión; sin ella el botón avisa.
 
+**Marcas de formato** (`editor/markdown/pdfBlocks.ts`): portada (`<!-- pdf:portada -->`…`<!-- /pdf:portada -->`), índice (`<!-- pdf:indice -->`), salto de página (`<!-- pdf:salto -->`),
+alineación (`<div align="center">…</div>`) y columnas (`<div class="cols-2">…</div>`) viven en el Markdown como HTML. Un transformador remark agrupa cada pareja apertura/cierre
+en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al guardar se escriben igual. Sus botones están en la barra del editor
+(`editor/markdown/pdfBlockCommands.ts`) y `notes/pdfHtml.ts` pasa el índice y el salto al servidor como marcadores.
+
 ## Tareas, avisos y app instalable (H-053)
 
 - `src/tasks/` — pestaña «Tareas» de cada bóveda (`VaultTasks.tsx`): `taskModel.ts` (reglas puras: estados, filas del Gantt, calendario,

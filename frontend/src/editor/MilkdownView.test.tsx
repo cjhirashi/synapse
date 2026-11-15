@@ -765,6 +765,52 @@ describe("MilkdownView · comandos de formato (H-010)", () => {
     }
   });
 
+  it("«Párrafo» devuelve a texto normal un encabezado y una cita", async () => {
+    let ctx = await mountCommands("título");
+    act(() => ctx.commands.setHeading(2));
+    expect(nodeNames(ctx.view).has("heading")).toBe(true);
+    act(() => ctx.commands.setParagraph());
+    expect(nodeNames(ctx.view).has("heading")).toBe(false);
+    ctx = await mountCommands("texto");
+    act(() => ctx.commands.toggleBlockquote());
+    expect(nodeNames(ctx.view).has("blockquote")).toBe(true);
+    act(() => ctx.commands.setParagraph());
+    expect(nodeNames(ctx.view).has("blockquote")).toBe(false);
+  });
+
+  it("marcas de formato: portada, alineación, columnas, índice y salto se insertan, cambian y se quitan, y el Markdown guarda las etiquetas HTML", async () => {
+    let commands: EditorCommands | null = null;
+    let view: EditorView | null = null;
+    let flush: (() => void) | null = null;
+    const saved: string[] = [];
+    render(<MilkdownView value="uno" readOnly={false} onChange={(markdown) => saved.push(markdown)} label="Visual" registerCommands={(c) => (commands = c)} onView={(v) => (view = v)} registerFlush={(f) => (flush = f)} />);
+    await waitFor(() => expect(view !== null && commands !== null).toBe(true));
+    const cmd = commands as unknown as EditorCommands;
+    const v = view as unknown as EditorView;
+    const markdown = () => {
+      act(() => flush?.());
+      return saved[saved.length - 1];
+    };
+    act(() => cmd.togglePdfBlock("align", "center"));
+    expect(markdown()).toBe('<div align="center">\n\nuno\n\n</div>\n');
+    act(() => cmd.togglePdfBlock("align", "right"));
+    expect(markdown()).toContain('<div align="right">');
+    act(() => cmd.togglePdfBlock("align", ""));
+    expect(markdown()).toBe("uno\n");
+    act(() => cmd.togglePdfBlock("cols", "3"));
+    expect(markdown()).toContain('<div class="cols-3">');
+    act(() => cmd.togglePdfBlock("cols", "3"));
+    expect(nodeNames(v).has("pdf_block")).toBe(false);
+    act(() => cmd.togglePdfBlock("cover", ""));
+    expect(markdown()).toBe("<!-- pdf:portada -->\n\nuno\n\n<!-- /pdf:portada -->\n");
+    act(() => cmd.insertPdfMark("indice"));
+    act(() => cmd.insertPdfMark("salto"));
+    const out = markdown();
+    expect(out).toContain("<!-- /pdf:portada -->");
+    expect(out).toContain("<!-- pdf:indice -->");
+    expect(out).toContain("<!-- pdf:salto -->");
+  });
+
   it("cita, línea horizontal, lista con viñetas y lista numerada insertan su nodo (C-5)", async () => {
     let ctx = await mountCommands("texto");
     act(() => ctx.commands.toggleBlockquote());

@@ -4,9 +4,9 @@
  */
 import { useEffect, useState } from "react";
 import { listVaultFiles } from "../files/uploadFile";
-import { PDF_BAND_MM, PDF_FONTS, PDF_HEADING_LEVELS, PDF_LINE_PT, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
+import { PDF_BAND_MM, PDF_FONTS, PDF_INDEX_LEVELS, PDF_INDEX_TITLE_MAX, PDF_HEADING_LEVELS, PDF_LINE_PT, PDF_MARGINS, PDF_PAGE_PX, PDF_PAGE_SIZES } from "./metaRules";
 import PdfPreview from "./PdfPreview";
-import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfLine, type PdfMargin, type PdfType } from "./pdfStyle";
+import { headingColor, themeColors, type HeadingLevel, type PdfBand, type PdfDraft, type PdfFont, type PdfLine, type PdfIndex, type PdfMargin, type PdfSheet, type PdfType } from "./pdfStyle";
 
 const SIZE_LABEL = { carta: "Carta", a4: "A4" } as const;
 const MARGIN_LABEL: Record<PdfMargin, string> = { superior: "Superior", inferior: "Inferior", izquierdo: "Izquierdo", derecho: "Derecho" };
@@ -189,6 +189,49 @@ function BandFields({ label, imageLabel, imageHint, value, images, attributes, o
   );
 }
 
+function SheetFields({ label, hint, value, images, onChange, index, onIndexChange }: {
+  label: string; hint: string; value: PdfSheet; images: ImageOption[]; onChange: (next: PdfSheet) => void;
+  /** Solo el índice: título y niveles que lista. */
+  index?: PdfIndex; onIndexChange?: (next: PdfIndex) => void;
+}) {
+  const known = images.some((image) => image.id === value.imagen);
+  const hex = (color: string, fallback: string) => (/^#[0-9a-fA-F]{6}$/.test(color) ? color : fallback);
+  return (
+    <Group title={label} hint={hint}>
+      <div className="tv-row">
+        <label className="tv-field tv-field--color">
+          <span>Color de fondo</span>
+          <input type="color" aria-label={`${label}: color de fondo`} value={hex(value.fondo, "#ffffff")} onChange={(event) => onChange({ ...value, fondo: event.target.value })} />
+        </label>
+        <label className="tv-field tv-field--color">
+          <span>Color del texto</span>
+          <input type="color" aria-label={`${label}: color del texto`} value={hex(value.color, "#000000")} onChange={(event) => onChange({ ...value, color: event.target.value })} />
+        </label>
+        <label className="tv-field tv-field--grow">
+          <span>Imagen de fondo (opcional)</span>
+          <select aria-label={`${label}: imagen de fondo`} value={value.imagen} onChange={(event) => onChange({ ...value, imagen: event.target.value })}>
+            <option value="">Sin imagen</option>
+            {value.imagen !== "" && !known && <option value={value.imagen}>Archivo {value.imagen} (no encontrado)</option>}
+            {images.map((image) => <option key={image.id} value={image.id}>{image.name}</option>)}
+          </select>
+        </label>
+      </div>
+      {index && onIndexChange && (
+        <div className="tv-row">
+          <label className="tv-field tv-field--grow">
+            <span>Título del índice</span>
+            <input aria-label="Índice: título" maxLength={PDF_INDEX_TITLE_MAX} value={index.titulo} onChange={(event) => onIndexChange({ ...index, titulo: event.target.value })} />
+          </label>
+          <label className="tv-field tv-field--narrow">
+            <span>Niveles (H1 a H…)</span>
+            <input aria-label="Índice: niveles" type="number" min={PDF_INDEX_LEVELS[0]} max={PDF_INDEX_LEVELS[1]} step={1} value={index.niveles} onChange={(event) => onIndexChange({ ...index, niveles: event.target.value })} />
+          </label>
+        </div>
+      )}
+    </Group>
+  );
+}
+
 export interface PdfStyleSectionProps {
   vaultId: string;
   draft: PdfDraft;
@@ -256,6 +299,15 @@ export default function PdfStyleSection({ vaultId, draft, attributeNames, onChan
             value={draft.encabezado} images={images} attributes={names} onChange={(next) => set("encabezado", next)}
           />
           <BandFields label="Pie de página" value={draft.pie} images={images} attributes={names} onChange={(next) => set("pie", next)} />
+          <SheetFields
+            label="Portada" hint="Se activa con las marcas <!-- pdf:portada --> y <!-- /pdf:portada --> del documento; lo que quede entre ambas va en la portada. No lleva encabezado ni pie ni cuenta en la numeración. La imagen cubre toda la hoja (mismo tamaño que arriba)."
+            value={draft.portada} images={images} onChange={(next) => set("portada", next)}
+          />
+          <SheetFields
+            label="Índice" hint="Se activa con la marca <!-- pdf:indice --> del documento: lista los encabezados con su página. No lleva encabezado ni pie. La numeración de las hojas empieza después de la portada y del índice."
+            value={draft.indice} images={images} onChange={(next) => set("indice", { ...draft.indice, ...next })}
+            index={draft.indice} onIndexChange={(next) => set("indice", next)}
+          />
           <label className="tv-check">
             <input type="checkbox" checked={draft.incluirAtributos} onChange={(event) => set("incluirAtributos", event.target.checked)} />
             Imprimir los atributos del documento al inicio

@@ -27,6 +27,9 @@ export interface PdfBand {
 }
 /** Tema de color: con `activo`, el secundario, el terciario y los colores de cada elemento salen del primario (`colorTheme.ts`). */
 export interface PdfTheme { activo: boolean; primario: string }
+/** Hoja de portada o de índice (marcas `pdf:portada` y `pdf:indice`): fondo, imagen de fondo (id de archivo) y color del texto. */
+export interface PdfSheet { fondo: string; imagen: string; color: string }
+export interface PdfIndex extends PdfSheet { titulo: string; niveles: string }
 export interface PdfDraft {
   activo: boolean;
   tema: PdfTheme;
@@ -37,6 +40,8 @@ export interface PdfDraft {
   texto: PdfType;
   encabezado: PdfBand;
   pie: PdfBand;
+  portada: PdfSheet;
+  indice: PdfIndex;
 }
 
 const BAND_TEXT_COLOR = "#475569";
@@ -66,6 +71,8 @@ export const DEFAULT_PDF_DRAFT: PdfDraft = {
     fuente: { familia: "DejaVu Sans", tamano: "8.6", color: BAND_TEXT_COLOR },
     linea: { activa: true, color: LINE_COLOR, grosor: "0.6" }, distancia: "10", sangria: "0",
   },
+  portada: { fondo: "#0f172a", imagen: "", color: "#f8fafc" },
+  indice: { fondo: "#f1f5f9", imagen: "", color: "#1f2937", titulo: "Índice", niveles: "3" },
 };
 
 type Raw = Record<string, unknown>;
@@ -114,6 +121,11 @@ function readBand(raw: unknown, text: PdfType, base: PdfBand): PdfBand {
   };
 }
 
+function readSheet<T extends PdfSheet>(raw: unknown, base: T): T {
+  const r = obj(raw);
+  return { ...base, fondo: str(r.fondo, base.fondo), imagen: str(r.imagen, base.imagen), color: str(r.color, base.color) };
+}
+
 /** `estilo.pdf` guardado → borrador del formulario (lo que falta toma el valor por omisión). */
 export function pdfDraftFrom(raw: unknown): PdfDraft {
   const r = obj(raw);
@@ -135,6 +147,8 @@ export function pdfDraftFrom(raw: unknown): PdfDraft {
     texto,
     encabezado: readBand(r.encabezado, texto, base.encabezado),
     pie: readBand(r.pie, texto, footBase),
+    portada: readSheet(r.portada, base.portada),
+    indice: { ...readSheet(r.indice, base.indice), titulo: str(obj(r.indice).titulo, base.indice.titulo), niveles: num(obj(r.indice).niveles, base.indice.niveles) },
   };
 }
 
@@ -147,6 +161,8 @@ const bandOut = (b: PdfBand) => ({
   izquierda: b.izquierda, centro: b.centro, derecha: b.derecha,
   fuente: typeOut(b.fuente), linea: lineOut(b.linea), distancia_mm: toNumber(b.distancia), sangria_mm: toNumber(b.sangria),
 });
+
+const sheetOut = (sheet: PdfSheet) => ({ fondo: sheet.fondo.trim(), imagen: sheet.imagen === "" ? null : sheet.imagen, color: sheet.color.trim() });
 
 /** Borrador → `estilo.pdf`. Un borrador intacto (PDF apagado y sin tocar) se guarda como `{}`. El pie no lleva imagen. */
 export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
@@ -163,6 +179,8 @@ export function pdfDraftTo(draft: PdfDraft): Record<string, unknown> {
     texto: typeOut(draft.texto),
     encabezado: { imagen: draft.encabezado.imagen === "" ? null : draft.encabezado.imagen, ...bandOut(draft.encabezado) },
     pie: bandOut(draft.pie),
+    portada: sheetOut(draft.portada),
+    indice: { ...sheetOut(draft.indice), titulo: draft.indice.titulo, niveles: toNumber(draft.indice.niveles) },
   };
 }
 

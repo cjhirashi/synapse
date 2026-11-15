@@ -40,6 +40,8 @@ PDF_HEADING_LEVELS = ("h1", "h2", "h3", "h4")  # H5 y H6 usan el estilo de H4
 PDF_LINE_PT = (0.25, 6)  # grosor de la línea del encabezado y del pie
 PDF_BAND_MM = (0, 60)  # distancia al borde de la hoja y sangría lateral del encabezado y del pie
 PDF_TEXT_MAX = 200
+PDF_INDEX_TITLE_MAX = 80
+PDF_INDEX_LEVELS = (1, 4)  # niveles de encabezado que entran al índice (H1 hasta H<n>)
 PDF_SPECIALS = ("titulo", "fecha", "pagina", "paginas")
 PDF_FILE_ID_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")
 PDF_COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}")
@@ -199,7 +201,15 @@ def check_pdf_style(pdf: object) -> bool:
         "distancia_mm": lambda v: _is_num(v, *PDF_BAND_MM),
         "sangria_mm": lambda v: _is_num(v, *PDF_BAND_MM),
     }
+    image = lambda v: v is None or (isinstance(v, str) and PDF_FILE_ID_RE.fullmatch(v) is not None)  # noqa: E731
+    cover = {"fondo": color, "imagen": image, "color": color}  # hoja de portada: fondo, imagen de fondo y color del texto
+    index = {
+        **cover, "titulo": lambda v: isinstance(v, str) and len(v) <= PDF_INDEX_TITLE_MAX and "\n" not in v,
+        "niveles": lambda v: isinstance(v, int) and not isinstance(v, bool) and PDF_INDEX_LEVELS[0] <= v <= PDF_INDEX_LEVELS[1],
+    }
     spec = {
+        "portada": lambda v: _check_pdf_block(v, cover),
+        "indice": lambda v: _check_pdf_block(v, index),
         "activo": lambda v: isinstance(v, bool),
         "incluir_atributos": lambda v: isinstance(v, bool),
         "pagina": lambda v: _check_pdf_block(v, {"tamano": lambda t: t in PDF_PAGE_SIZES, "margenes_mm": lambda m: _check_pdf_block(m, margins)}),

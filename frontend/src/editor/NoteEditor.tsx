@@ -33,7 +33,18 @@ import {
   Heading2,
   Heading3,
   Heading4,
+  Pilcrow,
   ImagePlus,
+  BookOpenText,
+  Columns2,
+  Columns3,
+  Columns4,
+  SeparatorHorizontal,
+  TableOfContents,
+  TextAlignCenter,
+  TextAlignEnd,
+  TextAlignJustify,
+  TextAlignStart,
   Italic,
   List,
   ListOrdered,
@@ -57,6 +68,18 @@ import { NoteNotFoundError, NoteValidationError } from "../notes/errors";
 import { frontmatterTooLargeMessage, frontmatterYamlMessage, noteErrorMessage } from "../notes/messages";
 import type { Note } from "../notes/noteStore";
 import type { NoteRef } from "./wikilink";
+
+const PDF_ALIGN_BUTTONS = [
+  { value: "left", label: "Alinear a la izquierda", Icon: TextAlignStart },
+  { value: "center", label: "Centrar", Icon: TextAlignCenter },
+  { value: "right", label: "Alinear a la derecha", Icon: TextAlignEnd },
+  { value: "justify", label: "Justificar", Icon: TextAlignJustify },
+] as const;
+const PDF_COLUMN_BUTTONS = [
+  { value: "2", Icon: Columns2 },
+  { value: "3", Icon: Columns3 },
+  { value: "4", Icon: Columns4 },
+] as const;
 import type { PaletteKey } from "../vaults/vaultIcon";
 import type { ParseCache } from "./markdown/parseCache";
 import type { AttributeCatalog } from "../sync/vaultRules";
@@ -1206,6 +1229,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <button type="button" className="note-nav-button" aria-label="Código en línea" title="Código en línea" onClick={() => editorCommands.current?.toggleInlineCode()}>
               <InlineCodeIcon size={16} aria-hidden="true" />
             </button>
+            <button type="button" className="note-nav-button" aria-label="Párrafo" title="Párrafo normal" onClick={() => editorCommands.current?.setParagraph()}>
+              <Pilcrow size={16} aria-hidden="true" />
+            </button>
             {([1, 2, 3, 4] as const).map((level) => {
               const HeadingIcon = { 1: Heading1, 2: Heading2, 3: Heading3, 4: Heading4 }[level];
               return (
@@ -1225,6 +1251,26 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </button>
             <button type="button" className="note-nav-button" aria-label="Lista numerada" title="Lista numerada" onClick={() => editorCommands.current?.wrapOrderedList()}>
               <ListOrdered size={16} aria-hidden="true" />
+            </button>
+            {/* Formato del documento (marcas HTML en el Markdown, ver `markdown/pdfBlocks.ts`): alineación, columnas, portada, índice y salto de página del PDF. */}
+            {PDF_ALIGN_BUTTONS.map(({ value, label, Icon }) => (
+              <button key={value} type="button" className="note-nav-button" aria-label={label} title={label} onClick={() => editorCommands.current?.togglePdfBlock("align", value === "left" ? "" : value)}>
+                <Icon size={16} aria-hidden="true" />
+              </button>
+            ))}
+            {PDF_COLUMN_BUTTONS.map(({ value, Icon }) => (
+              <button key={value} type="button" className="note-nav-button" aria-label={`${value} columnas`} title={`${value} columnas (otra vez para quitarlas)`} onClick={() => editorCommands.current?.togglePdfBlock("cols", value)}>
+                <Icon size={16} aria-hidden="true" />
+              </button>
+            ))}
+            <button type="button" className="note-nav-button" aria-label="Portada" title="Portada del PDF: envuelve lo seleccionado (otra vez para quitarla)" onClick={() => editorCommands.current?.togglePdfBlock("cover", "")}>
+              <BookOpenText size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Índice" title="Insertar el índice del PDF" onClick={() => editorCommands.current?.insertPdfMark("indice")}>
+              <TableOfContents size={16} aria-hidden="true" />
+            </button>
+            <button type="button" className="note-nav-button" aria-label="Salto de página" title="Salto de página: lo que sigue empieza en hoja nueva" onClick={() => editorCommands.current?.insertPdfMark("salto")}>
+              <SeparatorHorizontal size={16} aria-hidden="true" />
             </button>
             {/* H-015/H-016/H-025: adjuntar archivo o URL (H-025 paso 7: diálogo con dos opciones).
                 El input de archivo va oculto y se dispara desde el diálogo. */}

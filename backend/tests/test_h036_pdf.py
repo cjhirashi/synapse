@@ -750,3 +750,73 @@ def test_code_block_syntax_colors_reach_the_pdf():
         assert rule in doc, rule
     themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
     assert ".sx-keyword {" in themed  # también con tema de color
+
+
+# --- Marcas del documento: portada, índice, salto, alineación y columnas ---
+
+def test_cover_and_index_have_their_own_defaults_and_template_validation():
+    from app.core.plantilla_rules import check_pdf_style
+
+    style = pdf_style.resolve({"portada": {"fondo": "#112233"}, "indice": {"titulo": "Contenido", "niveles": 2}})
+    assert style["portada"] == {"fondo": "#112233", "imagen": None, "color": "#f8fafc"}
+    assert style["indice"] == {"fondo": "#f1f5f9", "imagen": None, "color": "#1f2937", "titulo": "Contenido", "niveles": 2}
+    assert pdf_style.resolve({})["indice"]["niveles"] == 3
+    assert check_pdf_style({"portada": {"fondo": "#000000", "imagen": "img-1", "color": "#ffffff"}, "indice": {"titulo": "Índice", "niveles": 4}})
+    for bad in ({"portada": {"fondo": "rojo"}}, {"portada": {"extra": 1}}, {"indice": {"niveles": 0}}, {"indice": {"niveles": 5}},
+                {"indice": {"titulo": "x" * 81}}, {"indice": {"titulo": "a\nb"}}, {"indice": {"niveles": True}}, {"portada": {"imagen": "../x"}}):
+        assert not check_pdf_style(bad), bad
+
+
+def test_the_stylesheet_gives_cover_and_index_their_page_and_leaves_them_out_of_the_numbering():
+    css = pdf_style.stylesheet(pdf_style.resolve({"portada": {"fondo": "#112233"}}), has_header=True, has_footer=True, cover_background="data:image/png;base64,AAAA")
+    cover = css.split("@page portada {")[1].split("section.pdf-portada")[0]
+    assert "background-color: #112233" in cover and "counter-increment: page 0" in cover and "@top-left { content: none; }" in cover and "@bottom-left { content: none; }" in cover
+    assert 'background-image: url("data:image/png;base64,AAAA")' in cover and "background-position: -20mm -25mm" in cover and "background-size: 816px 1056px" in cover
+    index = css.split("@page indice {")[1].split("}")[0]
+    assert "background-color: #f1f5f9" in index and "counter-increment: page 0" in index and "background-image" not in index
+    for expected in ("section.pdf-portada { page: portada;", "nav.pdf-indice { page: indice;", "target-counter(attr(href), page)", ".pdf-salto { break-before: page;",
+                     'div[align="center"] { text-align: center; }', "div.cols-4 { column-count: 4;"):
+        assert expected in css, expected
+
+
+def test_the_sanitizer_keeps_the_marks_alignment_and_columns_but_not_anything_else():
+    pytest.importorskip("nh3")
+    from app.services.pdf_service import sanitize
+
+    clean = sanitize('<section class="pdf-portada"><h1>T</h1></section><div class="pdf-indice"></div><div class="pdf-salto"></div>'
+                     '<div align="center">a</div><div align="evil">b</div><div class="cols-2" style="x:y" onclick="z">c</div>')
+    for good in ('<section class="pdf-portada"><h1>T</h1></section>', '<div class="pdf-indice"></div>', '<div class="pdf-salto"></div>', '<div align="center">a</div>', '<div class="cols-2">c</div>'):
+        assert good in clean, good
+    assert "evil" not in clean and "style=" not in clean and "onclick" not in clean and "<div>b</div>" in clean
+
+
+def test_the_index_lists_the_headings_up_to_the_template_level_and_skips_the_cover():
+    pytest.importorskip("nh3")
+    from app.services.pdf_service import add_index, sanitize
+
+    body = sanitize('<section class="pdf-portada"><h1>Portada</h1></section><div class="pdf-indice"></div>'
+                    '<h1>Uno <em>&amp; más</em></h1><h2>Sub</h2><h3>Fino</h3><h4>Más fino</h4><div class="pdf-indice"></div>')
+    out = add_index(body, {"titulo": "Contenido <b>", "niveles": 3})
+    assert out.count('<nav class="pdf-indice">') == 1 and '<div class="pdf-indice">' not in out  # una sola lista: las marcas repetidas se quitan
+    assert '<h2 class="pdf-indice-titulo">Contenido &lt;b&gt;</h2>' in out
+    assert '<li class="lv1"><a href="#pdf-h2">Uno &amp; más</a></li>' in out and 'li class="lv2"' in out and 'li class="lv3"' in out and 'li class="lv4"' not in out
+    assert 'Portada</a>' not in out and '<h1 id="pdf-h2">' in out and '<h4 id="pdf-h5">' in out
+    assert add_index("<h1>Sin marca</h1>", {"titulo": "I", "niveles": 3}) == "<h1>Sin marca</h1>"  # sin marca no se toca nada
+    assert "<nav" not in add_index('<div class="pdf-indice"></div><p>sin encabezados</p>', {"titulo": "I", "niveles": 3})  # sin encabezados la marca se quita
+
+
+def test_a_pdf_with_cover_and_index_numbers_from_the_first_body_page_and_has_no_band_on_the_special_sheets():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document, make_pdf
+
+    style = pdf_style.resolve({"activo": True, "pie": {"centro": "Página {{pagina}} de {{paginas}}"}})
+    body = ('<section class="pdf-portada"><h1>Portada</h1></section><div class="pdf-indice"></div><h1>Uno</h1><p>a</p>'
+            '<div class="pdf-salto"></div><h1>Dos</h1><div class="cols-2"><p>' + "columna " * 300 + "</p></div>")
+    doc = build_document(body, style, title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    rendered = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render()
+    names = [page._page_box.page_type.name for page in rendered.pages]
+    assert names[:2] == ["portada", "indice"] and set(names[2:]) == {""}  # el cuerpo vuelve a la hoja normal
+    assert make_pdf(doc, lambda _: None).startswith(b"%PDF")

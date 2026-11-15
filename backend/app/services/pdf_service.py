@@ -31,7 +31,7 @@ _DATA_RE = re.compile(r"^data:(image/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$",
 TAGS = {
     "a", "abbr", "b", "blockquote", "br", "caption", "code", "col", "colgroup", "dd", "del", "details", "div", "dl", "dt", "em", "figcaption",
     "figure", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "img", "ins", "kbd", "li", "mark", "ol", "p", "pre", "q", "s", "samp", "small",
-    "span", "strong", "sub", "summary", "sup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "u", "ul",
+    "section", "span", "strong", "sub", "summary", "sup", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "u", "ul",
 }
 ATTRIBUTES = {
     "*": {"class", "title"},
@@ -39,7 +39,9 @@ ATTRIBUTES = {
     "img": {"src", "alt", "width", "height"},
     "td": {"colspan", "rowspan", "align"}, "th": {"colspan", "rowspan", "align"},
     "ol": {"start"},
+    "div": {"align"},
 }
+ALIGNMENTS = ("left", "center", "right", "justify")
 
 ReadImage = Callable[[str], "tuple[bytes, str] | None"]  # id de archivo → (bytes, tipo) si es una imagen de la persona
 
@@ -69,6 +71,8 @@ def _filter_attribute(tag: str, attribute: str, value: str) -> str | None:
         if own is not None:  # el enlace «Copiar link» de Archivos: se lee directo, con la sesión, no por internet
             return own
         return value if _DATA_RE.match(value) or FILE_PATH_RE.match(value) or EXTERNAL_IMAGE_RE.match(value) else None
+    if tag == "div" and attribute == "align":
+        return value if value in ALIGNMENTS else None
     if tag == "a" and attribute == "href":
         return value if re.match(r"^(https?://|mailto:|#)", value, re.IGNORECASE) else None
     return value
@@ -80,6 +84,39 @@ def sanitize(source: str) -> str:
     return nh3.clean(
         source, tags=TAGS, attributes=ATTRIBUTES, attribute_filter=_filter_attribute, clean_content_tags={"script", "style", "iframe", "object", "embed"},
         url_schemes={"http", "https", "mailto", "data"}, link_rel="noopener noreferrer", strip_comments=True)
+
+
+HEADING_RE = re.compile(r"<(h[1-4])((?:\s[^>]*)?)>(.*?)</\1>", re.DOTALL)
+COVER_RE = re.compile(r'<section class="pdf-portada">.*?</section>', re.DOTALL)
+INDEX_MARK_RE = re.compile(r'<div class="pdf-indice">\s*</div>')
+
+
+def add_index(sanitized: str, spec: dict) -> str:
+    """Si hay marca de índice, pone un `id` a cada encabezado (H1 a H4) y la sustituye por la lista de los que están hasta el nivel de la plantilla.
+
+    El índice no incluye los encabezados de la portada. Sin encabezados que listar, la marca se quita. Los números de página los dibuja WeasyPrint."""
+    import nh3
+
+    if INDEX_MARK_RE.search(sanitized) is None:
+        return sanitized
+    covers = [match.span() for match in COVER_RE.finditer(sanitized)]
+    entries: list[tuple[int, str, str]] = []
+    counter = 0
+
+    def number(match: re.Match) -> str:
+        nonlocal counter
+        counter += 1
+        level, anchor = int(match.group(1)[1]), f"pdf-h{counter}"
+        if level <= spec["niveles"] and not any(start <= match.start() < end for start, end in covers):
+            entries.append((level, anchor, nh3.clean(match.group(3), tags=set())))
+        return f'<{match.group(1)} id="{anchor}"{match.group(2)}>{match.group(3)}</{match.group(1)}>'
+
+    out = HEADING_RE.sub(number, sanitized)
+    marks = list(INDEX_MARK_RE.finditer(out))
+    items = "".join(f'<li class="lv{level}"><a href="#{anchor}">{text}</a></li>' for level, anchor, text in entries)
+    index = f'<nav class="pdf-indice"><h2 class="pdf-indice-titulo">{html.escape(spec["titulo"])}</h2><ol>{items}</ol></nav>' if entries else ""
+    first = marks[0]
+    return INDEX_MARK_RE.sub("", out[:first.start()]) + index + INDEX_MARK_RE.sub("", out[first.end():])
 
 
 def _image_data_uri(read_image: ReadImage, file_id: str | None) -> str | None:
@@ -125,11 +162,13 @@ def build_document(
     head = _band("pdfhead", style["encabezado"], title, attributes, now)
     foot = _band("pdffoot", style["pie"], title, attributes, now)
     background = _image_data_uri(read_image, style["encabezado"]["imagen"])  # fondo de cada página: ancho de la hoja, alto proporcional, desde la esquina superior izquierda
-    css = pdf_style.stylesheet(style, has_header=head is not None, has_footer=foot is not None, background=background)
+    css = pdf_style.stylesheet(
+        style, has_header=head is not None, has_footer=foot is not None, background=background,
+        cover_background=_image_data_uri(read_image, style["portada"]["imagen"]), index_background=_image_data_uri(read_image, style["indice"]["imagen"]))
     attrs = _attributes_table(frontmatter) if style["incluir_atributos"] else ""
     return (
         f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>{html.escape(title)}</title><style>{css}</style></head>'
-        f"<body>{head or ''}{foot or ''}{attrs}<article>{sanitize(body)}</article></body></html>")
+        f"<body>{head or ''}{foot or ''}{attrs}<article>{add_index(sanitize(body), style['indice'])}</article></body></html>")
 
 
 def _fetcher(read_image: ReadImage, *, fetch_external=external_image.fetch):
@@ -176,11 +215,25 @@ def _fetcher(read_image: ReadImage, *, fetch_external=external_image.fetch):
     return Closed()
 
 
+def _special_pages(rendered) -> int:
+    """Hojas de portada e índice del documento ya maquetado (no entran en la numeración ni en el total de «de N»). Si WeasyPrint cambia su interior, 0."""
+    try:
+        return sum(1 for page in rendered.pages if page._page_box.page_type.name in ("portada", "indice"))
+    except AttributeError:
+        return 0
+
+
 def _render(document: str, read_image: ReadImage) -> bytes:
-    from weasyprint import HTML
+    from weasyprint import CSS, HTML
 
     try:
-        return HTML(string=document, base_url=INTERNAL_BASE, url_fetcher=_fetcher(read_image)).write_pdf()
+        rendered = HTML(string=document, base_url=INTERNAL_BASE, url_fetcher=_fetcher(read_image)).render()
+        special = _special_pages(rendered)
+        if special and 'class="pt"' in document:
+            # `counter(pages)` cuenta también la portada y el índice; con ellos, el total del pie se imprime ya descontado (segunda pasada).
+            total = CSS(string=f'.pt::after {{ content: "{len(rendered.pages) - special}" !important; }}')
+            return HTML(string=document, base_url=INTERNAL_BASE, url_fetcher=_fetcher(read_image)).write_pdf(stylesheets=[total])
+        return rendered.write_pdf()
     finally:
         _SLOTS.release()
 

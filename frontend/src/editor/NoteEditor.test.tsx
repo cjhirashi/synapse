@@ -373,6 +373,9 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
       "toggleInlineCode",
       "setHeading",
       "toggleBlockquote",
+      "setParagraph",
+      "togglePdfBlock",
+      "insertPdfMark",
       "insertHr",
       "wrapBulletList",
       "wrapOrderedList",
@@ -434,6 +437,17 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
     expect(spies.toggleInlineCode).toHaveBeenCalledTimes(1);
     await click("Cita");
     expect(spies.toggleBlockquote).toHaveBeenCalledTimes(1);
+    await click("Párrafo");
+    expect(spies.setParagraph).toHaveBeenCalledTimes(1);
+    for (const [label, kind, value] of [["Alinear a la izquierda", "align", ""], ["Centrar", "align", "center"], ["Alinear a la derecha", "align", "right"], ["Justificar", "align", "justify"],
+      ["2 columnas", "cols", "2"], ["3 columnas", "cols", "3"], ["4 columnas", "cols", "4"], ["Portada", "cover", ""]]) {
+      await click(label);
+      expect(spies.togglePdfBlock).toHaveBeenLastCalledWith(kind, value);
+    }
+    await click("Índice");
+    expect(spies.insertPdfMark).toHaveBeenLastCalledWith("indice");
+    await click("Salto de página");
+    expect(spies.insertPdfMark).toHaveBeenLastCalledWith("salto");
     await click("Línea horizontal");
     expect(spies.insertHr).toHaveBeenCalledTimes(1);
     await click("Lista con viñetas");

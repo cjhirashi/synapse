@@ -33,6 +33,7 @@ import {
   toggleEmphasisCommand,
   toggleInlineCodeCommand,
   toggleStrongCommand,
+  turnIntoTextCommand,
   wrapInBlockquoteCommand,
   wrapInBulletListCommand,
   wrapInHeadingCommand,
@@ -43,9 +44,12 @@ import { $markSchema, $remark } from "@milkdown/utils";
 import { createSlice, type MilkdownPlugin } from "@milkdown/ctx";
 import type { Processor } from "unified";
 import type { Node as PMNode } from "@milkdown/prose/model";
+import { lift } from "@milkdown/prose/commands";
 import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
+import { pdfBlockSchema, pdfBlocksRemark, pdfMarkSchema, type PdfBlockKind, type PdfMarkKind } from "./markdown/pdfBlocks";
+import { insertPdfMark, togglePdfBlock } from "./markdown/pdfBlockCommands";
 import { createHighlightPlugin } from "prosemirror-highlight";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { createHighlightParser } from "./highlight/proseHighlight";
@@ -230,8 +234,14 @@ export interface EditorCommands {
   setHeading: (level: number) => void;
   /** Envuelve el bloque del cursor en una cita (blockquote). */
   toggleBlockquote: () => void;
+  /** Devuelve el bloque del cursor a párrafo normal: quita el encabezado y saca el bloque de una cita. */
+  setParagraph: () => void;
   /** Inserta una línea horizontal en la posición del cursor. */
   insertHr: () => void;
+  /** Envuelve la selección en una portada, una alineación (`value`: left, center, right, justify) o columnas (2, 3, 4); repetirlo la quita, y con otro valor lo cambia. */
+  togglePdfBlock: (kind: PdfBlockKind, value: string) => void;
+  /** Inserta el índice o el salto de página tras el bloque del cursor. */
+  insertPdfMark: (kind: PdfMarkKind) => void;
   /** Convierte el bloque del cursor en una lista con viñetas. */
   wrapBulletList: () => void;
   /** Convierte el bloque del cursor en una lista numerada. */
@@ -624,6 +634,9 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(wikilinkResolverPlugin)
       .use(wikilinkMark)
       .use(wikilinkRemark)
+      .use(pdfBlocksRemark)
+      .use(pdfBlockSchema)
+      .use(pdfMarkSchema)
       .config((ctx) => {
         // El resolvedor lee la lista de notas vigente por ref: así resolver no obliga a recrear el editor.
         ctx.set(wikilinkResolverCtx, (target: string) => resolveWikiLink(target, notesRef.current));
@@ -676,7 +689,16 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           toggleInlineCode: () => run(toggleInlineCodeCommand.key),
           setHeading: (level: number) => run(wrapInHeadingCommand.key, level),
           toggleBlockquote: () => run(wrapInBlockquoteCommand.key),
+          setParagraph: () => {
+            const { $from } = view.state.selection;
+            for (let depth = $from.depth; depth > 0; depth--) {
+              if ($from.node(depth).type.name === "blockquote") lift(view.state, view.dispatch);
+            }
+            run(turnIntoTextCommand.key);
+          },
           insertHr: () => run(insertHrCommand.key),
+          togglePdfBlock: (kind: PdfBlockKind, value: string) => togglePdfBlock(view, kind, value),
+          insertPdfMark: (kind: PdfMarkKind) => insertPdfMark(view, kind),
           wrapBulletList: () => run(wrapInBulletListCommand.key),
           wrapOrderedList: () => run(wrapInOrderedListCommand.key),
           // H-015: inserta la imagen subida en el cursor; el markdown queda `![alt](url)` y la

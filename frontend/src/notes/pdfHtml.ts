@@ -78,6 +78,13 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
     media.replaceWith(placeholder(doc, media.tagName === "VIDEO" ? "Video" : "Audio", embedLink(src, origin)));
   }
 
+  // Marcas de índice y de salto de página: el servidor las reconoce por su clase (arma el índice y corta la hoja).
+  for (const mark of Array.from(copy.querySelectorAll(".pdf-mark"))) {
+    const slot = doc.createElement("div");
+    slot.className = mark.getAttribute("data-pdf-mark") === "indice" ? "pdf-indice" : "pdf-salto";
+    mark.replaceWith(slot);
+  }
+
   for (const svg of Array.from(copy.querySelectorAll("svg"))) {
     if (svg.closest("button")) continue; // íconos de controles: se quitan abajo
     const img = svgToImage(doc, svg as unknown as SVGElement);

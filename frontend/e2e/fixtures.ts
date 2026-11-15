@@ -155,7 +155,7 @@ async function createNote(page: Page, title: string, content: string): Promise<v
   await page.getByRole("button", { name: /^Nueva nota en/ }).click();
   await page.getByLabel("Título de la nota nueva (opcional)").fill(title);
   await page.getByRole("button", { name: "Crear nota", exact: true }).click();
-  await page.getByRole("button", { name: "Código" }).click();
+  await page.getByRole("button", { name: "Código", exact: true }).click();
   await page.locator(".cm-content").click();
   await page.keyboard.insertText(content);
   await page.getByRole("button", { name: "Guardar" }).click();

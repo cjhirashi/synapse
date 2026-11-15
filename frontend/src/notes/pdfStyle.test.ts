@@ -89,3 +89,24 @@ describe("tema de color", () => {
     expect(pdfDraftFrom({ tema: { primario: "azul" } }).tema.activo).toBe(false);
   });
 });
+
+describe("portada e índice (marcas pdf:portada y pdf:indice)", () => {
+  it("el borrador los lee y los guarda con sus valores por omisión, y el servidor los acepta", () => {
+    const draft = pdfDraftFrom({ activo: true, portada: { fondo: "#112233", imagen: "img-1" }, indice: { titulo: "Contenido", niveles: 2 } });
+    expect(draft.portada).toEqual({ fondo: "#112233", imagen: "img-1", color: "#f8fafc" });
+    expect(draft.indice).toEqual({ fondo: "#f1f5f9", imagen: "", color: "#1f2937", titulo: "Contenido", niveles: "2" });
+    const saved = pdfDraftTo(draft) as Record<string, unknown>;
+    expect(saved.portada).toEqual({ fondo: "#112233", imagen: "img-1", color: "#f8fafc" });
+    expect(saved.indice).toEqual({ fondo: "#f1f5f9", imagen: null, color: "#1f2937", titulo: "Contenido", niveles: 2 });
+    expect(checkPdfStyle(saved)).toBe(true);
+  });
+
+  it("el validador rechaza colores, niveles y títulos fuera de regla", () => {
+    expect(checkPdfStyle({ portada: { fondo: "rojo" } })).toBe(false);
+    expect(checkPdfStyle({ portada: { otra: 1 } })).toBe(false);
+    expect(checkPdfStyle({ indice: { niveles: 0 } })).toBe(false);
+    expect(checkPdfStyle({ indice: { niveles: 5 } })).toBe(false);
+    expect(checkPdfStyle({ indice: { titulo: "x".repeat(81) } })).toBe(false);
+    expect(checkPdfStyle({ indice: { titulo: "Índice", niveles: 4 }, portada: { imagen: null } })).toBe(true);
+  });
+});
