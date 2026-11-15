@@ -16,28 +16,44 @@ interface IndexListProps {
   onOpen: (path: string) => void;
 }
 
-function Parts({ fm, extra, colorOf }: { fm: Record<string, unknown>; extra: readonly string[]; colorOf: IndexListProps["colorOf"] }) {
+/** Datos del elemento en líneas propias: estado (cápsula) con la fecha de actualización al lado, descripción y tags (cápsulas); las columnas adicionales debajo. */
+function Details({ fm, extra, colorOf }: { fm: Record<string, unknown>; extra: readonly string[]; colorOf: IndexListProps["colorOf"] }) {
   const parts = metaParts(fm, extra);
   if (parts.length === 0) return null;
   const color = colorOf(fm);
+  const state = parts.find((part) => part.label === "Estado");
+  const updated = parts.find((part) => part.label === "Actualizado");
+  const description = parts.find((part) => part.label === null);
+  const tags = Array.isArray(fm.tags) ? (fm.tags as unknown[]).filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "") : [];
+  const others = parts.filter((part) => part.label !== null && !["Estado", "Tags", "Actualizado"].includes(part.label));
   return (
-    <>
-      {" — "}
-      {parts.map((part, index) => (
-        <span key={`${part.label ?? "descripcion"}:${index}`}>
-          {index > 0 && " · "}
-          {part.label === null ? (
-            part.value
-          ) : part.label === "Estado" ? (
+    <div className="index-item-details">
+      {(state || updated) && (
+        <div className="index-item-state">
+          {state && (
             <span className={`estado-pill${color ? ` estado-pill--${color}` : ""}`} title="Estado">
-              {part.value}
+              {state.value}
             </span>
-          ) : (
-            `${part.label}: ${part.value}`
           )}
-        </span>
+          {updated && <span className="index-item-updated">Actualizado: {updated.value}</span>}
+        </div>
+      )}
+      {description && <div className="index-item-description">{description.value}</div>}
+      {tags.length > 0 && (
+        <ul className="index-item-tags" aria-label="Tags">
+          {tags.map((tag) => (
+            <li key={tag} className="tag-pill">
+              {tag}
+            </li>
+          ))}
+        </ul>
+      )}
+      {others.map((part) => (
+        <div key={part.label} className="index-item-extra">
+          {part.label}: {part.value}
+        </div>
       ))}
-    </>
+    </div>
   );
 }
 
@@ -62,9 +78,9 @@ export default function IndexList({ model, extra, colorOf, onOpen }: IndexListPr
       {model.subfolders.length > 0 ? (
         <ul>
           {model.subfolders.map((sub) => (
-            <li key={sub.path}>
-              {link(sub.path, sub.name)}
-              <Parts fm={sub.fm} extra={extra} colorOf={colorOf} />
+            <li key={sub.path} className="index-item">
+              <div className="index-item-title">{link(sub.path, sub.name)}</div>
+              <Details fm={sub.fm} extra={extra} colorOf={colorOf} />
             </li>
           ))}
         </ul>
@@ -77,9 +93,9 @@ export default function IndexList({ model, extra, colorOf, onOpen }: IndexListPr
       {model.documents.length > 0 ? (
         <ul>
           {model.documents.map((doc) => (
-            <li key={doc.path}>
-              {link(doc.path, doc.title)}
-              <Parts fm={doc.fm} extra={extra} colorOf={colorOf} />
+            <li key={doc.path} className="index-item">
+              <div className="index-item-title">{link(doc.path, doc.title)}</div>
+              <Details fm={doc.fm} extra={extra} colorOf={colorOf} />
             </li>
           ))}
         </ul>

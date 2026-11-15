@@ -41,6 +41,7 @@ import {
   Columns4,
   SeparatorHorizontal,
   TableOfContents,
+  ListTree,
   TextAlignCenter,
   TextAlignEnd,
   TextAlignJustify,
@@ -89,7 +90,8 @@ import { fetchNotePdf, pdfErrorMessage, saveBlob } from "../notes/pdfApi";
 import { usePdfEnabled } from "../notes/usePdfEnabled";
 import { useTemplateOptions, type TemplateOption } from "../notes/useTemplateOptions";
 import { appliesTo } from "../notes/metaRules";
-import { folderOf } from "../notes/indexRules";
+import { folderOf, indexPathFor, isIndexPath } from "../notes/indexRules";
+import { pathKey } from "../notes/noteRules";
 import { changeTemplate, isEmptyBody } from "./templateAttrs";
 import { CodeView } from "./CodeView";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -295,6 +297,14 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
     const folder = folderOf(note.path);
     return allTemplates.filter((option) => appliesTo(option.alcance, folder) || option.name === props.plantilla);
   }, [allTemplates, note, props.plantilla]);
+  /** Índice de la carpeta del documento (el padre): enlace automático entre las propiedades y el contenido; `null` si no existe en la bóveda. */
+  const parentIndex = useMemo(() => {
+    if (note === null || isIndexPath(note.path) || !vaultNotes) return null;
+    const folder = folderOf(note.path);
+    const target = indexPathFor(folder);
+    const ref = vaultNotes.find((item) => pathKey(item.path) === pathKey(target));
+    return ref ? { ref, target, label: folder === "" ? "la bóveda" : (folder.split("/").at(-1) ?? folder) } : null;
+  }, [note, vaultNotes]);
   /** Estructura de la plantilla elegida a la espera de la respuesta (el documento ya tiene contenido). */
   const [structureAsk, setStructureAsk] = useState<{ content: string } | null>(null);
   /** Línea (1-based, en el texto compuesto) del error de YAML para ofrecer «Ir a la línea N». */
@@ -1445,6 +1455,15 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           {/* En edición (Visual y Código) la sección META parte de las propiedades vigentes (`props`) y las emite con
               `onProps`. `key={note.rev}` la reinicia tras guardar o cambiar de nota; alternar de vista no la remonta. */}
           {mode === "edit" && <NoteMeta key={`${note.rev}-${formKey}-${templateOptions === null ? "n" : "t"}`} mode="edit" frontmatter={props} path={note.path} onChange={onProps} estadoOptions={estadoOptions} onNewEstado={onNewEstado} attributes={attributes} templates={templateOptions} onTemplateChange={(name) => void onTemplateChange(name)} />}
+
+          {parentIndex && (
+            <nav className="note-parent-index" aria-label="Índice padre">
+              <button type="button" className="note-parent-index-link" onClick={() => onOpenWikilink?.({ resolvedId: parentIndex.ref.id, target: parentIndex.target })}>
+                <ListTree size={14} aria-hidden="true" />
+                Índice de {parentIndex.label}
+              </button>
+            </nav>
+          )}
 
           {mode === "read" ? (
             <>

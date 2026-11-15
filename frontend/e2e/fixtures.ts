@@ -301,6 +301,22 @@ export async function seedBuzon(): Promise<Seeded> {
   return { email: user.email, password: user.password, vaults: [{ id: vaultId, name: "Buzón", icon: "folder-heart:accent" }], longNoteName: LONG_NOTE_NAME };
 }
 
+/** Bóveda con documentos que traen estado, tags, descripción y fecha de actualización, para ver las líneas del índice. */
+export async function seedIndexDemo(): Promise<Seeded> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Índices", "folder-heart:accent");
+  const stamp = "2026-11-14T09:00:00.000000Z";
+  const doc = (path: string, frontmatter: Record<string, unknown>) => noteDoc(vaultId, { path, frontmatter, content: "# Texto\n\nCuerpo del documento." }, stamp);
+  await bulkDocs(user.cookie, [
+    noteDoc(vaultId, { path: "INDICE.md", frontmatter: { descripcion: "Bóveda de prueba de índices" }, content: "" }, stamp),
+    noteDoc(vaultId, { path: "Guías/INDICE.md", frontmatter: { descripcion: "Guías del equipo", estado: "aprobado", tags: ["guias"], fecha_actualizacion: "2026-11-14" }, content: "" }, stamp),
+    doc("Guías/Primera guía.md", { titulo: "Primera guía", descripcion: "Cómo se ordena una bóveda y por qué cada carpeta tiene su índice con descripción.", estado: "en revisión", tags: ["guia", "bovedas", "orden"], fecha_actualizacion: "2026-11-14" }),
+    doc("Guías/Segunda guía.md", { titulo: "Segunda guía", descripcion: "Sin estado.", tags: ["otra"], fecha_actualizacion: "2026-11-13" }),
+    doc("Guías/Sin datos.md", {}),
+  ]);
+  return { email: user.email, password: user.password, vaults: [{ id: vaultId, name: "Índices", icon: "folder-heart:accent" }], longNoteName: LONG_NOTE_NAME };
+}
+
 /** Usuario sembrado con el banco de 200 notas de rendimiento (§10.8): las 3 grandes + 197 pequeñas. */
 export interface SeededContentPerf extends Seeded {
   notes: ContentNote[];
@@ -507,10 +523,16 @@ export function expectExact(key: string, label: string, got: string, target: str
 
 // --- Fixture de Playwright ------------------------------------------------------------------
 
-export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf; buzon: Seeded }>({
+export const test = base.extend<object, { seeded: Seeded; crowded: Seeded; content: SeededContent; contentPerf: SeededContentPerf; buzon: Seeded; indexDemo: Seeded }>({
   buzon: [
     async ({}, use) => {
       await use(await seedBuzon());
+    },
+    { scope: "worker" },
+  ],
+  indexDemo: [
+    async ({}, use) => {
+      await use(await seedIndexDemo());
     },
     { scope: "worker" },
   ],

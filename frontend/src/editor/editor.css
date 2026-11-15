@@ -2078,3 +2078,19 @@ fieldset.note-meta-field legend {
   object-fit: cover;
   vertical-align: -5px;
 }
+
+/* Enlace automático al índice padre, entre las propiedades y el contenido del documento. */
+.note-parent-index { margin: var(--space-2) 0 var(--space-3); }
+.note-parent-index-link {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--info-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note-parent-index-link:hover { color: var(--text-primary); }
+.note-parent-index-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }

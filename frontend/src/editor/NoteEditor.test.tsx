@@ -1330,6 +1330,22 @@ describe("con los editores reales (Milkdown y CodeMirror)", () => {
 // H-011: el `Workspace` pasa las notas vivas y el editor las reenvía a la vista Visual para resolver
 // wikilinks. Aquí se verifica sólo el cableado (la resolución y el pintado se prueban en MilkdownView).
 describe("wikilinks · cableado de notas de la bóveda (H-011)", () => {
+  it("enlace automático al índice padre entre las propiedades y el contenido: abre el INDICE de la carpeta, y no aparece sin ese índice", async () => {
+    const onOpenWikilink = vi.fn();
+    const refs = [{ id: "note:v:idx", path: "INDICE.md" }, { id: "note:v:1", path: "Primera.md" }];
+    await setup("hola", {}, { vaultNotes: refs, onOpenWikilink });
+    const link = await screen.findByRole("button", { name: /Índice de la bóveda/ });
+    expect(link.closest("nav")).toHaveAccessibleName("Índice padre");
+    await userEvent.click(link);
+    expect(onOpenWikilink).toHaveBeenCalledWith({ resolvedId: "note:v:idx", target: "INDICE.md" });
+  });
+
+  it("sin el INDICE de su carpeta entre las notas conocidas no hay enlace al índice padre", async () => {
+    await setup("hola", {}, { vaultNotes: [{ id: "note:v:1", path: "Primera.md" }] });
+    await screen.findByLabelText("Contenido de la nota");
+    expect(screen.queryByRole("navigation", { name: "Índice padre" })).toBeNull();
+  });
+
   it("reenvía `vaultNotes` a la vista Visual por su prop `notes`", async () => {
     let received: readonly { id: string; path: string }[] | undefined;
     function CapturingVisual({ value, onChange, label, readOnly, notes }: ViewProps) {

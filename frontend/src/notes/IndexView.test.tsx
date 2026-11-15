@@ -65,3 +65,20 @@ test("conserva las secciones del índice", async () => {
   expect(screen.getByRole("heading", { name: "Documentos" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "PLANTILLAS" })).toBeInTheDocument();
 });
+
+test("cada elemento va en líneas propias: título, estado con la fecha al lado, descripción y tags como cápsulas", async () => {
+  counter += 1;
+  const store = createNoteStore(new PouchDB(`indexview-lines-${counter}`, { adapter: "memory" }));
+  const note = await store.create(VAULT, "Con todo");
+  await store.save(note.id, "", note.rev, { ...note.frontmatter, estado: "borrador", descripcion: "Qué contiene", tags: ["uno", "dos"], fecha_actualizacion: "2026-11-14" });
+  const items = await store.list(VAULT);
+  render(<IndexView noteId={items.find((i) => i.path === "INDICE.md")!.id} vault={{ id: VAULT, name: "Aparte" }} notes={store} notesVersion={0} userId="u" noteRefs={[]} onOpenWikilink={vi.fn()} />);
+  const li = await waitFor(() => item("Con todo"));
+  const lines = Array.from(li.querySelectorAll(".index-item-title, .index-item-state, .index-item-description, .index-item-tags")).map((node) => node.className.split(" ")[0]);
+  expect(lines).toEqual(["index-item-title", "index-item-state", "index-item-description", "index-item-tags"]);
+  const state = li.querySelector(".index-item-state") as HTMLElement;
+  expect(within(state).getByText("borrador")).toHaveClass("estado-pill");
+  expect(state).toHaveTextContent(/Actualizado: \d{4}-\d{2}-\d{2}/);
+  expect(within(li).getAllByRole("listitem").map((tag) => tag.textContent)).toEqual(["uno", "dos"]);
+  expect(within(li).getByText("Qué contiene")).toHaveClass("index-item-description");
+});
