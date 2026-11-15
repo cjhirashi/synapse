@@ -1512,11 +1512,13 @@
   break-inside: avoid;
 }
 .milkdown-view .ProseMirror .comentario-head {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-areas: "avatar autor autor" "avatar tipo fecha";
   align-items: center;
-  gap: 2px var(--space-2);
-  padding: 6px var(--space-3);
+  column-gap: 0;
+  row-gap: 1px;
+  padding: var(--space-2) var(--space-3);
   font-size: 12px;
   line-height: 1.3;
   color: var(--text-secondary);
@@ -1524,10 +1526,11 @@
   border-bottom: 1px solid var(--border);
   user-select: none;
 }
-.milkdown-view .ProseMirror .comentario-autor { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--text-primary); }
-.milkdown-view .ProseMirror .comentario-tipo { color: var(--text-secondary); white-space: nowrap; }
-.milkdown-view .ProseMirror .comentario-fecha { margin-left: auto; color: var(--text-secondary); white-space: nowrap; }
-.milkdown-view .ProseMirror .comentario-avatar { flex: none; }
+.milkdown-view .ProseMirror .comentario-avatar { grid-area: avatar; flex: none; margin-right: var(--space-3); }
+.milkdown-view .ProseMirror .comentario-autor { grid-area: autor; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--text-primary); }
+.milkdown-view .ProseMirror .comentario-tipo { grid-area: tipo; color: var(--text-secondary); white-space: nowrap; }
+.milkdown-view .ProseMirror .comentario-fecha { grid-area: fecha; color: var(--text-secondary); white-space: nowrap; }
+.milkdown-view .ProseMirror .comentario-fecha::before { content: "·"; margin: 0 var(--space-2); }
 .milkdown-view .ProseMirror .comentario-body { padding: var(--space-3) var(--space-4); color: var(--text-primary); }
 .milkdown-view .ProseMirror .comentario-body > :first-child { margin-top: 0; }
 .milkdown-view .ProseMirror .comentario-body > :last-child { margin-bottom: 0; }

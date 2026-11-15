@@ -72,7 +72,7 @@ class CommentView implements NodeView {
 
     const avatar = document.createElement("span");
     avatar.className = "settings-avatar-container comentario-avatar";
-    avatar.style.cssText = "width:22px;height:22px;font-size:8px";
+    avatar.style.cssText = "width:32px;height:32px;font-size:11px";
     avatar.setAttribute("aria-hidden", "true");
     if (photo) {
       const img = document.createElement("img");
