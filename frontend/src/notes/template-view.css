@@ -71,11 +71,11 @@
 .tv-toggle { display: flex; align-items: center; gap: var(--space-4); margin: 0; padding: var(--space-3) var(--space-4); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
 .tv-toggle-text { display: flex; flex-direction: column; gap: 2px; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
 .tv-toggle-text strong { font-size: 14px; color: var(--text-primary); }
-.tv-switch { appearance: none; -webkit-appearance: none; flex: none; order: 2; margin: 0 0 0 auto; position: relative; width: 40px; height: 22px; padding: 0; border-radius: 999px; border: 1px solid var(--border-control); background: var(--bg-tertiary); cursor: pointer; transition: background .15s, border-color .15s; }
+.tv-switch { appearance: none; -webkit-appearance: none; flex: none; order: 2; margin: 0 0 0 auto; position: relative; width: 44px; height: 24px; padding: 0; border-radius: 999px; border: 1px solid var(--border-control); background: var(--bg-tertiary); cursor: pointer; transition: background .15s, border-color .15s; }
 .tv-toggle-text { order: 1; }
-.tv-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--text-secondary); transition: transform .15s, background .15s; }
+.tv-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: var(--text-secondary); transition: transform .15s, background .15s; }
 .tv-switch:checked { background: var(--accent); border-color: var(--accent); }
-.tv-switch:checked::after { transform: translateX(18px); background: #fff; }
+.tv-switch:checked::after { transform: translateX(20px); background: #fff; }
 
 .tv-pdf-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 280px); gap: var(--space-6); align-items: start; }
 .tv-pdf-fields { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -128,7 +128,8 @@
   .note-editor-column.tv-form { padding: var(--space-4); }
 }
 @media (max-width: 640px) {
-  .tv-card { padding: var(--space-4); }
+  .tv-card { padding: var(--space-3); }
+  .note-editor-column.tv-form { padding: var(--space-3); }
   .tv-general, .tv-slots { grid-template-columns: 1fr; }
   .tv-type { grid-template-columns: minmax(0, 1fr) 3.5rem; }
   .tv-type .tv-field--grow { grid-column: 1 / -1; }
@@ -152,40 +153,50 @@
 .pdfp-sample code { font-family: "Liberation Mono", monospace; padding: 0 0.3em; border-radius: 0.2em; }
 
 /* Portada e índice del PDF: tarjeta con miniatura de la hoja y los controles agrupados (fondo, lista, tipografía y color).
-   Ancha: la miniatura queda a la izquierda de los controles; estrecha: pasa a la esquina de la cabecera y los controles ocupan todo el ancho. */
+   Estrecha (celular, ~270 px útiles): una columna; la cabecera es [ícono] título [miniatura], la ayuda va debajo a todo el ancho y los campos se apilan
+   con 40 px de alto para el dedo. Ancha (≥560 px): la miniatura queda a la izquierda de los controles, que se ordenan en filas. */
 .tv-sheet-wrap { container-type: inline-size; min-width: 0; }
-.tv-sheet { display: grid; grid-template-columns: minmax(0, 1fr) 84px; grid-template-areas: "head side" "controls controls"; gap: var(--space-4) var(--space-4); padding: var(--space-4); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
-.tv-sheet-head { grid-area: head; display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
-.tv-sheet-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-md); color: var(--accent); background: var(--accent-soft); }
-.tv-sheet-title { min-width: 0; }
-.tv-sheet-title strong { font-size: 14px; color: var(--text-primary); }
-.tv-sheet-title p { margin: 2px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
-.tv-sheet-title code { font-family: var(--font-mono); font-size: 11px; font-variant-ligatures: none; color: var(--text-primary); background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px; white-space: nowrap; }
-.tv-sheet-side { grid-area: side; min-width: 0; }
-.tv-sheet-controls { grid-area: controls; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.tv-sheet { display: grid; grid-template-columns: 34px minmax(0, 1fr) 56px; grid-template-areas: "icon title side" "hint hint hint" "controls controls controls"; gap: var(--space-3); padding: var(--space-3); background: var(--bg-primary); border: 1px solid var(--border); border-radius: var(--radius-md); min-width: 0; }
+.tv-sheet-head, .tv-sheet-title { display: contents; }
+.tv-sheet-icon { grid-area: icon; align-self: center; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: var(--radius-md); color: var(--accent); background: var(--accent-soft); }
+.tv-sheet-title strong { grid-area: title; align-self: center; font-size: 15px; color: var(--text-primary); }
+.tv-sheet-title p { grid-area: hint; margin: 0; font-size: 12px; line-height: 1.5; color: var(--text-secondary); }
+.tv-sheet-title code { font-family: var(--font-mono); font-size: 11px; font-variant-ligatures: none; color: var(--text-primary); background: var(--bg-tertiary); padding: 0 4px; border-radius: 3px; overflow-wrap: anywhere; }
+.tv-sheet-side { grid-area: side; align-self: center; min-width: 0; }
+.tv-sheet-controls { grid-area: controls; display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .tv-sheet-block { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; padding-top: var(--space-4); border-top: 1px solid var(--border); }
 .tv-sheet-block:first-child { padding-top: 0; border-top: 0; }
 .tv-sheet-label { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
-.tv-sheet-bg { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: var(--space-3); align-items: end; }
-.tv-sheet-index { grid-template-columns: minmax(0, 1fr) 7rem; }
+.tv-sheet-bg { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+.tv-sheet-index { grid-template-columns: minmax(0, 1fr) 6rem; align-items: end; }
 .tv-sheet-index > :first-child { grid-column: auto; }
-.tv-sheet-switch { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding: var(--space-2) var(--space-3); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
-.tv-sheet-switch--head { padding: 0; background: none; border: 0; cursor: default; justify-content: space-between; }
+.tv-sheet-switch { display: flex; align-items: center; gap: var(--space-3); margin: 0; padding: var(--space-3); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; }
 .tv-sheet-switch-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 12px; line-height: 1.45; color: var(--text-secondary); }
 .tv-sheet-switch-text strong { font-size: 13px; color: var(--text-primary); }
 .tv-sheet-switch .tv-switch { order: 2; margin-left: auto; }
 .tv-sheet-switch:has(input:disabled) { opacity: .6; cursor: not-allowed; }
 .tv-sheet-switch:has(input:disabled) .tv-switch { cursor: not-allowed; }
-.tv-sheet-toggle { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font-size: 13px; color: var(--text-primary); cursor: pointer; }
-.tv-sheet-toggle .tv-switch { order: 0; margin: 0; }
-.tv-sheet-block .tv-hint + .tv-type { padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.tv-sheet-block .tv-type { padding-top: var(--space-3); border-top: 1px solid var(--border); }
 .tv-sheet-block .tv-type:has(select:disabled) { opacity: .7; }
-/* En una tarjeta estrecha la tipografía ocupa una fila y el tamaño y el color comparten la siguiente. */
-.tv-sheet .tv-type { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 3.5rem; }
+/* Campos de 40 px de alto con el dedo; el color ocupa el mismo alto. La tipografía ocupa una fila y el tamaño y el color comparten la siguiente. */
+.template-view .tv-sheet .tv-field input:not([type="checkbox"]):not([type="color"]), .template-view .tv-sheet .tv-field select { min-height: 40px; }
+.tv-sheet .tv-field--color input[type="color"] { display: block; box-sizing: border-box; height: 40px; margin: 0; }
+.tv-sheet .tv-type { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
 .tv-sheet .tv-type .tv-field--grow { grid-column: 1 / -1; }
 @container (min-width: 560px) {
-  .tv-sheet { grid-template-columns: 148px minmax(0, 1fr); grid-template-areas: "head head" "side controls"; }
+  .tv-sheet { grid-template-columns: 148px minmax(0, 1fr); grid-template-areas: "head head" "side controls"; padding: var(--space-4); gap: var(--space-4); }
+  .tv-sheet-head { grid-area: head; display: flex; align-items: flex-start; gap: var(--space-3); min-width: 0; }
+  .tv-sheet-title { display: block; min-width: 0; }
+  .tv-sheet-icon { flex: none; align-self: auto; }
+  .tv-sheet-title strong { align-self: auto; font-size: 14px; }
+  .tv-sheet-title p { margin: 2px 0 0; }
+  .tv-sheet-title code { white-space: nowrap; }
   .tv-sheet-side { position: sticky; top: var(--space-4); align-self: start; }
+  .tv-sheet-controls { padding-top: 0; border-top: 0; }
+  .tv-sheet-bg { grid-template-columns: 5.5rem minmax(0, 1fr); align-items: end; }
+  .tv-sheet-index { grid-template-columns: minmax(0, 1fr) 7rem; }
+  .template-view .tv-sheet .tv-field input:not([type="checkbox"]):not([type="color"]), .template-view .tv-sheet .tv-field select { min-height: 34px; }
+  .tv-sheet .tv-field--color input[type="color"] { height: 34px; }
   .tv-sheet .tv-type { grid-template-columns: minmax(0, 1fr) 5.5rem 3.5rem; }
   .tv-sheet .tv-type .tv-field--grow { grid-column: auto; }
 }

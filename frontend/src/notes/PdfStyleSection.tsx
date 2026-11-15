@@ -264,24 +264,24 @@ function SheetFields({ kind, draft, images, onChange }: { kind: "portada" | "ind
                   <input aria-label="Índice: título" maxLength={PDF_INDEX_TITLE_MAX} value={draft.indice.titulo} onChange={(event) => onChange({ ...draft, indice: { ...draft.indice, titulo: event.target.value } })} />
                 </label>
                 <label className="tv-field tv-field--narrow">
-                  <span>Niveles (H1 a H…)</span>
+                  <span>Niveles</span>
                   <input aria-label="Índice: niveles" type="number" min={PDF_INDEX_LEVELS[0]} max={PDF_INDEX_LEVELS[1]} step={1} value={draft.indice.niveles} onChange={(event) => onChange({ ...draft, indice: { ...draft.indice, niveles: event.target.value } })} />
                 </label>
               </div>
             </div>
           )}
           <div className="tv-sheet-block" role="group" aria-label={`${info.title}: tipografía y color`}>
-            <div className="tv-sheet-switch tv-sheet-switch--head">
-              <h4 className="tv-sheet-label">Tipografía y color</h4>
-              <label className="tv-sheet-toggle">
-                <span>Personalizar</span>
-                <input
-                  type="checkbox" className="tv-switch" aria-label={`${info.title}: personalizar tipografía y color`} checked={sheet.personalizar}
-                  onChange={(event) => patch(event.target.checked ? { personalizar: true, ...inheritedSheetStyle(draft, kind) } : { personalizar: false })}
-                />
-              </label>
-            </div>
-            <p className="tv-hint">{sheet.personalizar ? "Estilos propios de esta hoja." : "Usa los estilos de encabezados y de texto del documento; enciende «Personalizar» para cambiarlos solo aquí."}</p>
+            <h4 className="tv-sheet-label">Tipografía y color</h4>
+            <label className="tv-sheet-switch">
+              <span className="tv-sheet-switch-text">
+                <strong>Personalizar</strong>
+                <span>{sheet.personalizar ? "Estilos propios de esta hoja." : "Apagado: usa los estilos de encabezados y de texto del documento."}</span>
+              </span>
+              <input
+                type="checkbox" className="tv-switch" aria-label={`${info.title}: personalizar tipografía y color`} checked={sheet.personalizar}
+                onChange={(event) => patch(event.target.checked ? { personalizar: true, ...inheritedSheetStyle(draft, kind) } : { personalizar: false })}
+              />
+            </label>
             <TypeFields label={info.headings} ariaLabel={`${info.title}: encabezados`} fieldPrefix={`${info.title}: encabezados`} value={shown.encabezados} disabled={!sheet.personalizar} onChange={(next) => patch({ encabezados: next })} />
             {info.headingsHint && <p className="tv-hint">{info.headingsHint}</p>}
             <TypeFields label={info.text} ariaLabel={`${info.title}: texto`} fieldPrefix={`${info.title}: texto`} value={shown.texto} disabled={!sheet.personalizar} onChange={(next) => patch({ texto: next })} />
