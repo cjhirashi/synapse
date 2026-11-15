@@ -24,7 +24,8 @@ BAND_TEXT_COLOR = "#475569"
 # la tabla usa bordes separados, cada celda dibuja solo su borde derecho e inferior, el superior lo pone la primera fila y el izquierdo la primera columna
 # (sin líneas dobles) y el redondeo va en las celdas de las cuatro esquinas. Los selectores cubren tablas con o sin `thead`/`tbody`.
 RADIUS = "4.5pt"
-_FIRST = "table > :first-child > tr:first-child, table > tr:first-child"
+# Primera fila: la cabecera (`thead`, que WeasyPrint repite en cada página) o, sin ella, la primera del cuerpo; la tabla de Lectura trae un `colgroup` delante.
+_FIRST = "table > thead > tr:first-child, table > tbody:first-child > tr:first-child, table > colgroup + tbody > tr:first-child, table > tr:first-child"
 _LAST = "table > :last-child > tr:last-child, table > tr:last-child"
 TABLE_ROUNDING = "\n".join((
     f"{', '.join(f'{part} > *' for part in _FIRST.split(', '))} {{ border-top-width: 0.6pt; }}",
@@ -66,7 +67,9 @@ SYNTAX_CSS = """
 .sx-quote { color: #475569; font-style: italic; }
 """  # colores del resaltado del editor (tema claro, `editor/syntax.css`); las clases `sx-*` llegan en el HTML de Lectura
 CODE_BG_PERCENT = 18  # con tema: color del texto sobre blanco
-QUOTE_BG_PERCENT = 16  # con tema: secundario de la cita sobre blanco
+QUOTE_BG_PERCENT = 16  # con tema: opacidad del secundario de la cita (translúcido: deja ver el fondo del documento)
+TABLE_HEAD_PERCENT = 15  # con tema: opacidad del primario en la cabecera de las tablas
+TABLE_STRIPE_PERCENT = 7  # con tema: opacidad del primario en las filas pares
 # Hojas especiales (marcas `<!-- pdf:portada -->` y `<!-- pdf:indice -->`): fondo propio, imagen opcional que cubre la hoja y color del texto.
 COVER_DEFAULT = {"fondo": "#0f172a", "imagen": None, "color": "#f8fafc"}
 INDEX_DEFAULT = {"fondo": "#f1f5f9", "imagen": None, "color": "#1f2937", "titulo": "Índice", "niveles": 3}
@@ -182,10 +185,16 @@ def _band_css(prefix: str, band: dict, *, edge: str) -> str:
             f"padding-left: {band['sangria_mm']}mm; padding-right: {band['sangria_mm']}mm; {_font_css(band['fuente'])} {rule} }}")
 
 
+def _alpha(color: str, percent: float) -> str:
+    """El color con esa opacidad (`rgba`), para que el fondo del documento se vea a través: no un color sólido ya mezclado con blanco."""
+    red, green, blue = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({red}, {green}, {blue}, {round(percent / 100, 3)})"
+
+
 def _theme_css(c: dict, text: str) -> str:
     """Colores del tema para los elementos del documento (los del tema claro del Markdown del editor; los fondos de código y cita, más marcados porque el papel los aclara)."""
     code_bg = color_theme.mix(text, color_theme.WHITE, CODE_BG_PERCENT)
-    quote_bg = color_theme.mix(c["cita"], color_theme.WHITE, QUOTE_BG_PERCENT)
+    quote_bg = _alpha(c["cita"], QUOTE_BG_PERCENT)
     return f"""
 strong, b {{ color: {c['negrita']}; }}
 em, i {{ color: {c['cursiva']}; }}
@@ -198,8 +207,8 @@ pre code {{ color: {c['codigo']}; background: none; }}
 li::marker {{ color: {c['marcador']}; }}
 blockquote {{ border-left-color: {c['cita']}; background: {quote_bg}; }}
 blockquote blockquote {{ background: transparent; }}
-th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}
-tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}
+th {{ background: {_alpha(c['primario'], TABLE_HEAD_PERCENT)}; color: {c['tabla_cabecera_texto']}; }}
+tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {_alpha(c['primario'], TABLE_STRIPE_PERCENT)}; }}
 """
 
 
@@ -274,8 +283,9 @@ pre code {{ background: none; padding: 0; }}
 .code-block pre {{ margin: 0; background: transparent; border-radius: 0; }}
 {SYNTAX_CSS}
 table {{ border-collapse: separate; border-spacing: 0; width: 100%; margin: 0 0 0.8em; font-size: {round(base * 0.95, 1)}pt; }}
+tr {{ break-inside: avoid; }}
 th, td {{ border: 0.6pt solid #cbd5e1; border-top-width: 0; border-left-width: 0; padding: 0.3em 0.5em; text-align: left; vertical-align: top; }}
-th {{ background: #f1f5f9; font-weight: 700; }}
+th {{ background: rgba(100, 116, 139, 0.1); font-weight: 700; }}
 {TABLE_ROUNDING}
 hr {{ border: 0; border-top: 0.6pt solid #cbd5e1; margin: 1em 0; }}
 .pdf-embed {{ border: 0.8pt dashed #94a3b8; border-radius: 3pt; padding: 0.5em 0.8em; margin: 0 0 0.8em; break-inside: avoid; }}

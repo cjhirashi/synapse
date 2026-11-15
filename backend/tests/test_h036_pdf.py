@@ -105,8 +105,8 @@ def test_the_stylesheet_paints_every_element_with_the_theme_only_when_there_is_o
     for expected in (
         f"strong, b {{ color: {c['negrita']}; }}", f"em, i {{ color: {c['cursiva']}; }}", f"a {{ color: {c['enlace']}; }}",
         f"code {{ color: {c['codigo']}; background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}", f"li::marker {{ color: {c['marcador']}; }}",
-        f"th {{ background: {c['tabla_cabecera_fondo']}; color: {c['tabla_cabecera_texto']}; }}", f"border-left-color: {c['cita']}",
-        f"tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {c['tabla_fila_par']}; }}",
+        f"th {{ background: {pdf_style._alpha(c['primario'], 15)}; color: {c['tabla_cabecera_texto']}; }}", f"border-left-color: {c['cita']}",
+        f"tr:nth-child(even) > td, tr:nth-child(even) > th {{ background: {pdf_style._alpha(c['primario'], 7)}; }}",
     ):
         assert expected in css, expected
     legacy = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
@@ -718,7 +718,8 @@ def test_code_uses_the_editor_code_font_and_code_and_quote_backgrounds_are_not_t
         assert "#f1f5f9" not in css.split("code {")[1].split("}")[0] and "#f1f5f9" not in css.split("pre {")[1].split("}")[0]
     assert f"background: {color_theme.mix('#1f2937', '#ffffff', 18)}; }}" in themed.split("\ncode { color:")[1]  # 18 % del texto (#1f2937) sobre blanco
     quote_bg = themed.split("blockquote { border-left-color:")[1].split("background: ")[1].split(";")[0]
-    assert quote_bg == color_theme.mix(pdf_style.resolve({"tema": {"primario": "#0c3897"}})["tema"]["colores"]["cita"], "#ffffff", 16)
+    assert quote_bg == pdf_style._alpha(pdf_style.resolve({"tema": {"primario": "#0c3897"}})["tema"]["colores"]["cita"], 16)  # translúcido: deja ver el fondo del documento
+    assert quote_bg.startswith("rgba(") and quote_bg.endswith(", 0.16)")
     if shutil.which("fc-match"):
         family = subprocess.run(["fc-match", "-f", "%{family}", "JetBrains Mono"], capture_output=True, text=True, check=True).stdout
         assert "JetBrains Mono" in family, family
@@ -820,3 +821,45 @@ def test_a_pdf_with_cover_and_index_numbers_from_the_first_body_page_and_has_no_
     names = [page._page_box.page_type.name for page in rendered.pages]
     assert names[:2] == ["portada", "indice"] and set(names[2:]) == {""}  # el cuerpo vuelve a la hoja normal
     assert make_pdf(doc, lambda _: None).startswith(b"%PDF")
+
+
+# --- Tablas ---
+
+def test_table_backgrounds_are_translucent_so_the_document_background_shows_through():
+    themed = pdf_style.stylesheet(pdf_style.resolve({"tema": {"primario": "#0c3897"}}), has_header=False, has_footer=False)
+    plain = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    assert pdf_style._alpha("#0c3897", 7) == "rgba(12, 56, 151, 0.07)"
+    for css in (themed, plain):
+        for rule in ("th {", "tr:nth-child(even) > td, tr:nth-child(even) > th {"):
+            if rule in css:
+                assert "rgba(" in css.split(rule)[1].split("}")[0], rule
+        assert "#f1f5f9" not in css.split("\nth {")[1].split("}")[0]
+
+
+def test_the_first_row_of_a_table_gets_the_top_rounded_corners_even_with_a_colgroup_and_a_thead():
+    css = pdf_style.stylesheet(pdf_style.resolve({}), has_header=False, has_footer=False)
+    top_left = css.split("border-top-left-radius")[0].split("\n")[-1]
+    assert "table > thead > tr:first-child > *:first-child" in top_left and "table > colgroup + tbody > tr:first-child > *:first-child" in top_left
+    assert "tr { break-inside: avoid; }" in css
+
+
+def test_a_table_that_continues_on_the_next_page_repeats_its_header_row():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    rows = "".join(f"<tr><td>fila {i}</td><td>dato</td></tr>" for i in range(120))
+    body = f"<table><colgroup><col><col></colgroup><thead><tr><th>CABECERA-A</th><th>B</th></tr></thead><tbody>{rows}</tbody></table>"
+    doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
+    assert len(pages) >= 2
+
+    def texts(box):
+        found = [box.text] if hasattr(box, "text") else []
+        for child in getattr(box, "children", ()) or ():
+            found += texts(child)
+        return found
+
+    assert all(any("CABECERA-A" in text for text in texts(page._page_box)) for page in pages)  # la cabecera sale en cada página

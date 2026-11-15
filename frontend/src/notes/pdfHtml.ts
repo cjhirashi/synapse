@@ -78,6 +78,18 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
     media.replaceWith(placeholder(doc, media.tagName === "VIDEO" ? "Video" : "Audio", embedLink(src, origin)));
   }
 
+  // Tablas: la fila de encabezados pasa a `thead` para que, si la tabla sigue en la página siguiente, el PDF la repita arriba.
+  for (const table of Array.from(copy.querySelectorAll("table"))) {
+    if (table.querySelector(":scope > thead")) continue;
+    const first = table.querySelector(":scope > tbody > tr, :scope > tr");
+    if (!first || first.children.length === 0 || !Array.from(first.children).every((cell) => cell.tagName === "TH")) continue;
+    const head = doc.createElement("thead");
+    head.append(first);
+    const columns = table.querySelector(":scope > colgroup");
+    if (columns) columns.after(head);
+    else table.prepend(head);
+  }
+
   // Marcas de índice y de salto de página: el servidor las reconoce por su clase (arma el índice y corta la hoja).
   for (const mark of Array.from(copy.querySelectorAll(".pdf-mark"))) {
     const slot = doc.createElement("div");

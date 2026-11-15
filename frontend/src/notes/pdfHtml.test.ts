@@ -11,6 +11,14 @@ function html(inner: string): string {
 }
 
 describe("buildPdfHtml", () => {
+  it("pasa la fila de encabezados de cada tabla a thead (el PDF la repite al seguir en otra página), detrás del colgroup", () => {
+    const out = html('<div class="note-table-scroll"><table><colgroup><col><col></colgroup><tbody><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></tbody></table></div>'
+      + "<table><tbody><tr><td>sin</td><td>cabecera</td></tr></tbody></table><table><thead><tr><th>X</th></tr></thead><tbody><tr><td>y</td></tr></tbody></table>");
+    expect(out).toContain("<colgroup><col /><col /></colgroup><thead><tr><th>A</th><th>B</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody>");
+    expect(out).toContain("<table><tbody><tr><td>sin</td><td>cabecera</td></tr></tbody></table>");
+    expect(out.match(/<thead>/g)).toHaveLength(2);
+  });
+
   it("convierte las marcas de índice y de salto en los marcadores que el servidor reconoce y deja la portada, la alineación y las columnas", () => {
     const out = html('<section class="pdf-portada" data-pdf-label="Portada"><h1>T</h1></section><div class="pdf-mark" data-pdf-mark="indice" data-pdf-label="Índice"></div>'
       + '<div align="center" data-pdf-label="x"><p>a</p></div><div class="cols-2" data-pdf-label="2 columnas"><p>b</p></div><div class="pdf-mark" data-pdf-mark="salto"></div>');
