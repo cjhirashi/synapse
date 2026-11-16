@@ -14,6 +14,7 @@ from typing import Callable
 from urllib.parse import urlsplit
 
 from app.core import pdf_style, svg_freeze
+from app.core.html_style import clean_style
 from app.core.config import settings
 from app.core.errors import PdfBusy, PdfRenderFailed, PdfTimeout
 from app.services import external_image
@@ -39,7 +40,7 @@ ATTRIBUTES = {
     "img": {"src", "alt", "width", "height"},
     "td": {"colspan", "rowspan", "align"}, "th": {"colspan", "rowspan", "align"},
     "ol": {"start"},
-    "div": {"align"},
+    "div": {"align", "style"}, "span": {"style"},
 }
 ALIGNMENTS = ("left", "center", "right", "justify")
 
@@ -71,6 +72,8 @@ def _filter_attribute(tag: str, attribute: str, value: str) -> str | None:
         if own is not None:  # el enlace «Copiar link» de Archivos: se lee directo, con la sesión, no por internet
             return own
         return value if _DATA_RE.match(value) or FILE_PATH_RE.match(value) or EXTERNAL_IMAGE_RE.match(value) else None
+    if attribute == "style":  # cajas de color y detalles de maquetación: solo las propiedades y valores de la lista cerrada (`core/html_style.py`)
+        return clean_style(value) or None
     if tag == "div" and attribute == "align":
         return value if value in ALIGNMENTS else None
     if tag == "a" and attribute == "href":

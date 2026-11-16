@@ -1001,3 +1001,35 @@ def test_the_estado_of_the_document_prints_in_the_header_and_the_template_accept
     out = pdf_style.expand_text(text, title="Doc", attributes={"estado": "en revisión"}, now=NOW)
     assert out == "Estado: en revisión · Doc"
     assert pdf_style.expand_text("{{atributo:estado}}", title="Doc", attributes={}, now=NOW) == ""  # sin estado se imprime vacío
+
+
+def test_a_styled_div_keeps_only_safe_style_and_prints_as_a_colored_box():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document, sanitize
+
+    # El saneador deja el `style` filtrado en div y span, y lo quita en cualquier otro elemento.
+    out = sanitize('<div style="width:120px;position:fixed;background:url(x)"></div><span style="color:#fff;top:0">a</span><p style="color:red">b</p>')
+    assert '<div style="width: 120px"></div>' in out and '<span style="color: #fff">a</span>' in out and "<p>b</p>" in out
+    assert "position" not in out and "url(" not in out
+
+    # Como lo manda el cliente: la caja va dentro de su envoltorio `md-html`. En el PDF es una caja de 120 x 48 px, esquinas redondeadas y el color pedido.
+    body = '<p>antes</p><div class="md-html"><div style="width:120px;height:48px;border-radius:10px;background:#1f9bb8"></div></div><p>después</p>'
+    doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    page = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages[0]
+
+    def boxes(box, found):
+        style = getattr(box, "style", None)
+        if style is not None and tuple(round(c * 255) for c in style["background_color"][:3]) == (0x1F, 0x9B, 0xB8):
+            found.append(box)
+        for child in getattr(box, "children", ()) or ():
+            boxes(child, found)
+        return found
+
+    found = boxes(page._page_box, [])
+    assert found, "la caja de color está en el PDF"
+    box = found[0]
+    assert round(box.width * 72 / 96) == round(120 * 72 / 96) and round(box.height * 72 / 96) == round(48 * 72 / 96)  # px de CSS a puntos del PDF
+    assert box.style["border_top_left_radius"][0].value > 0

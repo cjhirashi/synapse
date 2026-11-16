@@ -117,11 +117,42 @@ class HtmlEmbedView implements NodeView {
   }
 }
 
+/** HTML de maquetación con `style` (una caja de color, un detalle): se dibuja saneado en su sitio, en Visual y en Lectura (H-036f). */
+class StyledHtmlView implements NodeView {
+  readonly dom: HTMLElement;
+  private value: string;
+
+  constructor(node: PMNode, block: boolean) {
+    this.value = node.attrs.value as string;
+    this.dom = document.createElement(block ? "div" : "span");
+    this.dom.className = "md-html";
+    this.dom.setAttribute("data-type", "html");
+    this.dom.setAttribute("data-value", this.value);
+    this.dom.setAttribute("contenteditable", "false");
+    this.dom.appendChild(sanitizeHtmlFragment(this.value));
+  }
+
+  update(node: PMNode): boolean {
+    return node.type.name === "html" && node.attrs.value === this.value;
+  }
+
+  stopEvent(event: Event): boolean {
+    return event.target instanceof Node && this.dom.contains(event.target);
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+}
+
 export const htmlViewFactory = (): NodeViewConstructor => (node, _view, _getPos) => {
   const html = node.attrs.value as string;
   const fragment = sanitizeHtmlFragment(html);
-  const hasIframe = fragment.querySelector("iframe") !== null;
-  return hasIframe ? new HtmlEmbedView(node) : plainItem(node);
+  if (fragment.querySelector("iframe") !== null) return new HtmlEmbedView(node);
+  const styled = fragment.querySelector("[style]");
+  // Un bloque (`<div …>`) ocupa su línea; uno en línea (`<span …>`) va dentro del texto.
+  if (styled !== null) return new StyledHtmlView(node, fragment.firstElementChild?.tagName === "DIV");
+  return plainItem(node);
 };
 
 /** Una imagen `![](enlace de YouTube)` se pinta como el reproductor; el nodo (y su markdown) no cambia. */

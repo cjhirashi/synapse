@@ -293,10 +293,18 @@ describe("sanitizeHtmlFragment", () => {
     expect(fragmentHTML(result)).not.toContain("onerror");
   });
 
-  it("elimina atributo style", () => {
-    const result = sanitizeHtmlFragment('<div style="color: red">Texto</div>');
-    expect(fragmentHTML(result)).not.toContain("style");
-    expect(result.textContent).toContain("Texto");
+  // H-036f: `style` solo en div y span y solo con la lista cerrada de `htmlStyle.ts` (los casos completos: `estilo_html.json`).
+  it("deja el style permitido de un div o span y descarta el peligroso", () => {
+    const ok = sanitizeHtmlFragment('<div style="color: red; width:10px">Texto</div>');
+    expect(fragmentHTML(ok)).toContain('style="color: red; width: 10px"');
+    expect(ok.textContent).toContain("Texto");
+    const bad = sanitizeHtmlFragment('<div style="position:fixed;background:url(https://x.test/a.png)">Texto</div><span style="top:0">y</span>');
+    expect(fragmentHTML(bad)).not.toContain("style");
+    expect(fragmentHTML(bad)).not.toContain("url(");
+  });
+
+  it("quita el style de cualquier otro elemento", () => {
+    expect(fragmentHTML(sanitizeHtmlFragment('<details style="color: red"><summary style="color: red">a</summary>b</details>'))).not.toContain("style");
   });
 
   it("elimina atributo class", () => {

@@ -2,6 +2,7 @@
 // H-025: soporte para YouTube embeds.
 import DOMPurify from "dompurify";
 import { parseYoutubeEmbedSrc } from "./classifyUrl";
+import { cleanStyle } from "./htmlStyle";
 
 export function isAllowedEmbedSrc(src: string): boolean {
   try {
@@ -51,11 +52,18 @@ export function sanitizeHtmlFragment(html: string): DocumentFragment {
   const fragment = purifier.sanitize(html, {
     RETURN_DOM_FRAGMENT: true,
     ALLOWED_TAGS: ["br", "sub", "sup", "mark", "kbd", "small", "del", "ins", "span", "div", "details", "summary", "iframe"],
-    ALLOWED_ATTR: ["open", "title", "src", "sandbox", "referrerpolicy", "loading", "allow", "allowfullscreen"],
+    ALLOWED_ATTR: ["open", "title", "src", "sandbox", "referrerpolicy", "loading", "allow", "allowfullscreen", "style"],
     ALLOW_DATA_ATTR: false,
     ALLOW_ARIA_ATTR: false,
     FORCE_BODY: false,
   }) as DocumentFragment;
+
+  // `style` solo en div y span y solo con las propiedades y valores de la lista cerrada (`htmlStyle.ts`); en cualquier otro elemento se quita.
+  fragment.querySelectorAll("[style]").forEach((element) => {
+    const clean = element.tagName === "DIV" || element.tagName === "SPAN" ? cleanStyle(element.getAttribute("style") ?? "") : "";
+    if (clean === "") element.removeAttribute("style");
+    else element.setAttribute("style", clean);
+  });
 
   // El src se valida aquí, tras DOMPurify: un iframe sin src permitido se elimina y los demás salen con atributos fijos.
   const iframes = fragment.querySelectorAll("iframe");

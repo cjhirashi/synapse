@@ -1,0 +1,26 @@
+{
+  "descripcion": "Regla del atributo style de los div y span del cuerpo (H-036f). La recorren el servidor (test_h036_html_style.py) y el cliente (htmlStyle.spec-fixture.test.ts): misma entrada, misma salida. Salida vacía = el atributo se quita.",
+  "casos": [
+    {"nombre": "el ejemplo de Carlos", "in": "width:120px;height:48px;border-radius:10px;background:#1f9bb8", "out": "width: 120px; height: 48px; border-radius: 10px; background: #1f9bb8"},
+    {"nombre": "espacios, mayúsculas y punto y coma final", "in": "  WIDTH : 10px ;  Height:2em ; ", "out": "width: 10px; height: 2em"},
+    {"nombre": "colores y degradados", "in": "background:linear-gradient(90deg, rgb(0,0,0), #fff);color:hsl(10 20% 30%)", "out": "background: linear-gradient(90deg, rgb(0,0,0), #fff); color: hsl(10 20% 30%)"},
+    {"nombre": "calc y márgenes positivos", "in": "width:calc(100% - 10px);margin:4px 8px;padding-left:1em", "out": "width: calc(100% - 10px); margin: 4px 8px; padding-left: 1em"},
+    {"nombre": "bordes", "in": "border:1px solid #ccc;border-top-left-radius:4px", "out": "border: 1px solid #ccc; border-top-left-radius: 4px"},
+    {"nombre": "texto", "in": "font-size:14px;font-weight:700;text-align:center;text-decoration:underline;line-height:1.5", "out": "font-size: 14px; font-weight: 700; text-align: center; text-decoration: underline; line-height: 1.5"},
+    {"nombre": "display permitido", "in": "display:inline-block;vertical-align:middle", "out": "display: inline-block; vertical-align: middle"},
+    {"nombre": "display no permitido", "in": "display:none;width:5px", "out": "width: 5px"},
+    {"nombre": "posicionamiento fuera", "in": "position:fixed;top:0;left:0;z-index:9999;width:10px", "out": "width: 10px"},
+    {"nombre": "url() fuera, también en minúsculas y mayúsculas", "in": "background:url(https://x.test/a.png);background:URL(x);width:3px", "out": "width: 3px"},
+    {"nombre": "image-set, var, attr y env fuera", "in": "background:image-set(x 1x);color:var(--a);width:attr(x);height:env(a);opacity:1", "out": "opacity: 1"},
+    {"nombre": "expression y javascript fuera", "in": "width:expression(alert(1));color:javascript:alert(1);height:4px", "out": "height: 4px"},
+    {"nombre": "comentarios, barra invertida y arroba fuera", "in": "width:1px/*x*/;color:\\72 ed;background:@import;height:2px", "out": "height: 2px"},
+    {"nombre": "important fuera", "in": "width:10px !important;height:5px", "out": "height: 5px"},
+    {"nombre": "negativos fuera en tamaños y márgenes", "in": "margin:-9999px;padding-top:-1px;width:-5px;height:1px", "out": "height: 1px"},
+    {"nombre": "funciones desconocidas fuera", "in": "width:foo(1);height:min(10px, 5%)", "out": "height: min(10px, 5%)"},
+    {"nombre": "propiedad desconocida fuera", "in": "behavior:x;filter:blur(2px);width:2px", "out": "width: 2px"},
+    {"nombre": "sin nada válido se quita", "in": "position:absolute;top:0", "out": ""},
+    {"nombre": "vacío", "in": "", "out": ""},
+    {"nombre": "declaración sin dos puntos", "in": "width;height:3px", "out": "height: 3px"},
+    {"nombre": "demasiado largo", "in": "width:1px;height:1px;color:red;background:red;margin:1px;padding:1px;border:1px solid red;opacity:1;font-size:12px;line-height:1;text-align:left;width:2px;height:2px;color:blue;background:blue;margin:2px;padding:2px;border:2px solid blue;opacity:.5;font-size:13px;line-height:2;text-align:right;width:3px", "out": ""}
+  ]
+}

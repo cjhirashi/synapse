@@ -127,3 +127,4 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `ports/` — Protocols de Python que definen las interfaces que `services/` consume
   (`agent_key_port.py` es el de las API keys de agente, SPEC-0013; `object_storage_port.py`, el del almacén
   de objetos de archivos, H-015/H-016)
+- `html_style.py` (H-036f) — regla del atributo `style` de los `div` y `span` del cuerpo: lista cerrada de propiedades y de valores (sin `url()`, `position`, negativos ni `display:none`). La usa el saneador del PDF (`services/pdf_service.py`); el cliente tiene la misma en `frontend/src/editor/htmlStyle.ts` y ambas pasan `tests/fixtures/estilo_html.json`.
