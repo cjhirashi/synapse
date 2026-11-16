@@ -1444,6 +1444,9 @@
 .milkdown-view .ProseMirror div.cols-cells > div.col { min-width: 0; }
 .milkdown-view .ProseMirror div.cols-cells > div.col > :first-child { margin-top: 0; }
 .milkdown-view .ProseMirror div.cols-cells > div.col > :last-child { margin-bottom: 0; }
+/* En edición cada celda lleva su etiqueta «Columna» arriba: se reserva el espacio para que no pise el texto (la regla genérica de abajo la deja sin él). */
+.milkdown-view[data-mode="edit"] .ProseMirror div.cols-cells > div.col { margin: 0; padding: var(--space-6) var(--space-3) var(--space-2); }
+.milkdown-view[data-mode="edit"] .ProseMirror div.cols-cells > div.col > :first-child { margin-top: 0; }
 @media (max-width: 640px) { .milkdown-view .ProseMirror div.cols-cells { grid-template-columns: minmax(0, 1fr) !important; } } /* en celular las celdas se apilan */
 .milkdown-view .ProseMirror section.pdf-portada {
   margin: var(--space-4) 0;
@@ -1456,7 +1459,7 @@
 .milkdown-view[data-mode="edit"] .ProseMirror div[data-pdf-label]:not(.pdf-mark) {
   position: relative;
   margin: var(--space-3) 0;
-  padding: var(--space-5) var(--space-3) var(--space-2);
+  padding: var(--space-6) var(--space-3) var(--space-2);
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
 }

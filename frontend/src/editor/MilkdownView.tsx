@@ -49,7 +49,7 @@ import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
 import { pdfBlockSchema, pdfBlocksRemark, pdfMarkSchema, type PdfBlockKind, type PdfMarkKind } from "./markdown/pdfBlocks";
-import { insertPdfMark, togglePdfBlock } from "./markdown/pdfBlockCommands";
+import { insertPdfMark, toggleColumns, togglePdfBlock } from "./markdown/pdfBlockCommands";
 import { createHighlightPlugin } from "prosemirror-highlight";
 import { codeBlockViewFactory } from "./codeBlockView";
 import { createHighlightParser } from "./highlight/proseHighlight";
@@ -242,6 +242,8 @@ export interface EditorCommands {
   insertHr: () => void;
   /** Envuelve la selección en una portada, una alineación (`value`: left, center, right, justify) o columnas (2, 3, 4); repetirlo la quita, y con otro valor lo cambia. */
   togglePdfBlock: (kind: PdfBlockKind, value: string) => void;
+  /** 2, 3 o 4 columnas con una celda `col` por columna (la selección va a la primera); con columnas ya puestas cambia el número o, con el mismo, las quita. */
+  toggleColumns: (value: string) => void;
   /** Inserta el índice o el salto de página tras el bloque del cursor. */
   insertPdfMark: (kind: PdfMarkKind) => void;
   /** Envuelve la selección en un comentario de `author` (`usuario` o un agente) con la fecha dada; con el cursor dentro de uno, lo quita. */
@@ -707,6 +709,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
           },
           insertHr: () => run(insertHrCommand.key),
           togglePdfBlock: (kind: PdfBlockKind, value: string) => togglePdfBlock(view, kind, value),
+          toggleColumns: (value: string) => toggleColumns(view, value),
           insertPdfMark: (kind: PdfMarkKind) => insertPdfMark(view, kind),
           toggleComment: (author: string, date: string) => togglePdfBlock(view, "comment", author, date),
           wrapBulletList: () => run(wrapInBulletListCommand.key),

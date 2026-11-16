@@ -4,7 +4,7 @@ import { expect, openNote, openWorkspace, shot, test, waitForSynced } from "./fi
 
 for (const theme of ["dark", "light"] as const) {
   test(`marcas de formato del PDF en el editor (${theme})`, async ({ browser, seeded }) => {
-    const { context, page } = await openWorkspace(browser, seeded, { theme, size: { width: 1280, height: 900 } });
+    const { context, page } = await openWorkspace(browser, seeded, { theme, size: { width: 1280, height: 2600 } });
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message));
     const show = page.getByRole("button", { name: "Mostrar la barra de notas" });
@@ -34,7 +34,9 @@ for (const theme of ["dark", "light"] as const) {
     await expect(editor.locator('div[align="center"]')).toHaveCSS("text-align", "center");
     await page.getByRole("button", { name: "2 columnas" }).click();
     await expect(editor.locator("div.cols-2")).toHaveCount(1);
-    await expect(editor.locator("div.cols-2")).toHaveCSS("column-count", "2");
+    // Los botones crean una celda `col` por columna, en rejilla (H-036i).
+    await expect(editor.locator("div.cols-2 > div.col")).toHaveCount(2);
+    await expect(editor.locator("div.cols-2")).toHaveCSS("display", "grid");
     await page.getByRole("button", { name: "4 columnas" }).click();
     await expect(editor.locator("div.cols-4")).toHaveCount(1);
     await expect(editor.locator("div.cols-2")).toHaveCount(0);
@@ -93,6 +95,8 @@ for (const theme of ["dark", "light"] as const) {
     await page.getByRole("button", { name: "Leer", exact: true }).click(); // al salir de la edición se guarda
     await waitForSynced(page);
     await expect(page.locator('.milkdown-view[data-mode="read"] .ProseMirror div.comentario')).toHaveCount(0);
+    await page.waitForTimeout(2000); // el estado «Sincronizado» aparece antes de que salga el último guardado: sin esta espera el siguiente tema ve el comentario
+    await waitForSynced(page);
     expect(errors, "sin errores de página").toEqual([]);
     await context.close();
   });

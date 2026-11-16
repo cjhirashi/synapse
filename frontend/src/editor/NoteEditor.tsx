@@ -1267,7 +1267,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             </div>
             <div className="note-tool-group" role="group" aria-label="Columnas">
               {PDF_COLUMN_BUTTONS.map(({ value, Icon }) => (
-                <button key={value} type="button" className="note-nav-button" aria-label={`${value} columnas`} title={`${value} columnas (otra vez para quitarlas)`} onClick={() => editorCommands.current?.togglePdfBlock("cols", value)}>
+                <button key={value} type="button" className="note-nav-button" aria-label={`${value} columnas`} title={`${value} columnas, cada una con su espacio para escribir (otra vez para quitarlas)`} onClick={() => editorCommands.current?.toggleColumns(value)}>
                   <Icon size={16} aria-hidden="true" />
                 </button>
               ))}

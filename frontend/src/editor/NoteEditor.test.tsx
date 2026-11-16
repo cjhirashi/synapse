@@ -391,6 +391,7 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
       "toggleBlockquote",
       "setParagraph",
       "togglePdfBlock",
+      "toggleColumns",
       "insertPdfMark",
       "toggleComment",
       "insertHr",
@@ -457,9 +458,14 @@ describe("botones de formato de la Fila 3 (H-010)", () => {
     await click("Párrafo");
     expect(spies.setParagraph).toHaveBeenCalledTimes(1);
     for (const [label, kind, value] of [["Alinear a la izquierda", "align", ""], ["Centrar", "align", "center"], ["Alinear a la derecha", "align", "right"], ["Justificar", "align", "justify"],
-      ["2 columnas", "cols", "2"], ["3 columnas", "cols", "3"], ["4 columnas", "cols", "4"], ["Portada", "cover", ""]]) {
+      ["Portada", "cover", ""]]) {
       await click(label);
       expect(spies.togglePdfBlock).toHaveBeenLastCalledWith(kind, value);
+    }
+    // Las columnas crean una celda por columna (H-036i): tienen su propio comando.
+    for (const value of ["2", "3", "4"]) {
+      await click(`${value} columnas`);
+      expect(spies.toggleColumns).toHaveBeenLastCalledWith(value);
     }
     await click("Índice");
     expect(spies.insertPdfMark).toHaveBeenLastCalledWith("indice");

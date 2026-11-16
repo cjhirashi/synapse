@@ -52,9 +52,10 @@ for (const [name, size] of [["escritorio", { width: 1280, height: 1000 }], ["mov
     await page.getByRole("button", { name: "Visual", exact: true }).click();
     await expect(page.locator(".milkdown-view .ProseMirror div.cols-cells > div.col")).toHaveCount(before + 2);
     await page.getByRole("button", { name: "Código", exact: true }).click();
+    // El Código solo pinta las líneas visibles: se cuentan las celdas ya guardadas en el árbol y se comprueba que las etiquetas de las nuestras estén.
     const source = await page.locator(".cm-content").innerText();
-    expect(source.match(/<div class="col">/g)).toHaveLength(before + 2);
     expect(source).toContain('<div class="cols-2">');
+    expect(source).toContain('<div class="col">');
 
     // La nota queda como estaba.
     await page.locator(".cm-content").click();
@@ -62,6 +63,7 @@ for (const [name, size] of [["escritorio", { width: 1280, height: 1000 }], ["mov
     for (let i = 0; i < added.length; i++) await page.keyboard.press("Backspace");
     await page.getByRole("button", { name: "Leer", exact: true }).click();
     await expect(reading.locator("div.col")).toHaveCount(before);
+    await page.waitForTimeout(2000); // deja salir el último guardado antes de cerrar (el siguiente tamaño ve la misma nota)
     await waitForSynced(page);
     expect(errors, "sin errores de página").toEqual([]);
     await context.close();
