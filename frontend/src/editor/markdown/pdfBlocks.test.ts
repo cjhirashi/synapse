@@ -27,6 +27,27 @@ describe("marcas de formato del documento", () => {
     expect(out[1]).toEqual(text("fuera"));
   });
 
+  it("las celdas `col` de unas columnas: cada una agrupa lo suyo, sin mezclar con la vecina, y escriben de vuelta su etiqueta", () => {
+    expect(parseOpening('<div class="col">')).toEqual({ kind: "col", value: "" });
+    expect(parseOpening('<div class="col extra">')).toBeNull();
+    expect(blockTags("col", "")).toEqual(['<div class="col">', "</div>"]);
+    const out = groupBlocks([
+      html('<div class="cols-2">'), html('<div class="col">'), text("uno"), html("</div>"), html('<div class="col">'), text("dos"), text("dos bis"), html("</div>"), html("</div>"), text("fuera"),
+    ]);
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({ type: "pdfBlock", kind: "cols", value: "2" });
+    const cells = out[0].children as N[];
+    expect(cells.map((cell) => cell.kind)).toEqual(["col", "col"]);
+    expect(cells[0].children).toEqual([text("uno")]);
+    expect(cells[1].children).toEqual([text("dos"), text("dos bis")]);
+    expect(out[1]).toEqual(text("fuera"));
+  });
+
+  it("una celda sin cierre se deja como HTML y no se traga lo que sigue", () => {
+    const out = groupBlocks([html('<div class="col">'), text("a")]);
+    expect(out).toEqual([html('<div class="col">'), text("a")]);
+  });
+
   it("la portada cierra con su comentario y las marcas de una línea quedan como marca", () => {
     const out = groupBlocks([html("<!-- pdf:portada -->"), text("t"), html("<!-- /pdf:portada -->"), html("<!-- pdf:indice -->"), wrapped("<!--pdf:salto-->")]);
     expect(out[0]).toMatchObject({ type: "pdfBlock", kind: "cover" });

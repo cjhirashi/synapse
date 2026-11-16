@@ -5,7 +5,9 @@
  *   <!-- pdf:indice -->                               índice automático
  *   <!-- pdf:salto -->                                lo que sigue empieza en página nueva
  *   <div align="center"> … </div>                     alineación: left, center, right, justify
- *   <div class="cols-2"> … </div>                     columnas: 2, 3 o 4
+ *   <div class="cols-2"> … </div>                     columnas: 2, 3 o 4 (el texto fluye de una a otra)
+ *   <div class="cols-2"> <div class="col"> … </div> <div class="col"> … </div> </div>
+ *                                                      columnas con celdas: cada `col` es una columna y lo que lleva dentro se queda en ella
  *   <div class="comentario" data-autor="aira" data-fecha="2026-11-15"> … </div>
  *                                                      comentario de revisión: una ventana gris con la foto y el nombre de quien lo dejó;
  *                                                      se ve en Lectura, edición y Código, nunca en el PDF ni en una publicación
@@ -19,7 +21,7 @@ import { $nodeSchema, $remark } from "@milkdown/utils";
 
 export const PDF_ALIGNMENTS = ["left", "center", "right", "justify"] as const;
 export const PDF_COLUMNS = ["2", "3", "4"] as const;
-export type PdfBlockKind = "cover" | "align" | "cols" | "comment";
+export type PdfBlockKind = "cover" | "align" | "cols" | "col" | "comment";
 export type PdfMarkKind = "indice" | "salto";
 
 const BLOCK_MDAST = "pdfBlock";
@@ -27,6 +29,7 @@ const MARK_MDAST = "pdfMark";
 
 const OPEN_ALIGN = /^<div align="(left|center|right|justify)">$/;
 const OPEN_COLS = /^<div class="cols-([234])">$/;
+const OPEN_COL = /^<div class="col">$/;
 const OPEN_COVER = /^<!--\s*pdf:portada\s*-->$/;
 /** `data-autor`: el id del agente o `usuario` (la persona); `data-fecha`: día en que se dejó (AAAA-MM-DD). Ambos opcionales, en ese orden. */
 const OPEN_COMMENT = /^<div class="comentario"(?: data-autor="([a-z0-9][a-z0-9_-]{0,31})")?(?: data-fecha="(\d{4}-\d{2}-\d{2})")?>$/;
@@ -43,6 +46,7 @@ export function parseOpening(html: string): Opening | null {
   if (align) return { kind: "align", value: align[1] };
   const cols = OPEN_COLS.exec(text);
   if (cols) return { kind: "cols", value: cols[1] };
+  if (OPEN_COL.test(text)) return { kind: "col", value: "" };
   const comment = OPEN_COMMENT.exec(text);
   if (comment) return { kind: "comment", value: comment[1] ?? "", date: comment[2] ?? "" };
   return OPEN_COVER.test(text) ? { kind: "cover", value: "" } : null;
@@ -52,6 +56,7 @@ export function parseOpening(html: string): Opening | null {
 export function blockTags(kind: PdfBlockKind, value: string, date = ""): [string, string] {
   if (kind === "cover") return ["<!-- pdf:portada -->", "<!-- /pdf:portada -->"];
   if (kind === "comment") return [`<div class="comentario"${value ? ` data-autor="${value}"` : ""}${date ? ` data-fecha="${date}"` : ""}>`, "</div>"];
+  if (kind === "col") return ['<div class="col">', "</div>"];
   return [kind === "align" ? `<div align="${value}">` : `<div class="cols-${value}">`, "</div>"];
 }
 
@@ -112,9 +117,9 @@ export const pdfBlocksRemark = $remark("synapsePdfBlocks", () => () => (tree: un
   if (Array.isArray(root.children)) root.children = groupBlocks(root.children);
 });
 
-const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" || value === "comment" ? value : "cover");
+const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" || value === "col" || value === "comment" ? value : "cover");
 
-/** Contenedor: portada, alineación, columnas o comentario. Su contenido es Markdown normal. */
+/** Contenedor: portada, alineación, columnas (de flujo o con celdas `col`) o comentario. Su contenido es Markdown normal. */
 export const pdfBlockSchema = $nodeSchema("pdf_block", () => ({
   group: "block",
   content: "block+",
@@ -127,7 +132,10 @@ export const pdfBlockSchema = $nodeSchema("pdf_block", () => ({
     if (kind === "comment") return ["div", { class: "comentario", "data-autor": value, "data-fecha": String(node.attrs.date ?? "") }, 0];
     if (kind === "cover") return ["section", { class: "pdf-portada", "data-pdf-label": "Portada" }, 0];
     if (kind === "align") return ["div", { align: value, "data-pdf-label": `Alineación: ${value}` }, 0];
-    return ["div", { class: `cols-${value}`, "data-pdf-label": `${value} columnas` }, 0];
+    if (kind === "col") return ["div", { class: "col", "data-pdf-label": "Columna" }, 0];
+    // Con celdas (`col`) cada hija es una columna y se reparten en rejilla (`cols-cells`); sin ellas el texto fluye de columna en columna.
+    const cells = node.firstChild?.attrs.kind === "col";
+    return ["div", { class: `cols-${value}${cells ? " cols-cells" : ""}`, "data-pdf-label": `${value} columnas` }, 0];
   },
   parseMarkdown: {
     match: (node) => node.type === BLOCK_MDAST,

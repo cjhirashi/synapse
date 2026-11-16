@@ -1074,3 +1074,35 @@ def test_an_image_with_limits_keeps_its_style_and_never_exceeds_them_in_the_pdf(
     assert found, "la imagen está en el PDF"
     box = found[0]
     assert round(box.height) == 300 and round(box.width) == 100  # px de CSS: el límite se cumple y no se deforma
+
+
+def test_column_cells_run_side_by_side_across_pages_and_keep_their_text_apart():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document
+
+    def column(tag: str) -> str:
+        return '<div class="col">' + "".join(f"<p>{tag}-{i}</p>" for i in range(1, 121)) + "</div>"
+
+    body = f'<div class="cols-2 cols-cells">{column("A")}{column("B")}</div><p>DESPUES</p>'
+    doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    pages = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages
+
+    def found(box, wanted, out):
+        text = getattr(box, "text", None)
+        if text and text.strip() in wanted:
+            out[text.strip()] = (box.position_x, box.position_y)
+        for child in getattr(box, "children", ()) or ():
+            found(child, wanted, out)
+        return out
+
+    where = {}
+    for number, page in enumerate(pages, 1):
+        for key, position in found(page._page_box, {"A-1", "B-1", "A-120", "B-120", "DESPUES"}, {}).items():
+            where[key] = (number, *position)
+    assert len(pages) > 1
+    # Las dos columnas empiezan en la misma hoja y a la misma altura, la B a la derecha de la A, y terminan en la misma hoja (nada pasa a la vecina).
+    assert where["A-1"][0] == where["B-1"][0] == 1 and abs(where["A-1"][2] - where["B-1"][2]) < 1 and where["B-1"][1] > where["A-1"][1] + 100
+    assert where["A-120"][0] == where["B-120"][0] and where["DESPUES"][0] >= where["A-120"][0]

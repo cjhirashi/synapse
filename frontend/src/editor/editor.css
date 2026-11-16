@@ -1436,6 +1436,15 @@
 .milkdown-view .ProseMirror div.cols-2 { column-count: 2; column-gap: var(--space-6); }
 .milkdown-view .ProseMirror div.cols-3 { column-count: 3; column-gap: var(--space-6); }
 .milkdown-view .ProseMirror div.cols-4 { column-count: 4; column-gap: var(--space-6); }
+/* Columnas con celdas (`<div class="col">`): una rejilla, cada celda es una columna y su contenido no pasa a la vecina. */
+.milkdown-view .ProseMirror div.cols-cells { column-count: auto; display: grid; gap: var(--space-6); align-items: start; }
+.milkdown-view .ProseMirror div.cols-2.cols-cells { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.milkdown-view .ProseMirror div.cols-3.cols-cells { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.milkdown-view .ProseMirror div.cols-4.cols-cells { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.milkdown-view .ProseMirror div.cols-cells > div.col { min-width: 0; }
+.milkdown-view .ProseMirror div.cols-cells > div.col > :first-child { margin-top: 0; }
+.milkdown-view .ProseMirror div.cols-cells > div.col > :last-child { margin-bottom: 0; }
+@media (max-width: 640px) { .milkdown-view .ProseMirror div.cols-cells { grid-template-columns: minmax(0, 1fr) !important; } } /* en celular las celdas se apilan */
 .milkdown-view .ProseMirror section.pdf-portada {
   margin: var(--space-4) 0;
   padding: var(--space-4);

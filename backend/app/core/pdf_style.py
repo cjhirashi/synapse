@@ -295,6 +295,9 @@ div.comentario {{ display: none; }}
 div[align="left"] {{ text-align: left; }} div[align="center"] {{ text-align: center; }}
 div[align="right"] {{ text-align: right; }} div[align="justify"] {{ text-align: justify; }}
 div.cols-2 {{ column-count: 2; column-gap: 8mm; }} div.cols-3 {{ column-count: 3; column-gap: 8mm; }} div.cols-4 {{ column-count: 4; column-gap: 8mm; }}
+div.cols-cells {{ column-count: auto; display: grid; gap: 8mm; align-items: start; }}
+div.cols-2.cols-cells {{ grid-template-columns: 1fr 1fr; }} div.cols-3.cols-cells {{ grid-template-columns: 1fr 1fr 1fr; }} div.cols-4.cols-cells {{ grid-template-columns: 1fr 1fr 1fr 1fr; }}
+div.cols-cells > div.col > :first-child {{ margin-top: 0; }} div.cols-cells > div.col > :last-child {{ margin-bottom: 0; }}
 """
 
 
