@@ -1,4 +1,4 @@
-"""Atributo `style` de los `div` y `span` del cuerpo de un documento (H-036f): lista cerrada de propiedades y de valores.
+"""Atributo `style` de los `div`, `span` e `img` del cuerpo de un documento (H-036f): lista cerrada de propiedades y de valores.
 
 Sirve para cajas de color y detalles de maquetación (`<div style="width:120px;height:48px;border-radius:10px;background:#1f9bb8"></div>`). Quedan fuera lo que
 carga recursos (`url()`, `image-set`), lo que saca el elemento de su sitio (`position`, `z-index`, negativos), lo que lo oculta (`display:none`) y cualquier función

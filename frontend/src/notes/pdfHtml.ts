@@ -116,6 +116,15 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
     body?.replaceWith(...Array.from(body.childNodes));
   }
   copy.querySelectorAll(CONTROLS).forEach((node) => node.remove());
+  // Imágenes con límite (`![foto|50%|alto:300]`): sin su contenedor de Lectura, el límite pasa a la propia imagen (el porcentaje es del texto que la rodea).
+  for (const wrap of Array.from(copy.querySelectorAll("span.md-img[data-max-width], span.md-img[data-max-height]"))) {
+    const img = wrap.querySelector("img");
+    if (!img) continue;
+    const width = wrap.getAttribute("data-max-width");
+    const height = wrap.getAttribute("data-max-height");
+    img.setAttribute("style", [width && `max-width: ${width}%`, height && `max-height: ${height}px`].filter(Boolean).join("; "));
+    wrap.replaceWith(img);
+  }
   for (const img of Array.from(copy.querySelectorAll("img"))) {
     const src = img.getAttribute("src");
     if (src) img.setAttribute("src", normalizeImageSrc(src, origin));

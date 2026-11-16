@@ -1033,3 +1033,44 @@ def test_a_styled_div_keeps_only_safe_style_and_prints_as_a_colored_box():
     box = found[0]
     assert round(box.width * 72 / 96) == round(120 * 72 / 96) and round(box.height * 72 / 96) == round(48 * 72 / 96)  # px de CSS a puntos del PDF
     assert box.style["border_top_left_radius"][0].value > 0
+
+
+def test_an_image_with_limits_keeps_its_style_and_never_exceeds_them_in_the_pdf():
+    pytest.importorskip("weasyprint")
+    pytest.importorskip("nh3")
+    import base64
+    import struct
+    import zlib
+
+    from weasyprint import HTML
+
+    from app.services.pdf_service import INTERNAL_BASE, _fetcher, build_document, sanitize
+
+    def solid_png(width: int, height: int) -> str:
+        def chunk(kind: bytes, data: bytes) -> bytes:
+            return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        raw = b"".join(b"\x00" + b"\x20\x80\xb0" * width for _ in range(height))
+        png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+        return "data:image/png;base64," + base64.b64encode(png).decode()
+
+    # El `style` de una imagen pasa por la misma lista cerrada.
+    out = sanitize('<img src="/files/a" style="max-width: 50%; max-height: 300px; position: fixed">')
+    assert 'style="max-width: 50%; max-height: 300px"' in out and "position" not in out
+
+    # Una imagen alta de 400 x 1200 px con límite de alto 300: queda en 100 x 300 (mismas proporciones). Sin límite, se ajusta solo al ancho del texto.
+    tall = solid_png(400, 1200)
+    body = f'<p><img src="{tall}" style="max-height: 300px"></p>'
+    doc = build_document(body, pdf_style.resolve({"activo": True}), title="T", frontmatter={}, read_image=lambda _: None, now=NOW)
+    page = HTML(string=doc, base_url=INTERNAL_BASE, url_fetcher=_fetcher(lambda _: None)).render().pages[0]
+
+    def images(box, found):
+        if type(box).__name__ == "InlineReplacedBox" or (getattr(box, "element", None) is not None and box.element.tag == "img" and hasattr(box, "width") and hasattr(box, "height")):
+            found.append(box)
+        for child in getattr(box, "children", ()) or ():
+            images(child, found)
+        return found
+
+    found = images(page._page_box, [])
+    assert found, "la imagen está en el PDF"
+    box = found[0]
+    assert round(box.height) == 300 and round(box.width) == 100  # px de CSS: el límite se cumple y no se deforma

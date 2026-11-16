@@ -37,7 +37,7 @@ TAGS = {
 ATTRIBUTES = {
     "*": {"class", "title"},
     "a": {"href"},
-    "img": {"src", "alt", "width", "height"},
+    "img": {"src", "alt", "width", "height", "style"},
     "td": {"colspan", "rowspan", "align"}, "th": {"colspan", "rowspan", "align"},
     "ol": {"start"},
     "div": {"align", "style"}, "span": {"style"},

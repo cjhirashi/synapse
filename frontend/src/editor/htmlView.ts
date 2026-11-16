@@ -3,6 +3,7 @@
 import { DOMSerializer, type Node as PMNode } from "@milkdown/prose/model";
 import type { EditorView, NodeView, NodeViewConstructor } from "@milkdown/prose/view";
 import { sanitizeHtmlFragment } from "./htmlSanitizer";
+import { parseImageSize } from "./imageSize";
 import { isAgentPhotoUrl } from "./safeUrl";
 import { fullscreenButton, openImageViewer } from "./imageViewer";
 import { icon } from "./icons";
@@ -204,6 +205,7 @@ class FullscreenImageView implements NodeView {
     this.dom.className = "md-img";
     this.dom.setAttribute("contenteditable", "false");
     this.img = this.renderImg();
+    this.applyLimits();
     this.dom.append(
       this.img,
       fullscreenButton(() => {
@@ -219,12 +221,25 @@ class FullscreenImageView implements NodeView {
     return DOMSerializer.renderSpec(document, spec(this.node)).dom as HTMLImageElement;
   }
 
+  /** Marcas de tamaño del texto alternativo (`![foto|50%|alto:300]`, ver `imageSize.ts`): el ancho limita al contenedor de la imagen y el alto a la imagen. */
+  private applyLimits(): void {
+    const { alt, widthPct, heightPx } = parseImageSize(this.img.alt);
+    this.img.alt = alt;
+    this.dom.style.maxWidth = widthPct === null ? "" : `${widthPct}%`;
+    this.img.style.maxHeight = heightPx === null ? "" : `${heightPx}px`;
+    if (widthPct === null) this.dom.removeAttribute("data-max-width");
+    else this.dom.setAttribute("data-max-width", String(widthPct));
+    if (heightPx === null) this.dom.removeAttribute("data-max-height");
+    else this.dom.setAttribute("data-max-height", String(heightPx));
+  }
+
   update(next: PMNode): boolean {
     if (next.type !== this.node.type) return false;
     this.node = next;
     const fresh = this.renderImg();
     this.img.replaceWith(fresh);
     this.img = fresh;
+    this.applyLimits();
     return true;
   }
 
