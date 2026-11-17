@@ -290,7 +290,7 @@ export function checkDefinition(frontmatter: unknown): string | null {
       return "plantilla:estilo";
     }
     if (!value || typeof value !== "object" || Array.isArray(value)) return "plantilla:estilo";
-    if (key === "publicar" && Object.keys(value).length > 0) return "plantilla:estilo";
+    if (key === "publicar" && !checkPublicarStyle(value)) return "plantilla:estilo";
     if (key === "pdf" && !checkPdfStyle(value)) return "plantilla:estilo";
   }
 
@@ -301,6 +301,14 @@ type Check = (value: unknown) => boolean;
 
 const isNum = (value: unknown, low: number, high: number): boolean =>
   typeof value === "number" && Number.isFinite(value) && value >= low && value <= high;
+
+/** Forma de `estilo.publicar` (H-035): `{}` o `{activo}` con `activo` booleano estricto. Misma regla que `check_publicar_style` del servidor. */
+export function checkPublicarStyle(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const keys = Object.keys(value as Record<string, unknown>);
+  if (keys.length === 0) return true;
+  return keys.length === 1 && keys[0] === "activo" && typeof (value as Record<string, unknown>).activo === "boolean";
+}
 
 /** Texto de encabezado o pie: hasta 200 caracteres y solo con los campos especiales conocidos. */
 export function checkPdfText(value: unknown): boolean {

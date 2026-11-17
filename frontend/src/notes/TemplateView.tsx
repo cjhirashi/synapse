@@ -143,6 +143,9 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
 
   async function save() {
     if (!note) return;
+    // Se conserva `estilo.publicar` (H-035) tal como está guardado: aquí todavía no se edita.
+    const previous = note.frontmatter?.estilo;
+    const publicar = previous && typeof previous === "object" && !Array.isArray(previous) ? (previous as Record<string, unknown>).publicar ?? {} : {};
     const frontmatter = {
       ...note.frontmatter,
       titulo,
@@ -153,7 +156,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
         .filter((estado) => estado.nombre.trim() !== "")
         .map((estado) => ({ nombre: normalizeEstado(estado.nombre) ?? estado.nombre.trim(), color: estado.color })),
       instrucciones,
-      estilo: { publicar: {}, pdf: pdfDraftTo(pdf) },
+      estilo: { publicar, pdf: pdfDraftTo(pdf) },
     };
     const code = checkDefinition(frontmatter);
     if (code !== null) {

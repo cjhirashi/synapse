@@ -61,6 +61,22 @@ test("guarda alcance por carpetas, un atributo con valor inicial y la estructura
   });
 });
 
+test("guardar la plantilla conserva estilo.publicar tal como estaba (H-035: aún no se edita desde aquí)", async () => {
+  counter += 1;
+  const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
+  const template = await store.createTemplate(VAULT, "Acta");
+  const base = await store.get(template.id);
+  await store.save(template.id, base.content, base.rev, { ...base.frontmatter, estilo: { publicar: { activo: true }, pdf: {} } });
+  render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} />);
+  await screen.findByRole("heading", { name: "Plantilla acta" });
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
+  await user.type(screen.getByLabelText("Nombre del atributo 1"), "cliente");
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.atributos as unknown[]).length).toBe(1));
+  expect((await store.get(template.id)).frontmatter.estilo).toMatchObject({ publicar: { activo: true } });
+});
+
 test("una definición inválida (nombre de atributo con mayúsculas) no se guarda y explica el motivo", async () => {
   const { store, template, user } = await open();
   await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
