@@ -433,6 +433,33 @@ Después reescribe los wikilinks de la bóveda como el `PATCH` de nota (§4). Si
 
 Contrato máquina: `.harness/specs/0014-acceso-agentes-notas/contracts/openapi.yaml`.
 
+## Publicar documentos con enlace público (H-035)
+
+Una plantilla con `estilo.publicar.activo: true` permite publicar sus documentos. La publicación es una **copia fija** del documento (HTML ya limpio, título, descripción,
+fechas, estado y el índice de encabezados) con un enlace `/p/<token>`; el token (192 bits al azar) es el único dato que da acceso. **Todas las rutas de gestión son solo de la
+persona (sesión)**: una API key de agente recibe 401. Un documento sin plantilla, o con la publicación apagada, no se puede publicar ni republicar (409
+`publish-not-enabled`); despublicar siempre se puede.
+
+| Ruta | Qué hace |
+|---|---|
+| `GET /vaults/{v}/notes/{n}/publication` | Estado: `enabled`, `published`, `token`, `path` (`/p/<token>`), `published_at`, `republished_at`, `stale` (el documento cambió desde la copia). |
+| `POST` (misma ruta) con `{"html": "…"}` (hasta 2 000 000 caracteres) | Publica: 201 con el estado y un token nuevo. 409 `already-published` si ya lo está (también si dos peticiones llegan a la vez). |
+| `PUT` (misma ruta) con `{"html": "…"}` | Republica: reemplaza la copia y conserva el token y la fecha de publicación (`republished_at` se actualiza). 404 `not-published` si no lo está. |
+| `DELETE` (misma ruta) | Despublica: borra la copia (204); el enlace deja de funcionar y el siguiente será otro. 404 `not-published` si no lo está. |
+| `POST …/publication/check` con `{"html": "…"}` | Revisa los recursos del HTML sin publicar: `resources` (`id`, `name`, `content_type` y `visibility`: `public`, `private` o `missing`; un archivo de otra persona sale como `missing`, sin nombre ni tipo), `external` (imágenes de otros sitios) y `has_private` (hay privados o inexistentes). Nunca cambia la visibilidad de nada. |
+
+El HTML es el que la app dibuja en Lectura, con los iframes (Plotly, Archify, YouTube) enviados como un enlace `<a class="pub-embed" href="…">`; el servidor lo vuelve a limpiar
+(`nh3`, la misma lista cerrada que el PDF y el `style` filtrado) y solo convierte en `iframe` con sandbox los enlaces cuyo origen esté en una lista cerrada:
+archivos de `https://synapse.cjhirashi.com/files/<uuid>`, `https://files-synapse.cjhirashi.com/…` y `https://www.youtube-nocookie.com/embed/<id>` (`?start=N`).
+
+### Página pública: `GET /p/{token}` (y `HEAD`)
+
+Sin sesión, fuera del OpenAPI y del comodín de la SPA. Devuelve una página HTML (tarjeta del documento, índice, contenido y pie) con `Content-Security-Policy` (`default-src 'none'`,
+sin scripts; `frame-src` solo los tres orígenes de arriba), `X-Robots-Tag: noindex, nofollow, noarchive`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` y **sin cookies**.
+Un token inexistente, despublicado o de un documento borrado dan **exactamente la misma respuesta 404** (mismo cuerpo y cabeceras). Antes de servir se comprueba que el documento y su
+bóveda sigan vivos: si no, 404 y se borra la copia; si el almacenamiento falla un momento, 503 sin borrar nada. Límite de 120 peticiones por minuto por IP (la real llega en
+`CF-Connecting-IP`; sin ella, la del socket), con 429 y `Retry-After: 60`; el límite vive en memoria de cada proceso.
+
 ## PDF de documentos (H-036)
 
 `POST /vaults/{vault_id}/notes/{note_id}/pdf` con `{"html": "<…>"}` (hasta 5 MB) devuelve `application/pdf` (`Content-Disposition: attachment`,
@@ -497,7 +524,7 @@ automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los camb
 `texto|numero|fecha|lista|booleano`), `estados` (H-054, opcional: hasta 20 `{nombre, color}` —`nombre` normalizado como un estado y sin repetir, `color`
 `gris|azul|verde|rojo`— que puede tener un documento con la plantilla; no hay estados de serie y sin ellos los documentos quedan sin estado;
 422 `plantilla:estados`), `instrucciones` (H-054, opcional: texto de hasta 20 000 caracteres con el uso de la plantilla, que no se copia al
-documento; el cuerpo de la plantilla es solo la estructura; 422 `plantilla:instrucciones`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` reservado para H-035; `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
+documento; el cuerpo de la plantilla es solo la estructura; 422 `plantilla:instrucciones`) y `estilo` (`{publicar: {}, pdf: {...}}`: `publicar` es `{}` o `{activo: bool}` (H-035, ver «Publicar documentos»); `pdf` es el formato del PDF, ver «PDF de documentos (H-036)»). El cuerpo es la
 estructura Markdown base. Un documento creado desde una plantilla guarda su nombre en el atributo general `plantilla`; se
 rechaza una plantilla inexistente en REST (`plantilla:unknown`). Editar una plantilla no toca los documentos que la usan; una
 plantilla con documentos vivos que la citen no se renombra ni sale de `PLANTILLAS` (`plantilla:in-use`). Borrarla sí se puede (H-054):
