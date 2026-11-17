@@ -52,7 +52,7 @@ def get_public_page(
     pub = repo.get_by_token(token)
     if pub is None:
         return _page(status.HTTP_404_NOT_FOUND, unavailable_page())
-    # Comprobar si la publicación está vencida (H-037)
+    # Comprobar si la publicación está vencida (H-055)
     if pub.unpublish_at is not None and pub.unpublish_at <= datetime.now(UTC).replace(tzinfo=None):
         return _page(status.HTTP_404_NOT_FOUND, unavailable_page())
     # Sin sesión no hay actor ni guard: se lee con la base del dueño de la publicación para comprobar que la nota sigue viva.

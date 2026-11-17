@@ -1,4 +1,4 @@
-"""H-037: Vencimiento de publicaciones — endpoints de expiry y listado.
+"""H-055: Vencimiento de publicaciones — endpoints de expiry y listado.
 
 TestClient + CouchDB real. Los agentes son claves con `agent_id`.
 """
@@ -25,7 +25,7 @@ def _publication_row(token: str) -> Publication | None:
 
 
 def vault_of(admin, name=None) -> str:
-    """Crea una bóveda única para tests de H-037."""
+    """Crea una bóveda única para tests de H-055."""
     if name is None:
         name = f"H037-{uuid.uuid4().hex[:8]}"
     res = create(admin, name=name)

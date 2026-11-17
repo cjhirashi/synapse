@@ -268,7 +268,7 @@ class PublishIn(BaseModel):
 
 
 class PublishCreateIn(PublishIn):
-    """Cuerpo de POST para publicar una nota: añade campo de vencimiento (H-037)."""
+    """Cuerpo de POST para publicar una nota: añade campo de vencimiento (H-055)."""
 
     unpublish_at: datetime | None = None
 
@@ -281,7 +281,7 @@ class PublishCreateIn(PublishIn):
 
 
 class PublicationExpiryIn(BaseModel):
-    """Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-037)."""
+    """Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-055)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -326,7 +326,7 @@ class PublicationCheckOut(BaseModel):
 
 
 class PublicationListItem(BaseModel):
-    """Un elemento del listado de publicaciones (H-037)."""
+    """Un elemento del listado de publicaciones (H-055)."""
 
     note_id: str
     note_path: str | None
@@ -341,7 +341,7 @@ class PublicationListItem(BaseModel):
 
 
 class PublicationListOut(BaseModel):
-    """Listado de publicaciones del usuario (H-037)."""
+    """Listado de publicaciones del usuario (H-055)."""
 
     items: list[PublicationListItem]
 

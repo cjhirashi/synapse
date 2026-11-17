@@ -301,7 +301,7 @@ components:
       type: object
     PublicationExpiryIn:
       additionalProperties: false
-      description: Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-037).
+      description: Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-055).
       properties:
         unpublish_at:
           anyOf:
@@ -314,7 +314,7 @@ components:
       title: PublicationExpiryIn
       type: object
     PublicationListItem:
-      description: Un elemento del listado de publicaciones (H-037).
+      description: Un elemento del listado de publicaciones (H-055).
       properties:
         deleted:
           title: Deleted
@@ -366,7 +366,7 @@ components:
       title: PublicationListItem
       type: object
     PublicationListOut:
-      description: Listado de publicaciones del usuario (H-037).
+      description: Listado de publicaciones del usuario (H-055).
       properties:
         items:
           items:
@@ -458,7 +458,7 @@ components:
     PublishCreateIn:
       additionalProperties: false
       description: 'Cuerpo de POST para publicar una nota: añade campo de vencimiento
-        (H-037).'
+        (H-055).'
       properties:
         html:
           maxLength: 2000000

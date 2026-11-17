@@ -1,4 +1,4 @@
-"""H-037: Pruebas de despublicación automática de publicaciones vencidas."""
+"""H-055: Pruebas de despublicación automática de publicaciones vencidas."""
 
 import uuid
 from datetime import UTC, datetime, timedelta

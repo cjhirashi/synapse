@@ -130,7 +130,7 @@ class PublicationService:
         self._repo.commit()
 
     def set_expiry(self, vault_id: str, note_id: str, unpublish_at: datetime | None) -> dict:
-        """Fija o quita la fecha de vencimiento de una publicación (H-037). No exige que la plantilla siga activa."""
+        """Fija o quita la fecha de vencimiento de una publicación (H-055). No exige que la plantilla siga activa."""
         versioned, _, template = self._load(vault_id, note_id)
         pub = self._repo.get_for_note(self._owner_id, vault_id, note_id)
         if pub is None:
@@ -140,7 +140,7 @@ class PublicationService:
         return self._view(versioned, template, pub)
 
     def list_published(self, vault_id: str) -> dict:
-        """Lista las publicaciones del usuario en la bóveda (H-037)."""
+        """Lista las publicaciones del usuario en la bóveda (H-055)."""
         items = []
         for pub in self._repo.list_for_vault(self._owner_id, vault_id):
             try:

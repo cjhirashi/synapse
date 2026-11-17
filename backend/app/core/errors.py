@@ -605,4 +605,4 @@ class NotPublished(DomainError):
 
 
 class InvalidUnpublishAt(ValidationFailed):
-    """La fecha de despublicación debe ser al menos 5 minutos posterior a ahora (H-037)."""
+    """La fecha de despublicación debe ser al menos 5 minutos posterior a ahora (H-055)."""
