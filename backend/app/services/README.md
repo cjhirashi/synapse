@@ -62,3 +62,5 @@ Lógica de negocio. Solo importa de `core/ports/` — nunca de `adapters/` direc
   notas, comprueba que la bóveda de la nota exista y esté activa (`vault-not-found`) y reserva
   o libera la ruta (`note-path-taken`).
 - `wikilink_rewrite_service.py` (`WikilinkRewriteService`, H-039): reescribe los wikilinks de una bóveda tras mover o renombrar notas o carpetas. CouchDB no tiene transacciones entre documentos: cada nota se escribe sobre el `_rev` leído y, ante un conflicto de revisión, se relee y reintenta. Los mensajes de `AG - MENSAJES` (históricos) no se tocan.
+- `publication_service.py` (`PublicationService`, H-035): gestión de publicaciones de notas (crear, actualizar, eliminar). Valida que la plantilla tenga publicación habilitada, arma la instantánea (`html` limpio, encabezados numerados, título y metadatos), y mantiene `token` y `published_at` invariables en las republicaciones.
+- `publication_snapshot.py` (H-035): funciones puras para armar una instantánea de publicación: limpiar HTML, numerar encabezados con índice de contenidos, extraer título y metadatos con color de estado.

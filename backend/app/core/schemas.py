@@ -259,6 +259,26 @@ class PdfIn(BaseModel):
     html: str = Field(max_length=5_000_000)
 
 
+class PublishIn(BaseModel):
+    """HTML del documento para publicar en `/p/<token>` (H-035). El servidor lo limpia; metadatos salen del frontmatter y la plantilla."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    html: str = Field(min_length=1, max_length=2_000_000)
+
+
+class PublicationOut(BaseModel):
+    """Estado de publicación de una nota (H-035)."""
+
+    enabled: bool
+    published: bool
+    token: str | None
+    path: str | None
+    published_at: str | None
+    republished_at: str | None
+    stale: bool
+
+
 class NoteListItem(BaseModel):
     id: str
     vault_id: str

@@ -15,6 +15,7 @@ Aquí viven las dependencias concretas: CouchDB, httpx, psycopg2, MinIO, etc.
 - `minio_adapter.py` (`MinioObjectStorage`, H-015/H-016): `ObjectStoragePort` sobre MinIO. `minio` se importa dentro del
   constructor y de los métodos para que los tests usen un FAKE del puerto (`tests/fake_object_storage.py`); todo fallo del
   cliente sube como `StorageUnavailable` (503). Clave de objeto: `vaults/<vault_id>/<file_id>`.
+- `publication_repository.py` (`PublicationRepository`, H-035): publicaciones de notas sobre la sesión de Postgres (una instancia por petición). Lectura acotada al dueño excepto `get_by_token` (es para lectura pública en fase 2). El commit lo hace quien llama como en otros repositorios.
 - `couchdb.py` (`CouchDBAdapter`): acceso a la API HTTP de CouchDB (bases por usuario).
 
 - `vault_repository.py` (`VaultRepository`, SPEC-0003): `VaultPort` sobre la API HTTP de

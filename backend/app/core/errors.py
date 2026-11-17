@@ -573,3 +573,32 @@ class PdfRenderFailed(DomainError):
     title = "PDF generation failed"
     status = 500
     detail = "The PDF could not be generated"
+
+
+# --- Publicación de notas (H-035) ---
+
+class PublishNotEnabled(DomainError):
+    """La plantilla del documento no tiene la publicación activa (o el documento no nació de una plantilla)."""
+
+    slug = "publish-not-enabled"
+    title = "Publishing not enabled"
+    status = 409
+    detail = "This document's template does not enable publishing"
+
+
+class AlreadyPublished(DomainError):
+    """Ya hay una publicación de esta nota."""
+
+    slug = "already-published"
+    title = "Already published"
+    status = 409
+    detail = "This document is already published; republish it or unpublish it first"
+
+
+class NotPublished(DomainError):
+    """No hay publicación de esta nota."""
+
+    slug = "not-published"
+    title = "Not published"
+    status = 404
+    detail = "This document is not published"

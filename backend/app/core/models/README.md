@@ -8,3 +8,4 @@ Modelos SQLAlchemy del dominio. Solo definen la estructura de datos — la lógi
 - `agent_access_log.py` — `AgentAccessLog` (`agent_access_log`, H-030): registro del modo sombra de los permisos por agente; guarda qué habría rechazado el servidor sin bloquearlo.
 - `purge_log.py` — `PurgeLog` (`purge_log`, H-030): conversaciones de `AG - MENSAJES` purgadas por `scripts/purge_mensajes.py`.
 - `file.py` — `File` (`files`, migraciones 006 y 007): metadatos de un archivo subido a MinIO (carpeta opcional, visibilidad).
+- `publication.py` — `Publication` (H-035): instantánea fija de una nota publicada en `/p/<token>`. Única por (vault_id, note_id); `token` único para recuperar la publicación, `note_rev` para detectar si la nota original cambió (marcando `stale`). Varias por nota son posibles en el futuro (versiones).

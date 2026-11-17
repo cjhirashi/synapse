@@ -8,7 +8,7 @@ definición y su cuerpo es la estructura Markdown de partida:
 - `estados` (H-054, opcional): los estados que puede tener un documento con esta plantilla, cada uno `{nombre, color}` (`gris|azul|verde|rojo`).
   Una plantilla no trae estados de serie: sin `estados`, sus documentos no tienen estado que elegir.
 - `instrucciones` (H-054, opcional): texto de uso de la plantilla (para personas y agentes); no se copia al documento. El cuerpo es solo la estructura.
-- `estilo`: `publicar` (reservado para H-035, vacío) y `pdf` (H-036: formato del PDF del documento, ver `check_pdf_style`).
+- `estilo`: `publicar` (H-035: settings de publicación) y `pdf` (H-036: formato del PDF del documento, ver `check_pdf_style`).
 
 Cada documento creado desde una plantilla guarda su nombre (sin el prefijo) en el atributo general `plantilla`.
 La especificación compartida con el cliente vive en `tests/fixtures/plantilla_reglas.json`.
@@ -154,7 +154,7 @@ def check_definition(frontmatter: object) -> str | None:
     estilo = frontmatter.get("estilo", {})
     if not isinstance(estilo, dict) or not set(estilo) <= set(ESTILO_KEYS):
         return "plantilla:estilo"
-    if estilo.get("publicar", {}) != {} or not check_pdf_style(estilo.get("pdf", {})):
+    if not check_publicar_style(estilo.get("publicar", {})) or not check_pdf_style(estilo.get("pdf", {})):
         return "plantilla:estilo"
     return None
 
@@ -182,6 +182,18 @@ def _check_pdf_block(block: object, allowed: dict) -> bool:
     if not isinstance(block, dict) or not set(block) <= set(allowed):
         return False
     return all(allowed[key](value) for key, value in block.items())
+
+
+def check_publicar_style(value: object) -> bool:
+    """Forma de `estilo.publicar` (H-035): {} (vacío) o dict con claves en {"activo"}.
+    Si hay `activo`, debe ser booleano estricto (true/false)."""
+    if not isinstance(value, dict):
+        return False
+    if not value:  # vacío es válido
+        return True
+    if set(value) != {"activo"}:
+        return False
+    return isinstance(value["activo"], bool)
 
 
 def check_pdf_style(pdf: object) -> bool:

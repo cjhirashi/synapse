@@ -448,6 +448,123 @@
    "expected": "plantilla:estilo"
   },
   {
+   "name": "publicar válido vacío",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {},
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "publicar válido activo true",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "activo": true
+     },
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "publicar válido activo false",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "activo": false
+     },
+     "pdf": {}
+    }
+   },
+   "expected": null
+  },
+  {
+   "name": "publicar inválido activo string",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "activo": "si"
+     },
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "publicar inválido activo número",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "activo": 1
+     },
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "publicar inválido otra clave",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "otra": true
+     },
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "publicar inválido dos claves",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": {
+      "activo": true,
+      "otra": 1
+     },
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
+   "name": "publicar inválido lista",
+   "frontmatter": {
+    "alcance": [
+     "*"
+    ],
+    "estilo": {
+     "publicar": [],
+     "pdf": {}
+    }
+   },
+   "expected": "plantilla:estilo"
+  },
+  {
    "name": "sin estilo ni atributos",
    "frontmatter": {
     "alcance": [

@@ -6,12 +6,10 @@ from datetime import UTC, datetime
 from app.adapters.file_repository import FileRepository
 from app.core import pdf_style
 from app.core.errors import PdfNotEnabled, StorageUnavailable
-from app.core.plantilla_rules import template_path
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.services import pdf_service
 from app.services.note_content_service import NoteContentService
-
-_TEMPLATE_PAGES = 5  # hasta 1 000 plantillas; en la práctica hay un puñado
+from app.services.template_lookup import find_template
 
 
 class NotePdfService:
@@ -34,19 +32,12 @@ class NotePdfService:
         return pdf_service.make_pdf(document, self._read_image), file_name(title)
 
     def _template_pdf(self, vault_id: str, name: object) -> object:
-        if not isinstance(name, str) or not name:
+        """Extrae `estilo.pdf` de la plantilla (o None si no existe)."""
+        plantilla = find_template(self._notes, vault_id, name)
+        if plantilla is None:
             return None
-        wanted, cursor = template_path(name), None
-        for _ in range(_TEMPLATE_PAGES):
-            page = self._notes.list(vault_id, deleted=False, limit=200, cursor=cursor, prefix="PLANTILLAS")
-            for item in page.items:
-                if item.path == wanted:
-                    estilo = (item.frontmatter or {}).get("estilo")
-                    return estilo.get("pdf") if isinstance(estilo, dict) else None
-            cursor = page.next_cursor
-            if cursor is None:
-                break
-        return None
+        estilo = plantilla.get("estilo")
+        return estilo.get("pdf") if isinstance(estilo, dict) else None
 
     def _read_image(self, file_id: str) -> tuple[bytes, str] | None:
         """Bytes y tipo de una imagen de la persona; `None` si no existe, es de otra persona o no es imagen."""
