@@ -37,7 +37,7 @@ VaultNamer = Callable[[str, str], str | None]
 _CDMX = ZoneInfo("America/Mexico_City")
 _MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 # Mismos rótulos que la pantalla de avisos (`NotificationsPage.tsx`): la notificación del móvil dice lo mismo que la tarjeta.
-KIND_LABEL = {"task_assigned": "Tarea asignada", "task_status": "Cambio de estado", "task_due": "Vencimiento"}
+KIND_LABEL = {"task_assigned": "Tarea asignada", "task_status": "Cambio de estado", "task_due": "Vencimiento", "publication_expired": "Publicación"}
 
 
 @lru_cache

@@ -10,10 +10,10 @@ from app.adapters.file_repository import FileRepository
 from app.adapters.publication_repository import PublicationRepository
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
-    AlreadyPublished, NoteNotFound, NotPublished, PasswordChangeRequired, PublishNotEnabled, StorageUnavailable, VaultNotFound,
+    AlreadyPublished, InvalidUnpublishAt, NoteNotFound, NotPublished, PasswordChangeRequired, PublishNotEnabled, StorageUnavailable, VaultNotFound,
 )
 from app.core.problems import problem_responses
-from app.core.schemas import PublicationCheckOut, PublicationOut, PublishIn, TokenPayload
+from app.core.schemas import PublicationCheckOut, PublicationExpiryIn, PublicationListOut, PublicationOut, PublishCreateIn, PublishIn, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.notes import NoteId, get_note_content_service
 from app.routers.vaults import VaultId
@@ -50,20 +50,20 @@ def get_publication_status(
     status_code=status.HTTP_201_CREATED,
     response_model=PublicationOut,
     responses=problem_responses(
-        NoteNotFound, VaultNotFound, PublishNotEnabled, AlreadyPublished, StorageUnavailable
+        NoteNotFound, VaultNotFound, PublishNotEnabled, AlreadyPublished, InvalidUnpublishAt, StorageUnavailable
     ),
 )
 def publish_note(
     vault_id: VaultId,
     note_id: NoteId,
-    body: PublishIn,
+    body: PublishCreateIn,
     user: TokenPayload = Depends(get_current_user),
     service: NoteContentService = Depends(get_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Publica una nota. Solo la persona (sesión)."""
     pub_service = PublicationService(service, PublicationRepository(db), user.sub)
-    return pub_service.publish(vault_id, note_id, body.html)
+    return pub_service.publish(vault_id, note_id, body.html, body.unpublish_at)
 
 
 @router.put(
@@ -104,6 +104,26 @@ def unpublish_note(
     pub_service.unpublish(vault_id, note_id)
 
 
+@router.put(
+    "/expiry",
+    response_model=PublicationOut,
+    responses=problem_responses(
+        NoteNotFound, VaultNotFound, NotPublished, InvalidUnpublishAt, StorageUnavailable
+    ),
+)
+def set_publication_expiry(
+    vault_id: VaultId,
+    note_id: NoteId,
+    body: PublicationExpiryIn,
+    user: TokenPayload = Depends(get_current_user),
+    service: NoteContentService = Depends(get_note_content_service),
+    db: Session = Depends(get_db),
+):
+    """Fija o quita la fecha de vencimiento de una publicación. Solo la persona (sesión)."""
+    pub_service = PublicationService(service, PublicationRepository(db), user.sub)
+    return pub_service.set_expiry(vault_id, note_id, body.unpublish_at)
+
+
 @router.post(
     "/check",
     response_model=PublicationCheckOut,
@@ -122,3 +142,29 @@ def check_publication_resources(
         service, PublicationRepository(db), user.sub, files=FileRepository(db)
     )
     return pub_service.check(vault_id, note_id, body.html)
+
+
+# --- Router de bóveda: listado de publicaciones ---
+
+vault_router = APIRouter(
+    prefix="/vaults/{vault_id}/publications",
+    tags=["publications"],
+    dependencies=[Depends(require_password_changed)],
+    responses=problem_responses(*SESSION_ERRORS, PasswordChangeRequired),
+)
+
+
+@vault_router.get(
+    "",
+    response_model=PublicationListOut,
+    responses=problem_responses(StorageUnavailable),
+)
+def list_vault_publications(
+    vault_id: VaultId,
+    user: TokenPayload = Depends(get_current_user),
+    service: NoteContentService = Depends(get_note_content_service),
+    db: Session = Depends(get_db),
+):
+    """Lista las publicaciones de la bóveda del usuario. Solo la persona (sesión)."""
+    pub_service = PublicationService(service, PublicationRepository(db), user.sub)
+    return pub_service.list_published(vault_id)

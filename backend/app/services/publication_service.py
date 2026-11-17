@@ -3,17 +3,19 @@
 import json
 import secrets
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 
 from app.adapters.file_repository import FileRepository
 from app.adapters.publication_repository import PublicationRepository
-from app.core.errors import AlreadyPublished, NotPublished, PublishNotEnabled
+from app.core.errors import AlreadyPublished, InvalidUnpublishAt, NoteNotFound, NotPublished, PublishNotEnabled, VaultNotFound
 from app.core.models.publication import Publication
 from app.services.note_content_service import NoteContentService, Versioned
 from app.services.publication_snapshot import clean_html, collect_resources, embed_frames, meta_of, number_headings, title_of
 from app.services.template_lookup import find_template
+
+MIN_EXPIRY_LEAD = timedelta(minutes=5)
 
 
 def _enabled(template: dict | None) -> bool:
@@ -26,6 +28,17 @@ def _enabled(template: dict | None) -> bool:
 def _iso(moment: datetime | None) -> str | None:
     """Las fechas se guardan en UTC sin zona: se devuelven en ISO 8601 con `Z`."""
     return moment.isoformat() + "Z" if moment else None
+
+
+def _expiry(value: datetime | None) -> datetime | None:
+    """Convierte la fecha de vencimiento a UTC sin zona; None si es None. Lanza InvalidUnpublishAt si es menor a ahora + 5 min."""
+    if value is None:
+        return None
+    utc_no_tz = value.astimezone(UTC).replace(tzinfo=None)
+    now_utc = datetime.now(UTC).replace(tzinfo=None)
+    if utc_no_tz < now_utc + MIN_EXPIRY_LEAD:
+        raise InvalidUnpublishAt("Expiry date must be at least 5 minutes in the future", errors=[{"pointer": "/unpublish_at", "detail": "Expiry date must be at least 5 minutes in the future"}])
+    return utc_no_tz
 
 
 class PublicationService:
@@ -52,6 +65,7 @@ class PublicationService:
             "path": f"/p/{pub.token}" if pub else None,
             "published_at": _iso(pub.published_at) if pub else None,
             "republished_at": _iso(pub.republished_at) if pub else None,
+            "unpublish_at": _iso(pub.unpublish_at) if pub else None,
             "stale": bool(pub and versioned.etag != pub.note_rev),  # el documento cambió desde la copia
         }
 
@@ -73,8 +87,9 @@ class PublicationService:
         versioned, _, template = self._load(vault_id, note_id)
         return self._view(versioned, template, self._repo.get_for_note(self._owner_id, vault_id, note_id))
 
-    def publish(self, vault_id: str, note_id: str, html: str) -> dict:
+    def publish(self, vault_id: str, note_id: str, html: str, unpublish_at: datetime | None = None) -> dict:
         """Crea la publicación con un token nuevo. Solo si la plantilla la activa y la nota no está ya publicada."""
+        unpublish_at = _expiry(unpublish_at)
         versioned, frontmatter, template = self._load(vault_id, note_id)
         if not _enabled(template):
             raise PublishNotEnabled()
@@ -82,7 +97,7 @@ class PublicationService:
             raise AlreadyPublished()
         pub = Publication(
             id=str(uuid.uuid4()), owner_id=self._owner_id, vault_id=vault_id, note_id=note_id, token=secrets.token_urlsafe(24),
-            published_at=datetime.now(UTC).replace(tzinfo=None), **self._snapshot(html, versioned, frontmatter, template),
+            published_at=datetime.now(UTC).replace(tzinfo=None), unpublish_at=unpublish_at, **self._snapshot(html, versioned, frontmatter, template),
         )
         try:
             self._repo.add(pub)
@@ -113,6 +128,44 @@ class PublicationService:
             raise NotPublished()
         self._repo.delete(pub)
         self._repo.commit()
+
+    def set_expiry(self, vault_id: str, note_id: str, unpublish_at: datetime | None) -> dict:
+        """Fija o quita la fecha de vencimiento de una publicación (H-037). No exige que la plantilla siga activa."""
+        versioned, _, template = self._load(vault_id, note_id)
+        pub = self._repo.get_for_note(self._owner_id, vault_id, note_id)
+        if pub is None:
+            raise NotPublished()
+        pub.unpublish_at = _expiry(unpublish_at)
+        self._repo.commit()
+        return self._view(versioned, template, pub)
+
+    def list_published(self, vault_id: str) -> dict:
+        """Lista las publicaciones del usuario en la bóveda (H-037)."""
+        items = []
+        for pub in self._repo.list_for_vault(self._owner_id, vault_id):
+            try:
+                versioned = self._notes.get(vault_id, pub.note_id)
+                note_path = versioned.note.path
+                stale = versioned.etag != pub.note_rev
+                deleted = False
+            except (NoteNotFound, VaultNotFound):  # StorageUnavailable se propaga: un fallo pasajero no marca nada como borrado
+                note_path = None
+                stale = False
+                deleted = True
+
+            items.append({
+                "note_id": pub.note_id,
+                "note_path": note_path,
+                "title": pub.title,
+                "token": pub.token,
+                "path": f"/p/{pub.token}",
+                "published_at": _iso(pub.published_at),
+                "republished_at": _iso(pub.republished_at),
+                "unpublish_at": _iso(pub.unpublish_at),
+                "stale": stale,
+                "deleted": deleted,
+            })
+        return {"items": items}
 
     def check(self, vault_id: str, note_id: str, html: str) -> dict:
         """Comprueba los recursos de una publicación potencial.

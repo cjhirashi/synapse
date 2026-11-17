@@ -1,5 +1,6 @@
 """Ruta pública de publicaciones (H-035, fase 2): `GET /p/{token}` sin sesión."""
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Request, Response, status
@@ -50,6 +51,9 @@ def get_public_page(
     repo = PublicationRepository(db)
     pub = repo.get_by_token(token)
     if pub is None:
+        return _page(status.HTTP_404_NOT_FOUND, unavailable_page())
+    # Comprobar si la publicación está vencida (H-037)
+    if pub.unpublish_at is not None and pub.unpublish_at <= datetime.now(UTC).replace(tzinfo=None):
         return _page(status.HTTP_404_NOT_FOUND, unavailable_page())
     # Sin sesión no hay actor ni guard: se lee con la base del dueño de la publicación para comprobar que la nota sigue viva.
     notes = NoteContentService(port, f"synapse_user_{pub.owner_id}")

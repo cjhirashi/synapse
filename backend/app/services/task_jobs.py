@@ -1,4 +1,4 @@
-"""Trabajos de fondo de las tareas (H-053): retención de las cerradas y avisos de vencimiento.
+"""Trabajos de fondo de las tareas (H-053): retención de las cerradas, avisos de vencimiento y despublicación de publicaciones vencidas.
 
 **Retención:** una raíz hecha o cancelada se elimina pasados `TASKS_RETENTION_DAYS` días, con sus subtareas (nunca solas, para
 que el estado derivado de la raíz no cambie por una limpieza). Es una purga irreversible y sin papelera: solo queda el
@@ -120,6 +120,8 @@ def start_task_jobs(session_factory) -> Callable[[], None]:
     stop = threading.Event()
 
     def run() -> None:
+        from app.services.publication_jobs import expire_publications  # aquí: publication_jobs importa este módulo
+
         if stop.wait(_FIRST_DELAY):
             return
         while True:
@@ -130,6 +132,9 @@ def start_task_jobs(session_factory) -> Callable[[], None]:
                 noticed = notify_due_tasks(session_factory)
                 if noticed:
                     logger.info("task due notices: %d created", noticed)
+                expired = expire_publications(session_factory)
+                if expired:
+                    logger.info("publication expiry: %d unpublished", expired)
             except Exception:  # noqa: BLE001 - un fallo no mata el ciclo; se reintenta en la siguiente vuelta
                 logger.warning("task jobs pass failed", exc_info=True)
             if stop.wait(settings.TASKS_JOBS_INTERVAL_SECONDS):

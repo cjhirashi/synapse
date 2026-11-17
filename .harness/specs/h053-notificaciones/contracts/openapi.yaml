@@ -123,7 +123,7 @@ components:
       type: object
     NotificationPrefsOut:
       description: Tipos de aviso y si están activos (`task_assigned`, `task_status`,
-        `task_due`) y las horas silenciosas.
+        `task_due`, `publication_expired`) y las horas silenciosas.
       properties:
         kinds:
           additionalProperties:
@@ -151,6 +151,7 @@ components:
             - task_assigned
             - task_status
             - task_due
+            - publication_expired
           title: Kinds
           type: object
         quiet:

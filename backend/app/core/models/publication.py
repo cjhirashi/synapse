@@ -26,6 +26,7 @@ class Publication(Base):
     note_rev = Column(String, nullable=False)
     published_at = Column(DateTime, nullable=False)
     republished_at = Column(DateTime, nullable=True)
+    unpublish_at = Column(DateTime, nullable=True, index=True)  # Fecha en que el trabajo de fondo la despublica; None = sin vencimiento.
 
     __table_args__ = (
         UniqueConstraint("vault_id", "note_id", name="uq_publications_vault_note"),

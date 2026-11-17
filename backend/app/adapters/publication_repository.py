@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.core.models.publication import Publication
@@ -43,6 +45,13 @@ class PublicationRepository:
             Publication.owner_id == owner_id,
             Publication.vault_id == vault_id,
         ).order_by(Publication.published_at.desc()).all()
+
+    def due_for_unpublish(self, now: datetime) -> list[Publication]:
+        """Devuelve las publicaciones con `unpublish_at` no nulo y <= now, ordenadas por `unpublish_at`."""
+        return self._db.query(Publication).filter(
+            Publication.unpublish_at.isnot(None),
+            Publication.unpublish_at <= now,
+        ).order_by(Publication.unpublish_at).all()
 
     def commit(self) -> None:
         """Confirma los cambios en la base."""

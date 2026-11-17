@@ -24,7 +24,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     # H-030: registro de agentes por bóveda e informe del modo sombra.
     # H-041 E4: las skills de bóveda (listado y asignar) viven con el registro de agentes.
     "h030-carpetas-ag": {"paths": ("/vaults/{vault_id}/agent-access", "/agent-access", "/vaults/{vault_id}/skills"), "schemas": ()},
-    "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes", "/vaults/{vault_id}/folders"), "schemas": ()},
+    "0014-acceso-agentes-notas": {"paths": ("/vaults/{vault_id}/notes", "/vaults/{vault_id}/folders", "/vaults/{vault_id}/publications"), "schemas": ()},
     # H-015 (historia del arnés): las rutas de archivos. El contrato se exporta al mismo árbol
     # `.harness/specs/<feature>/contracts/` que las features de SDD Anchored (un canon por hecho).
     # H-016 absorbe el contrato de H-015 (mismas rutas /files): un canon por hecho. Documentos, tipos y pantalla de archivos (lista, rename, delete por bóveda)

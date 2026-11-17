@@ -602,3 +602,7 @@ class NotPublished(DomainError):
     title = "Not published"
     status = 404
     detail = "This document is not published"
+
+
+class InvalidUnpublishAt(ValidationFailed):
+    """La fecha de despublicación debe ser al menos 5 minutos posterior a ahora (H-037)."""

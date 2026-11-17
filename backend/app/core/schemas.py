@@ -267,6 +267,34 @@ class PublishIn(BaseModel):
     html: str = Field(min_length=1, max_length=2_000_000)
 
 
+class PublishCreateIn(PublishIn):
+    """Cuerpo de POST para publicar una nota: añade campo de vencimiento (H-037)."""
+
+    unpublish_at: datetime | None = None
+
+    @field_validator("unpublish_at")
+    @classmethod
+    def _unpublish_at_requires_tz(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            raise ValueError("unpublish_at needs a time zone offset")
+        return v
+
+
+class PublicationExpiryIn(BaseModel):
+    """Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-037)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    unpublish_at: datetime | None  # obligatorio: null para quitar el vencimiento
+
+    @field_validator("unpublish_at")
+    @classmethod
+    def _unpublish_at_requires_tz(cls, v: datetime | None) -> datetime | None:
+        if v is not None and v.tzinfo is None:
+            raise ValueError("unpublish_at needs a time zone offset")
+        return v
+
+
 class PublicationOut(BaseModel):
     """Estado de publicación de una nota (H-035)."""
 
@@ -276,6 +304,7 @@ class PublicationOut(BaseModel):
     path: str | None
     published_at: str | None
     republished_at: str | None
+    unpublish_at: str | None
     stale: bool
 
 
@@ -294,6 +323,27 @@ class PublicationCheckOut(BaseModel):
     resources: list[PublicationResource]
     external: list[str]
     has_private: bool
+
+
+class PublicationListItem(BaseModel):
+    """Un elemento del listado de publicaciones (H-037)."""
+
+    note_id: str
+    note_path: str | None
+    title: str
+    token: str
+    path: str
+    published_at: str
+    republished_at: str | None
+    unpublish_at: str | None
+    stale: bool
+    deleted: bool
+
+
+class PublicationListOut(BaseModel):
+    """Listado de publicaciones del usuario (H-037)."""
+
+    items: list[PublicationListItem]
 
 
 class NoteListItem(BaseModel):
@@ -770,7 +820,7 @@ class QuietHours(BaseModel):
 
 
 class NotificationPrefsOut(BaseModel):
-    """Tipos de aviso y si están activos (`task_assigned`, `task_status`, `task_due`) y las horas silenciosas."""
+    """Tipos de aviso y si están activos (`task_assigned`, `task_status`, `task_due`, `publication_expired`) y las horas silenciosas."""
 
     kinds: dict[str, bool]
     quiet: QuietHours
@@ -781,7 +831,7 @@ class NotificationPrefsPut(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kinds: dict[Literal["task_assigned", "task_status", "task_due"], bool] = {}
+    kinds: dict[Literal["task_assigned", "task_status", "task_due", "publication_expired"], bool] = {}
     quiet: QuietHours | None = None
 
 

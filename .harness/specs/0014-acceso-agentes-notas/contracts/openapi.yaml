@@ -299,6 +299,84 @@ components:
       - has_private
       title: PublicationCheckOut
       type: object
+    PublicationExpiryIn:
+      additionalProperties: false
+      description: Cuerpo de PUT para fijar fecha de vencimiento de publicación (H-037).
+      properties:
+        unpublish_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Unpublish At
+      required:
+      - unpublish_at
+      title: PublicationExpiryIn
+      type: object
+    PublicationListItem:
+      description: Un elemento del listado de publicaciones (H-037).
+      properties:
+        deleted:
+          title: Deleted
+          type: boolean
+        note_id:
+          title: Note Id
+          type: string
+        note_path:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note Path
+        path:
+          title: Path
+          type: string
+        published_at:
+          title: Published At
+          type: string
+        republished_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Republished At
+        stale:
+          title: Stale
+          type: boolean
+        title:
+          title: Title
+          type: string
+        token:
+          title: Token
+          type: string
+        unpublish_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unpublish At
+      required:
+      - note_id
+      - note_path
+      - title
+      - token
+      - path
+      - published_at
+      - republished_at
+      - unpublish_at
+      - stale
+      - deleted
+      title: PublicationListItem
+      type: object
+    PublicationListOut:
+      description: Listado de publicaciones del usuario (H-037).
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/PublicationListItem'
+          title: Items
+          type: array
+      required:
+      - items
+      title: PublicationListOut
+      type: object
     PublicationOut:
       description: Estado de publicación de una nota (H-035).
       properties:
@@ -331,6 +409,11 @@ components:
           - type: string
           - type: 'null'
           title: Token
+        unpublish_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Unpublish At
       required:
       - enabled
       - published
@@ -338,6 +421,7 @@ components:
       - path
       - published_at
       - republished_at
+      - unpublish_at
       - stale
       title: PublicationOut
       type: object
@@ -370,6 +454,26 @@ components:
       - content_type
       - visibility
       title: PublicationResource
+      type: object
+    PublishCreateIn:
+      additionalProperties: false
+      description: 'Cuerpo de POST para publicar una nota: añade campo de vencimiento
+        (H-037).'
+      properties:
+        html:
+          maxLength: 2000000
+          minLength: 1
+          title: Html
+          type: string
+        unpublish_at:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+          title: Unpublish At
+      required:
+      - html
+      title: PublishCreateIn
       type: object
     PublishIn:
       additionalProperties: false
@@ -1150,7 +1254,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PublishIn'
+              $ref: '#/components/schemas/PublishCreateIn'
         required: true
       responses:
         '201':
@@ -1352,6 +1456,78 @@ paths:
       summary: Check Publication Resources
       tags:
       - publications
+  /vaults/{vault_id}/notes/{note_id}/publication/expiry:
+    put:
+      description: Fija o quita la fecha de vencimiento de una publicación. Solo la
+        persona (sesión).
+      operationId: set_publication_expiry_vaults__vault_id__notes__note_id__publication_expiry_put
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicationExpiryIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found / Not published
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Set Publication Expiry
+      tags:
+      - publications
   /vaults/{vault_id}/notes/{note_id}/restore:
     post:
       operationId: restore_note_vaults__vault_id__notes__note_id__restore_post
@@ -1447,3 +1623,56 @@ paths:
       summary: Restore Note
       tags:
       - notes
+  /vaults/{vault_id}/publications:
+    get:
+      description: Lista las publicaciones de la bóveda del usuario. Solo la persona
+        (sesión).
+      operationId: list_vault_publications_vaults__vault_id__publications_get
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationListOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: List Vault Publications
+      tags:
+      - publications
