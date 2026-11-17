@@ -277,6 +277,28 @@ components:
       - detail
       title: ProblemError
       type: object
+    PublicationCheckOut:
+      description: Resultado de la comprobación de recursos de una publicación (H-035).
+      properties:
+        external:
+          items:
+            type: string
+          title: External
+          type: array
+        has_private:
+          title: Has Private
+          type: boolean
+        resources:
+          items:
+            $ref: '#/components/schemas/PublicationResource'
+          title: Resources
+          type: array
+      required:
+      - resources
+      - external
+      - has_private
+      title: PublicationCheckOut
+      type: object
     PublicationOut:
       description: Estado de publicación de una nota (H-035).
       properties:
@@ -318,6 +340,36 @@ components:
       - republished_at
       - stale
       title: PublicationOut
+      type: object
+    PublicationResource:
+      description: Recurso encontrado en una publicación (H-035, fase 2 comprobación).
+      properties:
+        content_type:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Content Type
+        id:
+          title: Id
+          type: string
+        name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Name
+        visibility:
+          enum:
+          - public
+          - private
+          - missing
+          title: Visibility
+          type: string
+      required:
+      - id
+      - name
+      - content_type
+      - visibility
+      title: PublicationResource
       type: object
     PublishIn:
       additionalProperties: false
@@ -1226,6 +1278,78 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Republish Note
+      tags:
+      - publications
+  /vaults/{vault_id}/notes/{note_id}/publication/check:
+    post:
+      description: Comprueba los recursos de una publicación potencial. Solo la persona
+        (sesión).
+      operationId: check_publication_resources_vaults__vault_id__notes__note_id__publication_check_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          format: uuid
+          title: Vault Id
+          type: string
+      - in: path
+        name: note_id
+        required: true
+        schema:
+          format: uuid
+          title: Note Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishIn'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicationCheckOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Note not found / Vault not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Check Publication Resources
       tags:
       - publications
   /vaults/{vault_id}/notes/{note_id}/restore:

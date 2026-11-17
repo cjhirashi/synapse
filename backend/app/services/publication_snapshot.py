@@ -93,3 +93,25 @@ def meta_of(frontmatter: dict, template: dict | None) -> dict:
                     break
 
     return meta
+
+
+_ATTR_RE = re.compile(r'(?:src|href)="([^"]+)"')
+_IMG_SRC_RE = re.compile(r'<img\b[^>]*?\bsrc="([^"]+)"')
+_MAX_RESOURCES = 200
+
+
+def collect_resources(clean: str) -> tuple[list[str], list[str]]:
+    """De un HTML ya limpio: (ids de archivos propios `/files/<id>` en `src` o `href`, URLs externas de imágenes http o https).
+
+    Sin repetir, en orden de aparición y con tope de 200 cada lista. El HTML limpio de nh3 usa comillas dobles y escapa `&`."""
+    own: dict[str, None] = {}
+    external: dict[str, None] = {}
+    for match in _ATTR_RE.finditer(clean):
+        found = pdf_service.FILE_PATH_RE.match(html.unescape(match.group(1)))
+        if found and len(own) < _MAX_RESOURCES:
+            own.setdefault(found.group(1))
+    for match in _IMG_SRC_RE.finditer(clean):
+        url = html.unescape(match.group(1))
+        if url.startswith(("http://", "https://")) and len(external) < _MAX_RESOURCES:
+            external.setdefault(url)
+    return list(own), list(external)

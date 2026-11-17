@@ -7,11 +7,12 @@ from datetime import UTC, datetime
 
 from sqlalchemy.exc import IntegrityError
 
+from app.adapters.file_repository import FileRepository
 from app.adapters.publication_repository import PublicationRepository
 from app.core.errors import AlreadyPublished, NotPublished, PublishNotEnabled
 from app.core.models.publication import Publication
 from app.services.note_content_service import NoteContentService, Versioned
-from app.services.publication_snapshot import clean_html, meta_of, number_headings, title_of
+from app.services.publication_snapshot import clean_html, collect_resources, meta_of, number_headings, title_of
 from app.services.template_lookup import find_template
 
 
@@ -30,10 +31,11 @@ def _iso(moment: datetime | None) -> str | None:
 class PublicationService:
     """Publica, republica, despublica y consulta una nota (una instancia por petición). Solo la persona (sesión) llega aquí."""
 
-    def __init__(self, notes: NoteContentService, repo: PublicationRepository, owner_id: str) -> None:
+    def __init__(self, notes: NoteContentService, repo: PublicationRepository, owner_id: str, files: FileRepository | None = None) -> None:
         self._notes = notes
         self._repo = repo
         self._owner_id = owner_id
+        self._files = files
 
     def _load(self, vault_id: str, note_id: str) -> tuple[Versioned, dict, dict | None]:
         """La nota (con su revisión), su frontmatter y su plantilla; lanza `NoteNotFound`/`VaultNotFound` si no existe."""
@@ -109,3 +111,43 @@ class PublicationService:
             raise NotPublished()
         self._repo.delete(pub)
         self._repo.commit()
+
+    def check(self, vault_id: str, note_id: str, html: str) -> dict:
+        """Comprueba los recursos de una publicación potencial.
+
+        Devuelve {resources: [...], external: [...], has_private: bool}.
+        """
+        # Cargar la nota para validar que existe
+        self._load(vault_id, note_id)
+
+        # Limpiar y recolectar recursos
+        clean = clean_html(html)
+        own_ids, external_urls = collect_resources(clean)
+
+        # Verificar recursos propios
+        resources = []
+        has_private = False
+
+        if self._files:
+            for file_id in own_ids:
+                record = self._files.get(file_id)
+                if record is None or record.owner_id != self._owner_id:
+                    # Archivo inexistente o de otro dueño: marcar como missing
+                    resources.append({"id": file_id, "name": None, "content_type": None, "visibility": "missing"})
+                    has_private = True
+                else:
+                    # Archivo propio: incluir sus metadatos
+                    resources.append({
+                        "id": file_id,
+                        "name": record.name,
+                        "content_type": record.content_type,
+                        "visibility": record.visibility,
+                    })
+                    if record.visibility == "private":
+                        has_private = True
+
+        return {
+            "resources": resources,
+            "external": external_urls,
+            "has_private": has_private,
+        }

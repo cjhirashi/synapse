@@ -6,13 +6,14 @@ from fastapi import APIRouter, Depends, Path, Response, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
+from app.adapters.file_repository import FileRepository
 from app.adapters.publication_repository import PublicationRepository
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
     AlreadyPublished, NoteNotFound, NotPublished, PasswordChangeRequired, PublishNotEnabled, StorageUnavailable, VaultNotFound,
 )
 from app.core.problems import problem_responses
-from app.core.schemas import PublicationOut, PublishIn, TokenPayload
+from app.core.schemas import PublicationCheckOut, PublicationOut, PublishIn, TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.notes import NoteId, get_note_content_service
 from app.routers.vaults import VaultId
@@ -101,3 +102,23 @@ def unpublish_note(
     """Despublica una nota. Solo la persona (sesión)."""
     pub_service = PublicationService(service, PublicationRepository(db), user.sub)
     pub_service.unpublish(vault_id, note_id)
+
+
+@router.post(
+    "/check",
+    response_model=PublicationCheckOut,
+    responses=problem_responses(NoteNotFound, VaultNotFound, StorageUnavailable),
+)
+def check_publication_resources(
+    vault_id: VaultId,
+    note_id: NoteId,
+    body: PublishIn,
+    user: TokenPayload = Depends(get_current_user),
+    service: NoteContentService = Depends(get_note_content_service),
+    db: Session = Depends(get_db),
+):
+    """Comprueba los recursos de una publicación potencial. Solo la persona (sesión)."""
+    pub_service = PublicationService(
+        service, PublicationRepository(db), user.sub, files=FileRepository(db)
+    )
+    return pub_service.check(vault_id, note_id, body.html)

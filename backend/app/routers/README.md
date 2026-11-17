@@ -21,7 +21,8 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
   actualizar parcial (`PATCH`), borrar y restaurar— con `ETag`; delega en `NoteContentService`. Las fechas
   de la nota las sella el servidor (día de CDMX) cuando escribe un agente. `POST /vaults/{vault}/notes/{id}/pdf`
   (H-036, solo sesión de la persona): HTML de Lectura + formato de la plantilla del documento → PDF (`NotePdfService`).
-- `publications.py` (H-035): gestión de publicaciones `/vaults/{vault_id}/notes/{note_id}/publication`. `GET` consulta el estado (habilitada, publicada, token, fechas, estale), `POST` publica, `PUT` republicar, `DELETE` despublica. Solo sesión de la persona (cookie), un agente recibe 401.
+- `publications.py` (H-035): gestión de publicaciones `/vaults/{vault_id}/notes/{note_id}/publication`. `GET` consulta el estado (habilitada, publicada, token, fechas, estale), `POST` publica, `PUT` republicar, `DELETE` despublica, `POST /check` comprueba recursos. Solo sesión de la persona (cookie), un agente recibe 401.
+- `public_pages.py` (H-035 fase 2): `GET /p/{token}` y `HEAD /p/{token}` sin sesión, con limitador de peticiones y cabeceras de seguridad.
 - `files.py` (H-015/H-016/H-025): `POST /files` (multipart, campos opcionales `folder` y `visibility` —`private` por defecto o `public`, a elegir al subir—), `GET /files/{id}`
   (un archivo público se sirve **sin credencial**; uno privado exige sesión o key del dueño),
   `PATCH /files/{id}` (nombre, carpeta —H-046: `folder` mueve el archivo; `""` es la raíz— y visibilidad; la visibilidad solo la cambia la persona con su sesión: una API key recibe `403` `file-visibility-user-only`) y `DELETE /files/{id}`. MinIO nunca se expone directo.

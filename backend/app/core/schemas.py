@@ -279,6 +279,23 @@ class PublicationOut(BaseModel):
     stale: bool
 
 
+class PublicationResource(BaseModel):
+    """Recurso encontrado en una publicación (H-035, fase 2 comprobación)."""
+
+    id: str
+    name: str | None
+    content_type: str | None
+    visibility: Literal["public", "private", "missing"]
+
+
+class PublicationCheckOut(BaseModel):
+    """Resultado de la comprobación de recursos de una publicación (H-035)."""
+
+    resources: list[PublicationResource]
+    external: list[str]
+    has_private: bool
+
+
 class NoteListItem(BaseModel):
     id: str
     vault_id: str

@@ -105,6 +105,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `etag.py` — validador de `ETag` según RFC 7232, incluido el débil (`W/`) que un intermediario produce al comprimir (`If-Match`).
 - `json_body.py` — decodificación de cuerpos JSON acotada en profundidad (un anidamiento excesivo da 422, no 500).
 - `config.py` — `Settings` (pydantic-settings): entorno, secretos y ajustes como `AGENT_ACCESS_MODE` (`shadow` por defecto, `enforce` u `off`), `SYSTEM_DOCS_SYNC` y `TASKS_*` (retención y vencimientos de tareas, H-053).
+- `rate_limit.py` (H-035 fase 2): limitador de peticiones por ventana deslizante con protección multi-threading.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
 

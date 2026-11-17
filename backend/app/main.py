@@ -17,6 +17,7 @@ from app.routers.notes import router as notes_router
 from app.routers.notifications import router as notifications_router
 from app.routers.agent_profiles import router as agent_profiles_router
 from app.routers.publications import router as publications_router
+from app.routers.public_pages import router as public_pages_router
 from app.routers.sync import router as sync_router
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
@@ -56,6 +57,7 @@ app.include_router(vaults_router)
 app.include_router(agent_access_router)
 app.include_router(notes_router)
 app.include_router(publications_router)
+app.include_router(public_pages_router)
 app.include_router(folders_router)
 app.include_router(files_router)
 app.include_router(file_folders_router)
