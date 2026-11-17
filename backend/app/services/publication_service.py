@@ -12,7 +12,7 @@ from app.adapters.publication_repository import PublicationRepository
 from app.core.errors import AlreadyPublished, NotPublished, PublishNotEnabled
 from app.core.models.publication import Publication
 from app.services.note_content_service import NoteContentService, Versioned
-from app.services.publication_snapshot import clean_html, collect_resources, meta_of, number_headings, title_of
+from app.services.publication_snapshot import clean_html, collect_resources, embed_frames, meta_of, number_headings, title_of
 from app.services.template_lookup import find_template
 
 
@@ -58,7 +58,9 @@ class PublicationService:
     @staticmethod
     def _snapshot(html: str, versioned: Versioned, frontmatter: dict, template: dict | None) -> dict:
         """Campos de la copia fija: HTML limpio con ids de encabezado, índice, título y metadatos mostrados."""
-        numbered, toc = number_headings(clean_html(html))
+        clean = clean_html(html)
+        framed = embed_frames(clean)
+        numbered, toc = number_headings(framed)
         return {
             "title": title_of(frontmatter, versioned.note.path),
             "html": numbered,

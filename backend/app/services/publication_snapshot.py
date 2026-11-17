@@ -95,6 +95,105 @@ def meta_of(frontmatter: dict, template: dict | None) -> dict:
     return meta
 
 
+_UUID = r"(?i:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"  # mayúsculas solo en los dígitos
+_EMBED_FILE = re.compile(rf"https://synapse\.cjhirashi\.com/files/{_UUID}")
+_EMBED_FILES_HOST = re.compile(r"https://files-synapse\.cjhirashi\.com/[A-Za-z0-9._~%/-]+")
+_EMBED_VIDEO = re.compile(r"https://www\.youtube-nocookie\.com/embed/[A-Za-z0-9_-]{11}(\?start=\d{1,6})?")
+
+
+def embed_kind(url: str) -> str | None:
+    """`"file"` (un archivo de esta Synapse), `"video"` (YouTube sin cookies) o `None`. Lista cerrada de orígenes.
+
+    Misma regla que `frontend/src/editor/htmlSanitizer.ts` (`isAllowedEmbedSrc`). Se valida la cadena ORIGINAL completa (no una reconstruida): solo `https`,
+    sin usuario, puerto, consulta ni fragmento (la consulta `?start=N` solo vale en video), sin espacios ni saltos de línea y sin tramos `..` ni `%2e`.
+    """
+    if re.search(r"\s", url) or "/.." in url or re.search(r"%2e", url, re.IGNORECASE):
+        return None
+    if _EMBED_FILE.fullmatch(url) or _EMBED_FILES_HOST.fullmatch(url):
+        return "file"
+    if _EMBED_VIDEO.fullmatch(url):
+        return "video"
+    return None
+
+
+def embed_frames(clean: str) -> str:
+    """Convierte enlaces pub-embed en iframes si su URL pasa embed_kind.
+
+    Sobre HTML ya limpio por nh3, busca <a ...class="pub-embed"... href="...">...</a> y:
+    - Si href pasa embed_kind como 'file': convierte a iframe para archivo.
+    - Si href pasa embed_kind como 'video': convierte a iframe para YouTube.
+    - Si href no pasa: deja el enlace tal cual.
+    - Si class != 'pub-embed' exacto: no toca.
+    """
+    result = []
+    pattern = re.compile(r'<a\b([^>]*)>(.*?)</a>', re.DOTALL)
+    last_end = 0
+
+    for match in pattern.finditer(clean):
+        result.append(clean[last_end:match.start()])
+
+        attrs_str = match.group(1)
+        inner = match.group(2)
+
+        # Extraer class y href de los atributos
+        class_match = re.search(r'class="([^"]*)"', attrs_str)
+        href_match = re.search(r'href="([^"]*)"', attrs_str)
+
+        css_class = class_match.group(1) if class_match else ""
+        href_escaped = href_match.group(1) if href_match else ""
+
+        # Solo procesar si class es exactamente "pub-embed"
+        if css_class == "pub-embed" and href_escaped:
+            # Unescape href para validar
+            href = html.unescape(href_escaped)
+            kind = embed_kind(href)
+
+            # Extraer título del contenido
+            title = html.unescape(nh3.clean(inner, tags=set())).strip()
+            if not title:
+                title = "Contenido incrustado"
+
+            if kind == "file":
+                # Marco para archivo
+                result.append(
+                    f'<div class="pub-embed-frame"><iframe src="{html.escape(href, quote=True)}" '
+                    f'title="{html.escape(title, quote=True)}" sandbox="allow-scripts" '
+                    f'referrerpolicy="no-referrer" loading="lazy"></iframe>'
+                    f'<a class="pub-embed-open" href="{html.escape(href, quote=True)}" target="_blank" '
+                    f'rel="noopener noreferrer">Abrir en una pestaña nueva</a></div>'
+                )
+            elif kind == "video":
+                # Extraer id de video y start de la URL
+                video_match = re.search(r"/embed/([A-Za-z0-9_-]{11})(?:\?start=(\d{1,6}))?", href)
+                if video_match:
+                    video_id = video_match.group(1)
+                    start = video_match.group(2)
+                    extra = f"&t={start}" if start else ""
+                    youtube_url = f"https://www.youtube.com/watch?v={video_id}{extra}"
+                    result.append(
+                        f'<div class="pub-embed-frame pub-embed-frame--video"><iframe src="{html.escape(href, quote=True)}" '
+                        f'title="{html.escape(title, quote=True)}" sandbox="allow-scripts allow-same-origin allow-presentation" '
+                        f'allow="fullscreen" allowfullscreen referrerpolicy="strict-origin-when-cross-origin" '
+                        f'loading="lazy"></iframe>'
+                        f'<a class="pub-embed-open" href="{html.escape(youtube_url, quote=True)}" target="_blank" '
+                        f'rel="noopener noreferrer">Abrir en YouTube</a></div>'
+                    )
+                else:
+                    # No se pudo extraer; dejar como enlace
+                    result.append(match.group(0))
+            else:
+                # URL no permitida: dejar como enlace normal
+                result.append(match.group(0))
+        else:
+            # Otra clase o sin pub-embed: no tocar
+            result.append(match.group(0))
+
+        last_end = match.end()
+
+    result.append(clean[last_end:])
+    return "".join(result)
+
+
 _ATTR_RE = re.compile(r'(?:src|href)="([^"]+)"')
 _IMG_SRC_RE = re.compile(r'<img\b[^>]*?\bsrc="([^"]+)"')
 _MAX_RESOURCES = 200
@@ -103,13 +202,24 @@ _MAX_RESOURCES = 200
 def collect_resources(clean: str) -> tuple[list[str], list[str]]:
     """De un HTML ya limpio: (ids de archivos propios `/files/<id>` en `src` o `href`, URLs externas de imágenes http o https).
 
-    Sin repetir, en orden de aparición y con tope de 200 cada lista. El HTML limpio de nh3 usa comillas dobles y escapa `&`."""
+    Sin repetir, en orden de aparición y con tope de 200 cada lista. El HTML limpio de nh3 usa comillas dobles y escapa `&`.
+    También reconoce URLs absolutas a archivos propios mediante pdf_service.own_file_path.
+    """
     own: dict[str, None] = {}
     external: dict[str, None] = {}
     for match in _ATTR_RE.finditer(clean):
-        found = pdf_service.FILE_PATH_RE.match(html.unescape(match.group(1)))
+        url = html.unescape(match.group(1))
+        # Intentar como /files/<id>
+        found = pdf_service.FILE_PATH_RE.match(url)
         if found and len(own) < _MAX_RESOURCES:
             own.setdefault(found.group(1))
+        else:
+            # Intentar como URL absoluta a archivo propio
+            own_path = pdf_service.own_file_path(url)
+            if own_path and len(own) < _MAX_RESOURCES:
+                match_path = pdf_service.FILE_PATH_RE.match(own_path)
+                if match_path:
+                    own.setdefault(match_path.group(1))
     for match in _IMG_SRC_RE.finditer(clean):
         url = html.unescape(match.group(1))
         if url.startswith(("http://", "https://")) and len(external) < _MAX_RESOURCES:

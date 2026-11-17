@@ -231,7 +231,7 @@ def test_title_and_description_are_escaped(ready_admin):
     assert "<script>" not in res.text
 
     # La descripción debe estar escapada (en el contenido de aside, no en CSS)
-    assert ("<aside>" in res.text and "&quot;&gt;" in res.text) or ("<aside>" in res.text and "&#" in res.text)
+    assert 'class="doc-desc"' in res.text and "&quot;&gt;" in res.text
 
 
 def test_html_content_is_already_clean_from_snapshot(ready_admin):
@@ -495,7 +495,7 @@ def test_render_page_survives_json_of_the_wrong_type():
         note_rev="r", published_at=datetime(2026, 11, 17),
     )
     page = render_page(pub)
-    assert 'href="#h-1"' in page and "<p>x</p>" in page and "<aside>" not in page
+    assert 'href="#h-1"' in page and "<p>x</p>" in page and 'class="doc-meta"' not in page and 'class="doc-desc"' not in page
 
 
 def test_unpublished_nonexistent_and_deleted_give_the_same_404_page_and_headers(ready_admin):

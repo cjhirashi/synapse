@@ -75,7 +75,22 @@ export function buildPdfHtml(root: Element, origin = window.location.origin, opt
     const src = iframe.getAttribute("src");
     const isVideo = src !== null && parseYoutubeEmbedSrc(src) !== null;
     const title = iframe.getAttribute("title")?.trim() || (isVideo ? "Video de YouTube" : "Contenido incrustado");
-    container.replaceWith(placeholder(doc, title, embedLink(src, origin)));
+    if (isWeb) {
+      // En web se reemplaza por un enlace marcado con class="pub-embed" que el servidor convertirá en iframe. Lleva la dirección del propio
+      // iframe (la de incrustar, también en YouTube), no el enlace legible del PDF.
+      const target = src === null ? null : src.startsWith("/") ? `${origin}${src}` : /^https:\/\//i.test(src) ? src : null;
+      if (target) {
+        const anchor = doc.createElement("a");
+        anchor.className = "pub-embed";
+        anchor.setAttribute("href", target);
+        anchor.textContent = title;
+        container.replaceWith(anchor);
+      } else {
+        container.remove();
+      }
+    } else {
+      container.replaceWith(placeholder(doc, title, embedLink(src, origin)));
+    }
   }
   for (const media of Array.from(copy.querySelectorAll("video, audio"))) {
     const src = media.getAttribute("src") ?? media.querySelector("source")?.getAttribute("src") ?? null;

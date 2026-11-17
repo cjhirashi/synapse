@@ -11,6 +11,18 @@ function html(inner: string): string {
 }
 
 describe("buildPdfHtml", () => {
+  it("en web un video de YouTube conserva su dirección de incrustar (el servidor la valida), no la de ver", () => {
+    const out = buildPdfHtml(Object.assign(document.createElement("div"), { innerHTML: '<div class="md-embed"><iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk?start=5" title="Video"></iframe></div>' }), ORIGIN, { target: "web" });
+    expect(out).toContain('<a class="pub-embed" href="https://www.youtube-nocookie.com/embed/abcdefghijk?start=5">Video</a>');
+    expect(out).not.toContain("youtube.com/watch");
+  });
+
+  it("en web un incrustado con ruta relativa se completa con el origen y uno que no es https se descarta", () => {
+    const out = buildPdfHtml(Object.assign(document.createElement("div"), { innerHTML: '<div class="md-embed"><iframe src="/files/abc" title="A"></iframe></div><div class="md-embed"><iframe src="http://x.test/a" title="B"></iframe></div>' }), ORIGIN, { target: "web" });
+    expect(out).toContain(`<a class="pub-embed" href="${ORIGIN}/files/abc">A</a>`);
+    expect(out).not.toContain("x.test");
+  });
+
   it("conserva el estilo de las cajas de maquetación (div con style) para que el servidor las filtre e imprima", () => {
     const out = html('<p><span class="md-html" data-type="html" contenteditable="false"><span style="color: #fff">a</span></span></p><div class="md-html" data-type="html"><div style="width: 120px; height: 48px; background: #1f9bb8"></div></div>');
     expect(out).toContain('<div style="width: 120px; height: 48px; background: #1f9bb8"></div>');
@@ -104,6 +116,45 @@ describe("buildPdfHtml", () => {
     const out = html('<div class="pdf-mark" data-pdf-mark="indice"></div><div class="pdf-mark" data-pdf-mark="salto"></div>');
     expect(out).toContain('<div class="pdf-indice"></div>');
     expect(out).toContain('<div class="pdf-salto"></div>');
+  });
+
+  it("con destino web un iframe se reemplaza por un enlace pub-embed sin contenedor", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="md-embed"><div class="md-embed-open-wrap"><iframe src="https://synapse.cjhirashi.com/files/00000000-0000-4000-8000-000000000000" title="Gráfica"></iframe><a class="md-embed-open" href="...">x</a></div></div>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).toContain('<a class="pub-embed" href="https://synapse.cjhirashi.com/files/00000000-0000-4000-8000-000000000000">Gráfica</a>');
+    expect(out).not.toContain("iframe");
+    expect(out).not.toContain("md-embed");
+  });
+
+  it("con destino web un iframe sin src se quita sin dejar nada", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="md-embed"><iframe srcdoc="<b>x</b>"></iframe></div>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).not.toContain("md-embed");
+    expect(out).not.toContain("iframe");
+  });
+
+  it("con destino web un iframe sin title usa 'Contenido incrustado'", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="md-embed"><iframe src="/files/abc-1"></iframe></div>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).toContain('<a class="pub-embed" href="' + ORIGIN + '/files/abc-1">Contenido incrustado</a>');
+  });
+
+  it("con destino web un video YouTube se reemplaza por un enlace pub-embed", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="md-embed"><iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=30" title="Mi video"></iframe></div>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).toContain('<a class="pub-embed" href="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=30">Mi video</a>'); // la dirección de incrustar, no la de ver
+    expect(out).not.toContain("iframe");
+  });
+
+  it("con destino pdf se conserva todo como antes (prueba existente sigue verde)", () => {
+    const out = html('<div class="md-embed"><div class="md-embed-open-wrap"><iframe src="https://synapse.cjhirashi.com/files/00000000-0000-4000-8000-000000000000" title="Gráfica"></iframe></div></div>');
+    expect(out).toContain('class="pdf-embed"');
+    expect(out).toContain("Gráfica");
+    expect(out).not.toContain("iframe");
   });
 });
 

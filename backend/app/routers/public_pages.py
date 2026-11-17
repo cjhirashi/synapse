@@ -19,7 +19,7 @@ limiter = RateLimiter(limit=120, window_seconds=60)  # por IP y minuto; cuentan 
 
 # Sin scripts ni iframes (`default-src 'none'`); el estilo en línea hace falta por los `style` ya filtrados del contenido.
 PUBLIC_HEADERS = {
-    "Content-Security-Policy": "default-src 'none'; img-src 'self' data: https:; media-src 'self' https:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'none'; img-src 'self' data: https:; media-src 'self' https:; style-src 'unsafe-inline'; frame-src https://synapse.cjhirashi.com https://files-synapse.cjhirashi.com https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     "X-Robots-Tag": "noindex, nofollow, noarchive",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
