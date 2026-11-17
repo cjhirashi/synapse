@@ -87,9 +87,11 @@ import type { PaletteKey } from "../vaults/vaultIcon";
 import type { ParseCache } from "./markdown/parseCache";
 import type { AttributeCatalog } from "../sync/vaultRules";
 import { useSync } from "../sync/useSync";
-import { buildPdfHtml } from "../notes/pdfHtml";
+import { buildPdfHtml, buildPublishHtml } from "../notes/pdfHtml";
 import { fetchNotePdf, pdfErrorMessage, saveBlob } from "../notes/pdfApi";
 import { usePdfEnabled } from "../notes/usePdfEnabled";
+import { usePublication } from "../notes/usePublication";
+import PublishControl from "../notes/PublishControl";
 import { useTemplateOptions, type TemplateOption } from "../notes/useTemplateOptions";
 import { appliesTo } from "../notes/metaRules";
 import { folderOf, indexPathFor, isIndexPath } from "../notes/indexRules";
@@ -293,6 +295,9 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   /** H-036: el botón «PDF» solo existe si la plantilla del documento lo activa; mientras se genera queda deshabilitado. */
   const pdfEnabled = usePdfEnabled(notes, note?.vault_id ?? "", note?.id ?? null, notesVersion);
   const [pdfBusy, setPdfBusy] = useState(false);
+  /** H-035: publicación en web; solo habilitada si la plantilla lo permite. */
+  const hasTemplate = typeof note?.frontmatter?.plantilla === "string" && note.frontmatter.plantilla !== "";
+  const { status: publication, setStatus: setPublication } = usePublication(note?.vault_id ?? "", note?.id ?? null, hasTemplate, note?.rev);
   /** H-054: plantillas que se pueden asignar a este documento (existen y su alcance cubre su carpeta; la vigente siempre sale). */
   const allTemplates = useTemplateOptions(notes, note?.vault_id ?? "", notesVersion);
   const templateOptions = useMemo(() => {
@@ -1158,6 +1163,18 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           >
             <FileDown size={16} aria-hidden="true" />
           </button>
+        )}
+        {mode === "read" && note && publication && (publication.enabled || publication.published) && (
+          <PublishControl
+            vaultId={note.vault_id}
+            noteId={note.id}
+            status={publication}
+            onStatus={setPublication}
+            getHtml={() => {
+              const root = editorBodyRef.current?.querySelector(".milkdown-view .ProseMirror");
+              return root ? buildPublishHtml(root) : null;
+            }}
+          />
         )}
         {mode === "read" ? (
           <button

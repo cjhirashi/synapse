@@ -58,9 +58,10 @@ function svgToImage(doc: Document, svg: SVGElement): HTMLImageElement | null {
 }
 
 /** HTML imprimible del contenido de Lectura (`root` es el `.ProseMirror` de solo lectura). No modifica el DOM de la página. */
-export function buildPdfHtml(root: Element, origin = window.location.origin): string {
+export function buildPdfHtml(root: Element, origin = window.location.origin, options: { target?: "pdf" | "web" } = {}): string {
   const copy = root.cloneNode(true) as Element;
   const doc = copy.ownerDocument;
+  const isWeb = options.target === "web";
 
   // Comentarios de revisión (`div.comentario`): son para quien edita el documento y nunca se imprimen.
   copy.querySelectorAll("div.comentario").forEach((node) => node.remove());
@@ -94,10 +95,23 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
   }
 
   // Marcas de índice y de salto de página: el servidor las reconoce por su clase (arma el índice y corta la hoja).
-  for (const mark of Array.from(copy.querySelectorAll(".pdf-mark"))) {
-    const slot = doc.createElement("div");
-    slot.className = mark.getAttribute("data-pdf-mark") === "indice" ? "pdf-indice" : "pdf-salto";
-    mark.replaceWith(slot);
+  if (isWeb) {
+    // En web se quitan completamente.
+    copy.querySelectorAll(".pdf-mark").forEach((node) => node.remove());
+  } else {
+    // En PDF se convierten en marcadores.
+    for (const mark of Array.from(copy.querySelectorAll(".pdf-mark"))) {
+      const slot = doc.createElement("div");
+      slot.className = mark.getAttribute("data-pdf-mark") === "indice" ? "pdf-indice" : "pdf-salto";
+      mark.replaceWith(slot);
+    }
+  }
+
+  // Portadas: en web se sustituyen por sus hijos, en PDF se dejan como están.
+  if (isWeb) {
+    for (const portada of Array.from(copy.querySelectorAll("section.pdf-portada"))) {
+      portada.replaceWith(...Array.from(portada.childNodes));
+    }
   }
 
   for (const svg of Array.from(copy.querySelectorAll("svg"))) {
@@ -132,4 +146,9 @@ export function buildPdfHtml(root: Element, origin = window.location.origin): st
   // Se serializa cada hijo (no se lee el marcado con APIs de cadena: RNF-003); el servidor lo analiza como HTML y lo limpia.
   const serializer = new XMLSerializer();
   return Array.from(copy.childNodes, (node) => serializer.serializeToString(node)).join("").split(' xmlns="http://www.w3.org/1999/xhtml"').join("");
+}
+
+/** HTML para publicar en web (sin portadas ni marcas PDF). */
+export function buildPublishHtml(root: Element, origin = window.location.origin): string {
+  return buildPdfHtml(root, origin, { target: "web" });
 }

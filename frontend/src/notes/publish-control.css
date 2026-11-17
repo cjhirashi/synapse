@@ -1,0 +1,253 @@
+/* Control de publicación de un documento (H-035): botón y diálogo */
+
+.publish-trigger {
+  position: relative;
+}
+
+.publish-dot {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-secondary);
+}
+
+.publish-dot[data-state="ok"] {
+  background: var(--success);
+}
+
+.publish-dot[data-state="stale"] {
+  background: var(--warning);
+}
+
+/* Vistas del diálogo */
+.publish-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.publish-view p {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.publish-secondary {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+/* Alertas y avisos */
+.publish-alert {
+  display: block;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.publish-alert strong {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+}
+
+.publish-alert ul {
+  margin: var(--space-2) 0;
+  padding-left: var(--space-4);
+  list-style: disc;
+}
+
+.publish-alert li {
+  margin: var(--space-1) 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.publish-alert--warning {
+  border-color: var(--warning-text);
+  background: color-mix(in srgb, var(--warning-text) 10%, var(--bg-tertiary));
+}
+
+.publish-alert button {
+  margin-top: var(--space-2);
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.9375rem;
+}
+
+.publish-alert button:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--bg-secondary));
+}
+
+/* Info (éxito, nota) */
+.publish-info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+.publish-info svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-secondary);
+}
+
+/* Zona de revisión */
+.publish-review:empty,
+.publish-status:empty {
+  /* Las zonas de aviso siguen en el DOM (los lectores de pantalla anuncian lo que aparece), pero vacías no ocupan espacio ni dejan hueco. */
+  margin-top: calc(var(--space-3) * -1);
+}
+
+/* Casilla de reconocimiento */
+.publish-ack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: var(--space-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.publish-ack input[type="checkbox"] {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.publish-ack span {
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+}
+
+/* Sección de enlace público */
+.publish-link-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.publish-link-section label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.publish-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.publish-link-row input[type="text"] {
+  flex: 1 1 12rem;
+  min-width: 0;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.publish-link-row input[type="text"]::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.publish-link-row button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.publish-link-row button:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--bg-secondary));
+  border-color: var(--border);
+}
+
+.publish-link-row button:active {
+  background: color-mix(in srgb, var(--text-primary) 10%, var(--bg-secondary));
+}
+
+.publish-link-row button svg {
+  flex-shrink: 0;
+}
+
+.publish-status {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  transition: opacity var(--dur-fast) ease-out;
+}
+
+/* Enlace de abrir página */
+.publish-link-open {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease-out;
+}
+
+.publish-link-open:hover {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-secondary));
+}
+
+.publish-link-open svg {
+  flex-shrink: 0;
+}
+
+/* Fechas */
+.publish-dates {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Respeta prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .publish-status {
+    transition: none;
+  }
+}
+
+.publish-alert--ok {
+  border-color: var(--success-text);
+  background: color-mix(in srgb, var(--success-text) 10%, var(--bg-tertiary));
+}

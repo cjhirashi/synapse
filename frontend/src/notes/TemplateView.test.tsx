@@ -33,13 +33,14 @@ async function open() {
   return { store, template, user: userEvent.setup() };
 }
 
-test("muestra las cuatro secciones y deja el diseño del PDF apagado", async () => {
+test("muestra las cinco secciones y deja el diseño del PDF apagado", async () => {
   await open();
-  for (const title of ["Dónde se usa", "Atributos opcionales", "Diseño del PDF", "Estructura base"]) {
+  for (const title of ["Dónde se usa", "Atributos opcionales", "Diseño del PDF", "Publicación en la web", "Estructura base"]) {
     expect(screen.getByRole("heading", { level: 3, name: title })).toBeInTheDocument();
   }
   expect(screen.getByRole("radio", { name: "En toda la bóveda" })).toBeChecked();
   expect(screen.getByRole("checkbox", { name: /Permitir descargar/ })).not.toBeChecked();
+  expect(screen.getByRole("checkbox", { name: /Permitir publicar los documentos de esta plantilla/ })).not.toBeChecked();
   expect(screen.getByRole("combobox", { name: "Tamaño" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "Guardar plantilla" })).toBeDisabled();
 });
@@ -61,7 +62,7 @@ test("guarda alcance por carpetas, un atributo con valor inicial y la estructura
   });
 });
 
-test("guardar la plantilla conserva estilo.publicar tal como estaba (H-035: aún no se edita desde aquí)", async () => {
+test("la plantilla carga el estado de publicar y se puede editar", async () => {
   counter += 1;
   const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
   const template = await store.createTemplate(VAULT, "Acta");
@@ -70,11 +71,23 @@ test("guardar la plantilla conserva estilo.publicar tal como estaba (H-035: aún
   render(<TemplateView noteId={template.id} vault={{ id: VAULT, name: "Bóveda" }} notes={store} notesVersion={0} />);
   await screen.findByRole("heading", { name: "Plantilla acta" });
   const user = userEvent.setup();
-  await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
-  await user.type(screen.getByLabelText("Nombre del atributo 1"), "cliente");
+  const checkbox = screen.getByRole("checkbox", { name: /Permitir publicar los documentos de esta plantilla/ });
+  await waitFor(() => expect(checkbox).toBeChecked());
+  await user.click(checkbox);
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
-  await waitFor(async () => expect(((await store.get(template.id)).frontmatter.atributos as unknown[]).length).toBe(1));
-  expect((await store.get(template.id)).frontmatter.estilo).toMatchObject({ publicar: { activo: true } });
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estilo).toMatchObject({ publicar: {} }));
+});
+
+test("activar el interruptor de publicación guarda estilo.publicar con activo: true, apagarlo guarda estilo.publicar vacío", async () => {
+  const { store, template, user } = await open();
+  const checkbox = screen.getByRole("checkbox", { name: /Permitir publicar los documentos de esta plantilla/ });
+  await user.click(checkbox);
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estilo).toMatchObject({ publicar: { activo: true } }));
+
+  await user.click(checkbox);
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.estilo).toMatchObject({ publicar: {} }));
 });
 
 test("una definición inválida (nombre de atributo con mayúsculas) no se guarda y explica el motivo", async () => {

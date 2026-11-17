@@ -1,6 +1,6 @@
 // H-036: HTML imprimible de Lectura — recuadros para lo interactivo, SVG a imagen, controles fuera, imágenes propias reconocibles.
 import { describe, expect, it } from "vitest";
-import { buildPdfHtml, embedLink, normalizeImageSrc } from "./pdfHtml";
+import { buildPdfHtml, buildPublishHtml, embedLink, normalizeImageSrc } from "./pdfHtml";
 
 const ORIGIN = "https://synapse.test";
 
@@ -78,6 +78,32 @@ describe("buildPdfHtml", () => {
     const out = buildPdfHtml(root, ORIGIN);
     expect(out).toContain('src="/files/img-9"');
     expect(root.querySelector("iframe")).not.toBeNull();
+  });
+
+  it("con destino web quita las marcas de índice y salto en lugar de convertirlas", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<div class="pdf-mark" data-pdf-mark="indice"></div><p>contenido</p><div class="pdf-mark" data-pdf-mark="salto"></div>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).not.toContain("pdf-indice");
+    expect(out).not.toContain("pdf-salto");
+    expect(out).not.toContain("pdf-mark");
+    expect(out).toContain("<p>contenido</p>");
+  });
+
+  it("con destino web sustituye las portadas por sus propios hijos", () => {
+    const root = document.createElement("div");
+    root.innerHTML = '<section class="pdf-portada" data-pdf-label="Portada"><h1>Título</h1><p>Subtítulo</p></section><p>resto</p>';
+    const out = buildPublishHtml(root, ORIGIN);
+    expect(out).toContain("<h1>Título</h1>");
+    expect(out).toContain("<p>Subtítulo</p>");
+    expect(out).toContain("<p>resto</p>");
+    expect(out).not.toContain("pdf-portada");
+  });
+
+  it("destino pdf por omisión conserva los marcadores pdf-indice y pdf-salto", () => {
+    const out = html('<div class="pdf-mark" data-pdf-mark="indice"></div><div class="pdf-mark" data-pdf-mark="salto"></div>');
+    expect(out).toContain('<div class="pdf-indice"></div>');
+    expect(out).toContain('<div class="pdf-salto"></div>');
   });
 });
 

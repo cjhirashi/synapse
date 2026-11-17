@@ -80,6 +80,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
   const [instrucciones, setInstrucciones] = useState("");
   const [estructura, setEstructura] = useState("");
   const [pdf, setPdf] = useState<PdfDraft>(DEFAULT_PDF_DRAFT);
+  const [publicar, setPublicar] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +119,8 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
     setInstrucciones(typeof fm.instrucciones === "string" ? fm.instrucciones : "");
     const style = fm.estilo && typeof fm.estilo === "object" ? (fm.estilo as Record<string, unknown>) : {};
     setPdf(pdfDraftFrom(style.pdf));
+    const isPublicarActive = style.publicar && typeof style.publicar === "object" && (style.publicar as Record<string, unknown>).activo === true;
+    setPublicar(!!isPublicarActive);
     setEstructura(note.content);
   }, [note, dirty]);
 
@@ -143,9 +146,6 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
 
   async function save() {
     if (!note) return;
-    // Se conserva `estilo.publicar` (H-035) tal como está guardado: aquí todavía no se edita.
-    const previous = note.frontmatter?.estilo;
-    const publicar = previous && typeof previous === "object" && !Array.isArray(previous) ? (previous as Record<string, unknown>).publicar ?? {} : {};
     const frontmatter = {
       ...note.frontmatter,
       titulo,
@@ -156,7 +156,7 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
         .filter((estado) => estado.nombre.trim() !== "")
         .map((estado) => ({ nombre: normalizeEstado(estado.nombre) ?? estado.nombre.trim(), color: estado.color })),
       instrucciones,
-      estilo: { publicar, pdf: pdfDraftTo(pdf) },
+      estilo: { publicar: publicar ? { activo: true } : {}, pdf: pdfDraftTo(pdf) },
     };
     const code = checkDefinition(frontmatter);
     if (code !== null) {
@@ -347,7 +347,17 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
             <PdfStyleSection vaultId={vault.id} draft={pdf} attributeNames={rows.map((row) => row.nombre.trim())} onChange={edit(setPdf)} />
           </TemplateSection>
 
-          <TemplateSection step={4} title="Estructura base" description="Las instrucciones de uso de la plantilla y, aparte, el Markdown con el que nace cada documento nuevo.">
+          <TemplateSection step={4} title="Publicación en la web" description="Permite compartir los documentos de esta plantilla con un enlace público. Cada documento se publica a mano, con confirmación, y es una copia fija.">
+            <label className="tv-toggle">
+              <input type="checkbox" className="tv-switch" checked={publicar} onChange={(event) => edit(setPublicar)(event.target.checked)} />
+              <span className="tv-toggle-text">
+                <strong>Permitir publicar los documentos de esta plantilla en la web</strong>
+                <span>Los documentos muestran un botón de publicar junto a «PDF». Solo tú puedes publicar, y los archivos que use el documento deben ser públicos para verse.</span>
+              </span>
+            </label>
+          </TemplateSection>
+
+          <TemplateSection step={5} title="Estructura base" description="Las instrucciones de uso de la plantilla y, aparte, el Markdown con el que nace cada documento nuevo.">
             <label className="tv-field">
               <span>Instrucciones</span>
               <textarea

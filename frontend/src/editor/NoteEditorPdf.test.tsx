@@ -1,11 +1,15 @@
 // H-036: botón «PDF» del documento — solo si su plantilla lo activa; manda el HTML de Lectura y descarga el archivo.
+// H-035: botón de publicación — solo si su plantilla lo activa; manda el HTML de Lectura para publicar.
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DataMemoryRouter } from "../test-utils/router";
 import { memoryDb, syncValue, WithSync } from "../test-utils/sync";
 import * as pdfApi from "../notes/pdfApi";
+import * as publicationApi from "../notes/publicationApi";
 import NoteEditor, { type NoteEditorViews, type ViewProps } from "./NoteEditor";
+
+vi.mock("../notes/publicationApi");
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -27,6 +31,18 @@ async function setup(pdf: Record<string, unknown>, withTemplate = true) {
   await value.notes.save(template.id, template.content, template.rev, { ...template.frontmatter, estilo: { publicar: {}, pdf } });
   const note = await value.notes.create(VAULT, "Acta de hoy", "", withTemplate ? { name: "acta", content: "# Hola\n", atributos: [] } : undefined);
   if (!withTemplate) await value.notes.save(note.id, "# Hola\n", note.rev);
+
+  // Mock getPublication para todos los tests
+  vi.spyOn(publicationApi, "getPublication").mockResolvedValue({
+    enabled: false,
+    published: false,
+    token: null,
+    path: null,
+    published_at: null,
+    republished_at: null,
+    stale: false,
+  });
+
   render(
     <DataMemoryRouter>
       <WithSync value={value}><NoteEditor noteId={note.id} views={views} /></WithSync>
@@ -70,5 +86,101 @@ describe("botón PDF", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Descargar como PDF" }));
     expect(await screen.findByText(/necesitas conexión/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Descargar como PDF" })).toBeEnabled();
+  });
+});
+
+describe("botón de publicación (H-035)", () => {
+  it("no aparece si la plantilla no activa publicación", async () => {
+    vi.spyOn(publicationApi, "getPublication").mockResolvedValue({
+      enabled: false,
+      published: false,
+      token: null,
+      path: null,
+      published_at: null,
+      republished_at: null,
+      stale: false,
+    });
+    await setup({});
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("button", { name: /publicar en la web/ })).toBeNull();
+  });
+
+  it("no aparece si el documento no tiene plantilla", async () => {
+    vi.spyOn(publicationApi, "getPublication").mockResolvedValue({
+      enabled: false,
+      published: false,
+      token: null,
+      path: null,
+      published_at: null,
+      republished_at: null,
+      stale: false,
+    });
+    await setup({ activo: true }, false);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByRole("button", { name: /publicar en la web/ })).toBeNull();
+  });
+
+  it("aparece si la plantilla activa publicación y el documento tiene plantilla", async () => {
+    const { value } = syncValue({}, memoryDb());
+    const template = await value.notes.createTemplate(VAULT, "Acta");
+    await value.notes.save(template.id, template.content, template.rev, {
+      ...template.frontmatter,
+      estilo: { publicar: { activo: true }, pdf: {} },
+    });
+    const note = await value.notes.create(VAULT, "Acta de hoy", "", { name: "acta", content: "# Hola\n", atributos: [] });
+
+    vi.spyOn(publicationApi, "getPublication").mockResolvedValue({
+      enabled: true,
+      published: false,
+      token: null,
+      path: null,
+      published_at: null,
+      republished_at: null,
+      stale: false,
+    });
+
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}><NoteEditor noteId={note.id} views={views} /></WithSync>
+      </DataMemoryRouter>,
+    );
+
+    await screen.findByRole("heading", { name: "Acta de hoy" });
+    // El botón debería estar presente cuando status.enabled sea verdadero
+    // Esperamos a que se complete el ciclo de rendering
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.querySelector(".publish-trigger")).toBeInTheDocument();
+  });
+
+  it("aparece si el documento está publicado, aunque la plantilla ya no lo active", async () => {
+    const { value } = syncValue({}, memoryDb());
+    const template = await value.notes.createTemplate(VAULT, "Acta");
+    await value.notes.save(template.id, template.content, template.rev, {
+      ...template.frontmatter,
+      estilo: { publicar: {}, pdf: {} },
+    });
+    const note = await value.notes.create(VAULT, "Acta de hoy", "", { name: "acta", content: "# Hola\n", atributos: [] });
+
+    vi.spyOn(publicationApi, "getPublication").mockResolvedValue({
+      enabled: false,
+      published: true,
+      token: "token123",
+      path: "/pub/note1",
+      published_at: "2026-11-17T10:00:00Z",
+      republished_at: null,
+      stale: false,
+    });
+
+    render(
+      <DataMemoryRouter>
+        <WithSync value={value}><NoteEditor noteId={note.id} views={views} /></WithSync>
+      </DataMemoryRouter>,
+    );
+
+    await screen.findByRole("heading", { name: "Acta de hoy" });
+    // El botón debería estar presente cuando status.published sea verdadero
+    // Esperamos a que se complete el ciclo de rendering
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(document.querySelector(".publish-trigger")).toBeInTheDocument();
   });
 });
