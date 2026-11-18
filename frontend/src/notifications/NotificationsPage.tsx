@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlarmClock, CalendarClock, Check, CheckCheck, Globe, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
+import { AlarmClock, CalendarClock, Check, CheckCheck, Gauge, Globe, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
@@ -15,6 +15,7 @@ const KIND: Record<string, { icon: LucideIcon; label: string }> = {
   task_status: { icon: RefreshCw, label: "Cambio de estado" },
   task_due: { icon: AlarmClock, label: "Vencimiento" },
   publication_expired: { icon: Globe, label: "Publicación" },
+  limit_grace: { icon: Gauge, label: "Límites de la cuenta" },
 };
 
 /** Encabezado del aviso sin repetir el título de la tarea (la tarjeta ya lo muestra): «Vence en 1 h», «aira marcó la tarea como Hecha». */

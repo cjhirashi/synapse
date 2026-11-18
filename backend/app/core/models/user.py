@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Index, Integer, func
+from sqlalchemy import BigInteger, Column, String, Boolean, DateTime, ForeignKey, Index, Integer, func
 from sqlalchemy.orm import relationship
 from app.adapters.database import Base
 
@@ -22,6 +22,12 @@ class User(Base):
     display_name = Column(String(80), nullable=True)  # Nombre visible del usuario
     avatar_content_type = Column(String, nullable=True)  # image/png, image/jpeg, image/webp
     avatar_version = Column(Integer, nullable=False, default=0, server_default='0')  # Versión de foto para cache-busting
+    # H-060: límites por usuario (nulo = sin límite). Solo rigen para los invitados; admin y super admin no tienen.
+    max_vaults = Column(Integer, nullable=True)
+    max_notes_per_vault = Column(Integer, nullable=True)
+    max_storage_bytes_per_vault = Column(BigInteger, nullable=True)
+    # H-060: baja con gracia de 30 días. Mientras no sea nulo la cuenta está inactiva y puede recuperarse.
+    deleted_at = Column(DateTime, nullable=True)
     role = relationship("Role", back_populates="users")
 
     # Unicidad case-insensitive (RF-013); la crea la migración 003.

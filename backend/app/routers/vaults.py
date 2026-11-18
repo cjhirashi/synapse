@@ -13,12 +13,13 @@ from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_principal, require_password_changed
 from app.core.errors import (
     InvalidCursor, PasswordChangeRequired, PreconditionFailed, PreconditionRequired,
-    StorageUnavailable, VaultNameTaken, VaultNotFound,
+    StorageUnavailable, VaultLimitReached, VaultNameTaken, VaultNotFound,
 )
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate, FileMetaOut
 from app.routers.auth import SESSION_ERRORS
+from app.services.limit_guard import LimitGuard, guard_for
 from app.services.note_content_service import NoteContentService
 from app.services.vault_service import Versioned, VaultService
 from sqlalchemy.orm import Session
@@ -40,6 +41,15 @@ _CONDITIONAL = (VaultNotFound, PreconditionRequired, PreconditionFailed, Storage
 def get_vault_port() -> VaultPort:
     """Un único repositorio por proceso: su memoria de índices por base se comparte."""
     return VaultRepository()
+
+
+def get_limit_guard(
+    current_user: TokenPayload = Depends(get_current_principal),
+    db: Session = Depends(get_db),
+    port: VaultPort = Depends(get_vault_port),
+) -> LimitGuard:
+    """Límites de la cuenta del principal (cookie o key: una key comparte la cuota de su dueño)."""
+    return guard_for(db, current_user.sub, port)
 
 
 def get_vault_service(
@@ -76,14 +86,16 @@ def list_vaults(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=VaultOut,
-    responses=_with_etag(201) | problem_responses(VaultNameTaken, StorageUnavailable),
+    responses=_with_etag(201) | problem_responses(VaultNameTaken, VaultLimitReached, StorageUnavailable),
 )
 def create_vault(
     body: VaultCreate,
     response: Response,
     current_user: TokenPayload = Depends(get_current_principal),
     service: VaultService = Depends(get_vault_service),
+    guard: LimitGuard = Depends(get_limit_guard),
 ):
+    guard.check_new_vault()
     result = service.create(body, owner_id=current_user.sub)
     _seed_ag_folders(result.vault.id, current_user.sub)
     return _respond(result, response)
@@ -147,14 +159,16 @@ def delete_vault(
 @router.post(
     "/{vault_id}/restore",
     response_model=VaultOut,
-    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNameTaken),
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNameTaken, VaultLimitReached),
 )
 def restore_vault(
     vault_id: VaultId,
     response: Response,
     if_match: str | None = Header(None),
     service: VaultService = Depends(get_vault_service),
+    guard: LimitGuard = Depends(get_limit_guard),
 ):
+    guard.check_new_vault()  # restaurar también suma una bóveda viva
     return _respond(service.restore(vault_id, if_match), response)
 
 

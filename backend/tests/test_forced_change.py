@@ -5,7 +5,7 @@ NEW = "a-brand-new-password"
 
 def test_rf_019_flagged_user_is_blocked_from_protected_endpoints(client):
     login(client)
-    res = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    res = client.post("/admin/users", json={"email": "g@test.com"})
     assert res.status_code == 403
     assert res.json()["type"] == "urn:synapse:problem:password-change-required"
 
@@ -30,7 +30,7 @@ def test_rf_019_after_change_the_block_is_lifted(client):
     )
     me = client.get("/auth/me").json()
     assert me["must_change_password"] is False
-    res = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    res = client.post("/admin/users", json={"email": "g@test.com"})
     assert res.status_code == 201
 
 

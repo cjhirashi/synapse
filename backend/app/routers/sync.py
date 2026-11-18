@@ -34,6 +34,7 @@ from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
+from app.services.limit_guard import guard_for
 from app.services import sync_filter
 from app.services.note_service import NoteService
 from app.services.change_log_service import ChangeLogService
@@ -158,9 +159,16 @@ def get_push_service(
     replication: ReplicationPort = Depends(get_replication_port),
 ) -> SyncPushService:
     actor = actor_of(current_user)
+    # Sesión de vida corta (como `get_sync_user`): solo lee la cuenta para resolver sus límites, no retiene el pool.
+    session = SessionLocal()
+    try:
+        guard = guard_for(session, current_user.sub, vault_port)
+    finally:
+        session.close()
     return SyncPushService(
         VaultService(vault_port, db), NoteService(vault_port, db), vault_port, replication, db,
-        current_user.sub, actor, ChangeLogService(vault_port, db, current_user.sub, actor, via="sync"))
+        current_user.sub, actor, ChangeLogService(vault_port, db, current_user.sub, actor, via="sync"),
+        limit_guard=guard)
 
 
 Db = Annotated[str, Depends(get_sync_db)]

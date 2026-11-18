@@ -87,6 +87,7 @@ def setup_db():
     if not db.query(Role).first():
         db.add(Role(id="admin-role-id", name="admin"))
         db.add(Role(id="guest-role-id", name="guest"))
+        db.add(Role(id="super-admin-role-id", name="super_admin"))
         db.commit()
     db.close()
     yield

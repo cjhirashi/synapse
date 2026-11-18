@@ -41,6 +41,7 @@ from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry, read_registry
+from app.services.limit_guard import LimitGuard
 from app.services.change_log_service import ChangeLogService, Pending
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
@@ -147,7 +148,7 @@ class NoteContentService:
     def __init__(
         self, port: VaultPort, db: str, auto_indexes: bool = True,
         actor: Actor | None = None, guard: AgentAccessGuard | None = None,
-        changelog: ChangeLogService | None = None,
+        changelog: ChangeLogService | None = None, limit_guard: LimitGuard | None = None,
     ):
         self._port = port
         self._db = db
@@ -160,6 +161,8 @@ class NoteContentService:
             port, db, owner_id=changelog.owner_id if changelog is not None else None, author_from=changelog)
         # H-030b: registro de cambios (BITACORA automática); `None` en scripts y herramientas del sistema.
         self._changelog = changelog
+        # H-060: límite de documentos de la cuenta (None en scripts y herramientas del sistema: sin límite).
+        self._limit_guard = limit_guard
 
     def list(
         self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None = None
@@ -237,6 +240,8 @@ class NoteContentService:
         if (code := check_op("create_user", path)) is not None:
             raise _field_error("path", code)
         self._guard_check(vault_id, "create", [path])
+        if self._limit_guard is not None:
+            self._limit_guard.check_new_note(vault_id, path)
         if (code := ag_rules.check_create(path)) is not None:
             raise _field_error("path", code)
         fields["frontmatter"] = self._skill_rules(vault_id, "create", None, path, fields.get("frontmatter"))
@@ -378,6 +383,8 @@ class NoteContentService:
         self._mensajes_gate(doc["path"])
         self._check_system_lock(doc["path"], None, doc.get("frontmatter"))
         self._guard_check(vault_id, "restore", [doc["path"]])
+        if self._limit_guard is not None:
+            self._limit_guard.check_new_note(vault_id, doc["path"])
         self._check_mensajes(vault_id, "restore", doc["path"], doc, doc.get("frontmatter"))
         self._skill_rules(vault_id, "restore", doc, doc["path"], doc.get("frontmatter"))
         self._check_meta_write(vault_id, doc["path"], None, doc.get("frontmatter"), None)

@@ -3,6 +3,7 @@ from app.core.models.agent_api_key import AgentApiKey
 from app.core.models.change_log import ChangeLog
 from app.core.models.file import File, FileFolder
 from app.core.models.agent_profile import AgentProfile
+from app.core.models.limit_grace import LimitGrace
 from app.core.models.notification import Notification, NotificationPref, PushSubscription
 from app.core.models.project import VaultProject
 from app.core.models.publication import Publication
@@ -12,4 +13,4 @@ from app.core.models.role import Role
 from app.core.models.task import VaultTask
 from app.core.models.user import User
 
-__all__ = ["AgentAccessLog", "AgentProfile", "AgentApiKey", "ChangeLog", "File", "FileFolder", "Notification", "NotificationPref", "Publication", "PurgeLog", "PushSubscription", "RefreshToken", "Role", "User", "VaultProject", "VaultTask"]
+__all__ = ["AgentAccessLog", "AgentProfile", "AgentApiKey", "ChangeLog", "File", "FileFolder", "LimitGrace", "Notification", "NotificationPref", "Publication", "PurgeLog", "PushSubscription", "RefreshToken", "Role", "User", "VaultProject", "VaultTask"]

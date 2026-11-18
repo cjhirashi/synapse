@@ -3,7 +3,7 @@ import { request } from "../api/auth";
 
 import type { AssigneeType, TaskPriority, TaskStatus } from "../tasks/tasksApi";
 
-export type NoticeKind = "task_assigned" | "task_status" | "task_due" | "publication_expired";
+export type NoticeKind = "task_assigned" | "task_status" | "task_due" | "publication_expired" | "limit_grace";
 
 /** La tarea del aviso tal como está ahora; `null` en el aviso si la tarea se eliminó. */
 export interface NoticeTask {

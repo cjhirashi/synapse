@@ -70,6 +70,16 @@ components:
           - agent
           title: Assignee Type
           type: string
+        blocked_by:
+          anyOf:
+          - items:
+              maxLength: 64
+              minLength: 1
+              type: string
+            maxItems: 30
+            type: array
+          - type: 'null'
+          title: Blocked By
         description:
           anyOf:
           - maxLength: 20000
@@ -107,6 +117,11 @@ components:
           - high
           title: Priority
           type: string
+        project_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Project Id
         reminders:
           anyOf:
           - items:
@@ -174,6 +189,16 @@ components:
         assignee_type:
           title: Assignee Type
           type: string
+        blocked:
+          default: false
+          title: Blocked
+          type: boolean
+        blocked_by:
+          default: []
+          items:
+            type: string
+          title: Blocked By
+          type: array
         completed_at:
           anyOf:
           - type: string
@@ -216,6 +241,11 @@ components:
         priority:
           title: Priority
           type: string
+        project_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Project Id
         purge_at:
           anyOf:
           - type: string
@@ -295,6 +325,16 @@ components:
             type: string
           - type: 'null'
           title: Assignee Type
+        blocked_by:
+          anyOf:
+          - items:
+              maxLength: 64
+              minLength: 1
+              type: string
+            maxItems: 30
+            type: array
+          - type: 'null'
+          title: Blocked By
         description:
           anyOf:
           - maxLength: 20000
@@ -328,6 +368,11 @@ components:
             type: string
           - type: 'null'
           title: Priority
+        project_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Project Id
         reminders:
           anyOf:
           - items:
@@ -418,6 +463,16 @@ paths:
             type: string
           - type: 'null'
           title: Due Before
+      - description: Id de un proyecto, o `none` para las tareas sin proyecto
+        in: query
+        name: project_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Id de un proyecto, o `none` para las tareas sin proyecto
+          title: Project Id
       responses:
         '200':
           content:
@@ -509,6 +564,16 @@ paths:
             type: string
           - type: 'null'
           title: Due Before
+      - description: Id de un proyecto, o `none` para las tareas sin proyecto
+        in: query
+        name: project_id
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Id de un proyecto, o `none` para las tareas sin proyecto
+          title: Project Id
       responses:
         '200':
           content:

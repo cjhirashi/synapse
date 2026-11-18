@@ -15,12 +15,12 @@ const ME = {
   photo_url: null,
 };
 
-function setup(initialRoute = "/settings") {
+function setup(initialRoute = "/settings", role: "super_admin" | "admin" | "guest" = "guest") {
   const refreshMe = vi.fn();
   const requestLogout = vi.fn();
 
   render(
-    <MeContext.Provider value={ME}>
+    <MeContext.Provider value={{ ...ME, role }}>
       <RefreshMeContext.Provider value={refreshMe}>
         <WithSync value={syncValue({ requestLogout }).value}>
           <MemoryRouter initialEntries={[initialRoute]}>
@@ -35,6 +35,20 @@ function setup(initialRoute = "/settings") {
 }
 
 afterEach(() => vi.restoreAllMocks());
+
+function renderAs(role: "admin" | "super_admin") {
+  return render(
+    <MeContext.Provider value={{ ...ME, role }}>
+      <RefreshMeContext.Provider value={vi.fn()}>
+        <WithSync value={syncValue({ requestLogout: vi.fn() }).value}>
+          <MemoryRouter initialEntries={["/settings"]}>
+            <SettingsPage />
+          </MemoryRouter>
+        </WithSync>
+      </RefreshMeContext.Provider>
+    </MeContext.Provider>,
+  );
+}
 
 test("B1: la navegación lateral muestra 6 enlaces en orden correcto, en dos grupos", () => {
   setup();
@@ -51,6 +65,17 @@ test("B1: la navegación lateral muestra 6 enlaces en orden correcto, en dos gru
     expect(links[i]).toHaveTextContent(label);
     expect(links[i]).toHaveAttribute("href", href);
   });
+});
+
+test("H-060: admin y super admin ven el grupo «Administración» con «Usuarios»; el usuario no", () => {
+  for (const role of ["admin", "super_admin"] as const) {
+    const { unmount } = renderAs(role);
+    const group = screen.getByRole("group", { name: "Administración" });
+    expect(Array.from(group.querySelectorAll("a")).map((a) => [a.textContent, a.getAttribute("href")])).toEqual([["Usuarios", "/settings/users"]]);
+    unmount();
+  }
+  setup();
+  expect(screen.queryByRole("group", { name: "Administración" })).not.toBeInTheDocument();
 });
 
 test("las secciones de agentes (API keys y Agentes por bóveda) van juntas en su propio grupo", () => {

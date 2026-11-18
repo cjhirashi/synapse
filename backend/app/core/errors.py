@@ -110,6 +110,59 @@ class AdminRequired(DomainError):
     detail = "Admin required"
 
 
+class SuperAdminRequired(DomainError):
+    slug = "super-admin-required"
+    title = "Super admin required"
+    status = 403
+    detail = "Super admin required"
+
+
+class UserActionForbidden(DomainError):
+    """Gestión de una cuenta que no corresponde: la de otro admin sin ser super admin, la propia o la del último super admin."""
+
+    slug = "user-action-forbidden"
+    title = "User action forbidden"
+    status = 403
+    detail = "You cannot do this to that account"
+
+
+class UserNotFound(DomainError):
+    slug = "user-not-found"
+    title = "User not found"
+    status = 404
+    detail = "User not found"
+
+
+class UserStateConflict(DomainError):
+    """Eliminar una cuenta ya eliminada o recuperar una que no lo está."""
+
+    slug = "user-state-conflict"
+    title = "User state conflict"
+    status = 409
+    detail = "The account is not in a state that allows this"
+
+
+class VaultLimitReached(DomainError):
+    slug = "vault-limit-reached"
+    title = "Vault limit reached"
+    status = 403
+    detail = "You reached the maximum number of vaults of your account"
+
+
+class DocumentLimitReached(DomainError):
+    slug = "document-limit-reached"
+    title = "Document limit reached"
+    status = 403
+    detail = "This vault reached the maximum number of documents of your account"
+
+
+class StorageLimitReached(DomainError):
+    slug = "storage-limit-reached"
+    title = "Storage limit reached"
+    status = 403
+    detail = "This vault reached the storage limit of your account"
+
+
 class PasswordChangeRequired(DomainError):
     slug = "password-change-required"
     title = "Password change required"

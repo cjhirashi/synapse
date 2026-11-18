@@ -728,7 +728,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Document limit reached
         '404':
           content:
             application/problem+json:
@@ -1577,7 +1577,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Document limit reached
         '404':
           content:
             application/problem+json:

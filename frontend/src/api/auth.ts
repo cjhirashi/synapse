@@ -6,7 +6,7 @@ export { ApiError } from "./problems";
 export interface Me {
   user_id: string;
   email: string;
-  role: "admin" | "guest";
+  role: "super_admin" | "admin" | "guest";
   must_change_password: boolean;
   // Perfil (H-028): nombre para mostrar y URL de la foto; `null` cuando no se han puesto.
   display_name: string | null;

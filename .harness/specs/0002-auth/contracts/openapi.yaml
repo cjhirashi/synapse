@@ -1,9 +1,67 @@
 components:
   schemas:
+    AdminUserOut:
+      properties:
+        created_at:
+          title: Created At
+          type: string
+        deleted_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Deleted At
+        display_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Display Name
+        email:
+          title: Email
+          type: string
+        grace:
+          items:
+            $ref: '#/components/schemas/GraceOut'
+          title: Grace
+          type: array
+        id:
+          title: Id
+          type: string
+        limits:
+          $ref: '#/components/schemas/UserLimitsOut'
+        must_change_password:
+          title: Must Change Password
+          type: boolean
+        purge_at:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Purge At
+        role:
+          title: Role
+          type: string
+        vaults_used:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Vaults Used
+      required:
+      - id
+      - email
+      - role
+      - display_name
+      - must_change_password
+      - created_at
+      - deleted_at
+      - purge_at
+      - limits
+      - vaults_used
+      - grace
+      title: AdminUserOut
+      type: object
     Body_put_me_photo_auth_me_photo_put:
       properties:
         file:
-          contentMediaType: application/octet-stream
+          format: binary
           title: File
           type: string
       required:
@@ -24,18 +82,69 @@ components:
       title: ChangePasswordRequest
       type: object
     CreateUserRequest:
+      additionalProperties: false
+      description: '`POST /admin/users` (H-060). Sin contraseña: la cuenta nace con
+        la contraseña base. Un límite omitido toma el
+
+        valor inicial de la plataforma; `null` lo deja sin límite.'
       properties:
         email:
           title: Email
           type: string
-        password:
-          minLength: 1
-          title: Password
+        max_notes_per_vault:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 100
+          title: Max Notes Per Vault
+        max_storage_bytes_per_vault:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 524288000
+          title: Max Storage Bytes Per Vault
+        max_vaults:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          default: 2
+          title: Max Vaults
+        role:
+          default: guest
+          enum:
+          - guest
+          - admin
+          title: Role
           type: string
       required:
       - email
-      - password
       title: CreateUserRequest
+      type: object
+    GraceOut:
+      properties:
+        deadline_at:
+          title: Deadline At
+          type: string
+        kind:
+          enum:
+          - vaults
+          - documents
+          - storage
+          title: Kind
+          type: string
+        vault_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Vault Id
+      required:
+      - kind
+      - vault_id
+      - deadline_at
+      title: GraceOut
       type: object
     LoginRequest:
       properties:
@@ -117,22 +226,66 @@ components:
           title: Display Name
       title: UpdateDisplayNameRequest
       type: object
-    UserResponse:
+    UpdateLimitsRequest:
+      additionalProperties: false
+      description: '`PATCH /admin/users/{id}/limits`: solo cambian los límites enviados;
+        `null` = sin límite.'
       properties:
-        email:
-          title: Email
-          type: string
-        id:
-          title: Id
-          type: string
+        max_notes_per_vault:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Max Notes Per Vault
+        max_storage_bytes_per_vault:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Max Storage Bytes Per Vault
+        max_vaults:
+          anyOf:
+          - minimum: 0.0
+            type: integer
+          - type: 'null'
+          title: Max Vaults
+      title: UpdateLimitsRequest
+      type: object
+    UpdateRoleRequest:
+      additionalProperties: false
+      properties:
         role:
+          enum:
+          - guest
+          - admin
           title: Role
           type: string
       required:
-      - id
-      - email
       - role
-      title: UserResponse
+      title: UpdateRoleRequest
+      type: object
+    UserLimitsOut:
+      properties:
+        max_notes_per_vault:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max Notes Per Vault
+        max_storage_bytes_per_vault:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max Storage Bytes Per Vault
+        max_vaults:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Max Vaults
+      required:
+      - max_vaults
+      - max_notes_per_vault
+      - max_storage_bytes_per_vault
+      title: UserLimitsOut
       type: object
 info:
   title: Synapse
@@ -140,20 +293,17 @@ info:
 openapi: 3.1.0
 paths:
   /admin/users:
-    post:
-      operationId: create_user_admin_users_post
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateUserRequest'
-        required: true
+    get:
+      operationId: list_users_admin_users_get
       responses:
-        '201':
+        '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                items:
+                  $ref: '#/components/schemas/AdminUserOut'
+                title: Response List Users Admin Users Get
+                type: array
           description: Successful Response
         '401':
           content:
@@ -167,6 +317,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Admin required / Password change required
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: List Users
+      tags:
+      - admin
+    post:
+      operationId: create_user_admin_users_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden
         '409':
           content:
             application/problem+json:
@@ -192,6 +384,266 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Create User
+      tags:
+      - admin
+  /admin/users/{user_id}:
+    delete:
+      operationId: delete_user_admin_users__user_id__delete
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User state conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Delete User
+      tags:
+      - admin
+  /admin/users/{user_id}/limits:
+    patch:
+      operationId: update_limits_admin_users__user_id__limits_patch
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLimitsRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User state conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Update Limits
+      tags:
+      - admin
+  /admin/users/{user_id}/restore:
+    post:
+      operationId: restore_user_admin_users__user_id__restore_post
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User state conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Restore User
+      tags:
+      - admin
+  /admin/users/{user_id}/role:
+    patch:
+      operationId: update_role_admin_users__user_id__role_patch
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateRoleRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden / Super admin required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User state conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Update Role
       tags:
       - admin
   /auth/change-password:

@@ -121,6 +121,7 @@ def start_task_jobs(session_factory) -> Callable[[], None]:
 
     def run() -> None:
         from app.services.publication_jobs import expire_publications  # aquí: publication_jobs importa este módulo
+        from app.services.user_jobs import run_user_jobs
 
         if stop.wait(_FIRST_DELAY):
             return
@@ -135,6 +136,9 @@ def start_task_jobs(session_factory) -> Callable[[], None]:
                 expired = expire_publications(session_factory)
                 if expired:
                     logger.info("publication expiry: %d unpublished", expired)
+                closed, purged = run_user_jobs(session_factory)
+                if closed or purged:
+                    logger.info("user jobs: %d limit grace closed, %d account(s) purged", closed, purged)
             except Exception:  # noqa: BLE001 - un fallo no mata el ciclo; se reintenta en la siguiente vuelta
                 logger.warning("task jobs pass failed", exc_info=True)
             if stop.wait(settings.TASKS_JOBS_INTERVAL_SECONDS):

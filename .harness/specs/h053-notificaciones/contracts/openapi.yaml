@@ -152,6 +152,7 @@ components:
             - task_status
             - task_due
             - publication_expired
+            - limit_grace
           title: Kinds
           type: object
         quiet:

@@ -2,6 +2,7 @@ import pytest
 
 from app.adapters.auth_repository import AuthRepository
 from app.core.errors import ProvisioningError
+from app.core.limits import UserLimits
 from app.core.models.user import User
 from app.services.auth_service import AuthService
 
@@ -24,7 +25,7 @@ def _service(db, couch):
 def test_rf_015_failure_in_couchdb_rolls_back_user(db):
     service = _service(db, FakeCouchDB(fail=True))
     with pytest.raises(ProvisioningError):
-        service.create_guest_user("g@test.com", "admin1234")
+        service.create_user("g@test.com", "guest", UserLimits())
     assert db.query(User).count() == 0
 
 
@@ -32,16 +33,16 @@ def test_rf_015_retry_after_failure_succeeds(db):
     couch = FakeCouchDB(fail=True)
     service = _service(db, couch)
     with pytest.raises(ProvisioningError):
-        service.create_guest_user("g@test.com", "admin1234")
+        service.create_user("g@test.com", "guest", UserLimits())
     couch.fail = False
-    user = service.create_guest_user("g@test.com", "admin1234")
+    user = service.create_user("g@test.com", "guest", UserLimits())
     assert couch.created == [f"synapse_user_{user.id}"]
     assert db.query(User).count() == 1
 
 
 def test_rf_012_guest_is_created_with_forced_password_change(db):
     couch = FakeCouchDB()
-    user = _service(db, couch).create_guest_user("g@test.com", "admin1234")
+    user = _service(db, couch).create_user("g@test.com", "guest", UserLimits())
     assert user.role.name == "guest"
     assert user.must_change_password is True
     assert user.couchdb_name == f"synapse_user_{user.id}"

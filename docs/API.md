@@ -21,6 +21,21 @@ alcance de datos (su base `synapse_user_{id}`):
 La API key **no** es un segundo usuario: autentica *como el mismo usuario* que la creó (mismo
 `owner_id`, misma base). Nunca da acceso a los datos de otro usuario (aislamiento por usuario).
 
+## Cuentas y límites (H-060)
+
+Solo con sesión de un admin o super admin (cookie). El admin gestiona invitados; el super admin, a cualquiera.
+
+| Método | Ruta | Resultado |
+|---|---|---|
+| `GET` | `/admin/users` | `200` lista `[{id,email,role,display_name,must_change_password,created_at,deleted_at,purge_at,limits{max_vaults,max_notes_per_vault,max_storage_bytes_per_vault},vaults_used,grace[{kind,vault_id,deadline_at}]}]` · `403` |
+| `POST` | `/admin/users` | `{email, role?: "guest"\|"admin", max_vaults?, max_notes_per_vault?, max_storage_bytes_per_vault?}` → `201` cuenta nueva con la contraseña `admin1234` y cambio obligatorio. Sin `password` (`422` si se envía). Límite omitido = 2 bóvedas, 100 documentos por bóveda, 500 MB por bóveda; `null` = sin límite. `role: "admin"` solo el super admin (`403 user-action-forbidden`) · `409 email-taken` |
+| `PATCH` | `/admin/users/{id}/limits` | solo cambia lo enviado → `200`; si la cuenta queda por encima de un límite abre `grace` (30 días) y le avisa · `404` · `409` |
+| `DELETE` | `/admin/users/{id}` | `200`; baja con gracia de 30 días (inactiva, sesiones cerradas, correo reservado) · `403 user-action-forbidden` (uno mismo, otro admin sin ser super admin, último super admin) · `404` · `409 user-state-conflict` |
+| `POST` | `/admin/users/{id}/restore` | `200`; recupera una cuenta dada de baja · `404` · `409` |
+| `PATCH` | `/admin/users/{id}/role` | `{role: "guest"\|"admin"}` solo super admin → `200`, la persona debe entrar de nuevo · `403 super-admin-required` · `404` · `409` |
+
+Los límites rigen en la API y en la sincronización: `403 vault-limit-reached` (bóvedas), `403 document-limit-reached` (notas) y `403 storage-limit-reached` (archivos). No cuentan `INDICE.md`, las carpetas reservadas ni los documentos de sistema. Una API key comparte la cuota de su dueño.
+
 ## Perfil de usuario (H-028)
 
 Cada usuario tiene un **nombre visible** (`display_name`) y una **foto de perfil** (avatar).

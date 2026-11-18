@@ -20,7 +20,7 @@ from app.adapters.minio_adapter import get_object_storage  # noqa: F401
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal
 from app.core.errors import (
-    AgentAccessDenied, FileNotFound, FileTooLarge, FileVisibilityUserOnly, StorageUnavailable, UnsafeSvg, UnsupportedFileType,
+    AgentAccessDenied, FileNotFound, FileTooLarge, FileVisibilityUserOnly, StorageLimitReached, StorageUnavailable, UnsafeSvg, UnsupportedFileType,
     VaultNotFound,
 )
 from app.core.file_safety import SVG, HTML
@@ -29,8 +29,9 @@ from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import FileMetaOut, FileVisibilityUpdate, TokenPayload
 from app.routers.auth import SESSION_ERRORS
-from app.routers.vaults import get_vault_port
+from app.routers.vaults import get_limit_guard, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
+from app.services.limit_guard import LimitGuard
 from app.services.file_service import MAX_FILE_SIZE, MAX_FILE_SIZE_DOCUMENT, FileService
 from app.services.vault_service import VaultService
 
@@ -109,6 +110,7 @@ def get_file_service(
     db: Session = Depends(get_db),
     storage: ObjectStoragePort = Depends(get_object_storage),
     vault_port: VaultPort = Depends(get_vault_port),
+    guard: LimitGuard = Depends(get_limit_guard),
 ) -> FileService:
     # La bóveda se valida contra la base del dueño resuelto (cookie o key), nunca contra la
     # petición: una key sólo puede subir a las bóvedas de su dueño (C-7, mismo criterio que vaults).
@@ -118,6 +120,7 @@ def get_file_service(
         storage,
         principal.sub,
         ensure_vault=lambda vault_id: vault_service.get(vault_id),
+        limit_guard=guard,
     )
 
 
@@ -126,7 +129,7 @@ def get_file_service(
     status_code=status.HTTP_201_CREATED,
     response_model=FileMetaOut,
     responses=problem_responses(
-        *SESSION_ERRORS, VaultNotFound, FileTooLarge, UnsupportedFileType, UnsafeSvg, AgentAccessDenied, StorageUnavailable
+        *SESSION_ERRORS, VaultNotFound, FileTooLarge, UnsupportedFileType, UnsafeSvg, AgentAccessDenied, StorageLimitReached, StorageUnavailable
     ),
 )
 def upload_file(

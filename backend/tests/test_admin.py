@@ -6,8 +6,8 @@ from app.core.security import verify_password
 from tests.conftest import SEED_PASSWORD, login
 
 
-def _create(client, email="guest@test.com", password=SEED_PASSWORD):
-    return client.post("/admin/users", json={"email": email, "password": password})
+def _create(client, email="guest@test.com", **extra):
+    return client.post("/admin/users", json={"email": email, **extra})
 
 
 def test_rf_012_admin_creates_guest_with_real_couchdb(ready_admin, db):

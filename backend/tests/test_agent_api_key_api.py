@@ -27,7 +27,7 @@ def _raw(client, label: str = "aira") -> str:
 
 
 def _guest(admin_client, db) -> TestClient:
-    admin_client.post("/admin/users", json={"email": GUEST, "password": SEED_PASSWORD})
+    admin_client.post("/admin/users", json={"email": GUEST})
     db.query(User).filter(User.email == GUEST).update({"must_change_password": False})
     db.commit()
     guest = TestClient(app, base_url=str(admin_client.base_url))

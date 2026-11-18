@@ -87,8 +87,8 @@ export async function createUser(): Promise<{ email: string; password: string; c
   );
   userCounter += 1;
   const email = `visual-${Date.now()}-${userCounter}@example.com`;
-  const temporary = "temporal-1234";
-  await api("/admin/users", { method: "POST", body: { email, password: temporary }, cookie: admin });
+  const temporary = "admin1234"; // la contraseña inicial de toda cuenta nueva (H-060)
+  await api("/admin/users", { method: "POST", body: { email }, cookie: admin });
   const first = cookieHeader(await api("/auth/login", { method: "POST", body: { email, password: temporary } }));
   const password = "definitiva-1234";
   await api("/auth/change-password", { method: "POST", body: { current_password: temporary, new_password: password }, cookie: first });

@@ -12,6 +12,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 
 from app.adapters.file_repository import FileRepository
+from app.services.limit_guard import LimitGuard
 from app.core.errors import (
     FileFolderNotEmpty, FileNotFound, FileTooLarge, FolderMoveInvalid, FolderNotFound, UnsafeSvg, UnsupportedFileType,
     ValidationFailed,
@@ -111,7 +112,9 @@ class FileService:
         storage: ObjectStoragePort,
         owner_id: str,
         ensure_vault: Callable[[str], None],
+        limit_guard: LimitGuard | None = None,
     ) -> None:
+        self._limit_guard = limit_guard  # H-060: almacenamiento por bóveda (None = sin límite)
         self._repo = repo
         self._storage = storage
         self._owner_id = owner_id
@@ -160,6 +163,9 @@ class FileService:
         # SVG: verificar saneo (C-5)
         if content_type == SVG and not is_safe_svg(data):
             raise UnsafeSvg("el SVG no pasó el saneo RNF-003")
+
+        if self._limit_guard is not None:
+            self._limit_guard.check_new_file(vault_id, len(data))
 
         file_id = str(uuid.uuid4())
         object_key = f"vaults/{vault_id}/{file_id}"

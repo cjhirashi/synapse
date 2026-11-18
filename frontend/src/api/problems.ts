@@ -31,6 +31,13 @@ export const PROBLEM = {
   wrongCurrentPassword: `${URN}wrong-current-password`,
   validationError: `${URN}validation-error`,
   agentKeyLabelTaken: `${URN}agent-key-label-taken`,
+  emailTaken: `${URN}email-taken`,
+  userActionForbidden: `${URN}user-action-forbidden`,
+  userNotFound: `${URN}user-not-found`,
+  userStateConflict: `${URN}user-state-conflict`,
+  vaultLimitReached: `${URN}vault-limit-reached`,
+  documentLimitReached: `${URN}document-limit-reached`,
+  storageLimitReached: `${URN}storage-limit-reached`,
 } as const;
 
 export class ApiError extends Error {

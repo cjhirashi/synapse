@@ -34,7 +34,7 @@ def _change(client, current=SEED_PASSWORD, new=NEW):
 
 
 def _create(client, email="guest@test.com", password=SEED_PASSWORD):
-    return client.post("/admin/users", json={"email": email, "password": password})
+    return client.post("/admin/users", json={"email": email})
 
 
 # --- RF-006: cada error de auth/admin, con su código de siempre y su `type` ---

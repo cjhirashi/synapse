@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ArrowLeft, Bell, Bot, KeyRound, Lock, LogOut, PanelLeft, PanelLeftClose, Palette, User } from "lucide-react";
+import { ArrowLeft, Bell, Bot, KeyRound, Lock, LogOut, PanelLeft, PanelLeftClose, Palette, User, Users } from "lucide-react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import { useMe } from "../auth/RequireAuth";
 import { useMediaQuery } from "../layout/useMediaQuery";
@@ -26,9 +26,13 @@ const NAV_GROUPS = [
     ],
   },
 ];
-const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items);
+// Solo para admin y super admin (H-060); el servidor protege cada ruta de /admin, esto solo evita mostrar lo que no sirve.
+const ADMIN_GROUP = {
+  title: "Administración",
+  items: [{ href: "/settings/users", label: "Usuarios", Icon: Users }],
+};
 
-const ROLE_LABEL = { admin: "Administrador", guest: "Invitado" } as const;
+const ROLE_LABEL = { super_admin: "Super admin", admin: "Administrador", guest: "Usuario" } as const;
 
 /**
  * Pantalla de usuario (H-028), aparte de la gestión de bóvedas: barra lateral con el regreso a «Bóvedas», la identidad,
@@ -46,8 +50,10 @@ export default function SettingsPage() {
   const sideRef = useRef<HTMLElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
 
+  const navGroups = me.role === "guest" ? NAV_GROUPS : [...NAV_GROUPS, ADMIN_GROUP];
+  const navItems = navGroups.flatMap((group) => group.items);
   const displayName = me.display_name || me.email;
-  const section = NAV_ITEMS.find((item) => pathname.startsWith(item.href))?.label ?? "Ajustes";
+  const section = navItems.find((item) => pathname.startsWith(item.href))?.label ?? "Ajustes";
 
   useEffect(() => setOpen(false), [isMobile, pathname]);
 
@@ -102,7 +108,7 @@ export default function SettingsPage() {
           </header>
 
           <nav className="settings-nav" aria-label="Secciones de usuario">
-            {NAV_GROUPS.map((group) => (
+            {navGroups.map((group) => (
               <div key={group.title} className="settings-nav-group" role="group" aria-label={group.title}>
                 <span className="settings-nav-title" aria-hidden="true">{group.title}</span>
                 {group.items.map(({ href, label, Icon }) => (

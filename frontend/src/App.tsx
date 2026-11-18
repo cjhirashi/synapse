@@ -10,6 +10,7 @@ import ChangePasswordPage from "./settings/ChangePasswordPage";
 import ProfilePage from "./settings/ProfilePage";
 import SettingsPage from "./settings/SettingsPage";
 import ThemePage from "./settings/ThemePage";
+import UsersPage from "./settings/UsersPage";
 import ConflictView from "./sync/ConflictView";
 import RejectionsPage from "./sync/RejectionsPage";
 import LocalCopyNotice from "./sync/LocalCopyNotice";
@@ -60,6 +61,12 @@ function ChangePasswordRoute() {
   );
 }
 
+/** La ventana de usuarios es solo de admin y super admin (H-060); el servidor lo exige igual en cada ruta. */
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const me = useMe();
+  return me.role === "guest" ? <Navigate to="/settings/profile" replace /> : <>{children}</>;
+}
+
 export default function App({ syncEnv }: Props) {
   const navigate = useNavigate();
   return (
@@ -91,6 +98,7 @@ export default function App({ syncEnv }: Props) {
           <Route path="api-keys" element={<ApiKeysPage />} />
           <Route path="theme" element={<ThemePage />} />
           <Route path="agent-access" element={<AgentAccessPage />} />
+          <Route path="users" element={<RequireAdmin><UsersPage /></RequireAdmin>} />
           <Route path="notifications" element={<Suspense fallback={null}><NotificationsSettingsPage /></Suspense>} />
         </Route>
         {/* Bóvedas (SPEC-0003) sobre la réplica local: la sección principal; `/` lleva a ella. */}

@@ -18,3 +18,12 @@ class CouchDBAdapter(CouchDBPort):
         # 201/202 = creada; 412 = ya existía (idempotente)
         if response.status_code not in (201, 202, 412):
             raise ProvisioningError(f"CouchDB respondió {response.status_code} al crear {name}")
+
+    def drop_user_db(self, name: str) -> None:
+        try:
+            response = httpx.delete(f"{self.url}/{name}", auth=self.auth, timeout=30)
+        except httpx.HTTPError as exc:
+            raise ProvisioningError(f"CouchDB inaccesible: {exc}") from exc
+        # 200/202 = borrada; 404 = ya no existía (idempotente)
+        if response.status_code not in (200, 202, 404):
+            raise ProvisioningError(f"CouchDB respondió {response.status_code} al borrar {name}")

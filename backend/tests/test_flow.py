@@ -15,7 +15,7 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
     # RF-001: el arranque sembró al admin; RF-019: está obligado a cambiar la clave
     assert login(client).status_code == 200
     assert client.get("/auth/me").json()["must_change_password"] is True
-    blocked = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    blocked = client.post("/admin/users", json={"email": "g@test.com"})
     assert blocked.status_code == 403
 
     # RF-017: cambia la clave; la sesión de refresh queda revocada, se vuelve a entrar
@@ -26,7 +26,7 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
     assert client.get("/auth/me").json()["must_change_password"] is False
 
     # RF-012: crea un guest con la clave semilla
-    created = client.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    created = client.post("/admin/users", json={"email": "g@test.com"})
     assert created.status_code == 201
 
     # El guest entra, está obligado a cambiar, y no puede administrar
@@ -45,6 +45,6 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
         "display_name": None,
         "photo_url": None,
     }
-    again = client.post("/admin/users", json={"email": "x@test.com", "password": SEED_PASSWORD})
+    again = client.post("/admin/users", json={"email": "x@test.com"})
     assert again.status_code == 403
     assert db.query(User).count() == 2

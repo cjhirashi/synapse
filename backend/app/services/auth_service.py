@@ -17,11 +17,13 @@ from app.core.errors import (
     WrongCurrentPassword,
 )
 from app.core.file_safety import JPEG, PNG, WEBP, sniff_content_type
+from app.core.limits import UserLimits, for_role
 from app.core.models.user import User
 from app.core.ports.auth_port import AuthPort
 from app.core.ports.couchdb_port import CouchDBPort
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.security import (
+    DEFAULT_USER_PASSWORD,
     hash_password,
     hash_refresh_token,
     normalize_email,
@@ -31,6 +33,8 @@ from app.core.security import (
 
 ADMIN_ROLE_ID = "admin-role-id"
 GUEST_ROLE_ID = "guest-role-id"
+SUPER_ADMIN_ROLE_ID = "super-admin-role-id"
+ROLE_IDS = {"super_admin": SUPER_ADMIN_ROLE_ID, "admin": ADMIN_ROLE_ID, "guest": GUEST_ROLE_ID}
 
 ACCESS_TOKEN_TTL = timedelta(hours=24)
 REFRESH_TOKEN_TTL = timedelta(days=30)
@@ -51,7 +55,9 @@ class AuthService:
         self.couchdb = couchdb
         self.object_storage = object_storage
 
-    def _provision_user(self, email: str, password: str, role_id: str, must_change_password: bool) -> User:
+    def _provision_user(
+        self, email: str, password: str, role_id: str, must_change_password: bool, limits: UserLimits | None = None
+    ) -> User:
         """Inserta el usuario y su base CouchDB; si algo falla, no queda nada en PostgreSQL."""
         email = normalize_email(email)
         user_id = str(uuid.uuid4())
@@ -64,6 +70,7 @@ class AuthService:
                 role_id=role_id,
                 couchdb_name=couchdb_name,
                 must_change_password=must_change_password,
+                limits=limits,
             )
             self.couchdb.ensure_user_db(couchdb_name)
             self.repo.commit()
@@ -82,11 +89,15 @@ class AuthService:
             # Otra réplica ganó la carrera: el admin ya existe.
             return None
 
-    def create_guest_user(self, email: str, password: str) -> User:
+    def create_user(self, email: str, role: str, limits: UserLimits) -> User:
+        """Cuenta nueva con la contraseña base (H-060): el primer ingreso obliga a cambiarla. Solo el invitado lleva
+        límites; admin y super admin no los tienen aunque se envíen."""
         if self.repo.get_user_by_email(normalize_email(email)):
             raise EmailTaken()
         try:
-            return self._provision_user(email, password, GUEST_ROLE_ID, must_change_password=True)
+            return self._provision_user(
+                email, DEFAULT_USER_PASSWORD, ROLE_IDS[role], must_change_password=True,
+                limits=for_role(role, limits))
         except IntegrityError as exc:
             # Otra petición insertó el mismo email entre la comprobación y el INSERT.
             raise EmailTaken() from exc

@@ -23,6 +23,8 @@ import { ID_PREFIX, type Vault } from "./vaultStore";
 const REASONS = new Map<string, string>([
   ["vault-name-taken", NAME_TAKEN],
   ["owner-mismatch", "La bóveda pertenece a otro usuario."],
+  ["vault-limit-reached", "Llegaste al máximo de bóvedas que permite tu cuenta."],
+  ["document-limit-reached", "Esta bóveda llegó al máximo de documentos que permite tu cuenta."],
   ["immutable-field:created_at", "La fecha de creación de la bóveda no se puede cambiar."],
   ["delete-not-allowed", "El servidor no admite eliminar la bóveda de forma definitiva."],
   ["invalid-id", "El identificador de la bóveda no es válido."],

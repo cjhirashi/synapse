@@ -41,7 +41,8 @@ from pydantic import TypeAdapter, ValidationError
 from app.core import ag_rules, conversation_rules, doc_names, meta_rules, plantilla_rules, skill_rules
 from app.core.agent_access import parse_registration, Actor, check_registration_frontmatter, identity
 from app.core.config import settings
-from app.core.errors import StorageUnavailable, VaultNameTaken
+from app.core.errors import DocumentLimitReached, StorageUnavailable, VaultLimitReached, VaultNameTaken
+from app.core.limits import counts_as_document
 from app.core.index_rules import changed_keys, check_op, folder_of, is_index_path
 from app.core.note_rules import (
     NOTE_KEYS, NOTE_REQUIRED, check_content, check_frontmatter, check_path, path_key,
@@ -52,6 +53,7 @@ from app.core.schemas import VaultAttributes, VaultDescription, VaultIcon, Vault
 from app.core.timestamps import is_timestamp
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry, read_registry
 from app.services.change_log_service import ChangeLogService
+from app.services.limit_guard import LimitGuard
 from app.services.mensajes_service import MensajesService
 from app.services.note_service import NotePathTaken, NoteService
 from app.services.sync_filter import NOTE_PREFIX, VAULT_PREFIX, is_replicable_id
@@ -184,7 +186,7 @@ class SyncPushService:
 
     def __init__(self, vaults: VaultService, notes: NoteService, port: VaultPort,
                  replication: ReplicationPort, db: str, owner_id: str, actor: Actor | None = None,
-                 changelog: ChangeLogService | None = None):
+                 changelog: ChangeLogService | None = None, limit_guard: LimitGuard | None = None):
         self._vaults = vaults
         self._notes = notes
         self._port = port
@@ -197,6 +199,8 @@ class SyncPushService:
         self._mensajes = MensajesService(port, db, owner_id, author_from=changelog)
         # H-030b: registro de cambios (BITACORA automática); se escribe antes que las notas del lote.
         self._changelog = changelog
+        # H-060: límites de la cuenta; `_pending_*` cuenta lo nuevo del lote aún no escrito en CouchDB.
+        self._limit_guard = limit_guard
         self._start_batch()
 
     def _start_batch(self) -> None:
@@ -211,6 +215,9 @@ class SyncPushService:
         self._new_vaults: set[str] = set()
         # H-030b: (revisión aceptada, la que sustituye) de cada nota del lote, para el registro de cambios.
         self._log_items: list[tuple[dict, dict | None]] = []
+        # H-060: bóvedas y notas (por bóveda) nuevas aceptadas en este lote que aún cuentan sin estar en CouchDB.
+        self._pending_vaults = 0
+        self._pending_notes: dict[str, int] = {}
 
     async def push(self, docs: list[dict]) -> list[dict]:
         """Rechazos del lote, en su orden; `[]` si se aceptó todo (como responde CouchDB).
@@ -415,6 +422,8 @@ class SyncPushService:
                 await self._check_agent_access(doc, leaves)
         if kind.check_parent is not None:
             await kind.check_parent(self, doc["_id"])
+        if not tombstone and doc["deleted_at"] is None and not leaves:
+            await self._check_limits(doc)
         if doc["_id"].startswith(VAULT_PREFIX) and not tombstone and doc["deleted_at"] is None and not leaves:
             self._new_vaults.add(doc["_id"].removeprefix(VAULT_PREFIX))
         if not tombstone and doc["deleted_at"] is None:
@@ -689,6 +698,28 @@ class SyncPushService:
             self._guard.evaluate, doc["_id"].split(":")[1], "sync-write", paths)
         if not allowed and self._guard.enforcing:
             raise Rejected("agent-access-denied")
+
+    async def _check_limits(self, doc: dict) -> None:
+        """H-060: una bóveda o una nota **nueva** (sin hojas previas) no pasa del límite de la cuenta. Las ediciones y las
+        restauraciones no suman. El motivo es texto fijo del catálogo (`vault-limit-reached`, `document-limit-reached`)."""
+        if self._limit_guard is None:
+            return
+        guard = self._limit_guard
+        if doc["_id"].startswith(VAULT_PREFIX):
+            try:
+                await to_thread.run_sync(guard.check_new_vault, self._pending_vaults)
+            except VaultLimitReached:
+                raise Rejected("vault-limit-reached") from None
+            self._pending_vaults += 1
+        elif doc["_id"].startswith(NOTE_PREFIX):
+            vault_id = doc["vault_id"]
+            try:
+                await to_thread.run_sync(
+                    guard.check_new_note, vault_id, doc["path"], self._pending_notes.get(vault_id, 0))
+            except DocumentLimitReached:
+                raise Rejected("document-limit-reached") from None
+            if counts_as_document(doc["path"]):
+                self._pending_notes[vault_id] = self._pending_notes.get(vault_id, 0) + 1
 
     async def _check_vault_is_active(self, note_id: str) -> None:
         """Paso 6c (RF-004, RF-014): la bóveda de la nota tiene alguna hoja viva y activa.

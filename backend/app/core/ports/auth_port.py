@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from app.core.limits import UserLimits
 from app.core.models.refresh_token import RefreshToken
 from app.core.models.user import User
 
@@ -24,6 +25,7 @@ class AuthPort(ABC):
         role_id: str,
         couchdb_name: str,
         must_change_password: bool = False,
+        limits: UserLimits | None = None,
     ) -> User:
         """Inserta (flush) sin confirmar; el llamante hace commit o rollback."""
 

@@ -17,7 +17,7 @@ from app.core.quiet_hours import parse_hhmm
 from app.core.models.notification import Notification
 from app.core.models.task import VaultTask
 
-KINDS = ("task_assigned", "task_status", "task_due", "publication_expired")
+KINDS = ("task_assigned", "task_status", "task_due", "publication_expired", "limit_grace")
 
 # El despachador de push duerme hasta su próximo turno; crear un aviso lo despierta para que salga sin esperar.
 PUSH_WAKE = threading.Event()

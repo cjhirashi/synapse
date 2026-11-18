@@ -13,7 +13,7 @@ Convención de rutas: `kebab-case` en URLs, `snake_case` en campos JSON.
   `get_current_principal` (cookie→Bearer) en vez de `get_current_user`; la base sigue saliendo
   sólo del principal.
 - `auth.py`: sesión por cookie (`/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/me`) y cambio de contraseña.
-- `admin.py`: `POST /admin/users` (alta de usuarios, solo administrador).
+- `admin.py` (H-060): `/admin/users` — listar, alta (contraseña base y límites), límites, baja con gracia de 30 días, recuperar y, solo el super admin, cambiar roles.
 - `vaults.py` (SPEC-0003, H-029): CRUD de bóvedas con `ETag`/`If-Match`, papelera y restauración
   (`DELETE`, `POST /{id}/restore`), catálogo de atributos META de la bóveda, y
   `GET /vaults/{vault_id}/files` (lista paginada de los archivos de la bóveda, 404 si no es del usuario).

@@ -118,7 +118,12 @@ de sincronización `/sync` (SPEC-0005 RF-001, RF-010):
 | `DELETE /auth/me/photo` (sólo cookie, H-028) | 200 mismo cuerpo que GET (`photo_url: null`) · 401 · 503 |
 | `GET /auth/me/photo` (sólo cookie, H-028) | 200 bytes de la foto · 401 · 404 · 503 |
 | `POST /auth/change-password` `{current_password,new_password}` | 204 + cookies nuevas · 400 · 422 |
-| `POST /admin/users` `{email,password}` (admin) | 201 `{id,email,role}` · 403 · 409 · 422 · 503 |
+| `GET /admin/users` (admin) | 200 lista de cuentas con límites, uso de bóvedas y plazos (H-060); un admin ve solo invitados, el super admin todas · 403 |
+| `POST /admin/users` `{email,role?,max_vaults?,max_notes_per_vault?,max_storage_bytes_per_vault?}` (admin, H-060) | 201 cuenta nueva con la contraseña base `admin1234` y cambio obligatorio; sin `password` (422 si se envía); límites omitidos = 2 / 100 / 500 MB, `null` = sin límite; `role: admin` solo el super admin · 403 · 409 · 422 · 503 |
+| `PATCH /admin/users/{id}/limits` (admin) | 200; solo cambia lo enviado; abre un plazo de 30 días con aviso si la cuenta queda por encima · 403 · 404 · 409 |
+| `DELETE /admin/users/{id}` (admin) | 200; baja con gracia de 30 días (inactiva, sesiones cerradas, correo reservado); no a sí mismo ni al último super admin · 403 · 404 · 409 |
+| `POST /admin/users/{id}/restore` (admin) | 200; recupera una cuenta dada de baja dentro de los 30 días · 404 · 409 |
+| `PATCH /admin/users/{id}/role` `{role}` (super admin) | 200; admin ⇄ invitado, obliga a entrar de nuevo · 403 `super-admin-required` · 404 · 409 |
 
 Contrato completo: `.harness/specs/0002-auth/contracts/openapi.yaml`.
 
@@ -457,6 +462,13 @@ Toda respuesta 4xx/5xx es `application/problem+json` (RFC 9457):
 | `password-change-required` | 403 | cambio de contraseña obligatorio pendiente |
 | `wrong-current-password` | 400 | `change-password` con la contraseña actual errónea |
 | `email-taken` | 409 | `POST /admin/users` con un email ya registrado |
+| `super-admin-required` | 403 | cambiar roles sin ser super admin |
+| `user-action-forbidden` | 403 | gestionar a otro admin sin ser super admin, a uno mismo o al último super admin |
+| `user-not-found` | 404 | cuenta inexistente, o que un admin no puede ver |
+| `user-state-conflict` | 409 | eliminar una cuenta ya eliminada o recuperar una activa |
+| `vault-limit-reached` | 403 | crear o restaurar una bóveda por encima del límite de la cuenta (también en sincronización) |
+| `document-limit-reached` | 403 | crear o restaurar una nota por encima del límite de documentos de la bóveda (también en sincronización) |
+| `storage-limit-reached` | 403 | subir un archivo que pasa el almacenamiento de la bóveda |
 | `vault-not-found` | 404 | bóveda inexistente, ajena, borrada o con id no canónico (mismo cuerpo) |
 | `vault-name-taken` | 409 | ya hay otra bóveda activa del usuario con un nombre equivalente |
 | `precondition-failed` | 412 | `If-Match` distinto del `ETag` vigente de la bóveda |
@@ -545,3 +557,14 @@ docker compose exec backend alembic upgrade head
 # Exportar los contratos OpenAPI (uno por feature)
 python scripts/export_openapi.py
 ```
+
+
+## Cuentas y límites por usuario (H-060)
+
+- **Roles:** `super_admin` (la cuenta de Carlos), `admin` y `guest` («Usuario»). El super admin hereda todo lo del admin y además crea administradores y cambia roles; el admin solo gestiona invitados. Solo los invitados tienen límites (`core/limits.py`: `for_role`).
+- **Límites** (columnas nulas de `users`; nulo = sin límite): bóvedas por usuario, documentos por bóveda y almacenamiento por bóveda (bytes de los archivos subidos). «Documento» es una nota del usuario; no cuentan `INDICE.md`, las carpetas reservadas (`AG - …`, `BITACORA`, `PLANTILLAS`) ni los documentos de sistema (`counts_as_document`). Valores iniciales del alta: 2 / 100 / 500 MB.
+- **Dónde rigen** (`services/limit_guard.py`): `POST` y `restore` de bóvedas, `POST` y `restore` de notas, la subida de archivos y la sincronización (`SyncPushService._check_limits`: bóveda o nota nueva del lote; el motivo del rechazo es `vault-limit-reached` o `document-limit-reached`). Una API key comparte la cuota de su dueño.
+- **Bajar un límite** no borra nada: `LimitReconcileService.refresh` abre una fila en `limit_grace` (30 días) y avisa (`limit_grace` en `notifications`). Vencido el plazo, `enforce_due` manda a la papelera lo más viejo (bóvedas y notas, recuperables) o borra los archivos más viejos (sin papelera) hasta cumplir.
+- **Baja de una cuenta:** `users.deleted_at` + `is_active=false` + `token_version` +1 (cierra sesiones); recuperable 30 días con `restore`. Pasado el plazo, `UserPurgeService` borra todo: objetos en MinIO, base CouchDB (`CouchDBPort.drop_user_db`) y filas de Postgres. Ambos trabajos corren en el ciclo de `task_jobs` (`user_jobs.run_user_jobs`).
+- **Contraseña base:** `DEFAULT_USER_PASSWORD` (`core/security.py`); toda cuenta nueva nace con ella y `must_change_password=true`; no vale como contraseña nueva.
+- Migración `023_user_limits_roles` (aditiva). La cuenta de Carlos se promueve a `super_admin` al desplegar (`UPDATE users SET role_id = 'super-admin-role-id'`).

@@ -6,6 +6,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerifyMismatchError
 
 MIN_PASSWORD_LENGTH = 10
+DEFAULT_USER_PASSWORD = "admin1234"  # contraseña inicial de toda cuenta nueva (H-060); nunca vale como contraseña nueva
 EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 # --- API keys de agente (SPEC-0013, P-2) ---
@@ -49,6 +50,8 @@ def validate_new_password(new: str, current: str) -> None:
         raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters long")
     if new == current:
         raise ValueError("New password must differ from the current one")
+    if new == DEFAULT_USER_PASSWORD:
+        raise ValueError("New password must not be the initial password")
 
 
 def hash_refresh_token(raw_token: str) -> str:

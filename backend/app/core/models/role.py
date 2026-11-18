@@ -7,5 +7,5 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(String, primary_key=True)
-    name = Column(String, unique=True, nullable=False)  # "admin" | "guest"
+    name = Column(String, unique=True, nullable=False)  # "super_admin" | "admin" | "guest"
     users = relationship("User", back_populates="role")

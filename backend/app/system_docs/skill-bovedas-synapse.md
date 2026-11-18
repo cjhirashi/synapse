@@ -174,6 +174,7 @@ Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SK
 | `note_update` rechazada por falta de `ifMatch` | Haz `note_get` y pasa su `etag`. |
 | 412 «Vault has changed» | Alguien editó la nota tras tu lectura: relee y reaplica. Si nadie la tocó, revisa que `ifMatch` lleve las comillas del etag (sección 3). |
 | 403 `agent-access-denied` | No estás registrado para esa carpeta: pide el cambio por `AG - MENSAJES` al agente que la gestiona. |
+| 403 `vault-limit-reached`, `document-limit-reached` o `storage-limit-reached` | La cuenta de la persona llegó al máximo de bóvedas, de documentos de esa bóveda o de su almacenamiento (no cuentan índices ni documentos de sistema). No reintentes: avisa a la persona por tu canal de siempre (o por `AG - MENSAJES` a Liza) para que libere espacio o le suban el límite. |
 | 404 `task-not-found` | El `taskId` no existe en esa bóveda (o ya se eliminó por retención): vuelve a listar. |
 | 412 `task-precondition-failed` | Otro cambió la tarea tras tu lectura: relee, usa su `version` nueva en `If-Match` y reaplica. |
 | 422 `sistema:readonly` | Intentaste editar, mover, renombrar o borrar un documento de sistema: no se puede, ni tú ni el usuario. No reintentes; si debe cambiar, pídelo por `AG - MENSAJES`. |

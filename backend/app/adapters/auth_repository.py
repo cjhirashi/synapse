@@ -3,6 +3,7 @@ from datetime import datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.core.limits import UNLIMITED, UserLimits
 from app.core.models.refresh_token import RefreshToken
 from app.core.models.user import User
 from app.core.ports.auth_port import AuthPort
@@ -29,7 +30,9 @@ class AuthRepository(AuthPort):
         role_id: str,
         couchdb_name: str,
         must_change_password: bool = False,
+        limits: UserLimits | None = None,
     ) -> User:
+        limits = limits or UNLIMITED
         user = User(
             id=user_id,
             email=email,
@@ -37,6 +40,9 @@ class AuthRepository(AuthPort):
             role_id=role_id,
             couchdb_name=couchdb_name,
             must_change_password=must_change_password,
+            max_vaults=limits.max_vaults,
+            max_notes_per_vault=limits.max_notes_per_vault,
+            max_storage_bytes_per_vault=limits.max_storage_bytes_per_vault,
             created_at=datetime.utcnow(),
         )
         self.db.add(user)

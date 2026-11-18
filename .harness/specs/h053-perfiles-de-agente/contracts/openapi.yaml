@@ -48,7 +48,7 @@ components:
     Body_put_photo_agent_profiles__agent_id__photo_put:
       properties:
         file:
-          contentMediaType: application/octet-stream
+          format: binary
           title: File
           type: string
       required:

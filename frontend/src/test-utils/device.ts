@@ -109,8 +109,8 @@ export async function createUser(): Promise<TestUser> {
   await admin.login(inject("adminEmail"), inject("adminPassword"));
   userCounter += 1;
   const email = `sync-${Date.now()}-${userCounter}@example.com`;
-  const temporary = "temporal-1234";
-  const { id } = (await (await admin.api("/admin/users", "POST", { email, password: temporary })).json()) as { id: string };
+  const temporary = "admin1234"; // la contraseña inicial de toda cuenta nueva (H-060)
+  const { id } = (await (await admin.api("/admin/users", "POST", { email })).json()) as { id: string };
 
   const password = "definitiva-1234";
   const user = new Browser();

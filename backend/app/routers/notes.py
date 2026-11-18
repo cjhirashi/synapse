@@ -9,7 +9,7 @@ from app.adapters.minio_adapter import get_object_storage
 from app.core.agent_access import actor_of
 from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
 from app.core.errors import (
-    AgentAccessDenied, AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PdfBusy, PdfNotEnabled,
+    AgentAccessDenied, AgentOwnsSkills, DocumentLimitReached, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PdfBusy, PdfNotEnabled,
     PdfRenderFailed, PdfTimeout, PreconditionFailed, PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
 from app.core.ports.object_storage_port import ObjectStoragePort
@@ -19,9 +19,10 @@ from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, PdfIn, TokenPayload
 from app.routers.auth import SESSION_ERRORS
-from app.routers.vaults import VaultId, get_vault_port
+from app.routers.vaults import VaultId, get_limit_guard, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
 from app.services.change_log_service import ChangeLogService
+from app.services.limit_guard import LimitGuard
 from app.services.note_content_service import NoteContentService, Versioned
 
 router = APIRouter(
@@ -38,6 +39,7 @@ router = APIRouter(
 def get_note_content_service(
     current_user: TokenPayload = Depends(get_current_principal),
     port: VaultPort = Depends(get_vault_port),
+    guard: LimitGuard = Depends(get_limit_guard),
 ) -> NoteContentService:
     # Mismo repositorio compartido por proceso que vaults.py (`get_vault_port`) y la misma
     # base resuelta sólo del principal (RF-014 de 0003; RF-002/RF-006 de 0013).
@@ -45,7 +47,7 @@ def get_note_content_service(
     actor = actor_of(current_user)
     return NoteContentService(
         port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),
-        changelog=ChangeLogService(port, db, current_user.sub, actor))
+        changelog=ChangeLogService(port, db, current_user.sub, actor), limit_guard=guard)
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:
@@ -134,7 +136,7 @@ def note_pdf(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=NoteOut,
-    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, AgentAccessDenied, StorageUnavailable),
+    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, AgentAccessDenied, DocumentLimitReached, StorageUnavailable),
 )
 def create_note(
     vault_id: VaultId,
@@ -180,7 +182,7 @@ def delete_note(
 @router.post(
     "/{note_id}/restore",
     response_model=NoteOut,
-    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied),
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, DocumentLimitReached),
 )
 def restore_note(
     vault_id: VaultId,

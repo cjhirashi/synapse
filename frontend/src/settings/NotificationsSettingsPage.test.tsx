@@ -6,7 +6,7 @@ import * as push from "../notifications/pushClient";
 import NotificationsSettingsPage from "./NotificationsSettingsPage";
 
 const prefs = (over: Partial<api.Preferences["quiet"]> = {}): api.Preferences => ({
-  kinds: { task_assigned: true, task_status: true, task_due: true, publication_expired: true },
+  kinds: { task_assigned: true, task_status: true, task_due: true, publication_expired: true, limit_grace: true },
   quiet: { enabled: true, start: "22:00", end: "07:00", ...over },
 });
 

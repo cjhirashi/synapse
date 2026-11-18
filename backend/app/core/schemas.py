@@ -9,6 +9,7 @@ from pydantic import (
 )
 
 from app.core.errors import field_error
+from app.core.limits import DEFAULT_MAX_NOTES_PER_VAULT, DEFAULT_MAX_STORAGE_BYTES_PER_VAULT, DEFAULT_MAX_VAULTS
 from app.core.security import EMAIL_PATTERN, normalize_email
 
 
@@ -23,8 +24,16 @@ class LoginRequest(BaseModel):
 
 
 class CreateUserRequest(BaseModel):
+    """`POST /admin/users` (H-060). Sin contraseña: la cuenta nace con la contraseña base. Un límite omitido toma el
+    valor inicial de la plataforma; `null` lo deja sin límite."""
+
+    model_config = ConfigDict(extra="forbid")
+
     email: str
-    password: str = Field(min_length=1)
+    role: Literal["guest", "admin"] = "guest"
+    max_vaults: int | None = Field(default=DEFAULT_MAX_VAULTS, ge=0)
+    max_notes_per_vault: int | None = Field(default=DEFAULT_MAX_NOTES_PER_VAULT, ge=0)
+    max_storage_bytes_per_vault: int | None = Field(default=DEFAULT_MAX_STORAGE_BYTES_PER_VAULT, ge=0)
 
     @field_validator("email")
     @classmethod
@@ -36,10 +45,46 @@ class CreateUserRequest(BaseModel):
         return v
 
 
-class UserResponse(BaseModel):
+class UpdateLimitsRequest(BaseModel):
+    """`PATCH /admin/users/{id}/limits`: solo cambian los límites enviados; `null` = sin límite."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    max_vaults: int | None = Field(default=None, ge=0)
+    max_notes_per_vault: int | None = Field(default=None, ge=0)
+    max_storage_bytes_per_vault: int | None = Field(default=None, ge=0)
+
+
+class UpdateRoleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    role: Literal["guest", "admin"]
+
+
+class UserLimitsOut(BaseModel):
+    max_vaults: int | None
+    max_notes_per_vault: int | None
+    max_storage_bytes_per_vault: int | None
+
+
+class GraceOut(BaseModel):
+    kind: Literal["vaults", "documents", "storage"]
+    vault_id: str | None
+    deadline_at: str
+
+
+class AdminUserOut(BaseModel):
     id: str
     email: str
     role: str
+    display_name: str | None
+    must_change_password: bool
+    created_at: str
+    deleted_at: str | None  # baja con gracia: la cuenta puede recuperarse hasta `purge_at`
+    purge_at: str | None
+    limits: UserLimitsOut
+    vaults_used: int | None  # `None` si CouchDB no respondió
+    grace: list[GraceOut]
 
 
 class ChangePasswordRequest(BaseModel):
@@ -831,7 +876,7 @@ class NotificationPrefsPut(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kinds: dict[Literal["task_assigned", "task_status", "task_due", "publication_expired"], bool] = {}
+    kinds: dict[Literal["task_assigned", "task_status", "task_due", "publication_expired", "limit_grace"], bool] = {}
     quiet: QuietHours | None = None
 
 

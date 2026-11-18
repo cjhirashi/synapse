@@ -10,8 +10,9 @@ from app.adapters.agent_key_repository import AgentKeyRepository
 from app.adapters.database import get_db
 from app.core.config import settings
 from app.core.errors import (
-    AdminRequired, InvalidToken, NotAuthenticated, PasswordChangeRequired, StorageUnavailable,
+    AdminRequired, InvalidToken, NotAuthenticated, PasswordChangeRequired, StorageUnavailable, SuperAdminRequired,
 )
+from app.core.limits import ADMIN_ROLES, ROLE_SUPER_ADMIN
 from app.core.models.user import User
 from app.core.schemas import TokenPayload
 from app.services.agent_key_service import AgentKeyService
@@ -99,8 +100,16 @@ def get_current_principal(request: Request, db: Session = Depends(get_db)) -> To
 async def require_admin(
     current_user: TokenPayload = Depends(get_current_user),
 ) -> TokenPayload:
-    if current_user.role != "admin":
+    if current_user.role not in ADMIN_ROLES:
         raise AdminRequired()
+    return current_user
+
+
+async def require_super_admin(
+    current_user: TokenPayload = Depends(get_current_user),
+) -> TokenPayload:
+    if current_user.role != ROLE_SUPER_ADMIN:
+        raise SuperAdminRequired()
     return current_user
 
 

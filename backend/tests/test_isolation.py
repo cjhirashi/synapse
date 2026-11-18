@@ -15,7 +15,7 @@ def _couch_exists(name: str) -> bool:
 
 
 def test_rf_014_each_user_gets_their_own_couchdb_database(ready_admin, db):
-    ready_admin.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    ready_admin.post("/admin/users", json={"email": "g@test.com"})
     admin = db.query(User).filter(User.email == SEED_EMAIL).one()
     guest = db.query(User).filter(User.email == "g@test.com").one()
 
@@ -26,7 +26,7 @@ def test_rf_014_each_user_gets_their_own_couchdb_database(ready_admin, db):
 
 
 def test_rf_014_identity_comes_only_from_the_token(ready_admin, db):
-    ready_admin.post("/admin/users", json={"email": "g@test.com", "password": SEED_PASSWORD})
+    ready_admin.post("/admin/users", json={"email": "g@test.com"})
     admin_id = db.query(User).filter(User.email == SEED_EMAIL).one().id
     guest_id = db.query(User).filter(User.email == "g@test.com").one().id
 
@@ -43,6 +43,8 @@ def test_rf_014_identity_comes_only_from_the_token(ready_admin, db):
 
 def test_rf_014_no_endpoint_accepts_a_user_identifier():
     for path, methods in app.openapi()["paths"].items():
+        if path.startswith("/admin/"):
+            continue  # H-060: la gestión de cuentas apunta a otra persona por diseño; solo la abren admin y super admin
         assert "{user_id}" not in path and "{id}" not in path, path
         for method, op in methods.items():
             for param in op.get("parameters", []):
@@ -59,7 +61,7 @@ def test_rf_014_no_endpoint_accepts_a_user_identifier():
 def _ready_guest(admin_client, db, email="g@test.com"):
     from fastapi.testclient import TestClient
 
-    admin_client.post("/admin/users", json={"email": email, "password": SEED_PASSWORD})
+    admin_client.post("/admin/users", json={"email": email})
     db.query(User).filter(User.email == email).update({"must_change_password": False})
     db.commit()
     guest = TestClient(app, base_url=str(admin_client.base_url))
@@ -70,7 +72,8 @@ def _ready_guest(admin_client, db, email="g@test.com"):
 def _protected_get_paths():
     """Todo GET sin parámetros de ruta salvo los públicos: crece solo cuando se añadan
     endpoints de datos (SPEC-0003 y siguientes)."""
-    public = {"/health"}
+    # H-060: `/admin/users` lista las cuentas de otras personas por diseño (solo admin y super admin: test_h060_users).
+    public = {"/health", "/admin/users"}
     paths = []
     for path, ops in app.openapi()["paths"].items():
         if "get" in ops and "{" not in path and path not in public:
