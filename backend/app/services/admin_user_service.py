@@ -71,14 +71,17 @@ class AdminUserService:
                    for row in sorted(grace, key=lambda r: r.deadline_at)])
 
     def usage(self, user_id: str) -> UserUsageOut:
-        """Uso por bóveda (documentos y bytes) y totales de una cuenta que el actor puede ver. Solo lectura."""
+        """Uso por bóveda (documentos y bytes) y totales de una cuenta que el actor puede ver. Solo lectura.
+
+        Las bóvedas salen con un alias por orden de creación (la más vieja es «Bóveda 1»): su nombre es privado de la persona
+        y nunca llega al administrador."""
         user = self._target(user_id)
-        vaults = limit_usage.active_vaults(self._port, user.couchdb_name)
+        oldest_first = list(reversed(limit_usage.active_vaults(self._port, user.couchdb_name)))
         rows = []
-        for doc in vaults:
+        for position, doc in enumerate(oldest_first, start=1):
             vault_id = doc["_id"].removeprefix("vault:")
             rows.append(VaultUsageOut(
-                vault_id=vault_id, name=doc.get("name", ""),
+                alias=f"Bóveda {position}",
                 documents=len(limit_usage.user_notes(self._port, user.couchdb_name, vault_id)),
                 storage_bytes=limit_usage.storage_bytes(self._session, vault_id)))
         return UserUsageOut(

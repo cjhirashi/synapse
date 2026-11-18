@@ -205,8 +205,8 @@ test("«Ver uso» abre una ventana con el uso por bóveda contra el límite y lo
   vi.spyOn(api, "listUsers").mockResolvedValue([user()]);
   const usage = vi.spyOn(api, "getUsage").mockResolvedValue({
     vaults: [
-      { vault_id: "v1", name: "Investigación", documents: 85, storage_bytes: 120 * api.MB },
-      { vault_id: "v2", name: "Diario", documents: 3, storage_bytes: 0 },
+      { alias: "Bóveda 1", documents: 85, storage_bytes: 120 * api.MB },
+      { alias: "Bóveda 2", documents: 3, storage_bytes: 0 },
     ],
     documents_total: 88,
     storage_bytes_total: 120 * api.MB,
@@ -215,7 +215,10 @@ test("«Ver uso» abre una ventana con el uso por bóveda contra el límite y lo
   await u.click(await screen.findByRole("button", { name: "Ver el uso de ana@synapse.test" }));
   expect(usage).toHaveBeenCalledWith("u1");
   const panel = await screen.findByLabelText("Uso de ana@synapse.test");
-  expect(within(panel).getByText("Investigación")).toBeInTheDocument();
+  // Las bóvedas se muestran con alias: el nombre y el contenido son privados de la persona.
+  expect(within(panel).getByText("Bóveda 1")).toBeInTheDocument();
+  expect(within(panel).getByText("Bóveda 2")).toBeInTheDocument();
+  expect(within(panel).getByText(/su nombre y su contenido son privados/i)).toBeInTheDocument();
   expect(within(panel).getByText("85 de 100")).toBeInTheDocument();
   expect(within(panel).getByText("120 MB de 500 MB")).toBeInTheDocument();
   expect(within(panel).getByText("2 de 2")).toBeInTheDocument(); // bóvedas: 2 de las 2 permitidas
@@ -226,11 +229,11 @@ test("«Ver uso» abre una ventana con el uso por bóveda contra el límite y lo
 
 test("el uso de un administrador no muestra límites", async () => {
   vi.spyOn(api, "listUsers").mockResolvedValue([user({ role: "admin", id: "a", email: "admin@synapse.test" })]);
-  vi.spyOn(api, "getUsage").mockResolvedValue({ vaults: [{ vault_id: "v1", name: "Una", documents: 4, storage_bytes: 2 * api.MB }], documents_total: 4, storage_bytes_total: 2 * api.MB });
+  vi.spyOn(api, "getUsage").mockResolvedValue({ vaults: [{ alias: "Bóveda 1", documents: 4, storage_bytes: 2 * api.MB }], documents_total: 4, storage_bytes_total: 2 * api.MB });
   const u = setup();
   await u.click(await screen.findByRole("button", { name: "Ver el uso de admin@synapse.test" }));
   const panel = await screen.findByLabelText("Uso de admin@synapse.test");
-  expect(within(panel).queryByText(/ de /)).not.toBeInTheDocument();
+  expect(within(panel).queryByText(/\d (MB )?de \d/)).not.toBeInTheDocument();
   expect(within(panel).queryByRole("progressbar")).not.toBeInTheDocument();
 });
 
@@ -305,4 +308,13 @@ test("límites: avisa en vivo si el tope de bóvedas queda por debajo de lo que 
   expect(within(dialog).getByText("Hoy usa 2.")).toBeInTheDocument();
   await u.click(within(within(dialog).getByRole("group", { name: "Valores sugeridos de bóvedas" })).getByRole("button", { name: "1" }));
   expect(within(dialog).getByText(/Hoy usa 2: tendrá 30 días para reducir/)).toBeInTheDocument();
+});
+
+test("el uso sin bóvedas lo dice con claridad", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user({ vaults_used: 0 })]);
+  vi.spyOn(api, "getUsage").mockResolvedValue({ vaults: [], documents_total: 0, storage_bytes_total: 0 });
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Ver el uso de ana@synapse.test" }));
+  const panel = await screen.findByLabelText("Uso de ana@synapse.test");
+  expect(within(panel).getByText("Aún no tiene bóvedas.")).toBeInTheDocument();
 });

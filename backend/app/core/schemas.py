@@ -74,8 +74,10 @@ class GraceOut(BaseModel):
 
 
 class VaultUsageOut(BaseModel):
-    vault_id: str
-    name: str
+    """Uso de una bóveda de la cuenta vista por un administrador. El nombre y el id de la bóveda son privados de la persona:
+    se identifica con un alias («Bóveda 1», «Bóveda 2»…) por orden de creación."""
+
+    alias: str
     documents: int  # notas vivas que cuentan como documento (sin índices ni documentos de sistema)
     storage_bytes: int
 

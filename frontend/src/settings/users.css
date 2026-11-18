@@ -122,15 +122,25 @@
 .us-confirm-field { margin-top: var(--space-3); }
 
 .us-usage { display: flex; flex-direction: column; gap: var(--space-4); }
-.us-usage-totals { display: grid; grid-template-columns: 1fr; gap: var(--space-3); }
-.us-usage .us-meter { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px var(--space-3); }
-.us-usage .us-meter progress { grid-column: 1 / -1; }
+.us-usage-who { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.us-usage-totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+.us-usage-totals > :first-child { grid-column: 1 / -1; }
 .us-usage-totals .us-meter { display: flex; flex-direction: column; gap: 4px; padding: var(--space-3) var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); }
 .us-usage-totals .us-meter-value { order: 2; font-size: 1.125rem; }
 .us-usage-totals .us-meter progress { order: 3; }
-.us-usage-vaults { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.us-usage-vaults li { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--bg-tertiary); border-radius: var(--radius-md); }
-.us-usage-vaults h4 { margin: 0; font-size: 0.875rem; overflow-wrap: anywhere; }
+
+/* Por bóveda: una fila por bóveda (alias, documentos, archivos). En celular cada fila es una tarjeta con sus etiquetas. */
+.us-usage-list h3 { margin: 0 0 var(--space-2); font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.us-usage-rows { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.us-usage-list li { display: grid; grid-template-columns: 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.us-usage-head { display: none; }
+.us-usage-alias { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.us-usage-alias svg { flex: none; color: var(--text-secondary); }
+.us-usage-list .us-meter { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 4px var(--space-3); }
+.us-usage-list .us-meter progress { grid-column: 1 / -1; }
+.us-usage-empty { margin: 0; padding: var(--space-4); text-align: center; font-size: 0.875rem; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.us-privacy { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font-size: 0.75rem; line-height: 1.4; color: var(--text-secondary); }
+.us-privacy svg { flex: none; margin-top: 2px; }
 
 @media (max-width: 640px) {
   .us-head { flex-direction: column; align-items: stretch; }
@@ -139,11 +149,18 @@
   .us-seg button { justify-content: center; min-height: 44px; }
   .us-search input { min-height: 44px; }
   .us-limit-presets button { min-height: 36px; }
+  .us-usage-totals .us-meter { padding: var(--space-3); }
+  .us-usage-totals .us-meter-label { white-space: nowrap; }
 }
 
 @media (min-width: 640px) {
   .us-usage-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .us-usage-vaults { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .us-usage-totals > :first-child { grid-column: auto; }
+  /* Escritorio: encabezados de columna y filas en tres columnas; las etiquetas de cada medidor quedan solo para lectores de pantalla. */
+  .us-usage-head { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr); gap: var(--space-4); padding: 0 var(--space-4) var(--space-2); font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); }
+  .us-usage-list li { grid-template-columns: minmax(110px, 1fr) minmax(0, 1.4fr) minmax(0, 1.4fr); align-items: center; gap: var(--space-4); }
+  .us-usage-list .us-meter { display: flex; flex-direction: column; }
+  .us-usage-list .us-meter-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
 
 @media (min-width: 760px) {

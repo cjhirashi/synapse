@@ -34,9 +34,9 @@ export interface AdminUser {
   grace: Grace[];
 }
 
+/** Uso de una bóveda vista por un administrador: sin nombre ni id (son privados de la persona), solo un alias por orden de creación. */
 export interface VaultUsage {
-  vault_id: string;
-  name: string;
+  alias: string;
   documents: number;
   storage_bytes: number;
 }

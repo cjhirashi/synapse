@@ -103,7 +103,10 @@ for (const { label, size, theme } of CASES) {
     await page.getByRole("button", { name: `Ver el uso de ${ana}`, exact: true }).click();
     const usage = page.getByLabel(`Uso de ${ana}`, { exact: true });
     await expect(usage.getByText("Archivos en total")).toBeVisible();
-    await expect(usage.getByText("Investigación de mercado")).toBeVisible();
+    // Privacidad: el administrador ve alias, nunca el nombre de las bóvedas de la persona.
+    await expect(usage.getByText("Bóveda 1", { exact: true })).toBeVisible();
+    await expect(usage.getByText("Investigación de mercado")).toHaveCount(0);
+    await expect(usage.getByText("Diario")).toHaveCount(0);
     await shot(page, `h060-${label}-5-uso`);
     await page.getByRole("button", { name: "Cerrar", exact: true }).click();
 

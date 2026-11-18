@@ -1,9 +1,9 @@
 /** Ventanas de la gestión de usuarios (H-060): alta, límites y uso. El formulario vive en una ventana, no dentro de la lista. */
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { BarChart3, FileText, HardDrive, SlidersHorizontal, UserPlus, Vault, type LucideIcon } from "lucide-react";
+import { BarChart3, FileText, HardDrive, Lock, SlidersHorizontal, UserPlus, Vault, type LucideIcon } from "lucide-react";
 import DialogFrame from "../editor/DialogFrame";
 import { MB, formatBytes, formatCount, parseLimit, type AdminUser, type UserLimits, type UserUsage } from "./adminUsers";
-import { isLimited, Meter } from "./usersView";
+import { isLimited, Meter, RolePill } from "./usersView";
 
 /** Valores iniciales del formulario de alta (decisión de Carlos, 2026-11-18). */
 export const INITIAL = { vaults: "2", notes: "100", storageMb: "500" };
@@ -216,7 +216,8 @@ export function UsageDialog({ user, usage, onClose }: { user: AdminUser; usage: 
   const { max_vaults: vaults, max_notes_per_vault: notes, max_storage_bytes_per_vault: storage } = user.limits;
   return (
     <DialogFrame
-      titleId="usage-user-title" title="Uso de la cuenta" glyph={BarChart3} tone="accent" size="lg" subtitle={user.email}
+      titleId="usage-user-title" title="Uso de la cuenta" glyph={BarChart3} tone="accent" size="lg"
+      subtitle={<span className="us-usage-who">{user.email} <RolePill role={user.role} /></span>}
       onCancel={onClose} actions={<button type="button" data-autofocus onClick={onClose}>Cerrar</button>}
     >
       <div className="us-usage" aria-label={`Uso de ${user.email}`}>
@@ -229,17 +230,31 @@ export function UsageDialog({ user, usage, onClose }: { user: AdminUser; usage: 
               <Meter label="Documentos en total" used={usage.documents_total} limit={null} format={formatCount} />
               <Meter label="Archivos en total" used={usage.storage_bytes_total} limit={null} format={formatBytes} />
             </div>
-            {usage.vaults.length === 0 ? <p className="ag-sub">Aún no tiene bóvedas.</p> : (
-              <ul className="us-usage-vaults">
-                {usage.vaults.map((v) => (
-                  <li key={v.vault_id}>
-                    <h4 title={v.name}>{v.name || "Sin nombre"}</h4>
-                    <Meter label="Documentos" used={v.documents} limit={limited ? notes : null} format={formatCount} />
-                    <Meter label="Archivos" used={v.storage_bytes} limit={limited ? storage : null} format={formatBytes} />
-                  </li>
-                ))}
-              </ul>
-            )}
+
+            <section className="us-usage-list" aria-label="Uso por bóveda">
+              <h3>Por bóveda</h3>
+              {usage.vaults.length === 0 ? (
+                <p className="us-usage-empty">Aún no tiene bóvedas.</p>
+              ) : (
+                <>
+                  <div className="us-usage-head" aria-hidden="true">
+                    <span>Bóveda</span><span>Documentos{limited && notes !== null ? ` · máx. ${formatCount(notes)}` : ""}</span>
+                    <span>Archivos{limited && storage !== null ? ` · máx. ${formatBytes(storage)}` : ""}</span>
+                  </div>
+                  <ul className="us-usage-rows">
+                    {usage.vaults.map((v) => (
+                      <li key={v.alias}>
+                        <span className="us-usage-alias"><Vault size={16} aria-hidden="true" />{v.alias}</span>
+                        <Meter label="Documentos" used={v.documents} limit={limited ? notes : null} format={formatCount} />
+                        <Meter label="Archivos" used={v.storage_bytes} limit={limited ? storage : null} format={formatBytes} />
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </section>
+
+            <p className="us-privacy"><Lock size={14} aria-hidden="true" /> Las bóvedas se muestran con un alias: su nombre y su contenido son privados de la persona.</p>
           </>
         )}
       </div>

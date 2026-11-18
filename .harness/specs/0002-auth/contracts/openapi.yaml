@@ -315,22 +315,22 @@ components:
       title: UserUsageOut
       type: object
     VaultUsageOut:
+      description: 'Uso de una bóveda de la cuenta vista por un administrador. El
+        nombre y el id de la bóveda son privados de la persona:
+
+        se identifica con un alias («Bóveda 1», «Bóveda 2»…) por orden de creación.'
       properties:
+        alias:
+          title: Alias
+          type: string
         documents:
           title: Documents
           type: integer
-        name:
-          title: Name
-          type: string
         storage_bytes:
           title: Storage Bytes
           type: integer
-        vault_id:
-          title: Vault Id
-          type: string
       required:
-      - vault_id
-      - name
+      - alias
       - documents
       - storage_bytes
       title: VaultUsageOut

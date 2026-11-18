@@ -323,9 +323,15 @@ def test_list_shows_storage_used_and_usage_breaks_down_by_vault(ready_admin, db,
     assert row["vaults_used"] == 2 and row["storage_bytes"] == len(PNG)
 
     usage = ready_admin.get(f"/admin/users/{uid}/usage").json()
-    by_name = {v["name"]: v for v in usage["vaults"]}
-    assert by_name["Una"]["documents"] == 3 and by_name["Una"]["storage_bytes"] == 0
-    assert by_name["Dos"]["documents"] == 0 and by_name["Dos"]["storage_bytes"] == len(PNG)
+    # La más vieja es «Bóveda 1»; el nombre y el id de la bóveda no salen nunca (son privados de la persona).
+    by_alias = {v["alias"]: v for v in usage["vaults"]}
+    assert list(by_alias) == ["Bóveda 1", "Bóveda 2"]
+    assert by_alias["Bóveda 1"]["documents"] == 3 and by_alias["Bóveda 1"]["storage_bytes"] == 0
+    assert by_alias["Bóveda 2"]["documents"] == 0 and by_alias["Bóveda 2"]["storage_bytes"] == len(PNG)
+    raw = ready_admin.get(f"/admin/users/{uid}/usage").text
+    for private in ("Una", "Dos", first, second):
+        assert private not in raw, private
+    assert all(set(v) == {"alias", "documents", "storage_bytes"} for v in usage["vaults"])
     assert usage["documents_total"] == 3 and usage["storage_bytes_total"] == len(PNG)
 
 
