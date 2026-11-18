@@ -251,3 +251,123 @@
   border-color: var(--success-text);
   background: color-mix(in srgb, var(--success-text) 10%, var(--bg-tertiary));
 }
+
+/* Selector de despublicación */
+.expiry-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.expiry-picker label {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.expiry-input {
+  min-height: 40px;
+  padding: 0.5rem var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 16px; /* 16 px evita el zoom de iOS al enfocar */
+  width: 100%;
+}
+
+.expiry-input:disabled {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.expiry-input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.expiry-help {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.expiry-error {
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+/* Bloque de despublicación automática */
+.publish-expiry-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+  margin-top: var(--space-3);
+}
+
+.publish-expiry-label {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.publish-expiry-status {
+  color: var(--text-secondary);
+  font-size: 0.9375rem;
+}
+
+.publish-expiry-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.publish-expiry-actions button {
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.publish-expiry-actions button:hover {
+  background: color-mix(in srgb, var(--text-primary) 5%, var(--bg-secondary));
+}
+
+.publish-expiry-actions button:disabled {
+  color: var(--text-secondary);
+  cursor: not-allowed;
+}
+
+.publish-expiry-actions button.btn-primary {
+  background: var(--accent);
+  color: var(--bg-primary);
+  border-color: var(--accent);
+}
+
+.publish-expiry-actions button.btn-primary:hover {
+  background: color-mix(in srgb, var(--accent) 85%, black);
+}
+
+.publish-expiry-inline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  margin-top: var(--space-2);
+}
+
+.publish-expiry-inline-actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}

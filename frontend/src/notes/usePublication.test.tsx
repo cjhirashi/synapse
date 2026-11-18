@@ -21,7 +21,7 @@ describe("usePublication", () => {
   });
 
   it("llama al montar si enabled y noteId están presentes", async () => {
-    const statusData = { enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false };
+    const statusData = { enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false, unpublish_at: null };
     const getPublication = vi.spyOn(publicationApi, "getPublication").mockResolvedValue(statusData);
     const { result } = renderHook(() => usePublication("v1", "note:v1:n1", true, "rev1"));
     await waitFor(() => expect(result.current.status).toEqual(statusData));
@@ -29,7 +29,7 @@ describe("usePublication", () => {
   });
 
   it("al cambiar rev conserva el estado anterior mientras consulta, y al cambiar de documento lo vacía", async () => {
-    const fresh = { enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false };
+    const fresh = { enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false, unpublish_at: null };
     const stale = { ...fresh, stale: true };
     let release: (value: typeof stale) => void = () => undefined;
     const getPublication = vi.spyOn(publicationApi, "getPublication").mockResolvedValueOnce(fresh).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
@@ -46,7 +46,7 @@ describe("usePublication", () => {
   });
 
   it("vuelve a llamar al cambiar rev", async () => {
-    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false };
+    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null };
     const getPublication = vi.spyOn(publicationApi, "getPublication").mockResolvedValue(statusData);
     const { result, rerender } = renderHook(
       ({ rev }) => usePublication("v1", "note:v1:n1", true, rev),
@@ -65,9 +65,9 @@ describe("usePublication", () => {
         const count = callCount;
         setTimeout(() => {
           if (count === 1) {
-            resolve({ enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false });
+            resolve({ enabled: true, published: true, token: "tok", path: "/p/tok", published_at: "2026-11-17T10:00:00Z", republished_at: null, stale: false, unpublish_at: null });
           } else {
-            resolve({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false });
+            resolve({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null });
           }
         }, 100);
       })
@@ -82,7 +82,7 @@ describe("usePublication", () => {
     // Esperar a que la primera llamada async termine (pero no afecte el estado porque alive es false para n1).
     await new Promise((r) => setTimeout(r, 150));
     // Status debe ser de n2 (segunda respuesta), no de n1.
-    expect(result.current.status).toEqual({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false });
+    expect(result.current.status).toEqual({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null });
   });
 
   it("un error deja status null sin lanzar", async () => {
@@ -94,11 +94,11 @@ describe("usePublication", () => {
   });
 
   it("setStatus actualiza el estado sin otra llamada", async () => {
-    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false };
+    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null };
     const getPublication = vi.spyOn(publicationApi, "getPublication").mockResolvedValue(statusData);
     const { result } = renderHook(() => usePublication("v1", "note:v1:n1", true, "rev1"));
     await waitFor(() => expect(result.current.status).toEqual(statusData));
-    const newStatus = { enabled: true, published: true, token: "newtok", path: "/p/newtok", published_at: "2026-11-17T10:30:00Z", republished_at: null, stale: false };
+    const newStatus = { enabled: true, published: true, token: "newtok", path: "/p/newtok", published_at: "2026-11-17T10:30:00Z", republished_at: null, stale: false, unpublish_at: null };
     await act(async () => {
       result.current.setStatus(newStatus);
     });
@@ -108,7 +108,7 @@ describe("usePublication", () => {
   });
 
   it("refresh repite la consulta incluso sin cambios en dependencias", async () => {
-    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false };
+    const statusData = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null };
     const getPublication = vi.spyOn(publicationApi, "getPublication").mockResolvedValue(statusData);
     const { result } = renderHook(() => usePublication("v1", "note:v1:n1", true, "rev1"));
     await waitFor(() => expect(getPublication).toHaveBeenCalledTimes(1));

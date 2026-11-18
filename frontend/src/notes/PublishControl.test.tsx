@@ -16,6 +16,7 @@ describe("PublishControl", () => {
     published_at: null,
     republished_at: null,
     stale: false,
+    unpublish_at: null,
   };
 
   const mockOnStatus = vi.fn();
@@ -48,6 +49,7 @@ describe("PublishControl", () => {
         token: "token123",
         path: "/pub/note1",
         published_at: "2026-11-17T10:00:00Z",
+        unpublish_at: null,
       };
 
       render(
@@ -72,6 +74,7 @@ describe("PublishControl", () => {
         path: "/pub/note1",
         published_at: "2026-11-17T10:00:00Z",
         stale: true,
+        unpublish_at: null,
       };
 
       render(
@@ -257,6 +260,7 @@ describe("PublishControl", () => {
       published_at: "2026-11-17T10:00:00Z",
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     };
 
     it("displays public link in read-only input", async () => {
@@ -330,6 +334,7 @@ describe("PublishControl", () => {
       published_at: "2026-11-17T10:00:00Z",
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     };
 
     it("shows confirm unpublish view", async () => {

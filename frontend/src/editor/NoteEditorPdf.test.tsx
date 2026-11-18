@@ -41,6 +41,7 @@ async function setup(pdf: Record<string, unknown>, withTemplate = true) {
     published_at: null,
     republished_at: null,
     stale: false,
+    unpublish_at: null,
   });
 
   render(
@@ -99,6 +100,7 @@ describe("botón de publicación (H-035)", () => {
       published_at: null,
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     });
     await setup({});
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -114,6 +116,7 @@ describe("botón de publicación (H-035)", () => {
       published_at: null,
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     });
     await setup({ activo: true }, false);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -137,6 +140,7 @@ describe("botón de publicación (H-035)", () => {
       published_at: null,
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     });
 
     render(
@@ -169,6 +173,7 @@ describe("botón de publicación (H-035)", () => {
       published_at: "2026-11-17T10:00:00Z",
       republished_at: null,
       stale: false,
+      unpublish_at: null,
     });
 
     render(

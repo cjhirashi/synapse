@@ -1,5 +1,5 @@
 // H-035: flujo completo del control de publicación (revisión de recursos, publicar, copiar, republicar, despublicar y errores) con el módulo de API real y solo `request` simulado.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/problems";
@@ -7,8 +7,8 @@ import PublishControl from "./PublishControl";
 import * as api from "./publicationApi";
 import type { PublicationCheck, PublicationStatus } from "./publicationApi";
 
-const idle: PublicationStatus = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false };
-const live: PublicationStatus = { ...idle, published: true, token: "tok123", path: "/p/tok123", published_at: "2026-11-17T18:00:00Z" };
+const idle: PublicationStatus = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null };
+const live: PublicationStatus = { ...idle, published: true, token: "tok123", path: "/p/tok123", published_at: "2026-11-17T18:00:00Z", unpublish_at: null };
 const clean: PublicationCheck = { resources: [], external: [], has_private: false };
 const withPrivate: PublicationCheck = {
   resources: [
@@ -29,12 +29,13 @@ function setup(status: PublicationStatus = idle) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-11-17T20:30:00Z") }); // 14:30 CDMX: el valor por omisión de la fecha es 2026-11-18T15:00
   onStatus.mockClear();
   getHtml.mockClear();
   getHtml.mockImplementation(() => "<h1>Hola</h1>");
   vi.spyOn(api, "checkPublication").mockResolvedValue(clean);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 const open = async (user: ReturnType<typeof userEvent.setup>, name: RegExp) => user.click(screen.getByRole("button", { name }));
 
@@ -99,6 +100,63 @@ describe("vista de publicar", () => {
     expect(onStatus).toHaveBeenCalledWith(live);
     expect(await screen.findByText("Publicado. Copia el enlace para compartirlo.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Documento publicado" })).toBeInTheDocument();
+  });
+
+  it("publica con fecha de despublicación marcada en la casilla", async () => {
+    const publishWithExpiry: PublicationStatus = { ...live, unpublish_at: "2026-11-18T15:00:00Z" };
+    const publish = vi.spyOn(api, "publishNote").mockResolvedValue(publishWithExpiry);
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("checkbox", { name: /Entiendo/ }));
+    const expiryCheckbox = await screen.findByRole("checkbox", { name: /Despublicar automáticamente/ });
+    await user.click(expiryCheckbox);
+    const expiryInput = screen.getByDisplayValue("2026-11-18T15:00");
+    fireEvent.change(expiryInput, { target: { value: "2026-11-18T10:00" } });
+    const button = screen.getByRole("button", { name: "Publicar" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => {
+      expect(publish).toHaveBeenCalledWith("v1", "n1", "<h1>Hola</h1>", "2026-11-18T16:00:00.000Z");
+    });
+    expect(onStatus).toHaveBeenCalledWith(publishWithExpiry);
+  });
+
+  it("publica sin la casilla de fecha marcada sin enviar unpublish_at", async () => {
+    const publish = vi.spyOn(api, "publishNote").mockResolvedValue(live);
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("checkbox", { name: /Entiendo/ }));
+    const button = screen.getByRole("button", { name: "Publicar" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => {
+      expect(publish).toHaveBeenCalledWith("v1", "n1", "<h1>Hola</h1>");
+    });
+  });
+
+  it("con la casilla marcada y fecha a menos de 5 minutos «Publicar» queda deshabilitado", async () => {
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("checkbox", { name: /Entiendo/ }));
+    const expiryCheckbox = await screen.findByRole("checkbox", { name: /Despublicar automáticamente/ });
+    await user.click(expiryCheckbox);
+    const expiryInput = screen.getByDisplayValue("2026-11-18T15:00");
+    fireEvent.change(expiryInput, { target: { value: "2026-11-17T14:34" } });
+    const button = screen.getByRole("button", { name: "Publicar" });
+    expect(button).toBeDisabled();
+    expect(screen.getByText(/al menos 5 minutos adelante/)).toBeInTheDocument();
+  });
+
+  it("con la casilla marcada y fecha válida «Publicar» se habilita", async () => {
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("checkbox", { name: /Entiendo/ }));
+    const expiryCheckbox = await screen.findByRole("checkbox", { name: /Despublicar automáticamente/ });
+    await user.click(expiryCheckbox);
+    const expiryInput = screen.getByDisplayValue("2026-11-18T15:00");
+    fireEvent.change(expiryInput, { target: { value: "2026-11-17T14:35" } });
+    expect(screen.queryByText(/al menos 5 minutos adelante/)).toBeNull();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Publicar" })).toBeEnabled());
   });
 
   it("un error al publicar se muestra y no cierra nada", async () => {
@@ -170,6 +228,65 @@ describe("vista de publicado", () => {
   });
 });
 
+describe("despublicación automática", () => {
+  it("estado publicado con fecha muestra «Se despublicará el …» formateada en CDMX", async () => {
+    const withExpiry: PublicationStatus = { ...live, unpublish_at: "2026-11-18T15:00:00Z" };
+    const user = setup(withExpiry);
+    await open(user, /publicado en la web/i);
+    expect(await screen.findByText(/Se despublicará el .*CDMX/)).toBeInTheDocument();
+  });
+
+  it("«Programar» muestra el selector de fecha en línea; «Guardar fecha» llama setPublicationExpiry y muestra el aviso", async () => {
+    const withExpiry: PublicationStatus = { ...live, unpublish_at: "2026-11-18T15:00:00Z" };
+    const setExpiry = vi.spyOn(api, "setPublicationExpiry").mockResolvedValue(withExpiry);
+    const userSetup = setup(live);
+    const user = await userSetup;
+    await open(user, /publicado en la web/i);
+    const programButton = await screen.findByRole("button", { name: "Programar" });
+    await user.click(programButton);
+    const dateInput = screen.getByDisplayValue("2026-11-18T15:00");
+    fireEvent.change(dateInput, { target: { value: "2026-11-19T10:00" } });
+    const saveButton = screen.getByRole("button", { name: "Guardar fecha" });
+    await user.click(saveButton);
+    await waitFor(() => {
+      expect(setExpiry).toHaveBeenCalledWith("v1", "n1", "2026-11-19T16:00:00.000Z");
+    });
+    expect(onStatus).toHaveBeenCalledWith(withExpiry);
+    expect(await screen.findByText(/Se despublicará el .*CDMX/)).toBeInTheDocument();
+  });
+
+  it("«Quitar» llama setPublicationExpiry con null", async () => {
+    const withExpiry: PublicationStatus = { ...live, unpublish_at: "2026-11-18T15:00:00Z" };
+    const withoutExpiry: PublicationStatus = { ...live, unpublish_at: null };
+    const setExpiry = vi.spyOn(api, "setPublicationExpiry").mockResolvedValue(withoutExpiry);
+    const user = setup(withExpiry);
+    await open(user, /publicado en la web/i);
+    const quitarButton = await screen.findByRole("button", { name: "Quitar" });
+    await user.click(quitarButton);
+    await waitFor(() => {
+      expect(setExpiry).toHaveBeenCalledWith("v1", "n1", null);
+    });
+    expect(onStatus).toHaveBeenCalledWith(withoutExpiry);
+    expect(await screen.findByText("Se quitó la fecha de despublicación.")).toBeInTheDocument();
+  });
+
+  it("un 422 con pointer /unpublish_at muestra el mensaje de 5 minutos", async () => {
+    const withExpiry: PublicationStatus = { ...live, unpublish_at: "2026-11-18T15:00:00Z" };
+    vi.spyOn(api, "setPublicationExpiry").mockRejectedValueOnce(
+      new ApiError(422, { type: "urn:synapse:problem:validation-error", errors: [{ detail: "must be in the future", pointer: "/unpublish_at" }] })
+    );
+    const user = setup(withExpiry);
+    await open(user, /publicado en la web/i);
+    const cambiarButton = await screen.findByRole("button", { name: "Cambiar" });
+    await user.click(cambiarButton);
+    const dateInput = screen.getByDisplayValue("2026-11-18T09:00");
+    fireEvent.change(dateInput, { target: { value: "2026-11-18T10:01" } });
+    const saveButton = screen.getByRole("button", { name: "Guardar fecha" });
+    await user.click(saveButton);
+    expect(await screen.findByText("La fecha de despublicación debe ser al menos 5 minutos posterior a ahora.")).toBeInTheDocument();
+  });
+});
+
 describe("despublicar", () => {
   it("pide confirmar con el texto exacto, «Cancelar» vuelve y confirmar borra, avisa con el estado vacío y cierra", async () => {
     const unpublish = vi.spyOn(api, "unpublishNote").mockResolvedValue(undefined);
@@ -183,7 +300,7 @@ describe("despublicar", () => {
     await user.click(screen.getByRole("button", { name: "Despublicar" }));
     await user.click(screen.getByRole("button", { name: "Despublicar" }));
     await waitFor(() => expect(unpublish).toHaveBeenCalledWith("v1", "n1"));
-    expect(onStatus).toHaveBeenCalledWith({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false });
+    expect(onStatus).toHaveBeenCalledWith({ enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null });
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
