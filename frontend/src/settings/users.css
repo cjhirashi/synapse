@@ -99,11 +99,26 @@
 
 /* Ventanas emergentes. */
 .us-form { display: flex; flex-direction: column; gap: var(--space-4); }
-.us-limits { display: grid; grid-template-columns: 1fr; gap: var(--space-4); }
-.us-limits-help { margin: 0; }
-.us-input { display: flex; align-items: center; gap: var(--space-2); }
-.us-input input { flex: 1; min-width: 0; min-height: 40px; }
-.us-input span { flex: none; width: 84px; font-size: 0.8125rem; color: var(--text-secondary); }
+/* Límites: una tarjeta por límite (ícono, campo con la unidad dentro, interruptor «Sin límite», valores sugeridos y aviso). */
+.us-limits { display: flex; flex-direction: column; gap: var(--space-3); }
+.us-limits-help { margin: 0; font-size: 0.75rem; color: var(--text-secondary); }
+.us-limit { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.us-limit-head { display: flex; align-items: center; gap: var(--space-3); }
+.us-limit-icon { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; color: var(--accent); background: var(--bg-secondary); border-radius: var(--radius-sm); }
+.us-limit-title { flex: 1; min-width: 0; }
+.us-limit-title label { display: block; margin: 0; font-size: 0.875rem; font-weight: 600; color: var(--text-primary); }
+.us-limit-title p { margin: 2px 0 0; font-size: 0.75rem; line-height: 1.4; color: var(--text-secondary); }
+.us-limit-switch { flex: none; gap: var(--space-2); font-size: 0.8125rem; color: var(--text-secondary); }
+.us-limit-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+.us-limit-input { position: relative; flex: 1 1 150px; min-width: 0; }
+.us-limit-input input { width: 100%; min-height: 44px; margin: 0; padding-right: 96px; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.us-limit-input span { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); font-size: 0.8125rem; color: var(--text-secondary); pointer-events: none; }
+.us-limit-presets { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.us-limit-presets button { min-height: 32px; padding: 0 12px; font: inherit; font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 999px; cursor: pointer; }
+.us-limit-presets button:hover { color: var(--text-primary); border-color: var(--border-control); }
+.us-limit-presets button[aria-pressed="true"] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.us-limit-note { margin: 0; font-size: 0.75rem; color: var(--text-secondary); }
+.us-limit-note[data-tone="warn"] { color: var(--warning-text); }
 .us-confirm-field { margin-top: var(--space-3); }
 
 .us-usage { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -123,11 +138,10 @@
   .us-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; overflow: visible; }
   .us-seg button { justify-content: center; min-height: 44px; }
   .us-search input { min-height: 44px; }
+  .us-limit-presets button { min-height: 36px; }
 }
 
 @media (min-width: 640px) {
-  .us-limits { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .us-limits-help { grid-column: 1 / -1; }
   .us-usage-totals { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .us-usage-vaults { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

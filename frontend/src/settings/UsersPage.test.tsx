@@ -263,3 +263,46 @@ test("si la carga falla, avisa y permite reintentar", async () => {
   await u.click(screen.getByRole("button", { name: "Reintentar" }));
   expect(await screen.findByText("ana@synapse.test")).toBeInTheDocument();
 });
+
+test("límites: los valores sugeridos rellenan el campo y el almacenamiento grande se lee en GB", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user()]);
+  const save = vi.spyOn(api, "updateLimits").mockResolvedValue(user());
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Límites de ana@synapse.test" }));
+  const dialog = screen.getByRole("dialog");
+  await u.click(within(within(dialog).getByRole("group", { name: "Valores sugeridos de almacenamiento por bóveda" })).getByRole("button", { name: "1 GB" }));
+  expect(within(dialog).getByLabelText("Almacenamiento por bóveda")).toHaveValue("1024");
+  expect(within(dialog).getByText("Equivale a 1 GB.")).toBeInTheDocument();
+  await u.click(within(within(dialog).getByRole("group", { name: "Valores sugeridos de bóvedas" })).getByRole("button", { name: "5" }));
+  await u.click(within(dialog).getByRole("button", { name: "Guardar límites" }));
+  expect(save).toHaveBeenCalledWith("u1", { max_vaults: 5, max_notes_per_vault: 100, max_storage_bytes_per_vault: 1024 * api.MB });
+});
+
+test("límites: el interruptor «Sin límite» vacía el campo y al apagarlo devuelve el último valor", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user()]);
+  const save = vi.spyOn(api, "updateLimits").mockResolvedValue(user());
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Límites de ana@synapse.test" }));
+  const dialog = screen.getByRole("dialog");
+  const field = within(dialog).getByLabelText("Documentos por bóveda");
+  const toggle = within(dialog).getByRole("switch", { name: "Sin límite de documentos por bóveda" });
+  expect(toggle).not.toBeChecked();
+  await u.click(toggle);
+  expect(field).toHaveValue("");
+  expect(toggle).toBeChecked();
+  await u.click(toggle);
+  expect(field).toHaveValue("100");
+  await u.click(toggle);
+  await u.click(within(dialog).getByRole("button", { name: "Guardar límites" }));
+  expect(save).toHaveBeenCalledWith("u1", { max_vaults: 2, max_notes_per_vault: null, max_storage_bytes_per_vault: 500 * api.MB });
+});
+
+test("límites: avisa en vivo si el tope de bóvedas queda por debajo de lo que la persona ya usa", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user({ vaults_used: 2 })]);
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Límites de ana@synapse.test" }));
+  const dialog = screen.getByRole("dialog");
+  expect(within(dialog).getByText("Hoy usa 2.")).toBeInTheDocument();
+  await u.click(within(within(dialog).getByRole("group", { name: "Valores sugeridos de bóvedas" })).getByRole("button", { name: "1" }));
+  expect(within(dialog).getByText(/Hoy usa 2: tendrá 30 días para reducir/)).toBeInTheDocument();
+});

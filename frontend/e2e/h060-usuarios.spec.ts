@@ -111,8 +111,8 @@ for (const { label, size, theme } of CASES) {
     await page.getByRole("button", { name: "Crear usuario" }).click();
     const create = page.getByRole("dialog");
     await expect(create.getByLabel("Bóvedas", { exact: true })).toHaveValue("2");
-    await expect(create.getByLabel("Documentos por bóveda")).toHaveValue("100");
-    await expect(create.getByLabel("Almacenamiento por bóveda")).toHaveValue("500");
+    await expect(create.getByLabel("Documentos por bóveda", { exact: true })).toHaveValue("100");
+    await expect(create.getByLabel("Almacenamiento por bóveda", { exact: true })).toHaveValue("500");
     await shot(page, `h060-${label}-2-alta`);
     await create.getByRole("button", { name: "Cancelar" }).click();
 
