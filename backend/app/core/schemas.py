@@ -73,6 +73,22 @@ class GraceOut(BaseModel):
     deadline_at: str
 
 
+class VaultUsageOut(BaseModel):
+    vault_id: str
+    name: str
+    documents: int  # notas vivas que cuentan como documento (sin índices ni documentos de sistema)
+    storage_bytes: int
+
+
+class UserUsageOut(BaseModel):
+    """`GET /admin/users/{id}/usage`: lo que la cuenta usa hoy, por bóveda y en total. Cuesta recorrer sus notas en CouchDB,
+    por eso va aparte del listado."""
+
+    vaults: list[VaultUsageOut]
+    documents_total: int
+    storage_bytes_total: int
+
+
 class AdminUserOut(BaseModel):
     id: str
     email: str
@@ -84,6 +100,7 @@ class AdminUserOut(BaseModel):
     purge_at: str | None
     limits: UserLimitsOut
     vaults_used: int | None  # `None` si CouchDB no respondió
+    storage_bytes: int  # bytes de todos sus archivos, en todas sus bóvedas
     grace: list[GraceOut]
 
 

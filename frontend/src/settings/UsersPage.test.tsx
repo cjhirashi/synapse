@@ -12,7 +12,7 @@ const LIMITS = { max_vaults: 2, max_notes_per_vault: 100, max_storage_bytes_per_
 
 const user = (over: Partial<api.AdminUser> = {}): api.AdminUser => ({
   id: "u1", email: "ana@synapse.test", role: "guest", display_name: null, must_change_password: true,
-  created_at: "2026-11-18T10:00:00Z", deleted_at: null, purge_at: null, limits: LIMITS, vaults_used: 1, grace: [], ...over,
+  created_at: "2026-11-18T10:00:00Z", deleted_at: null, purge_at: null, limits: LIMITS, vaults_used: 1, storage_bytes: 3 * api.MB, grace: [], ...over,
 });
 
 function setup(role: "super_admin" | "admin" = "super_admin") {
@@ -143,4 +143,47 @@ test("si la carga falla, avisa y permite reintentar", async () => {
   spy.mockResolvedValueOnce([user()]);
   await u.click(screen.getByRole("button", { name: "Reintentar" }));
   expect(await screen.findByRole("heading", { name: "ana@synapse.test" })).toBeInTheDocument();
+});
+
+test("«Ver uso» muestra el uso por bóveda contra el límite y los totales", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user({ limits: { ...LIMITS, max_notes_per_vault: 100 } })]);
+  const usage = vi.spyOn(api, "getUsage").mockResolvedValue({
+    vaults: [
+      { vault_id: "v1", name: "Investigación", documents: 85, storage_bytes: 120 * api.MB },
+      { vault_id: "v2", name: "Diario", documents: 3, storage_bytes: 0 },
+    ],
+    documents_total: 88,
+    storage_bytes_total: 120 * api.MB,
+  });
+  const u = setup("admin");
+  expect(await screen.findByText("Archivos en total: 3 MB")).toBeInTheDocument();
+  await u.click(await screen.findByRole("button", { name: "Ver el uso de ana@synapse.test" }));
+  expect(usage).toHaveBeenCalledWith("u1");
+  const panel = await screen.findByLabelText("Uso de ana@synapse.test");
+  expect(within(panel).getByText("Investigación")).toBeInTheDocument();
+  expect(within(panel).getByText("85 de 100")).toBeInTheDocument();
+  expect(within(panel).getByText("120 MB de 500 MB")).toBeInTheDocument();
+  expect(within(panel).getByText("Documentos en total").nextSibling).toHaveTextContent("88");
+  expect(within(panel).getByText("2 de 2")).toBeInTheDocument(); // bóvedas: 2 de las 2 permitidas
+  await u.click(screen.getByRole("button", { name: "Ver el uso de ana@synapse.test" }));
+  expect(screen.queryByLabelText("Uso de ana@synapse.test")).not.toBeInTheDocument();
+});
+
+test("el uso de un administrador no muestra límites", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user({ role: "admin", id: "a", email: "admin@synapse.test" })]);
+  vi.spyOn(api, "getUsage").mockResolvedValue({ vaults: [{ vault_id: "v1", name: "Una", documents: 4, storage_bytes: 2 * api.MB }], documents_total: 4, storage_bytes_total: 2 * api.MB });
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Ver el uso de admin@synapse.test" }));
+  const panel = await screen.findByLabelText("Uso de admin@synapse.test");
+  expect(within(panel).queryByText(/ de /)).not.toBeInTheDocument();
+  expect(within(panel).queryByRole("progressbar")).not.toBeInTheDocument();
+});
+
+test("si el cálculo del uso falla, lo avisa sin romper la lista", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user()]);
+  vi.spyOn(api, "getUsage").mockRejectedValue(new ApiError(503, { title: "down" }));
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Ver el uso de ana@synapse.test" }));
+  expect(await screen.findByText(/no se pudo calcular el uso/i)).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "ana@synapse.test" })).toBeInTheDocument();
 });

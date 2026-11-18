@@ -37,3 +37,8 @@ def user_notes(port: VaultPort, db: str, vault_id: str) -> list[dict]:
 
 def storage_bytes(session: Session, vault_id: str) -> int:
     return session.query(func.coalesce(func.sum(File.size), 0)).filter(File.vault_id == vault_id).scalar() or 0
+
+
+def storage_total(session: Session, owner_id: str) -> int:
+    """Bytes de todos los archivos de la cuenta, en todas sus bóvedas (consulta SQL barata: va en el listado)."""
+    return session.query(func.coalesce(func.sum(File.size), 0)).filter(File.owner_id == owner_id).scalar() or 0

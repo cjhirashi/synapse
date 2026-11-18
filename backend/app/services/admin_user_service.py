@@ -14,7 +14,9 @@ from app.core.errors import (
 from app.core.limits import GRACE_DAYS, ROLE_ADMIN, ROLE_GUEST, ROLE_SUPER_ADMIN, UserLimits
 from app.core.models.limit_grace import LimitGrace
 from app.core.models.user import User
-from app.core.schemas import AdminUserOut, CreateUserRequest, GraceOut, UpdateLimitsRequest, UserLimitsOut
+from app.core.schemas import (
+    AdminUserOut, CreateUserRequest, GraceOut, UpdateLimitsRequest, UserLimitsOut, UserUsageOut, VaultUsageOut,
+)
 from app.core.security import normalize_email
 from app.services import limit_usage
 from app.services.auth_service import ROLE_IDS, AuthService
@@ -64,8 +66,24 @@ class AdminUserService:
                 max_vaults=user.max_vaults, max_notes_per_vault=user.max_notes_per_vault,
                 max_storage_bytes_per_vault=user.max_storage_bytes_per_vault),
             vaults_used=vaults_used,
+            storage_bytes=limit_usage.storage_total(self._session, user.id),
             grace=[GraceOut(kind=row.kind, vault_id=row.vault_id, deadline_at=_iso(row.deadline_at))
                    for row in sorted(grace, key=lambda r: r.deadline_at)])
+
+    def usage(self, user_id: str) -> UserUsageOut:
+        """Uso por bóveda (documentos y bytes) y totales de una cuenta que el actor puede ver. Solo lectura."""
+        user = self._target(user_id)
+        vaults = limit_usage.active_vaults(self._port, user.couchdb_name)
+        rows = []
+        for doc in vaults:
+            vault_id = doc["_id"].removeprefix("vault:")
+            rows.append(VaultUsageOut(
+                vault_id=vault_id, name=doc.get("name", ""),
+                documents=len(limit_usage.user_notes(self._port, user.couchdb_name, vault_id)),
+                storage_bytes=limit_usage.storage_bytes(self._session, vault_id)))
+        return UserUsageOut(
+            vaults=rows, documents_total=sum(r.documents for r in rows),
+            storage_bytes_total=limit_usage.storage_total(self._session, user.id))
 
     # --- Permisos ---
 

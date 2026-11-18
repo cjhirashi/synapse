@@ -15,7 +15,7 @@ from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import (
-    AdminUserOut, CreateUserRequest, TokenPayload, UpdateLimitsRequest, UpdateRoleRequest,
+    AdminUserOut, CreateUserRequest, TokenPayload, UpdateLimitsRequest, UpdateRoleRequest, UserUsageOut,
 )
 from app.routers.auth import SESSION_ERRORS, get_auth_service
 from app.routers.vaults import get_vault_port
@@ -59,6 +59,11 @@ def list_users(service: AdminUserService = Depends(get_admin_user_service)):
 )
 def create_user(body: CreateUserRequest, service: AdminUserService = Depends(get_admin_user_service)):
     return service.create(body)
+
+
+@router.get("/users/{user_id}/usage", response_model=UserUsageOut, responses=problem_responses(UserNotFound, StorageUnavailable))
+def user_usage(user_id: str, service: AdminUserService = Depends(get_admin_user_service)):
+    return service.usage(user_id)
 
 
 @router.patch("/users/{user_id}/limits", response_model=AdminUserOut, responses=problem_responses(*_MANAGE))

@@ -39,6 +39,9 @@ components:
         role:
           title: Role
           type: string
+        storage_bytes:
+          title: Storage Bytes
+          type: integer
         vaults_used:
           anyOf:
           - type: integer
@@ -55,6 +58,7 @@ components:
       - purge_at
       - limits
       - vaults_used
+      - storage_bytes
       - grace
       title: AdminUserOut
       type: object
@@ -286,6 +290,50 @@ components:
       - max_notes_per_vault
       - max_storage_bytes_per_vault
       title: UserLimitsOut
+      type: object
+    UserUsageOut:
+      description: '`GET /admin/users/{id}/usage`: lo que la cuenta usa hoy, por bóveda
+        y en total. Cuesta recorrer sus notas en CouchDB,
+
+        por eso va aparte del listado.'
+      properties:
+        documents_total:
+          title: Documents Total
+          type: integer
+        storage_bytes_total:
+          title: Storage Bytes Total
+          type: integer
+        vaults:
+          items:
+            $ref: '#/components/schemas/VaultUsageOut'
+          title: Vaults
+          type: array
+      required:
+      - vaults
+      - documents_total
+      - storage_bytes_total
+      title: UserUsageOut
+      type: object
+    VaultUsageOut:
+      properties:
+        documents:
+          title: Documents
+          type: integer
+        name:
+          title: Name
+          type: string
+        storage_bytes:
+          title: Storage Bytes
+          type: integer
+        vault_id:
+          title: Vault Id
+          type: string
+      required:
+      - vault_id
+      - name
+      - documents
+      - storage_bytes
+      title: VaultUsageOut
       type: object
 info:
   title: Synapse
@@ -644,6 +692,62 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Update Role
+      tags:
+      - admin
+  /admin/users/{user_id}/usage:
+    get:
+      operationId: user_usage_admin_users__user_id__usage_get
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUsageOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Admin required / Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: User Usage
       tags:
       - admin
   /auth/change-password:

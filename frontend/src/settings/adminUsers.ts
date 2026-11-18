@@ -29,7 +29,23 @@ export interface AdminUser {
   limits: UserLimits;
   /** Bóvedas vivas hoy; `null` si el servidor no pudo contarlas. */
   vaults_used: number | null;
+  /** Bytes de todos sus archivos, en todas sus bóvedas. */
+  storage_bytes: number;
   grace: Grace[];
+}
+
+export interface VaultUsage {
+  vault_id: string;
+  name: string;
+  documents: number;
+  storage_bytes: number;
+}
+
+/** Uso de una cuenta por bóveda y en total (`GET /admin/users/{id}/usage`). */
+export interface UserUsage {
+  vaults: VaultUsage[];
+  documents_total: number;
+  storage_bytes_total: number;
 }
 
 export const MB = 1024 * 1024;
@@ -42,6 +58,10 @@ export async function listUsers(): Promise<AdminUser[]> {
 }
 
 /** La cuenta nace con la contraseña base (la pone el servidor); un límite omitido toma el valor inicial del servidor. */
+export async function getUsage(id: string): Promise<UserUsage> {
+  return (await request(path(id, "/usage"))).json();
+}
+
 export async function createUser(email: string, role: "guest" | "admin", limits: UserLimits): Promise<AdminUser> {
   return (await request("/admin/users", json("POST", { email, role, ...limits }))).json();
 }

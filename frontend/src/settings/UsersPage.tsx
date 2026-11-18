@@ -6,8 +6,8 @@ import { PROBLEM } from "../api/problems";
 import { useMe } from "../auth/RequireAuth";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import {
-  type AdminRole, type AdminUser, type Grace, type UserLimits, MB,
-  createUser, deleteUser, formatBytes, formatCount, listUsers, parseLimit, restoreUser, updateLimits, updateRole,
+  type AdminRole, type AdminUser, type Grace, type UserLimits, type UserUsage, MB,
+  createUser, deleteUser, formatBytes, formatCount, getUsage, listUsers, parseLimit, restoreUser, updateLimits, updateRole,
 } from "./adminUsers";
 import "./agents.css";
 import "./users.css";
@@ -64,6 +64,43 @@ function LimitFields({ idPrefix, value, onChange }: { idPrefix: string; value: L
   );
 }
 
+/** Uso frente al límite: «12 de 100» o «12» si no hay límite, con una barra que avisa al pasar del 80 %. */
+function Meter({ label, used, limit, format }: { label: string; used: number; limit: number | null; format: (n: number) => string }) {
+  const ratio = limit === null || limit === 0 ? 0 : Math.min(used / limit, 1);
+  return (
+    <div className="us-meter">
+      <span className="us-meter-label">{label}</span>
+      <span className="us-meter-value">{limit === null ? format(used) : `${format(used)} de ${format(limit)}`}</span>
+      {limit !== null && <progress aria-label={label} value={used} max={limit || 1} data-high={ratio >= 0.8 ? "" : undefined} />}
+    </div>
+  );
+}
+
+function UsagePanel({ user, usage }: { user: AdminUser; usage: UserUsage | "loading" | "error" }) {
+  if (usage === "loading") return <p className="ag-sub">Calculando el uso…</p>;
+  if (usage === "error") return <p role="alert" className="ag-callout ag-callout--warn">No se pudo calcular el uso.</p>;
+  const { max_vaults: vaults, max_notes_per_vault: notes, max_storage_bytes_per_vault: storage } = user.limits;
+  const limited = user.role === "guest";
+  return (
+    <div className="us-usage" aria-label={`Uso de ${user.email}`}>
+      <Meter label="Bóvedas" used={usage.vaults.length} limit={limited ? vaults : null} format={formatCount} />
+      <Meter label="Documentos en total" used={usage.documents_total} limit={null} format={formatCount} />
+      <Meter label="Archivos en total" used={usage.storage_bytes_total} limit={null} format={formatBytes} />
+      {usage.vaults.length === 0 ? <p className="ag-sub">Aún no tiene bóvedas.</p> : (
+        <ul className="us-usage-vaults">
+          {usage.vaults.map((v) => (
+            <li key={v.vault_id}>
+              <h4>{v.name || "Sin nombre"}</h4>
+              <Meter label="Documentos" used={v.documents} limit={limited ? notes : null} format={formatCount} />
+              <Meter label="Archivos" used={v.storage_bytes} limit={limited ? storage : null} format={formatBytes} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function limitChips(user: AdminUser) {
   const { max_vaults: vaults, max_notes_per_vault: notes, max_storage_bytes_per_vault: storage } = user.limits;
   const none = "sin límite";
@@ -71,6 +108,7 @@ function limitChips(user: AdminUser) {
     `Bóvedas: ${user.vaults_used === null ? "–" : formatCount(user.vaults_used)} de ${vaults === null ? none : formatCount(vaults)}`,
     `Documentos por bóveda: ${notes === null ? none : formatCount(notes)}`,
     `Almacenamiento por bóveda: ${storage === null ? none : formatBytes(storage)}`,
+    `Archivos en total: ${formatBytes(user.storage_bytes)}`,
   ];
 }
 
@@ -101,6 +139,8 @@ export default function UsersPage() {
   const [deleting, setDeleting] = useState<AdminUser | null>(null);
   const [typed, setTyped] = useState("");
   const [roleChange, setRoleChange] = useState<AdminUser | null>(null);
+  const [usageOf, setUsageOf] = useState<string | null>(null);
+  const [usage, setUsage] = useState<UserUsage | "loading" | "error">("loading");
 
   // Un 401 aquí es una sesión cerrada (`request()` ya intentó renovarla).
   const onUnauthorized = useCallback(
@@ -175,6 +215,18 @@ export default function UsersPage() {
     }
   }
 
+  async function toggleUsage(user: AdminUser) {
+    if (usageOf === user.id) return setUsageOf(null);
+    setUsageOf(user.id);
+    setUsage("loading");
+    try {
+      const loaded = await getUsage(user.id);
+      setUsage((current) => (current === "loading" ? loaded : current));
+    } catch (err) {
+      if (!onUnauthorized(err)) setUsage("error");
+    }
+  }
+
   async function submitLimits(e: FormEvent, user: AdminUser) {
     e.preventDefault();
     setEditError(null);
@@ -245,6 +297,9 @@ export default function UsersPage() {
               </button>
             ) : (
               <>
+                <button type="button" aria-expanded={usageOf === u.id} aria-label={`Ver el uso de ${u.email}`} onClick={() => void toggleUsage(u)}>
+                  {usageOf === u.id ? "Ocultar uso" : "Ver uso"}
+                </button>
                 {u.role === "guest" && (
                   <button type="button" disabled={busy} aria-label={`Límites de ${u.email}`} onClick={() => { setEditing(u.id); setEditLimits(toText(u.limits)); setEditError(null); }}>
                     Límites
@@ -264,6 +319,7 @@ export default function UsersPage() {
             )}
           </div>
         )}
+        {usageOf === u.id && !gone && <UsagePanel user={u} usage={usage} />}
       </li>
     );
   };

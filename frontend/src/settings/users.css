@@ -19,3 +19,22 @@
 
 /* El diálogo de eliminar va en un portal fuera de .users-page: su campo de confirmación lleva su propia clase. */
 .us-confirm-field { margin-top: var(--space-3); }
+
+/* Panel de uso: medidores en una columna en el celular; las bóvedas, una tarjeta cada una. */
+.users-page .us-usage { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--border-subtle, var(--bg-tertiary)); }
+.users-page .us-meter { display: grid; grid-template-columns: 1fr auto; gap: 4px var(--space-3); align-items: baseline; font-size: 0.8125rem; }
+.users-page .us-meter-label { color: var(--text-secondary); }
+.users-page .us-meter-value { color: var(--text-primary); font-weight: 600; text-align: right; }
+.users-page .us-meter progress { grid-column: 1 / -1; width: 100%; height: 6px; border: 0; border-radius: 999px; overflow: hidden; background: var(--bg-tertiary); accent-color: var(--accent); }
+.users-page .us-meter progress::-webkit-progress-bar { background: var(--bg-tertiary); }
+.users-page .us-meter progress::-webkit-progress-value { background: var(--accent); border-radius: 999px; }
+.users-page .us-meter progress::-moz-progress-bar { background: var(--accent); border-radius: 999px; }
+.users-page .us-meter progress[data-high]::-webkit-progress-value { background: var(--warning-text); }
+.users-page .us-meter progress[data-high]::-moz-progress-bar { background: var(--warning-text); }
+.users-page .us-usage-vaults { display: grid; grid-template-columns: 1fr; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.users-page .us-usage-vaults li { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); background: var(--bg-tertiary); border-radius: var(--radius-md); }
+.users-page .us-usage-vaults h4 { margin: 0; font-size: 0.875rem; overflow-wrap: anywhere; }
+
+@media (min-width: 640px) {
+  .users-page .us-usage-vaults { grid-template-columns: repeat(2, 1fr); }
+}

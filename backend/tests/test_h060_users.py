@@ -306,3 +306,44 @@ def test_purge_failure_keeps_the_account_for_the_next_pass(ready_admin, db, stor
     monkeypatch.setattr(CouchDBAdapter, "drop_user_db", boom)
     assert UserPurgeService(db, CouchDBAdapter(), storage).purge_expired(datetime.utcnow() + timedelta(days=GRACE_DAYS + 1)) == 0
     assert db.query(User).filter(User.id == uid).count() == 1
+
+
+# --- Uso por usuario (visible para admin y super admin) ---
+
+def test_list_shows_storage_used_and_usage_breaks_down_by_vault(ready_admin, db, storage):
+    guest = _guest_client(ready_admin, db)
+    first = create(guest, "Una").json()["id"]
+    second = create(guest, "Dos").json()["id"]
+    for name in ("a.md", "b.md", "carpeta/c.md"):  # la carpeta crea su INDICE: no cuenta
+        assert guest.post(f"/vaults/{first}/notes", json={"path": name, "content": "x"}).status_code == 201
+    assert guest.post("/files", data={"vault_id": second}, files={"file": ("a.png", PNG, "image/png")}).status_code == 201
+    uid = _user_id(db)
+
+    [row] = ready_admin.get("/admin/users").json()
+    assert row["vaults_used"] == 2 and row["storage_bytes"] == len(PNG)
+
+    usage = ready_admin.get(f"/admin/users/{uid}/usage").json()
+    by_name = {v["name"]: v for v in usage["vaults"]}
+    assert by_name["Una"]["documents"] == 3 and by_name["Una"]["storage_bytes"] == 0
+    assert by_name["Dos"]["documents"] == 0 and by_name["Dos"]["storage_bytes"] == len(PNG)
+    assert usage["documents_total"] == 3 and usage["storage_bytes_total"] == len(PNG)
+
+
+def test_both_admin_levels_see_usage_but_a_guest_does_not(ready_admin, db):
+    guest = _guest_client(ready_admin, db)
+    uid = _user_id(db)
+    assert ready_admin.get(f"/admin/users/{uid}/usage").status_code == 200
+    _make_super_admin(ready_admin, db)
+    assert ready_admin.get(f"/admin/users/{uid}/usage").status_code == 200
+    assert guest.get(f"/admin/users/{uid}/usage").status_code == 403
+
+
+def test_an_admin_cannot_read_the_usage_of_another_admin(ready_admin, db):
+    _make_super_admin(ready_admin, db)
+    other = ready_admin.post("/admin/users", json={"email": "a@test.com", "role": "admin"}).json()["id"]
+    assert ready_admin.get(f"/admin/users/{other}/usage").status_code == 200  # el super admin sí
+    db.query(User).filter(User.email == SEED_EMAIL).update({"role_id": "admin-role-id"})
+    db.commit()
+    ready_admin.cookies.clear()
+    assert login(ready_admin).status_code == 200
+    assert_problem(ready_admin.get(f"/admin/users/{other}/usage"), 404, "user-not-found")
