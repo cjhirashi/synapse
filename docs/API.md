@@ -442,11 +442,14 @@ persona (sesión)**: una API key de agente recibe 401. Un documento sin plantill
 
 | Ruta | Qué hace |
 |---|---|
-| `GET /vaults/{v}/notes/{n}/publication` | Estado: `enabled`, `published`, `token`, `path` (`/p/<token>`), `published_at`, `republished_at`, `stale` (el documento cambió desde la copia). |
-| `POST` (misma ruta) con `{"html": "…"}` (hasta 2 000 000 caracteres) | Publica: 201 con el estado y un token nuevo. 409 `already-published` si ya lo está (también si dos peticiones llegan a la vez). |
-| `PUT` (misma ruta) con `{"html": "…"}` | Republica: reemplaza la copia y conserva el token y la fecha de publicación (`republished_at` se actualiza). 404 `not-published` si no lo está. |
+| `GET /vaults/{v}/notes/{n}/publication` | Estado: `enabled`, `published`, `token`, `path` (`/p/<token>`), `published_at`, `republished_at`, `unpublish_at` (fecha de despublicación automática, UTC con `Z`, o `null`), `stale` (el documento cambió desde la copia). |
+| `POST` (misma ruta) con `{"html": "…", "unpublish_at"?: "…"}` (hasta 2 000 000 caracteres) | Publica: 201 con el estado y un token nuevo. 409 `already-published` si ya lo está (también si dos peticiones llegan a la vez). `unpublish_at` es opcional: ISO 8601 **con zona** y al menos 5 minutos en el futuro (si no, 422 con el `pointer` `/unpublish_at` y no se publica nada). |
+| `PUT` (misma ruta) con `{"html": "…"}` | Republica: reemplaza la copia y conserva el token, la fecha de publicación y la de despublicación (`republished_at` se actualiza). 404 `not-published` si no lo está. |
+| `PUT …/publication/expiry` con `{"unpublish_at": "…" \| null}` | Fija, cambia o quita (`null`) la fecha de despublicación automática; el campo es obligatorio. Mismas reglas de fecha que arriba. 404 `not-published` si no está publicada. Funciona aunque la plantilla ya no tenga la publicación activa. |
 | `DELETE` (misma ruta) | Despublica: borra la copia (204); el enlace deja de funcionar y el siguiente será otro. 404 `not-published` si no lo está. |
 | `POST …/publication/check` con `{"html": "…"}` | Revisa los recursos del HTML sin publicar: `resources` (`id`, `name`, `content_type` y `visibility`: `public`, `private` o `missing`; un archivo de otra persona sale como `missing`, sin nombre ni tipo), `external` (imágenes de otros sitios) y `has_private` (hay privados o inexistentes). Nunca cambia la visibilidad de nada. |
+
+**Listado y despublicación automática (H-055).** `GET /vaults/{v}/publications` (solo sesión) lista las publicaciones del dueño en la bóveda, de la más reciente a la más antigua: `note_id`, `note_path` (`null` si el documento se borró), `title`, `token`, `path`, `published_at`, `republished_at`, `unpublish_at`, `stale` y `deleted`. Un trabajo de fondo (el mismo ciclo de 60 s que las tareas) borra las publicaciones cuya `unpublish_at` ya pasó y crea un aviso `publication_expired` para la persona (tipo apagable en `PUT /notifications/preferences`; el aviso lleva la URL `/vaults/<id>?tab=publicados`). Mientras el trabajo no corre, la página pública ya responde el mismo 404 que un token inexistente, sin borrar nada.
 
 El HTML es el que la app dibuja en Lectura, con los iframes (Plotly, Archify, YouTube) enviados como un enlace `<a class="pub-embed" href="…">`; el servidor lo vuelve a limpiar
 (`nh3`, la misma lista cerrada que el PDF y el `style` filtrado) y solo convierte en `iframe` con sandbox los enlaces cuyo origen esté en una lista cerrada:
