@@ -76,24 +76,56 @@ for (const { label, size } of [{ label: "390", size: MOBILE }, { label: "1280", 
       const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       expect(bg).toBe(scheme === "dark" ? "rgb(18, 18, 26)" : "rgb(255, 255, 255)");
 
-      // Índice: plegable en celular, lateral y fijo en escritorio
+      // Índice: en celular, botón flotante que abre un panel (sin scripts); en escritorio, lateral y fijo
       const mobile = label === "390";
-      const fold = page.locator("details.toc-fold");
+      const sheet = page.locator(".toc-sheet");
       const side = page.locator("aside.toc-side");
       if (mobile) {
-        await expect(fold).toBeVisible();
+        const open = page.getByRole("link", { name: "Índice", exact: true });
+        const close = page.getByRole("link", { name: "Cerrar índice" });
+        await expect(open).toBeVisible();
         await expect(side).toBeHidden();
-        const summary = fold.locator("summary");
-        expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-        await expect(fold.locator("nav")).toBeHidden();
-        await summary.click();
-        await expect(fold.locator("nav")).toBeVisible();
-        expect(await fold.locator("a").count()).toBeGreaterThanOrEqual(6);
+        await expect(sheet).toBeHidden();
+        await expect(close).toBeHidden();
+        const fab = (await open.boundingBox())!;
+        expect(fab.height).toBeGreaterThanOrEqual(44);
+        expect(fab.x + fab.width).toBeLessThanOrEqual(size.width);
+        expect(fab.y + fab.height).toBeLessThanOrEqual(size.height); // visible sobre la pantalla, no al final del documento
+        // Sigue ahí al bajar por el documento
+        await page.evaluate(() => window.scrollTo(0, 700));
+        const y = await page.evaluate(() => window.scrollY);
+        expect(y).toBeGreaterThan(300);
+        await expect(open).toBeInViewport();
+        // Abrir no mueve la página; el mismo botón pasa a «Cerrar índice»
+        await open.click();
+        await expect(sheet).toBeVisible();
+        await expect(close).toBeVisible();
+        await expect(open).toBeHidden();
+        expect(await page.evaluate(() => window.scrollY)).toBe(y);
+        expect(await sheet.locator("a[href^='#h-']").count()).toBeGreaterThanOrEqual(6);
+        for (const link of await sheet.locator("a[href^='#h-']").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
         await shot(page, `h035-pagina-indice-${label}-${scheme}`);
-        await summary.click();
+        // Cerrar con el botón no mueve la página
+        await close.click();
+        await expect(sheet).toBeHidden();
+        expect(await page.evaluate(() => window.scrollY)).toBe(y);
+        // Tocar fuera del panel lo cierra
+        await open.click();
+        await expect(sheet).toBeVisible();
+        await page.mouse.click(size.width / 2, 40);
+        await expect(sheet).toBeHidden();
+        // Elegir un apartado lleva ahí y cierra el panel
+        await open.click();
+        await sheet.getByRole("link", { name: "Código" }).click();
+        await expect(sheet).toBeHidden();
+        expect(new URL(page.url()).hash).toMatch(/^#h-\d+$/);
+        await expect(page.locator("h3", { hasText: "Código" })).toBeInViewport();
+        await page.evaluate(() => window.scrollTo(0, 0));
       } else {
         await expect(side).toBeVisible();
-        await expect(fold).toBeHidden();
+        await expect(sheet).toBeHidden();
+        await expect(page.locator(".toc-fab")).toHaveCount(2);
+        await expect(page.locator(".toc-fab").first()).toBeHidden();
         expect(await side.evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
         const link = side.getByRole("link", { name: "Código" });
         await link.click();

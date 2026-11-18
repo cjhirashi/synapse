@@ -36,6 +36,10 @@ def _date(value: object) -> str:
     return html.escape(text)
 
 
+_FAB_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'
+_FAB_CLOSE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+
+
 def _toc(items: list) -> str:
     """Lista del índice con una clase por nivel (`lv1` a `lv4`)."""
     rows = []
@@ -65,7 +69,14 @@ def render_page(pub: Publication) -> str:
     meta = _load_json(pub.meta, dict)
     toc_items = [item for item in _load_json(pub.toc, list) if isinstance(item, dict)]
     toc = _toc(toc_items) if toc_items else ""
-    fold = f'<details class="toc-fold toc"><summary>Índice</summary><nav aria-label="Índice del documento">{toc}</nav></details>' if toc else ""
+    # Celular: botón flotante que abre el índice como panel. Sin scripts: el panel se muestra con `:target` (`#indice`), así que cualquier
+    # enlace del índice (que cambia el `#`) lo cierra solo, y «#cerrar» (que no existe) lo cierra sin mover la página.
+    fold = (
+        '<div id="indice" class="toc-sheet"><a class="toc-backdrop" href="#cerrar" tabindex="-1" aria-hidden="true"></a>'
+        f'<nav class="toc toc-panel" aria-label="Índice del documento"><p class="toc-title">Índice</p>{toc}</nav></div>'
+        f'<a class="toc-fab toc-fab--open" href="#indice">{_FAB_ICON}Índice</a>'
+        f'<a class="toc-fab toc-fab--close" href="#cerrar">{_FAB_CLOSE_ICON}Cerrar índice</a>'
+    ) if toc else ""
     side = f'<aside class="toc-side toc"><nav aria-label="Índice"><p class="toc-title">Índice</p>{toc}</nav></aside>' if toc else ""
     description = html.escape(str(meta["descripcion"]), quote=True) if meta.get("descripcion") else ""
     share = (

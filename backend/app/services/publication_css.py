@@ -1,8 +1,8 @@
 """Hoja de estilos de la página pública de una publicación (H-035, fase 4).
 
-Celular primero (una columna, índice plegable) y, desde 960 px, el contenido con el índice fijo a un lado. Claro u oscuro según el sistema
-(`prefers-color-scheme`); los colores son los tokens del diseño de Synapse (`frontend/src/styles/tokens.css`), no valores nuevos. Sin scripts: el índice
-plegable es un `<details>`. Todo cabe en una sola hoja en línea porque la CSP no permite recursos externos.
+Celular primero (una columna, índice en un panel que abre un botón flotante) y, desde 960 px, el contenido con el índice fijo a un lado. Claro u oscuro según el sistema
+(`prefers-color-scheme`); los colores son los tokens del diseño de Synapse (`frontend/src/styles/tokens.css`), no valores nuevos. Sin scripts: el panel del índice
+se abre con `:target`. Todo cabe en una sola hoja en línea porque la CSP no permite recursos externos.
 """
 
 PAGE_CSS = """
@@ -54,13 +54,18 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 .estado--verde { color: var(--success-text); background: color-mix(in srgb, var(--success) 16%, transparent); }
 .estado--rojo { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
-/* Índice: plegable en el celular, fijo a un lado en pantallas anchas */
-.toc-fold { margin: 0 0 1.25rem; border: 1px solid var(--border); border-radius: 0.75rem; background: var(--bg-2); }
-.toc-fold summary { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 1rem; cursor: pointer; font-weight: 600; font-size: 0.9375rem; list-style: none; }
-.toc-fold summary::-webkit-details-marker { display: none; }
-.toc-fold summary::after { content: ""; width: 0.5rem; height: 0.5rem; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-top: -0.2rem; }
-.toc-fold[open] summary::after { transform: rotate(-135deg); margin-top: 0.2rem; }
-.toc-fold nav { padding: 0 0.5rem 0.6rem; }
+/* Índice: en el celular, un botón flotante abre un panel inferior (`:target`, sin scripts; el mismo botón pasa a «Cerrar»); con ancho, fijo a un lado */
+.toc-sheet { display: none; position: fixed; inset: 0; z-index: 20; }
+.toc-sheet:target { display: block; }
+.toc-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
+.toc-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72vh; overflow-y: auto; padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); border-top: 1px solid var(--border); border-radius: 1rem 1rem 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25); overscroll-behavior: contain; }
+.toc-fab { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 30; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1.1rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; font-size: 0.9375rem; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); -webkit-tap-highlight-color: transparent; }
+.toc-fab:active { filter: brightness(0.92); }
+.toc-fab--close { display: none; background: var(--bg-3); color: var(--text); box-shadow: 0 0 0 1px var(--border), 0 4px 14px rgba(0, 0, 0, 0.3); }
+.toc-sheet:target ~ .toc-fab--open { display: none; }
+.toc-sheet:target ~ .toc-fab--close { display: inline-flex; }
+.toc-panel a { min-height: 44px; display: flex; align-items: center; }
+body:has(.toc-fab) { padding-bottom: 4.5rem; }
 .toc ol { list-style: none; margin: 0; padding: 0; }
 .toc a { display: block; padding: 0.4rem 0.5rem; border-radius: 6px; color: var(--text-2); text-decoration: none; font-size: 0.9375rem; line-height: 1.4; }
 .toc a:hover { color: var(--accent-text); background: var(--bg-3); }
@@ -123,14 +128,15 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 @media (min-width: 960px) {
   body { font-size: 1.125rem; }
   .layout { display: grid; grid-template-columns: minmax(0, 46rem) 15rem; gap: 3rem; max-width: 66rem; padding: 2.5rem 1.5rem 0; align-items: start; }
-  .toc-fold { display: none; }
+  .toc-sheet, .toc-fab { display: none !important; }
+  body:has(.toc-fab) { padding-bottom: 0; }
   .toc-side { display: block; position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto; padding-top: 0.25rem; }
   .doc-title { font-size: 2rem; }
   .doc-head { padding: 1.4rem 1.6rem; }
   .site-foot { max-width: 66rem; }
 }
 @media print {
-  .toc-fold, .toc-side, .skip { display: none; }
+  .toc-sheet, .toc-fab, .toc-side, .skip { display: none !important; }
   .layout { display: block; max-width: none; padding: 0; }
   body { background: #fff; color: #000; font-size: 11pt; }
   a { color: #000; }
