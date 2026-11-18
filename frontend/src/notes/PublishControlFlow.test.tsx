@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/problems";
 import PublishControl from "./PublishControl";
 import * as api from "./publicationApi";
+import * as files from "../files/uploadFile";
 import type { PublicationCheck, PublicationStatus } from "./publicationApi";
 
 const idle: PublicationStatus = { enabled: true, published: false, token: null, path: null, published_at: null, republished_at: null, stale: false, unpublish_at: null };
@@ -52,7 +53,7 @@ describe("vista de publicar", () => {
     await waitFor(() => expect(publish).toBeEnabled());
   });
 
-  it("con recursos privados lista cada uno, avisa que no los cambia y el botón dice «Publicar de todos modos»", async () => {
+  it("con recursos privados lista cada uno con su botón, avisa que no cambia nada sin pedirlo y el botón dice «Publicar de todos modos»", async () => {
     vi.spyOn(api, "checkPublication").mockResolvedValue(withPrivate);
     const user = setup();
     await open(user, /publicar en la web/i);
@@ -61,9 +62,79 @@ describe("vista de publicar", () => {
     expect(within(alert).getByText("«secreto.png» · privado")).toBeInTheDocument();
     expect(within(alert).getByText("Un archivo que no existe o no es tuyo")).toBeInTheDocument();
     expect(within(alert).queryByText(/foto\.png/)).toBeNull();
-    expect(within(alert).getByText(/No los cambiamos por ti/)).toBeInTheDocument();
+    expect(within(alert).getByText(/No cambiamos nada sin que lo pidas/)).toBeInTheDocument();
+    expect(within(alert).getAllByRole("button")).toHaveLength(1); // solo «secreto.png» tiene botón: el inexistente no se puede cambiar y con un solo privado no hay «todos»
+    expect(within(alert).getByRole("button", { name: "Hacer público «secreto.png»" })).toBeEnabled();
     expect(screen.getByText(/Este documento usa 2 imágenes de otros sitios/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publicar de todos modos" })).toHaveClass("btn-danger");
+  });
+
+  const twoPrivate: PublicationCheck = {
+    resources: [
+      { id: "a", name: "uno.png", content_type: "image/png", visibility: "private" },
+      { id: "b", name: "dos.png", content_type: "image/png", visibility: "private" },
+      { id: "c", name: "tres.png", content_type: "image/png", visibility: "public" },
+    ],
+    external: [],
+    has_private: true,
+  };
+
+  it("«Hacer público» cambia solo ese archivo, lo quita de la lista y deja el resto privado", async () => {
+    vi.spyOn(api, "checkPublication").mockResolvedValue(twoPrivate);
+    const setVis = vi.spyOn(files, "setFileVisibility").mockResolvedValue({} as never);
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    const alert = await screen.findByRole("alert");
+    await user.click(within(alert).getByRole("button", { name: "Hacer público «uno.png»" }));
+    await waitFor(() => expect(setVis).toHaveBeenCalledTimes(1));
+    expect(setVis).toHaveBeenCalledWith("a", "public");
+    await waitFor(() => expect(screen.queryByText("«uno.png» · privado")).toBeNull());
+    expect(screen.getByText("«dos.png» · privado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Hacer públicos todos/ })).toBeNull(); // queda uno solo
+    expect(screen.getByRole("button", { name: "Publicar de todos modos" })).toBeInTheDocument();
+  });
+
+  it("«Hacer públicos todos» cambia cada privado, no toca los públicos ni los inexistentes, y al terminar el botón pasa a «Publicar»", async () => {
+    vi.spyOn(api, "checkPublication").mockResolvedValue(twoPrivate);
+    const setVis = vi.spyOn(files, "setFileVisibility").mockResolvedValue({} as never);
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("button", { name: "Hacer públicos todos (2)" }));
+    await waitFor(() => expect(setVis).toHaveBeenCalledTimes(2));
+    expect(setVis.mock.calls).toEqual([["a", "public"], ["b", "public"]]);
+    expect(await screen.findByText("Los archivos del documento ya son públicos.")).toBeInTheDocument();
+    expect(screen.queryByText("Hay recursos que no se verán")).toBeNull();
+    expect(screen.getByRole("button", { name: "Publicar" })).toHaveClass("btn-primary");
+  });
+
+  it("si un cambio falla, ese archivo sigue privado y se avisa; el que sí cambió sale de la lista", async () => {
+    vi.spyOn(api, "checkPublication").mockResolvedValue(twoPrivate);
+    const setVis = vi.spyOn(files, "setFileVisibility").mockImplementation(async (id) => {
+      if (id === "b") throw new ApiError(500, {});
+      return {} as never;
+    });
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("button", { name: "Hacer públicos todos (2)" }));
+    await waitFor(() => expect(setVis).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("No se pudo hacer público un archivo. Inténtalo de nuevo.")).toBeInTheDocument();
+    expect(screen.queryByText("«uno.png» · privado")).toBeNull();
+    expect(screen.getByText("«dos.png» · privado")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hacer público «dos.png»" })).toBeEnabled();
+  });
+
+  it("mientras cambia la visibilidad los botones quedan deshabilitados", async () => {
+    vi.spyOn(api, "checkPublication").mockResolvedValue(twoPrivate);
+    let finish!: () => void;
+    vi.spyOn(files, "setFileVisibility").mockImplementation(() => new Promise((resolve) => { finish = () => resolve({} as never); }));
+    const user = setup();
+    await open(user, /publicar en la web/i);
+    await user.click(await screen.findByRole("button", { name: "Hacer público «uno.png»" }));
+    expect(screen.getByRole("button", { name: "Hacer público «uno.png»" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Hacer público «dos.png»" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Haciendo públicos…" })).toBeDisabled(); // el botón de «todos» cambia su texto mientras trabaja
+    finish();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Hacer público «dos.png»" })).toBeEnabled());
   });
 
   it("si todos los archivos son públicos lo dice, y una sola imagen externa va en singular", async () => {

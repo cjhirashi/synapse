@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Copy, Check, ExternalLink, Globe, Info, TriangleAlert } from "lucide-react";
 import DialogFrame from "../editor/DialogFrame";
+import { setFileVisibility } from "../files/uploadFile";
 import { checkPublication, publishNote, republishNote, unpublishNote, setPublicationExpiry, publicUrl, publicationErrorMessage, type PublicationStatus, type PublicationCheck } from "./publicationApi";
 import { cdmxInputToIso, isoToCdmxInput, defaultExpiryInput, expiryError, formatCdmx } from "./cdmxTime";
 import ExpiryPicker from "./ExpiryPicker";
@@ -33,6 +34,8 @@ export default function PublishControl({ vaultId, noteId, status, onStatus, getH
   const [copied, setCopied] = useState(false);
   const [copyFailed, setCopyFailed] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [visBusy, setVisBusy] = useState<ReadonlySet<string>>(new Set());
+  const [visError, setVisError] = useState<string | null>(null);
   const [enableExpiry, setEnableExpiry] = useState(false);
   const [expiryInput, setExpiryInput] = useState("");
   const [editingExpiry, setEditingExpiry] = useState(false);
@@ -66,6 +69,7 @@ export default function PublishControl({ vaultId, noteId, status, onStatus, getH
     setAck(false);
     setPublishError(null);
     setNotice(null);
+    setVisError(null);
     setCopied(false);
     setCopyFailed(false);
     if (status.published) {
@@ -193,6 +197,29 @@ export default function PublishControl({ vaultId, noteId, status, onStatus, getH
     }
   }
 
+  /** Cambia a «público» los archivos que la persona eligió (uno o todos los privados), uno por uno; lo que falle se queda privado y se avisa. */
+  async function handleMakePublic(ids: string[]) {
+    setVisError(null);
+    setVisBusy(new Set(ids));
+    const done = new Set<string>();
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await setFileVisibility(id, "public");
+        done.add(id);
+      } catch {
+        failed += 1;
+      }
+    }
+    setCheck((prev) => {
+      if (!prev) return prev;
+      const resources = prev.resources.map((r) => (done.has(r.id) ? { ...r, visibility: "public" as const } : r));
+      return { ...prev, resources, has_private: resources.some((r) => r.visibility !== "public") };
+    });
+    if (failed > 0) setVisError(failed === 1 ? "No se pudo hacer público un archivo. Inténtalo de nuevo." : `No se pudieron hacer públicos ${failed} archivos. Inténtalo de nuevo.`);
+    setVisBusy(new Set());
+  }
+
   async function handleCopyLink() {
     if (!status.path) return;
     setCopyFailed(false);
@@ -305,7 +332,7 @@ export default function PublishControl({ vaultId, noteId, status, onStatus, getH
               <p>Se creará una copia fija con un enlace público. Cualquier persona que tenga el enlace podrá verla, sin iniciar sesión.</p>
               <p className="publish-secondary">Los cambios que hagas después no se ven hasta que la republiques. Puedes despublicarla cuando quieras.</p>
 
-              <ReviewZone checking={checking} check={check} error={checkError} onRetry={() => void performCheck()} full />
+              <ReviewZone checking={checking} check={check} error={checkError} onRetry={() => void performCheck()} onMakePublic={(ids) => void handleMakePublic(ids)} busy={visBusy} visError={visError} full />
 
               <label className="publish-ack">
                 <input
@@ -474,7 +501,7 @@ export default function PublishControl({ vaultId, noteId, status, onStatus, getH
                 )}
               </div>
 
-              <ReviewZone checking={checking} check={check} error={checkError} onRetry={() => void performCheck()} />
+              <ReviewZone checking={checking} check={check} error={checkError} onRetry={() => void performCheck()} onMakePublic={(ids) => void handleMakePublic(ids)} busy={visBusy} visError={visError} />
             </div>
           )}
 
@@ -505,12 +532,16 @@ function formatDate(isoDate: string): string {
 
 const plural = (n: number) => (n === 1 ? "1 imagen" : `${n} imágenes`);
 
-/** Resultado de revisar los recursos del documento: advertencia de privados, aviso de externos o error con «Reintentar». Nunca cambia nada por la persona. */
-function ReviewZone({ checking, check, error, onRetry, full = false }: {
+/** Resultado de revisar los recursos del documento: los archivos privados con su botón «Hacer público» (cada uno, o todos a la vez), aviso de externos o error con «Reintentar». Nada cambia sin que la persona lo pida. */
+function ReviewZone({ checking, check, error, onRetry, onMakePublic, busy, visError, full = false }: {
   checking: boolean; check: PublicationCheck | null; error: string | null; onRetry: () => void;
+  onMakePublic: (ids: string[]) => void; busy: ReadonlySet<string>; visError: string | null;
   /** En la vista de publicar también dice que los archivos ya son públicos. */
   full?: boolean;
 }) {
+  const hidden = check ? check.resources.filter((r) => r.visibility !== "public") : [];
+  const privateIds = hidden.filter((r) => r.visibility === "private").map((r) => r.id);
+  const working = busy.size > 0;
   return (
     <div className="publish-review" aria-live="polite">
       {checking && <p>Revisando los recursos del documento…</p>}
@@ -523,12 +554,29 @@ function ReviewZone({ checking, check, error, onRetry, full = false }: {
       {!checking && check && check.has_private && (
         <div className="publish-alert publish-alert--warning" role="alert">
           <strong>Hay recursos que no se verán</strong>
-          <ul>
-            {check.resources.filter((r) => r.visibility !== "public").map((r) => (
-              <li key={r.id}>{r.visibility === "private" ? `«${r.name}» · privado` : "Un archivo que no existe o no es tuyo"}</li>
+          <ul className="publish-private-list">
+            {hidden.map((r) => (
+              <li key={r.id}>
+                {r.visibility === "private" ? (
+                  <>
+                    <span className="publish-private-name">{`«${r.name}» · privado`}</span>
+                    <button type="button" className="publish-private-action" aria-label={`Hacer público «${r.name}»`} disabled={working} aria-busy={busy.has(r.id)} onClick={() => onMakePublic([r.id])}>
+                      {busy.has(r.id) ? "Haciendo público…" : "Hacer público"}
+                    </button>
+                  </>
+                ) : (
+                  <span className="publish-private-name">Un archivo que no existe o no es tuyo</span>
+                )}
+              </li>
             ))}
           </ul>
-          <p>Quien abra el enlace no verá estos archivos. Te recomendamos no publicar todavía: hazlos públicos desde Archivos y vuelve a publicar. No los cambiamos por ti.</p>
+          {privateIds.length > 1 && (
+            <button type="button" className="publish-private-all" disabled={working} aria-busy={working} onClick={() => onMakePublic(privateIds)}>
+              {working ? "Haciendo públicos…" : `Hacer públicos todos (${privateIds.length})`}
+            </button>
+          )}
+          {visError && <p className="publish-private-error" role="status">{visError}</p>}
+          <p>Quien abra el enlace no verá estos archivos. Hazlos públicos aquí o publica sin ellos. Un archivo público lo puede abrir cualquiera que tenga su enlace, también fuera de este documento. No cambiamos nada sin que lo pidas.</p>
         </div>
       )}
       {full && !checking && check && !check.has_private && check.resources.length > 0 && (

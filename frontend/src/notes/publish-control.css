@@ -371,3 +371,52 @@
   gap: var(--space-2);
   flex-wrap: wrap;
 }
+
+/* Archivos privados del documento con su botón «Hacer público» */
+.publish-private-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  padding: 0;
+  list-style: none;
+}
+
+.publish-private-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.publish-private-name {
+  flex: 1 1 8rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.publish-alert .publish-private-action,
+.publish-alert .publish-private-all {
+  margin-top: 0;
+  min-height: 40px;
+  padding: 0 var(--space-3);
+  white-space: nowrap;
+}
+
+.publish-alert .publish-private-all {
+  align-self: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.publish-private-error {
+  margin: 0 0 var(--space-2);
+  color: var(--danger);
+}
+
+@media (max-width: 480px) {
+  .publish-alert .publish-private-action,
+  .publish-alert .publish-private-all {
+    width: 100%;
+  }
+}
