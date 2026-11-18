@@ -1,6 +1,6 @@
 /** Ventanas de la gestión de usuarios (H-060): alta, límites y uso. El formulario vive en una ventana, no dentro de la lista. */
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { BarChart3, FileText, HardDrive, Lock, SlidersHorizontal, UserPlus, Vault, type LucideIcon } from "lucide-react";
+import { BarChart3, FileText, Folder, HardDrive, Lock, SlidersHorizontal, UserPlus, type LucideIcon } from "lucide-react";
 import DialogFrame from "../editor/DialogFrame";
 import { MB, formatBytes, formatCount, parseLimit, type AdminUser, type UserLimits, type UserUsage } from "./adminUsers";
 import { isLimited, Meter, RolePill } from "./usersView";
@@ -38,7 +38,7 @@ interface FieldSpec {
 
 const FIELDS: FieldSpec[] = [
   {
-    key: "vaults", label: "Bóvedas", icon: Vault, unit: "bóvedas", help: "Cuántas bóvedas puede tener la cuenta.",
+    key: "vaults", label: "Bóvedas", icon: Folder, unit: "bóvedas", help: "Cuántas bóvedas puede tener la cuenta.",
     presets: [{ value: "1", label: "1" }, { value: "2", label: "2" }, { value: "5", label: "5" }, { value: "10", label: "10" }],
   },
   {
@@ -244,7 +244,7 @@ export function UsageDialog({ user, usage, onClose }: { user: AdminUser; usage: 
                   <ul className="us-usage-rows">
                     {usage.vaults.map((v) => (
                       <li key={v.alias}>
-                        <span className="us-usage-alias"><Vault size={16} aria-hidden="true" />{v.alias}</span>
+                        <span className="us-usage-alias"><Folder size={16} aria-hidden="true" />{v.alias}</span>
                         <Meter label="Documentos" used={v.documents} limit={limited ? notes : null} format={formatCount} />
                         <Meter label="Archivos" used={v.storage_bytes} limit={limited ? storage : null} format={formatBytes} />
                       </li>

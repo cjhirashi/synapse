@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Archive, HardDrive, Hourglass, Plus, Search, Users, Vault } from "lucide-react";
+import { Archive, HardDrive, Hourglass, Plus, Search, Users, Folder } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../api/auth";
 import { PROBLEM } from "../api/problems";
@@ -199,7 +199,7 @@ export default function UsersPage() {
       {users !== null && (
         <dl className="us-stats" aria-label="Resumen">
           <div className="us-stat"><dt><Users size={14} aria-hidden="true" /> Cuentas activas</dt><dd>{formatCount(active.length)}</dd></div>
-          <div className="us-stat"><dt><Vault size={14} aria-hidden="true" /> Bóvedas</dt><dd>{formatCount(totals.vaults)}</dd></div>
+          <div className="us-stat"><dt><Folder size={14} aria-hidden="true" /> Bóvedas</dt><dd>{formatCount(totals.vaults)}</dd></div>
           <div className="us-stat"><dt><HardDrive size={14} aria-hidden="true" /> Archivos</dt><dd>{formatBytes(totals.storage)}</dd></div>
           <div className="us-stat" data-tone={totals.reducing > 0 ? "warn" : undefined}><dt><Hourglass size={14} aria-hidden="true" /> Por reducir</dt><dd>{formatCount(totals.reducing)}</dd></div>
         </dl>
