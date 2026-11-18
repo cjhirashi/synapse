@@ -33,6 +33,8 @@ import VaultTabs, { TAB_ORDER } from "./VaultTabs";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
 const VaultTasks = lazy(() => import("../tasks/VaultTasks"));
+// La pestaña Publicados se carga al abrirla: no engorda el chunk de entrada.
+const PublishedList = lazy(() => import("./PublishedList"));
 import WorkspaceShell from "../layout/WorkspaceShell";
 import { useCollapsibleSidebar } from "../layout/useCollapsibleSidebar";
 import { readMemory, writeMemory, forgetNote, type VaultTab } from "./workspaceMemory";
@@ -324,9 +326,15 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   // H-052: pestaña de la barra lateral, recordada por usuario y bóveda. El árbol de archivos de la pestaña
   // «Archivos» se dibuja en `filesSlot`, dentro de la barra, mientras su tabla ocupa la zona principal.
   // H-053: un enlace `?tab=tareas&task=<id>` (el de un aviso) abre la pestaña Tareas y resalta esa tarea; manda sobre la memoria.
+  // Un enlace `?tab=publicados` (el de un aviso de publicación expirada) abre la pestaña Publicados.
   // Se relee al cambiar la URL: un aviso puede llegar con la bóveda ya abierta (no se vuelve a montar).
   const [focusTask, setFocusTask] = useState<string | null>(() => new URLSearchParams(location.search).get("task"));
-  const [tab, setTab] = useState<VaultTab>(() => (new URLSearchParams(location.search).get("tab") === "tareas" ? "tareas" : remembered.current?.tab ?? "documentos"));
+  const [tab, setTab] = useState<VaultTab>(() => {
+    const param = new URLSearchParams(location.search).get("tab");
+    if (param === "tareas") return "tareas";
+    if (param === "publicados") return "publicados";
+    return remembered.current?.tab ?? "documentos";
+  });
   // Movimiento del cambio de pestaña: hacia dónde va (por el orden de las pestañas) y si ya hubo un cambio (la carga inicial no se anima).
   // Se calcula al renderizar, no en un efecto, para que la animación arranque con el panel nuevo y no un cuadro después.
   const [seenTab, setSeenTab] = useState(tab);
@@ -341,9 +349,12 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const panelId = useId();
   useEffect(() => {
     const query = new URLSearchParams(location.search);
-    if (query.get("tab") === "tareas") {
+    const tabParam = query.get("tab");
+    if (tabParam === "tareas") {
       setTab("tareas");
       setFocusTask(query.get("task"));
+    } else if (tabParam === "publicados") {
+      setTab("publicados");
     }
   }, [location.search]);
   useEffect(() => {
@@ -354,6 +365,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [vault.id]);
+  // Publicados no pone nada en la barra lateral: en el celular, donde ésta flota sobre el contenido, se cierra para dejar ver la lista.
+  useEffect(() => {
+    if (tab === "publicados" && isMobile) setSidebarOpen(false);
+  }, [tab, isMobile, setSidebarOpen]);
   const changeTab = useCallback(
     (next: VaultTab) => {
       setTab(next);
@@ -566,6 +581,11 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
             )}
             {tab === "archivos" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setFilesSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
             {tab === "tareas" && <div id={panelId} role="tabpanel" className="vault-tab-panel files-workspace" ref={setTasksSlot} style={{ "--vault-icon-color": colorVar(vaultColor) } as CSSProperties} />}
+            {tab === "publicados" && (
+              <div id={panelId} role="tabpanel" className="vault-tab-panel">
+                <p className="vault-workspace-side-empty">Los documentos publicados de esta bóveda aparecen a la derecha.</p>
+              </div>
+            )}
         </>
       }
     >
@@ -588,8 +608,13 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
           />
           </Suspense>
         )}
-        {/* Con la papelera abierta (o en las pestañas Archivos y Tareas) el editor sigue montado (oculto): no se pierde un borrador. */}
-        <div ref={setContentEl} hidden={showTrash || tab === "archivos" || tab === "tareas"} className="vault-workspace-content">
+        {tab === "publicados" && (
+          <Suspense fallback={<p className="tasks-empty">Cargando publicados…</p>}>
+          <PublishedList vaultId={vault.id} onOpenNote={(id) => { changeTab("documentos"); open(id); }} />
+          </Suspense>
+        )}
+        {/* Con la papelera abierta (o en las pestañas Archivos, Tareas y Publicados) el editor sigue montado (oculto): no se pierde un borrador. */}
+        <div ref={setContentEl} hidden={showTrash || tab === "archivos" || tab === "tareas" || tab === "publicados"} className="vault-workspace-content">
           {openId === null ? (
             // Estado vacío (SPEC-0009 RF-008): texto centrado.
             <div className="vault-workspace-empty">

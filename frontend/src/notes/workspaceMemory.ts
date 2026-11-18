@@ -1,6 +1,6 @@
-export type VaultTab = "documentos" | "tags" | "archivos" | "tareas";
+export type VaultTab = "documentos" | "tags" | "archivos" | "tareas" | "publicados";
 
-const VAULT_TABS: readonly VaultTab[] = ["documentos", "tags", "archivos", "tareas"];
+const VAULT_TABS: readonly VaultTab[] = ["documentos", "tags", "archivos", "tareas", "publicados"];
 
 export interface WorkspaceMemory {
   noteId: string | null;

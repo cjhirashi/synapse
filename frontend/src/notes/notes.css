@@ -1091,7 +1091,7 @@ body.is-resizing {
   gap: 7px;
   min-width: 0;
   margin: 0 0 -1px;
-  padding: 9px 12px;
+  padding: 9px 9px;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 10px 10px 0 0;
@@ -1115,7 +1115,7 @@ body.is-resizing {
 }
 
 .vault-tab[aria-selected="true"] {
-  flex: 0 0 auto;
+  flex: 0 1 auto; /* cede ancho a las demás: con cinco pestañas el nombre se recorta antes que desbordar la barra */
   z-index: 1;
   color: var(--text-primary);
   font-weight: 600;
@@ -1149,6 +1149,11 @@ body.is-resizing {
 .vault-tab:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+/* Barra muy angosta: la pestaña activa también queda solo con su ícono (el nombre sigue en `title` y en su nombre accesible). */
+@container (max-width: 249px) {
+  .vault-tab[aria-selected="true"] span { display: none; }
 }
 
 /* Movimiento al cambiar de pestaña: la que se elige entra desde el lado de la anterior (con su ícono), el panel se desliza igual y la

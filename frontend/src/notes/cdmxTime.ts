@@ -45,5 +45,5 @@ export function expiryError(value: string, now = new Date()): string | null {
 }
 
 export function formatCdmx(iso: string): string {
-  return `${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE }).format(new Date(iso))} CDMX`;
+  return `${new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: ZONE }).format(new Date(iso))}\u00a0CDMX`; // sin salto: «CDMX» no queda sola en otra línea
 }

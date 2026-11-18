@@ -1451,11 +1451,11 @@ test("H-052: las flechas del teclado cambian de pestaña", async () => {
   docs.focus();
   await userEvent.keyboard("{ArrowRight}");
   expect(await tabButton("Filtro por tags")).toHaveAttribute("aria-selected", "true");
-  // Documentos es la primera: la flecha izquierda da la vuelta hasta la última (H-053 añadió «Tareas»).
+  // Documentos es la primera: la flecha izquierda da la vuelta hasta la última (H-053 añadió «Tareas»; ahora es «Publicados»).
   await userEvent.keyboard("{ArrowLeft}{ArrowLeft}");
-  expect(await tabButton("Tareas")).toHaveAttribute("aria-selected", "true");
+  expect(await tabButton("Publicados")).toHaveAttribute("aria-selected", "true");
   await userEvent.keyboard("{ArrowLeft}");
-  expect(await tabButton("Archivos")).toHaveAttribute("aria-selected", "true");
+  expect(await tabButton("Tareas")).toHaveAttribute("aria-selected", "true");
 });
 
 test("H-052: la pestaña Archivos trae el árbol de carpetas de la bóveda y su tabla, sin ventana aparte", async () => {

@@ -1,5 +1,5 @@
 import { useId, type KeyboardEvent } from "react";
-import { FileText, Files, ListChecks, Tags } from "lucide-react";
+import { FileText, Files, Globe, ListChecks, Tags } from "lucide-react";
 import type { VaultTab } from "./workspaceMemory";
 
 const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
@@ -7,6 +7,7 @@ const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
   { id: "tags", label: "Filtro por tags", Icon: Tags },
   { id: "archivos", label: "Archivos", Icon: Files },
   { id: "tareas", label: "Tareas", Icon: ListChecks },
+  { id: "publicados", label: "Publicados", Icon: Globe },
 ];
 
 /** Orden de izquierda a derecha: de él sale hacia dónde se mueve el cambio de pestaña. */
