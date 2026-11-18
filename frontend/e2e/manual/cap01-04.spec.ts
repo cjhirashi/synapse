@@ -107,7 +107,7 @@ test("MANUAL cap 01", async ({ browser }) => {
         n: 4,
       },
       {
-        target: await (hiddenButton.isVisible() ? hiddenButton : docAside),
+        target: (await hiddenButton.isVisible()) ? hiddenButton : docAside,
         n: 5,
       },
       {
@@ -635,11 +635,11 @@ test("MANUAL cap 04", async ({ browser }) => {
   await capture(page, "04-04-indice-carpeta", {
     marks: [
       {
-        target: await (descriptionArea.isVisible() ? descriptionArea : page.locator(".note-view")),
+        target: (await descriptionArea.isVisible()) ? descriptionArea : page.locator(".note-view"),
         n: 1,
       },
       {
-        target: await (documentsArea.isVisible() ? documentsArea : page.locator(".note-view")),
+        target: (await documentsArea.isVisible()) ? documentsArea : page.locator(".note-view"),
         n: 2,
         dx: -34,
         dy: -2,

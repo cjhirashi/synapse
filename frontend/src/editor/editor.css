@@ -1964,6 +1964,15 @@ li.note-task[data-checked="true"] .note-task-body {
   text-decoration-style: dashed;
 }
 
+/* Campo de atributo `{{nombre}}` en Lectura: el valor del atributo, marcado con el color de acento de la bóveda y un subrayado punteado
+   (tooltip «Atributo: nombre»); no se imprime en el PDF ni en la página publicada. */
+.milkdown-view .ProseMirror span.attr-field {
+  background: color-mix(in srgb, var(--vault-accent) 14%, transparent);
+  border-bottom: 1px dotted var(--vault-accent);
+  border-radius: 3px;
+  padding: 0 0.2em;
+}
+
 /* H-012 C-2: SÓLO en Lectura (`data-mode="read"`) el wikilink resuelto navega al hacer clic, así que
    muestra cursor de puntero para indicar que es clickeable; el roto conserva el cursor de texto. */
 .milkdown-view[data-mode="read"] .ProseMirror a.wikilink:not([data-broken]) {

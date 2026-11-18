@@ -45,7 +45,7 @@ test.beforeAll(async () => {
   await api("POST", `/vaults/${v}/tasks`, { title: "Confirmar la entrega de leche", status: "pending", priority: "medium", due_at: iso(3), assignee_type: "user" }, asAgent);
 });
 
-async function session(browser: Browser, size = DESKTOP, touch = false) {
+async function session(browser: Browser, size: { width: number; height: number } = DESKTOP, touch = false) {
   const context = await browser.newContext({ baseURL: origin(), viewport: size, reducedMotion: "reduce", hasTouch: touch });
   for (const cookie of demo.cookie.split("; ")) {
     const [name, ...rest] = cookie.split("=");

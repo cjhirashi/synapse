@@ -48,6 +48,7 @@ import { lift } from "@milkdown/prose/commands";
 import { Plugin, Selection } from "@milkdown/prose/state";
 import type { EditorView, NodeViewConstructor } from "@milkdown/prose/view";
 import { resolveWikiLink, splitWikiLinks, type NoteRef } from "./wikilink";
+import { attrFieldMark, attrFieldRemark, attrFieldValuesCtx, attrFieldValuesPlugin } from "./attrField";
 import { pdfBlockSchema, pdfBlocksRemark, pdfMarkSchema, type PdfBlockKind, type PdfMarkKind } from "./markdown/pdfBlocks";
 import { insertPdfMark, toggleColumns, togglePdfBlock } from "./markdown/pdfBlockCommands";
 import { createHighlightPlugin } from "prosemirror-highlight";
@@ -325,6 +326,8 @@ interface MilkdownViewProps {
    * marcadores de lista del markdown renderizado. Por defecto `accent` (el cian de siempre).
    */
   vaultColor?: PaletteKey;
+  /** Atributos del documento: en Lectura, `{{atributo:nombre}}` en el cuerpo muestra su valor marcado (`attrField.ts`); en edición no se usa. */
+  attributes?: Record<string, unknown>;
   /**
    * Notificación de conversión de enlace (H-025 paso 4): cuando el pegado convierte un enlace
    * de YouTube o imagen. El padre lo usa para mostrar un aviso con deshacer. Sólo se registra
@@ -338,6 +341,8 @@ interface Running {
   editor: Editor;
   ready: Promise<unknown>;
   readOnly: boolean;
+  /** Valores de los campos `{{nombre}}` con que se creó (cambian → se recrea). */
+  fieldKey: string;
   /** La vista, una vez creado el editor. */
   view: EditorView | null;
   /** Documento que ya se emitió (o con el que se creó): lo distinto de él es una edición pendiente. */
@@ -346,12 +351,17 @@ interface Running {
   reported: boolean;
 }
 
-export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent", onLinkConverted }: MilkdownViewProps) {
+export function MilkdownView({ value, onChange, readOnly, label, onView, registerFlush, onDirty, autoFocus = false, preparsedMdast = null, prefix = "", registerCommands, onTableContext, notes, onWikilinkClick, onWikilinkHover, vaultColor = "accent", onLinkConverted, attributes }: MilkdownViewProps) {
   const host = useRef<HTMLDivElement>(null);
   const running = useRef<Running | null>(null);
   /** Lista de notas vigente para resolver wikilinks (H-011); por ref, la lee el resolvedor al parsear. */
   const notesRef = useRef<readonly NoteRef[]>(notes ?? []);
   notesRef.current = notes ?? [];
+  /** Valores de los campos `{{nombre}}` (solo Lectura); la llave también decide si hay que recrear el editor cuando cambian. */
+  const fieldValues = readOnly ? (attributes ?? {}) : null;
+  const fieldKey = fieldValues ? JSON.stringify(fieldValues) : "";
+  const fieldsRef = useRef(fieldValues);
+  fieldsRef.current = fieldValues;
   /** Quién es «usuario» en los comentarios del documento (nombre y foto de la sesión); la lee la vista del comentario al pintar. */
   const me = useContext(MeContext);
   const personRef = useRef<CommentPerson | null>(null);
@@ -437,7 +447,7 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
   useEffect(() => {
     // Ya hay un editor con este modo y este texto: nada que hacer (lo escrito por el usuario
     // vuelve del padre como `value` igual a `current`).
-    if (running.current && running.current.readOnly === readOnly && current.current === value) return;
+    if (running.current && running.current.readOnly === readOnly && running.current.fieldKey === fieldKey && current.current === value) return;
     stop();
     current.current = value;
 
@@ -645,12 +655,16 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
       .use(wikilinkResolverPlugin)
       .use(wikilinkMark)
       .use(wikilinkRemark)
+      .use(attrFieldValuesPlugin)
+      .use(attrFieldMark)
+      .use(attrFieldRemark)
       .use(pdfBlocksRemark)
       .use(pdfBlockSchema)
       .use(pdfMarkSchema)
       .config((ctx) => {
         // El resolvedor lee la lista de notas vigente por ref: así resolver no obliga a recrear el editor.
         ctx.set(wikilinkResolverCtx, (target: string) => resolveWikiLink(target, notesRef.current));
+        ctx.set(attrFieldValuesCtx, fieldsRef.current);
       });
 
     const ready = editor.create().then(() => {
@@ -745,8 +759,8 @@ export function MilkdownView({ value, onChange, readOnly, label, onView, registe
         });
       }
     });
-    running.current = { editor, ready, readOnly, view: null, baseDoc: null, reported: false };
-  }, [value, readOnly, label]);
+    running.current = { editor, ready, readOnly, fieldKey, view: null, baseDoc: null, reported: false };
+  }, [value, readOnly, label, fieldKey]);
 
   // El padre puede pedir el vaciado síncrono antes de alternar vista o modo y antes de guardar (E-6).
   useEffect(() => {

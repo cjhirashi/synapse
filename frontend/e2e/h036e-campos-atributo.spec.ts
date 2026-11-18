@@ -22,20 +22,24 @@ test("H-036e: los campos de atributo del cuerpo se resuelven en Lectura y siguen
   await editor.locator("> p").last().click();
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");
-  await page.keyboard.type("CAMPO {{atributo:descripcion}} FIN. FALTA {{atributo:noexiste}}. Código `{{atributo:descripcion}}`.");
+  await page.keyboard.type("CAMPO {{atributo:descripcion}} Y {{atributo:descripcion}} FIN. FALTA {{atributo:noexiste}}. Código `{{atributo:descripcion}}`.");
   await page.getByRole("button", { name: "Leer", exact: true }).click();
   await waitForSynced(page);
   const reading = page.locator('.milkdown-view[data-mode="read"] .ProseMirror');
-  await expect(reading).toContainText("CAMPO Valor uno FIN.");
+  await expect(reading).toContainText("CAMPO Valor uno Y Valor uno FIN.");
   await expect(reading).toContainText("FALTA {{atributo:noexiste}}.");
   await expect(reading.locator("code", { hasText: "{{atributo:descripcion}}" })).toHaveCount(1);
+  const marked = reading.locator("span.attr-field[data-attr=descripcion]");
+  await expect(marked).toHaveCount(2);
+  await expect(marked.first()).toHaveText("Valor uno");
+  await expect(marked.first()).toHaveAttribute("title", "Atributo: descripcion");
 
   // Cambiar el atributo actualiza el cuerpo sin tocar el texto.
   await page.getByRole("button", { name: "Editar", exact: true }).click();
   await page.getByLabel("Descripción", { exact: true }).fill("Valor dos");
   await page.getByRole("button", { name: "Leer", exact: true }).click();
   await waitForSynced(page);
-  await expect(reading).toContainText("CAMPO Valor dos FIN.");
+  await expect(reading).toContainText("CAMPO Valor dos Y Valor dos FIN.");
   await expect(reading).not.toContainText("Valor uno");
   expect(errors, "sin errores de página").toEqual([]);
   await context.close();

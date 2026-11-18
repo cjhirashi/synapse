@@ -60,7 +60,6 @@ import {
 } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
-import { fillAttributeFields } from "../notes/attributeFields";
 import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
 import { captureFileName } from "../files/captureName";
 import { htmlEmbedMarkup } from "../files/embed";
@@ -146,6 +145,8 @@ export interface ViewProps {
   onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void;
   /** Puntero sobre un wikilink, sólo en Lectura (H-021 C-1/C-6); el editor lo usa para la tarjeta de vista previa. */
   onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void;
+  /** Atributos del documento para los campos `{{nombre}}` del cuerpo; sólo Visual en Lectura (`attrField.ts`). */
+  attributes?: Record<string, unknown>;
   /** Color de la bóveda abierta (H-014); sólo lo usa la vista Visual para publicar las variables de color del documento. */
   vaultColor?: PaletteKey;
   /** Notificación de conversión de enlace (H-025 paso 4); sólo la vista Visual en edición. */
@@ -1116,8 +1117,6 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   const pathInvalid = checkPath(note.path) !== null;
   /** Lectura: el bloque de YAML heredado al inicio se muestra aparte y literal (P-6). */
   const legacyRead = mode === "read" ? splitLegacyBlock(draft) : null;
-  // Lectura: `{{atributo:x}}` muestra el valor vigente del atributo (el guardado sigue con las llaves). Si cambia algo, el mdast guardado ya no corresponde al texto.
-  const readFilled = mode === "read" ? fillAttributeFields(legacyRead ? legacyRead.rest : draft, note?.frontmatter ?? {}) : null;
 
   return (
     <section className="note-editor" aria-label="Editor de nota" onKeyDown={onKeyDown}>
@@ -1512,7 +1511,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <>
               {/* P-6 (UX-H4): el YAML heredado se ve literal, no como regla horizontal + negrita. */}
               {legacyRead && <pre className="note-editor-legacy-block" aria-label="YAML heredado, sin interpretar">{legacyRead.block}</pre>}
-              <Visual value={readFilled?.text ?? ""} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead || readFilled?.changed ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} onWikilinkHover={setWikilinkHover} vaultColor={vaultColor} />
+              <Visual value={legacyRead ? legacyRead.rest : draft} attributes={note?.frontmatter ?? {}} onChange={onDraft} label="Contenido de la nota" readOnly registerFlush={registerFlush} onDirty={onViewDirty} preparsedMdast={legacyRead ? null : savedPreparsed} notes={vaultNotes} onWikilinkClick={onOpenWikilink} onWikilinkHover={setWikilinkHover} vaultColor={vaultColor} />
               {/* H-021: tarjeta de vista previa del wikilink bajo el puntero. Sólo con puntero fino (C-5); muestra
                   `titulo` y `descripcion` del documento (no el cuerpo) y crea la nota rota con el mismo
                   `onOpenWikilink` (C-7). */}

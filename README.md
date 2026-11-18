@@ -13,7 +13,7 @@ archivos) · CouchDB/PouchDB (bóvedas y notas, offline-first) · MinIO (objetos
 - **Bóvedas y notas** con árbol de carpetas, papelera, restauración, resolución de conflictos y
   sincronización PouchDB ↔ CouchDB (`/sync`). Cada bóveda tiene icono, color y un catálogo de
   atributos META propio (tipos fecha, select y multiselect).
-- **Editor** con vistas Visual (Milkdown), Código (CodeMirror) y Lectura (`{{atributo:autor}}` en el cuerpo muestra el valor vigente del atributo, también en el PDF); wikilinks `[[Destino]]`
+- **Editor** con vistas Visual (Milkdown), Código (CodeMirror) y Lectura (`{{atributo:autor}}` en el cuerpo muestra el valor vigente del atributo, marcado en Lectura y limpio en el PDF); wikilinks `[[Destino]]`
   con navegación y vista previa, bloques de código con resaltado, Mermaid, tablas, tareas, HTML
   incrustado en iframe aislado (diagramas Archify), gráficos Plotly (HTML) y vídeos de YouTube.
 - **Archivos** (pestaña «Archivos» de cada bóveda): subida de imágenes (5 MB) y documentos (25 MB) a MinIO con visibilidad

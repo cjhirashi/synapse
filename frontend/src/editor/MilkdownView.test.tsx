@@ -20,7 +20,7 @@ const mermaid = vi.hoisted(() => ({
 vi.mock("mermaid", () => ({ default: { initialize: vi.fn(), render: mermaid.render } }));
 
 /** Monta la vista y espera a que Milkdown termine de crearse (entrega su `EditorView`). */
-async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void; onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void; vaultColor?: PaletteKey }) {
+async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: string) => void; prefix?: string; notes?: readonly { id: string; path: string }[]; onWikilinkClick?: (link: { resolvedId: string | null; target: string }) => void; onWikilinkHover?: (hover: { resolvedId: string | null; target: string; rect: DOMRect } | null) => void; vaultColor?: PaletteKey; attributes?: Record<string, unknown> }) {
   let view: EditorView | null = null;
   const onChange = props.onChange ?? (() => {});
   const utils = render(
@@ -34,6 +34,7 @@ async function mount(props: { value: string; readOnly?: boolean; onChange?: (v: 
       onWikilinkClick={props.onWikilinkClick}
       onWikilinkHover={props.onWikilinkHover}
       vaultColor={props.vaultColor}
+      attributes={props.attributes}
       onView={(v) => {
         view = v;
       }}
@@ -155,6 +156,27 @@ describe("MilkdownView", () => {
     expect(link).not.toBeNull();
     expect(link!.hasAttribute("href")).toBe(false);
     expect(link).toHaveTextContent("x");
+  });
+
+  it("en lectura, {{atributo:nombre}} muestra el valor del atributo marcado; lo desconocido y el código quedan literales", async () => {
+    const { container } = await mount({
+      value: "# Manual de {{atributo:programa}}\n\nAutor: {{atributo:autor}}. {{programa}} {{atributo:falta}} `{{atributo:autor}}` {{atributo:vacio}}.",
+      readOnly: true,
+      attributes: { programa: "Synapse", autor: "Aira", vacio: "" },
+    });
+    const root = container.querySelector(".ProseMirror") as HTMLElement;
+    const fields = [...root.querySelectorAll("span.attr-field")] as HTMLElement[];
+    expect(fields.map((f) => [f.dataset.attr, f.textContent])).toEqual([["programa", "Synapse"], ["autor", "Aira"], ["vacio", "\u200b"]]);
+    expect(fields[0].getAttribute("title")).toBe("Atributo: programa");
+    expect(root.querySelector("h1")?.textContent).toBe("Manual de Synapse");
+    expect(root.textContent).toContain("{{programa}} {{atributo:falta}}");
+    expect(root.querySelector("code")?.textContent).toBe("{{atributo:autor}}");
+  });
+
+  it("en edición el cuerpo conserva las llaves", async () => {
+    const { container } = await mount({ value: "Autor: {{atributo:autor}}", attributes: { autor: "Aira" } });
+    expect(container.querySelector("span.attr-field")).toBeNull();
+    expect(container.querySelector(".ProseMirror")?.textContent).toContain("{{atributo:autor}}");
   });
 
   it("los enlaces externos abren en pestaña nueva; los relativos y los wikilinks no", async () => {
