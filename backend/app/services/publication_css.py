@@ -175,12 +175,55 @@ def _font(raw: object) -> tuple[str, str, str] | None:
     return _FONT_STACKS[raw["familia"]], f"{size:g}pt", color
 
 
-def pdf_style_css(style: object) -> str:
-    """Hoja que lleva al contenido publicado la tipografía, el tamaño y el color del texto y de los encabezados H1-H4 del PDF de la plantilla.
+_THEME_KEYS = ("primario", "primario_600", "primario_400", "secundario", "secundario_600", "secundario_400", "terciario")
 
-    `style` es el JSON guardado en la instantánea; vacío o inválido da `""` y la página conserva su estilo estándar. El color del PDF solo se aplica con el
-    esquema claro (es papel blanco y sus colores oscuros no se leerían sobre el fondo oscuro); en el esquema oscuro los encabezados toman los tonos del tema de color
-    de la plantilla (`encabezados_oscuro`), como el editor, y el texto conserva el color estándar.
+
+def _mix(color: str, percent: int, base: str) -> str:
+    return f"color-mix(in srgb, {color} {percent}%, {base})"
+
+
+def _theme_css(tema: dict, text: str | None) -> str:
+    """Colores del tema de color de la plantilla en todos los elementos del contenido, con las mismas fórmulas del editor (`editor.css`) y del PDF.
+
+    El esquema claro lleva las del PDF (papel blanco, color de texto del PDF); el oscuro, las del editor oscuro. Los `color-mix` toman el texto y el fondo de la página."""
+    pri, pri6, pri4, sec, sec6, sec4, ter = (f"var(--t-{key})" for key in _THEME_KEYS)
+    values = " ".join(f"--t-{key}: {tema[key]};" for key in _THEME_KEYS) + " --md-text: var(--text);"
+    t, bg = "var(--md-text)", "var(--bg)"
+    light = [
+        f".content {{ --md-text: {text or 'var(--text)'}; }}",
+        f".content strong, .content b {{ color: {_mix(sec, 85, t)}; }}",
+        f".content em, .content i {{ color: {_mix(sec, 40, t)}; }}",
+        f".content strong em, .content em strong, .content b i, .content i b {{ color: {_mix(sec, 60, t)}; }}",
+        f".content a {{ color: {_mix(ter, 65, t)}; }}",
+        f".content code {{ color: {_mix(ter, 45, t)}; background: {_mix(t, 18, bg)}; }}",
+        f".content pre, .content .code-block {{ background: {_mix(t, 18, bg)}; }}",
+        f".content li::marker {{ color: {pri6}; }}",
+        f".content blockquote {{ border-left-color: {sec6}; background: {_mix(sec6, 16, 'transparent')}; }}",
+        f".content th {{ color: {pri6}; background: {_mix(pri, 15, 'transparent')}; }}",
+    ]
+    dark = [
+        f".content strong, .content b {{ color: {sec}; }}",
+        f".content em, .content i {{ color: {_mix(sec, 40, 'var(--text)')}; }}",
+        f".content strong em, .content em strong, .content b i, .content i b {{ color: {_mix(sec, 70, 'var(--text)')}; }}",
+        f".content a {{ color: {ter}; }}",
+        f".content code {{ color: {_mix(ter, 35, 'var(--text)')}; background: {_mix('var(--text)', 14, bg)}; }}",
+        f".content li::marker {{ color: {pri6}; }}",
+        f".content blockquote {{ border-left-color: {sec6}; background: {_mix(sec6, 15, 'transparent')}; }}",
+        f".content th {{ color: {pri}; background: {_mix(pri, 15, 'transparent')}; }}",
+        f".content h1 {{ color: {pri6}; }} .content h2 {{ color: {sec6}; }} .content h3 {{ color: {pri4}; }}",
+        f".content h4, .content h5, .content h6 {{ color: {sec4}; }}",
+    ]
+    stripes = f".content tr:nth-child(even) > td, .content tr:nth-child(even) > th {{ background: {_mix(pri, 7, 'transparent')}; }}"
+    return (f".content {{ {values} }}\n@media (prefers-color-scheme: light) {{\n" + "\n".join(light) + "\n}\n"
+            "@media (prefers-color-scheme: dark) {\n" + "\n".join(dark) + "\n}\n" + stripes + "\n")
+
+
+def pdf_style_css(style: object) -> str:
+    """Hoja que lleva al contenido publicado el formato del PDF de la plantilla: tipografía, tamaño y color del texto y de los encabezados H1-H4 y, si la
+    plantilla tiene tema de color, el tema completo (negrita, cursiva, enlaces, código, viñetas, citas y tablas).
+
+    `style` es el JSON guardado en la instantánea; vacío o inválido da `""` y la página conserva su estilo estándar. Los colores del PDF (texto y encabezados fijos)
+    solo se aplican con el esquema claro: es papel blanco y sus colores oscuros no se leerían sobre el fondo oscuro; ahí rige el tema, como en el editor.
     """
     if not isinstance(style, dict):
         return ""
@@ -201,13 +244,16 @@ def pdf_style_css(style: object) -> str:
             selector = f".content {level}, .content h5, .content h6" if level == "h4" else f".content {level}"
             layout.append(f"{selector} {{ font-family: {family}; font-size: {size}; }}")
             paint.append(f"{selector} {{ color: {color}; }}")
-    if not layout:
+    tema = style.get("tema") if isinstance(style.get("tema"), dict) else {}
+    themed = all(isinstance(tema.get(key), str) and _HEX_COLOR.match(tema[key]) for key in _THEME_KEYS)
+    if not layout and not themed:
         return ""
-    css = "\n".join(layout) + "\n@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n"
-    dark = style.get("encabezados_oscuro") if isinstance(style.get("encabezados_oscuro"), dict) else {}
-    rules = [f"{'.content h4, .content h5, .content h6' if level == 'h4' else f'.content {level}'} {{ color: {dark[level]}; }}"
-             for level in ("h1", "h2", "h3", "h4") if isinstance(dark.get(level), str) and _HEX_COLOR.match(dark[level])]
-    return css + ("@media (prefers-color-scheme: dark) {\n" + "\n".join(rules) + "\n}\n" if rules else "")
+    if themed:
+        return "\n".join(layout) + "\n" + _theme_css(tema, body[2] if body else None) + ("@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n" if paint else "")
+    link = levels["h1"][2] if levels["h1"] else None  # sin tema, el PDF pinta los enlaces con el color de H1
+    if link:
+        paint.append(f".content a {{ color: {link}; }}")
+    return "\n".join(layout) + "\n@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n"
 
 
 UNAVAILABLE_CSS = """

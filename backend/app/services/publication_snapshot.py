@@ -97,7 +97,7 @@ def meta_of(frontmatter: dict, template: dict | None) -> dict:
 
 
 def style_of(template: dict | None) -> dict:
-    """Tipografía, tamaño y color de texto y encabezados H1-H4 del PDF de la plantilla (ya con los valores por omisión del PDF) y, si tiene tema de color, los colores de los encabezados para el esquema oscuro.
+    """Tipografía, tamaño y color de texto y encabezados H1-H4 del PDF de la plantilla (ya con los valores por omisión del PDF) y, si tiene tema de color, sus colores (`tema`).
 
     Una plantilla sin formato de PDF (`estilo.pdf` ausente o vacío) da `{}`: la página pública conserva su estilo estándar.
     """
@@ -108,8 +108,8 @@ def style_of(template: dict | None) -> dict:
     resolved = pdf_style.resolve(raw)
     style = {"texto": resolved["texto"], "encabezados": resolved["encabezados"]}
     colors = resolved["tema"]["colores"]
-    if colors:  # con tema de color, los encabezados del esquema oscuro son los del editor (H1/H2 en 600, H3/H4 en 400)
-        style["encabezados_oscuro"] = {"h1": colors["primario_600"], "h2": colors["secundario_600"], "h3": colors["primario_400"], "h4": colors["secundario_400"]}
+    if colors:  # el tema completo (primario, secundario y terciario con sus tonos): la página lo aplica a todos los elementos
+        style["tema"] = {key: colors[key] for key in ("primario", "primario_600", "primario_400", "secundario", "secundario_600", "secundario_400", "terciario")}
     return style
 
 
