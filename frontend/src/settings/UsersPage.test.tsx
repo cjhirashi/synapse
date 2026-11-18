@@ -74,7 +74,7 @@ test("el resumen suma cuentas activas, bóvedas, archivos y las que deben reduci
   setup();
   const stats = await screen.findByRole("group", { name: "Resumen" }).catch(() => screen.findByLabelText("Resumen"));
   const value = (label: string) => within(stats).getByText(label).closest("div")!.querySelector("dd")!.textContent;
-  expect(value("Cuentas activas")).toBe("2");
+  expect(value("Cuentas")).toBe("2");
   expect(value("Bóvedas")).toBe("3");
   expect(value("Archivos")).toBe("15 MB");
   expect(value("Por reducir")).toBe("1");
@@ -255,7 +255,11 @@ test("en celular las cuentas son tarjetas con acciones de texto y sin tabla", as
   for (const name of [/ver el uso/i, /límites de/i, /cambiar el rol/i, /eliminar/i]) {
     expect(within(card).getByRole("button", { name })).toBeVisible();
   }
-  expect(within(card).getByText("Hacer admin")).toBeInTheDocument(); // el texto visible acompaña al ícono
+  // Cuatro botones en una fila: la etiqueta visible es corta; el título conserva el texto completo.
+  expect(within(card).getByText("Rol")).toBeInTheDocument();
+  expect(within(card).getByRole("button", { name: /cambiar el rol/i })).toHaveAttribute("title", "Hacer admin");
+  // Una cuenta activa no repite «Activa» en cada tarjeta; solo lo que requiere atención.
+  expect(within(card).queryByText("Activa")).not.toBeInTheDocument();
 });
 
 test("si la carga falla, avisa y permite reintentar", async () => {
@@ -317,4 +321,12 @@ test("el uso sin bóvedas lo dice con claridad", async () => {
   await u.click(await screen.findByRole("button", { name: "Ver el uso de ana@synapse.test" }));
   const panel = await screen.findByLabelText("Uso de ana@synapse.test");
   expect(within(panel).getByText("Aún no tiene bóvedas.")).toBeInTheDocument();
+});
+
+test("en celular la tarjeta muestra el estado solo si pide atención", async () => {
+  mobile(true);
+  vi.spyOn(api, "listUsers").mockResolvedValue([user({ id: "p", email: "p@s.test", must_change_password: true })]);
+  setup();
+  const card = await screen.findByRole("listitem", { name: "p@s.test" });
+  expect(within(card).getByText("Invitación pendiente")).toBeInTheDocument();
 });

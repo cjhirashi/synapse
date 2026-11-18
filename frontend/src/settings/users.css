@@ -81,21 +81,20 @@
 .us-act:hover:not(:disabled) { border-color: var(--border); background: var(--bg-tertiary); color: var(--text-primary); }
 .us-act--danger:hover:not(:disabled) { color: var(--danger-text); border-color: var(--danger-text); background: var(--danger-bg); }
 .us-act:disabled { opacity: 0.45; cursor: not-allowed; }
-.us-actions--labeled { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
-.us-actions--labeled .us-act { width: auto; height: auto; min-height: 44px; padding: 0 14px; font-size: 0.8125rem; font-weight: 600; border-color: var(--border); background: var(--bg-tertiary); color: var(--text-primary); }
+.us-actions--labeled { display: flex; gap: var(--space-2); }
+.us-actions--labeled .us-act { flex: 1 1 0; flex-direction: column; gap: 4px; width: auto; height: auto; min-width: 0; min-height: 52px; padding: 6px 4px; font-size: 0.6875rem; font-weight: 600; border-color: var(--border); background: var(--bg-tertiary); color: var(--text-primary); }
 .us-actions--labeled .us-act--danger { color: var(--danger-text); }
 
-/* Tarjetas del celular. */
+/* Tarjetas del celular (~190 px cada una: caben tres cuentas por pantalla). */
 .us-cards { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
-.us-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+.us-card { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); }
 .us-card--gone { border-style: dashed; }
-.us-card .us-email { max-width: none; white-space: normal; overflow-wrap: anywhere; }
-.us-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin: 0; }
-.us-facts > div { min-width: 0; }
-.us-facts-wide { grid-column: 1 / -1; }
-.us-facts dt { margin-bottom: 4px; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
-.us-facts dd { margin: 0; font-size: 0.8125rem; }
+.us-card .us-email { max-width: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; white-space: normal; overflow-wrap: anywhere; }
+.us-card .us-account-text { flex: 1; }
 .us-card-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.us-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.us-facts > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.us-fact-label { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-secondary); }
 
 /* Ventanas emergentes. */
 .us-form { display: flex; flex-direction: column; gap: var(--space-4); }
@@ -143,14 +142,26 @@
 .us-privacy svg { flex: none; margin-top: 2px; }
 
 @media (max-width: 640px) {
-  .us-head { flex-direction: column; align-items: stretch; }
-  .us-create { width: 100%; justify-content: center; min-height: 44px; }
-  .us-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; overflow: visible; }
-  .us-seg button { justify-content: center; min-height: 44px; }
+  /* Cabecera: título y «Crear» en una fila; la explicación larga sobra (el alta ya dice la contraseña inicial). */
+  .us-head { flex-direction: row; align-items: center; margin-bottom: var(--space-3); }
+  .us-head h2 { margin: 0; }
+  .us-head .settings-section-intro { display: none; }
+  .us-create { width: auto; min-height: 44px; padding: 0 16px; }
+  /* Resumen: una sola franja de cuatro cifras en lugar de cuatro tarjetas. */
+  .us-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; margin-bottom: var(--space-3); padding: var(--space-2) 0; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-lg); }
+  .us-stat { padding: var(--space-1) var(--space-2); text-align: center; background: none; border: 0; border-radius: 0; }
+  .us-stat + .us-stat { border-left: 1px solid var(--border); }
+  .us-stat dt { flex-direction: column; gap: 2px; font-size: 0.625rem; }
+  .us-stat dd { margin: 2px 0 0; font-size: 1rem; }
+  .us-stat[data-tone="warn"] { border-color: var(--border); }
+  /* Búsqueda y filtros: cada uno en su fila, los cuatro filtros juntos. */
+  .us-toolbar { gap: var(--space-2); }
+  .us-search { flex-basis: 100%; }
   .us-search input { min-height: 44px; }
+  .us-seg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; overflow: visible; }
+  .us-seg button { justify-content: center; min-height: 40px; padding: 0 4px; gap: 3px; font-size: 0.75rem; }
+  .us-seg-count { min-width: 16px; padding: 0 4px; }
   .us-limit-presets button { min-height: 36px; }
-  .us-usage-totals .us-meter { padding: var(--space-3); }
-  .us-usage-totals .us-meter-label { white-space: nowrap; }
 }
 
 @media (min-width: 640px) {

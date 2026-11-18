@@ -120,7 +120,7 @@ export function StatusCell({ user, inline }: { user: AdminUser; inline?: boolean
     return (
       <span className={wrap}>
         <span className="us-pill" data-tone="info">Invitación pendiente</span>
-        <span className="us-muted">Contraseña inicial</span>
+        {!inline && <span className="us-muted">Contraseña inicial</span>}
       </span>
     );
   }
@@ -142,46 +142,45 @@ export interface RowHandlers {
 export function RowActions({ user, h, labeled }: { user: AdminUser; h: RowHandlers; labeled?: boolean }) {
   const gone = user.deleted_at !== null;
   const isMe = user.id === h.meId;
-  const item = (label: string, ariaLabel: string, icon: ReactNode, onClick: () => void, extra?: { danger?: boolean; disabled?: boolean }) => (
+  // `short`: la etiqueta visible en el celular (cuatro botones en una fila); el título y el nombre accesible llevan el texto completo.
+  const item = (label: string, short: string, ariaLabel: string, icon: ReactNode, onClick: () => void, extra?: { danger?: boolean; disabled?: boolean }) => (
     <button
       type="button" className={extra?.danger ? "us-act us-act--danger" : "us-act"} aria-label={ariaLabel} title={label}
       disabled={extra?.disabled} onClick={onClick}
     >
       {icon}
-      {labeled && <span>{label}</span>}
+      {labeled && <span>{short}</span>}
     </button>
   );
   return (
     <span className={labeled ? "us-actions us-actions--labeled" : "us-actions"}>
       {gone ? (
-        item("Recuperar", `Recuperar ${user.email}`, <RotateCcw size={16} aria-hidden="true" />, () => h.onRestore(user), { disabled: h.busy })
+        item("Recuperar", "Recuperar", `Recuperar ${user.email}`, <RotateCcw size={16} aria-hidden="true" />, () => h.onRestore(user), { disabled: h.busy })
       ) : (
         <>
-          {item("Ver uso", `Ver el uso de ${user.email}`, <BarChart3 size={16} aria-hidden="true" />, () => h.onUsage(user))}
-          {isLimited(user) && item("Límites", `Límites de ${user.email}`, <SlidersHorizontal size={16} aria-hidden="true" />, () => h.onLimits(user), { disabled: h.busy })}
+          {item("Ver uso", "Uso", `Ver el uso de ${user.email}`, <BarChart3 size={16} aria-hidden="true" />, () => h.onUsage(user))}
+          {isLimited(user) && item("Límites", "Límites", `Límites de ${user.email}`, <SlidersHorizontal size={16} aria-hidden="true" />, () => h.onLimits(user), { disabled: h.busy })}
           {h.isSuper && !isMe && user.role !== "super_admin" &&
-            item(user.role === "admin" ? "Hacer usuario" : "Hacer admin", `Cambiar el rol de ${user.email}`, <ShieldCheck size={16} aria-hidden="true" />, () => h.onRole(user), { disabled: h.busy })}
-          {!isMe && item("Eliminar", `Eliminar ${user.email}`, <Trash2 size={16} aria-hidden="true" />, () => h.onDelete(user), { danger: true, disabled: h.busy })}
+            item(user.role === "admin" ? "Hacer usuario" : "Hacer admin", "Rol", `Cambiar el rol de ${user.email}`, <ShieldCheck size={16} aria-hidden="true" />, () => h.onRole(user), { disabled: h.busy })}
+          {!isMe && item("Eliminar", "Eliminar", `Eliminar ${user.email}`, <Trash2 size={16} aria-hidden="true" />, () => h.onDelete(user), { danger: true, disabled: h.busy })}
         </>
       )}
     </span>
   );
 }
 
-/** Tarjeta compacta de una cuenta para el celular: lo esencial arriba, estado y acciones abajo. */
+/** Tarjeta de una cuenta para el celular (~190 px): cuenta con su rol y fecha, dos datos lado a lado (bóvedas con su tope de
+ * documentos, y archivos), el estado solo si no es «Activa» y las acciones en una sola fila. */
 export function UserCard({ user, h }: { user: AdminUser; h: RowHandlers }) {
+  const active = !user.deleted_at && user.grace.length === 0 && !user.must_change_password;
   return (
     <li className={user.deleted_at ? "us-card us-card--gone" : "us-card"} aria-label={user.email}>
-      <AccountCell user={user} isMe={user.id === h.meId} />
-      <div className="us-card-status">
-        <RolePill role={user.role} />
-        <StatusCell user={user} inline />
+      <AccountCell user={user} isMe={user.id === h.meId} showRole />
+      {!active && <div className="us-card-status"><StatusCell user={user} inline /></div>}
+      <div className="us-facts">
+        <div><span className="us-fact-label">Bóvedas</span><VaultsCell user={user} withDocs /></div>
+        <div><span className="us-fact-label">Archivos</span><StorageCell user={user} /></div>
       </div>
-      <dl className="us-facts">
-        <div><dt>Bóvedas</dt><dd><VaultsCell user={user} /></dd></div>
-        <div><dt>Documentos</dt><dd><DocsCell user={user} /></dd></div>
-        <div className="us-facts-wide"><dt>Archivos</dt><dd><StorageCell user={user} /></dd></div>
-      </dl>
       <RowActions user={user} h={h} labeled />
     </li>
   );

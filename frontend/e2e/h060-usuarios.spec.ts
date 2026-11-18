@@ -74,8 +74,16 @@ for (const { label, size, theme } of CASES) {
       await expect(page.getByRole("columnheader", { name: /Cuenta/ })).toBeVisible();
     }
     await expect(page.getByText(ana).first()).toBeVisible();
-    await expect(page.getByLabel("Resumen").getByText("Cuentas activas")).toBeVisible();
+    await expect(page.getByLabel("Resumen").getByText("Cuentas", { exact: true })).toBeVisible();
     await shot(page, `h060-${label}-1-lista`);
+    if (mobile) {
+      // Lista completa: el scroll vive en el contenedor de Ajustes, no en la página; se mide y se captura entero.
+      await page.evaluate(() => { const c = document.querySelector<HTMLElement>(".settings-content"); if (c) c.scrollTop = 0; });
+      const total = await page.evaluate(() => document.querySelector(".settings-content")?.scrollHeight ?? 0);
+      await page.setViewportSize({ width: size.width, height: Math.min(total + 140, 4000) });
+      await shot(page, `h060-${label}-0-completa`);
+      await page.setViewportSize(size);
+    }
 
     // Sin desbordes: la página no se desplaza en horizontal y cada acción cumple su área de toque.
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

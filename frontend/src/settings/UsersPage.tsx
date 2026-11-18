@@ -178,8 +178,9 @@ export default function UsersPage() {
     reducing: active.filter((u) => u.grace.length > 0).length,
   };
 
+  // En el celular «Administradores» no cabe junto a las otras tres en una fila: se acorta.
   const FILTERS: { key: Filter; label: string }[] = [
-    { key: "all", label: "Todas" }, { key: "guest", label: "Usuarios" }, { key: "admin", label: "Administradores" }, { key: "gone", label: "Eliminadas" },
+    { key: "all", label: "Todas" }, { key: "guest", label: "Usuarios" }, { key: "admin", label: isMobile ? "Admins" : "Administradores" }, { key: "gone", label: "Eliminadas" },
   ];
 
   const emptyMessage = query.trim() ? "Ninguna cuenta coincide con la búsqueda." : filter === "gone" ? "No hay cuentas eliminadas." : "Aún no hay cuentas en este grupo.";
@@ -191,14 +192,14 @@ export default function UsersPage() {
           <h2>Usuarios</h2>
           <p className="settings-section-intro">Crea cuentas, ajusta lo que puede usar cada una y revisa cuánto usa. Las cuentas nuevas entran con la contraseña inicial <code>admin1234</code>.</p>
         </div>
-        <button type="button" className="btn-primary us-create" onClick={() => { setFormError(null); setNotice(null); setDialog({ kind: "create" }); }}>
-          <Plus size={16} aria-hidden="true" /> Crear usuario
+        <button type="button" className="btn-primary us-create" aria-label="Crear usuario" onClick={() => { setFormError(null); setNotice(null); setDialog({ kind: "create" }); }}>
+          <Plus size={16} aria-hidden="true" /> {isMobile ? "Crear" : "Crear usuario"}
         </button>
       </header>
 
       {users !== null && (
         <dl className="us-stats" aria-label="Resumen">
-          <div className="us-stat"><dt><Users size={14} aria-hidden="true" /> Cuentas activas</dt><dd>{formatCount(active.length)}</dd></div>
+          <div className="us-stat"><dt><Users size={14} aria-hidden="true" /> Cuentas</dt><dd>{formatCount(active.length)}</dd></div>
           <div className="us-stat"><dt><Folder size={14} aria-hidden="true" /> Bóvedas</dt><dd>{formatCount(totals.vaults)}</dd></div>
           <div className="us-stat"><dt><HardDrive size={14} aria-hidden="true" /> Archivos</dt><dd>{formatBytes(totals.storage)}</dd></div>
           <div className="us-stat" data-tone={totals.reducing > 0 ? "warn" : undefined}><dt><Hourglass size={14} aria-hidden="true" /> Por reducir</dt><dd>{formatCount(totals.reducing)}</dd></div>
