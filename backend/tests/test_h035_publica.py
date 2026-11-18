@@ -658,3 +658,28 @@ def test_without_theme_links_take_the_h1_color_of_the_pdf():
 
     css = pdf_style_css(style_of({"estilo": {"pdf": {"encabezados": {"h1": {"color": "#aa0000"}}}}}))
     assert ".content a { color: #aa0000; }" in css and "color-mix" not in css
+
+
+# --- Visor de imagen a pantalla completa ---
+
+
+def test_public_page_includes_the_image_viewer_authorized_only_by_hash(ready_admin):
+    import base64
+    import hashlib
+    import re
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    vault_id = vault_of(ready_admin)
+    _publish_template(ready_admin, vault_id)
+    doc = _doc(ready_admin, vault_id, plantilla="acta")
+    token = ready_admin.post(f"/vaults/{vault_id}/notes/{doc['id']}/publication", json={"html": f'<h1>Hola</h1><p><img src="{PNG}" alt="x"></p><script>alert(1)</script>'}).json()["token"]
+    res = TestClient(app).get(f"/p/{token}")
+    csp = res.headers["content-security-policy"]
+    script_src = re.search(r"script-src ([^;]+);", csp).group(1)
+    assert "unsafe-inline" not in script_src and "unsafe-eval" not in script_src and script_src.startswith("'sha256-")
+    scripts = re.findall(r"<script>(.*?)</script>", res.text, re.S)
+    assert len(scripts) == 1 and "alert(1)" not in res.text  # el script colado se limpió; solo queda el visor
+    digest = "sha256-" + base64.b64encode(hashlib.sha256(scripts[0].encode()).digest()).decode()
+    assert f"'{digest}'" == script_src and ".image-viewer" in res.text and "md-img-fullscreen" in res.text

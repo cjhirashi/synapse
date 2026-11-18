@@ -13,14 +13,15 @@ from app.core.rate_limit import RateLimiter
 from app.routers.vaults import get_vault_port
 from app.services.note_content_service import NoteContentService
 from app.services.publication_page import render_page, unavailable_page
+from app.services.publication_viewer import VIEWER_JS_HASH
 
 router = APIRouter(include_in_schema=False)
 
 limiter = RateLimiter(limit=120, window_seconds=60)  # por IP y minuto; cuentan también los 404
 
-# Sin scripts ni iframes (`default-src 'none'`); el estilo en línea hace falta por los `style` ya filtrados del contenido.
+# Sin scripts salvo el visor de imágenes, autorizado por su hash (`script-src`), y sin iframes ajenos (`default-src 'none'`); el estilo en línea hace falta por los `style` ya filtrados del contenido.
 PUBLIC_HEADERS = {
-    "Content-Security-Policy": "default-src 'none'; img-src 'self' data: https:; media-src 'self' https:; style-src 'unsafe-inline'; frame-src https://synapse.cjhirashi.com https://files-synapse.cjhirashi.com https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "Content-Security-Policy": "default-src 'none'; img-src 'self' data: https:; media-src 'self' https:; style-src 'unsafe-inline'; script-src '" + VIEWER_JS_HASH + "'; frame-src https://synapse.cjhirashi.com https://files-synapse.cjhirashi.com https://www.youtube-nocookie.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
     "X-Robots-Tag": "noindex, nofollow, noarchive",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",

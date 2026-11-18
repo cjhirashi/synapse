@@ -11,6 +11,7 @@ import re
 
 from app.core.models.publication import Publication
 from app.services.publication_css import PAGE_CSS, UNAVAILABLE_CSS, pdf_style_css
+from app.services.publication_viewer import VIEWER_CSS, VIEWER_JS
 
 _MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 _ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
@@ -96,7 +97,7 @@ def render_page(pub: Publication) -> str:
 {share}<meta property="og:title" content="{html.escape(pub.title, quote=True)}">
 <meta property="og:type" content="article">
 <meta property="og:locale" content="es_MX">
-<style>{PAGE_CSS}{pdf_css}</style>
+<style>{PAGE_CSS}{pdf_css}{VIEWER_CSS}</style>
 </head>
 <body>
 <a class="skip" href="#contenido">Saltar al contenido</a>
@@ -111,6 +112,7 @@ def render_page(pub: Publication) -> str:
 {side}
 </div>
 <footer class="site-foot">{_FOOT}</footer>
+<script>{VIEWER_JS}</script>
 </body>
 </html>
 """

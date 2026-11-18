@@ -458,7 +458,7 @@ archivos de `https://synapse.cjhirashi.com/files/<uuid>`, `https://files-synapse
 ### Página pública: `GET /p/{token}` (y `HEAD`)
 
 Sin sesión, fuera del OpenAPI y del comodín de la SPA. Devuelve una página HTML (tarjeta del documento, índice, contenido y pie) con `Content-Security-Policy` (`default-src 'none'`,
-sin scripts; `frame-src` solo los tres orígenes de arriba), `X-Robots-Tag: noindex, nofollow, noarchive`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` y **sin cookies**.
+sin scripts salvo el visor de imágenes, que la CSP autoriza solo por su hash SHA-256 en `script-src` —sin `unsafe-inline`—; `frame-src` solo los tres orígenes de arriba), `X-Robots-Tag: noindex, nofollow, noarchive`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` y **sin cookies**.
 Un token inexistente, despublicado o de un documento borrado dan **exactamente la misma respuesta 404** (mismo cuerpo y cabeceras). Antes de servir se comprueba que el documento y su
 bóveda sigan vivos: si no, 404 y se borra la copia; si el almacenamiento falla un momento, 503 sin borrar nada. Límite de 120 peticiones por minuto por IP (la real llega en
 `CF-Connecting-IP`; sin ella, la del socket), con 429 y `Retry-After: 60`; el límite vive en memoria de cada proceso.
