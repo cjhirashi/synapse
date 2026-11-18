@@ -36,8 +36,10 @@ def _date(value: object) -> str:
     return html.escape(text)
 
 
-_FAB_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>'
-_FAB_CLOSE_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>'
+# Íconos de barra lateral derecha (cerrada y abierta), como los de Lucide `panel-right` y `panel-right-close`.
+_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{}</svg>'
+_FAB_ICON = _SVG.format('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>')
+_FAB_CLOSE_ICON = _SVG.format('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/><path d="m8 9 3 3-3 3"/>')
 
 
 def _toc(items: list) -> str:
@@ -69,13 +71,13 @@ def render_page(pub: Publication) -> str:
     meta = _load_json(pub.meta, dict)
     toc_items = [item for item in _load_json(pub.toc, list) if isinstance(item, dict)]
     toc = _toc(toc_items) if toc_items else ""
-    # Celular: botón flotante que abre el índice como panel. Sin scripts: el panel se muestra con `:target` (`#indice`), así que cualquier
-    # enlace del índice (que cambia el `#`) lo cierra solo, y «#cerrar» (que no existe) lo cierra sin mover la página.
+    # Celular: botón arriba a la derecha que abre el índice como barra lateral desde la derecha. Sin scripts: la barra se muestra con `:target`
+    # (`#indice`), así que cualquier enlace del índice (que cambia el `#`) la cierra solo, y «#cerrar» (que no existe) la cierra sin mover la página.
     fold = (
         '<div id="indice" class="toc-sheet"><a class="toc-backdrop" href="#cerrar" tabindex="-1" aria-hidden="true"></a>'
         f'<nav class="toc toc-panel" aria-label="Índice del documento"><p class="toc-title">Índice</p>{toc}</nav></div>'
-        f'<a class="toc-fab toc-fab--open" href="#indice">{_FAB_ICON}Índice</a>'
-        f'<a class="toc-fab toc-fab--close" href="#cerrar">{_FAB_CLOSE_ICON}Cerrar índice</a>'
+        f'<a class="toc-fab toc-fab--open" href="#indice" aria-label="Abrir el índice" title="Índice">{_FAB_ICON}</a>'
+        f'<a class="toc-fab toc-fab--close" href="#cerrar" aria-label="Cerrar el índice" title="Cerrar el índice">{_FAB_CLOSE_ICON}</a>'
     ) if toc else ""
     side = f'<aside class="toc-side toc"><nav aria-label="Índice"><p class="toc-title">Índice</p>{toc}</nav></aside>' if toc else ""
     description = html.escape(str(meta["descripcion"]), quote=True) if meta.get("descripcion") else ""

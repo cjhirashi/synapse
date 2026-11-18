@@ -76,45 +76,60 @@ for (const { label, size } of [{ label: "390", size: MOBILE }, { label: "1280", 
       const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       expect(bg).toBe(scheme === "dark" ? "rgb(18, 18, 26)" : "rgb(255, 255, 255)");
 
-      // Índice: en celular, botón flotante que abre un panel (sin scripts); en escritorio, lateral y fijo
+      // Índice: en celular, botón arriba a la derecha que abre una barra lateral desde la derecha (sin scripts); en escritorio, lateral y fijo
       const mobile = label === "390";
       const sheet = page.locator(".toc-sheet");
+      const panel = page.locator(".toc-panel");
       const side = page.locator("aside.toc-side");
       if (mobile) {
-        const open = page.getByRole("link", { name: "Índice", exact: true });
-        const close = page.getByRole("link", { name: "Cerrar índice" });
+        const open = page.getByRole("link", { name: "Abrir el índice" });
+        const close = page.getByRole("link", { name: "Cerrar el índice" });
         await expect(open).toBeVisible();
         await expect(side).toBeHidden();
         await expect(sheet).toBeHidden();
         await expect(close).toBeHidden();
         const fab = (await open.boundingBox())!;
+        expect(fab.width).toBeGreaterThanOrEqual(44);
         expect(fab.height).toBeGreaterThanOrEqual(44);
-        expect(fab.x + fab.width).toBeLessThanOrEqual(size.width);
-        expect(fab.y + fab.height).toBeLessThanOrEqual(size.height); // visible sobre la pantalla, no al final del documento
+        expect(fab.y).toBeLessThan(24); // arriba
+        expect(size.width - (fab.x + fab.width)).toBeLessThan(24); // a la derecha
+        // No tapa la tarjeta del documento (hay una franja libre arriba)
+        const card = (await page.locator(".doc-head").boundingBox())!;
+        expect(card.y).toBeGreaterThanOrEqual(fab.y + fab.height);
         // Sigue ahí al bajar por el documento
         await page.evaluate(() => window.scrollTo(0, 700));
         const y = await page.evaluate(() => window.scrollY);
         expect(y).toBeGreaterThan(300);
         await expect(open).toBeInViewport();
-        // Abrir no mueve la página; el mismo botón pasa a «Cerrar índice»
+        // Abrir: barra lateral pegada a la derecha, a toda la altura; no mueve la página; el mismo botón pasa a «cerrar»
         await open.click();
         await expect(sheet).toBeVisible();
         await expect(close).toBeVisible();
         await expect(open).toBeHidden();
         expect(await page.evaluate(() => window.scrollY)).toBe(y);
+        await page.waitForTimeout(400); // fin de la animación (en pruebas va reducida, pero por si acaso)
+        const bar = (await panel.boundingBox())!;
+        expect(Math.round(bar.x + bar.width)).toBe(size.width); // pegada al borde derecho
+        expect(Math.round(bar.y)).toBe(0);
+        expect(Math.round(bar.height)).toBe(size.height); // de arriba abajo, no un panel inferior
+        expect(bar.width).toBeLessThanOrEqual(size.width * 0.87);
+        expect(bar.x).toBeGreaterThan(30); // deja un borde para tocar fuera
         expect(await sheet.locator("a[href^='#h-']").count()).toBeGreaterThanOrEqual(6);
         for (const link of await sheet.locator("a[href^='#h-']").all()) expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+        const closeBox = (await close.boundingBox())!;
+        expect(closeBox.x).toBe(fab.x); // el botón de cerrar está en el mismo sitio
+        expect(closeBox.y).toBe(fab.y);
         await shot(page, `h035-pagina-indice-${label}-${scheme}`);
         // Cerrar con el botón no mueve la página
         await close.click();
         await expect(sheet).toBeHidden();
         expect(await page.evaluate(() => window.scrollY)).toBe(y);
-        // Tocar fuera del panel lo cierra
+        // Tocar fuera de la barra la cierra
         await open.click();
         await expect(sheet).toBeVisible();
-        await page.mouse.click(size.width / 2, 40);
+        await page.mouse.click(12, size.height / 2);
         await expect(sheet).toBeHidden();
-        // Elegir un apartado lleva ahí y cierra el panel
+        // Elegir un apartado lleva ahí y cierra la barra
         await open.click();
         await sheet.getByRole("link", { name: "Código" }).click();
         await expect(sheet).toBeHidden();

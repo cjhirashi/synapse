@@ -1,7 +1,7 @@
 """Hoja de estilos de la página pública de una publicación (H-035, fase 4).
 
-Celular primero (una columna, índice en un panel que abre un botón flotante) y, desde 960 px, el contenido con el índice fijo a un lado. Claro u oscuro según el sistema
-(`prefers-color-scheme`); los colores son los tokens del diseño de Synapse (`frontend/src/styles/tokens.css`), no valores nuevos. Sin scripts: el panel del índice
+Celular primero (una columna, índice en una barra lateral derecha que abre un botón) y, desde 960 px, el contenido con el índice fijo a un lado. Claro u oscuro según el sistema
+(`prefers-color-scheme`); los colores son los tokens del diseño de Synapse (`frontend/src/styles/tokens.css`), no valores nuevos. Sin scripts: la barra del índice
 se abre con `:target`. Todo cabe en una sola hoja en línea porque la CSP no permite recursos externos.
 """
 
@@ -38,6 +38,7 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 
 /* Marco: una columna en el celular; con ancho, contenido e índice lateral */
 .layout { display: block; max-width: 48rem; margin: 0 auto; padding: 1rem 1rem 0; }
+.layout:has(.toc-fab) { padding-top: calc(3.75rem + env(safe-area-inset-top, 0px)); }
 .doc { min-width: 0; }
 .toc-side { display: none; }
 
@@ -54,18 +55,23 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
 .estado--verde { color: var(--success-text); background: color-mix(in srgb, var(--success) 16%, transparent); }
 .estado--rojo { color: var(--danger-text); background: color-mix(in srgb, var(--danger) 14%, transparent); }
 
-/* Índice: en el celular, un botón flotante abre un panel inferior (`:target`, sin scripts; el mismo botón pasa a «Cerrar»); con ancho, fijo a un lado */
+/* Índice: en el celular, un botón arriba a la derecha abre una barra lateral desde la derecha (`:target`, sin scripts; el mismo botón pasa a «cerrar»); con ancho, fijo a un lado */
 .toc-sheet { display: none; position: fixed; inset: 0; z-index: 20; }
 .toc-sheet:target { display: block; }
 .toc-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.45); }
-.toc-panel { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72vh; overflow-y: auto; padding: 1rem 0.75rem calc(5rem + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); border-top: 1px solid var(--border); border-radius: 1rem 1rem 0 0; box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.25); overscroll-behavior: contain; }
-.toc-fab { position: fixed; right: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom, 0px)); z-index: 30; display: inline-flex; align-items: center; gap: 0.5rem; min-height: 48px; padding: 0 1.1rem; border-radius: 999px; background: var(--accent); color: #fff; font-weight: 600; font-size: 0.9375rem; text-decoration: none; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3); -webkit-tap-highlight-color: transparent; }
-.toc-fab:active { filter: brightness(0.92); }
-.toc-fab--close { display: none; background: var(--bg-3); color: var(--text); box-shadow: 0 0 0 1px var(--border), 0 4px 14px rgba(0, 0, 0, 0.3); }
+.toc-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(86vw, 22rem); overflow-y: auto; padding: calc(4.25rem + env(safe-area-inset-top, 0px)) 0.75rem calc(1.5rem + env(safe-area-inset-bottom, 0px)); background: var(--bg-2); border-left: 1px solid var(--border); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25); overscroll-behavior: contain; }
+@media (prefers-reduced-motion: no-preference) {
+  .toc-sheet:target .toc-panel { animation: toc-in 0.22s ease-out; }
+  .toc-sheet:target .toc-backdrop { animation: toc-fade 0.22s ease-out; }
+}
+@keyframes toc-in { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes toc-fade { from { opacity: 0; } to { opacity: 1; } }
+.toc-fab { position: fixed; top: calc(0.75rem + env(safe-area-inset-top, 0px)); right: 0.75rem; z-index: 30; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; background: var(--bg-2); color: var(--text); border: 1px solid var(--border); text-decoration: none; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2); -webkit-tap-highlight-color: transparent; }
+.toc-fab:active { background: var(--bg-3); }
+.toc-fab--close { display: none; }
 .toc-sheet:target ~ .toc-fab--open { display: none; }
 .toc-sheet:target ~ .toc-fab--close { display: inline-flex; }
 .toc-panel a { min-height: 44px; display: flex; align-items: center; }
-body:has(.toc-fab) { padding-bottom: 4.5rem; }
 .toc ol { list-style: none; margin: 0; padding: 0; }
 .toc a { display: block; padding: 0.4rem 0.5rem; border-radius: 6px; color: var(--text-2); text-decoration: none; font-size: 0.9375rem; line-height: 1.4; }
 .toc a:hover { color: var(--accent-text); background: var(--bg-3); }
@@ -129,7 +135,7 @@ body:has(.toc-fab) { padding-bottom: 4.5rem; }
   body { font-size: 1.125rem; }
   .layout { display: grid; grid-template-columns: minmax(0, 46rem) 15rem; gap: 3rem; max-width: 66rem; padding: 2.5rem 1.5rem 0; align-items: start; }
   .toc-sheet, .toc-fab { display: none !important; }
-  body:has(.toc-fab) { padding-bottom: 0; }
+  .layout:has(.toc-fab) { padding-top: 2.5rem; }
   .toc-side { display: block; position: sticky; top: 1.5rem; max-height: calc(100vh - 3rem); overflow-y: auto; padding-top: 0.25rem; }
   .doc-title { font-size: 2rem; }
   .doc-head { padding: 1.4rem 1.6rem; }
