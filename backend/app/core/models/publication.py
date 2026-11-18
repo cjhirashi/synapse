@@ -7,7 +7,7 @@ class Publication(Base):
     """Copia fija de una nota publicada en `/p/<token>` (H-035).
 
     La publicación es una instantánea: `html` es el cuerpo renderizado al momento,
-    `meta` y `toc` son JSON, y `note_rev` permite detectar si la nota original cambió.
+    `meta`, `toc` y `style` son JSON, y `note_rev` permite detectar si la nota original cambió.
     Una sola publicación por (vault_id, note_id); las republicaciones usan
     `republished_at` para distinguirlas.
     """
@@ -23,6 +23,7 @@ class Publication(Base):
     html = Column(Text, nullable=False)
     meta = Column(Text, nullable=False, server_default=text("'{}'"), default="{}")
     toc = Column(Text, nullable=False, server_default=text("'[]'"), default="[]")
+    style = Column(Text, nullable=False, server_default=text("'{}'"), default="{}")  # JSON: texto y encabezados del PDF de la plantilla al publicar; {} = estilo estándar de la página
     note_rev = Column(String, nullable=False)
     published_at = Column(DateTime, nullable=False)
     republished_at = Column(DateTime, nullable=True)

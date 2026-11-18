@@ -5,6 +5,7 @@ import re
 
 import nh3
 
+from app.core import pdf_style
 from app.services import pdf_service
 
 
@@ -93,6 +94,19 @@ def meta_of(frontmatter: dict, template: dict | None) -> dict:
                     break
 
     return meta
+
+
+def style_of(template: dict | None) -> dict:
+    """Tipografía, tamaño y color de texto y encabezados H1-H4 del PDF de la plantilla (ya con los valores por omisión del PDF).
+
+    Una plantilla sin formato de PDF (`estilo.pdf` ausente o vacío) da `{}`: la página pública conserva su estilo estándar.
+    """
+    estilo = template.get("estilo") if template else None
+    raw = estilo.get("pdf") if isinstance(estilo, dict) else None
+    if not isinstance(raw, dict) or not raw:
+        return {}
+    resolved = pdf_style.resolve(raw)
+    return {"texto": resolved["texto"], "encabezados": resolved["encabezados"]}
 
 
 _UUID = r"(?i:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"  # mayúsculas solo en los dígitos

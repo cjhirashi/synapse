@@ -5,6 +5,8 @@ Celular primero (una columna, índice en una barra lateral derecha que abre un b
 se abre con `:target`. Todo cabe en una sola hoja en línea porque la CSP no permite recursos externos.
 """
 
+import re
+
 PAGE_CSS = """
 :root {
   color-scheme: light dark;
@@ -148,6 +150,60 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outli
   a { color: #000; }
 }
 """
+
+# Familias del PDF (`plantilla_rules.PDF_FONTS`) con sustitutas de métrica parecida para quien no las tenga instaladas (la CSP no permite cargar tipografías).
+_FONT_STACKS = {
+    "DejaVu Sans": '"DejaVu Sans", Verdana, sans-serif',
+    "DejaVu Serif": '"DejaVu Serif", Georgia, serif',
+    "Liberation Sans": '"Liberation Sans", Arial, Helvetica, sans-serif',
+    "Liberation Serif": '"Liberation Serif", "Times New Roman", Times, serif',
+    "Liberation Mono": '"Liberation Mono", "Courier New", monospace',
+}
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
+def _font(raw: object) -> tuple[str, str, str] | None:
+    """(familia, tamaño en pt, color) de un bloque `{familia, tamano_pt, color}` del estilo guardado; `None` si algún valor no es válido."""
+    if not isinstance(raw, dict):
+        return None
+    size = raw.get("tamano_pt")
+    if raw.get("familia") not in _FONT_STACKS or isinstance(size, bool) or not isinstance(size, (int, float)) or not 6 <= size <= 48:
+        return None
+    color = raw.get("color")
+    if not isinstance(color, str) or not _HEX_COLOR.match(color):
+        return None
+    return _FONT_STACKS[raw["familia"]], f"{size:g}pt", color
+
+
+def pdf_style_css(style: object) -> str:
+    """Hoja que lleva al contenido publicado la tipografía, el tamaño y el color del texto y de los encabezados H1-H4 del PDF de la plantilla.
+
+    `style` es el JSON guardado en la instantánea; vacío o inválido da `""` y la página conserva su estilo estándar. El color solo se aplica con el
+    esquema claro: el PDF es sobre papel blanco y sus colores oscuros no se leerían sobre el fondo del esquema oscuro.
+    """
+    if not isinstance(style, dict):
+        return ""
+    body = _font(style.get("texto"))
+    heads = style.get("encabezados") if isinstance(style.get("encabezados"), dict) else {}
+    levels = {level: _font(heads.get(level)) for level in ("h1", "h2", "h3", "h4")}
+    layout: list[str] = []
+    paint: list[str] = []
+    if body:
+        family, size, color = body
+        base = float(size.removesuffix("pt"))
+        layout.append(f".content {{ font-family: {family}; font-size: {size}; }}")
+        layout.append(f".content table {{ font-size: {round(base * 0.95, 1):g}pt; }} .content pre {{ font-size: {round(base * 0.88, 1):g}pt; }}")
+        paint.append(f".content {{ color: {color}; }}")
+    for level, font in levels.items():
+        if font:
+            family, size, color = font
+            selector = f".content {level}, .content h5, .content h6" if level == "h4" else f".content {level}"
+            layout.append(f"{selector} {{ font-family: {family}; font-size: {size}; }}")
+            paint.append(f"{selector} {{ color: {color}; }}")
+    if not layout:
+        return ""
+    return "\n".join(layout) + "\n@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n"
+
 
 UNAVAILABLE_CSS = """
 :root { color-scheme: light dark; --bg: #ffffff; --text: #0f172a; --text-2: #475569; --border: #e2e8f0; --bg-2: #f8fafc; }

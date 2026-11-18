@@ -1,7 +1,7 @@
 """Página pública de una publicación (H-035): documento HTML completo para servir sin sesión.
 
 Estructura: tarjeta del documento (título, descripción, creación, actualización y estado), índice (plegable en el celular y lateral en pantallas anchas),
-contenido ya limpio de la instantánea y pie con el crédito. Todo lo que viene de la instantánea (título, metadatos, índice) se escapa; solo `pub.html`
+contenido ya limpio de la instantánea y pie con el crédito. El texto y los encabezados del contenido llevan la tipografía, el tamaño y el color del PDF de la plantilla (`style`). Todo lo que viene de la instantánea (título, metadatos, índice) se escapa; solo `pub.html`
 entra tal cual porque el servidor lo limpió al publicar. Los estilos están en `publication_css.py`.
 """
 
@@ -10,7 +10,7 @@ import json
 import re
 
 from app.core.models.publication import Publication
-from app.services.publication_css import PAGE_CSS, UNAVAILABLE_CSS
+from app.services.publication_css import PAGE_CSS, UNAVAILABLE_CSS, pdf_style_css
 
 _MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 _ISO_DATE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
@@ -71,6 +71,7 @@ def render_page(pub: Publication) -> str:
     meta = _load_json(pub.meta, dict)
     toc_items = [item for item in _load_json(pub.toc, list) if isinstance(item, dict)]
     toc = _toc(toc_items) if toc_items else ""
+    pdf_css = pdf_style_css(_load_json(pub.style, dict))
     # Celular: botón arriba a la derecha que abre el índice como barra lateral desde la derecha. Sin scripts: la barra se muestra con `:target`
     # (`#indice`), así que cualquier enlace del índice (que cambia el `#`) la cierra solo, y «#cerrar» (que no existe) la cierra sin mover la página.
     fold = (
@@ -95,7 +96,7 @@ def render_page(pub: Publication) -> str:
 {share}<meta property="og:title" content="{html.escape(pub.title, quote=True)}">
 <meta property="og:type" content="article">
 <meta property="og:locale" content="es_MX">
-<style>{PAGE_CSS}</style>
+<style>{PAGE_CSS}{pdf_css}</style>
 </head>
 <body>
 <a class="skip" href="#contenido">Saltar al contenido</a>

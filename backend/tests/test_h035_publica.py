@@ -556,3 +556,75 @@ def test_check_reports_a_file_of_another_person_as_missing(ready_admin, db):
     assert res.status_code == 200
     assert res.json()["resources"] == [{"id": "ajeno-1", "name": None, "content_type": None, "visibility": "missing"}]  # sin revelar nombre ni tipo
     assert res.json()["has_private"] is True
+
+
+# --- Estilo del PDF en la página pública ---
+
+PDF_STYLE = {
+    "texto": {"familia": "Liberation Serif", "tamano_pt": 12, "color": "#222222"},
+    "encabezados": {
+        "h1": {"familia": "Liberation Sans", "tamano_pt": 24, "color": "#111111"},
+        "h2": {"familia": "Liberation Sans", "tamano_pt": 19.7, "color": "#123456"},
+        "h3": {"familia": "Liberation Sans", "tamano_pt": 16.3, "color": "#234567"},
+        "h4": {"familia": "Liberation Sans", "tamano_pt": 13.9, "color": "#345678"},
+    },
+}
+
+
+def test_pdf_style_css_carries_font_size_and_color_of_text_and_headings():
+    from app.services.publication_css import pdf_style_css
+
+    css = pdf_style_css(PDF_STYLE)
+    assert '.content { font-family: "Liberation Serif", "Times New Roman", Times, serif; font-size: 12pt; }' in css
+    assert ".content h1 { font-family: \"Liberation Sans\", Arial, Helvetica, sans-serif; font-size: 24pt; }" in css
+    assert ".content h2 { font-family: " in css and "font-size: 19.7pt" in css
+    assert ".content h4, .content h5, .content h6 { font-family:" in css
+    # el color solo con el esquema claro (el PDF es sobre papel blanco)
+    light = css.split("@media (prefers-color-scheme: light) {")[1]
+    assert ".content { color: #222222; }" in light and ".content h1 { color: #111111; }" in light and ".content h3 { color: #234567; }" in light
+    assert "color: #222222" not in css.split("@media")[0]
+
+
+def test_pdf_style_css_empty_or_invalid_keeps_the_standard_style():
+    from app.services.publication_css import pdf_style_css
+
+    assert pdf_style_css({}) == "" and pdf_style_css([]) == "" and pdf_style_css(None) == ""
+    bad = {"texto": {"familia": "Comic; } body { display:none", "tamano_pt": 12, "color": "#222222"},
+           "encabezados": {"h1": {"familia": "DejaVu Sans", "tamano_pt": 18, "color": "red; } x {"}, "h2": {"familia": "DejaVu Sans", "tamano_pt": 999, "color": "#111111"}}}
+    assert pdf_style_css(bad) == ""
+
+
+def test_style_of_uses_pdf_defaults_and_is_empty_without_pdf_format():
+    from app.services.publication_snapshot import style_of
+
+    assert style_of(None) == {} and style_of({"estilo": {"pdf": {}}}) == {} and style_of({"estilo": {}}) == {}
+    style = style_of({"estilo": {"pdf": {"texto": {"tamano_pt": 12}, "encabezados": {"h1": {"color": "#aa0000"}}}}})
+    assert style["texto"] == {"familia": "DejaVu Sans", "tamano_pt": 12, "color": "#1f2937"}
+    assert style["encabezados"]["h1"]["color"] == "#aa0000" and style["encabezados"]["h1"]["tamano_pt"] == 18
+    assert set(style["encabezados"]) == {"h1", "h2", "h3", "h4"}
+
+
+def test_public_page_uses_the_pdf_style_of_the_template(ready_admin):
+    vault_id = vault_of(ready_admin)
+    fm = {"titulo": "Acta", "alcance": ["*"], "atributos": [], "estilo": {"publicar": {"activo": True}, "pdf": {"texto": {"familia": "Liberation Serif", "tamano_pt": 12, "color": "#222222"}}}, "estados": [{"nombre": "borrador", "color": "azul"}]}
+    assert post_note(ready_admin, vault_id, "PLANTILLAS/plantilla-acta.md", "# Estructura", fm).status_code == 201
+    doc = _doc(ready_admin, vault_id, plantilla="acta")
+    token = ready_admin.post(f"/vaults/{vault_id}/notes/{doc['id']}/publication", json={"html": "<h1>Hola</h1><p>texto</p>"}).json()["token"]
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    page = TestClient(app).get(f"/p/{token}").text
+    assert "font-size: 12pt" in page and '"Liberation Serif"' in page and ".content { color: #222222; }" in page
+
+
+def test_public_page_without_pdf_format_keeps_the_standard_style(ready_admin):
+    vault_id = vault_of(ready_admin)
+    _publish_template(ready_admin, vault_id)
+    doc = _doc(ready_admin, vault_id, plantilla="acta")
+    token = ready_admin.post(f"/vaults/{vault_id}/notes/{doc['id']}/publication", json={"html": "<h1>Hola</h1>"}).json()["token"]
+
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    assert "Liberation" not in TestClient(app).get(f"/p/{token}").text
