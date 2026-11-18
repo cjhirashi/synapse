@@ -846,6 +846,17 @@ describe("MilkdownView · comandos de formato (H-010)", () => {
     expect(box.querySelector(".comentario-head")).toHaveAttribute("contenteditable", "false");
   });
 
+  it("un comentario dentro de una viñeta se pinta como ventana, compacto (sin líneas en blanco) o no, y no queda como HTML suelto", async () => {
+    const open = '<div class="comentario" data-autor="usuario" data-fecha="2026-11-17">';
+    const source = `- **Profesionales** que entregan.\n  ${open}\n  Sirve también para **empresas**.\n  </div>\n- Despachos.\n\n  ${open}\n\n  No solo despachos.\n\n  </div>\n`;
+    const { container } = render(<MilkdownView value={source} readOnly onChange={() => undefined} label="Lectura" />);
+    await waitFor(() => expect(container.querySelectorAll("li div.comentario")).toHaveLength(2));
+    const [compact, spaced] = Array.from(container.querySelectorAll<HTMLElement>("li div.comentario"));
+    expect(compact.querySelector(".comentario-body strong")).toHaveTextContent("empresas");
+    expect(spaced.querySelector(".comentario-body")).toHaveTextContent("No solo despachos.");
+    expect(container.textContent).not.toContain("<div");
+  });
+
   it("índice y salto de página llevan en Lectura un indicador con su explicación (sin entrar a editar)", async () => {
     const { container } = render(<MilkdownView value={"uno\n\n<!-- pdf:indice -->\n\n<!-- pdf:salto -->\n\ndos"} readOnly onChange={() => undefined} label="Lectura" />);
     await waitFor(() => expect(container.querySelectorAll(".pdf-mark")).toHaveLength(2));

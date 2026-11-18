@@ -73,4 +73,27 @@ describe("marcas de formato del documento", () => {
     expect(out[0].children?.[1]).toMatchObject({ type: "pdfBlock", kind: "align", value: "center" });
     expect(out[1]).toEqual(text("fuera"));
   });
+  it("un comentario dentro de una viñeta se agrupa, con líneas en blanco o en un solo bloque de HTML (lista compacta)", () => {
+    const open = '<div class="comentario" data-autor="usuario" data-fecha="2026-11-17">';
+    const split = groupBlocks([{ type: "list", children: [{ type: "listItem", children: [text("a"), html(open), text("nota"), html("</div>")] }] }]);
+    const item = split[0].children?.[0] as N;
+    expect(item.children?.[1]).toMatchObject({ type: "pdfBlock", kind: "comment", value: "usuario", date: "2026-11-17" });
+    expect(item.children).toHaveLength(2);
+
+    const single = groupBlocks([{ type: "list", children: [{ type: "listItem", children: [text("a"), html(`${open}\nSirve también.\n</div>`)] }] }]);
+    const compact = (single[0].children?.[0] as N).children as N[];
+    expect(compact).toHaveLength(2);
+    expect(compact[1]).toMatchObject({ type: "pdfBlock", kind: "comment", value: "usuario" });
+    expect(compact[1].children).toEqual([text("Sirve también.")]);
+
+    const wrappedSingle = groupBlocks([text("x"), wrapped(`${open}\nuno\n</div>`)]);
+    expect(wrappedSingle[1]).toMatchObject({ type: "pdfBlock", kind: "comment" });
+    const root = groupBlocks([text("x"), html(`${open}\nuno\n</div>`)]);
+    expect(root[1]).toMatchObject({ type: "pdfBlock", kind: "comment" });
+  });
+
+  it("un bloque de HTML de varias líneas con divs sin equilibrar se deja como HTML", () => {
+    const odd = html('<div class="comentario" data-autor="usuario">\n<div align="center">\nx\n</div>');
+    expect(groupBlocks([odd])).toEqual([odd]);
+  });
 });

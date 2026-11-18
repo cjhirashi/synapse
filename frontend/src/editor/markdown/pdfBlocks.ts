@@ -73,8 +73,42 @@ function htmlOf(node: Mdast): string | null {
 
 const closes = (opening: Opening, html: string): boolean => (opening.kind === "cover" ? CLOSE_COVER.test(html.trim()) : CLOSE_DIV.test(html.trim()));
 
-/** Agrupa las parejas apertura/cierre de `nodes` (recursivo: los contenedores se anidan). */
-export function groupBlocks(nodes: Mdast[]): Mdast[] {
+/** Convierte un texto Markdown en bloques (el procesador de remark); sin él, el texto queda en un solo párrafo. */
+export type MdastParser = (markdown: string) => Mdast[];
+
+/**
+ * Un bloque de HTML sin líneas en blanco llega de remark como UN solo nodo (`<div class="comentario" …>\nTexto\n</div>`): es lo que se guarda cuando el
+ * contenedor está dentro de una viñeta de lista compacta. Si empieza con una de nuestras aperturas y termina con su cierre (con las aperturas y cierres de
+ * en medio equilibrados), se parte en apertura, contenido y cierre para que `groupBlocks` lo agrupe igual que el que viene con líneas en blanco.
+ */
+function expandSingleBlock(node: Mdast, parse?: MdastParser): Mdast[] {
+  const value = htmlOf(node);
+  if (value === null || !value.includes("\n")) return [node];
+  const lines = value.split("\n");
+  const first = lines[0].trim();
+  const last = lines[lines.length - 1].trim();
+  const opening = parseOpening(first);
+  if (!opening || !closes(opening, last)) return [node];
+  const middle = lines.slice(1, -1);
+  let balance = 0;
+  for (const line of middle) {
+    const trimmed = line.trim();
+    if (parseOpening(trimmed) && opening.kind !== "cover") balance += 1;
+    else if (CLOSE_DIV.test(trimmed)) balance -= 1;
+    if (balance < 0) return [node];
+  }
+  if (balance !== 0) return [node];
+  const text = middle.join("\n").trim();
+  const inner: Mdast[] = !text ? [] : parse ? parse(text) : [{ type: "paragraph", children: [{ type: "text", value: text }] }];
+  return [{ type: "html", value: first }, ...inner, { type: "html", value: last }];
+}
+
+/** Contenedores de bloques donde un comentario o una alineación también puede vivir (una viñeta, una cita). */
+const BLOCK_CONTAINERS = new Set(["list", "listItem", "blockquote", "footnoteDefinition"]);
+
+/** Agrupa las parejas apertura/cierre de `nodes` (recursivo: los contenedores se anidan y también se busca dentro de listas y citas). */
+export function groupBlocks(source: Mdast[], parse?: MdastParser): Mdast[] {
+  const nodes = source.flatMap((node) => expandSingleBlock(node, parse));
   const out: Mdast[] = [];
   for (let i = 0; i < nodes.length; i += 1) {
     const html = htmlOf(nodes[i]);
@@ -85,7 +119,8 @@ export function groupBlocks(nodes: Mdast[]): Mdast[] {
     }
     const opening = html === null ? null : parseOpening(html);
     if (!opening) {
-      out.push(nodes[i]);
+      const node = nodes[i];
+      out.push(BLOCK_CONTAINERS.has(node.type) && node.children ? { ...node, children: groupBlocks(node.children, parse) } : node);
       continue;
     }
     // Cierre que le corresponde: `</div>` cierra el contenedor `div` más reciente (contando los anidados); la portada, su comentario.
@@ -105,16 +140,19 @@ export function groupBlocks(nodes: Mdast[]): Mdast[] {
       out.push(nodes[i]);
       continue;
     }
-    const inner = groupBlocks(nodes.slice(i + 1, end));
+    const inner = groupBlocks(nodes.slice(i + 1, end), parse);
     out.push({ type: BLOCK_MDAST, kind: opening.kind, value: opening.value, date: opening.date ?? "", children: inner.length ? inner : [{ type: "paragraph", children: [] }] });
     i = end;
   }
   return out;
 }
 
-export const pdfBlocksRemark = $remark("synapsePdfBlocks", () => () => (tree: unknown) => {
-  const root = tree as Mdast;
-  if (Array.isArray(root.children)) root.children = groupBlocks(root.children);
+export const pdfBlocksRemark = $remark("synapsePdfBlocks", () => function (this: { parse: (markdown: string) => unknown }) {
+  const parse: MdastParser = (markdown) => (this.parse(markdown) as Mdast).children ?? [];
+  return (tree: unknown) => {
+    const root = tree as Mdast;
+    if (Array.isArray(root.children)) root.children = groupBlocks(root.children, parse);
+  };
 });
 
 const kindOf = (value: unknown): PdfBlockKind => (value === "align" || value === "cols" || value === "col" || value === "comment" ? value : "cover");
