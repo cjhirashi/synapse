@@ -1780,33 +1780,103 @@ li.note-task[data-checked="true"] .note-task-body {
   position: fixed;
   inset: 0;
   z-index: 10000;
+  background: var(--bg-primary);
+  overscroll-behavior: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* El área de gestos ocupa todo el visor; `touch-action: none` deja el pellizco y el arrastre a nuestro código (no al navegador). */
+.image-viewer-stage {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
-  cursor: zoom-out;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.image-viewer-stage.is-zoomed {
+  cursor: grab;
+}
+
+.image-viewer-stage.is-zoomed:active {
+  cursor: grabbing;
 }
 
 .image-viewer-img {
   max-width: 100vw;
   max-height: 100vh;
   object-fit: contain;
+  transform-origin: center;
+  will-change: transform;
+  -webkit-user-drag: none;
+}
+
+.image-viewer-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.image-viewer-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 .image-viewer-close {
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
-  width: 40px;
-  height: 40px;
-  border: 0;
   border-radius: 50%;
   background: var(--bg-secondary);
-  color: var(--text-primary);
   box-shadow: 0 0 0 1px var(--border);
   font-size: 28px;
   line-height: 1;
-  cursor: pointer;
+}
+
+.image-viewer-controls {
+  position: absolute;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.image-viewer-controls .image-viewer-btn {
+  border-radius: 999px;
+}
+
+.image-viewer-controls .image-viewer-btn:not(:disabled):hover {
+  background: var(--bg-tertiary);
+}
+
+.image-viewer-zoom-reset {
+  min-width: 72px;
+  padding: 0 var(--space-2);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.image-viewer-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Vista Código (SPEC-0010 RF-029, RF-040; R-9): mono 13 px con interlineado 1,8 como el mockup
