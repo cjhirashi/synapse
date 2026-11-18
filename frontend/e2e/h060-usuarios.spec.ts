@@ -46,6 +46,7 @@ const CASES: Array<{ label: string; size: Size; theme: Theme }> = [
 
 for (const { label, size, theme } of CASES) {
   test(`H-060: ventana de usuarios a ${label}`, async ({ browser }) => {
+    const mobile = size.width <= 640;
     const cookie = await adminCookie();
     const stamp = `${Date.now()}`;
     const ana = `ana-${stamp}@example.com`;
@@ -63,52 +64,66 @@ for (const { label, size, theme } of CASES) {
     page.on("pageerror", (e) => errors.push(e.message));
     await page.goto("/settings/users");
 
-    // El grupo «Administración» está en la navegación (en celular, tras abrir el menú).
     await expect(page.getByRole("heading", { name: "Usuarios", level: 2 })).toBeVisible();
-    await expect(page.getByRole("heading", { name: ana })).toBeVisible();
-    await expect(page.getByText("Documentos por bóveda: 100").first()).toBeVisible();
-    await expect(page.getByText("Almacenamiento por bóveda: 1.5 GB").first()).toBeVisible();
-    await expect(page.getByText(/se borra para siempre el/i).first()).toBeVisible();
+    // Escritorio: la tabla compartida; celular: tarjetas.
+    if (mobile) {
+      await expect(page.getByRole("listitem", { name: ana })).toBeVisible();
+      await expect(page.getByRole("table")).toHaveCount(0);
+    } else {
+      await expect(page.getByRole("table", { name: "Cuentas" })).toBeVisible();
+      await expect(page.getByRole("columnheader", { name: /Cuenta/ })).toBeVisible();
+    }
+    await expect(page.getByText(ana).first()).toBeVisible();
+    await expect(page.getByLabel("Resumen").getByText("Cuentas activas")).toBeVisible();
     await shot(page, `h060-${label}-1-lista`);
 
-    // Sin desbordes horizontales: ni la página ni las tarjetas se salen de la ventana.
-    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-    expect(overflow).toBeLessThanOrEqual(0);
-    for (const card of await page.locator(".users-page .ag-card").all()) {
-      const box = (await card.boundingBox())!;
-      expect(box.x + box.width).toBeLessThanOrEqual(size.width + 1);
+    // Sin desbordes: la página no se desplaza en horizontal y cada acción cumple su área de toque.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    for (const button of await page.locator(".us-act").all()) {
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(mobile ? 43 : 29);
     }
-    // Áreas de toque de al menos 40 px en los botones de cada tarjeta.
-    for (const button of await page.locator(".users-page .ag-actions button").all()) {
-      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(36);
+    if (mobile) {
+      for (const card of await page.locator(".us-card").all()) {
+        const box = (await card.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(size.width + 1);
+      }
     }
 
-    // Panel de uso: medidores y desglose por bóveda, sin desbordes.
-    await page.getByRole("button", { name: `Ver el uso de ${ana}` }).click();
+    // Filtros y búsqueda.
+    await page.getByRole("button", { name: /^Eliminadas/ }).click();
+    await expect(page.getByText(eli).first()).toBeVisible();
+    await shot(page, `h060-${label}-6-eliminadas`);
+    await page.getByRole("button", { name: /^Todas/ }).click();
+    await page.getByLabel("Buscar cuenta").fill("luis-con");
+    await expect(page.getByText(ana)).toHaveCount(0);
+    await page.getByLabel("Buscar cuenta").fill("");
+
+    // Uso por bóveda (ventana).
+    await page.getByRole("button", { name: `Ver el uso de ${ana}`, exact: true }).click();
     const usage = page.getByLabel(`Uso de ${ana}`, { exact: true });
-    await expect(usage.getByText("Bóvedas", { exact: true })).toBeVisible();
     await expect(usage.getByText("Archivos en total")).toBeVisible();
-    await shot(page, `h060-${label}-5-uso`, { selector: ".users-page .ag-card:has(.us-usage)" });
-    const box = (await usage.boundingBox())!;
-    expect(box.x + box.width).toBeLessThanOrEqual(size.width + 1);
-    await page.getByRole("button", { name: `Ver el uso de ${ana}` }).click();
+    await expect(usage.getByText("Investigación de mercado")).toBeVisible();
+    await shot(page, `h060-${label}-5-uso`);
+    await page.getByRole("button", { name: "Cerrar", exact: true }).click();
 
-    // Formulario de alta: tres límites con los valores iniciales.
+    // Alta: tres límites con los valores iniciales.
     await page.getByRole("button", { name: "Crear usuario" }).click();
-    await expect(page.getByLabel("Bóvedas", { exact: true })).toHaveValue("2");
-    await expect(page.getByLabel("Documentos por bóveda")).toHaveValue("100");
-    await expect(page.getByLabel("Almacenamiento por bóveda")).toHaveValue("500");
+    const create = page.getByRole("dialog");
+    await expect(create.getByLabel("Bóvedas", { exact: true })).toHaveValue("2");
+    await expect(create.getByLabel("Documentos por bóveda")).toHaveValue("100");
+    await expect(create.getByLabel("Almacenamiento por bóveda")).toHaveValue("500");
     await shot(page, `h060-${label}-2-alta`);
-    await page.getByRole("button", { name: "Cancelar" }).first().click();
+    await create.getByRole("button", { name: "Cancelar" }).click();
 
-    // Edición de límites.
-    await page.getByRole("button", { name: `Límites de ${ana}` }).click();
+    // Límites.
+    await page.getByRole("button", { name: `Límites de ${ana}`, exact: true }).click();
     await expect(page.getByRole("button", { name: "Guardar límites" })).toBeVisible();
     await shot(page, `h060-${label}-3-limites`);
-    await page.getByRole("button", { name: "Cancelar" }).first().click();
+    await page.getByRole("button", { name: "Cancelar" }).click();
 
-    // Confirmación de eliminar: pide el correo.
-    await page.getByRole("button", { name: `Eliminar ${ana}` }).click();
+    // Eliminar: pide el correo.
+    await page.getByRole("button", { name: `Eliminar ${ana}`, exact: true }).click();
     const dialog = page.getByRole("alertdialog");
     await expect(dialog.getByRole("button", { name: "Eliminar cuenta" })).toBeDisabled();
     await shot(page, `h060-${label}-4-eliminar`);
