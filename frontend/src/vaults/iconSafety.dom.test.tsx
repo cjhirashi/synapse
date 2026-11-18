@@ -35,7 +35,7 @@ function expectHarmless(attributes: string[], raw: string) {
     expect(attribute).not.toContain(raw);
     // Sólo se admiten enlaces internos de bóveda, las entradas fijas del riel (H-028 A2) y estilos
     // hechos de variables de la paleta.
-    if (attribute.startsWith("href=")) expect(attribute).toMatch(/^href=(\/vaults\/|\/files$|\/settings$|\/avisos$|\/tareas$)/);
+    if (attribute.startsWith("href=")) expect(attribute).toMatch(/^href=(\/vaults\/|\/files$|\/settings$|\/avisos$|\/tareas$|\/docs$)/);
     if (attribute.startsWith("style=")) {
       expect(attribute).toMatch(new RegExp(`^style=--chip-color: var\\(--(${PALETTE.join("|")})\\);?$`));
     }

@@ -7,7 +7,7 @@
  * El nombre completo sale en un tooltip propio (`RailTooltip`) al pasar el cursor o enfocar con el
  * teclado. Se monta en `document.body`: el riel tiene scroll (`overflow`) y recortaría un hijo.
  */
-import { ChevronsLeft, ChevronsRight, ListChecks, Trash2 } from "lucide-react";
+import { BookOpen, ChevronsLeft,ChevronsRight, ListChecks, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
@@ -118,7 +118,7 @@ export default function VaultRail() {
           </NavLink>
         ))}
       </div>
-      {/* Zona inferior (H-028 A2): altura de su contenido; Papelera y Usuario (al final). Los avisos salieron al navbar. */}
+      {/* Zona inferior (H-028 A2): altura de su contenido; Tareas, Papelera, Documentación (H-061) y Usuario (al final). Los avisos salieron al navbar. */}
       <div className="vault-rail-bottom">
         <NavLink to="/tareas" className="vault-rail-icon vault-rail-action" aria-label="Tareas de todas las bóvedas" title="Tareas de todas las bóvedas">
           <span className="vault-rail-glyph">
@@ -131,6 +131,12 @@ export default function VaultRail() {
             <Trash2 size={18} aria-hidden="true" />
           </span>
           {expanded && <span className="vault-rail-name">Papelera</span>}
+        </NavLink>
+        <NavLink to="/docs" className="vault-rail-icon vault-rail-action" aria-label="Documentación" title="Documentación">
+          <span className="vault-rail-glyph">
+            <BookOpen size={18} aria-hidden="true" />
+          </span>
+          {expanded && <span className="vault-rail-name">Documentación</span>}
         </NavLink>
         <NavLink
           to="/settings"

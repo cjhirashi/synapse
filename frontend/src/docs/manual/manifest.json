@@ -1,0 +1,145 @@
+{
+  "fuente": "Bóveda Proyectos › Synapse › 11 - Manual de Operación",
+  "capitulos": [
+    {
+      "slug": "01-conceptos-y-recorrido",
+      "titulo": "01 - Conceptos y recorrido",
+      "descripcion": "Qué es Synapse, cómo se organiza (bóvedas, carpetas y notas) y un recorrido por las zonas de la pantalla.",
+      "noteId": "97ab142d-8c18-4a62-a469-f853e796a0c0",
+      "rev": "15-9f9f3ed6f1334bbce1b7069d8953ae6c",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "02-primeros-pasos-y-cuenta",
+      "titulo": "02 - Primeros pasos y cuenta",
+      "descripcion": "Cómo iniciar sesión, completar tu perfil, cambiar la contraseña, elegir el tema y cerrar sesión.",
+      "noteId": "05861db9-a419-4868-9166-7990a83cda60",
+      "rev": "7-79dbf8f786ce620e9eb704595920c48c",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "03-bovedas",
+      "titulo": "03 - Bóvedas",
+      "descripcion": "Cómo crear, abrir, editar y borrar bóvedas, y cómo usar el riel de bóvedas.",
+      "noteId": "1e6c2a40-ef6d-4de2-811f-67800b79564d",
+      "rev": "7-483990dfa1e8a60dff82d0a48823cde6",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "04-notas-y-carpetas",
+      "titulo": "04 - Notas y carpetas",
+      "descripcion": "Cómo moverte por el árbol de notas, crear notas y carpetas, renombrar, borrar y recuperar.",
+      "noteId": "c815e5ef-c700-4ded-a25d-df5af7df1081",
+      "rev": "8-612b8254f4dd4305cfb413661d17c66c",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "05-el-editor",
+      "titulo": "05 - El editor",
+      "descripcion": "Cómo leer y editar una nota: modos Leer, Visual y Código, formato, tablas, imágenes con zoom, comentarios de revisión y enlaces entre notas.",
+      "noteId": "651a090d-1fa4-40f5-96b0-fded2bd265df",
+      "rev": "8-f11886b5dd0dc553503073c131a479fe",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "06-propiedades-etiquetas-y-filtro-por-tags",
+      "titulo": "06 - Propiedades, etiquetas y filtro por tags",
+      "descripcion": "Las propiedades de cada nota (título, descripción, etiquetas, estado, plantilla), cómo añadir las tuyas, el filtro por tags y la barra derecha.",
+      "noteId": "5b6ac5ba-7c87-4314-a678-30af9042181f",
+      "rev": "7-b3a0bc364614ef2877c0c5ce6035b7c5",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "07-plantillas",
+      "titulo": "07 - Plantillas",
+      "descripcion": "Qué es una plantilla, cómo leerla y editarla (carpetas, atributos, estados, diseño del PDF y publicación en la web) y cómo usarla en un documento.",
+      "noteId": "8f3157ca-d1b2-40b1-8b0b-25828ec6ee1d",
+      "rev": "8-37dc5d6593c5ea0aa50210b158f1f7b8",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "08-archivos",
+      "titulo": "08 - Archivos",
+      "descripcion": "Cómo subir, organizar y compartir archivos de una bóveda: carpetas, visibilidad pública o privada y acciones de cada archivo.",
+      "noteId": "0c0411af-df64-416f-ae0f-e55569672e7a",
+      "rev": "7-10d9e9ff369906f3c9998b42e9d3313b",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "09-tareas",
+      "titulo": "09 - Tareas",
+      "descripcion": "Cómo crear y seguir tareas en Synapse: vistas Lista, Kanban, Calendario y Línea de tiempo, filtros, subtareas, bloqueos, proyectos y tareas de todas las bóvedas.",
+      "noteId": "e54286df-a6fe-4bd8-8172-cd9504a5eebf",
+      "rev": "6-68ff606904f69d486f005830276060c7",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "10-avisos-y-notificaciones",
+      "titulo": "10 - Avisos y notificaciones",
+      "descripcion": "La bandeja de Avisos, la campana, qué avisos recibes y cómo configurar las horas silenciosas.",
+      "noteId": "a2fbe187-2e8a-4183-a991-f92a83f7e319",
+      "rev": "6-ba365fec188aa8b67e9ece17f73c3331",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "11-descargar-un-pdf",
+      "titulo": "11 - Descargar un PDF",
+      "descripcion": "Cómo descargar un documento como PDF y cómo darle portada, índice y saltos de página.",
+      "noteId": "2290aee2-5d07-4d58-b893-d9210b5d3844",
+      "rev": "6-280c9c603c9ee6d8f70ce5ecfb5e5e97",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "12-publicar-en-la-web",
+      "titulo": "12 - Publicar en la web",
+      "descripcion": "Cómo publicar un documento con un enlace público, hacer públicos sus archivos, programar la despublicación, republicar y administrar lo publicado.",
+      "noteId": "55aeae97-8b5e-432e-bc4d-a36fa88220be",
+      "rev": "6-58307ba2598a792a28a5e574517a2e5c",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "13-agentes-y-api-keys",
+      "titulo": "13 - Agentes y API keys",
+      "descripcion": "Cómo conectar un agente de IA a tus bóvedas: crear y revocar API keys, decidir dónde puede escribir cada agente y qué son las carpetas del sistema.",
+      "noteId": "6ec27a60-93ee-494b-82e9-349fa5324097",
+      "rev": "6-699a561e7a5db092d8b7c53fe414273c",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    },
+    {
+      "slug": "14-papelera-sincronizacion-y-solucion-de-problemas",
+      "titulo": "14 - Papelera, sincronización y solución de problemas",
+      "descripcion": "Recuperar bóvedas borradas, entender el indicador de sincronización, resolver conflictos y cambios rechazados, y una guía de problemas comunes con glosario.",
+      "noteId": "c37b4167-14d4-4ab1-9bc2-abe34373211a",
+      "rev": "7-e57d04cc0aff915594c2dd8c392b5710",
+      "autor": "Carlos Jiménez",
+      "programa": "Synapse",
+      "responsable": "Aira"
+    }
+  ]
+}

@@ -21,6 +21,7 @@ import VaultForm from "./vaults/VaultForm";
 import VaultListPage from "./vaults/VaultListPage";
 
 const AllTasks = lazy(() => import("./tasks/AllTasks"));
+const DocsPage = lazy(() => import("./docs/DocsPage"));
 const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
 const NotificationsSettingsPage = lazy(() => import("./settings/NotificationsSettingsPage"));
 
@@ -111,6 +112,9 @@ export default function App({ syncEnv }: Props) {
         {/* Lo que la sincronización deja al usuario (SPEC-0005 RF-006, RF-013). */}
         {/* H-056: las tareas de todas las bóvedas en un mismo lugar. */}
         <Route path="/tareas" element={<Suspense fallback={null}><AllTasks /></Suspense>} />
+        {/* H-061: el Manual de Operación dentro de la app. */}
+        <Route path="/docs" element={<Suspense fallback={null}><DocsPage /></Suspense>} />
+        <Route path="/docs/:slug" element={<Suspense fallback={null}><DocsPage /></Suspense>} />
         <Route path="/avisos" element={<Suspense fallback={null}><NotificationsPage /></Suspense>} />
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />
