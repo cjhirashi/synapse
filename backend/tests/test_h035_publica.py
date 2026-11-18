@@ -628,3 +628,19 @@ def test_public_page_without_pdf_format_keeps_the_standard_style(ready_admin):
     from app.main import app
 
     assert "Liberation" not in TestClient(app).get(f"/p/{token}").text
+
+
+def test_dark_scheme_headings_use_the_theme_tones_of_the_template():
+    from app.core import color_theme
+    from app.services.publication_css import pdf_style_css
+    from app.services.publication_snapshot import style_of
+
+    style = style_of({"estilo": {"pdf": {"tema": {"primario": "#0891b2"}}}})
+    tones = style["encabezados_oscuro"]
+    assert tones["h1"] == color_theme.tone600("#0891b2") and tones["h3"] == color_theme.tone400("#0891b2")
+    css = pdf_style_css(style)
+    dark = css.split("@media (prefers-color-scheme: dark) {")[1]
+    assert f".content h2 {{ color: {tones['h2']}; }}" in dark and f".content h4, .content h5, .content h6 {{ color: {tones['h4']}; }}" in dark
+    assert ".content { color" not in dark  # el texto conserva el color estándar en oscuro
+    assert "encabezados_oscuro" not in style_of({"estilo": {"pdf": {"texto": {"tamano_pt": 12}}}})
+    assert "dark" not in pdf_style_css({**style, "encabezados_oscuro": {"h1": "red; } x {"}})

@@ -178,8 +178,9 @@ def _font(raw: object) -> tuple[str, str, str] | None:
 def pdf_style_css(style: object) -> str:
     """Hoja que lleva al contenido publicado la tipografía, el tamaño y el color del texto y de los encabezados H1-H4 del PDF de la plantilla.
 
-    `style` es el JSON guardado en la instantánea; vacío o inválido da `""` y la página conserva su estilo estándar. El color solo se aplica con el
-    esquema claro: el PDF es sobre papel blanco y sus colores oscuros no se leerían sobre el fondo del esquema oscuro.
+    `style` es el JSON guardado en la instantánea; vacío o inválido da `""` y la página conserva su estilo estándar. El color del PDF solo se aplica con el
+    esquema claro (es papel blanco y sus colores oscuros no se leerían sobre el fondo oscuro); en el esquema oscuro los encabezados toman los tonos del tema de color
+    de la plantilla (`encabezados_oscuro`), como el editor, y el texto conserva el color estándar.
     """
     if not isinstance(style, dict):
         return ""
@@ -202,7 +203,11 @@ def pdf_style_css(style: object) -> str:
             paint.append(f"{selector} {{ color: {color}; }}")
     if not layout:
         return ""
-    return "\n".join(layout) + "\n@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n"
+    css = "\n".join(layout) + "\n@media (prefers-color-scheme: light) {\n" + "\n".join(paint) + "\n}\n"
+    dark = style.get("encabezados_oscuro") if isinstance(style.get("encabezados_oscuro"), dict) else {}
+    rules = [f"{'.content h4, .content h5, .content h6' if level == 'h4' else f'.content {level}'} {{ color: {dark[level]}; }}"
+             for level in ("h1", "h2", "h3", "h4") if isinstance(dark.get(level), str) and _HEX_COLOR.match(dark[level])]
+    return css + ("@media (prefers-color-scheme: dark) {\n" + "\n".join(rules) + "\n}\n" if rules else "")
 
 
 UNAVAILABLE_CSS = """
