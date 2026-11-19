@@ -538,6 +538,13 @@ la zona horaria del propietario (`users.timezone`, por defecto `America/Mexico_C
 automáticos (sí un cambio de su `descripcion`), la propia BITACORA ni los cambios que solo tocan `fecha_actualizacion`. Una línea
 `[sin confirmar]` es un cambio registrado cuya escritura no se confirmó; `[no se aplicó]`, uno que se sabe que falló.
 
+**Diff por cambio (H-062).** Como un commit de GitHub, cada línea trae `+N −M` (líneas agregadas y eliminadas del contenido y del
+`frontmatter`) y, debajo, un bloque `diff` con ellas: una nota nueva se ve entera como agregada y una borrada como eliminada. El
+bloque se corta a 200 líneas o 20 KiB y lo avisa (`Diff truncado`); el conteo `+N −M` es siempre el real. Los renombres y
+movimientos sin cambio de contenido y las restauraciones muestran `+0 −0`. Los cambios anteriores a H-062 muestran «sin
+detalle» (no se pueden reconstruir), y también si el cálculo del diff falló: el cambio se registra igual. Se guarda en
+`change_log` (`lines_added`, `lines_removed`, `diff`, `diff_truncated`; migración 024) y `rebuild` lo regenera desde ahí.
+
 **PLANTILLAS.** Cada plantilla es `PLANTILLAS/plantilla-<nombre>.md` (plana; `<nombre>` en minúsculas, dígitos y guiones,
 ≤ 64). Frontmatter de la definición: `alcance` (lista de carpetas o `["*"]`), `atributos` (`[{nombre, tipo, valor?}]`, `tipo`:
 `texto|numero|fecha|lista|booleano`), `estados` (H-054, opcional: hasta 20 `{nombre, color}` —`nombre` normalizado como un estado y sin repetir, `color`

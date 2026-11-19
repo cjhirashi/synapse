@@ -15,7 +15,7 @@
         "estado": "aprobado",
         "version": "1.3.36"
       },
-      "sha256": "367e4c0dea647fe1f248508f759e795b6401596633eda95b12fc2b1bbfa6da4d"
+      "sha256": "407686ec3d26368f51b4eae8d3bce2b4e20347eac7b71ad25bd212811017c453"
     },
     {
       "path": "PLANTILLAS/plantilla-skill.md",
@@ -54,7 +54,7 @@
           "pdf": {}
         }
       },
-      "sha256": "105be94139eaffbccbc3b63e1eb07782f423d63458bc892715a7d0a4f58daf70"
+      "sha256": "e4b4a3d57e7f36ac6f4d60b352805631f79f36a4ff5ae64f67cff540e1d61277"
     }
   ]
 }

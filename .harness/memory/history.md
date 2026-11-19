@@ -5,10 +5,10 @@
 - **Pedido de Carlos (2026-11-18, CDMX):** la BITACORA debe registrar, como GitHub, qué líneas se agregaron y cuáles se eliminaron en cada cambio, con el detalle dentro del documento diario de BITACORA (no en un listado separado).
 - **Qué cambió:** migración 024 (columnas `lines_added`, `lines_removed`, `diff`, `diff_truncated` en `change_log`, nullable para cambios anteriores); `compute_diff(old, new)` → `Diff` (puro, con difflib) calcula líneas reales (create = todas; delete = todas; rename/move sin cambio = 0/0; edit con unified diff 2 líneas de contexto + frontmatter). Diff unificado truncado a 200 líneas o 20 KiB; conteos siempre reales. `ChangeLogService.begin` guarda los 4 campos; falla en compute_diff nunca bloquea registro (captura excepción, warning, sigue sin diff). `render_day`: cada línea muestra `+N −M` (formato México con coma); bloque de código con diff indentado si existe, truncado marca. Cambios anteriores a H-062 mostrados «sin detalle». Documentación en `skill-bovedas-synapse.md` sección 7 quater.
 - **Tests:** 13 pruebas nuevas de `compute_diff` (create, delete, restore, rename, edit, frontmatter, CRLF, truncado, fallo), 4 de `render_day` (con diff, sin detalle, valla segura, números formateados).
-- **Verificación:** tests en verde. Gate pendiente.
-- **Docs actualizadas:** `backend/app/system_docs/skill-bovedas-synapse.md` (sección carpetas reservadas + H-062), `.harness/backlog.md` (H-062 en En curso), `.harness/memory/history.md` (esta entrada).
-- **Rama:** `feature/h062-bitacora-diff` (commit único).
-- **Modelos:** claude-haiku-4-5 (yo), sin subagentes.
+- **Verificación:** pytest en contenedor Python 3.11 (`test_h062_rules`, `test_h030b_*`, `test_h041_system`, `test_h030_rules`) y gate. Tras revisión de AIRA: create/delete muestran su diff completo, el conteo ya no confunde `---`/`++x` con cabeceras, la valla de cierre va sola y un fallo de `compute_diff` deja la fila «sin detalle» (no «0 cambios»).
+- **Docs actualizadas:** skill global `skill-bovedas-synapse.md` (frase de la sección carpetas reservadas; versión 1.3.36 y `--stamp` corrido con el script real), `.harness/backlog.md` (H-062), `.harness/memory/history.md` (esta entrada).
+- **Rama:** `feature/h062-bitacora-diff`.
+- **Modelos:** claude-haiku-4-5 (implementación y pruebas); revisión y corrección del stamp por AIRA (sonnet).
 
 ## [2026-11-12] H-052 (ajustes) y editor: afinado de la interfaz de la bóveda (desplegado)
 
