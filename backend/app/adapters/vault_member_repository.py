@@ -1,96 +1,69 @@
-"""Acceso a membresía e invitaciones a bóvedas (H-064 F2)."""
-from datetime import UTC, datetime
-from sqlalchemy import and_
+"""Acceso a membresías de bóvedas, sus concesiones y los usuarios invitables (H-064 F2).
+
+Toda búsqueda va acotada por propietario o por invitado: un id de miembro por sí solo nunca basta para llegar a una fila.
+"""
+from collections import defaultdict
+
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.models.vault_member import VaultMember, VaultMemberGrant
 from app.core.models.user import User
+from app.core.models.vault_member import VaultMember, VaultMemberGrant
 
 
 class VaultMemberRepository:
-    """CRUD de miembros de bóvedas y sus permisos."""
-
     def __init__(self, db: Session) -> None:
         self._db = db
 
     def add(self, member: VaultMember) -> VaultMember:
-        """Añade un miembro y lo devuelve con id."""
         self._db.add(member)
         self._db.flush()
         return member
 
-    def get(self, member_id: str) -> VaultMember | None:
-        """Lee un miembro por id."""
-        return self._db.query(VaultMember).filter(VaultMember.id == member_id).first()
-
-    def get_by_vault_and_user(self, vault_id: str, user_id: str) -> VaultMember | None:
-        """Busca un miembro existente en (vault_id, user_id) sin filtro de estado."""
+    def get_of_owner(self, member_id: str, owner_id: str, vault_id: str) -> VaultMember | None:
         return self._db.query(VaultMember).filter(
-            and_(VaultMember.vault_id == vault_id, VaultMember.user_id == user_id)
-        ).first()
+            VaultMember.id == member_id, VaultMember.owner_id == owner_id, VaultMember.vault_id == vault_id).first()
 
-    def list_by_vault(self, vault_id: str) -> list[VaultMember]:
-        """Lista todos los miembros de una bóveda (todos los estados), con usuarios completos."""
-        return self._db.query(VaultMember).filter(VaultMember.vault_id == vault_id).all()
+    def get_of_user(self, member_id: str, user_id: str) -> VaultMember | None:
+        return self._db.query(VaultMember).filter(VaultMember.id == member_id, VaultMember.user_id == user_id).first()
 
-    def list_pending_active_by_vault(self, vault_id: str) -> list[VaultMember]:
-        """Lista solo miembros con status pendiente o activo de una bóveda."""
+    def by_vault_and_user(self, vault_id: str, user_id: str) -> VaultMember | None:
+        """La fila de (bóveda, usuario) en cualquier estado y de cualquier propietario: la unicidad es por esa pareja."""
+        return self._db.query(VaultMember).filter(VaultMember.vault_id == vault_id, VaultMember.user_id == user_id).first()
+
+    def list_of_vault(self, owner_id: str, vault_id: str) -> list[VaultMember]:
         return self._db.query(VaultMember).filter(
-            and_(
-                VaultMember.vault_id == vault_id,
-                VaultMember.status.in_(("pendiente", "activo"))
-            )
-        ).all()
+            VaultMember.owner_id == owner_id, VaultMember.vault_id == vault_id).order_by(VaultMember.created_at).all()
 
-    def list_by_user(self, user_id: str, status: str | None = None) -> list[VaultMember]:
-        """Lista invitaciones de un usuario (opcional: filtro por status)."""
-        query = self._db.query(VaultMember).filter(VaultMember.user_id == user_id)
-        if status:
-            query = query.filter(VaultMember.status == status)
-        return query.all()
+    def list_of_user(self, user_id: str, statuses: tuple[str, ...]) -> list[VaultMember]:
+        return self._db.query(VaultMember).filter(
+            VaultMember.user_id == user_id, VaultMember.status.in_(statuses)).order_by(VaultMember.created_at.desc()).all()
 
-    def update(self, member: VaultMember) -> VaultMember:
-        """Actualiza un miembro."""
-        self._db.merge(member)
-        self._db.flush()
-        return self.get(member.id)
+    def count_open(self, owner_id: str, vault_id: str) -> int:
+        """Miembros pendientes o activos de la bóveda."""
+        return self._db.query(VaultMember).filter(
+            VaultMember.owner_id == owner_id, VaultMember.vault_id == vault_id,
+            VaultMember.status.in_(("pendiente", "activo"))).count()
 
-    def add_grant(self, grant: VaultMemberGrant) -> VaultMemberGrant:
-        """Añade un permiso."""
-        self._db.add(grant)
-        self._db.flush()
-        return grant
+    def grants_by_member(self, member_ids: list[str]) -> dict[str, list[VaultMemberGrant]]:
+        grouped: dict[str, list[VaultMemberGrant]] = defaultdict(list)
+        if member_ids:
+            rows = self._db.query(VaultMemberGrant).filter(VaultMemberGrant.member_id.in_(member_ids)).order_by(VaultMemberGrant.folder).all()
+            for row in rows:
+                grouped[row.member_id].append(row)
+        return grouped
 
-    def grants_of(self, member_id: str) -> list[VaultMemberGrant]:
-        """Lee todos los permisos de un miembro."""
-        return self._db.query(VaultMemberGrant).filter(VaultMemberGrant.member_id == member_id).all()
-
-    def delete_grants_of(self, member_id: str) -> None:
-        """Borra todos los permisos de un miembro (antes de reemplazarlos)."""
+    def replace_grants(self, member_id: str, grants: list[dict]) -> None:
         self._db.query(VaultMemberGrant).filter(VaultMemberGrant.member_id == member_id).delete()
+        self._db.add_all(VaultMemberGrant(member_id=member_id, folder=g["folder"], level=g["level"]) for g in grants)
         self._db.flush()
 
-    def flush(self) -> None:
-        """Flush la sesión (para operaciones que necesitan el objeto con id asignado)."""
-        self._db.flush()
-
-    def commit(self) -> None:
-        """Confirma la transacción."""
-        self._db.commit()
-
-    def refresh(self, obj) -> None:
-        """Refresca un objeto desde la BD (para ver cambios post-commit)."""
-        self._db.refresh(obj)
-
-    def user_by_email(self, email: str) -> User | None:
-        """Busca un usuario por email (case-insensitive) y verifica que esté activo."""
-        normalized = email.lower()
+    def invitable_user(self, email: str) -> User | None:
+        """Usuario activo y no dado de baja con ese correo exacto (sin distinguir mayúsculas; sin comodines)."""
         return self._db.query(User).filter(
-            User.email.ilike(normalized),
-            User.is_active == True,
-            User.deleted_at.is_(None)
-        ).first()
+            func.lower(User.email) == email.lower(), User.is_active.is_(True), User.deleted_at.is_(None)).first()
 
-    def user_by_id(self, user_id: str) -> User | None:
-        """Lee un usuario por id."""
-        return self._db.query(User).filter(User.id == user_id).first()
+    def users_by_ids(self, user_ids: set[str]) -> dict[str, User]:
+        if not user_ids:
+            return {}
+        return {u.id: u for u in self._db.query(User).filter(User.id.in_(user_ids)).all()}

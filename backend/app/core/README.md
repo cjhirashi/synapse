@@ -112,6 +112,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 ## Compartir bóvedas (H-064)
 
 - `vault_context.py` — punto único del nombre de la base CouchDB de una cuenta (`user_db_name`, `USER_DB_PREFIX`) y `VaultContext`/`owner_context` (dueño, base, actor, `is_owner`). Ningún otro módulo de `app/` construye `synapse_user_<id>` a mano (lo vigila `tests/test_h064_vault_context.py`). Las fases siguientes lo extienden con las concesiones del invitado.
+- `vault_member_rules.py` — reglas puras de las concesiones de una membresía (H-064 F2): `check_grants` valida 1 a 100 concesiones sin repetir carpeta, nivel `lectura|escritura` y carpeta `*` o ruta bien formada; rechaza las zonas reservadas (`AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA`, `PLANTILLAS`) por nombre y por subcarpeta.
 - `models/vault_member.py` — `VaultMember` (invitación y membresía: `pendiente|activo|revocado`, motivo de cierre, quién invitó) y `VaultMemberGrant` (carpeta o `*` y nivel `lectura|escritura`). Migración 025. Sin lógica todavía: F2 agrega las invitaciones y F3 los permisos.
 
 ## Atributos, fechas y archivos (H-029, H-015/H-016)

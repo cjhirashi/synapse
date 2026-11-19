@@ -7,7 +7,6 @@ Las concesiones (carpeta + nivel) están sujetas a:
 - No se permite conceder la raíz en F2 (reutiliza reglas de `note_rules.py` para validar forma).
 """
 import unicodedata
-import re
 
 from app.core.note_rules import path_key
 from app.core.ag_rules import AG_AGENTES, AG_SKILLS, BITACORA, AG_MENSAJES, PLANTILLAS

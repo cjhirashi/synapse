@@ -93,9 +93,9 @@ def test_read_one_read_all_and_unread_filter(ready_admin):
 
 def test_a_disabled_kind_stops_generating_notices(ready_admin):
     vault, aira = setup_agent(ready_admin)
-    assert ready_admin.get("/notifications/preferences").json()["kinds"] == {"task_assigned": True, "task_status": True, "task_due": True, "publication_expired": True, "limit_grace": True}
+    assert ready_admin.get("/notifications/preferences").json()["kinds"] == {"task_assigned": True, "task_status": True, "task_due": True, "publication_expired": True, "limit_grace": True, "vault_share": True}
     res = ready_admin.put("/notifications/preferences", json={"kinds": {"task_assigned": False}})
-    assert res.json()["kinds"] == {"task_assigned": False, "task_status": True, "task_due": True, "publication_expired": True, "limit_grace": True}
+    assert res.json()["kinds"] == {"task_assigned": False, "task_status": True, "task_due": True, "publication_expired": True, "limit_grace": True, "vault_share": True}
     aira.post(f"/vaults/{vault}/tasks", json={"title": "x"})
     assert inbox(ready_admin)["items"] == []
     ready_admin.put("/notifications/preferences", json={"kinds": {"task_assigned": True}})

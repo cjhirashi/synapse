@@ -1,370 +1,251 @@
-"""H-064 F2: invitaciones y membresía a bóvedas (API completa)."""
+"""H-064 F2: invitaciones y membresías de bóveda por API, con avisos y aislamiento entre propietarios."""
+from datetime import datetime
+
 import pytest
+from fastapi.testclient import TestClient
 
-from tests.conftest import TestingSessionLocal
-from tests.test_h030_api import vault_of
-from tests.test_vaults_api import create
+from app.adapters.vault_member_repository import VaultMemberRepository
+from app.core.errors import VaultNotFound
+from app.core.models.user import User
+from app.core.models.vault_member import VaultMember
+from app.main import app
+from app.services import vault_member_service
+from app.services.vault_member_service import VaultMemberService
+from tests.conftest import SEED_PASSWORD, login
+from tests.test_h030_api import agent_client, vault_of
 
-
-GUEST_EMAIL = "guest@example.com"
-ANOTHER_EMAIL = "another@example.com"
-
-
-def create_user(admin, email: str):
-    """Crea un usuario de prueba via admin."""
-    res = admin.post("/admin/users", json={"email": email})
-    assert res.status_code == 201, res.text
-    return res.json()
+READ_ALL = [{"folder": "*", "level": "lectura"}]
 
 
-def invite_member(client, vault_id: str, email: str, grants: list[dict]):
-    """Invita un miembro a una bóveda."""
-    return client.post(f"/vaults/{vault_id}/members", json={"email": email, "grants": grants})
+def person(admin, db, email: str) -> TestClient:
+    """Usuario invitado con su propio cliente (sesión aparte de la del administrador)."""
+    assert admin.post("/admin/users", json={"email": email}).status_code == 201
+    db.query(User).filter(User.email == email).update({"must_change_password": False})
+    db.commit()
+    client = TestClient(app, base_url=str(admin.base_url))
+    assert login(client, email, SEED_PASSWORD).status_code == 200
+    return client
 
 
-def list_members(client, vault_id: str):
-    """Lista miembros de una bóveda."""
-    res = client.get(f"/vaults/{vault_id}/members")
+def invite(owner, vault_id, email, grants=None):
+    return owner.post(f"/vaults/{vault_id}/members", json={"email": email, "grants": READ_ALL if grants is None else grants})
+
+
+def notices(client):
+    res = client.get("/notifications")
+    assert res.status_code == 200, res.text
+    return [n for n in res.json()["items"] if n["kind"] == "vault_share"]
+
+
+def members(owner, vault_id):
+    res = owner.get(f"/vaults/{vault_id}/members")
     assert res.status_code == 200, res.text
     return res.json()["items"]
 
 
-def list_invitations(client, status: str | None = None):
-    """Lista invitaciones del usuario."""
-    res = client.get("/invitations", params={"status": status} if status else {})
-    assert res.status_code == 200, res.text
-    return res.json()["items"]
+def problem(res, status, slug):
+    assert res.status_code == status, res.text
+    assert res.json()["type"] == f"urn:synapse:problem:{slug}", res.text
 
-
-def accept_invitation(client, member_id: str):
-    """Acepta una invitación."""
-    res = client.post(f"/invitations/{member_id}/accept")
-    assert res.status_code == 200, res.text
-    return res.json()
-
-
-def reject_invitation(client, member_id: str):
-    """Rechaza una invitación."""
-    res = client.post(f"/invitations/{member_id}/reject")
-    assert res.status_code == 200, res.text
-    return res.json()
-
-
-def leave_vault(client, member_id: str):
-    """Se va de una bóveda."""
-    res = client.post(f"/invitations/{member_id}/leave")
-    assert res.status_code == 204, res.text
-
-
-def update_grants(client, vault_id: str, member_id: str, grants: list[dict]):
-    """Cambia los permisos de un miembro."""
-    res = client.put(f"/vaults/{vault_id}/members/{member_id}/grants", json={"grants": grants})
-    assert res.status_code == 200, res.text
-    return res.json()
-
-
-def delete_member(client, vault_id: str, member_id: str):
-    """Propietario cancela invitación o revoca miembro."""
-    res = client.delete(f"/vaults/{vault_id}/members/{member_id}")
-    assert res.status_code == 204, res.text
-
-
-def inbox(client, **params):
-    """Lee la bandeja de avisos del usuario."""
-    res = client.get("/notifications", params=params)
-    assert res.status_code == 200, res.text
-    return res.json()
-
-
-# --- Flujo básico: invitar → aceptar → cambiar grants → revocar ---
-
-def test_owner_invites_user_and_it_appears_in_pending(ready_admin, client, db):
-    """Propietario invita un usuario; aparece como pendiente."""
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-
-    # Invitar
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}])
-    assert res.status_code == 201
-    member = res.json()
-    assert member["status"] == "pendiente" and member["user_id"] == guest["id"]
-    assert member["grants"] == [{"folder": "*", "level": "lectura"}]
-
-    # Aparece en lista de miembros del propietario
-    members = list_members(ready_admin, vault_id)
-    assert len(members) == 1 and members[0]["id"] == member["id"]
-
-
-def test_invited_user_sees_invitation(ready_admin, client, db):
-    """Usuario invitado ve la invitación en /invitations."""
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-
-    # Invitar
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # El usuario invitado ve la invitación (simulado con login)
-    # Creamos un cliente para el guest
-    guest_client = client
-    guest_client.cookies.clear()
-    res = guest_client.post("/auth/login", json={"email": GUEST_EMAIL, "password": "admin1234"})
-    assert res.status_code == 200
-
-    # Marcar que no necesita cambiar contraseña (igual que ready_admin)
-    from app.core.models.user import User
-    db.query(User).filter(User.email == GUEST_EMAIL).update({"must_change_password": False})
-    db.commit()
-
-    # Lista invitaciones
-    invitations = list_invitations(guest_client)
-    assert len(invitations) == 1
-    assert invitations[0]["id"] == member["id"] and invitations[0]["status"] == "pendiente"
-
-
-def test_invited_user_accepts_invitation(ready_admin, client, db):
-    """Usuario acepta invitación y queda activo."""
-    from app.core.models.user import User
-
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # Login como guest
-    guest_client = client
-    guest_client.cookies.clear()
-    guest_client.post("/auth/login", json={"email": GUEST_EMAIL, "password": "admin1234"})
-    # Marcar que no necesita cambiar contraseña
-    db.query(User).filter(User.email == GUEST_EMAIL).update({"must_change_password": False})
-    db.commit()
-
-    # Aceptar
-    accepted = accept_invitation(guest_client, member["id"])
-    assert accepted["status"] == "activo" and accepted["responded_at"] is not None
-
-
-def test_invited_user_rejects_invitation(ready_admin, client, db):
-    """Usuario rechaza invitación y queda revocado."""
-    from app.core.models.user import User
-
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # Login como guest
-    guest_client = client
-    guest_client.cookies.clear()
-    guest_client.post("/auth/login", json={"email": GUEST_EMAIL, "password": "admin1234"})
-    # Marcar que no necesita cambiar contraseña
-    db.query(User).filter(User.email == GUEST_EMAIL).update({"must_change_password": False})
-    db.commit()
-
-    # Rechazar
-    rejected = reject_invitation(guest_client, member["id"])
-    assert rejected["status"] == "revocado" and rejected["ended_reason"] == "rechazada"
-    assert rejected["responded_at"] is not None and rejected["ended_at"] is not None
-
-
-def test_active_member_leaves_vault(ready_admin, db):
-    """Miembro activo se va de la bóveda."""
-    from app.core.models.user import User
-    from tests.conftest import TestClient
-
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # Crear cliente separado para guest
-    from app.main import app
-    guest_client = TestClient(app, raise_server_exceptions=True, base_url="https://testserver")
-    guest_client.post("/auth/login", json={"email": GUEST_EMAIL, "password": "admin1234"})
-    # Marcar que no necesita cambiar contraseña
-    db.query(User).filter(User.email == GUEST_EMAIL).update({"must_change_password": False})
-    db.commit()
-
-    accept_invitation(guest_client, member["id"])
-
-    # Salirse
-    leave_vault(guest_client, member["id"])
-
-    # Verificar que quedó revocado
-    invitations = list_invitations(guest_client)
-    # Debe estar vacía o filtrada por status (el test anterior mostró solo pendiente/activo)
-    assert len(invitations) == 0
-
-
-def test_owner_changes_member_grants(ready_admin, client, db):
-    """Propietario cambia los permisos de un miembro."""
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(
-        ready_admin, vault_id, GUEST_EMAIL,
-        [{"folder": "*", "level": "lectura"}]
-    ).json()
-
-    # Cambiar grants
-    updated = update_grants(ready_admin, vault_id, member["id"], [{"folder": "Proyectos", "level": "escritura"}])
-    assert updated["grants"] == [{"folder": "Proyectos", "level": "escritura"}]
-
-
-def test_owner_cancels_pending_invitation(ready_admin, client, db):
-    """Propietario cancela una invitación pendiente."""
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # Cancelar
-    delete_member(ready_admin, vault_id, member["id"])
-
-    # Verificar estado
-    members = list_members(ready_admin, vault_id)
-    assert len(members) == 1
-    assert members[0]["status"] == "revocado" and members[0]["ended_reason"] == "cancelada"
-
-
-def test_owner_revokes_active_member(ready_admin, db):
-    """Propietario revoca un miembro activo."""
-    from app.core.models.user import User
-    from tests.conftest import TestClient
-
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-
-    # Crear cliente separado para guest
-    from app.main import app
-    guest_client = TestClient(app, raise_server_exceptions=True, base_url="https://testserver")
-    guest_client.post("/auth/login", json={"email": GUEST_EMAIL, "password": "admin1234"})
-    # Marcar que no necesita cambiar contraseña
-    db.query(User).filter(User.email == GUEST_EMAIL).update({"must_change_password": False})
-    db.commit()
-
-    accept_invitation(guest_client, member["id"])
-
-    # Propietario revoca
-    delete_member(ready_admin, vault_id, member["id"])
-
-    # Verificar estado
-    members = list_members(ready_admin, vault_id)
-    assert members[0]["status"] == "revocado" and members[0]["ended_reason"] == "revocada"
-
-
-def test_reinvite_after_revoke_reuses_row(ready_admin, client, db):
-    """Si se revoca un miembro y se vuelve a invitar, se reutiliza la fila."""
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    member1 = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}]).json()
-    member1_id = member1["id"]
-
-    # Revocar
-    delete_member(ready_admin, vault_id, member1_id)
-
-    # Reinvitar
-    member2 = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "Proyectos", "level": "escritura"}]).json()
-
-    # Debe reutilizar la fila (mismo id)
-    assert member2["id"] == member1_id
-    assert member2["status"] == "pendiente" and member2["created_at"] != member1["created_at"]
-
-
-def test_invite_nonexistent_user_fails(ready_admin, vault_of_admin):
-    """Invitar a un correo inexistente falla con 404."""
-    vault_id = vault_of_admin
-    res = invite_member(ready_admin, vault_id, "nonexistent@example.com", [{"folder": "*", "level": "lectura"}])
-    assert res.status_code == 404 and res.json()["type"].endswith("invitee-not-found")
-
-
-def test_self_invite_fails(ready_admin, db, vault_of_admin):
-    """No se puede invitarse a sí mismo."""
-    from app.core.models.user import User
-
-    vault_id = vault_of_admin
-    # Obtener email del propietario de la bóveda
-    admin_email = db.query(User).filter(User.id == ready_admin.cookies.get("sub")).first()
-    if not admin_email:
-        admin_email = "cjhirashi@gmail.com"
-    else:
-        admin_email = admin_email.email
-
-    res = invite_member(ready_admin, vault_id, admin_email, [{"folder": "*", "level": "lectura"}])
-    # Puede fallar como 422 de validación o como error de dominio
-    assert res.status_code == 422 or (res.status_code == 400)
-
-
-def test_duplicate_invite_fails(ready_admin, client, db, vault_of_admin):
-    """Invitar dos veces a la misma persona (si aún está pendiente) falla."""
-    vault_id = vault_of_admin
-    guest = create_user(ready_admin, GUEST_EMAIL)
-    invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}])
-
-    # Intentar invitar de nuevo
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "Proyectos", "level": "escritura"}])
-    assert res.status_code == 409 and res.json()["type"].endswith("member-already-exists")
-
-
-def test_invalid_grants_rejected(ready_admin, vault_of_admin):
-    """Concesiones inválidas son rechazadas."""
-    vault_id = vault_of_admin
-    guest = create_user(ready_admin, GUEST_EMAIL)
-
-    # Grants vacío
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [])
-    assert res.status_code == 422
-
-    # Carpeta reservada
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "AG - AGENTES", "level": "lectura"}])
-    assert res.status_code == 422
-
-    # Nivel inválido
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "admin"}])
-    assert res.status_code == 422
-
-
-def test_inactive_user_not_invitable(ready_admin, db):
-    """Un usuario inactivo no puede ser invitado."""
-    from app.core.models.user import User
-
-    vault_id = vault_of(ready_admin)
-    guest = create_user(ready_admin, GUEST_EMAIL)
-
-    # Marcar como inactivo
-    user_obj = db.query(User).filter(User.id == guest["id"]).first()
-    user_obj.is_active = False
-    db.commit()
-
-    # Intentar invitar
-    res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": "*", "level": "lectura"}])
-    assert res.status_code == 404
-
-
-def test_member_limit_50_pending_active(ready_admin, db):
-    """Máximo 50 miembros pendientes/activos por bóveda."""
-    vault_id = vault_of(ready_admin)
-
-    # Crear 50 usuarios e invitarlos
-    for i in range(50):
-        email = f"user{i}@example.com"
-        create_user(ready_admin, email)
-        res = invite_member(ready_admin, vault_id, email, [{"folder": "*", "level": "lectura"}])
-        assert res.status_code == 201, f"User {i} failed"
-
-    # Intentar invitar uno más debe fallar
-    guest51 = create_user(ready_admin, "user51@example.com")
-    res = invite_member(ready_admin, vault_id, "user51@example.com", [{"folder": "*", "level": "lectura"}])
-    assert res.status_code == 409 and res.json()["type"].endswith("member-limit-reached")
-
-
-def test_forbidden_folder_not_shareable(ready_admin, vault_of_admin):
-    """Las carpetas `AG - AGENTES`, `BITACORA` etc. no se pueden conceder."""
-    vault_id = vault_of_admin
-    guest = create_user(ready_admin, GUEST_EMAIL)
-
-    for reserved in ["AG - AGENTES", "AG - SKILLS", "BITACORA", "AG - MENSAJES", "PLANTILLAS"]:
-        res = invite_member(ready_admin, vault_id, GUEST_EMAIL, [{"folder": reserved, "level": "lectura"}])
-        assert res.status_code == 422, f"Should reject {reserved}"
-
-
-# --- Nuevas funciones para fixturas ---
 
 @pytest.fixture
-def vault_of_admin(ready_admin):
-    return vault_of(ready_admin)
+def vault(ready_admin):
+    return vault_of(ready_admin, name="Proyecto Azul")
+
+
+@pytest.fixture
+def ana(ready_admin, db):
+    return person(ready_admin, db, "ana@example.com")
+
+
+# --- Flujo completo y avisos ---
+
+def test_the_invitation_reaches_the_guest_with_owner_and_vault_name(ready_admin, vault, ana):
+    res = invite(ready_admin, vault, "ana@example.com", [{"folder": "Proyectos", "level": "escritura"}, {"folder": "Notas/Clientes", "level": "lectura"}])
+    assert res.status_code == 201, res.text
+    member = res.json()
+    assert member["status"] == "pendiente" and member["invited_by"] == "user" and member["user"]["email"] == "ana@example.com"
+    assert {(g["folder"], g["level"]) for g in member["grants"]} == {("Proyectos", "escritura"), ("Notas/Clientes", "lectura")}
+
+    (notice,) = notices(ana)
+    assert notice["title"] == "cjhirashi@gmail.com te invitó a la bóveda «Proyecto Azul»"
+    assert notice["resource_id"] == member["id"] and notice["vault_id"] == vault and notice["url"] == "/compartidas"
+
+    (inv,) = ana.get("/invitations").json()["items"]
+    assert inv["id"] == member["id"] and inv["status"] == "pendiente" and inv["vault_name"] == "Proyecto Azul"
+    assert inv["owner"]["email"] == "cjhirashi@gmail.com" and len(inv["grants"]) == 2
+    assert set(inv) == {"id", "vault_id", "status", "created_at", "responded_at", "owner", "vault_name", "grants"}
+
+
+def test_accept_notifies_the_owner_and_the_owner_can_change_grants_and_revoke(ready_admin, vault, ana):
+    member = invite(ready_admin, vault, "ana@example.com").json()
+    accepted = ana.post(f"/invitations/{member['id']}/accept")
+    assert accepted.status_code == 200 and accepted.json()["status"] == "activo" and accepted.json()["responded_at"]
+    (owner_notice,) = notices(ready_admin)
+    assert owner_notice["title"] == "ana@example.com aceptó tu invitación a «Proyecto Azul»"
+
+    put = ready_admin.put(f"/vaults/{vault}/members/{member['id']}/grants", json={"grants": [{"folder": "Proyectos", "level": "escritura"}]})
+    assert put.status_code == 200 and put.json()["grants"] == [{"folder": "Proyectos", "level": "escritura"}]
+    assert [g["folder"] for g in ana.get("/invitations").json()["items"][0]["grants"]] == ["Proyectos"]
+
+    assert ready_admin.delete(f"/vaults/{vault}/members/{member['id']}").status_code == 204
+    revoked = members(ready_admin, vault)[0]
+    assert revoked["status"] == "revocado" and revoked["ended_reason"] == "revocada" and revoked["ended_at"] and revoked["grants"]
+    assert ana.get("/invitations").json()["items"] == []
+    assert ana.get("/invitations", params={"status": "revocado"}).json()["items"][0]["id"] == member["id"]
+    assert notices(ana)[0]["title"] == "Se revocó tu acceso a la bóveda «Proyecto Azul»"
+
+
+def test_reject_leave_and_cancel_record_their_reason_and_notify(ready_admin, db, vault, ana):
+    rejected_id = invite(ready_admin, vault, "ana@example.com").json()["id"]
+    rejected = ana.post(f"/invitations/{rejected_id}/reject").json()
+    assert rejected["status"] == "revocado" and rejected["ended_reason"] == "rechazada" and rejected["responded_at"] and rejected["ended_at"]
+    assert "rechazó tu invitación" in notices(ready_admin)[0]["title"]
+
+    bea = person(ready_admin, db, "bea@example.com")
+    left_id = invite(ready_admin, vault, "bea@example.com").json()["id"]
+    bea.post(f"/invitations/{left_id}/accept")
+    assert bea.post(f"/invitations/{left_id}/leave").status_code == 204
+    assert {m["id"]: m["ended_reason"] for m in members(ready_admin, vault)}[left_id] == "salio"
+    assert any("salió de la bóveda" in n["title"] for n in notices(ready_admin))
+
+    cam = person(ready_admin, db, "cam@example.com")
+    cancelled_id = invite(ready_admin, vault, "cam@example.com").json()["id"]
+    assert ready_admin.delete(f"/vaults/{vault}/members/{cancelled_id}").status_code == 204
+    assert {m["id"]: m["ended_reason"] for m in members(ready_admin, vault)}[cancelled_id] == "cancelada"
+    assert "Se canceló tu invitación" in notices(cam)[0]["title"]
+    assert cam.get("/invitations").json()["items"] == []
+
+
+def test_reinviting_after_the_end_reopens_the_same_row_with_new_grants_and_a_new_notice(ready_admin, vault, ana):
+    first = invite(ready_admin, vault, "ana@example.com").json()
+    ana.post(f"/invitations/{first['id']}/reject")
+    again = invite(ready_admin, vault, "ana@example.com", [{"folder": "Docs", "level": "escritura"}])
+    assert again.status_code == 201
+    second = again.json()
+    assert second["id"] == first["id"] and second["status"] == "pendiente" and second["ended_reason"] is None
+    assert second["responded_at"] is None and second["ended_at"] is None
+    assert second["grants"] == [{"folder": "Docs", "level": "escritura"}]
+    assert len(members(ready_admin, vault)) == 1
+    assert len(notices(ana)) == 2
+
+
+def test_a_guest_who_turned_off_the_kind_gets_no_notice(ready_admin, vault, ana):
+    assert ana.put("/notifications/preferences", json={"kinds": {"vault_share": False}}).status_code == 200
+    assert invite(ready_admin, vault, "ana@example.com").status_code == 201
+    assert notices(ana) == []
+    assert len(ana.get("/invitations").json()["items"]) == 1
+
+
+# --- A quién se puede invitar ---
+
+def test_email_is_matched_exactly_ignoring_case_and_never_as_a_pattern(ready_admin, vault, ana):
+    for pattern in ("%@example.com", "a_a@example.com", "ana@example.%"):
+        res = invite(ready_admin, vault, pattern)
+        assert res.status_code in (404, 422), res.text
+        assert members(ready_admin, vault) == []
+    assert invite(ready_admin, vault, "  ANA@Example.com ").status_code == 201
+
+
+def test_unknown_inactive_and_deleted_users_cannot_be_invited(ready_admin, db, vault, ana):
+    problem(invite(ready_admin, vault, "nadie@example.com"), 404, "invitee-not-found")
+    db.query(User).filter(User.email == "ana@example.com").update({"is_active": False})
+    db.commit()
+    problem(invite(ready_admin, vault, "ana@example.com"), 404, "invitee-not-found")
+    db.query(User).filter(User.email == "ana@example.com").update({"is_active": True, "deleted_at": datetime(2026, 1, 1)})
+    db.commit()
+    problem(invite(ready_admin, vault, "ana@example.com"), 404, "invitee-not-found")
+
+
+def test_self_invite_duplicate_and_bad_email_are_rejected(ready_admin, vault, ana):
+    assert invite(ready_admin, vault, "cjhirashi@gmail.com").status_code == 422
+    assert invite(ready_admin, vault, "no-es-correo").status_code == 422
+    assert invite(ready_admin, vault, "ana@example.com").status_code == 201
+    problem(invite(ready_admin, vault, "ana@example.com"), 409, "member-already-exists")
+
+
+@pytest.mark.parametrize("grants", [
+    [], [{"folder": "*", "level": "admin"}], [{"folder": "/abs", "level": "lectura"}], [{"folder": "a//b", "level": "lectura"}],
+    [{"folder": "a/../b", "level": "lectura"}], [{"folder": "x", "level": "lectura"}, {"folder": "x", "level": "escritura"}],
+    [{"folder": "AG - AGENTES", "level": "lectura"}], [{"folder": "ag - skills/x", "level": "lectura"}], [{"folder": "BITACORA", "level": "escritura"}],
+    [{"folder": "AG - MENSAJES", "level": "lectura"}], [{"folder": "PLANTILLAS", "level": "lectura"}],
+])
+def test_invalid_or_reserved_grants_are_rejected(ready_admin, vault, ana, grants):
+    problem(invite(ready_admin, vault, "ana@example.com", grants), 422, "validation-error")
+    assert members(ready_admin, vault) == []
+
+
+def test_the_open_member_cap_also_applies_when_reopening_a_row(ready_admin, db, vault, ana, monkeypatch):
+    monkeypatch.setattr(vault_member_service, "MAX_OPEN_MEMBERS", 2)
+    person(ready_admin, db, "bea@example.com")
+    person(ready_admin, db, "cam@example.com")
+    first = invite(ready_admin, vault, "ana@example.com").json()
+    assert invite(ready_admin, vault, "bea@example.com").status_code == 201
+    problem(invite(ready_admin, vault, "cam@example.com"), 409, "member-limit-reached")
+    ready_admin.delete(f"/vaults/{vault}/members/{first['id']}")
+    assert invite(ready_admin, vault, "cam@example.com").status_code == 201
+    problem(invite(ready_admin, vault, "ana@example.com"), 409, "member-limit-reached")
+
+
+# --- Quién puede qué ---
+
+def test_only_the_owner_of_the_vault_manages_its_members(ready_admin, db, vault, ana):
+    member = invite(ready_admin, vault, "ana@example.com").json()
+    ana.post(f"/invitations/{member['id']}/accept")
+    other = vault_of(ready_admin, name="Otra")
+    bea = person(ready_admin, db, "bea@example.com")
+    for guest in (ana, bea):
+        problem(invite(guest, vault, "bea@example.com"), 404, "vault-not-found")
+        problem(guest.get(f"/vaults/{vault}/members"), 404, "vault-not-found")
+        problem(guest.put(f"/vaults/{vault}/members/{member['id']}/grants", json={"grants": READ_ALL}), 404, "vault-not-found")
+        problem(guest.delete(f"/vaults/{vault}/members/{member['id']}"), 404, "vault-not-found")
+    problem(ready_admin.put(f"/vaults/{other}/members/{member['id']}/grants", json={"grants": READ_ALL}), 404, "member-not-found")
+    problem(ready_admin.delete(f"/vaults/{other}/members/{member['id']}"), 404, "member-not-found")
+    assert members(ready_admin, vault)[0]["status"] == "activo"
+
+
+def test_an_invitation_can_only_be_answered_by_its_guest(ready_admin, db, vault, ana):
+    member = invite(ready_admin, vault, "ana@example.com").json()
+    bea = person(ready_admin, db, "bea@example.com")
+    for who in (ready_admin, bea):
+        for action in ("accept", "reject", "leave"):
+            problem(who.post(f"/invitations/{member['id']}/{action}"), 404, "member-not-found")
+    assert bea.get("/invitations").json()["items"] == []
+    assert members(ready_admin, vault)[0]["status"] == "pendiente"
+
+
+def test_answers_out_of_order_are_conflicts(ready_admin, vault, ana):
+    member = invite(ready_admin, vault, "ana@example.com").json()
+    mid = member["id"]
+    problem(ana.post(f"/invitations/{mid}/leave"), 409, "invitation-not-pending")
+    assert ana.post(f"/invitations/{mid}/accept").status_code == 200
+    problem(ana.post(f"/invitations/{mid}/accept"), 409, "invitation-not-pending")
+    problem(ana.post(f"/invitations/{mid}/reject"), 409, "invitation-not-pending")
+    assert ana.post(f"/invitations/{mid}/leave").status_code == 204
+    problem(ana.post(f"/invitations/{mid}/leave"), 409, "invitation-not-pending")
+    problem(ready_admin.delete(f"/vaults/{vault}/members/{mid}"), 409, "invitation-not-pending")
+    problem(ready_admin.put(f"/vaults/{vault}/members/{mid}/grants", json={"grants": READ_ALL}), 409, "invitation-not-pending")
+
+
+def test_an_agent_key_cannot_invite_or_answer(ready_admin, vault, ana):
+    member = invite(ready_admin, vault, "ana@example.com").json()
+    aira = agent_client(ready_admin, "aira")
+    assert invite(aira, vault, "ana@example.com").status_code in (401, 403)
+    assert aira.get("/invitations").status_code in (401, 403)
+    assert aira.post(f"/invitations/{member['id']}/accept").status_code in (401, 403)
+    assert members(ready_admin, vault)[0]["status"] == "pendiente"
+
+
+def test_a_row_of_another_owner_with_the_same_vault_id_is_never_reused(ready_admin, db, ana):
+    owner_a = db.query(User).filter(User.email == "cjhirashi@gmail.com").one()
+    guest = db.query(User).filter(User.email == "ana@example.com").one()
+    other = person(ready_admin, db, "bea@example.com")
+    bea = db.query(User).filter(User.email == "bea@example.com").one()
+    db.add(VaultMember(id="m-1", vault_id="vault-de-a", owner_id=owner_a.id, user_id=guest.id, status="revocado", invited_by="user",
+                       created_at=datetime(2026, 1, 1)))
+    db.commit()
+    with pytest.raises(VaultNotFound):
+        VaultMemberService(VaultMemberRepository(db)).invite(bea.id, "vault-de-a", "ana@example.com", READ_ALL)
+    row = db.get(VaultMember, "m-1")
+    assert row.owner_id == owner_a.id and row.status == "revocado"
+    assert other.get("/invitations").json()["items"] == []

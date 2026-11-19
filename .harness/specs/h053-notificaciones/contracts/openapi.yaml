@@ -153,6 +153,7 @@ components:
             - task_due
             - publication_expired
             - limit_grace
+            - vault_share
           title: Kinds
           type: object
         quiet:

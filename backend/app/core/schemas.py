@@ -1028,6 +1028,14 @@ class VaultMemberInviteIn(BaseModel):
     email: str
     grants: list[VaultMemberGrantIn] = Field(min_length=1, max_length=100)
 
+    @field_validator("email")
+    @classmethod
+    def _valid_email(cls, v: str) -> str:
+        v = normalize_email(v)
+        if not EMAIL_PATTERN.match(v):
+            raise field_error("invalid_email")
+        return v
+
 
 class VaultMemberGrantsUpdate(BaseModel):
     """Cuerpo de `PUT /vaults/{vault_id}/members/{member_id}/grants`: reemplazar permisos."""

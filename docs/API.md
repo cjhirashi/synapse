@@ -819,7 +819,7 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 | `DELETE /notifications/push/subscription?endpoint=` | Quita este dispositivo. 204. |
 | `POST /notifications/push/test` | Envía ya un aviso de prueba a los dispositivos (ignora las horas silenciosas). `{sent, removed, failed}`. |
 
-**Tipos** (`kind`): `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
+**Tipos** (`kind`): `vault_share` (invitaciones y cambios de acceso a bóvedas compartidas; ver «Compartir una bóveda»), `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
 
 **Bloqueo entre tareas (H-057):** `blocked_by` (en `POST` y `PATCH`) es la lista completa de ids de las tareas que esta debe esperar (hasta 30; `[]` o `null` las quita; ausente no cambia). Solo valen tareas de la misma bóveda, y no la propia, ni la tarea padre de una subtarea ni las subtareas de una raíz, ni cadenas que formen un ciclo: si no, 422 con `/blocked_by`. Una tarea bloqueada puede ponerse `in_progress` pero no `done` mientras alguna bloqueadora no esté `done` (una `cancelled` tampoco la libera): 422 con `/status` y detalle `This task is blocked…`. La respuesta trae `blocked_by` (ids) y `blocked` (alguna no está hecha). Una raíz bloqueada no se cierra sola aunque sus subtareas lo estén (queda `in_progress`) y se cierra cuando su última bloqueadora se hace. Cambiar `blocked_by` cuenta como editar la tarea: un agente solo lo hace en las que creó. Borrar una bloqueadora libera a las que esperaban.
 
@@ -830,6 +830,27 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 **Web Push (H-053):** cada aviso nuevo se envía al dispositivo con la misma estructura que la tarjeta de `/avisos`: título «Tipo · evento» y, en el cuerpo, título y descripción de la tarea, una línea «estado · responsable · bóveda» y el vencimiento (si la tarea ya no existe, sale el aviso simple); con un hilo despachador (`PUSH_DISPATCH`, `PUSH_POLL_SECONDS`), salvo en las horas silenciosas, durante las cuales el push queda pendiente y sale al terminar (si el aviso no tiene más de 24 h); el aviso siempre queda en la bandeja. Claves VAPID: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` en `.env`; sin ellas el push está apagado (`GET /notifications/push` → `enabled: false`). Una API key de agente no usa ninguna de estas rutas (401).
 
 **PWA:** `/sw.js` (service worker, `Cache-Control: no-cache`, `Service-Worker-Allowed: /`) y `/manifest.webmanifest` (`application/manifest+json`) se sirven desde el build; el service worker solo guarda `/assets/*` y la pantalla de arranque, nunca datos de la API.
+
+## Compartir una bóveda: invitaciones y membresías (H-064 F2)
+
+El propietario invita a **usuarios que ya existen**; el aviso les llega dentro de la app. **Solo sesión humana** (cookie): una API key de agente no invita ni responde (401/403). Esta fase crea y gestiona las invitaciones y sus concesiones; aplicar las concesiones al leer y escribir notas llega en la fase F3.
+
+| Método y ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /vaults/{vault_id}/members` | propietario | Invita: `{email, grants: [{folder, level}]}`. 201 con el miembro (`status: pendiente`). 404 `invitee-not-found` (sin cuenta activa con ese correo exacto), 422 (correo inválido, uno mismo o concesiones inválidas), 409 `member-already-exists` y 409 `member-limit-reached` (50 pendientes o activos por bóveda). Si la persona ya tuvo una invitación terminada, se reabre la misma fila con las concesiones nuevas. |
+| `GET /vaults/{vault_id}/members` | propietario | Miembros de la bóveda en todos los estados, con `user` y `grants`. |
+| `PUT /vaults/{vault_id}/members/{member_id}/grants` | propietario | Reemplaza todas las concesiones (efecto inmediato). 409 `invitation-not-pending` si ya está revocado. |
+| `DELETE /vaults/{vault_id}/members/{member_id}` | propietario | Pendiente → `revocado` con motivo `cancelada`; activo → `revocado` con `revocada`. 204. Las concesiones se conservan como historial. |
+| `GET /invitations` | invitado | Mis invitaciones y accesos (por defecto `pendiente` y `activo`; `?status=pendiente\|activo\|revocado`), con `owner`, `vault_name` y `grants`. Del dueño y la bóveda solo se ve eso. |
+| `POST /invitations/{member_id}/accept` | invitado | `pendiente` → `activo`. 200 con el miembro. |
+| `POST /invitations/{member_id}/reject` | invitado | `pendiente` → `revocado` (`rechazada`). 200. |
+| `POST /invitations/{member_id}/leave` | invitado | `activo` → `revocado` (`salio`). 204. |
+
+**Concesiones:** cada una es `{folder, level}` con `level` `lectura` o `escritura` (escritura incluye lectura) y `folder` igual a `*` (toda la bóveda) o una ruta de carpeta sin barra inicial ni final, sin segmentos vacíos ni `.`/`..`, de hasta 600 caracteres. Entre 1 y 100, sin carpeta repetida. Las zonas reservadas no se conceden por nombre (ni sus subcarpetas): `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA` y `PLANTILLAS` (422 `validation-error` con `/grants`).
+
+**Aislamiento:** una invitación o un miembro que no son de quien pregunta responden 404 (`vault-not-found` o `member-not-found`), igual que si no existieran. El correo se compara exacto, sin distinguir mayúsculas y sin comodines.
+
+**Avisos:** tipo `vault_share` (apagable en `PUT /notifications/preferences`), con `url` `/compartidas`. Invitar y cancelar o revocar avisan al invitado; aceptar, rechazar y salir, al propietario. El título lleva el nombre de la persona y de la bóveda, nunca carpetas ni notas.
 
 ## Perfil de agente (H-053)
 

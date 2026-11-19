@@ -1,29 +1,29 @@
-"""Rutas de membresía e invitaciones a bóvedas (H-064 F2).
+"""Invitaciones y membresías de bóveda (H-064 F2).
 
-Solo sesión humana (`get_current_user`): las invitaciones y miembros son de personas, no de agentes.
-Propietario: invitar, cambiar grants, cancelar/revocar.
-Invitado: listar propias invitaciones, aceptar, rechazar, salirse.
+Solo sesión humana (`get_current_user`): una clave de agente no invita ni responde. El propietario invita, cambia concesiones,
+cancela y revoca; el invitado ve sus invitaciones, las acepta o rechaza y puede salir.
 """
-import logging
-from functools import lru_cache
-from typing import Annotated
+from collections.abc import Callable
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Path, Response, status
+from fastapi import APIRouter, Depends, Path, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.adapters.database import get_db
-from app.adapters.vault_member_repository import VaultMemberRepository
 from app.adapters.notification_repository import NotificationRepository
+from app.adapters.vault_member_repository import VaultMemberRepository
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
-    InviteeNotFound, MemberNotFound, MemberAlreadyExists, MemberLimitReached,
-    InvitationNotPending, ShareInvalid, VaultNotFound, PasswordChangeRequired,
+    InvitationNotPending, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, MemberNotFound, PasswordChangeRequired,
+    ShareInvalid, StorageUnavailable, VaultNotFound,
 )
-from app.core.problems import problem_responses
+from app.core.models.user import User
+from app.core.models.vault_member import VaultMember, VaultMemberGrant
 from app.core.ports.vault_port import VaultPort
+from app.core.problems import problem_responses
 from app.core.schemas import (
-    TokenPayload, VaultMemberInviteIn, VaultMembersListOut, VaultMemberOut, VaultMemberGrantsUpdate,
-    VaultMemberGrantOut, VaultMemberUserInfo, VaultInvitationsListOut, VaultInvitationOut,
+    TokenPayload, VaultInvitationOut, VaultInvitationsListOut, VaultMemberGrantOut, VaultMemberGrantsUpdate, VaultMemberInviteIn,
+    VaultMemberOut, VaultMembersListOut, VaultMemberUserInfo,
 )
 from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
@@ -33,385 +33,185 @@ from app.services.vault_member_service import VaultMemberService
 from app.services.vault_service import VaultService
 
 VaultId = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
-MemberId = Annotated[str, Path(min_length=1)]
+MemberId = Annotated[str, Path(min_length=1, max_length=64)]
 
 router = APIRouter(
-    prefix="",
-    tags=["vaults"],
+    tags=["sharing"],
     dependencies=[Depends(require_password_changed)],
     responses=problem_responses(*SESSION_ERRORS, PasswordChangeRequired),
 )
 
-logger = logging.getLogger(__name__)
+
+def get_repo(db: Session = Depends(get_db)) -> VaultMemberRepository:
+    return VaultMemberRepository(db)
 
 
-def get_member_service(db: Session = Depends(get_db)) -> VaultMemberService:
-    return VaultMemberService(VaultMemberRepository(db))
+def get_service(repo: VaultMemberRepository = Depends(get_repo)) -> VaultMemberService:
+    return VaultMemberService(repo)
 
 
-def get_vault_service(
-    current_user: TokenPayload = Depends(get_current_user),
-    port: VaultPort = Depends(get_vault_port),
-) -> VaultService:
-    return VaultService(port, user_db_name(current_user.sub))
+def _owned_vault(user: TokenPayload, port: VaultPort, vault_id: str):
+    """La bóveda del propietario o `VaultNotFound` (la base sale solo de la sesión)."""
+    return VaultService(port, user_db_name(user.sub)).get(vault_id).vault
+
+
+def _vault_name(port: VaultPort, owner_id: str, vault_id: str) -> str | None:
+    """Nombre de la bóveda leído de la base del propietario; `None` si ya no existe o no responde. Es lo único de la bóveda que ve el invitado."""
+    try:
+        return VaultService(port, user_db_name(owner_id)).get(vault_id).vault.name
+    except (VaultNotFound, StorageUnavailable):
+        return None
+
+
+def _who(user: User | None) -> str:
+    return (user.display_name or user.email) if user else "Alguien"
+
+
+def _user_info(user: User | None) -> VaultMemberUserInfo | None:
+    return VaultMemberUserInfo(id=user.id, email=user.email, display_name=user.display_name) if user else None
+
+
+def _grants_out(grants: list[VaultMemberGrant]) -> list[VaultMemberGrantOut]:
+    return [VaultMemberGrantOut(folder=g.folder, level=g.level) for g in grants]
+
+
+def _member_out(member: VaultMember, grants: list[VaultMemberGrant], user: User | None) -> VaultMemberOut:
+    return VaultMemberOut(
+        id=member.id, vault_id=member.vault_id, user_id=member.user_id, status=member.status, ended_reason=member.ended_reason,
+        invited_by=member.invited_by, created_at=member.created_at, responded_at=member.responded_at, ended_at=member.ended_at,
+        user=_user_info(user), grants=_grants_out(grants))
+
+
+def _one_out(repo: VaultMemberRepository, member: VaultMember) -> VaultMemberOut:
+    return _member_out(member, repo.grants_by_member([member.id]).get(member.id, []), repo.users_by_ids({member.user_id}).get(member.user_id))
+
+
+def _notify(db: Session, recipient_id: str, member: VaultMember, event: str, title: str) -> None:
+    """Aviso de bóveda compartida para `recipient_id`, en la sesión del cambio (quien llama confirma)."""
+    stamp = member.ended_at or member.responded_at or member.created_at
+    NotificationService(NotificationRepository(db), recipient_id).notify(
+        "vault_share", title, vault_id=member.vault_id, resource_type="vault_member", resource_id=member.id, url="/compartidas",
+        dedupe_key=f"vault_share:{member.id}:{event}:{stamp.isoformat()}")
 
 
 @router.post(
-    "/vaults/{vault_id}/members",
-    status_code=status.HTTP_201_CREATED,
-    response_model=VaultMemberOut,
-    responses=problem_responses(
-        VaultNotFound, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, ShareInvalid
-    ),
+    "/vaults/{vault_id}/members", status_code=status.HTTP_201_CREATED, response_model=VaultMemberOut,
+    responses=problem_responses(VaultNotFound, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, ShareInvalid),
 )
 def invite_member(
-    vault_id: VaultId,
-    body: VaultMemberInviteIn,
-    current_user: TokenPayload = Depends(get_current_user),
-    service: VaultMemberService = Depends(get_member_service),
-    vault_service: VaultService = Depends(get_vault_service),
-    db: Session = Depends(get_db),
+    vault_id: VaultId, body: VaultMemberInviteIn, user: TokenPayload = Depends(get_current_user),
+    service: VaultMemberService = Depends(get_service), repo: VaultMemberRepository = Depends(get_repo),
+    port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Propietario invita un usuario a la bóveda."""
-    # Verificar que la bóveda existe y es del propietario
-    vault_service.get(vault_id)
-
-    # Crear invitación
-    member = service.invite(vault_id, body.email, [g.model_dump() for g in body.grants], current_user.sub)
-
-    # Crear aviso para el invitado
-    invitee_repo = VaultMemberRepository(db)
-    invitee = invitee_repo.user_by_id(member.user_id)
-    if invitee:
-        notification_service = NotificationService(NotificationRepository(db), member.user_id)
-        notification_service.notify(
-            kind="vault_share",
-            title=f"Te invitaron a una bóveda",
-            vault_id=vault_id,
-            resource_type="vault_member",
-            resource_id=member.id,
-            url="/compartidas",
-            dedupe_key=f"vault_share:{member.id}:invited:{member.created_at.isoformat()}",
-        )
+    vault = _owned_vault(user, port, vault_id)
+    member = service.invite(user.sub, vault_id, body.email, [g.model_dump() for g in body.grants])
+    owner = repo.users_by_ids({user.sub}).get(user.sub)
+    _notify(db, member.user_id, member, "invited", f"{_who(owner)} te invitó a la bóveda «{vault.name}»")
     db.commit()
-
-    # Retornar con grants cargados
-    grants = invitee_repo.grants_of(member.id)
-    return _member_out_with_grants(member, grants, invitee_repo)
+    return _one_out(repo, member)
 
 
-@router.get(
-    "/vaults/{vault_id}/members",
-    response_model=VaultMembersListOut,
-    responses=problem_responses(VaultNotFound),
-)
+@router.get("/vaults/{vault_id}/members", response_model=VaultMembersListOut, responses=problem_responses(VaultNotFound))
 def list_members(
-    vault_id: VaultId,
-    current_user: TokenPayload = Depends(get_current_user),
-    vault_service: VaultService = Depends(get_vault_service),
-    db: Session = Depends(get_db),
+    vault_id: VaultId, user: TokenPayload = Depends(get_current_user), repo: VaultMemberRepository = Depends(get_repo),
+    port: VaultPort = Depends(get_vault_port),
 ):
-    """Propietario lista todos los miembros de su bóveda."""
-    # Verificar que la bóveda existe y es del propietario
-    vault_service.get(vault_id)
-
-    repo = VaultMemberRepository(db)
-    members = repo.list_by_vault(vault_id)
-    items = []
-    for member in members:
-        grants = repo.grants_of(member.id)
-        items.append(_member_out_with_grants(member, grants, repo))
-
-    return VaultMembersListOut(items=items)
+    _owned_vault(user, port, vault_id)
+    members = repo.list_of_vault(user.sub, vault_id)
+    grants = repo.grants_by_member([m.id for m in members])
+    users = repo.users_by_ids({m.user_id for m in members})
+    return VaultMembersListOut(items=[_member_out(m, grants.get(m.id, []), users.get(m.user_id)) for m in members])
 
 
 @router.put(
-    "/vaults/{vault_id}/members/{member_id}/grants",
-    response_model=VaultMemberOut,
-    responses=problem_responses(
-        VaultNotFound, MemberNotFound, InvitationNotPending, ShareInvalid
-    ),
+    "/vaults/{vault_id}/members/{member_id}/grants", response_model=VaultMemberOut,
+    responses=problem_responses(VaultNotFound, MemberNotFound, InvitationNotPending, ShareInvalid),
 )
 def update_member_grants(
-    vault_id: VaultId,
-    member_id: MemberId,
-    body: VaultMemberGrantsUpdate,
-    current_user: TokenPayload = Depends(get_current_user),
-    vault_service: VaultService = Depends(get_vault_service),
-    service: VaultMemberService = Depends(get_member_service),
-    db: Session = Depends(get_db),
+    vault_id: VaultId, member_id: MemberId, body: VaultMemberGrantsUpdate, user: TokenPayload = Depends(get_current_user),
+    service: VaultMemberService = Depends(get_service), repo: VaultMemberRepository = Depends(get_repo),
+    port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Propietario cambia los permisos de un miembro."""
-    # Verificar que la bóveda existe y es del propietario
-    vault_service.get(vault_id)
-
-    # Verificar que el miembro es de esa bóveda
-    repo = VaultMemberRepository(db)
-    member = repo.get(member_id)
-    if not member or member.vault_id != vault_id:
-        raise MemberNotFound()
-
-    # Actualizar grants
-    member = service.update_grants(member_id, [g.model_dump() for g in body.grants])
-    grants = repo.grants_of(member.id)
-    return _member_out_with_grants(member, grants, repo)
+    _owned_vault(user, port, vault_id)
+    member = service.replace_grants(service.of_owner(user.sub, vault_id, member_id), [g.model_dump() for g in body.grants])
+    db.commit()
+    return _one_out(repo, member)
 
 
 @router.delete(
-    "/vaults/{vault_id}/members/{member_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
+    "/vaults/{vault_id}/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT,
     responses=problem_responses(VaultNotFound, MemberNotFound, InvitationNotPending),
 )
-def delete_member(
-    vault_id: VaultId,
-    member_id: MemberId,
-    current_user: TokenPayload = Depends(get_current_user),
-    vault_service: VaultService = Depends(get_vault_service),
-    service: VaultMemberService = Depends(get_member_service),
-    db: Session = Depends(get_db),
+def end_member(
+    vault_id: VaultId, member_id: MemberId, user: TokenPayload = Depends(get_current_user),
+    service: VaultMemberService = Depends(get_service), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Propietario cancela invitación pendiente o revoca miembro activo."""
-    # Verificar que la bóveda existe y es del propietario
-    vault_service.get(vault_id)
-
-    # Verificar que el miembro es de esa bóveda
-    repo = VaultMemberRepository(db)
-    member = repo.get(member_id)
-    if not member or member.vault_id != vault_id:
-        raise MemberNotFound()
-
-    # Cancelar o revocar según estado
-    if member.status == "pendiente":
-        member = service.cancel_invite(member_id)
-        ended_reason = "cancelada"
-    elif member.status == "activo":
-        member = service.revoke_member(member_id)
-        ended_reason = "revocada"
+    """Cancela una invitación pendiente o revoca un acceso activo. Las concesiones se conservan como historial."""
+    vault = _owned_vault(user, port, vault_id)
+    member = service.of_owner(user.sub, vault_id, member_id)
+    reason = service.end_by_owner(member)
+    if reason == "cancelada":
+        _notify(db, member.user_id, member, "cancelled", f"Se canceló tu invitación a la bóveda «{vault.name}»")
     else:
-        raise InvitationNotPending()
-
-    # Crear aviso para el invitado (si estaba activo)
-    if ended_reason == "revocada":
-        notification_service = NotificationService(NotificationRepository(db), member.user_id)
-        notification_service.notify(
-            kind="vault_share",
-            title="Tu acceso a una bóveda fue revocado",
-            vault_id=vault_id,
-            resource_type="vault_member",
-            resource_id=member.id,
-            url="/compartidas",
-            dedupe_key=f"vault_share:{member.id}:revoked:{member.ended_at.isoformat()}",
-        )
+        _notify(db, member.user_id, member, "revoked", f"Se revocó tu acceso a la bóveda «{vault.name}»")
     db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    return Response(status_code=204)
 
-
-@router.get(
-    "/invitations",
-    response_model=VaultInvitationsListOut,
-)
+@router.get("/invitations", response_model=VaultInvitationsListOut)
 def list_invitations(
-    status: str | None = None,
-    current_user: TokenPayload = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    state: Annotated[Literal["pendiente", "activo", "revocado"] | None, Query(alias="status")] = None,
+    user: TokenPayload = Depends(get_current_user), repo: VaultMemberRepository = Depends(get_repo),
     port: VaultPort = Depends(get_vault_port),
 ):
-    """Invitado lista sus invitaciones y membresías."""
-    repo = VaultMemberRepository(db)
-    members = repo.list_by_user(current_user.sub)
+    """Mis invitaciones y accesos; sin `status`, los pendientes y los activos."""
+    members = repo.list_of_user(user.sub, (state,) if state else ("pendiente", "activo"))
+    grants = repo.grants_by_member([m.id for m in members])
+    owners = repo.users_by_ids({m.owner_id for m in members})
+    return VaultInvitationsListOut(items=[
+        VaultInvitationOut(
+            id=m.id, vault_id=m.vault_id, status=m.status, created_at=m.created_at, responded_at=m.responded_at,
+            owner=_user_info(owners.get(m.owner_id)), vault_name=_vault_name(port, m.owner_id, m.vault_id), grants=_grants_out(grants.get(m.id, [])))
+        for m in members])
 
-    # Filtrar por status si se proporciona
-    if status:
-        members = [m for m in members if m.status == status]
-    # Si no se especifica, mostrar solo pendiente y activo
-    else:
-        members = [m for m in members if m.status in ("pendiente", "activo")]
 
-    items = []
-    for member in members:
-        grants = repo.grants_of(member.id)
-        owner = repo.user_by_id(member.owner_id)
-        # Leer nombre de la bóveda desde la base del propietario
-        vault_name = None
-        try:
-            vault_service = VaultService(port, user_db_name(member.owner_id))
-            vault = vault_service.get(member.vault_id)
-            vault_name = vault.vault.name
-        except Exception:
-            # Si falla leer la bóveda (no existe, etc.), vault_name = None
-            pass
-
-        inv = VaultInvitationOut(
-            id=member.id,
-            vault_id=member.vault_id,
-            status=member.status,
-            created_at=member.created_at,
-            responded_at=member.responded_at,
-            owner=VaultMemberUserInfo(
-                id=owner.id, email=owner.email, display_name=owner.display_name
-            ) if owner else None,
-            vault_name=vault_name,
-            grants=[VaultMemberGrantOut(folder=g.folder, level=g.level) for g in grants],
-        )
-        items.append(inv)
-
-    return VaultInvitationsListOut(items=items)
+def _respond(
+    member_id: str, event: str, transition: Callable[[VaultMember], VaultMember], text: str, user: TokenPayload,
+    service: VaultMemberService, repo: VaultMemberRepository, port: VaultPort, db: Session,
+) -> VaultMember:
+    """Aplica `transition` a mi invitación y avisa al propietario."""
+    member = transition(service.of_user(user.sub, member_id))
+    me = repo.users_by_ids({user.sub}).get(user.sub)
+    name = _vault_name(port, member.owner_id, member.vault_id) or "una bóveda"
+    _notify(db, member.owner_id, member, event, f"{_who(me)} {text} «{name}»")
+    db.commit()
+    return member
 
 
 @router.post(
-    "/invitations/{member_id}/accept",
-    response_model=VaultMemberOut,
-    responses=problem_responses(MemberNotFound, InvitationNotPending),
-)
+    "/invitations/{member_id}/accept", response_model=VaultMemberOut, responses=problem_responses(MemberNotFound, InvitationNotPending))
 def accept_invitation(
-    member_id: MemberId,
-    current_user: TokenPayload = Depends(get_current_user),
-    service: VaultMemberService = Depends(get_member_service),
-    db: Session = Depends(get_db),
-    port: VaultPort = Depends(get_vault_port),
+    member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
+    repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Invitado acepta la invitación."""
-    repo = VaultMemberRepository(db)
-    member = repo.get(member_id)
-    if not member or member.user_id != current_user.sub:
-        raise MemberNotFound()
-
-    # Aceptar
-    member = service.accept_invite(member_id)
-
-    # Crear aviso para el propietario
-    notification_service = NotificationService(NotificationRepository(db), member.owner_id)
-    notification_service.notify(
-        kind="vault_share",
-        title="Aceptaron tu invitación",
-        vault_id=member.vault_id,
-        resource_type="vault_member",
-        resource_id=member.id,
-        url="/compartidas",
-        dedupe_key=f"vault_share:{member.id}:accepted:{member.responded_at.isoformat()}",
-    )
-    db.commit()
-
-    # Retornar con grants
-    grants = repo.grants_of(member.id)
-    return _member_out_with_grants(member, grants, repo)
+    return _one_out(repo, _respond(member_id, "accepted", service.accept, "aceptó tu invitación a", user, service, repo, port, db))
 
 
 @router.post(
-    "/invitations/{member_id}/reject",
-    response_model=VaultMemberOut,
-    responses=problem_responses(MemberNotFound, InvitationNotPending),
-)
+    "/invitations/{member_id}/reject", response_model=VaultMemberOut, responses=problem_responses(MemberNotFound, InvitationNotPending))
 def reject_invitation(
-    member_id: MemberId,
-    current_user: TokenPayload = Depends(get_current_user),
-    service: VaultMemberService = Depends(get_member_service),
-    db: Session = Depends(get_db),
+    member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
+    repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Invitado rechaza la invitación."""
-    repo = VaultMemberRepository(db)
-    member = repo.get(member_id)
-    if not member or member.user_id != current_user.sub:
-        raise MemberNotFound()
-
-    # Rechazar
-    member = service.reject_invite(member_id)
-
-    # Crear aviso para el propietario
-    notification_service = NotificationService(NotificationRepository(db), member.owner_id)
-    notification_service.notify(
-        kind="vault_share",
-        title="Rechazaron tu invitación",
-        vault_id=member.vault_id,
-        resource_type="vault_member",
-        resource_id=member.id,
-        url="/compartidas",
-        dedupe_key=f"vault_share:{member.id}:rejected:{member.responded_at.isoformat()}",
-    )
-    db.commit()
-
-    # Retornar con grants
-    grants = repo.grants_of(member.id)
-    return _member_out_with_grants(member, grants, repo)
+    return _one_out(repo, _respond(member_id, "rejected", service.reject, "rechazó tu invitación a", user, service, repo, port, db))
 
 
 @router.post(
-    "/invitations/{member_id}/leave",
-    status_code=status.HTTP_204_NO_CONTENT,
-    responses=problem_responses(MemberNotFound, InvitationNotPending),
-)
+    "/invitations/{member_id}/leave", status_code=status.HTTP_204_NO_CONTENT,
+    responses=problem_responses(MemberNotFound, InvitationNotPending))
 def leave_vault(
-    member_id: MemberId,
-    current_user: TokenPayload = Depends(get_current_user),
-    service: VaultMemberService = Depends(get_member_service),
-    db: Session = Depends(get_db),
+    member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
+    repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    """Invitado se va de una bóveda."""
-    repo = VaultMemberRepository(db)
-    member = repo.get(member_id)
-    if not member or member.user_id != current_user.sub:
-        raise MemberNotFound()
-
-    # Dejar
-    member = service.leave_vault(member_id)
-
-    # Crear aviso para el propietario
-    notification_service = NotificationService(NotificationRepository(db), member.owner_id)
-    notification_service.notify(
-        kind="vault_share",
-        title="Se fueron de tu bóveda",
-        vault_id=member.vault_id,
-        resource_type="vault_member",
-        resource_id=member.id,
-        url="/compartidas",
-        dedupe_key=f"vault_share:{member.id}:left:{member.ended_at.isoformat()}",
-    )
-    db.commit()
-
-    return Response(status_code=204)
-
-
-# --- Funciones auxiliares ---
-
-def _member_out(member, repo: VaultMemberRepository) -> VaultMemberOut:
-    """Convierte un miembro con sus grants en VaultMemberOut."""
-    grants = repo.grants_of(member.id)
-    user = repo.user_by_id(member.user_id)
-    return VaultMemberOut(
-        id=member.id,
-        vault_id=member.vault_id,
-        user_id=member.user_id,
-        status=member.status,
-        ended_reason=member.ended_reason,
-        invited_by=member.invited_by,
-        created_at=member.created_at,
-        responded_at=member.responded_at,
-        ended_at=member.ended_at,
-        user=VaultMemberUserInfo(
-            id=user.id, email=user.email, display_name=user.display_name
-        ) if user else None,
-        grants=[VaultMemberGrantOut(folder=g.folder, level=g.level) for g in grants],
-    )
-
-
-def _member_out_with_grants(
-    member, grants: list, repo: VaultMemberRepository
-) -> VaultMemberOut:
-    """Convierte un miembro con grants ya cargados en VaultMemberOut."""
-    user = repo.user_by_id(member.user_id)
-    return VaultMemberOut(
-        id=member.id,
-        vault_id=member.vault_id,
-        user_id=member.user_id,
-        status=member.status,
-        ended_reason=member.ended_reason,
-        invited_by=member.invited_by,
-        created_at=member.created_at,
-        responded_at=member.responded_at,
-        ended_at=member.ended_at,
-        user=VaultMemberUserInfo(
-            id=user.id, email=user.email, display_name=user.display_name
-        ) if user else None,
-        grants=[VaultMemberGrantOut(folder=g.folder, level=g.level) for g in grants],
-    )
+    _respond(member_id, "left", service.leave, "salió de la bóveda", user, service, repo, port, db)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -34,6 +34,8 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     # H-053: bandeja de avisos de la persona y sus preferencias.
     "h053-notificaciones": {"paths": ("/notifications",), "schemas": ()},
     "h053-perfiles-de-agente": {"paths": ("/agent-profiles",), "schemas": ()},
+    # H-064 F2: invitaciones y membresías de bóveda.
+    "h064-compartir-bovedas": {"paths": ("/vaults/{vault_id}/members", "/invitations"), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"
