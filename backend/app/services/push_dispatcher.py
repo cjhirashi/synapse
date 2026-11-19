@@ -23,6 +23,7 @@ from app.core.models.notification import Notification, NotificationPref, PushSub
 from app.core.models.task import VaultTask
 from app.core.quiet_hours import in_quiet_hours
 from app.core.task_rules import STATUS_ES
+from app.core.vault_context import user_db_name
 from app.services.notification_service import PUSH_WAKE
 
 log = logging.getLogger("synapse.push")
@@ -50,7 +51,7 @@ def couch_vault_name(owner_id: str, vault_id: str) -> str | None:
     """Nombre de la bóveda, o `None` si no se puede leer (el aviso sale igual, sin ese dato)."""
     try:
         from app.services.vault_service import VaultService
-        return VaultService(_vault_port(), f"synapse_user_{owner_id}").get(vault_id).vault.name
+        return VaultService(_vault_port(), user_db_name(owner_id)).get(vault_id).vault.name
     except Exception:
         return None
 

@@ -40,3 +40,30 @@ def test_migracion_007_agrega_folder_conserva_filas_y_se_revierte(sqlite_url, tm
     assert info["folder"][3] == 0  # notnull = 0: opcional
     command.downgrade(cfg, "e2f5b7d9c3a1")
     assert "folder" not in _columns(db)
+
+
+def test_migracion_025_vault_sharing_crea_tablas_y_se_revierte(sqlite_url, tmp_path):
+    """H-064 F1: tablas de membresía e invitaciones se crean, se reviertten sin error."""
+    db = tmp_path / "m.db"
+    cfg = _config(sqlite_url)
+
+    # Upgradeado hasta 024 (penúltima migración)
+    command.upgrade(cfg, "84bbfb64f6bc4874")
+    with sqlite3.connect(db) as con:
+        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+    assert "vault_members" not in tables
+    assert "vault_member_grants" not in tables
+
+    # Upgrade a 025
+    command.upgrade(cfg, "9f1c5a3b7e2d")
+    with sqlite3.connect(db) as con:
+        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+    assert "vault_members" in tables
+    assert "vault_member_grants" in tables
+
+    # Downgrade
+    command.downgrade(cfg, "84bbfb64f6bc4874")
+    with sqlite3.connect(db) as con:
+        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
+    assert "vault_members" not in tables
+    assert "vault_member_grants" not in tables

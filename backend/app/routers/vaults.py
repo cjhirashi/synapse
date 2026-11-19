@@ -18,6 +18,7 @@ from app.core.errors import (
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate, FileMetaOut
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.services.limit_guard import LimitGuard, guard_for
 from app.services.note_content_service import NoteContentService
@@ -58,7 +59,7 @@ def get_vault_service(
 ) -> VaultService:
     # La base sale sólo del principal resuelto (cookie o Bearer key), nunca de la petición
     # (RF-014 de 0003; RF-002/RF-006 de 0013): una key ve exactamente la base de su dueño.
-    return VaultService(port, f"synapse_user_{current_user.sub}")
+    return VaultService(port, user_db_name(current_user.sub))
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:
@@ -107,7 +108,7 @@ def _seed_ag_folders(vault_id: str, owner_id: str) -> None:
     if not settings.SEED_AG_FOLDERS:
         return
     try:
-        NoteContentService(get_vault_port(), f"synapse_user_{owner_id}").ensure_ag_folders(vault_id)
+        NoteContentService(get_vault_port(), user_db_name(owner_id)).ensure_ag_folders(vault_id)
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).warning("ensure_ag_folders failed for %s", vault_id, exc_info=True)
 

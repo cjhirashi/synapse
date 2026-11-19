@@ -23,6 +23,7 @@ from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TaskCreate, TaskListOut, TaskOut, TaskUpdate, TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -51,7 +52,7 @@ def get_task_service(
     vault_port: VaultPort = Depends(get_vault_port),
 ) -> TaskService:
     # La bóveda se valida contra la base del dueño resuelto (cookie o key): una key solo opera en las de su dueño.
-    couch = f"synapse_user_{principal.sub}"
+    couch = user_db_name(principal.sub)
     vault_service = VaultService(vault_port, couch)
     guard = AgentAccessGuard(vault_port, couch, principal.sub, actor_of(principal))
     return TaskService(

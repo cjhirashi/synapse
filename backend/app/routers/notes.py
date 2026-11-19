@@ -18,6 +18,7 @@ from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, PdfIn, TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_limit_guard, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -43,7 +44,7 @@ def get_note_content_service(
 ) -> NoteContentService:
     # Mismo repositorio compartido por proceso que vaults.py (`get_vault_port`) y la misma
     # base resuelta sólo del principal (RF-014 de 0003; RF-002/RF-006 de 0013).
-    db = f"synapse_user_{current_user.sub}"
+    db = user_db_name(current_user.sub)
     actor = actor_of(current_user)
     return NoteContentService(
         port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),

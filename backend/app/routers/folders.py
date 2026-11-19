@@ -10,6 +10,7 @@ from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import FolderMove, FolderMoveOut, TokenPayload, WikilinkRewriteOut
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -29,7 +30,7 @@ def get_folder_service(
     current_user: TokenPayload = Depends(get_current_principal),
     port: VaultPort = Depends(get_vault_port),
 ) -> FolderService:
-    db = f"synapse_user_{current_user.sub}"
+    db = user_db_name(current_user.sub)
     actor = actor_of(current_user)
     return FolderService(
         port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),

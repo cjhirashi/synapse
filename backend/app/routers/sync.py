@@ -32,6 +32,7 @@ from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
 from app.services.limit_guard import guard_for
@@ -149,7 +150,7 @@ def get_replication_port() -> ReplicationPort:
 
 def get_sync_db(current_user: TokenPayload = Depends(get_sync_user)) -> str:
     # La base sale sólo del token (RF-001): ningún dato de la petición la elige.
-    return f"synapse_user_{current_user.sub}"
+    return user_db_name(current_user.sub)
 
 
 def get_push_service(

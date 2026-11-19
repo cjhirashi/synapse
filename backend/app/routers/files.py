@@ -28,6 +28,7 @@ from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import FileMetaOut, FileVisibilityUpdate, TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_limit_guard, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -101,7 +102,7 @@ def get_file_guard(
     principal: TokenPayload = Depends(get_current_principal),
     vault_port: VaultPort = Depends(get_vault_port),
 ) -> AgentAccessGuard:
-    db = f"synapse_user_{principal.sub}"
+    db = user_db_name(principal.sub)
     return AgentAccessGuard(vault_port, db, principal.sub, actor_of(principal))
 
 
@@ -114,7 +115,7 @@ def get_file_service(
 ) -> FileService:
     # La bóveda se valida contra la base del dueño resuelto (cookie o key), nunca contra la
     # petición: una key sólo puede subir a las bóvedas de su dueño (C-7, mismo criterio que vaults).
-    vault_service = VaultService(vault_port, f"synapse_user_{principal.sub}")
+    vault_service = VaultService(vault_port, user_db_name(principal.sub))
     return FileService(
         FileRepository(db),
         storage,
