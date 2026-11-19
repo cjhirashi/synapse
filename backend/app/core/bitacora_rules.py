@@ -441,7 +441,7 @@ def _number_diff_edit(lines: list[str]) -> str:
             # Estamos en frontmatter (terminó el hunk).
             mark = line[0] if line and line[0] in ("+", "-", " ") else " "
             text = line[1:] if line and line[0] in ("+", "-", " ") else line
-            numbered = f"{mark}{'prop':<{width}} {'prop':<{width}}  {text}".rstrip()
+            numbered = f"{mark}{'prop':<{2 * width + 1}}  {text}".rstrip()
             result.append(numbered)
         elif hunk_started and (old_remaining > 0 or new_remaining > 0):
             # Dentro del hunk: numerar según el tipo de línea.
@@ -467,7 +467,7 @@ def _number_diff_edit(lines: list[str]) -> str:
             # Línea antes de cualquier hunk (frontmatter sin hunk): etiquetar como `prop`.
             mark = line[0] if line and line[0] in ("+", "-", " ") else " "
             text = line[1:] if line and line[0] in ("+", "-", " ") else line
-            numbered = f"{mark}{'prop':<{width}} {'prop':<{width}}  {text}".rstrip()
+            numbered = f"{mark}{'prop':<{2 * width + 1}}  {text}".rstrip()
             result.append(numbered)
 
     return "\n".join(result)

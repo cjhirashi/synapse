@@ -276,6 +276,14 @@ export async function seedContent(): Promise<SeededContent> {
   };
 }
 
+/** H-063: usuario con una bóveda y una sola nota raíz (`path`) con el `content` dado, escrita en CouchDB como la dejaría otro dispositivo. */
+export async function seedSingleNote(path: string, content: string): Promise<Seeded> {
+  const user = await createUser();
+  const vaultId = await createVault(user.cookie, "Diff", "folder-heart:accent");
+  await bulkDocs(user.cookie, [noteDoc(vaultId, { path, frontmatter: {}, content }, "2026-11-19T09:00:00.000000Z")]);
+  return { email: user.email, password: user.password, vaults: [{ id: vaultId, name: "Diff", icon: "folder-heart:accent" }], longNoteName: LONG_NOTE_NAME };
+}
+
 /** H-042: usuario con una bóveda que ya trae una conversación del buzón entre agentes (la escribieron los agentes: aquí se siembra en CouchDB). */
 export const BUZON_CONVERSATION = "AG - MENSAJES/aira → liza - Revisar el plan - 2026-11-05";
 
