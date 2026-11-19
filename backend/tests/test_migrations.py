@@ -43,27 +43,34 @@ def test_migracion_007_agrega_folder_conserva_filas_y_se_revierte(sqlite_url, tm
 
 
 def test_migracion_025_vault_sharing_crea_tablas_y_se_revierte(sqlite_url, tmp_path):
-    """H-064 F1: tablas de membresía e invitaciones se crean, se reviertten sin error."""
+    """H-064 F1: las tablas de membresía y concesiones se crean con sus restricciones y se revierten.
+
+    La cadena completa no corre en SQLite (migraciones anteriores alteran restricciones), así que se marca la 024 sobre una
+    base con solo `users` y se prueba la 025 sola.
+    """
     db = tmp_path / "m.db"
     cfg = _config(sqlite_url)
-
-    # Upgradeado hasta 024 (penúltima migración)
-    command.upgrade(cfg, "84bbfb64f6bc4874")
     with sqlite3.connect(db) as con:
-        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
-    assert "vault_members" not in tables
-    assert "vault_member_grants" not in tables
+        con.execute("CREATE TABLE users (id VARCHAR PRIMARY KEY)")
+        con.executemany("INSERT INTO users (id) VALUES (?)", [("a",), ("b",)])
+    command.stamp(cfg, "84bbfb64f6bc4874")
 
-    # Upgrade a 025
     command.upgrade(cfg, "9f1c5a3b7e2d")
     with sqlite3.connect(db) as con:
-        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
-    assert "vault_members" in tables
-    assert "vault_member_grants" in tables
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert {"vault_members", "vault_member_grants"} <= tables
+        con.execute("INSERT INTO vault_members (id, vault_id, owner_id, user_id, status, invited_by, created_at) "
+                    "VALUES ('m', 'v', 'a', 'b', 'pendiente', 'a', '2026-11-19')")
+        con.execute("INSERT INTO vault_member_grants (id, member_id, folder, level) VALUES ('g', 'm', '*', 'lectura')")
+        for bad in ("INSERT INTO vault_members (id, vault_id, owner_id, user_id, status, invited_by, created_at) "
+                    "VALUES ('x', 'v2', 'a', 'b', 'otro', 'a', '2026-11-19')",
+                    "INSERT INTO vault_members (id, vault_id, owner_id, user_id, status, invited_by, created_at) "
+                    "VALUES ('y', 'v2', 'a', 'a', 'activo', 'a', '2026-11-19')",
+                    "INSERT INTO vault_member_grants (id, member_id, folder, level) VALUES ('h', 'm', 'Docs', 'admin')"):
+            with pytest.raises(sqlite3.IntegrityError):
+                con.execute(bad)
 
-    # Downgrade
     command.downgrade(cfg, "84bbfb64f6bc4874")
     with sqlite3.connect(db) as con:
-        tables = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")]
-    assert "vault_members" not in tables
-    assert "vault_member_grants" not in tables
+        tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+    assert not {"vault_members", "vault_member_grants"} & tables
