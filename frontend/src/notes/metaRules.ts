@@ -59,7 +59,7 @@ const PDF_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
 export const ALL_FOLDERS = "*";
 
 // Atributos que no se pueden redefinir como extra en una plantilla.
-const NOT_EXTRA = new Set([
+export const NOT_EXTRA = new Set([
   "titulo",
   "descripcion",
   "tags",

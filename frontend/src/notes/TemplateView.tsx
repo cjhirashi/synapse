@@ -9,8 +9,8 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Folder, Plus, Trash2 } from "lucide-react";
 import { isIndexPath } from "./indexRules";
 import { isMetaFolderPath } from "./metaFolders";
-import { checkDefinition, ESTADOS_MAX, ESTADO_COLORES, INSTRUCCIONES_MAX, templateName, TIPOS, type EstadoColor } from "./metaRules";
-import { ESTADO_MAX_LEN, normalizeEstado } from "../editor/attributeRules";
+import { checkDefinition, ESTADOS_MAX, ESTADO_COLORES, INSTRUCCIONES_MAX, NOT_EXTRA, templateName, TIPOS, type EstadoColor } from "./metaRules";
+import { ESTADO_MAX_LEN, normalizeEstado, normalizeKey } from "../editor/attributeRules";
 import { estadosOf, type TemplateEstado } from "./useTemplateOptions";
 import "../editor/estado.css";
 import { noteErrorMessage, noteReasonText } from "./messages";
@@ -46,6 +46,21 @@ function toRows(raw: unknown): AttrRow[] {
     const text = valor === undefined || valor === null ? "" : Array.isArray(valor) ? valor.join(", ") : String(valor);
     return [{ nombre, tipo: tipo as Tipo, valor: text }];
   });
+}
+
+function attributeNameProblem(names: string[]): string | null {
+  const seen = new Set<string>();
+  for (const [index, nombre] of names.entries()) {
+    if (nombre === "") return `El atributo ${index + 1} necesita un nombre.`;
+    const suggested = normalizeKey(nombre);
+    if (suggested !== nombre) {
+      return `El nombre «${nombre}» debe ir en minúsculas, sin espacios ni acentos${suggested ? ` (por ejemplo «${suggested}»)` : ""}. El valor inicial es opcional.`;
+    }
+    if (NOT_EXTRA.has(nombre)) return `«${nombre}» es un atributo que todo documento ya tiene; elige otro nombre para el atributo ${index + 1}.`;
+    if (seen.has(nombre)) return `El nombre «${nombre}» está repetido; cada atributo necesita uno distinto.`;
+    seen.add(nombre);
+  }
+  return null;
 }
 
 function toAttributes(rows: AttrRow[]): Array<{ nombre: string; tipo: Tipo; valor?: unknown }> {
@@ -158,9 +173,10 @@ export default function TemplateView({ noteId, vault, notes, notesVersion, sideb
       instrucciones,
       estilo: { publicar: publicar ? { activo: true } : {}, pdf: pdfDraftTo(pdf) },
     };
-    const code = checkDefinition(frontmatter);
-    if (code !== null) {
-      setError(noteReasonText(code));
+    const nameProblem = attributeNameProblem(frontmatter.atributos.map((attr) => attr.nombre));
+    const code = nameProblem === null ? checkDefinition(frontmatter) : null;
+    if (nameProblem !== null || code !== null) {
+      setError(nameProblem ?? noteReasonText(code as string));
       return;
     }
     setSaving(true);

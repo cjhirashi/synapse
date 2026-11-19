@@ -62,6 +62,20 @@ test("guarda alcance por carpetas, un atributo con valor inicial y la estructura
   });
 });
 
+test("guarda atributos sin valor inicial de cualquier tipo", async () => {
+  const { store, template, user } = await open();
+  const tipos = ["texto", "numero", "fecha", "lista", "booleano"];
+  for (const [i, tipo] of tipos.entries()) {
+    await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
+    await user.type(screen.getByLabelText(`Nombre del atributo ${i + 1}`), `campo_${i}`);
+    await user.selectOptions(screen.getByLabelText(`Tipo del atributo ${i + 1}`), tipo);
+  }
+  await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
+  await waitFor(async () => expect((await store.get(template.id)).frontmatter.atributos).toHaveLength(5));
+  expect((await store.get(template.id)).frontmatter.atributos).toMatchObject([{ nombre: "campo_0", tipo: "texto" }, { nombre: "campo_1", tipo: "numero" }, {}, {}, {}]);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
 test("la plantilla carga el estado de publicar y se puede editar", async () => {
   counter += 1;
   const store = createNoteStore(new PouchDB(`tplview-${counter}`, { adapter: "memory" }), { indexes: false });
@@ -95,7 +109,7 @@ test("una definición inválida (nombre de atributo con mayúsculas) no se guard
   await user.click(screen.getByRole("button", { name: "Añadir atributo" }));
   await user.type(screen.getByLabelText("Nombre del atributo 1"), "Cliente");
   await user.click(screen.getByRole("button", { name: "Guardar plantilla" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(/atributos/i);
+  expect(await screen.findByRole("alert")).toHaveTextContent(/«Cliente» debe ir en minúsculas.*«cliente»/);
   expect((await store.get(template.id)).frontmatter.atributos).toEqual([]);
 });
 
