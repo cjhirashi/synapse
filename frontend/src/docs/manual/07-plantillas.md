@@ -58,7 +58,7 @@ Un aviso te recuerda: **editar una plantilla no cambia los documentos que ya nac
 
 1. **Título** y **Descripción** arriba: nombre de la plantilla y para qué sirve.
 2. **1. Dónde se usa** ①: elige «En toda la bóveda» o «Solo en estas carpetas» y marca las carpetas con sus botones.
-3. **2. Atributos opcionales** ②: datos extra además de los generales (título, descripción, etiquetas, estado y fechas). Cada atributo tiene **Nombre**, **Tipo** (por ejemplo Texto o Número) y **Valor inicial**. «Añadir atributo» crea otro y el bote de basura lo quita. El nombre «sistema» está reservado por Synapse: no se puede usar como atributo.
+3. **2. Atributos opcionales** ②: datos extra además de los generales (título, descripción, etiquetas, estado y fechas). Cada atributo tiene **Nombre**, **Tipo** (por ejemplo Texto o Número) y **Valor inicial**, que es opcional: puedes dejarlo vacío y el documento nace con ese atributo sin valor. El nombre va en minúsculas, sin espacios ni acentos (por ejemplo `fecha_limite`), y no puede repetirse ni coincidir con un atributo general; si no cumple, la plantilla no se guarda y el aviso te dice cuál falla. «Añadir atributo» crea otro y el bote de basura lo quita. El nombre «sistema» está reservado por Synapse: no se puede usar como atributo.
 
 <div align="center">
 
