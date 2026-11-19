@@ -23,6 +23,10 @@ export const LANGUAGES: readonly LanguageDescription[] = [
     const { shell } = await import("@codemirror/legacy-modes/mode/shell");
     return new LanguageSupport(StreamLanguage.define(shell));
   }),
+  entry("diff", ["patch"], async () => {
+    const { diff } = await import("@codemirror/legacy-modes/mode/diff");
+    return new LanguageSupport(StreamLanguage.define(diff));
+  }),
   entry("css", [], async () => (await import("@codemirror/lang-css")).css()),
   entry("html", [], async () => (await import("@codemirror/lang-html")).html()),
   entry("sql", [], async () => (await import("@codemirror/lang-sql")).sql()),

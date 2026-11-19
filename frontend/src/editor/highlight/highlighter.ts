@@ -20,6 +20,7 @@ export const synapseHighlighter = tagHighlighter([
   { tag: [t.function(t.variableName), t.function(t.propertyName), t.definition(t.variableName)], class: "sx-function" },
   { tag: [t.comment, t.lineComment, t.blockComment, t.docComment], class: "sx-comment" },
   { tag: t.deleted, class: "sx-deletion" },
+  { tag: t.inserted, class: "sx-insertion" },
   { tag: [t.variableName, t.operator, t.punctuation, t.bracket, t.separator, t.angleBracket, t.squareBracket, t.paren, t.brace], class: "sx-plain" },
   // Markdown de la vista Código (§2.3-h).
   { tag: t.heading1, class: "sx-heading1" },

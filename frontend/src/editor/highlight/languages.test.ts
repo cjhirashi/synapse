@@ -10,6 +10,7 @@ const TABLE: Array<[string, string[]]> = [
   ["python", ["py", "python"]],
   ["json", ["json"]],
   ["shell", ["bash", "sh", "shell"]],
+  ["diff", ["diff", "patch"]],
   ["css", ["css"]],
   ["html", ["html"]],
   ["sql", ["sql"]],

@@ -12,6 +12,7 @@
   --syntax-plain: var(--text-secondary);
   --syntax-comment: var(--text-secondary);
   --syntax-deletion: var(--danger-text);
+  --syntax-insertion: var(--success-text);
 }
 
 .sx-keyword {
@@ -48,7 +49,10 @@
 
 .sx-deletion {
   color: var(--syntax-deletion);
-  text-decoration: line-through;
+}
+
+.sx-insertion {
+  color: var(--syntax-insertion);
 }
 
 /* Markdown en la vista Código (§2.3-h). */

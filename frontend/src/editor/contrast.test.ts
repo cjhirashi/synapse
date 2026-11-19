@@ -50,10 +50,10 @@ test.each(NEW_TOKENS)("RF-040: el token --%s está definido en claro y en oscuro
 
 /** Texto (≥ 4,5:1) sobre las superficies indicadas. */
 const TEXT_PAIRS: Array<[string, string, readonly string[]]> = [
-  ["success-text", "cadenas del resaltado", ["bg-tertiary"]],
+  ["success-text", "cadenas del resaltado y líneas insertadas", ["bg-tertiary"]],
   ["warning-text", "números del resaltado", ["bg-tertiary"]],
   ["info-text", "tipos y enlaces", SURFACES],
-  ["danger-text", "errores y «Borrar»", SURFACES],
+  ["danger-text", "errores y «Borrar» y líneas eliminadas", SURFACES],
   ["accent-hover", "keyword y código en línea", ["bg-tertiary"]],
   ["text-secondary", "claves, etiquetas y comentarios", SURFACES],
   ["text-primary", "valores y texto", SURFACES],

@@ -300,10 +300,10 @@ def _line(entry: Entry, tz: str) -> str:
 
 
 def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
-    """H-062: Cuerpo Markdown del documento de un día con diff.
+    """H-063: Cuerpo Markdown del documento de un día con diff numerado.
 
     Cada línea de cambio muestra +N −M (si hay conteo). Debajo, bloque de código con el diff,
-    marcando truncado si fuera necesario.
+    con números de línea antigua/nueva, marcando truncado si fuera necesario.
     """
     head = [
         f"# Bitácora del {date_iso}",
@@ -319,20 +319,171 @@ def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
     lines = head + [f"{len(ordered)} {'cambio' if len(ordered) == 1 else 'cambios'}.", ""]
     for entry in ordered:
         lines.append(_line(entry, tz))
-        # H-062: Bloque de diff si está disponible
+        # H-063: Bloque de diff numerado si está disponible
         if entry.diff_text:
-            fence = _safe_fence(entry.diff_text)
+            numbered_diff = number_diff(entry.op, entry.diff_text)
+            fence = _safe_fence(numbered_diff)
             lines.append(f"    {fence}diff")
-            for diff_line in entry.diff_text.split("\n"):
+            for diff_line in numbered_diff.split("\n"):
                 lines.append(f"    {diff_line}")
             lines.append(f"    {fence}")
             if entry.diff_truncated:
                 # Mostrar nota de truncado en línea aparte con misma indentación
-                shown = len(entry.diff_text.split("\n"))
+                shown = len(numbered_diff.split("\n"))
                 lines.append(f"    _Diff truncado: se muestran {_format_number(shown)} líneas; el conteo es el real._")
 
     lines.append("")
     return "\n".join(lines)
+
+
+def number_diff(op: str, text: str) -> str:
+    """H-063: Numera las líneas de un diff para mostrar antes/después en dos columnas.
+
+    Retorna el texto listo para el bloque de código. Cada línea sale como:
+    `{marca}{viejo:>W} {nuevo:>W}  {texto}` donde marca es +/- o espacio, W es el ancho
+    mínimo para los números del bloque.
+
+    - Las cabeceras `@@ ... @@` pasan tal cual (empiezan con @).
+    - create: nuevas líneas numeradas 1..N; viejo en blanco.
+    - delete: líneas eliminadas numeradas 1..N; nuevo en blanco.
+    - edit: numera con dos contadores; frontmatter etiquetado como `prop`.
+    - Tolerante: nunca lanza excepción; ante anomalías, retorna sin número.
+    """
+    if not text:
+        return ""
+
+    lines = text.split("\n")
+    if not lines:
+        return ""
+
+    # Tolerancia: si falla algo, retorna sin número.
+    try:
+        if op == "create":
+            return _number_diff_create(lines)
+        elif op == "delete":
+            return _number_diff_delete(lines)
+        elif op == "edit":
+            return _number_diff_edit(lines)
+        else:
+            # Operación desconocida: retorna sin número, con la marca en el primer carácter.
+            return _fallback_lines(lines)
+    except Exception:
+        # Ante cualquier error, retorna sin número.
+        return _fallback_lines(lines)
+
+
+def _number_diff_create(lines: list[str]) -> str:
+    """Numera un diff de creación (todas las líneas son +)."""
+    max_num = len(lines)
+    width = max(3, len(str(max_num)))
+    result = []
+    for i, line in enumerate(lines, 1):
+        mark = line[0] if line and line[0] in ("+", "-", " ") else "+"
+        text = line[1:] if line and line[0] in ("+", "-", " ") else line
+        numbered = f"{mark}{'':<{width}} {i:>{width}}  {text}".rstrip()
+        result.append(numbered)
+    return "\n".join(result)
+
+
+def _number_diff_delete(lines: list[str]) -> str:
+    """Numera un diff de eliminación (todas las líneas son -)."""
+    max_num = len(lines)
+    width = max(3, len(str(max_num)))
+    result = []
+    for i, line in enumerate(lines, 1):
+        mark = line[0] if line and line[0] in ("+", "-", " ") else "-"
+        text = line[1:] if line and line[0] in ("+", "-", " ") else line
+        numbered = f"{mark}{i:>{width}} {'':<{width}}  {text}".rstrip()
+        result.append(numbered)
+    return "\n".join(result)
+
+
+def _number_diff_edit(lines: list[str]) -> str:
+    """Numera un diff de edición (con dos contadores y frontmatter)."""
+    result = []
+    old_line_num = 0
+    new_line_num = 0
+    old_remaining = 0
+    new_remaining = 0
+    hunk_started = False
+    max_line_num = 0
+
+    # Primer paso: calcular el máximo número de línea para el ancho.
+    for line in lines:
+        if line.startswith("@@"):
+            # Parsear cabecera: @@ -a,b +c,d @@
+            match = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
+            if match:
+                old_start = int(match.group(1))
+                old_count = int(match.group(2) or 1)
+                new_start = int(match.group(3))
+                new_count = int(match.group(4) or 1)
+                max_line_num = max(max_line_num, old_start + old_count, new_start + new_count)
+
+    width = max(3, len(str(max_line_num))) if max_line_num > 0 else 3
+
+    # Segundo paso: numerar.
+    for line in lines:
+        if line.startswith("@@"):
+            # Cabecera: extraer números.
+            match = re.match(r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@", line)
+            if match:
+                old_line_num = int(match.group(1))
+                old_remaining = int(match.group(2) or 1)
+                new_line_num = int(match.group(3))
+                new_remaining = int(match.group(4) or 1)
+                hunk_started = True
+                result.append(line)
+            else:
+                # Cabecera malformada: pasar tal cual.
+                result.append(line)
+        elif hunk_started and old_remaining == 0 and new_remaining == 0:
+            # Estamos en frontmatter (terminó el hunk).
+            mark = line[0] if line and line[0] in ("+", "-", " ") else " "
+            text = line[1:] if line and line[0] in ("+", "-", " ") else line
+            numbered = f"{mark}{'prop':<{width}} {'prop':<{width}}  {text}".rstrip()
+            result.append(numbered)
+        elif hunk_started and (old_remaining > 0 or new_remaining > 0):
+            # Dentro del hunk: numerar según el tipo de línea.
+            mark = line[0] if line and line[0] in ("+", "-", " ") else " "
+            text = line[1:] if line and line[0] in ("+", "-", " ") else line
+
+            if mark == "-":
+                numbered = f"{mark}{old_line_num:>{width}} {'':<{width}}  {text}".rstrip()
+                old_line_num += 1
+                old_remaining -= 1
+            elif mark == "+":
+                numbered = f"{mark}{'':<{width}} {new_line_num:>{width}}  {text}".rstrip()
+                new_line_num += 1
+                new_remaining -= 1
+            else:  # contexto
+                numbered = f"{mark}{old_line_num:>{width}} {new_line_num:>{width}}  {text}".rstrip()
+                old_line_num += 1
+                new_line_num += 1
+                old_remaining -= 1
+                new_remaining -= 1
+            result.append(numbered)
+        else:
+            # Línea antes de cualquier hunk (frontmatter sin hunk): etiquetar como `prop`.
+            mark = line[0] if line and line[0] in ("+", "-", " ") else " "
+            text = line[1:] if line and line[0] in ("+", "-", " ") else line
+            numbered = f"{mark}{'prop':<{width}} {'prop':<{width}}  {text}".rstrip()
+            result.append(numbered)
+
+    return "\n".join(result)
+
+
+def _fallback_lines(lines: list[str]) -> str:
+    """Fallback: retorna las líneas con la marca en el primer carácter, sin número."""
+    result = []
+    for line in lines:
+        # Garantizar que la marca es el primer carácter.
+        if line and line[0] in ("+", "-", " ", "@"):
+            result.append(line.rstrip())
+        else:
+            # Fuerza un prefijo para que el resaltador detect el tipo.
+            result.append((" " + line).rstrip())
+    return "\n".join(result)
 
 
 def _safe_fence(text: str) -> str:
