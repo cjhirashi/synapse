@@ -34,6 +34,11 @@ class VaultMember(Base):
     responded_at = Column(DateTime, nullable=True)
     ended_at = Column(DateTime, nullable=True)
 
+    # Relaciones
+    user = relationship("User", foreign_keys=[user_id], viewonly=True)
+    owner = relationship("User", foreign_keys=[owner_id], viewonly=True)
+    grants = relationship("VaultMemberGrant", back_populates="member", cascade="all, delete-orphan", viewonly=False)
+
     __table_args__ = (
         UniqueConstraint("vault_id", "user_id", name="ix_vault_members_unique"),
         CheckConstraint("status IN ('pendiente', 'activo', 'revocado')", name="ck_vault_members_status"),
@@ -55,6 +60,9 @@ class VaultMemberGrant(Base):
     member_id = Column(String, ForeignKey("vault_members.id", ondelete="CASCADE"), nullable=False, index=True)
     folder = Column(String(600), nullable=False)
     level = Column(String(10), nullable=False)  # lectura|escritura
+
+    # Relación inversa
+    member = relationship("VaultMember", back_populates="grants", viewonly=True)
 
     __table_args__ = (
         UniqueConstraint("member_id", "folder", name="ix_vault_member_grants_unique"),

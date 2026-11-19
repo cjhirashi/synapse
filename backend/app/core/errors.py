@@ -659,3 +659,54 @@ class NotPublished(DomainError):
 
 class InvalidUnpublishAt(ValidationFailed):
     """La fecha de despublicación debe ser al menos 5 minutos posterior a ahora (H-055)."""
+
+
+# --- Membresía e invitaciones a bóvedas (H-064 F2) ---
+
+class InviteeNotFound(DomainError):
+    """El usuario invitado no existe, está inactivo o ha sido eliminado."""
+
+    slug = "invitee-not-found"
+    title = "Invitee not found"
+    status = 404
+    detail = "The invitee does not exist or is not available"
+
+
+class MemberNotFound(DomainError):
+    """Miembro inexistente, ajeno o de otra bóveda: mismo cuerpo siempre."""
+
+    slug = "member-not-found"
+    title = "Member not found"
+    status = 404
+    detail = "Member not found"
+
+
+class MemberAlreadyExists(DomainError):
+    """Ya hay una fila pendiente o activa para (vault_id, user_id)."""
+
+    slug = "member-already-exists"
+    title = "Member already exists"
+    status = 409
+    detail = "This member is already invited or active"
+
+
+class MemberLimitReached(DomainError):
+    """Se alcanzó el máximo de 50 miembros pendientes o activos en la bóveda."""
+
+    slug = "member-limit-reached"
+    title = "Member limit reached"
+    status = 409
+    detail = "This vault reached the maximum number of members"
+
+
+class InvitationNotPending(DomainError):
+    """La invitación no está en estado pendiente o activo (no se puede cambiar ni responder)."""
+
+    slug = "invitation-not-pending"
+    title = "Invitation not pending"
+    status = 409
+    detail = "This invitation is not in a state that allows this action"
+
+
+class ShareInvalid(ValidationFailed):
+    """Validación de concesiones: carpeta reservada, nivel inválido, etc."""

@@ -895,7 +895,7 @@ class NotificationPrefsPut(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    kinds: dict[Literal["task_assigned", "task_status", "task_due", "publication_expired", "limit_grace"], bool] = {}
+    kinds: dict[Literal["task_assigned", "task_status", "task_due", "publication_expired", "limit_grace", "vault_share"], bool] = {}
     quiet: QuietHours | None = None
 
 
@@ -1007,3 +1007,95 @@ class ProjectOut(BaseModel):
 class ProjectListOut(BaseModel):
     items: list[ProjectOut]
     total: int
+
+
+# --- Membresía e invitaciones a bóvedas (H-064 F2) ---
+
+class VaultMemberGrantIn(BaseModel):
+    """Permiso de acceso: carpeta y nivel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    folder: str = Field(min_length=1, max_length=600)
+    level: Literal["lectura", "escritura"]
+
+
+class VaultMemberInviteIn(BaseModel):
+    """Cuerpo de `POST /vaults/{vault_id}/members`: invitar un usuario."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str
+    grants: list[VaultMemberGrantIn] = Field(min_items=1, max_items=100)
+
+
+class VaultMemberGrantsUpdate(BaseModel):
+    """Cuerpo de `PUT /vaults/{vault_id}/members/{member_id}/grants`: reemplazar permisos."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    grants: list[VaultMemberGrantIn] = Field(min_items=1, max_items=100)
+
+
+class VaultMemberUserInfo(BaseModel):
+    """Información pública del usuario (invitante o invitado)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    email: str
+    display_name: str | None = None
+
+
+class VaultMemberGrantOut(BaseModel):
+    """Permiso de acceso (salida)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    folder: str
+    level: str
+
+
+class VaultMemberOut(BaseModel):
+    """Miembro de una bóveda con sus permisos."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    vault_id: str
+    user_id: str
+    status: str  # pendiente|activo|revocado
+    ended_reason: str | None = None
+    invited_by: str
+    created_at: UtcDateTime
+    responded_at: UtcDateTime | None = None
+    ended_at: UtcDateTime | None = None
+    user: VaultMemberUserInfo | None = None
+    grants: list[VaultMemberGrantOut] = []
+
+
+class VaultMembersListOut(BaseModel):
+    """Lista de miembros de una bóveda."""
+
+    items: list[VaultMemberOut]
+
+
+class VaultInvitationOut(BaseModel):
+    """Invitación o membresía del usuario (vista desde el invitado)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    vault_id: str
+    status: str  # pendiente|activo
+    created_at: UtcDateTime
+    responded_at: UtcDateTime | None = None
+    owner: VaultMemberUserInfo | None = None
+    vault_name: str | None = None
+    grants: list[VaultMemberGrantOut] = []
+
+
+class VaultInvitationsListOut(BaseModel):
+    """Lista de invitaciones del usuario."""
+
+    items: list[VaultInvitationOut]
