@@ -24,6 +24,7 @@ docker compose exec backend pytest --cov=app   # umbral 80 % (RNF-001)
 - **Wikilinks y carpetas (H-039):** `test_wikilink_rewrite.py` (regla pura sobre `fixtures/wikilink_rewrite_cases.json`, que el
   cliente podrá recorrer también), `test_wikilink_rewrite_service.py` (doble en memoria: reintento por `_rev`, `pending`),
   `test_folder_service.py` (doble en memoria), `test_note_rewrite_api.py` y `test_folder_move_api.py` (API y CouchDB reales).
+- **YAML del cuerpo (H-040):** `test_body_yaml.py` (extracción, mapeo de alias incl. `date`→`fecha_creacion`, fusión con atributos) y `test_migrate_body_yaml.py` (herramienta `scripts/migrate_body_yaml.py`: informe, `backup`, `apply` con digest y respaldo, idempotencia, 409, `rollback`; CouchDB simulado).
 - **ETag (H-038):** `test_etag.py` (`core/etag.py::etag_matches`: fuerte, débil `W/`, distinto, sin comillas, vacío, `*`).
 - **INDICES (H-031):** `test_index_rules.py` y `test_index_body.py` (sobre `fixtures/indice_cuerpo.json`, que el cliente también recorre) y `test_index_protection.py` (REST y sync) y `test_migrate_indices.py` (herramienta `scripts/migrate_indices.py`: en seco por defecto, `--apply` borra la lista de `--ids` a la papelera y crea el INDICE de cada carpeta).
 - **H-030b:** `test_h030b_rules.py` (reglas puras: nombres en MAYÚSCULAS, qué se registra, día por zona horaria, texto del día, plantillas,

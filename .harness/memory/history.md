@@ -199,6 +199,13 @@
 - **Docs actualizadas:** `docs/API.md`, `backend/README.md`, `backend/app/{core,services,routers}/README.md`, `frontend/src/README.md`, contratos OpenAPI (`h030-carpetas-ag`, 0005, 0013, 0014, h016) y `note.schema.json`.
 
 
+## [2026-11-04] H-040: migración del YAML del cuerpo a atributos (aplicada en producción)
+
+- **Qué:** `scripts/migrate_body_yaml.py` (informe, `backup`, `apply`, `rollback`) y `core/body_yaml.py`. Orden de Carlos 2026-11-04: `date` del YAML = `fecha_creacion`.
+- **Resultado:** 1 nota migrada (`Proyectos / 3 - Proyectos Banzi/Referencia/Familia ESP32 - comparativa.md`); verificada por API; segunda corrida en seco = 0. `Inglés / BITACORA.md` (`---` tras línea en blanco) no es YAML y no se tocó.
+- **Respaldo:** `.claude/worktrees/respaldos-h040/respaldo-h040-20261104.json`; revertir con `--mode rollback`.
+- **Lección:** el sellado de fechas de H-029 solo actúa en escrituras REST; la herramienta escribe directo en CouchDB y por eso conserva la fecha del YAML. Pruebas en tmpfs: borrar `test.db` antes de cada corrida si una anterior se interrumpió (queda corrupto).
+
 ## [2026-11-04] Sincronización: 67 cambios rechazados y estado oscilando entre «Sin conexión» y «Sincronizando»
 
 - **Reporte de Carlos (2026-11-04):** la barra de estado oscilaba y mostraba «67 cambios rechazados».

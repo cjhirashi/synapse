@@ -118,9 +118,18 @@ def migrate_frontmatter_detailed(frontmatter: dict) -> tuple[dict, list[dict]]:
     Devuelve `(nuevo, descartados)`; cada descartado es `{"key", "value", "reason"}`: un valor que no cabe en
     su atributo (fecha no válida, estado que no es texto, `ruta` que ahora es del sistema…) no se guarda con
     otro nombre; queda en este informe para que se revise.
+
+    Aplica alias de claves (H-040): `title`→`titulo`, `description`→`descripcion`, `etiquetas`→`tags`.
     """
     out: dict = {}
     dropped: list[dict] = []
+
+    # Mapa de alias de claves (H-040)
+    KEY_ALIASES = {
+        "title": "titulo",
+        "description": "descripcion",
+        "etiquetas": "tags",
+    }
 
     def drop(key: str, value: object, reason: str) -> None:
         dropped.append({"key": key, "value": value, "reason": reason})
@@ -133,6 +142,13 @@ def migrate_frontmatter_detailed(frontmatter: dict) -> tuple[dict, list[dict]]:
 
     for key, value in frontmatter.items():
         name = normalize_key(key)
+
+        # Aplicar alias de clave (H-040)
+        if key in KEY_ALIASES:
+            name = KEY_ALIASES[key]
+        elif name in KEY_ALIASES:
+            name = KEY_ALIASES[name]
+
         if name in ("titulo", "descripcion"):
             if isinstance(value, list) and value and all(isinstance(x, str) for x in value):
                 value = ", ".join(value)
