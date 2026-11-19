@@ -193,9 +193,9 @@ class ChangeLogService:
         author = self.author()
 
         # H-062: Calcular diff (nunca bloquea si falla)
-        diff = None
         lines_added = None
         lines_removed = None
+        diff_text = None
         diff_truncated = None
         try:
             diff = rules.compute_diff(old, new)
@@ -205,7 +205,7 @@ class ChangeLogService:
             diff_truncated = diff.truncated
         except Exception:  # noqa: BLE001
             logger.warning("compute_diff failed", exc_info=True)
-            diff_text = None
+            # Todos los campos quedan en None para indicar fallo en el cálculo
 
         row = {
             "id": str(uuid.uuid4()), "at": at.replace(tzinfo=None), "owner_id": self._owner_id,

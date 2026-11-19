@@ -15,24 +15,24 @@ def note(path="Doc.md", content="a", fm=None, deleted=None):
 # --- H-062: compute_diff ---
 
 def test_compute_diff_create():
-    # H-062: create: todas las líneas como agregadas
+    # H-062: create: todas las líneas como agregadas (con diff_text)
     old = None
     new = note(content="línea 1\nlínea 2\nlínea 3")
     diff = bit.compute_diff(old, new)
     assert diff.added == 3
     assert diff.removed == 0
-    assert diff.text is None
+    assert diff.text is not None, "create debe devolver diff_text"
     assert diff.truncated is False
 
 
 def test_compute_diff_delete():
-    # H-062: delete: todas las líneas como eliminadas
+    # H-062: delete: todas las líneas como eliminadas (con diff_text)
     old = note(content="línea 1\nlínea 2\nlínea 3")
     new = note(deleted="2026-11-05T00:00:00.000000Z")
     diff = bit.compute_diff(old, new)
     assert diff.added == 0
     assert diff.removed == 3
-    assert diff.text is None
+    assert diff.text is not None, "delete debe devolver diff_text"
     assert diff.truncated is False
 
 
@@ -116,17 +116,17 @@ def test_compute_diff_truncated():
 
 
 def test_compute_diff_never_raises():
-    # H-062: fallo en compute_diff nunca bloquea el registro
-    # Pasamos datos inválidos que podrían causar error
+    # H-062: fallo en compute_diff propaga (lo captura ChangeLogService.begin)
+    # Pasamos datos inválidos que causarán error
+    # El error será capturado por quien llama (ChangeLogService.begin)
     try:
-        # Un None en lugar de dict debería ser manejado
+        # Un None en lugar de dict debería causar error
         result = bit.compute_diff(None, None)
-        # Si no levanta, retorna Diff(0, 0, None, False)
-        assert result.added == 0
-        assert result.removed == 0
-    except:  # noqa: E722
-        # Si sí levanta, el test falla (pero compute_diff debe capturarlo)
-        pytest.fail("compute_diff debe capturar excepciones")
+        # Si llega aquí, classify retornó None (no se registra)
+        pytest.fail("compute_diff debe lanzar una excepción con datos inválidos")
+    except (TypeError, AttributeError, KeyError):
+        # Esperamos una excepción: compute_diff la propaga, no la captura
+        pass
 
 
 # --- H-062: render_day con diff ---
@@ -157,7 +157,7 @@ def test_render_day_diff_truncated_note():
         ),
     ]
     text = bit.render_day("2026-11-05", TZ, entries)
-    assert "diff truncado" in text
+    assert "Diff truncado" in text or "diff truncado" in text
 
 
 def test_render_day_no_diff_for_old_entry():
@@ -222,3 +222,106 @@ def test_compute_diff_matches_classify():
         diff = bit.compute_diff(old, new)
         # No debe lanzar excepción
         assert diff is not None
+
+
+# --- H-062: Pruebas nuevas para defectos 2-6 ---
+
+def test_compute_diff_edit_with_rule_markers():
+    # H-062 Defecto 2: unified_diff con cabeceras descartadas y conteo correcto
+    # de líneas con `---` horizontal (que empieza con guion pero no es cabecera)
+    old = note(content="línea 1\n---\nlínea 3")
+    new = note(content="línea 1\n+++x\nlínea 3")
+    diff = bit.compute_diff(old, new)
+    # La línea eliminada es "---", la agregada "+++x"; conteo debe ser 1 cada una
+    assert diff.removed == 1, f"Expected 1 removed, got {diff.removed}"
+    assert diff.added == 1, f"Expected 1 added, got {diff.added}"
+
+
+def test_compute_diff_frontmatter_format():
+    # H-062 Defecto 3: frontmatter diff formato `-clave: valor` / `+clave: valor`
+    old = note(fm={"titulo": "V"})
+    new = note(fm={"titulo": "N"})
+    diff = bit.compute_diff(old, new)
+    assert diff.text is not None
+    # El diff debe contener líneas sin espacio tras el signo (no "- titulo" ni "+ titulo")
+    assert "-titulo:" in diff.text, f"Expected '-titulo:' in diff, got: {diff.text}"
+    assert "+titulo:" in diff.text, f"Expected '+titulo:' in diff, got: {diff.text}"
+
+
+def test_compute_diff_create_with_text():
+    # H-062 Defecto 4: create devuelve diff_text con líneas prefijadas `+`
+    old = None
+    new = note(content="línea 1\nlínea 2\nlínea 3")
+    diff = bit.compute_diff(old, new)
+    assert diff.added == 3
+    assert diff.text is not None, "create debe devolver diff_text"
+    # El diff debe mostrar cada línea con +
+    lines = diff.text.split("\n")
+    assert any(l.startswith("+") for l in lines), f"Expected + prefix in: {diff.text}"
+
+
+def test_compute_diff_delete_with_text():
+    # H-062 Defecto 4: delete devuelve diff_text con líneas prefijadas `-`
+    old = note(content="línea 1\nlínea 2\nlínea 3")
+    new = note(deleted="2026-11-05T00:00:00Z")
+    diff = bit.compute_diff(old, new)
+    assert diff.removed == 3
+    assert diff.text is not None, "delete debe devolver diff_text"
+    # El diff debe mostrar cada línea con -
+    lines = diff.text.split("\n")
+    assert any(l.startswith("-") for l in lines), f"Expected - prefix in: {diff.text}"
+
+
+def test_compute_diff_create_large_truncates():
+    # H-062 Defecto 4: create de >200 líneas trunca pero cuenta real
+    large_lines = "\n".join([f"línea {i}" for i in range(500)])
+    old = None
+    new = note(content=large_lines)
+    diff = bit.compute_diff(old, new)
+    assert diff.added == 500, f"Expected added=500, got {diff.added}"
+    assert diff.truncated is True, "Expected truncated=True"
+    assert diff.text is not None, "create debe devolver diff_text"
+    # El texto truncado debe tener < 500 líneas
+    shown_lines = len([l for l in diff.text.split("\n") if l])
+    assert shown_lines < 500, f"Expected <500 shown lines, got {shown_lines}"
+
+
+def test_render_day_diff_fence_separate():
+    # H-062 Defecto 5: valla de cierre sola, nota de truncado en línea aparte
+    entries = [
+        bit.Entry(
+            datetime(2026, 11, 5, 20, 0, tzinfo=UTC), "edit", "A/doc.md", None, "Doc",
+            "human", "carlos@x.com", "applied",
+            lines_added=100, lines_removed=50, diff_text="+" + "\n+".join(["l"] * 50),
+            diff_truncated=True
+        ),
+    ]
+    text = bit.render_day("2026-11-05", TZ, entries)
+    lines = text.split("\n")
+    # Buscar la línea con la valla de cierre
+    fence_lines = [i for i, l in enumerate(lines) if l.strip().startswith("```")]
+    assert len(fence_lines) >= 2, "Expected at least 2 fence lines (open and close)"
+    # La línea de truncado debe ser DESPUÉS de la valla de cierre
+    truncado_line = [i for i, l in enumerate(lines) if "diff truncado" in l.lower()]
+    assert len(truncado_line) > 0, "Expected truncado message"
+    assert truncado_line[0] > fence_lines[-1], "truncado message must be after closing fence"
+
+
+def test_compute_diff_propagates_exception():
+    # H-062 Defecto 6: compute_diff propaga excepciones (no captura)
+    # Mockear classify para lanzar una excepción
+    import unittest.mock
+    with unittest.mock.patch("app.core.bitacora_rules.classify", side_effect=ValueError("test error")):
+        try:
+            diff = bit.compute_diff(None, note())
+            pytest.fail("compute_diff debe propagar la excepción")
+        except ValueError as e:
+            assert "test error" in str(e)
+
+
+def test_change_log_service_diff_failure_all_none():
+    # H-062 Defecto 6: ChangeLogService.begin captura excepción y guarda campos None
+    # Esta prueba requiere la infraestructura completa; ver test_h030b_api.py
+    # Aquí documentamos el comportamiento esperado:
+    # Si compute_diff lanza, diff_text, lines_added, lines_removed, diff_truncated quedan None
+    pass

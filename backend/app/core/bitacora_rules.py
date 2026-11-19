@@ -92,61 +92,68 @@ def compute_diff(old: dict | None, new: dict) -> Diff:
     - edit: diff unificado del contenido + cambios de frontmatter.
     - Normaliza CRLF → LF para evitar falsos cambios.
     - Trunca a 200 líneas o 20 KiB (lo que ocurra primero); conteos reales siempre.
-    - Si falla el cálculo, retorna 0/0 (nunca lanza excepción).
+    - Propaga excepciones; ChangeLogService.begin las captura y registra sin diff.
     """
-    try:
-        op = classify(old, new)
+    op = classify(old, new)
 
-        # restore: solo cambió deleted_at
-        if op == "restore":
-            return Diff(0, 0, None, False)
-
-        # rename/move sin cambio de contenido
-        if op in ("rename", "move"):
-            if (old or {}).get("content") == new.get("content") and \
-               not changed_keys((old or {}).get("frontmatter"), new.get("frontmatter")):
-                return Diff(0, 0, None, False)
-
-        # delete: todas las líneas como eliminadas
-        if op == "delete":
-            content = (old or {}).get("content", "")
-            lines = _normalize_lines(content)
-            return Diff(0, len(lines), None, False)
-
-        # create: todas las líneas como agregadas
-        if op == "create":
-            content = new.get("content", "")
-            lines = _normalize_lines(content)
-            return Diff(len(lines), 0, None, False)
-
-        # edit: diff unificado de contenido + frontmatter
-        old_content = _normalize_lines((old or {}).get("content", ""))
-        new_content = _normalize_lines(new.get("content", ""))
-
-        diff_lines = list(difflib.unified_diff(
-            old_content, new_content, lineterm="", n=2
-        ))
-
-        # Frontera frontmatter: solo claves que cambiaron
-        fm_diff_lines = _frontmatter_diff(_normalize_frontmatter((old or {}).get("frontmatter")),
-                                          _normalize_frontmatter(new.get("frontmatter")))
-
-        all_diff = diff_lines + fm_diff_lines
-        if not all_diff:
-            return Diff(0, 0, None, False)
-
-        # Contar líneas reales (sin las de contexto @@ y los --- +++)
-        added = sum(1 for line in all_diff if line.startswith("+") and not line.startswith("+++"))
-        removed = sum(1 for line in all_diff if line.startswith("-") and not line.startswith("---"))
-
-        # Truncar diff text
-        text, truncated = _truncate_diff(all_diff)
-
-        return Diff(added, removed, text, truncated)
-
-    except Exception:
-        # Nunca bloquea el registro si el cálculo falla
+    # restore: solo cambió deleted_at
+    if op == "restore":
         return Diff(0, 0, None, False)
+
+    # rename/move sin cambio de contenido
+    if op in ("rename", "move"):
+        if (old or {}).get("content") == new.get("content") and \
+           not changed_keys((old or {}).get("frontmatter"), new.get("frontmatter")):
+            return Diff(0, 0, None, False)
+
+    # delete: todas las líneas como eliminadas
+    if op == "delete":
+        content = (old or {}).get("content", "")
+        lines = _normalize_lines(content)
+        removed_count = len(lines)
+        # Generar diff con cada línea prefijada con `-`
+        diff_lines = [f"-{line}" for line in lines]
+        text, truncated = _truncate_diff(diff_lines)
+        return Diff(0, removed_count, text, truncated)
+
+    # create: todas las líneas como agregadas
+    if op == "create":
+        content = new.get("content", "")
+        lines = _normalize_lines(content)
+        added_count = len(lines)
+        # Generar diff con cada línea prefijada con `+`
+        diff_lines = [f"+{line}" for line in lines]
+        text, truncated = _truncate_diff(diff_lines)
+        return Diff(added_count, 0, text, truncated)
+
+    # edit: diff unificado de contenido + frontmatter
+    old_content = _normalize_lines((old or {}).get("content", ""))
+    new_content = _normalize_lines(new.get("content", ""))
+
+    diff_lines = list(difflib.unified_diff(
+        old_content, new_content, fromfile="", tofile="", lineterm="", n=2
+    ))
+
+    # Descartar cabeceras (primeras 2 líneas: --- y +++)
+    if len(diff_lines) > 2:
+        diff_lines = diff_lines[2:]
+
+    # Frontera frontmatter: solo claves que cambiaron
+    fm_diff_lines = _frontmatter_diff(_normalize_frontmatter((old or {}).get("frontmatter")),
+                                      _normalize_frontmatter(new.get("frontmatter")))
+
+    all_diff = diff_lines + fm_diff_lines
+    if not all_diff:
+        return Diff(0, 0, None, False)
+
+    # Contar líneas reales (sin las de contexto @@)
+    added = sum(1 for line in all_diff if line.startswith("+"))
+    removed = sum(1 for line in all_diff if line.startswith("-"))
+
+    # Truncar diff text
+    text, truncated = _truncate_diff(all_diff)
+
+    return Diff(added, removed, text, truncated)
 
 
 def _normalize_lines(text: str) -> list[str]:
@@ -173,14 +180,14 @@ def _frontmatter_diff(old_fm: dict, new_fm: dict) -> list[str]:
         old_val = old_fm.get(key)
         new_val = new_fm.get(key)
 
-        # Formato: `clave: <JSON compacto del valor>`
+        # Formato: `-clave: <JSON compacto del valor>` / `+clave: ...` (sin espacio tras el signo)
         old_line = f"{key}: {json.dumps(old_val, separators=(',', ':'), ensure_ascii=False)}" if old_val is not None else None
         new_line = f"{key}: {json.dumps(new_val, separators=(',', ':'), ensure_ascii=False)}" if new_val is not None else None
 
         if old_line:
-            lines.append(f"- {old_line}")
+            lines.append(f"-{old_line}")
         if new_line:
-            lines.append(f"+ {new_line}")
+            lines.append(f"+{new_line}")
 
     return lines
 
@@ -266,7 +273,7 @@ def _code(text: str) -> str:
 
 def _format_number(n: int) -> str:
     """Formatea número con coma de miles (formato México)."""
-    return f"{n:,}".replace(",", ",")  # Python ya usa coma; ajustar si fuera necesario
+    return f"{n:,}"
 
 
 def _line(entry: Entry, tz: str) -> str:
@@ -289,7 +296,7 @@ def _line(entry: Entry, tz: str) -> str:
     else:
         lines_text = ""
 
-    return f"- **{when}** · {who} · {OP_LABEL[entry.op]}{title} · {where}{mark}{lines_text}"
+    return f"- **{when}** · {who} · {OP_LABEL[entry.op]}{title} · {where}{lines_text}{mark}"
 
 
 def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
@@ -318,12 +325,11 @@ def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
             lines.append(f"    {fence}diff")
             for diff_line in entry.diff_text.split("\n"):
                 lines.append(f"    {diff_line}")
-            truncated_mark = ""
+            lines.append(f"    {fence}")
             if entry.diff_truncated:
-                # Calcular aproximadamente cuántas líneas se muestran vs totales
+                # Mostrar nota de truncado en línea aparte con misma indentación
                 shown = len(entry.diff_text.split("\n"))
-                truncated_mark = f" (diff truncado: se muestran {shown} líneas)"
-            lines.append(f"    {fence}{truncated_mark}")
+                lines.append(f"    _Diff truncado: se muestran {_format_number(shown)} líneas; el conteo es el real._")
 
     lines.append("")
     return "\n".join(lines)
