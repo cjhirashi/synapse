@@ -35,25 +35,33 @@ for (const { label, size, theme } of CASES) {
     await docs.click();
     await expect(page).toHaveURL(/\/docs\/01-conceptos-y-recorrido$/);
     // Portada: el campo `{{atributo:programa}}` se resuelve; el texto de la llave no queda a la vista.
-    const reader = page.locator(".milkdown-view");
+    const reader = page.locator(".docs-doc .milkdown-view");
     await expect(reader).toContainText("Manual de Operación - Synapse");
     await expect(reader).toContainText("Carlos Jiménez");
     await expect(reader).not.toContainText("{{atributo");
-    await expect(page.locator(".docs-content img[src]").first()).toBeVisible();
+    await expect(page.locator(".docs-doc img[src]").first()).toBeVisible();
     await shot(page, `h061-${label}-2-capitulo`);
 
     if (size.width <= 640) {
       // En móvil la lista de capítulos es flotante: el botón del título la abre y elegir un capítulo la cierra.
       await page.getByRole("button", { name: "Mostrar la lista de capítulos" }).click();
-      await expect(page.getByRole("navigation", { name: "Capítulos del manual" })).toBeVisible();
+      await expect(page.getByRole("tree", { name: "Capítulos" })).toBeVisible();
       await shot(page, `h061-${label}-3-lista`);
-      await page.getByRole("link", { name: "03 - Bóvedas" }).click();
-    } else {
-      await page.getByRole("navigation", { name: "Capítulos del manual" }).getByRole("link", { name: "03 - Bóvedas" }).click();
     }
+    await page.getByRole("tree", { name: "Capítulos" }).getByRole("treeitem", { name: "03 - Bóvedas" }).click();
     await expect(page).toHaveURL(/\/docs\/03-bovedas$/);
+    // Barra izquierda (capítulos) y derecha (índice), como en una bóveda; en móvil la derecha flota y empieza oculta.
+    if (size.width > 1023) {
+      const side = (await page.locator(".vault-workspace-side").boundingBox())!;
+      const aside = page.getByRole("complementary", { name: "Índice del documento" });
+      await expect(aside).toBeVisible();
+      await expect(aside.getByRole("button", { name: "Paso a paso: crear una bóveda" })).toBeVisible();
+      const doc = (await page.locator(".docs-doc").boundingBox())!;
+      expect(side.x + side.width).toBeLessThanOrEqual(doc.x + 1);
+      expect(doc.x + doc.width).toBeLessThanOrEqual((await aside.boundingBox())!.x + 1);
+    }
     // Las capturas del capítulo son archivos públicos de Synapse: todas deben cargar (no una caja vacía).
-    const images = page.locator(".docs-content img[src]");
+    const images = page.locator(".docs-doc img[src]");
     await expect(images.first()).toBeVisible();
     const broken = await images.evaluateAll((list) =>
       Promise.all(

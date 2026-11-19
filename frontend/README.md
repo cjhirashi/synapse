@@ -194,10 +194,12 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
 
 ## Documentación en la app (H-061)
 
-- `src/docs/DocsPage.tsx` — rutas `/docs` (lleva al capítulo 01) y `/docs/:slug`: lista de capítulos a la izquierda y lector a la
-  derecha. Reutiliza el marco de la pantalla de usuario (`settings-*` de `settings/settings.css`: barra lateral fija en escritorio,
-  flotante con botón en la franja superior en ≤ 640 px) y `MilkdownView` en Lectura (imágenes con zoom). El riel de bóvedas sigue visible.
-  Pie con «Anterior»/«Siguiente». Estilos propios en `src/docs/docs.css`.
+- `src/docs/DocsPage.tsx` — rutas `/docs` (lleva al capítulo 01) y `/docs/:slug`. Se ve y se comporta como una bóveda de solo lectura:
+  `WorkspaceShell` (franja superior con el botón de la barra y el ícono de libro en cian de la app), barra izquierda con la lista de
+  capítulos (mismas clases del árbol de notas: `note-tree-*`, ancho ajustable en escritorio, flotante en ≤ 640 px), el capítulo al centro
+  (`note-editor`, `MilkdownView` en Lectura con `vaultColor="accent"`, imágenes con zoom, Anterior/Siguiente al pie) y barra derecha con el
+  índice de encabezados (`DocAside` sin `vaultId`: solo la pestaña Índice, sin tareas). La preferencia de la barra derecha es la misma
+  de las bóvedas (`notes/AsideToggle.tsx`). No hay edición, creación ni borrado. Estilos propios mínimos en `src/docs/docs.css`.
 - `src/docs/manual/` — el Manual de Operación empaquetado: `NN-slug.md` (uno por capítulo), `manifest.json` (título, descripción,
   autor/programa/responsable y la nota de origen con su revisión) e `index.ts` (`chapters`, `loadChapter`, `forScreen`). Cada capítulo
   se carga bajo demanda (`import.meta.glob`, un chunk por capítulo). `forScreen` deja el texto listo para pantalla: resuelve los campos
@@ -207,4 +209,4 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
   a `src/docs/manual/` (cuerpo del documento a `NN-slug.md`; frontmatter al manifiesto); al cambiar el manual hay que re-exportar
   y desplegar. Las capturas son archivos públicos de Synapse enlazados por URL, no van en el repo.
 - Pruebas: `docs/manual/manual.test.ts` (manifiesto, capítulos, `forScreen`), `notes/VaultRail.test.tsx` (orden del riel) y
-  `e2e/h061-docs.spec.ts` (botón sobre Usuario, capítulo con imágenes cargadas, lista flotante en celular; claro y oscuro).
+  `e2e/h061-docs.spec.ts` (botón sobre Usuario, capítulo con imágenes cargadas, barras izquierda/centro/derecha en escritorio, lista flotante en celular; claro y oscuro).

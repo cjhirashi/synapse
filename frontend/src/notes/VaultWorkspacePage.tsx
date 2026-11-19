@@ -12,7 +12,7 @@
  *   descarga (P-3).
  */
 import { CSSProperties, KeyboardEvent, lazy, Suspense, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
-import { FileText, FolderOpen, PanelRight, PanelRightClose } from "lucide-react";
+import { FileText, FolderOpen } from "lucide-react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { MeContext } from "../auth/RequireAuth";
 import { whenIdle } from "../editor/deferred/idle";
@@ -29,6 +29,7 @@ import { listMyOpenTasks } from "../tasks/tasksApi";
 import NoteSidebar, { type NoteSidebarHandle } from "./NoteSidebar";
 import TagFilterPanel from "./TagFilterPanel";
 import DocAside from "./DocAside";
+import { AsideToggle, readAsidePreference, writeAsidePreference } from "./AsideToggle";
 import VaultTabs, { TAB_ORDER } from "./VaultTabs";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
@@ -57,25 +58,6 @@ const BitacoraView = lazy(() => import("./BitacoraView"));
 const MensajeView = lazy(() => import("./MensajeView"));
 const SystemDocView = lazy(() => import("./SystemDocView"));
 const TemplateView = lazy(() => import("./TemplateView"));
-
-/** Botón de la barra derecha del documento (índice y tareas ligadas), en el extremo derecho de la franja superior. */
-function AsideToggle({ open, controls, onToggle }: { open: boolean; controls: string; onToggle: () => void }) {
-  const label = open ? "Ocultar el índice y las tareas del documento" : "Mostrar el índice y las tareas del documento";
-  return (
-    <button type="button" className="note-nav-button vault-aside-toggle" data-aside-toggle="" aria-expanded={open} aria-controls={controls} aria-label={label} title={label} onClick={onToggle}>
-      {open ? <PanelRightClose size={16} aria-hidden="true" /> : <PanelRight size={16} aria-hidden="true" />}
-    </button>
-  );
-}
-
-const ASIDE_KEY = "synapse.docAside";
-/** La barra derecha se muestra por defecto en escritorio; si la persona la ocultó, se recuerda. */
-function readAsidePreference(): boolean {
-  try { return window.localStorage.getItem(ASIDE_KEY) !== "0"; } catch { return true; }
-}
-function writeAsidePreference(open: boolean): void {
-  try { window.localStorage.setItem(ASIDE_KEY, open ? "1" : "0"); } catch { /* sin almacenamiento no se recuerda */ }
-}
 
 /** UUID en su forma canónica (minúsculas), la única que forman los ids de bóveda. */
 const CANONICAL_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

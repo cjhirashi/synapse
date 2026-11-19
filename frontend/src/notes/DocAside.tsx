@@ -19,13 +19,14 @@ interface Props {
   floating: boolean;
   /** Contenedor del documento: de ahí se leen los encabezados. */
   content: HTMLElement | null;
-  vaultId: string;
+  /** Sin bóveda (la documentación de la app) no hay tareas ligadas: la barra solo trae el índice. */
+  vaultId?: string;
   noteId: string;
-  notePath: string | null;
+  notePath?: string | null;
   /** Color de la bóveda (variable CSS) para las marcas de selección. */
   accent: string;
   /** Abre la tarea en la pestaña Tareas (desde el botón del detalle; el clic en la tarjeta solo la expande). */
-  onOpenTask: (task: Task) => void;
+  onOpenTask?: (task: Task) => void;
   /** Tras elegir un encabezado en móvil la barra flotante se cierra. */
   onNavigated: () => void;
 }
@@ -34,7 +35,8 @@ interface Props {
  * Barra derecha del documento: pestaña «Índice» (los encabezados, para saltar a ellos) y pestaña «Tareas» (las tareas cuya ruta es este
  * documento). Se oculta con el botón de la franja superior; en móvil es una ventana flotante, cerrada de inicio.
  */
-const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open, floating, accent, content, vaultId, noteId, notePath, onOpenTask, onNavigated }, ref) {
+const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open, floating, accent, content, vaultId, noteId, notePath = null, onOpenTask, onNavigated }, ref) {
+  const tabs = vaultId === undefined ? TABS.slice(0, 1) : TABS;
   const baseId = useId();
   const [tab, setTab] = useState<AsideTab>("indice");
   const [items, setItems] = useState<OutlineItem[]>([]);
@@ -88,7 +90,7 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
 
   // --- Tareas ligadas ---
   useEffect(() => {
-    if (!open) return;
+    if (!open || vaultId === undefined) return;
     let alive = true;
     const load = () => {
       listTasks(vaultId).then((list) => { if (alive) { setTasks(list); setFailed(false); } }).catch(() => { if (alive) setFailed(true); });
@@ -115,6 +117,7 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
 
   /** Cambia el estado desde la tarjeta: se ve al instante y se relee del servidor (un 412 o cualquier fallo la devuelve a su sitio y avisa). */
   async function changeStatus(task: Task, status: TaskStatus) {
+    if (vaultId === undefined) return;
     setNotice(null);
     setTasks((list) => (list ? list.map((t) => (t.id === task.id ? { ...t, status } : t)) : list));
     try {
@@ -130,22 +133,22 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const index = TABS.findIndex((t) => t.id === tab);
+    const index = tabs.findIndex((t) => t.id === tab);
     let next = index;
-    if (event.key === "ArrowRight") next = (index + 1) % TABS.length;
-    else if (event.key === "ArrowLeft") next = (index - 1 + TABS.length) % TABS.length;
+    if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
+    else if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
     else if (event.key === "Home") next = 0;
-    else if (event.key === "End") next = TABS.length - 1;
+    else if (event.key === "End") next = tabs.length - 1;
     else return;
     event.preventDefault();
-    setTab(TABS[next].id);
-    document.getElementById(`${baseId}-${TABS[next].id}`)?.focus();
+    setTab(tabs[next].id);
+    document.getElementById(`${baseId}-${tabs[next].id}`)?.focus();
   }
 
   return (
-    <aside ref={ref} id={id} className="vault-workspace-aside" aria-label="Índice y tareas del documento" data-open={open ? "" : undefined} data-floating={floating ? "" : undefined} style={{ "--vault-icon-color": accent } as CSSProperties}>
+    <aside ref={ref} id={id} className="vault-workspace-aside" aria-label={vaultId === undefined ? "Índice del documento" : "Índice y tareas del documento"} data-open={open ? "" : undefined} data-floating={floating ? "" : undefined} style={{ "--vault-icon-color": accent } as CSSProperties}>
       <div className="vault-tabs vault-tabs--aside" role="tablist" aria-label="Contenido de la barra del documento" onKeyDown={onKeyDown}>
-        {TABS.map(({ id: tabId, label, Icon }) => (
+        {tabs.map(({ id: tabId, label, Icon }) => (
           <button
             key={tabId} id={`${baseId}-${tabId}`} type="button" role="tab" className="vault-tab" aria-selected={tab === tabId} aria-controls={`${baseId}-panel`}
             tabIndex={tab === tabId ? 0 : -1} title={label} onClick={() => setTab(tabId)}
@@ -242,7 +245,7 @@ const DocAside = forwardRef<HTMLDivElement, Props>(function DocAside({ id, open,
                               </ul>
                             </div>
                           )}
-                          <button type="button" className="docaside-open" onClick={() => onOpenTask(task)}>
+                          <button type="button" className="docaside-open" onClick={() => onOpenTask?.(task)}>
                             <ExternalLink size={13} aria-hidden="true" /> Abrir en Tareas
                           </button>
                         </div>
