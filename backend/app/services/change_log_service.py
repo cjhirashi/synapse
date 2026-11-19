@@ -112,7 +112,9 @@ class ChangeLogStore:
                 ChangeLog.vault_id == vault_id, ChangeLog.at >= start.replace(tzinfo=None),
                 ChangeLog.at < end.replace(tzinfo=None)).order_by(ChangeLog.at)).scalars().all()
             return [rules.Entry(
-                r.at.replace(tzinfo=UTC), r.op, r.path, r.prev_path, r.title, r.author_kind, r.author, r.status)
+                r.at.replace(tzinfo=UTC), r.op, r.path, r.prev_path, r.title, r.author_kind, r.author, r.status,
+                r.lines_added, r.lines_removed, r.diff, r.diff_truncated
+            )
                 for r in rows]
 
     def days(self, vault_id: str) -> list[datetime]:
@@ -178,9 +180,10 @@ class ChangeLogService:
     # --- Registro ---
 
     def begin(self, vault_id: str, old: dict | None, new: dict, rev: str | None = None) -> Pending | None:
-        """Registra, antes de escribir, el paso de la nota `old` a `new`. `None` si ese cambio no se registra.
+        """H-062: Registra, antes de escribir, el paso de la nota `old` a `new`. `None` si ese cambio no se registra.
 
         Lanza `StorageUnavailable` si no se puede registrar: entonces la nota no debe escribirse.
+        Calcula el diff con `compute_diff`; si falla, registra sin diff (nunca bloquea).
         """
         op = rules.classify(old, new)
         if op is None:
@@ -188,12 +191,30 @@ class ChangeLogService:
         at = self._now()
         tz = self._owner()[1]
         author = self.author()
+
+        # H-062: Calcular diff (nunca bloquea si falla)
+        diff = None
+        lines_added = None
+        lines_removed = None
+        diff_truncated = None
+        try:
+            diff = rules.compute_diff(old, new)
+            lines_added = diff.added
+            lines_removed = diff.removed
+            diff_text = diff.text
+            diff_truncated = diff.truncated
+        except Exception:  # noqa: BLE001
+            logger.warning("compute_diff failed", exc_info=True)
+            diff_text = None
+
         row = {
             "id": str(uuid.uuid4()), "at": at.replace(tzinfo=None), "owner_id": self._owner_id,
             "vault_id": vault_id, "note_id": new["_id"].split(":")[2], "rev": rev, "op": op,
             "path": new["path"], "prev_path": old["path"] if old and old["path"] != new["path"] else None,
             "title": rules.title_of(new), "author_kind": author.kind, "author": author.name,
             "via": self._via, "status": rules.STATUS_PENDING,
+            "lines_added": lines_added, "lines_removed": lines_removed,
+            "diff": diff_text, "diff_truncated": diff_truncated,
         }
         try:
             entry_id, created = self._store.insert(row)

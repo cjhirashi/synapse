@@ -7,6 +7,7 @@
 
 ## En curso
 
+- [~] H-062 — Bitácora con diff: cada entrada registra líneas agregadas/eliminadas y diff unificado (contenido + frontmatter), truncado a 200 líneas o 20 KiB, números con formato México, cambios anteriores a H-062 mostrados como «sin detalle» → pedido directo de Carlos (2026-11-18), `implemented`
 - [~] H-061 — Manual de Operación dentro de la app: botón «Documentación» en el riel (arriba de Usuario) y página `/docs` con los 14 capítulos exportados de la bóveda Proyectos → pedido directo de Carlos (2026-11-18), `implemented`
 - [~] H-060 — Gestión de usuarios por el administrador: alta con contraseña base `admin1234`, límites por usuario (bóvedas, documentos y almacenamiento por bóveda), baja con 30 días de gracia, reajuste a 30 días al bajar un límite y rol super admin → análisis y plan en la nota de la bóveda Proyectos (`…/Synapse/9 - implentaciones/H-060 - Gestión de usuarios por el administrador`), `implemented` en la rama `feature/h060-gestion-usuarios` (2026-11-18; sin desplegar)
 - [~] H-054 — Plantilla en cada documento: control en los atributos, atributos de plantilla obligatorios (pueden ir vacíos), sin alta de atributos con plantilla, opcionales ocultos que reaparecen, carga de la estructura (aviso si hay contenido) y borrar plantilla = documentos sin plantilla → `implemented` (2026-11-14, pedido de Carlos); falta despliegue y checkpoint visual de Carlos. Detalle en `.harness/memory/history.md`.

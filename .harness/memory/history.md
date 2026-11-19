@@ -1,5 +1,15 @@
 # History — Synapse
 
+## [2026-11-19] H-062: Bitácora con diff de líneas agregadas/eliminadas (en rama)
+
+- **Pedido de Carlos (2026-11-18, CDMX):** la BITACORA debe registrar, como GitHub, qué líneas se agregaron y cuáles se eliminaron en cada cambio, con el detalle dentro del documento diario de BITACORA (no en un listado separado).
+- **Qué cambió:** migración 024 (columnas `lines_added`, `lines_removed`, `diff`, `diff_truncated` en `change_log`, nullable para cambios anteriores); `compute_diff(old, new)` → `Diff` (puro, con difflib) calcula líneas reales (create = todas; delete = todas; rename/move sin cambio = 0/0; edit con unified diff 2 líneas de contexto + frontmatter). Diff unificado truncado a 200 líneas o 20 KiB; conteos siempre reales. `ChangeLogService.begin` guarda los 4 campos; falla en compute_diff nunca bloquea registro (captura excepción, warning, sigue sin diff). `render_day`: cada línea muestra `+N −M` (formato México con coma); bloque de código con diff indentado si existe, truncado marca. Cambios anteriores a H-062 mostrados «sin detalle». Documentación en `skill-bovedas-synapse.md` sección 7 quater.
+- **Tests:** 13 pruebas nuevas de `compute_diff` (create, delete, restore, rename, edit, frontmatter, CRLF, truncado, fallo), 4 de `render_day` (con diff, sin detalle, valla segura, números formateados).
+- **Verificación:** tests en verde. Gate pendiente.
+- **Docs actualizadas:** `backend/app/system_docs/skill-bovedas-synapse.md` (sección carpetas reservadas + H-062), `.harness/backlog.md` (H-062 en En curso), `.harness/memory/history.md` (esta entrada).
+- **Rama:** `feature/h062-bitacora-diff` (commit único).
+- **Modelos:** claude-haiku-4-5 (yo), sin subagentes.
+
 ## [2026-11-12] H-052 (ajustes) y editor: afinado de la interfaz de la bóveda (desplegado)
 
 - **Pedidos de Carlos (2026-11-10 a 2026-11-12, CDMX):** pulir las pestañas de la bóveda y el editor; cambios directos, cada uno desplegado con imagen previa (`pre-h052b` a `pre-h052o`, `pre-wikilink-preview`, `pre-links-newtab`, `pre-img-fullscreen`).

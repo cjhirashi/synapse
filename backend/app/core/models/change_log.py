@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, DateTime, Index, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Index, Integer, String, Text, UniqueConstraint
 
 from app.adapters.database import Base
 
@@ -11,7 +11,12 @@ class ChangeLog(Base):
     (`applied`) o se marca (`failed`): nunca queda un cambio sin registro.
 
     `rev` es la revisión CouchDB resultante; única por (bóveda, nota) para que el reintento de una
-    sincronización no duplique. Las filas de REST nacen sin `rev` (CouchDB la asigna al escribir)."""
+    sincronización no duplique. Las filas de REST nacen sin `rev` (CouchDB la asigna al escribir).
+
+    H-062: campos de diff (nullable para cambios anteriores a esta historia):
+    - `lines_added`, `lines_removed`: conteos reales de líneas
+    - `diff`: texto del diff unificado (truncado a 200 líneas o 20 KiB)
+    - `diff_truncated`: True si se truncó"""
 
     __tablename__ = "change_log"
 
@@ -29,6 +34,10 @@ class ChangeLog(Base):
     author = Column(String, nullable=False)
     via = Column(String, nullable=False)  # rest | sync | system
     status = Column(String, nullable=False, default="pending")  # pending | applied | failed
+    lines_added = Column(Integer, nullable=True)  # H-062
+    lines_removed = Column(Integer, nullable=True)  # H-062
+    diff = Column(Text, nullable=True)  # H-062: unified diff text
+    diff_truncated = Column(Boolean, nullable=True)  # H-062
 
     __table_args__ = (
         UniqueConstraint("vault_id", "note_id", "rev", name="uq_change_log_rev"),

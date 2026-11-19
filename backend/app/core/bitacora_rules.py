@@ -1,4 +1,4 @@
-"""Bitácora automática de la bóveda (H-030b). Reglas puras, sin E/S.
+"""Bitácora automática de la bóveda (H-030b, H-062). Reglas puras, sin E/S.
 
 El servidor registra cada cambio de cada documento (`change_log`) y de ahí genera, en `BITACORA/AAAA-MM/`, una
 nota por día con las entradas en orden. Qué se registra, el nombre de los documentos del día y su texto salen
@@ -6,7 +6,11 @@ de este módulo; escribirlas es de `services/change_log_service.py`.
 
 No se registran (P7): los INDICES automáticos (sí un cambio de su `descripcion`), las escrituras de la propia
 BITACORA, los cambios que solo tocan `fecha_actualizacion` y las lecturas.
+
+H-062: cada cambio registra diff (líneas agregadas/eliminadas y texto unificado truncado).
 """
+import difflib
+import json
 import re
 from datetime import UTC, datetime
 from typing import NamedTuple
@@ -25,6 +29,14 @@ AUTHOR_KIND_LABEL = {"human": "usuario", "agent": "agente", "general": "clave ge
 _DAY_RE = re.compile(r"^(\d{4})-(\d{2})/(\d{4})-(\d{2})-(\d{2})\.md$")
 
 
+class Diff(NamedTuple):
+    """H-062: Diff calculado de un cambio."""
+    added: int               # Líneas agregadas (siempre real, nunca None)
+    removed: int             # Líneas eliminadas (siempre real, nunca None)
+    text: str | None         # Texto del diff unificado (truncado a 200 líneas / 20 KiB; None si no hay)
+    truncated: bool          # True si se truncó
+
+
 class Entry(NamedTuple):
     """Una línea de la bitácora tal como la guarda `change_log`."""
 
@@ -36,6 +48,10 @@ class Entry(NamedTuple):
     author_kind: str           # human | agent | general | system
     author: str
     status: str
+    lines_added: int | None = None      # H-062
+    lines_removed: int | None = None    # H-062
+    diff_text: str | None = None        # H-062
+    diff_truncated: bool | None = None  # H-062
 
 
 def classify(old: dict | None, new: dict) -> str | None:
@@ -64,6 +80,135 @@ def classify(old: dict | None, new: dict) -> str | None:
         return "edit" if op == "edit" and "descripcion" in changed_keys(
             (old or {}).get("frontmatter"), new.get("frontmatter")) else None
     return op
+
+
+def compute_diff(old: dict | None, new: dict) -> Diff:
+    """H-062: Calcula el diff entre dos versiones de una nota.
+
+    - create: todas las líneas del contenido como agregadas.
+    - delete: todas las líneas como eliminadas.
+    - restore: sin líneas (solo cambió deleted_at).
+    - rename/move sin cambio de contenido: 0/0 y text None.
+    - edit: diff unificado del contenido + cambios de frontmatter.
+    - Normaliza CRLF → LF para evitar falsos cambios.
+    - Trunca a 200 líneas o 20 KiB (lo que ocurra primero); conteos reales siempre.
+    - Si falla el cálculo, retorna 0/0 (nunca lanza excepción).
+    """
+    try:
+        op = classify(old, new)
+
+        # restore: solo cambió deleted_at
+        if op == "restore":
+            return Diff(0, 0, None, False)
+
+        # rename/move sin cambio de contenido
+        if op in ("rename", "move"):
+            if (old or {}).get("content") == new.get("content") and \
+               not changed_keys((old or {}).get("frontmatter"), new.get("frontmatter")):
+                return Diff(0, 0, None, False)
+
+        # delete: todas las líneas como eliminadas
+        if op == "delete":
+            content = (old or {}).get("content", "")
+            lines = _normalize_lines(content)
+            return Diff(0, len(lines), None, False)
+
+        # create: todas las líneas como agregadas
+        if op == "create":
+            content = new.get("content", "")
+            lines = _normalize_lines(content)
+            return Diff(len(lines), 0, None, False)
+
+        # edit: diff unificado de contenido + frontmatter
+        old_content = _normalize_lines((old or {}).get("content", ""))
+        new_content = _normalize_lines(new.get("content", ""))
+
+        diff_lines = list(difflib.unified_diff(
+            old_content, new_content, lineterm="", n=2
+        ))
+
+        # Frontera frontmatter: solo claves que cambiaron
+        fm_diff_lines = _frontmatter_diff(_normalize_frontmatter((old or {}).get("frontmatter")),
+                                          _normalize_frontmatter(new.get("frontmatter")))
+
+        all_diff = diff_lines + fm_diff_lines
+        if not all_diff:
+            return Diff(0, 0, None, False)
+
+        # Contar líneas reales (sin las de contexto @@ y los --- +++)
+        added = sum(1 for line in all_diff if line.startswith("+") and not line.startswith("+++"))
+        removed = sum(1 for line in all_diff if line.startswith("-") and not line.startswith("---"))
+
+        # Truncar diff text
+        text, truncated = _truncate_diff(all_diff)
+
+        return Diff(added, removed, text, truncated)
+
+    except Exception:
+        # Nunca bloquea el registro si el cálculo falla
+        return Diff(0, 0, None, False)
+
+
+def _normalize_lines(text: str) -> list[str]:
+    """Normaliza saltos de línea CRLF → LF y divide en líneas."""
+    text = text.replace("\r\n", "\n").rstrip("\n")
+    return text.split("\n") if text else []
+
+
+def _normalize_frontmatter(fm: dict | None) -> dict:
+    """Elimina fecha_actualizacion como ya hace classify."""
+    if not fm:
+        return {}
+    return {k: v for k, v in fm.items() if k != "fecha_actualizacion"}
+
+
+def _frontmatter_diff(old_fm: dict, new_fm: dict) -> list[str]:
+    """Genera líneas de diff para cambios de frontmatter (solo claves que cambiaron)."""
+    changes = changed_keys(old_fm, new_fm)
+    if not changes:
+        return []
+
+    lines = []
+    for key in sorted(changes):
+        old_val = old_fm.get(key)
+        new_val = new_fm.get(key)
+
+        # Formato: `clave: <JSON compacto del valor>`
+        old_line = f"{key}: {json.dumps(old_val, separators=(',', ':'), ensure_ascii=False)}" if old_val is not None else None
+        new_line = f"{key}: {json.dumps(new_val, separators=(',', ':'), ensure_ascii=False)}" if new_val is not None else None
+
+        if old_line:
+            lines.append(f"- {old_line}")
+        if new_line:
+            lines.append(f"+ {new_line}")
+
+    return lines
+
+
+def _truncate_diff(diff_lines: list[str]) -> tuple[str | None, bool]:
+    """Trunca diff a 200 líneas o 20 KiB; retorna (texto, fue_truncado)."""
+    MAX_LINES = 200
+    MAX_BYTES = 20000
+
+    truncated = False
+    result_lines = []
+    byte_count = 0
+
+    for i, line in enumerate(diff_lines):
+        if i >= MAX_LINES:
+            truncated = True
+            break
+        byte_count += len(line.encode("utf-8")) + 1  # +1 para newline
+        if byte_count > MAX_BYTES:
+            truncated = True
+            break
+        result_lines.append(line)
+
+    if not result_lines:
+        return None, False
+
+    text = "\n".join(result_lines)
+    return text, truncated
 
 
 def title_of(doc: dict) -> str:
@@ -119,7 +264,13 @@ def _code(text: str) -> str:
     return f"{fence}{pad}{text}{pad}{fence}"
 
 
+def _format_number(n: int) -> str:
+    """Formatea número con coma de miles (formato México)."""
+    return f"{n:,}".replace(",", ",")  # Python ya usa coma; ajustar si fuera necesario
+
+
 def _line(entry: Entry, tz: str) -> str:
+    """H-062: Incluye conteo de líneas si está disponible."""
     when = entry.at.astimezone(zone(tz)).strftime("%H:%M:%S")
     who = f"{entry.author} ({AUTHOR_KIND_LABEL.get(entry.author_kind, entry.author_kind)})"
     if entry.op in ("rename", "move") and entry.prev_path:
@@ -128,11 +279,25 @@ def _line(entry: Entry, tz: str) -> str:
         where = _code(entry.path)
     title = f" «{entry.title}»" if entry.title else ""
     mark = {STATUS_PENDING: " [sin confirmar]", STATUS_FAILED: " [no se aplicó]"}.get(entry.status, "")
-    return f"- **{when}** · {who} · {OP_LABEL[entry.op]}{title} · {where}{mark}"
+
+    # H-062: Mostrar conteo de líneas si está disponible
+    if entry.lines_added is not None and entry.lines_removed is not None:
+        lines_text = f" · +{_format_number(entry.lines_added)} −{_format_number(entry.lines_removed)}"
+    elif entry.lines_added is None and entry.lines_removed is None:
+        # Cambio anterior a H-062: sin detalle
+        lines_text = " · sin detalle"
+    else:
+        lines_text = ""
+
+    return f"- **{when}** · {who} · {OP_LABEL[entry.op]}{title} · {where}{mark}{lines_text}"
 
 
 def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
-    """Cuerpo Markdown del documento de un día: las entradas en orden cronológico."""
+    """H-062: Cuerpo Markdown del documento de un día con diff.
+
+    Cada línea de cambio muestra +N −M (si hay conteo). Debajo, bloque de código con el diff,
+    marcando truncado si fuera necesario.
+    """
     head = [
         f"# Bitácora del {date_iso}",
         "",
@@ -143,7 +308,31 @@ def render_day(date_iso: str, tz: str, entries: list[Entry]) -> str:
     ordered = sorted(entries, key=lambda e: e.at)
     if not ordered:
         return "\n".join(head + ["Sin cambios registrados.", ""])
-    return "\n".join(head + [f"{len(ordered)} {'cambio' if len(ordered) == 1 else 'cambios'}.", ""] + [_line(e, tz) for e in ordered] + [""])
+
+    lines = head + [f"{len(ordered)} {'cambio' if len(ordered) == 1 else 'cambios'}.", ""]
+    for entry in ordered:
+        lines.append(_line(entry, tz))
+        # H-062: Bloque de diff si está disponible
+        if entry.diff_text:
+            fence = _safe_fence(entry.diff_text)
+            lines.append(f"    {fence}diff")
+            for diff_line in entry.diff_text.split("\n"):
+                lines.append(f"    {diff_line}")
+            truncated_mark = ""
+            if entry.diff_truncated:
+                # Calcular aproximadamente cuántas líneas se muestran vs totales
+                shown = len(entry.diff_text.split("\n"))
+                truncated_mark = f" (diff truncado: se muestran {shown} líneas)"
+            lines.append(f"    {fence}{truncated_mark}")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _safe_fence(text: str) -> str:
+    """Genera una valla de backticks más larga que la mayor racha en el texto."""
+    longest = max((len(run) for run in re.findall(r"`+", text)), default=0)
+    return "`" * (longest + 3)  # +3 para asegurar
 
 
 def day_frontmatter(date_iso: str, tz: str) -> dict:
