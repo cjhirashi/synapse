@@ -15,7 +15,7 @@ from app.core.errors import (
 from app.core.problems import problem_responses
 from app.core.schemas import PublicationCheckOut, PublicationExpiryIn, PublicationListOut, PublicationOut, PublishCreateIn, PublishIn, TokenPayload
 from app.routers.auth import SESSION_ERRORS
-from app.routers.notes import NoteId, get_note_content_service
+from app.routers.notes import NoteId, get_own_note_content_service
 from app.routers.vaults import VaultId
 from app.services.note_content_service import NoteContentService
 from app.services.publication_service import PublicationService
@@ -37,7 +37,7 @@ def get_publication_status(
     vault_id: VaultId,
     note_id: NoteId,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Consulta el estado de publicación de una nota. Solo la persona (sesión)."""
@@ -58,7 +58,7 @@ def publish_note(
     note_id: NoteId,
     body: PublishCreateIn,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Publica una nota. Solo la persona (sesión)."""
@@ -78,7 +78,7 @@ def republish_note(
     note_id: NoteId,
     body: PublishIn,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Republicar una nota. Solo la persona (sesión)."""
@@ -96,7 +96,7 @@ def unpublish_note(
     vault_id: VaultId,
     note_id: NoteId,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Despublica una nota. Solo la persona (sesión)."""
@@ -116,7 +116,7 @@ def set_publication_expiry(
     note_id: NoteId,
     body: PublicationExpiryIn,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Fija o quita la fecha de vencimiento de una publicación. Solo la persona (sesión)."""
@@ -134,7 +134,7 @@ def check_publication_resources(
     note_id: NoteId,
     body: PublishIn,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Comprueba los recursos de una publicación potencial. Solo la persona (sesión)."""
@@ -162,7 +162,7 @@ vault_router = APIRouter(
 def list_vault_publications(
     vault_id: VaultId,
     user: TokenPayload = Depends(get_current_user),
-    service: NoteContentService = Depends(get_note_content_service),
+    service: NoteContentService = Depends(get_own_note_content_service),
     db: Session = Depends(get_db),
 ):
     """Lista las publicaciones de la bóveda del usuario. Solo la persona (sesión)."""

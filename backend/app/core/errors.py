@@ -371,6 +371,16 @@ class AgentAccessDenied(DomainError):
     detail = "This agent may not write there"
 
 
+class ShareForbidden(DomainError):
+    """Un miembro invitado intenta lo que su acceso a la bóveda compartida no permite (H-064 F3): escribir donde solo lee o
+    mover una nota. Lo que no puede ni leer responde 404 como si no existiera; el `detail` es fijo y no revela carpetas."""
+
+    slug = "share-forbidden"
+    title = "Shared vault access forbidden"
+    status = 403
+    detail = "Your access to this shared vault does not allow this operation"
+
+
 class AgentOwnsSkills(DomainError):
     """Quitar o suspender a un gestor que todavía es propietario de skills activas (H-041 E4): una skill activa nunca
     queda sin propietario. Antes hay que resolver cada una (asignarla a un invitado, eliminarla o archivarla)."""

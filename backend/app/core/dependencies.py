@@ -1,12 +1,14 @@
 import re
 from datetime import datetime, timedelta
+from typing import Annotated
 
 import jwt
-from fastapi import Depends, Request
+from fastapi import Depends, Path, Request
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from app.adapters.agent_key_repository import AgentKeyRepository
+from app.adapters.vault_member_repository import VaultMemberRepository
 from app.adapters.database import get_db
 from app.core.config import settings
 from app.core.errors import (
@@ -15,6 +17,7 @@ from app.core.errors import (
 from app.core.limits import ADMIN_ROLES, ROLE_SUPER_ADMIN
 from app.core.models.user import User
 from app.core.schemas import TokenPayload
+from app.core.vault_context import VaultContext, member_context, owner_context
 from app.services.agent_key_service import AgentKeyService
 
 # `exp` sintético del principal resuelto desde una key (R-4): no se valida downstream (sólo se
@@ -126,3 +129,21 @@ def require_password_changed(
     if user.must_change_password:
         raise PasswordChangeRequired()
     return current_user
+
+
+# Mismo contrato que `VaultId` de routers/vaults.py: un id que no es UUID da 404, no 422, y el contrato anuncia `format: uuid`.
+VaultIdPath = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
+
+
+def get_vault_context(vault_id: VaultIdPath, principal: TokenPayload = Depends(get_current_principal), db: Session = Depends(get_db)) -> VaultContext:
+    """Dónde y con qué permisos actúa quien pregunta sobre la bóveda `vault_id` de la URL.
+
+    Un miembro activo de esa bóveda (sesión humana) trabaja sobre la base de su propietario con sus concesiones; todos los
+    demás (el propietario, sus claves de agente y cualquier otra persona) sobre la base de su propia sesión, donde una
+    bóveda ajena no existe. Una clave de agente nunca entra como miembro.
+    """
+    if not principal.via_key:
+        found = VaultMemberRepository(db).active_access(principal.sub, vault_id)
+        if found is not None:
+            return member_context(found[0], principal.sub, found[1])
+    return owner_context(principal.sub)

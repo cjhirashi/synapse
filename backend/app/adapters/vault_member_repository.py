@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.core.models.user import User
 from app.core.models.vault_member import VaultMember, VaultMemberGrant
+from app.core.vault_access import Grant, MemberAccess
 
 
 class VaultMemberRepository:
@@ -67,3 +68,13 @@ class VaultMemberRepository:
         if not user_ids:
             return {}
         return {u.id: u for u in self._db.query(User).filter(User.id.in_(user_ids)).all()}
+
+    def active_access(self, user_id: str, vault_id: str) -> tuple[str, MemberAccess] | None:
+        """`(owner_id, concesiones)` si `user_id` es miembro activo de la bóveda y su propietario sigue activo; si no, `None`."""
+        row = self._db.query(VaultMember).join(User, User.id == VaultMember.owner_id).filter(
+            VaultMember.user_id == user_id, VaultMember.vault_id == vault_id, VaultMember.status == "activo",
+            User.is_active.is_(True), User.deleted_at.is_(None)).first()
+        if row is None:
+            return None
+        grants = self.grants_by_member([row.id]).get(row.id, [])
+        return row.owner_id, MemberAccess(tuple(Grant(g.folder, g.level) for g in grants))

@@ -852,6 +852,26 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 
 **Avisos:** tipo `vault_share` (apagable en `PUT /notifications/preferences`), con `url` `/compartidas`. Invitar y cancelar o revocar avisan al invitado; aceptar, rechazar y salir, al propietario. El título lleva el nombre de la persona y de la bóveda, nunca carpetas ni notas.
 
+## Notas de una bóveda compartida (H-064 F3)
+
+Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). El resto de rutas de la bóveda (tareas, archivos, carpetas, publicaciones, registro de agentes) no se abren a invitados todavía y responden 404.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /notes` (también `prefix=` y `deleted=true`) | solo las notas bajo sus carpetas | igual | no aparecen; una carpeta sin acceso da lista vacía |
+| `GET /notes/{id}` | 200 | 200 | 404 `note-not-found`, idéntico a una nota inexistente |
+| `POST /notes` | 403 `share-forbidden` | 201 solo bajo una carpeta con escritura | 403 `share-forbidden` |
+| `PATCH` (contenido o propiedades), `DELETE`, `…/restore` | 403 `share-forbidden` | permitido | 404 `note-not-found` |
+| `PATCH` con `path` (mover o renombrar), `POST …/pdf` | 403 `share-forbidden` | 403 `share-forbidden` | 404 / 403 |
+
+**Orden de las comprobaciones:** el permiso se evalúa antes que `If-Match` y que cualquier regla de contenido; así un `If-Match` errado nunca distingue una nota oculta (404) de una visible (403 o 412).
+
+**Zonas:** `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` y `BITACORA` no se ven ni se escriben nunca, aunque la concesión sea `*`; `PLANTILLAS` la lee cualquier miembro y no la escribe nadie. Una nota suelta en la raíz solo entra con `*`. Las carpetas se comparan por segmentos y con la equivalencia de rutas del proyecto (mayúsculas y compatibilidad Unicode).
+
+**Paginación:** el servidor examina como máximo 2,000 documentos por petición para llenar una página; si no alcanza puede devolver menos de `limit` notas con `next_cursor` para seguir. Lo no legible nunca se cuenta ni se re-sirve.
+
+**Propietario:** lo que crea un miembro cuenta contra los límites del propietario (`document-limit-reached` incluido), y en la bitácora consta como autor el miembro. Si el propietario se desactiva o se da de baja, el acceso del miembro se corta en la siguiente petición; revocar o cambiar concesiones también es inmediato.
+
 ## Perfil de agente (H-053)
 
 Nombre visible y foto de cada agente de la persona, para identificar sus huellas en la app (bitácora, quién crea una tarea y a quién se asigna). El `agent_id` de la API key sigue siendo el identificador técnico: el perfil solo cambia cómo se muestra. **Solo sesión humana** (cookie): una API key de agente no los lee ni los edita (401). Un `agent_id` existe para esta persona si alguna de sus API keys (vigente o revocada) lo lleva; otro responde 404 `agent-profile-not-found`. Cada persona ve solo los suyos.
