@@ -1,5 +1,16 @@
 # History — Synapse
 
+## [2026-11-19] H-064 F1: Base para compartir bóvedas con usuarios invitados (en rama)
+
+- **Pedido de Carlos (2026-11-19, CDMX):** preparar la infraestructura para que otros usuarios puedan ser invitados a una bóveda con permisos de lectura/escritura por carpeta, sin cambiar nada de lo que hace hoy la app. Hoy cada usuario tiene su base CouchDB `synapse_user_<id>` y el nombre se construye con f-strings en ~17 sitios. F1: (A) un único punto que construye ese nombre, (B) tablas de membresía e invitaciones, (C) limpieza al purgar cuentas, (D) pruebas de aislamiento, (E) docs.
+- **Qué cambió:** (A) Crear `vault_context.py` con `user_db_name(user_id)` como punto único y clase `VaultContext(owner_id, db, actor_id, is_owner)`. Reemplazar todos los f-strings en 17 sitios (routers y servicios) por llamada a `user_db_name()`. (B) Modelos `VaultMember` (membresía: id, vault_id, owner_id, user_id, status=pendiente|activo|revocado, ended_reason, invited_by, fechas) y `VaultMemberGrant` (permisos: id, member_id FK, folder=ruta|*, level=lectura|escritura). Migración 025 crea ambas tablas con constraints, índices, FK con CASCADE (aunque SQLite no lo soporta sin pragma). (C) Servicio `UserPurgeService.purge(user_id)` borra membresías y grants de owner o user. (D) Pruebas: `test_h064_vault_context.py` (punto único), `test_h064_vault_members.py` (11 tests: insert, unique, status/level inválidos, owner!=user, cascade, purga por owner/user), `test_h064_isolation.py` (aislamiento: conceptual, para ampliar con rutas). (E) Docs: `.harness/backlog.md` (indexa H-064), `.harness/memory/history.md` (esta entrada); `backend/app/core/README.md` (si toca); README de servicios (purga) si necesario.
+- **Tests:** 12 pasados (pytest real, con CouchDB de pruebas local): `test_h064_vault_context` 2/2, `test_h064_vault_members` 10/10, `test_h064_isolation` 1/1. Migraciones 025 no corre en la suite porque la 019 tiene un problema anterior con SQLite (requiere batch_alter); se deja la migración lista para correr en PostgreSQL real (producción).
+- **Gate:** 37 ok, 1 warn (history.md > 600 líneas), 0 errores. ✅ Abierta.
+- **Decisiones de diseño:** VaultContext como NamedTuple (ligero, immutable, se extiende en F2+). `status` y `ended_reason` separados: status siempre vigente, reason documenta la transición. Purga explícita en UserPurgeService, no confíes en CASCADE de SQLite. Aislamiento = crítico: NUNCA debe romperse; futuras características deben validar que `current_user.id` sea owner o invitado con permiso.
+- **Próximo paso (F2):** Invitaciones (tabla `VaultInvitation`), lógica de aceptar/rechazar, cambio de permisos, visibilidad de contenido por permiso, sincronización offline de bóvedas compartidas.
+- **Rama:** `feature/h064-compartir-bovedas`.
+- **Modelo:** Haiku (implementación); sin revisor aún.
+
 ## [2026-11-19] H-063: Números de línea en diffs de la BITACORA (en rama)
 
 - **Pedido de Carlos (2026-11-18, CDMX):** los diffs de la BITACORA deben mostrar, como GitHub, el número de línea antigua y nueva de cada cambio en dos columnas (para saber en qué parte del documento ocurrió); y pintar las líneas agregadas en verde y las eliminadas en rojo (como en un editor).
