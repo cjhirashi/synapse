@@ -602,21 +602,22 @@ no canónico se rechaza (`skill:name`, `skill:path`), porque el cliente ya lo es
 
 **Propietario, invitados y gestores de las skills (H-041 E3).** Una *skill de bóveda* es una nota `AG - SKILLS/skill-<nombre>.md`
 (plana, no de sistema); lo anterior a H-041 en subcarpetas no cuenta. Un **gestor** es un agente con registro válido y `estado: activo`
-en `AG - AGENTES`. Atributos: `propietario` (id del agente; ausente solo si la skill está archivada), `agentes` (invitados: ids de
-gestores, sin repetir, máx. 20, sin el propietario; ausente = `[]`) y `estado: archivado` (inactiva: sin propietario ni invitados).
+en `AG - AGENTES`. Atributos: `propietario` (**lista** de ids de agente —copropiedad—, sin repetir, máx. 10, todos editan y sincronizan; el texto de un id
+antiguo se acepta como lista de uno y se guarda como lista al escribir la skill; ausente solo si la skill está archivada), `agentes` (invitados: ids de
+gestores, sin repetir, máx. 20, sin ningún propietario; ausente = `[]`) y `estado: archivado` (inactiva: sin propietario ni invitados).
 «Usar» una skill NO lo valida el servidor (no oculta ni restringe lecturas): lo decide cada agente leyendo `sistema`, `propietario`,
-`agentes` y `estado` del listado. **El servidor sella `propietario` al crear**: es el agente de la clave (en sombra, el que declara
-`X-Agent-Id` una clave general); lo que el cliente envíe se ignora. Un agente que edita sin reenviarlo lo conserva; cambiarlo es una
-violación. Una nota que un agente mueve *hacia* `AG - SKILLS` cuenta como creación (queda de propietario). **Siempre activas (422):**
-forma y coherencia (`skill:propietario`: activa sin propietario o con uno mal formado; `skill:agentes`: invitados mal formados,
-repetidos, de más de 20 o que incluyen al propietario; `skill:estado`: archivada con propietario o invitados), y que la **sesión
+`agentes` y `estado` del listado. **El servidor sella `propietario` al crear** como `[agente]`: es el agente de la clave (en sombra, el que declara
+`X-Agent-Id` una clave general); lo que el cliente envíe se ignora. Un agente que edita sin reenviarlo lo conserva; cambiar la lista
+(añadir o quitar copropietarios) es una violación: solo la sesión humana la cambia. Una nota que un agente mueve *hacia* `AG - SKILLS` cuenta como creación (queda de propietario). **Siempre activas (422):**
+forma y coherencia (`skill:propietario`: activa sin propietario, o lista vacía, de más de 10, repetida o mal formada; `skill:agentes`: invitados mal formados,
+repetidos, de más de 20 o que incluyen a un propietario; `skill:estado`: archivada con propietario o invitados), y que la **sesión
 humana** solo introduzca gestores como propietario o invitados (lo que ya estaba no se vuelve a exigir al editar otra cosa).
 Crear sin propietario resoluble (una clave general sin identidad) también da `skill:propietario` en sombra: no se puede registrar y
 permitir una skill sin dueño. **Bajo `AGENT_ACCESS_MODE`:** un agente que no es gestor (`not-registered`, `suspended`, `general-key`),
-que edita, mueve, borra o restaura una skill que no es suya (`skill-not-owner`), que cambia el propietario
+que edita, mueve, borra o restaura una skill de la que no es uno de los propietarios (`skill-not-owner`), que cambia la lista de propietarios
 (`skill-owner-immutable`) o que invita a quien no es gestor (`skill-invitee-not-manager`). En sombra se registra en
 `agent_access_log` (`op` = `skill-create|update|move|delete|restore`) y se permite; con `enforce` responde `403 agent-access-denied` con un `detail`
-fijo por motivo («Only the owner of a skill may edit or delete it», «The owner of a skill is set by the system and an agent cannot
+fijo por motivo («Only the owner of a skill may edit or delete it» (se aplica a cada propietario de la lista), «The owner of a skill is set by the system and an agent cannot
 change it», «Only managers of the vault can be invited to a skill»). La sesión humana no se evalúa por agente. Los gestores escriben
 en `AG - SKILLS` (antes solo en `AG - SKILLS/<su-id>/`). En `/sync` no se puede sellar la revisión: una clave de agente debe traer el
 propietario correcto. Mover una carpeta hacia `AG - SKILLS` exige que sus notas ya sean skills válidas (`skill:propietario`).
@@ -625,15 +626,15 @@ Especificación compartida de la forma: `backend/tests/fixtures/skills_reglas.js
 **El gestor que sale y las skills archivadas (H-041 E4).** Hoy un gestor se quita borrando su ficha `AG - AGENTES/<id>.md` o poniéndola
 `suspendido`, desde `/settings/agent-access` (`DELETE` y `PUT /vaults/{id}/agent-access/{id}`, solo sesión humana) o editando la nota a
 mano; los agentes no pueden (`registry-readonly`). **Una skill activa nunca queda sin propietario:** mientras el agente sea
-propietario de skills activas, esas tres vías responden `409 agent-owns-skills` (por `/sync`, `ag-agentes:owns-skills`) y no cambian nada.
-`GET /vaults/{id}/skills` lista las skills (`note_id`, `path`, `titulo`, `propietario`, `agentes`, `estado`; sin documentos de sistema ni
+**único** propietario de skills activas (de las que comparte con otros solo se le quita de `propietario` al salir), esas tres vías responden `409 agent-owns-skills` (por `/sync`, `ag-agentes:owns-skills`) y no cambian nada.
+`GET /vaults/{id}/skills` lista las skills (`note_id`, `path`, `titulo`, `propietario` —el primero—, `propietarios` —todos—, `agentes`, `estado`; sin documentos de sistema ni
 INDICE). `POST /vaults/{id}/agent-access/{agent_id}/leave` (solo sesión humana) con `{modo: "quitar"|"suspender", skills: [{note_id,
 accion: "assign"|"delete"|"archive", a?}]}` resuelve cada skill activa del agente: con invitados, `assign` (a uno de ellos) o `delete`; sin
 invitados, `delete` o `archive`; falta alguna → `409 agent-owns-skills` sin tocar nada; una resolución no permitida → `422` con
 `#/skills/<i>/accion|a|note_id` (`leave:accion`, `leave:a`, `leave:skill`). Después lo quita de `agentes` de las skills que lo invitan y
 quita o suspende su registro; responde `{asignadas, eliminadas, archivadas, invitaciones_quitadas}`. **Archivada:** `estado: archivado`,
 sin propietario ni invitados, en su carpeta; no la purga nada. `POST /vaults/{id}/skills/{note_id}/assign` `{propietario}` (solo sesión
-humana) la asigna a un gestor activo (`422 skill:propietario` si no lo es): el nuevo propietario sale de `agentes` si estaba y una
+humana) la asigna a un gestor activo (`422 skill:propietario` si no lo es): el nuevo propietario sale de `agentes` si estaba, pasa a ser el único propietario (`[id]`) y una
 archivada vuelve a `en revisión`. **Quien deja de ser gestor por cualquier vía** (también al editar su ficha) se quita de `agentes` de todas
 las skills tras la escritura del registro (idempotente). Cada cambio consta en la BITACORA a nombre del usuario.
 

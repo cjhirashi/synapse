@@ -485,7 +485,7 @@ class NoteContentService:
     def _skill_rules(self, vault_id: str, op: str, old_doc: dict | None, new_path: str, frontmatter: dict | None) -> dict | None:
         """H-041 E3: propietario, invitados y estado de una skill de `AG - SKILLS`. Devuelve los metadatos a guardar.
 
-        *Siempre:* el propietario lo fija el servidor (el agente que crea; un agente no lo cambia), la forma y la
+        *Siempre:* los propietarios (lista) los fija el servidor al crear (`[agente que crea]`; un agente no los cambia), la forma y la
         coherencia (`skill:*`) y que el usuario solo introduzca gestores. *Bajo el interruptor de H-030:* que un agente
         toque una skill que no es suya o invite a quien no es gestor (`AgentAccessGuard.check_skill`).
         """
@@ -506,6 +506,7 @@ class NoteContentService:
                 fm = skill_rules.keep_owner(fm, old_fm) if was else skill_rules.seal_owner(fm, who)
             if (code := skill_rules.check_shape(fm)) is not None:
                 raise _field_error("frontmatter", code)
+            fm = skill_rules.normalize_owner(fm)
             if not agentic and (code := skill_rules.check_people(fm, read_registry(self._port, self._db, vault_id), old_fm)) is not None:
                 raise _field_error("frontmatter", code)
         if agentic and self._guard is not None:

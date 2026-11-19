@@ -17,7 +17,7 @@ beforeEach(() => {
 test("con propietario, la skill nace activa de ese gestor; sin él, archivada y sin propietario", async () => {
   const owned = await store.create(VAULT, "Gestión de variables", "AG - SKILLS", undefined, { propietario: "aira" });
   expect(owned.path).toBe("AG - SKILLS/skill-gestion-de-variables.md");
-  expect(owned.frontmatter).toMatchObject({ propietario: "aira" });
+  expect(owned.frontmatter).toMatchObject({ propietario: ["aira"] });
   expect(owned.frontmatter.estado).not.toBe("archivado");
   const orphan = await store.create(VAULT, "Sin dueño", "AG - SKILLS");
   expect(orphan.frontmatter).toMatchObject({ estado: "archivado" });
@@ -27,6 +27,13 @@ test("con propietario, la skill nace activa de ese gestor; sin él, archivada y 
   const empty = await store.create(VAULT, "Vacío", "AG - SKILLS", { name: "skill", content: "", atributos: [{ nombre: "propietario", tipo: "texto" }, { nombre: "agentes", tipo: "lista", valor: [] }] });
   expect(empty.frontmatter).toMatchObject({ estado: "archivado", plantilla: "skill" });
   expect(empty.frontmatter).not.toHaveProperty("propietario");
+  // Con el atributo `lista` de la plantilla vigente, sin valor, tampoco hay propietario.
+  const emptyList = await store.create(VAULT, "Vacío lista", "AG - SKILLS", { name: "skill", content: "", atributos: [{ nombre: "propietario", tipo: "lista" }, { nombre: "agentes", tipo: "lista", valor: [] }] });
+  expect(emptyList.frontmatter).not.toHaveProperty("propietario");
+  expect(emptyList.frontmatter).toMatchObject({ estado: "archivado" });
+  // Varios propietarios se conservan como lista.
+  const shared = await store.create(VAULT, "Compartida", "AG - SKILLS", undefined, { propietario: ["paulina", "fedora"] });
+  expect(shared.frontmatter).toMatchObject({ propietario: ["paulina", "fedora"] });
 });
 
 test("una plantilla de skill con propietario y agentes da una skill válida", async () => {
@@ -35,7 +42,7 @@ test("una plantilla de skill con propietario y agentes da una skill válida", as
     { name: "skill", content: "# <Nombre>", atributos: [{ nombre: "propietario", tipo: "texto" }, { nombre: "agentes", tipo: "lista", valor: [] }, { nombre: "version", tipo: "texto", valor: "0.1.0" }] },
     { propietario: "emma" },
   );
-  expect(note.frontmatter).toMatchObject({ propietario: "emma", agentes: [], version: "0.1.0", plantilla: "skill" });
+  expect(note.frontmatter).toMatchObject({ propietario: ["emma"], agentes: [], version: "0.1.0", plantilla: "skill" });
 });
 
 test("metadatos incoherentes se rechazan antes de escribir", async () => {

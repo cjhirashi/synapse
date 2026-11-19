@@ -131,7 +131,7 @@ def _skills(port: VaultPort, user: TokenPayload, with_log: bool = False) -> Skil
 def _skill_out(skill: SkillInfo) -> SkillOut:
     return SkillOut(
         note_id=skill.note_id, path=skill.path, titulo=skill.titulo, propietario=skill.propietario,
-        agentes=skill.agentes, estado=skill.estado)
+        propietarios=skill.propietarios, agentes=skill.agentes, estado=skill.estado)
 
 
 @router.get(

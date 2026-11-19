@@ -11,6 +11,7 @@ Herramientas de operación que se ejecutan **dentro del contenedor** (`docker ex
 | `create_agent_keys.py` | Crea las claves por agente (`op-<agente>`) y escribe sus valores en un archivo 600; no sobrescribe uno existente |
 | `purge_mensajes.py` | Purga las conversaciones **cerradas** de `AG - MENSAJES` con más de 15 días (volcado a JSONL que se conserva 30 días); la tarea diaria en el crontab del host está documentada en `docs/API.md` |
 | `migrate_attributes.py` | Migración de los atributos de las notas al formato de metadatos de H-029, con informe en seco |
+| `migrate_skill_owners.py` | `propietario` de las skills pasa de texto a lista y, con `--coowner VAULT:PROP=AGENTE`, añade copropietarios; informe en seco por defecto, `--apply` escribe |
 | `migrate_indices.py` | Migración de producción a los ÍNDICES automáticos (H-031): lleva a la papelera las notas indicadas y crea el ÍNDICE de cada carpeta |
 | `h030b_migrate.py` | Lleva las carpetas de bitácora y plantillas existentes a las reservadas `BITACORA` y `PLANTILLAS` y reescribe los wikilinks (H-030b) |
 | `h042_migrate.py` | Pone al día los datos del buzón `AG - MENSAJES` de todas las bóvedas vivas de todos los usuarios al formato de conversaciones (H-042) |

@@ -57,6 +57,8 @@ export interface SkillInfo {
   path: string;
   titulo: string | null;
   propietario: string | null;
+  /** Todos los propietarios (copropiedad); `propietario` es el primero. */
+  propietarios?: string[];
   agentes: string[];
   estado: string | null;
 }

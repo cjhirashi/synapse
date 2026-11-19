@@ -2,10 +2,12 @@
 
 Una skill es una nota `AG - SKILLS/skill-<nombre>.md` (plana, no de sistema). Sus atributos:
 
-- `propietario`: id del agente (gestor de la bóveda) que la creó; único agente que la edita y la borra. Lo fija el
-  servidor al crear (el agente de la clave); nadie declara a otro. Falta solo si `estado` es `archivado`.
+- `propietario`: lista de ids de agente (gestores de la bóveda) que la poseen; todos la editan, mueven y borran, y la
+  usan. Al crear lo fija el servidor (`[agente de la clave]`); un agente no cambia la lista (se la cambia el usuario).
+  El texto antiguo (`"paulina"`) se sigue aceptando como lista de un elemento y se normaliza a lista en cuanto se
+  escribe la skill. Falta solo si `estado` es `archivado`.
 - `agentes`: ids de los agentes invitados, que solo pueden *usarla* (eso lo validan las instrucciones de cada agente,
-  no el servidor). Por defecto vacía; nunca incluye al propietario; solo gestores de la bóveda.
+  no el servidor). Por defecto vacía; nunca incluye a un propietario; solo gestores de la bóveda.
 - `estado: archivado`: skill inactiva, sin propietario y sin invitados, hasta que el usuario le asigne un gestor.
 
 Se separan dos clases de reglas, igual que el resto de H-030:
@@ -28,6 +30,7 @@ ARCHIVED = "archivado"
 # Estado con el que vuelve a la vida una skill archivada al asignarle propietario: el nuevo la revisa antes de darla por buena.
 REACTIVATED = "en revisión"
 GUESTS_MAX = 20
+OWNERS_MAX = 10
 _AGENT_ID = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
 
 # Códigos de rechazo de forma (422 en REST; `reason` en `/sync`).
@@ -59,9 +62,20 @@ def is_archived(frontmatter: dict | None) -> bool:
     return (frontmatter or {}).get(ESTADO) == ARCHIVED
 
 
-def owner_of(frontmatter: dict | None) -> str | None:
+def owners_of(frontmatter: dict | None) -> list[str]:
+    """Los propietarios (ids sin repetir), con el texto antiguo como lista de un elemento. Ausente o mal formado = `[]`."""
     value = (frontmatter or {}).get(OWNER)
-    return value if isinstance(value, str) and value else None
+    if isinstance(value, str):
+        return [value] if value else []
+    if isinstance(value, list):
+        return list(dict.fromkeys(o for o in value if isinstance(o, str) and o))
+    return []
+
+
+def owner_of(frontmatter: dict | None) -> str | None:
+    """El primer propietario (el «principal» de las vistas que muestran uno solo), o `None`."""
+    owners = owners_of(frontmatter)
+    return owners[0] if owners else None
 
 
 def guests_of(frontmatter: dict | None) -> list[str]:
@@ -77,15 +91,20 @@ def is_manager(registry: dict[str, Registration], agent_id: str) -> bool:
 # --- Forma y coherencia (siempre activas) ---
 
 def check_shape(frontmatter: dict) -> str | None:
-    """`skill:propietario|agentes|estado` o `None`. Una skill activa tiene propietario; una archivada, ni propietario
-    ni invitados; los invitados son ids sin repetir, hasta 20, y ninguno es el propietario."""
-    owner = frontmatter.get(OWNER)
-    if OWNER in frontmatter and not (isinstance(owner, str) and _AGENT_ID.fullmatch(owner)):
-        return SKILL_OWNER
+    """`skill:propietario|agentes|estado` o `None`. Una skill activa tiene al menos un propietario (lista de ids sin
+    repetir, hasta 10; el texto de un id también vale); una archivada, ni propietarios ni invitados; los invitados son
+    ids sin repetir, hasta 20, y ninguno es propietario."""
+    if OWNER in frontmatter:
+        raw = frontmatter[OWNER]
+        owners = [raw] if isinstance(raw, str) else raw
+        if (not isinstance(owners, list) or not 0 < len(owners) <= OWNERS_MAX or len(set(map(str, owners))) != len(owners)
+                or not all(isinstance(o, str) and _AGENT_ID.fullmatch(o) for o in owners)):
+            return SKILL_OWNER
+    owners = owners_of(frontmatter)
     if GUESTS in frontmatter:
         guests = frontmatter[GUESTS]
         if (not isinstance(guests, list) or len(guests) > GUESTS_MAX or len(set(map(str, guests))) != len(guests)
-                or not all(isinstance(g, str) and _AGENT_ID.fullmatch(g) for g in guests) or owner in guests):
+                or not all(isinstance(g, str) and _AGENT_ID.fullmatch(g) for g in guests) or any(g in owners for g in guests)):
             return SKILL_GUESTS
     if is_archived(frontmatter):
         return SKILL_STATE if OWNER in frontmatter or guests_of(frontmatter) else None
@@ -93,11 +112,10 @@ def check_shape(frontmatter: dict) -> str | None:
 
 
 def check_people(frontmatter: dict, registry: dict[str, Registration], old: dict | None = None) -> str | None:
-    """Propietario e invitados que se **introducen** deben ser gestores (registrados y activos) de la bóveda. Lo que ya
+    """Propietarios e invitados que se **introducen** deben ser gestores (registrados y activos) de la bóveda. Lo que ya
     estaba (`old`) no se vuelve a exigir: editar otra cosa de una skill cuyo propietario salió no se bloquea; de eso
     se ocupa el flujo del gestor que sale."""
-    owner = owner_of(frontmatter)
-    if owner is not None and owner != owner_of(old) and not is_manager(registry, owner):
+    if any(not is_manager(registry, owner) for owner in owners_of(frontmatter) if owner not in owners_of(old)):
         return SKILL_OWNER
     if any(not is_manager(registry, guest) for guest in guests_of(frontmatter) if guest not in guests_of(old)):
         return SKILL_GUESTS
@@ -107,19 +125,27 @@ def check_people(frontmatter: dict, registry: dict[str, Registration], old: dict
 # --- Quién escribe: el propietario lo fija el servidor ---
 
 def seal_owner(frontmatter: dict, agent_id: str | None) -> dict:
-    """Metadatos con el propietario fijado por el servidor: el agente que crea. Sin identidad no se fija (y `check_shape`
-    rechaza una skill activa sin propietario)."""
+    """Metadatos con los propietarios fijados por el servidor: `[agente que crea]`. Sin identidad no se fija (y
+    `check_shape` rechaza una skill activa sin propietario)."""
     sealed = {k: v for k, v in frontmatter.items() if k != OWNER}
     if agent_id is not None:
-        sealed[OWNER] = agent_id
+        sealed[OWNER] = [agent_id]
     return sealed
 
 
 def keep_owner(frontmatter: dict, old: dict | None) -> dict:
-    """Un agente no cambia el propietario: si no lo reenvía (los metadatos se reemplazan completos), conserva el actual."""
-    if OWNER in frontmatter or owner_of(old) is None:
+    """Un agente no cambia los propietarios: si no los reenvía (los metadatos se reemplazan completos), conserva los
+    actuales."""
+    if OWNER in frontmatter or not owners_of(old):
         return frontmatter
-    return {**frontmatter, OWNER: owner_of(old)}
+    return {**frontmatter, OWNER: owners_of(old)}
+
+
+def normalize_owner(frontmatter: dict) -> dict:
+    """El texto antiguo de `propietario` pasa a lista de un elemento (al escribir la skill)."""
+    if isinstance(frontmatter.get(OWNER), str) and frontmatter[OWNER]:
+        return {**frontmatter, OWNER: [frontmatter[OWNER]]}
+    return frontmatter
 
 
 # --- Reglas por agente (modo sombra / enforce) ---
@@ -141,9 +167,9 @@ def decide_skill(
     if registration.estado != "activo":
         return Decision(False, "suspended")
     if op != "create":
-        if owner_of(old) != agent_id:
+        if agent_id not in owners_of(old):
             return Decision(False, NOT_OWNER)
-        if new is not None and owner_of(new) != agent_id:
+        if new is not None and set(owners_of(new)) != set(owners_of(old)):
             return Decision(False, OWNER_IMMUTABLE)
     if new is not None and any(
             not is_manager(registry, guest) for guest in guests_of(new) if guest not in guests_of(old)):
@@ -152,9 +178,9 @@ def decide_skill(
 
 
 def assign_owner(frontmatter: dict, owner: str) -> dict:
-    """Asigna `owner` como propietario: el propietario nuevo sale de `agentes`, y una skill archivada vuelve a la vida."""
+    """Asigna `owner` como único propietario: sale de `agentes` si estaba, y una skill archivada vuelve a la vida."""
     out = {k: v for k, v in frontmatter.items() if k not in (OWNER, GUESTS)}
-    out[OWNER] = owner
+    out[OWNER] = [owner]
     out[GUESTS] = [g for g in guests_of(frontmatter) if g != owner]
     if is_archived(frontmatter):
         out[ESTADO] = REACTIVATED
@@ -166,6 +192,11 @@ def archive(frontmatter: dict) -> dict:
     out = {k: v for k, v in frontmatter.items() if k not in (OWNER, GUESTS)}
     out[ESTADO] = ARCHIVED
     return out
+
+
+def drop_owner(frontmatter: dict, agent_id: str) -> dict:
+    """Quita `agent_id` de los propietarios (un gestor que sale); la skill conserva a los demás."""
+    return {**frontmatter, OWNER: [o for o in owners_of(frontmatter) if o != agent_id]}
 
 
 def drop_guest(frontmatter: dict, agent_id: str) -> dict:

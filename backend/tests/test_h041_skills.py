@@ -87,14 +87,45 @@ def test_human_is_not_evaluated_and_a_general_key_is_an_unregistered_agent():
     assert sr.decide_skill(general, REG, "create", None, {"propietario": "aira"}, honor_declared=True).allowed  # en sombra, el que declara
 
 
+def test_owners_are_a_list_and_the_old_text_is_a_one_element_list():
+    assert sr.owners_of({"propietario": "aira"}) == ["aira"]
+    assert sr.owners_of({"propietario": ["paulina", "fedora", "paulina"]}) == ["paulina", "fedora"]
+    assert sr.owners_of({"propietario": 3}) == [] and sr.owners_of(None) == []
+    assert sr.owner_of({"propietario": ["paulina", "fedora"]}) == "paulina"
+    assert sr.normalize_owner({"propietario": "aira"}) == {"propietario": ["aira"]}
+    assert sr.normalize_owner({"propietario": ["aira", "emma"]}) == {"propietario": ["aira", "emma"]}
+    assert sr.drop_owner({"propietario": ["aira", "emma"]}, "emma") == {"propietario": ["aira"]}
+    assert sr.check_shape({"propietario": ["aira", "emma"]}) is None
+    for bad in ([], ["aira", "aira"], ["Aira"], ["aira", 3], {"a": 1}, [f"a{i}" for i in range(11)]):
+        assert sr.check_shape({"propietario": bad}) == "skill:propietario", bad
+    assert sr.check_shape({"propietario": ["aira", "emma"], "agentes": ["emma"]}) == "skill:agentes"
+    assert sr.check_shape({"estado": "archivado", "propietario": ["aira"]}) == "skill:estado"
+    assert sr.check_people({"propietario": ["aira", "emma"]}, REG) is None
+    assert sr.check_people({"propietario": ["aira", "nadie"]}, REG) == "skill:propietario"
+    assert sr.check_people({"propietario": ["aira", "nadie"], "titulo": "x"}, REG, {"propietario": "nadie"}) is None
+
+
+@pytest.mark.parametrize("who,op,old,new,allowed,reason", [
+    ("emma", "update", {"propietario": ["aira", "emma"]}, {"propietario": ["aira", "emma"], "titulo": "x"}, True, None),
+    ("aira", "delete", {"propietario": ["aira", "emma"]}, None, True, None),
+    ("emma", "update", {"propietario": "aira"}, {"propietario": "aira"}, False, sr.NOT_OWNER),
+    ("emma", "update", {"propietario": ["aira", "emma"]}, {"propietario": ["emma"]}, False, sr.OWNER_IMMUTABLE),
+    ("aira", "update", {"propietario": "aira"}, {"propietario": ["aira"]}, True, None),  # texto antiguo = lista de uno
+    ("aira", "update", {"propietario": ["aira", "emma"]}, {"propietario": ["emma", "aira"]}, True, None),
+])
+def test_decide_skill_with_several_owners(who, op, old, new, allowed, reason):
+    verdict = sr.decide_skill(_agent(who), REG, op, old, new, honor_declared=False)
+    assert (verdict.allowed, verdict.reason) == (allowed, reason)
+
+
 def test_assign_archive_and_drop_guest():
     fm = {"titulo": "x", "propietario": "aira", "agentes": ["emma", "otro"], "estado": "aprobado"}
     assert sr.archive(fm) == {"titulo": "x", "estado": "archivado"}
     assert sr.check_shape(sr.archive(fm)) is None
     assigned = sr.assign_owner(sr.archive(fm), "emma")
-    assert assigned == {"titulo": "x", "propietario": "emma", "agentes": [], "estado": "en revisión"}
+    assert assigned == {"titulo": "x", "propietario": ["emma"], "agentes": [], "estado": "en revisión"}
     # Asignar a un invitado: sale de `agentes` y el estado se conserva (la skill ya estaba activa).
-    assert sr.assign_owner(fm, "emma") == {"titulo": "x", "propietario": "emma", "agentes": ["otro"], "estado": "aprobado"}
+    assert sr.assign_owner(fm, "emma") == {"titulo": "x", "propietario": ["emma"], "agentes": ["otro"], "estado": "aprobado"}
     assert sr.drop_guest(fm, "emma")["agentes"] == ["otro"]
 
 
@@ -109,10 +140,10 @@ def test_the_server_seals_the_owner_and_ignores_what_the_agent_declares(ready_ad
     register(ready_admin, vault_id, "aira", ["*"])
     aira = agent_client(ready_admin, "aira")
     created = post_note(aira, vault_id, f"{SK}/Gestión de variables", "# Paso", _fm(propietario="emma", agentes=[]))
-    assert created.status_code == 201 and created.json()["frontmatter"]["propietario"] == "aira"
+    assert created.status_code == 201 and created.json()["frontmatter"]["propietario"] == ["aira"]
     assert created.json()["frontmatter"]["agentes"] == []
     without = post_note(aira, vault_id, f"{SK}/Otra", "x", _fm())
-    assert without.json()["frontmatter"]["propietario"] == "aira" and "agentes" not in without.json()["frontmatter"]
+    assert without.json()["frontmatter"]["propietario"] == ["aira"] and "agentes" not in without.json()["frontmatter"]
 
 
 def test_an_agent_keeps_the_owner_when_it_does_not_resend_it_and_cannot_change_it_in_enforce(ready_admin, monkeypatch):
@@ -123,7 +154,7 @@ def test_an_agent_keeps_the_owner_when_it_does_not_resend_it_and_cannot_change_i
     created = post_note(aira, vault_id, f"{SK}/uno", "x", _fm())
     item = {"id": created.json()["id"], "etag": created.headers["ETag"]}
     edited = patch(aira, vault_id, item, frontmatter=_fm(titulo="otro"))  # no reenvía `propietario`
-    assert edited.status_code == 200 and edited.json()["frontmatter"]["propietario"] == "aira"
+    assert edited.status_code == 200 and edited.json()["frontmatter"]["propietario"] == ["aira"]
     item["etag"] = edited.headers["ETag"]
     monkeypatch.setattr(settings, "AGENT_ACCESS_MODE", "enforce")
     res = patch(aira, vault_id, item, frontmatter=_fm(propietario="emma"))
@@ -181,7 +212,7 @@ def test_a_general_key_without_identity_cannot_make_an_ownerless_skill_even_in_s
     refused = post_note(general, vault_id, f"{SK}/sin-dueno", "x", _fm())
     assert refused.status_code == 422 and detail(refused) == "skill:propietario"
     general.headers["X-Agent-Id"] = "aira"  # una clave general que declara el agente (sombra)
-    assert post_note(general, vault_id, f"{SK}/con-dueno", "x", _fm()).json()["frontmatter"]["propietario"] == "aira"
+    assert post_note(general, vault_id, f"{SK}/con-dueno", "x", _fm()).json()["frontmatter"]["propietario"] == ["aira"]
 
 
 # --- REST: el usuario ---
@@ -202,6 +233,32 @@ def test_the_user_must_name_a_manager_owner_or_archive(ready_admin):
     assert detail(post_note(ready_admin, vault_id, f"{SK}/cinco", "x", _fm(estado="archivado", propietario="aira"))) == "skill:estado"
 
 
+def test_co_owners_all_edit_and_the_old_text_is_stored_as_a_list(ready_admin, monkeypatch):
+    vault_id = vault_of(ready_admin)
+    for agent in ("aira", "emma", "otro"):
+        register(ready_admin, vault_id, agent, ["*"])
+    aira, emma, otro = (agent_client(ready_admin, a) for a in ("aira", "emma", "otro"))
+    created = post_note(ready_admin, vault_id, f"{SK}/compartida", "x", _fm(propietario=["aira", "emma"]))
+    assert created.status_code == 201 and created.json()["frontmatter"]["propietario"] == ["aira", "emma"]
+    legacy = post_note(ready_admin, vault_id, f"{SK}/antigua", "x", _fm(propietario="aira"))
+    assert legacy.json()["frontmatter"]["propietario"] == ["aira"]  # el texto antiguo se guarda como lista
+    assert detail(post_note(ready_admin, vault_id, f"{SK}/mala", "x", _fm(propietario=["aira", "nadie"]))) == "skill:propietario"
+    assert detail(post_note(ready_admin, vault_id, f"{SK}/mala", "x", _fm(propietario=["aira"], agentes=["aira"]))) == "skill:agentes"
+    item = {"id": created.json()["id"], "etag": created.headers["ETag"]}
+    monkeypatch.setattr(settings, "AGENT_ACCESS_MODE", "enforce")
+    for editor in (aira, emma):
+        res = patch(editor, vault_id, item, content=f"edita {id(editor)}")
+        assert res.status_code == 200 and res.json()["frontmatter"]["propietario"] == ["aira", "emma"]
+        item["etag"] = res.headers["ETag"]
+    assert patch(otro, vault_id, item, content="ajeno").status_code == 403
+    res = patch(emma, vault_id, item, frontmatter=_fm(propietario=["emma"]))  # un copropietario no quita a otro
+    assert res.status_code == 403 and res.json()["detail"] == sr.PUBLIC_DETAIL[sr.OWNER_IMMUTABLE]
+    same = patch(emma, vault_id, item, frontmatter=_fm(propietario="aira"))  # ni deja uno solo con el texto antiguo
+    assert same.status_code == 403
+    kept = patch(emma, vault_id, item, frontmatter=_fm(titulo="nuevo título"))  # sin reenviarlos se conservan
+    assert kept.status_code == 200 and kept.json()["frontmatter"]["propietario"] == ["aira", "emma"]
+
+
 def test_the_user_edits_any_skill_and_reassigns_without_the_agent_being_asked(ready_admin):
     vault_id = vault_of(ready_admin)
     for agent in ("aira", "emma"):
@@ -210,10 +267,10 @@ def test_the_user_edits_any_skill_and_reassigns_without_the_agent_being_asked(re
     created = post_note(aira, vault_id, f"{SK}/propia", "x", _fm())
     item = {"id": created.json()["id"], "etag": created.headers["ETag"]}
     edited = patch(ready_admin, vault_id, item, content="el usuario edita lo del agente")
-    assert edited.status_code == 200 and edited.json()["frontmatter"]["propietario"] == "aira"  # el usuario no sella nada
+    assert edited.status_code == 200 and edited.json()["frontmatter"]["propietario"] == ["aira"]  # el usuario no sella nada
     item["etag"] = edited.headers["ETag"]
     moved = patch(ready_admin, vault_id, item, frontmatter=_fm(propietario="emma"))
-    assert moved.status_code == 200 and moved.json()["frontmatter"]["propietario"] == "emma"
+    assert moved.status_code == 200 and moved.json()["frontmatter"]["propietario"] == ["emma"]
     item["etag"] = moved.headers["ETag"]
     assert detail(patch(ready_admin, vault_id, item, frontmatter=_fm(propietario="nadie"))) == "skill:propietario"
 
@@ -226,7 +283,7 @@ def test_a_note_moved_into_skills_needs_an_owner_and_an_agent_that_moves_it_in_b
     item = {"id": note.json()["id"], "etag": note.headers["ETag"]}
     moved = patch(aira, vault_id, item, path=f"{SK}/Borrador")
     assert moved.status_code == 200 and moved.json()["path"] == f"{SK}/skill-borrador.md"
-    assert moved.json()["frontmatter"]["propietario"] == "aira"
+    assert moved.json()["frontmatter"]["propietario"] == ["aira"]
     plain = post_note(ready_admin, vault_id, "Notas/otro.md", "x", _fm())
     item2 = {"id": plain.json()["id"], "etag": plain.headers["ETag"]}
     assert detail(patch(ready_admin, vault_id, item2, path=f"{SK}/Otro")) == "skill:propietario"
