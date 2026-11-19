@@ -7,7 +7,7 @@
 
 ## En curso
 
-- [~] H-064 — Compartir bóvedas con usuarios invitados y permisos de lectura/escritura por carpeta (usuarios y agentes), con offline → pedido directo de Carlos (2026-11-19), plan en la nota de la bóveda Proyectos (`…/Synapse/9 - implentaciones/H-064 - …`), F1 `implemented` en la rama `feature/h064-compartir-bovedas` (sin desplegar)
+- [~] H-064 — Compartir bóvedas con usuarios invitados y permisos de lectura/escritura por carpeta (usuarios y agentes), con offline → pedido directo de Carlos (2026-11-19), plan en la nota de la bóveda Proyectos (`…/Synapse/9 - implentaciones/H-064 - …`), F1+F2 `implemented` en la rama `feature/h064-compartir-bovedas` (sin desplegar, falta F3 acceso y verificación de permisos)
 - [~] H-063 — Números de línea en diffs de la BITACORA: columnas anterior/nueva con dos números (localización en el documento), líneas agregadas en verde, eliminadas en rojo (como GitHub), propiedades etiquetadas como `prop` → pedido directo de Carlos (2026-11-18), `implemented`, `verified`
 - [~] H-062 — Bitácora con diff: cada entrada registra líneas agregadas/eliminadas y diff unificado (contenido + frontmatter), truncado a 200 líneas o 20 KiB, números con formato México, cambios anteriores a H-062 mostrados como «sin detalle» → pedido directo de Carlos (2026-11-18), `implemented`, `verified`
 - [~] H-061 — Manual de Operación dentro de la app: botón «Documentación» en el riel (arriba de Usuario) y página `/docs` con los 14 capítulos exportados de la bóveda Proyectos → pedido directo de Carlos (2026-11-18), `implemented`
