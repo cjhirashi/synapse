@@ -364,6 +364,20 @@
   .tasks-tabs .tasks-tab { padding: 9px 12px; }
   /* En pantallas chicas solo la pestaña activa muestra su nombre; las demás, el icono. */
   .tasks-tabs .tasks-tab[aria-selected="false"] .tasks-tab-label { display: none; }
+  /* «Proyectos» pasa a icono para que las cuatro vistas, «Proyectos» y «Nueva tarea» quepan en 390 px. */
+  .tasks-projects .tasks-tab-label { display: none; }
+  .tasks-projects { padding: 8px; }
+  /* La lista deja de ser una tabla ancha con scroll: cada tarea es una tarjeta (título arriba; estado, prioridad, responsable y vencimiento debajo; acciones a la derecha). */
+  .tasks-table > * { min-width: 0; }
+  .tasks-head { display: none; }
+  .tasks-row { grid-template-columns: minmax(0, 1fr); row-gap: 8px; padding: 10px 12px; }
+  .tasks-main { grid-column: 1 / -1; }
+  .tasks-cells { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; grid-column: 1 / -1; min-width: 0; }
+  .tasks-cell { min-height: 0; }
+  .tasks-who { min-height: 0; }
+  .tasks-cell--who { order: 5; flex: 1 0 100%; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .tasks-actions { grid-column: 1 / -1; justify-self: end; margin-top: -4px; }
+  .tasks-item--sub .tasks-cells { padding-left: 32px; }
   .tasks-side-close { display: inline-flex; }
   .tasks-cal-cell { min-height: 56px; }
   .tasks-week { grid-template-columns: minmax(0, 1fr); }
