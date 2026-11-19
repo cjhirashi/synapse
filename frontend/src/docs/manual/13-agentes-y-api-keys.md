@@ -120,6 +120,8 @@ Toda bóveda trae, arriba del árbol y bajo el rótulo **META** ①, cinco carpe
 
 **BITACORA** guarda un documento por día, agrupado por mes. Cada documento enumera, con su hora y quién lo hizo, los cambios que hubo en la bóveda: creaciones, ediciones y borrados de notas. **Solo lectura:** la escribe el servidor, no se puede editar, mover ni borrar. Sirve para saber qué pasó y cuándo, incluso lo que hizo un agente.
 
+Como en los commits de GitHub, cada cambio muestra además cuántas líneas se agregaron y cuántas se eliminaron (`+3 −1`) y, debajo, el detalle: cada línea trae su número anterior y su número nuevo, para saber en qué parte del documento se hizo el cambio. Las líneas agregadas salen en verde y las eliminadas en rojo; las propiedades de la nota (título, etiquetas, estado…) se marcan con `prop` en lugar de número. Un documento nuevo aparece entero como agregado y uno borrado, entero como eliminado. Si el cambio es muy largo, el detalle se corta (a 200 líneas) y lo avisa, pero el conteo `+N −M` siempre es el real. Los cambios anteriores al 18 de noviembre de 2026 dicen «sin detalle», porque no se guardó.
+
 <div align="center">
 
 ![Bitácora del día|50%](https://synapse.cjhirashi.com/files/6ec21fbb-97a6-491b-ac14-4fd718c53ce2)
