@@ -70,6 +70,10 @@ class VaultMemberRepository:
         self._db.query(VaultMemberGrant).filter(VaultMemberGrant.member_id == member_id).delete()
         self._db.flush()
 
+    def flush(self) -> None:
+        """Flush la sesión (para operaciones que necesitan el objeto con id asignado)."""
+        self._db.flush()
+
     def commit(self) -> None:
         """Confirma la transacción."""
         self._db.commit()

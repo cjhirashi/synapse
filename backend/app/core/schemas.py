@@ -1026,7 +1026,7 @@ class VaultMemberInviteIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: str
-    grants: list[VaultMemberGrantIn] = Field(min_items=1, max_items=100)
+    grants: list[VaultMemberGrantIn] = Field(min_length=1, max_length=100)
 
 
 class VaultMemberGrantsUpdate(BaseModel):
@@ -1034,7 +1034,7 @@ class VaultMemberGrantsUpdate(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    grants: list[VaultMemberGrantIn] = Field(min_items=1, max_items=100)
+    grants: list[VaultMemberGrantIn] = Field(min_length=1, max_length=100)
 
 
 class VaultMemberUserInfo(BaseModel):

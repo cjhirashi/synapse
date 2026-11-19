@@ -360,7 +360,7 @@ def leave_vault(
     notification_service = NotificationService(NotificationRepository(db), member.owner_id)
     notification_service.notify(
         kind="vault_share",
-        title=f"{current_user.email} se fue de tu bóveda",
+        title="Se fueron de tu bóveda",
         vault_id=member.vault_id,
         resource_type="vault_member",
         resource_id=member.id,
