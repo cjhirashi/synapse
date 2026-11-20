@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { formatCdmx } from "../notes/cdmxTime";
 import { acceptInvitation, leaveInvitation, listInvitations, rejectInvitation, type Invitation } from "./sharingApi";
@@ -125,6 +126,13 @@ export default function SharedWithMePage() {
                   <span className="shared-grants">{grantsText(inv.grants)}</span>
                 </div>
                 <div className="shared-actions">
+                  <Link
+                    to={`/compartidas/${encodeURIComponent(inv.vault_id)}`}
+                    className="shared-btn shared-btn--primary"
+                    aria-label={`Abrir «${vaultName(inv)}»`}
+                  >
+                    Abrir
+                  </Link>
                   <button
                     type="button"
                     className="shared-btn shared-btn--danger"

@@ -13,6 +13,8 @@ import { openConflicts, type ConflictsStore } from "./conflicts";
 import { openLocalDb, type LocalDbOptions } from "./localDb";
 import { openRejections, type RejectionsStore } from "./rejections";
 import { createRemoteDb } from "./remote";
+import { rememberSharedReplica, type PurgeOptions } from "./sharedReplicas";
+import { readOnly } from "./readOnly";
 import {
   BATCH_SIZE,
   createReplicator,
@@ -24,6 +26,7 @@ import {
 } from "./replicator";
 import { openSyncStatus, seqNumber, type SyncStatusStore } from "./status";
 import { createVaultStore, type VaultStore } from "./vaultStore";
+import { LOCAL_DB_NAME } from "./localDb";
 
 /**
  * Dependencias sustituibles: réplica en memoria, remota y replicador falsos (pruebas de
@@ -46,8 +49,8 @@ export interface SyncResources {
   rejections: RejectionsStore;
   conflicts: ConflictsStore;
   replicator: Replicator;
-  /** Reintento dirigido de `vault-not-found` (P-7); se cierra con los recursos. */
-  repush: Repush;
+  /** Reintento dirigido de `vault-not-found` (P-7); se cierra con los recursos. `null` en réplicas compartidas (solo lectura). */
+  repush: Repush | null;
   /**
    * Cada escritura en la réplica; el proveedor separa por prefijo `vault:` (`dataVersion`) y
    * `note:` (`notesVersion`), para que guardar una nota no relea las listas de bóvedas.
@@ -56,9 +59,21 @@ export interface SyncResources {
   close(): Promise<void>;
 }
 
-/** Abre los recursos del usuario `sub`; el replicador queda creado, sin arrancar (`start()`). */
-export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise<SyncResources> {
-  const db = await openLocalDb(sub, env.localDb);
+/**
+ * Abre los recursos del usuario `sub`; el replicador queda creado, sin arrancar (`start()`).
+ * Con `shared`: réplica de bóveda compartida en solo lectura con nombre y remota personalizados.
+ */
+export async function openSyncResources(
+  sub: string,
+  env: SyncEnv = {},
+  shared?: { vaultId: string },
+): Promise<SyncResources> {
+  // Con `shared`, la réplica va en un nombre aparte; sin él, el nombre se elige del `env` o el default.
+  const baseName = env.localDb?.name ?? LOCAL_DB_NAME;
+  const dbName = shared ? `${baseName}-shared-${shared.vaultId}` : baseName;
+  const localDbOptions = shared ? { ...env.localDb, name: dbName } : env.localDb;
+
+  const db = await openLocalDb(sub, localDbOptions);
   const status = await openSyncStatus(db);
   const rejections = await openRejections(db);
   const conflicts = await openConflicts(db);
@@ -66,24 +81,34 @@ export async function openSyncResources(sub: string, env: SyncEnv = {}): Promise
   // el aviso llega siempre más tarde, cuando el replicador ya existe.
   let replicator: Replicator | null = null;
   const onSessionExpired = () => replicator?.sessionExpired();
-  const remote = (env.createRemote ?? ((expired) => createRemoteDb({ onSessionExpired: expired })))(onSessionExpired);
-  // `repush` se crea con la remota ya lista; sus eventos llegan por `onEvent` desde entonces.
+  const createRemote = env.createRemote ?? ((expired) => createRemoteDb({ onSessionExpired: expired, ...(shared ? { path: `/sync/shared/${shared.vaultId}/db` } : {}) }));
+  const remote = createRemote(onSessionExpired);
+  // `repush` es el reintento dirigido de las bóvedas propias; en una réplica compartida no existe.
   let repush: Repush | null = null;
   const onEvent = (event: SyncEvent) => {
     void status.handle(event);
     void rejections.handle(event);
     repush?.handle(event);
   };
-  replicator = (env.createReplicator ?? createReplicator)({ local: db, remote, onEvent });
-  repush = startRepush({ db, remote, status, rejections });
+  // Cada réplica compartida tiene su cerrojo y su canal: no compite con el replicador de las bóvedas propias.
+  const sharedChannel = shared ? { lockName: `synapse-sync-shared-${shared.vaultId}`, channelName: `synapse-sync-shared-${shared.vaultId}` } : {};
+  replicator = (env.createReplicator ?? createReplicator)({ local: db, remote, onEvent, ...sharedChannel });
+  if (shared) rememberSharedReplica(dbName, sub);
+  else repush = startRepush({ db, remote, status, rejections });
   const feed = db.changes({ live: true, since: "now" });
 
   let closed: Promise<void> | null = null;
+  // Lecturas de cada almacén (las únicas que llegan a una réplica compartida); el resto escribe y se deniega.
+  const vaultStore = createVaultStore(db, sub);
+  const noteStore = createNoteStore(db);
+  const vaults: VaultStore = shared ? readOnly(vaultStore, ["list", "get"]) : vaultStore;
+  const notes: NoteStore = shared ? readOnly(noteStore, ["list", "get"]) : noteStore;
+
   const resources: SyncResources = {
     db,
     remote,
-    vaults: createVaultStore(db, sub),
-    notes: createNoteStore(db),
+    vaults,
+    notes,
     status,
     rejections,
     conflicts,

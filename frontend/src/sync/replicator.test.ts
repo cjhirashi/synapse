@@ -234,3 +234,23 @@ describe("R-10: un solo replicador por navegador", () => {
     expect(sync).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("H-064 F7c: lockName personalizado", () => {
+  it("puede personalizarse", () => {
+    const customLockName = "custom-lock-name";
+    const locks = fakeLocks();
+    const spy = vi.spyOn(locks, "request");
+    const events: SyncEvent[] = [];
+    const instance = createReplicator({
+      local,
+      remote,
+      onEvent: (event) => events.push(event),
+      locks,
+      channelName,
+      lockName: customLockName,
+    });
+    running.push(instance);
+    instance.start();
+    expect(spy).toHaveBeenCalledWith(customLockName, expect.any(Object), expect.any(Function));
+  });
+});

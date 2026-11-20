@@ -31,9 +31,11 @@ import { destroyLocalDb, markDiscarded } from "./localDb";
 import type { Rejection } from "./rejections";
 import type { LocalCopyState } from "./LocalCopyNotice";
 import { openSyncResources, pushOnce, type SyncEnv, type SyncResources, unconfirmedState } from "./resources";
+import { purgeSharedReplicas } from "./sharedReplicas";
 import type { SyncStatus } from "./status";
 import { SyncContext, type LogoutFailure, type LogoutPhase, type LogoutReason, type SyncContextValue, type UnsavedDrafts } from "./useSync";
 import { ID_PREFIX } from "./vaultStore";
+import { serial } from "./lifecycle";
 
 interface Props {
   /** Usuario de la sesión: dueño de la réplica y de las bóvedas nuevas. */
@@ -45,15 +47,6 @@ interface Props {
 }
 
 const DEFAULT_ENV: SyncEnv = {};
-
-/** Cola de apertura y cierre compartida por todas las instancias (ver cabecera). */
-let lifecycle: Promise<unknown> = Promise.resolve();
-
-function serial<T>(task: () => Promise<T>): Promise<T> {
-  const run = lifecycle.then(task);
-  lifecycle = run.catch(() => undefined);
-  return run;
-}
 
 type Phase = { kind: "loading" } | { kind: "ready"; resources: SyncResources } | { kind: "error" };
 
@@ -88,7 +81,10 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     let alive = true;
     const unsubscribe: (() => void)[] = [];
     setPhase({ kind: "loading" });
-    const opened = serial(() => openSyncResources(sub, env));
+    const opened = serial(async () => {
+      await purgeSharedReplicas({ exceptSub: sub, pouch: env.localDb });
+      return openSyncResources(sub, env);
+    });
     opened.then(
       (resources) => {
         if (!alive) return;
@@ -160,6 +156,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
     try {
       await serial(async () => {
         await resources.close();
+        await purgeSharedReplicas({ pouch: env.localDb });
         await destroyLocalDb(resources.db);
       });
     } catch (err) {
@@ -170,7 +167,7 @@ export default function SyncProvider({ sub, paused, env = DEFAULT_ENV, children 
       state = { localCopyKept: true, discardPending };
     }
     navigate("/login", { replace: true, state });
-  }, [resources, logoutPhase, navigate]);
+  }, [resources, logoutPhase, navigate, env]);
 
   const value = useMemo<SyncContextValue | null>(() => {
     if (!resources || !status) return null;

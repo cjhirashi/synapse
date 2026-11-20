@@ -11,6 +11,7 @@ import type { NoteStore } from "../notes/noteStore";
 import type { Rejection } from "./rejections";
 import type { SyncStatus } from "./status";
 import type { VaultStore } from "./vaultStore";
+import type { Grant } from "../sharing/sharingApi";
 
 /**
  * Fase del cierre de sesión (RF-017):
@@ -61,6 +62,13 @@ export interface UnsavedDrafts {
   any(): boolean;
 }
 
+export interface SharedInfo {
+  vaultId: string;
+  ownerName: string;
+  readOnly: boolean;
+  grants: Grant[];
+}
+
 export interface SyncContextValue {
   unsavedDrafts: UnsavedDrafts;
   /** Operaciones de la UI sobre las bóvedas de la réplica. */
@@ -86,6 +94,8 @@ export interface SyncContextValue {
    */
   requestLogout(): Promise<void>;
   logout: LogoutState;
+  /** Información de la bóveda compartida si esta es una réplica compartida. */
+  shared?: SharedInfo;
 }
 
 export const SyncContext = createContext<SyncContextValue | null>(null);

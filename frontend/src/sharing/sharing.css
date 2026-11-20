@@ -23,7 +23,7 @@
 .shared-date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 .shared-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-.shared-btn { min-height: 44px; padding: 0 20px; font-weight: 600; cursor: pointer; }
+.shared-btn { min-height: 44px; padding: 0 20px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .shared-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .shared-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .shared-btn--primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }

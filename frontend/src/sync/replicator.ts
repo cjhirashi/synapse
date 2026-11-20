@@ -47,8 +47,10 @@ export interface ReplicatorOptions {
   onEvent: (event: SyncEvent) => void;
   /** Web Locks; por defecto `navigator.locks`. Sin ellos (navegador antiguo, jsdom) replica sin coordinar. */
   locks?: LockManager | null;
-  /** Nombre del `BroadcastChannel`; sólo lo cambian los tests. */
+  /** Nombre del `BroadcastChannel`; por defecto `CHANNEL_NAME`. Cada réplica de bóveda compartida lleva el suyo. */
   channelName?: string;
+  /** Nombre del Web Lock; por defecto `LOCK_NAME`. Cada réplica de bóveda compartida lleva el suyo. */
+  lockName?: string;
 }
 
 export interface Replicator {
@@ -115,6 +117,7 @@ export function createReplicator({
   onEvent,
   locks = typeof navigator !== "undefined" ? navigator.locks ?? null : null,
   channelName = CHANNEL_NAME,
+  lockName = LOCK_NAME,
 }: ReplicatorOptions): Replicator {
   const channel = typeof BroadcastChannel !== "undefined" ? new BroadcastChannel(channelName) : null;
   let leader = false;
@@ -181,7 +184,7 @@ export function createReplicator({
       lockRequest = new AbortController();
       // El cerrojo se mantiene mientras la promesa del callback no se resuelva.
       locks
-        .request(LOCK_NAME, { signal: lockRequest.signal }, () => new Promise<void>((resolve) => {
+        .request(lockName, { signal: lockRequest.signal }, () => new Promise<void>((resolve) => {
           releaseLock = resolve;
           leader = true;
           startSync();

@@ -233,3 +233,11 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
 - `src/settings/AgentAccessPage.tsx` — obtiene carpetas de la bóveda actual desde `useSync().notes.list()` y las pasa a cada `FolderScopePicker` vía `folderOptions()`.
 - Pruebas: `src/settings/FolderScopePicker.test.tsx` (modos, onChange exactos, orden, carpetas que ya no existen, búsqueda, deshabilitado) y actualización de `src/settings/AgentAccessPage.test.tsx` (integración con `WithSync`).
 
+## Bóveda compartida abierta (H-064 F7c, solo lectura)
+
+- Ruta `/compartidas/:id` (`src/sharing/SharedVaultPage.tsx`; enlace «Abrir» en «Compartidas conmigo»): replica **esa** bóveda en una réplica local **aparte** (`synapse-shared-<id>`, `openSyncResources(sub, env, { vaultId })`) contra `/sync/shared/{id}` y monta el espacio de trabajo de siempre con un contexto de sincronización que apunta a ella (`useSync().shared`: bóveda, propietario y concesiones). La replicación de las bóvedas propias no se toca. El cierre de sesión y los borradores siguen siendo los del contexto padre.
+- Cada réplica compartida tiene su cerrojo y su canal (`synapse-sync-shared-<id>`); no tiene el reintento dirigido de las bóvedas propias. Sus almacenes (`vaults`, `notes`) son de **solo lectura** con denegación por defecto (`sync/readOnly.ts`: lo que no es `list`/`get` rechaza con `ReadOnlyReplicaError` al llamarlo), de modo que no se escribe nada local que luego se empuje.
+- **Limpieza (datos de otra persona):** las réplicas compartidas se anotan en `localStorage` (`sync/sharedReplicas.ts`); se destruyen todas al cerrar sesión (más un barrido por `indexedDB.databases()` de las compartidas no anotadas, sin tocar nunca la réplica principal) y las de otra cuenta al entrar una. Revocar o salir de una bóveda no la destruye todavía (F7d).
+- Pendiente: ocultar en la interfaz lo que es del propietario (compartir, editar, crear, mover…), escribir como invitado (control por carpeta) y la purga al mover o revocar.
+- Pruebas: `sync/sharedResources.test.ts`, `sync/readOnly.test.ts`, `sync/sharedReplicas.test.ts`, `sync/SyncProvider.shared.test.tsx`, `sharing/SharedVaultPage.test.tsx` y `e2e/h064-bovedas-compartidas.spec.ts` (el invitado abre la bóveda con PouchDB real: solo ve lo que su concesión cubre, lee sin conexión y recibe lo que el propietario cambia; celular y escritorio).
+
