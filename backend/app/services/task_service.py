@@ -14,9 +14,10 @@ from datetime import UTC, datetime, timedelta
 from app.adapters.task_repository import TaskRepository
 from app.core import task_rules
 from app.core.config import settings
-from app.core.errors import TaskInvalid, TaskNotFound, TaskPreconditionFailed
+from app.core.errors import ShareForbidden, TaskInvalid, TaskNotFound, TaskPreconditionFailed
 from app.core.models.task import VaultTask
 from app.core.schemas import TaskCreate, TaskOut, TaskUpdate
+from app.core.vault_access import WRITE, MemberAccess, folder_level
 from app.services.agent_access_guard import AgentAccessGuard
 from app.services.notification_service import NotificationService
 
@@ -57,7 +58,7 @@ def parse_version(if_match: str | None) -> int | None:
 class TaskService:
     def __init__(
         self, repo: TaskRepository, owner_id: str, guard: AgentAccessGuard, ensure_vault: Callable[[str], object],
-        notifier: NotificationService | None = None,
+        notifier: NotificationService | None = None, member: MemberAccess | None = None,
     ) -> None:
         self._repo = repo
         self._owner_id = owner_id
@@ -66,28 +67,77 @@ class TaskService:
         self._ensure_vault = ensure_vault
         # Avisos a la persona cuando un agente cambia algo que le toca (misma transacción que el cambio).
         self._notifier = notifier
+        # H-064 F3b2: concesiones de un miembro invitado; None = el dueño (sin filtro).
+        self._member = member
+
+    # --- Permisos de un miembro invitado (H-064 F3b2): el nivel de una tarea es el de su `path` (sin `path` = la raíz) ---
+
+    def _level(self, path: str | None) -> str | None:
+        return folder_level(self._member, path or "")
+
+    def _visible(self, task: VaultTask) -> bool:
+        return self._member is None or self._level(task.path) is not None
+
+    def _gate(self, task: VaultTask, *, write: bool = False) -> None:
+        """Sin lectura, `TaskNotFound` (como si no existiera); con lectura y sin escritura, `ShareForbidden`."""
+        if self._member is None:
+            return
+        level = self._level(task.path)
+        if level is None:
+            raise TaskNotFound()
+        if write and level != WRITE:
+            raise ShareForbidden("read-only for this member")
+
+    def _gate_new_path(self, path: str | None) -> None:
+        if self._member is not None and self._level(path) != WRITE:
+            raise ShareForbidden("no write access to that path")
+
+    def _gate_content(self, vault_id: str, sent: set[str], body: TaskCreate | TaskUpdate, current: VaultTask | None) -> None:
+        """Lo que un miembro no puede fijar: agente asignado, proyecto y bloqueadoras que no lee."""
+        if self._member is None:
+            return
+        if "assignee_type" in sent or "assignee_agent_id" in sent:
+            kind = body.assignee_type if body.assignee_type else (current.assignee_type if current else "user")
+            if kind == "agent" or body.assignee_agent_id:
+                raise ShareForbidden("a member cannot assign a task to an agent")
+        if "project_id" in sent and body.project_id != (current.project_id if current else None):
+            raise ShareForbidden("a member cannot set the project of a task")
+        for blocker_id in body.blocked_by or []:
+            blocker = self._repo.get(blocker_id, self._owner_id)
+            if blocker is None or blocker.vault_id != vault_id or not self._visible(blocker):
+                raise TaskNotFound()
 
     # --- Lectura ---
 
     def to_out(self, task: VaultTask) -> TaskOut:
         out = TaskOut.model_validate(task)
+        if self._member is not None:  # solo las bloqueadoras que el miembro puede leer; `blocked` se conserva
+            out.blocked_by = [b.id for b in task.blockers if self._visible(b)]
         if task.parent_id is None and task.completed_at is not None and task.status in task_rules.CLOSED_STATUSES:
             out.purge_at = task.completed_at + timedelta(days=settings.TASKS_RETENTION_DAYS)
         return out
 
     def get(self, vault_id: str, task_id: str) -> VaultTask:
         self._ensure_vault(vault_id)
-        return self._owned(vault_id, task_id)
+        task = self._owned(vault_id, task_id)
+        self._gate(task)
+        return task
 
     def list(self, vault_id: str | None, **filters) -> list[VaultTask]:
         if vault_id is not None:
             self._ensure_vault(vault_id)
-        return self._repo.list(self._owner_id, vault_id, **filters)
+        tasks = self._repo.list(self._owner_id, vault_id, **filters)
+        return tasks if self._member is None else [t for t in tasks if self._visible(t)]
 
     # --- Escritura ---
 
     def create(self, vault_id: str, body: TaskCreate) -> VaultTask:
         self._ensure_vault(vault_id)
+        if self._member is not None:
+            self._gate_new_path(body.path)
+            self._gate_content(vault_id, body.model_fields_set, body, None)
+            if body.parent_id is not None:
+                self._gate(self._owned(vault_id, body.parent_id), write=True)
         parent = self._parent_for(vault_id, body.parent_id)
         self._guard.check_task(vault_id, "create", body.title, created_by=None, assignee_agent_id=None)
         path = self._path(body.path)
@@ -119,6 +169,11 @@ class TaskService:
     def update(self, vault_id: str, task_id: str, body: TaskUpdate, if_match: str | None = None) -> VaultTask:
         self._ensure_vault(vault_id)
         task = self._owned(vault_id, task_id)
+        if self._member is not None:  # el permiso se evalúa antes que `If-Match` y que cualquier regla de contenido
+            self._gate(task, write=True)
+            if "path" in body.model_fields_set:
+                self._gate_new_path(body.path)
+            self._gate_content(vault_id, body.model_fields_set, body, task)
         expected = parse_version(if_match)
         if expected is not None and expected != task.version:
             raise TaskPreconditionFailed()
@@ -182,6 +237,9 @@ class TaskService:
     def delete(self, vault_id: str, task_id: str) -> None:
         self._ensure_vault(vault_id)
         task = self._owned(vault_id, task_id)
+        self._gate(task, write=True)
+        if self._member is not None and any(self._level(c.path) != WRITE for c in self._repo.children(task.id)):
+            raise ShareForbidden("a subtask is not writable for this member")  # borrar la raíz borra sus subtareas
         self._guard.check_task(
             vault_id, "delete", task.title, created_by=task.created_by, assignee_agent_id=task.assignee_agent_id)
         parent_id = task.parent_id

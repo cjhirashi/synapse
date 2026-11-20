@@ -854,7 +854,7 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 
 ## Notas de una bóveda compartida (H-064 F3)
 
-Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). Los archivos y las carpetas de archivos se abren con la misma regla (ver «Archivos de una bóveda compartida»). Las tareas y el registro de agentes no se abren todavía y responden 404; `POST /folders/move` responde 403 `share-forbidden` a un miembro; las publicaciones son solo del propietario.
+Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). Los archivos y las carpetas de archivos se abren con la misma regla (ver «Archivos de una bóveda compartida»). Las tareas se abren con la misma regla (ver «Tareas de una bóveda compartida»); el registro de agentes no se abre todavía y responde 404; `POST /folders/move` responde 403 `share-forbidden` a un miembro; las publicaciones son solo del propietario.
 
 | Operación | Con lectura | Con escritura | Sin acceso |
 |---|---|---|---|
@@ -871,6 +871,23 @@ Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») 
 **Paginación:** el servidor examina como máximo 2,000 documentos por petición para llenar una página; si no alcanza puede devolver menos de `limit` notas con `next_cursor` para seguir. Lo no legible nunca se cuenta ni se re-sirve.
 
 **Propietario:** lo que crea un miembro cuenta contra los límites del propietario (`document-limit-reached` incluido), y en la bitácora consta como autor el miembro. Si el propietario se desactiva o se da de baja, el acceso del miembro se corta en la siguiente petición; revocar o cambiar concesiones también es inmediato.
+
+## Tareas de una bóveda compartida (H-064 F3b2)
+
+Un miembro activo usa `/vaults/{vault_id}/tasks…` con su propia sesión. Las tareas no tienen carpeta: el permiso sigue al `path` de cada tarea (una tarea sin `path` equivale a la raíz y solo la cubre una concesión `*`). Cada subtarea se evalúa por su propio `path`.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /tasks` de la bóveda (con sus filtros) | solo las tareas que cubre | igual | no aparecen |
+| `GET …/tasks/{id}` | 200 | 200 | 404 `task-not-found`, idéntico a una inexistente |
+| `POST …/tasks` y `…/subtasks` | 403 `share-forbidden` | 201 solo si escribe en el `path` de la tarea (y en el de su padre) | 403 (o 404 si el padre no se lee) |
+| `PATCH`, `DELETE` | 403 `share-forbidden` | permitido; si cambia `path`, debe escribir también en el nuevo | 404 |
+
+- El permiso se evalúa antes que `If-Match` y que cualquier otra regla: un `If-Match` errado no distingue una tarea oculta (404) de una de solo lectura (403).
+- Un miembro **no asigna a un agente** (el registro de agentes es del propietario), **no fija ni cambia el proyecto** y no bloquea con tareas que no lee (404). En la salida, `blocked_by` solo lista las bloqueadoras que lee; `blocked` se conserva.
+- Borrar una raíz borra sus subtareas: exige escritura sobre todas (si no, 403).
+- La autoría de lo que crea un miembro consta como `user`, igual que lo del propietario; los avisos de asignación llegan al propietario.
+- `GET /tasks` (vista de todas las bóvedas) sigue siendo solo de la sesión propia: nunca incluye una bóveda compartida.
 
 ## Archivos de una bóveda compartida (H-064 F3b1)
 

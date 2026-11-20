@@ -1,6 +1,7 @@
 """Rutas de tareas de bóveda (H-053): crear, listar, leer, cambiar y borrar tareas y subtareas.
 
-Patrón de `files.py`: `get_current_principal` (cookie o `Bearer` key) resuelve al dueño; la bóveda se valida
+Un miembro invitado (H-064 F3b2) usa las tareas de la bóveda compartida según sus concesiones, aplicadas sobre el `path` de cada
+tarea; lo que crea consta como autor `user`, igual que lo del dueño. Patrón de `files.py`: `get_current_principal` (cookie o `Bearer` key) resuelve al dueño; la bóveda se valida
 contra la base del dueño, nunca contra la petición. Los permisos por agente (`AgentAccessGuard.check_task`) los
 aplica el servicio, que conoce el autor y el asignado de cada tarea. `ETag` es la `version` de la tarea y
 `If-Match` la precondición opcional de `PATCH`. `GET /tasks` es la vista transversal del dueño: todas sus bóvedas.
@@ -15,15 +16,16 @@ from app.adapters.database import get_db
 from app.adapters.notification_repository import NotificationRepository
 from app.adapters.task_repository import TaskRepository
 from app.core.agent_access import actor_of
-from app.core.dependencies import get_current_principal, require_password_changed
+from app.core.dependencies import get_current_principal, get_vault_context, require_password_changed
 from app.core.errors import (
-    AgentAccessDenied, PasswordChangeRequired, StorageUnavailable, TaskInvalid, TaskNotFound, TaskPreconditionFailed, VaultNotFound,
+    AgentAccessDenied, PasswordChangeRequired, ShareForbidden, StorageUnavailable, TaskInvalid, TaskNotFound, TaskPreconditionFailed,
+    VaultNotFound,
 )
 from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TaskCreate, TaskListOut, TaskOut, TaskUpdate, TokenPayload
-from app.core.vault_context import user_db_name
+from app.core.vault_context import VaultContext, owner_context
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -46,18 +48,32 @@ def _etag(status_code: int) -> dict[int, dict]:
     return {status_code: {"headers": {"ETag": header}}}
 
 
+def _task_service(ctx: VaultContext, principal: TokenPayload, db: Session, vault_port: VaultPort) -> TaskService:
+    # La bóveda se valida contra la base del contexto: la del dueño para él y sus claves, y para un miembro invitado
+    # (H-064 F3b2) la del propietario con sus concesiones; los avisos y la autoría (`user`) son los de siempre.
+    vault_service = VaultService(vault_port, ctx.db)
+    guard = AgentAccessGuard(vault_port, ctx.db, ctx.owner_id, actor_of(principal))
+    return TaskService(
+        TaskRepository(db), ctx.owner_id, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id),
+        notifier=NotificationService(NotificationRepository(db), ctx.owner_id), member=ctx.member)
+
+
 def get_task_service(
+    ctx: VaultContext = Depends(get_vault_context),
     principal: TokenPayload = Depends(get_current_principal),
     db: Session = Depends(get_db),
     vault_port: VaultPort = Depends(get_vault_port),
 ) -> TaskService:
-    # La bóveda se valida contra la base del dueño resuelto (cookie o key): una key solo opera en las de su dueño.
-    couch = user_db_name(principal.sub)
-    vault_service = VaultService(vault_port, couch)
-    guard = AgentAccessGuard(vault_port, couch, principal.sub, actor_of(principal))
-    return TaskService(
-        TaskRepository(db), principal.sub, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id),
-        notifier=NotificationService(NotificationRepository(db), principal.sub))
+    return _task_service(ctx, principal, db, vault_port)
+
+
+def get_own_task_service(
+    principal: TokenPayload = Depends(get_current_principal),
+    db: Session = Depends(get_db),
+    vault_port: VaultPort = Depends(get_vault_port),
+) -> TaskService:
+    """Las tareas del dueño en todas sus bóvedas (`GET /tasks`): nunca las de una bóveda compartida."""
+    return _task_service(owner_context(principal.sub), principal, db, vault_port)
 
 
 def _respond(service: TaskService, task, response: Response) -> TaskOut:
@@ -95,7 +111,7 @@ def list_my_tasks(
     due_after: datetime | None = None,
     due_before: datetime | None = None,
     project_id: Annotated[str | None, Query(description="Id de un proyecto, o `none` para las tareas sin proyecto")] = None,
-    service: TaskService = Depends(get_task_service),
+    service: TaskService = Depends(get_own_task_service),
 ):
     """Tareas del dueño en todas sus bóvedas (p. ej. «mis tareas» o las pendientes de un agente)."""
     tasks = service.list(None, statuses=status_in, assignee=assignee, due_after=due_after, due_before=due_before, project_id=project_id)
@@ -106,7 +122,7 @@ def list_my_tasks(
     "/vaults/{vault_id}/tasks",
     status_code=status.HTTP_201_CREATED,
     response_model=TaskOut,
-    responses=_etag(201) | problem_responses(VaultNotFound, TaskNotFound, TaskInvalid, AgentAccessDenied, StorageUnavailable),
+    responses=_etag(201) | problem_responses(VaultNotFound, TaskNotFound, TaskInvalid, AgentAccessDenied, ShareForbidden, StorageUnavailable),
 )
 def create_task(
     vault_id: VaultId, body: TaskCreate, response: Response, service: TaskService = Depends(get_task_service),
@@ -118,7 +134,7 @@ def create_task(
     "/vaults/{vault_id}/tasks/{task_id}/subtasks",
     status_code=status.HTTP_201_CREATED,
     response_model=TaskOut,
-    responses=_etag(201) | problem_responses(VaultNotFound, TaskNotFound, TaskInvalid, AgentAccessDenied, StorageUnavailable),
+    responses=_etag(201) | problem_responses(VaultNotFound, TaskNotFound, TaskInvalid, AgentAccessDenied, ShareForbidden, StorageUnavailable),
 )
 def create_subtask(
     vault_id: VaultId, task_id: str, body: TaskCreate, response: Response, service: TaskService = Depends(get_task_service),
@@ -140,7 +156,7 @@ def get_task(vault_id: VaultId, task_id: str, response: Response, service: TaskS
     "/vaults/{vault_id}/tasks/{task_id}",
     response_model=TaskOut,
     responses=_etag(200) | problem_responses(
-        VaultNotFound, TaskNotFound, TaskInvalid, TaskPreconditionFailed, AgentAccessDenied, StorageUnavailable),
+        VaultNotFound, TaskNotFound, TaskInvalid, TaskPreconditionFailed, AgentAccessDenied, ShareForbidden, StorageUnavailable),
 )
 def update_task(
     vault_id: VaultId, task_id: str, body: TaskUpdate, response: Response,
@@ -153,7 +169,7 @@ def update_task(
 @router.delete(
     "/vaults/{vault_id}/tasks/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    responses=problem_responses(VaultNotFound, TaskNotFound, AgentAccessDenied, StorageUnavailable),
+    responses=problem_responses(VaultNotFound, TaskNotFound, AgentAccessDenied, ShareForbidden, StorageUnavailable),
 )
 def delete_task(vault_id: VaultId, task_id: str, service: TaskService = Depends(get_task_service)):
     """Borra la tarea y, si es una raíz, sus subtareas."""
