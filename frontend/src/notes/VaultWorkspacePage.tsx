@@ -31,6 +31,7 @@ import TagFilterPanel from "./TagFilterPanel";
 import DocAside from "./DocAside";
 import { AsideToggle, readAsidePreference, writeAsidePreference } from "./AsideToggle";
 import VaultTabs, { TAB_ORDER } from "./VaultTabs";
+import ShareButton from "../sharing/ShareButton";
 
 // La pestaña Tareas (H-053) se carga al abrirla: no engorda el chunk de entrada.
 const VaultTasks = lazy(() => import("../tasks/VaultTasks"));
@@ -535,7 +536,12 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
       accent={colorVar(vaultColor)}
       titleStart={<VaultChip id={vault.id} name={vault.name} icon={vault.icon} />}
       title={vault.name}
-      titleEnd={hasAside ? <AsideToggle open={asideOpen} controls={asideId} onToggle={toggleAside} /> : undefined}
+      titleEnd={
+        <>
+          <ShareButton vaultId={vault.id} vaultName={vault.name} notes={noteRefs} />
+          {hasAside && <AsideToggle open={asideOpen} controls={asideId} onToggle={toggleAside} />}
+        </>
+      }
       sideProps={{ "data-moved": tabMotion.moved ? "" : undefined, "data-direction": tabMotion.dir }}
       side={
         <>

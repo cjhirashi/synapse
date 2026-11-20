@@ -218,3 +218,12 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
 - Todavía **no se puede abrir** una bóveda compartida desde la interfaz: la interfaz lee de la réplica local, que no filtra por carpeta; llega con la réplica por bóveda compartida (F7).
 - Los avisos que no son de tarea (como `vault_share`) se pintan sin el chip «Tarea eliminada» y sin repetir el mensaje (`notifications/NotificationsPage.tsx`).
 - Pruebas: `src/sharing/*.test.ts(x)`, `notifications/notifications.test.tsx` y `e2e/h064-compartidas.spec.ts` (desborde, áreas de toque, claro y oscuro, celular y escritorio).
+
+## Compartir una bóveda (H-064 F5b)
+
+- `src/sharing/ShareButton.tsx` — botón de la franja superior de la bóveda abierta (`Share2`, «Compartir esta bóveda»; solo la ve quien tiene la bóveda en su réplica, es decir, el propietario). Abre `ShareDialog` con las carpetas que salen de las notas (`folderOptions.ts`: sin `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA` ni `PLANTILLAS`, que no se conceden).
+- `src/sharing/ShareDialog.tsx` — «Personas con acceso» (pendientes y activos; «Permisos» edita en la misma tarjeta, «Quitar acceso» / «Cancelar invitación» confirma en la tarjeta) e «Invitar a alguien» (correo de una cuenta existente + permisos). Reinvitar a alguien con el acceso terminado reabre su fila: se reemplaza por id. Los errores de la API se distinguen por `PROBLEM.*` (`api/problems.ts`).
+- `src/sharing/GrantsEditor.tsx` — control segmentado **Lector / Editor / Personalizado** (un solo patrón para elegir el tipo de acceso) y, en Personalizado, una fila por carpeta con nivel «Solo lectura» o «Lectura y escritura»; «toda la bóveda» y una carpeta pueden convivir (lectura en todo y escritura en una). «Personalizado» es una elección de la persona (no se deduce de las concesiones).
+- En celular cada permiso es una mini tarjeta (carpeta, acceso y quitar); botones y campos de 44 px.
+- Pruebas: `src/sharing/*.test.ts(x)` y `e2e/h064-compartir-dialogo.spec.ts` (invitar con permisos personalizados, cambiar permisos, quitar un acceso y comprobar el resultado contra el servidor; celular y escritorio, claro y oscuro).
+
