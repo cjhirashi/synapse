@@ -35,7 +35,7 @@ FEATURES: dict[str, dict[str, tuple[str, ...]]] = {
     "h053-notificaciones": {"paths": ("/notifications",), "schemas": ()},
     "h053-perfiles-de-agente": {"paths": ("/agent-profiles",), "schemas": ()},
     # H-064 F2: invitaciones y membresías de bóveda.
-    "h064-compartir-bovedas": {"paths": ("/vaults/{vault_id}/members", "/invitations"), "schemas": ()},
+    "h064-compartir-bovedas": {"paths": ("/vaults/{vault_id}/members", "/invitations", "/sync/shared/{vault_id}"), "schemas": ()},
 }
 
 _REF_PREFIX = "#/components/"

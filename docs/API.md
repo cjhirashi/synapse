@@ -922,6 +922,23 @@ Las **claves de API con identidad de agente** de una persona invitada (las que c
 4. Una invitación se acepta o rechaza solo con **sesión humana**: una clave de agente no responde invitaciones ni invita (401/403).
 5. El agente no cambia concesiones ni comparte la bóveda: solo el propietario.
 
+## Réplica de una bóveda compartida: `/sync/shared/{vault_id}` (H-064 F7a, solo lectura)
+
+El navegador de un miembro invitado replica una bóveda compartida con PouchDB contra este canal (su propia réplica local por bóveda; la replicación de sus bóvedas propias, `/sync/db`, no cambia). **Solo sesión humana** de un miembro **activo**: un no miembro, una invitación pendiente o revocada, el propio propietario, una clave de API (también la de un agente del miembro) y un `vault_id` mal formado responden **404 `sync-endpoint-not-found`**, igual que una ruta inexistente. Sin sesión, 401. La base que se lee es la del **propietario** y sale de la membresía, nunca de la petición. Esta fase solo lee: `_bulk_docs` y cualquier otra ruta dan 404 (el push llega en F7b).
+
+| Método y ruta | Qué devuelve |
+|---|---|
+| `GET /sync/shared/{vault_id}/db/` | Información mínima de la base (`db_name`, `update_seq`, `instance_start_time`). |
+| `GET`/`POST …/db/_changes` | Cambios (`normal` o `longpoll`) solo de la bóveda y de sus notas **legibles**. El lote está acotado a 100; el selector y los `doc_ids` del cliente se ignoran. |
+| `POST …/db/_bulk_get` | Un resultado por pedido y en su orden; una nota **no legible** se responde **idéntico a una que no existe** (`not_found/missing`). |
+| `GET`/`POST …/db/_all_docs` | Filas de la bóveda y de sus notas legibles (por lotes internos; el rango, `skip` y `descending` del cliente se descartan; `limit` cuenta filas legibles). `total_rows` es el número de filas devueltas. |
+| `POST …/db/_revs_diff` | Para los ids de esta bóveda, lo que falta; los ids ajenos o internos se responden `missing` sin consultar el almacén. |
+| `GET`/`PUT …/db/_local/{id}` | Checkpoints del replicador: se guardan en la base **del invitado** con el id `shared-{vault_id}-{id}` (nunca en la del propietario) y se devuelven con el id original; un invitado no lee el de otro; tope de 64 KiB (413). |
+
+**Qué es legible:** exactamente lo que el miembro puede leer por la API REST (`can_read` sobre el `path` de la nota con sus concesiones; `*` no abre `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` ni `BITACORA`). Los `INDICE.md` generados por carpeta siguen la misma regla. Una nota que el propietario mueve fuera de lo legible **deja de emitirse**; quitarla de la réplica local es trabajo del cliente (F7c/F7d). Nunca salen otras bóvedas del propietario, reservas (`vault-name:*`, `note-path:*`) ni documentos internos.
+
+**El documento de la bóveda llega reducido:** `name`, `description`, `icon`, `owner_id`, fechas y `deleted_at`, con `tags: []` y `attributes: null`. El revisor de lo legible es único (`core/shared_sync_rules.py`) y se evalúa en el servidor sobre el documento real, sin rutas de carpetas en selectores de CouchDB.
+
 ## Archivos de una bóveda compartida (H-064 F3b1)
 
 Un miembro activo usa `GET /vaults/{vault_id}`, `GET /vaults/{vault_id}/files`, `/vaults/{vault_id}/file-folders` y `/files/{id}` con su propia sesión; el servidor aplica sus concesiones a la ruta de cada archivo (`carpeta/nombre`, o `nombre` en la raíz) y a la de cada carpeta.
