@@ -1,0 +1,40 @@
+/* Página de bóvedas compartidas (H-064 F5a). Solo tokens del tema. */
+.shared-page { max-width: 760px; margin: 0 auto; padding: var(--space-6, 24px) 16px; display: flex; flex-direction: column; gap: 14px; }
+.shared-page h1 { margin: 0; font-size: 22px; }
+.shared-page > p[role="alert"], .shared-page > p[role="status"] { padding: 12px 16px; border-radius: var(--radius-md, 10px); font-size: 14px; }
+.shared-page > p[role="alert"] { background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); color: var(--danger-text); }
+.shared-page > p[role="status"] { background: color-mix(in srgb, var(--success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border)); color: var(--success-text); }
+.shared-page > div[role="alert"] { padding: 12px 16px; border-radius: var(--radius-md, 10px); background: var(--bg-secondary); border: 1px solid var(--border); font-size: 14px; }
+.shared-page > div[role="alert"] button { margin-left: 6px; }
+
+.shared-empty { text-align: center; color: var(--text-secondary); padding: 32px 16px; display: flex; flex-direction: column; gap: 8px; }
+.shared-empty-hint { font-size: 13px; color: var(--text-muted); }
+
+.shared-section { display: flex; flex-direction: column; gap: 12px; }
+.shared-section h2 { margin: 0; font-size: 16px; font-weight: 600; }
+
+.shared-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.shared-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md, 10px); padding: var(--space-4, 16px); display: flex; flex-direction: column; gap: 12px; }
+.shared-main { display: flex; flex-direction: column; gap: 4px; }
+.shared-title { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.shared-owner { font-size: 13px; color: var(--text-secondary); }
+.shared-grants { font-size: 13px; color: var(--text-secondary); }
+.shared-date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.shared-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.shared-btn { min-height: 44px; padding: 0 20px; font-weight: 600; cursor: pointer; }
+.shared-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.shared-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.shared-btn--primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.shared-btn--danger { color: var(--danger-text); }
+.shared-btn--danger:hover:not(:disabled) { color: var(--danger-text); border-color: var(--danger-text); background: var(--danger-bg); }
+
+@media (max-width: 640px) {
+  .shared-actions { flex-direction: column; }
+  .shared-actions button { width: 100%; }
+}
+
+@media (min-width: 641px) {
+  .shared-actions { justify-content: flex-end; }
+}

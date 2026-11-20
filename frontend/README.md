@@ -108,7 +108,7 @@ El editor se carga con `React.lazy` al abrir una bóveda: Milkdown y CodeMirror 
 
 - `src/notes/VaultRail.tsx` — riel lateral dividido en dos zonas:
   - **Superior:** lista de bóvedas con scroll vertical (ocupa el espacio disponible).
-  - **Inferior:** enlaces fijos (Tareas, Papelera, **Documentación** —H-061, justo encima de Usuario—, Usuario) + foto/iniciales del usuario. Desde H-052 Archivos es una pestaña de cada
+  - **Inferior:** enlaces fijos (Tareas, **Compartidas conmigo** —H-064, entre Tareas y Papelera—, Papelera, **Documentación** —H-061, justo encima de Usuario—, Usuario) + foto/iniciales del usuario. Desde H-052 Archivos es una pestaña de cada
     bóveda y ya no hay ventana global.
 - `src/layout/AppLayout.tsx` — contenedor principal: navbar (marca + «Bóvedas») + riel +
   contenido. H-028 A7: salen de la navbar los enlaces Archivos/Papelera (al riel), el
@@ -210,3 +210,11 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
   y desplegar. Las capturas son archivos públicos de Synapse enlazados por URL, no van en el repo.
 - Pruebas: `docs/manual/manual.test.ts` (manifiesto, capítulos, `forScreen`), `notes/VaultRail.test.tsx` (orden del riel) y
   `e2e/h061-docs.spec.ts` (botón sobre Usuario, capítulo con imágenes cargadas, barras izquierda/centro/derecha en escritorio, lista flotante en celular; claro y oscuro).
+
+## Compartidas conmigo (H-064 F5a)
+
+- `src/sharing/SharedWithMePage.tsx` — ruta `/compartidas` (entrada «Compartidas conmigo» del riel y destino de los avisos `vault_share`). Tarjetas, no tabla: **Invitaciones** (aceptar o rechazar) y **Bóvedas compartidas** (salir, con confirmación). Cada tarjeta: bóveda, quién la comparte y los permisos en una frase. Botones de 44 px; los nombres largos se parten, nunca se cortan.
+- `src/sharing/sharingApi.ts` (cliente de `/invitations`) y `src/sharing/grants.ts` (`grantsText`, `roleOf`: funciones puras de permisos que reutilizará el diálogo «Compartir» de la fase siguiente).
+- Todavía **no se puede abrir** una bóveda compartida desde la interfaz: la interfaz lee de la réplica local, que no filtra por carpeta; llega con la réplica por bóveda compartida (F7).
+- Los avisos que no son de tarea (como `vault_share`) se pintan sin el chip «Tarea eliminada» y sin repetir el mensaje (`notifications/NotificationsPage.tsx`).
+- Pruebas: `src/sharing/*.test.ts(x)`, `notifications/notifications.test.tsx` y `e2e/h064-compartidas.spec.ts` (desborde, áreas de toque, claro y oscuro, celular y escritorio).
