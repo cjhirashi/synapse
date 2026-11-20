@@ -140,9 +140,10 @@ def resolve_vault_context(principal: TokenPayload, vault_id: str, db: Session) -
 
     Un miembro activo de esa bóveda (sesión humana) trabaja sobre la base de su propietario con sus concesiones; todos los
     demás (el propietario, sus claves de agente y cualquier otra persona) sobre la base de su propia sesión, donde una
-    bóveda ajena no existe. Una clave de agente nunca entra como miembro.
+    bóveda ajena no existe. H-064 F4: una clave con identidad de agente de un miembro activo entra igual que la persona (con
+    sus concesiones como techo); una clave general (sin agente) nunca entra como miembro.
     """
-    if not principal.via_key:
+    if not principal.via_key or principal.agent_id:
         found = VaultMemberRepository(db).active_access(principal.sub, vault_id)
         if found is not None:
             return member_context(found[0], principal.sub, found[1])

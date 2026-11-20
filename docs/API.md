@@ -894,6 +894,34 @@ Un miembro activo usa `/vaults/{vault_id}/tasks…` con su propia sesión. Las t
 - La autoría de lo que crea un miembro consta como `user`, igual que lo del propietario; los avisos de asignación llegan al propietario.
 - `GET /tasks` (vista de todas las bóvedas) sigue siendo solo de la sesión propia: nunca incluye una bóveda compartida.
 
+## Agentes de un invitado (H-064 F4)
+
+Las **claves de API con identidad de agente** de una persona invitada (las que crea con `POST /auth/agent-keys` con `agent_id`) trabajan en la bóveda compartida igual que la persona: sobre la base del propietario y con **las concesiones de la persona como techo** (nunca pueden más que ella). Lo demás de esta sección (notas, tareas, archivos y carpetas de archivos de una bóveda compartida) rige igual para el agente: lo no legible responde 404 y lo legible sin escritura, 403 `share-forbidden`.
+
+| Credencial en una bóveda compartida | Resultado |
+|---|---|
+| Sesión de un miembro activo | Sus concesiones. |
+| Clave con `agent_id` de un miembro activo | Las mismas concesiones del miembro; sin ellas (invitación pendiente, revocada, o no es miembro), 404 como si la bóveda no existiera. |
+| Clave **general** (sin `agent_id`) de un miembro | 404: no entra. |
+| Clave con `is_admin` de un miembro | No gana nada: sigue limitada a las concesiones del miembro. |
+| Clave del propietario o de sus agentes | Como siempre (registro `AG - AGENTES`, sin cambios). |
+
+**El registro del propietario no se aplica a los agentes del invitado.** Un id de agente puede coincidir entre cuentas distintas (el propietario puede tener un `aira` registrado y el invitado otro `aira` suyo): el agente del invitado no hereda nada del registro del propietario; manda solo lo concedido a su persona. Estrechar a un agente concreto por debajo de su persona (y que el campo `lectura` de `AG - AGENTES` lo aplique) queda como mejora posterior.
+
+**Autoría doble.** Lo que escribe una persona o su agente consta a nombre de la persona y, si fue el agente, también de él:
+
+- **BITACORA** del propietario: persona = `<correo> (usuario)`; agente = `<agent_id> (de <correo>) (agente)`.
+- **Tareas** (`created_by` / `updated_by`): `guest:<id de usuario>` para la persona y `guest:<id de usuario>/agent:<agent_id>` para su agente; nunca `user`, que es del propietario. Una tarea de un invitado no dispara los avisos de «un agente cambió algo que te toca».
+- Notas y archivos no guardan un campo de autor propio: la autoría de una nota consta en la BITACORA.
+
+**Contrato para el plugin `synapse_vault` (agentes del invitado).** El plugin usa la clave del agente del invitado y el `vault_id` de la bóveda **del propietario**:
+
+1. Descubrir las bóvedas compartidas con `GET /invitations?status=activo` (la clave de un agente puede leerlas): cada item trae `vault_id`, `vault_name`, `grants` y `owner`. `GET /vaults` solo lista las bóvedas propias de la cuenta.
+2. Operar con las rutas de siempre (`/vaults/{vault_id}/notes`, `/tasks`, `/files`…): las respuestas ya vienen filtradas por las concesiones. `GET /vaults/{vault_id}` devuelve solo `id`, `name` y `description`.
+3. `inbox` y `AG - MENSAJES` no existen en una bóveda compartida para un invitado (zona oculta): el buzón de un agente sigue siendo el de sus propias bóvedas.
+4. Una invitación se acepta o rechaza solo con **sesión humana**: una clave de agente no responde invitaciones ni invita (401/403).
+5. El agente no cambia concesiones ni comparte la bóveda: solo el propietario.
+
 ## Archivos de una bóveda compartida (H-064 F3b1)
 
 Un miembro activo usa `GET /vaults/{vault_id}`, `GET /vaults/{vault_id}/files`, `/vaults/{vault_id}/file-folders` y `/files/{id}` con su propia sesión; el servidor aplica sus concesiones a la ruta de cada archivo (`carpeta/nombre`, o `nombre` en la raíz) y a la de cada carpeta.

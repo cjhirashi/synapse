@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
 from app.adapters.minio_adapter import get_object_storage
-from app.core.agent_access import actor_of
+from app.core.agent_access import Actor, actor_of
 from app.core.dependencies import get_current_principal, get_current_user, get_vault_context, require_password_changed
 from app.core.errors import (
     AgentAccessDenied, AgentOwnsSkills, DocumentLimitReached, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PdfBusy, PdfNotEnabled,
@@ -22,6 +22,7 @@ from app.core.models.user import User
 from app.core.vault_context import VaultContext, owner_context
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
+from app.core.guest_authorship import log_author
 from app.services.agent_access_guard import AgentAccessGuard
 from app.services.change_log_service import Author, ChangeLogService
 from app.services.limit_guard import guard_for
@@ -42,7 +43,10 @@ def _note_service(ctx: VaultContext, current_user: TokenPayload, port: VaultPort
     actor = actor_of(current_user)
     author = None
     if ctx.member is not None:
-        author = Author("human", db.get(User, ctx.actor_id).email)
+        # Un invitado y sus agentes no pasan por el registro `AG - AGENTES` del propietario (un id de agente puede coincidir
+        # con uno suyo): mandan las concesiones. Escriben como la persona, con el agente en la autoría (H-064 F4).
+        actor = Actor("human")
+        author = Author(*log_author(db.get(User, ctx.actor_id).email, current_user.agent_id))
     return NoteContentService(
         port, ctx.db, actor=actor, guard=AgentAccessGuard(port, ctx.db, ctx.owner_id, actor),
         changelog=ChangeLogService(port, ctx.db, ctx.owner_id, actor, author=author),

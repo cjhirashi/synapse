@@ -268,8 +268,11 @@ openapi: 3.1.0
 paths:
   /invitations:
     get:
-      description: Mis invitaciones y accesos; sin `status`, los pendientes y los
-        activos.
+      description: 'Mis invitaciones y accesos; sin `status`, los pendientes y los
+        activos. Es de solo lectura y también la leen las claves
+
+        de API de la cuenta (H-064 F4: así el plugin de un agente descubre las bóvedas
+        compartidas); responder sigue siendo solo de la sesión.'
       operationId: list_invitations_invitations_get
       parameters:
       - in: query

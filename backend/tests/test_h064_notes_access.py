@@ -204,7 +204,7 @@ def test_a_member_can_never_publish_a_note_of_the_owner_on_the_internet(shared):
 
 # --- Quién entra ---
 
-def test_non_members_pending_revoked_and_guest_keys_get_404_like_any_stranger(shared, db):
+def test_non_members_pending_and_revoked_get_404_and_a_member_agent_key_only_matches_its_person(shared, db):
     s = shared
     dan = person(s.owner, db, "dan@example.com")
     eve = person(s.owner, db, "eve@example.com")
@@ -214,8 +214,10 @@ def test_non_members_pending_revoked_and_guest_keys_get_404_like_any_stranger(sh
     for stranger in (dan, eve, fay):
         problem(stranger.get(f"/vaults/{s.vault}/notes"), 404, "vault-not-found")
         problem(stranger.post(f"/vaults/{s.vault}/notes", json={"path": "Pub/z.md", "content": "n"}), 404, "vault-not-found")
-    ana_key = agent_client(s.ana, "aira")
-    problem(ana_key.get(f"/vaults/{s.vault}/notes"), 404, "vault-not-found")
+    ana_key = agent_client(s.ana, "aira")  # H-064 F4: la clave con agente de un miembro activo entra como la persona, no más
+    assert paths(ana_key, s.vault) == paths(s.ana, s.vault)
+    problem(agent_client(fay, "aira").get(f"/vaults/{s.vault}/notes"), 404, "vault-not-found")  # su miembro está revocado
+    problem(agent_client(dan, "aira").get(f"/vaults/{s.vault}/notes"), 404, "vault-not-found")  # nunca fue invitado
     owner_key = agent_client(s.owner, "aira")
     assert real(paths(owner_key, s.vault)) >= {PUB_A, PUB_B, PRIV_C, ROOT}
 

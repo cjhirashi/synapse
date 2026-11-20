@@ -231,7 +231,8 @@ def test_an_agent_key_cannot_invite_or_answer(ready_admin, vault, ana):
     member = invite(ready_admin, vault, "ana@example.com").json()
     aira = agent_client(ready_admin, "aira")
     assert invite(aira, vault, "ana@example.com").status_code in (401, 403)
-    assert aira.get("/invitations").status_code in (401, 403)
+    listing = aira.get("/invitations")
+    assert listing.status_code == 200 and listing.json()["items"] == []
     assert aira.post(f"/invitations/{member['id']}/accept").status_code in (401, 403)
     assert members(ready_admin, vault)[0]["status"] == "pendiente"
 

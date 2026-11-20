@@ -58,7 +58,7 @@ def parse_version(if_match: str | None) -> int | None:
 class TaskService:
     def __init__(
         self, repo: TaskRepository, owner_id: str, guard: AgentAccessGuard, ensure_vault: Callable[[str], object],
-        notifier: NotificationService | None = None, member: MemberAccess | None = None,
+        notifier: NotificationService | None = None, member: MemberAccess | None = None, member_author: str | None = None,
     ) -> None:
         self._repo = repo
         self._owner_id = owner_id
@@ -69,6 +69,8 @@ class TaskService:
         self._notifier = notifier
         # H-064 F3b2: concesiones de un miembro invitado; None = el dueño (sin filtro).
         self._member = member
+        # H-064 F4: autoría (`guest:…`) de lo que escribe un miembro o su agente; None = la que dicta la guardia.
+        self._member_author = member_author
 
     # --- Permisos de un miembro invitado (H-064 F3b2): el nivel de una tarea es el de su `path` (sin `path` = la raíz) ---
 
@@ -155,7 +157,7 @@ class TaskService:
                 self._owner_id, vault_id, parent.id if parent else None),
             title=body.title, description=body.description, notes=body.notes, status=body.status,
             project_id=project_id, priority=body.priority, start_at=_naive_utc(body.start_at), due_at=_naive_utc(body.due_at), reminders=_reminders_json(body.reminders), assignee_type=body.assignee_type,
-            assignee_agent_id=agent_id, path=path, created_by=self._guard.author, updated_by=self._guard.author,
+            assignee_agent_id=agent_id, path=path, created_by=self._author(), updated_by=self._author(),
             version=1, created_at=now, updated_at=now, completed_at=now if closed else None,
         )
         self._repo.add(task)
@@ -368,7 +370,10 @@ class TaskService:
     def _touch(self, task: VaultTask) -> None:
         task.version += 1
         task.updated_at = _now()
-        task.updated_by = self._guard.author
+        task.updated_by = self._author()
+
+    def _author(self) -> str:
+        return self._member_author or self._guard.author
 
     def _refresh_parent(self, parent: VaultTask) -> None:
         """Recalcula el estado de la raíz a partir de sus subtareas (vigentes en la sesión)."""
@@ -381,6 +386,8 @@ class TaskService:
 
     def _agent(self) -> str | None:
         """El agente que hace el cambio, o `None` si lo hace la persona (la persona no se avisa de su propia acción)."""
+        if self._member_author is not None:
+            return None  # un invitado o su agente no dispara los avisos de «un agente cambió algo que te toca»
         author = self._guard.author
         return author.removeprefix("agent:") if author != task_rules.USER else None
 

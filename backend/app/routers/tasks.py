@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from app.adapters.database import get_db
 from app.adapters.notification_repository import NotificationRepository
 from app.adapters.task_repository import TaskRepository
-from app.core.agent_access import actor_of
+from app.core.agent_access import Actor, actor_of
+from app.core.guest_authorship import task_author
 from app.core.dependencies import get_current_principal, get_vault_context, require_password_changed
 from app.core.errors import (
     AgentAccessDenied, PasswordChangeRequired, ShareForbidden, StorageUnavailable, TaskInvalid, TaskNotFound, TaskPreconditionFailed,
@@ -52,10 +53,13 @@ def _task_service(ctx: VaultContext, principal: TokenPayload, db: Session, vault
     # La bóveda se valida contra la base del contexto: la del dueño para él y sus claves, y para un miembro invitado
     # (H-064 F3b2) la del propietario con sus concesiones; los avisos y la autoría (`user`) son los de siempre.
     vault_service = VaultService(vault_port, ctx.db)
-    guard = AgentAccessGuard(vault_port, ctx.db, ctx.owner_id, actor_of(principal))
+    # H-064 F4: un invitado y sus agentes no pasan por el registro del propietario (mandan las concesiones) y constan como `guest:…`.
+    actor = actor_of(principal) if ctx.member is None else Actor("human")
+    member_author = None if ctx.member is None else task_author(ctx.actor_id, principal.agent_id)
+    guard = AgentAccessGuard(vault_port, ctx.db, ctx.owner_id, actor)
     return TaskService(
         TaskRepository(db), ctx.owner_id, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id),
-        notifier=NotificationService(NotificationRepository(db), ctx.owner_id), member=ctx.member)
+        notifier=NotificationService(NotificationRepository(db), ctx.owner_id), member=ctx.member, member_author=member_author)
 
 
 def get_task_service(

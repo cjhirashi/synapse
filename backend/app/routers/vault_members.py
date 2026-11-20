@@ -1,6 +1,6 @@
 """Invitaciones y membresías de bóveda (H-064 F2).
 
-Solo sesión humana (`get_current_user`): una clave de agente no invita ni responde. El propietario invita, cambia concesiones,
+Solo sesión humana (`get_current_user`): una clave de agente no invita ni responde (sí puede listar sus invitaciones, H-064 F4). El propietario invita, cambia concesiones,
 cancela y revoca; el invitado ve sus invitaciones, las acepta o rechaza y puede salir.
 """
 from collections.abc import Callable
@@ -13,7 +13,7 @@ from app.adapters.database import get_db
 from app.adapters.notification_repository import NotificationRepository
 from app.adapters.vault_member_repository import VaultMemberRepository
 from app.core import bitacora_rules
-from app.core.dependencies import get_current_user, require_password_changed
+from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
 from app.core.errors import (
     InvitationNotPending, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, MemberNotFound, PasswordChangeRequired,
     ShareInvalid, StorageUnavailable, VaultNotFound,
@@ -186,10 +186,11 @@ def end_member(
 @router.get("/invitations", response_model=VaultInvitationsListOut)
 def list_invitations(
     state: Annotated[Literal["pendiente", "activo", "revocado"] | None, Query(alias="status")] = None,
-    user: TokenPayload = Depends(get_current_user), repo: VaultMemberRepository = Depends(get_repo),
+    user: TokenPayload = Depends(get_current_principal), repo: VaultMemberRepository = Depends(get_repo),
     port: VaultPort = Depends(get_vault_port),
 ):
-    """Mis invitaciones y accesos; sin `status`, los pendientes y los activos."""
+    """Mis invitaciones y accesos; sin `status`, los pendientes y los activos. Es de solo lectura y también la leen las claves
+    de API de la cuenta (H-064 F4: así el plugin de un agente descubre las bóvedas compartidas); responder sigue siendo solo de la sesión."""
     members = repo.list_of_user(user.sub, (state,) if state else ("pendiente", "activo"))
     grants = repo.grants_by_member([m.id for m in members])
     owners = repo.users_by_ids({m.owner_id for m in members})

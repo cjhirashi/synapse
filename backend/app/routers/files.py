@@ -17,7 +17,7 @@ from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
 # `get_object_storage` se reexporta: `tests/test_files_api.py` lo importa desde aquí para sobrescribirlo.
 from app.adapters.minio_adapter import get_object_storage  # noqa: F401
-from app.core.agent_access import actor_of
+from app.core.agent_access import Actor, actor_of
 from app.core.dependencies import get_current_principal, resolve_vault_context
 from app.core.errors import (
     AgentAccessDenied, FileNotFound, FileTooLarge, FileVisibilityUserOnly, InvalidToken, NotAuthenticated, ShareForbidden,
@@ -118,7 +118,8 @@ def file_services(
         limit_guard=guard_for(db, ctx.owner_id, vault_port),
         member=ctx.member,
     )
-    return service, AgentAccessGuard(vault_port, ctx.db, ctx.owner_id, actor_of(principal))
+    actor = actor_of(principal) if ctx.member is None else Actor("human")  # H-064 F4: mandan las concesiones, no el registro del propietario
+    return service, AgentAccessGuard(vault_port, ctx.db, ctx.owner_id, actor)
 
 
 def _record_context(file_id: str, principal: TokenPayload, db: Session) -> VaultContext:
