@@ -18,6 +18,11 @@ components:
             $ref: '#/components/schemas/AgentAccessKeyOut'
           title: Keys
           type: array
+        lectura:
+          items:
+            type: string
+          title: Lectura
+          type: array
         note_id:
           title: Note Id
           type: string
@@ -25,6 +30,7 @@ components:
       - agent_id
       - estado
       - carpetas
+      - lectura
       - note_id
       - keys
       title: AgentAccessEntryOut
@@ -74,7 +80,7 @@ components:
       description: 'Cuerpo de `PUT /vaults/{id}/agent-access/{agent_id}`: carpetas
         con escritura (`*` = toda la bóveda salvo
 
-        las reservadas) y estado del registro.'
+        las reservadas), carpetas con lectura, y estado del registro.'
       properties:
         carpetas:
           items:
@@ -91,6 +97,16 @@ components:
           - suspendido
           title: Estado
           type: string
+        lectura:
+          anyOf:
+          - items:
+              maxLength: 300
+              minLength: 1
+              type: string
+            maxItems: 50
+            type: array
+          - type: 'null'
+          title: Lectura
       required:
       - carpetas
       title: AgentAccessPut

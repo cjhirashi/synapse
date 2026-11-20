@@ -73,6 +73,7 @@ def get_agent_access(
     agents = [
         AgentAccessEntryOut(
             agent_id=agent_id, estado=entry.registration.estado, carpetas=list(entry.registration.carpetas),
+            lectura=list(entry.registration.lectura),
             note_id=entry.note_id, keys=keys.get(agent_id, []))
         for agent_id, entry in sorted(entries.items())
     ]
@@ -98,9 +99,10 @@ def put_agent_access(
 ):
     """Registra o reasigna un agente en la bóveda (solo sesión humana)."""
     labels = [k.label for k in _active_keys(db, user.sub) if k.agent_id == agent_id]
-    entry = _registry(port, user).put(vault_id, agent_id, body.carpetas, body.estado, labels)
+    entry = _registry(port, user).put(vault_id, agent_id, body.carpetas, body.estado, labels, body.lectura)
     return AgentAccessEntryOut(
         agent_id=agent_id, estado=entry.registration.estado, carpetas=list(entry.registration.carpetas),
+        lectura=list(entry.registration.lectura),
         note_id=entry.note_id,
         keys=[AgentAccessKeyOut(label=k.label, is_admin=k.is_admin) for k in _active_keys(db, user.sub)
               if k.agent_id == agent_id])

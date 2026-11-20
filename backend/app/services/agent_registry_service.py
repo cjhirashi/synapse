@@ -21,24 +21,27 @@ class RegistryEntry(NamedTuple):
     registration: Registration
 
 
-def _frontmatter(agent_id: str, carpetas: list[str], estado: str, key_labels: list[str]) -> dict:
+def _frontmatter(agent_id: str, carpetas: list[str], estado: str, lectura: list[str], key_labels: list[str]) -> dict:
     clave = ", ".join(key_labels) if key_labels else "sin clave asignada"
     return {
         "titulo": f"{agent_id} ({clave})",
-        "descripcion": f"Registro del agente {agent_id} en esta bóveda: carpetas donde puede escribir y su estado.",
+        "descripcion": f"Registro del agente {agent_id} en esta bóveda: carpetas donde puede escribir y leer, y su estado.",
         "tags": ["agente"],
         "estado": estado,
         "agente": agent_id,
         "clave": clave,
         "carpetas": carpetas,
+        "lectura": lectura,
     }
 
 
-def _body(agent_id: str, carpetas: list[str], estado: str, key_labels: list[str]) -> str:
+def _body(agent_id: str, carpetas: list[str], estado: str, lectura: list[str], key_labels: list[str]) -> str:
     keys = ", ".join(f"`{label}`" for label in key_labels) or "_sin clave asignada_"
-    folders = "\n".join(f"- `{c}`" for c in carpetas) or "- _ninguna_"
-    return (f"# {agent_id}\n\n- Clave: {keys}\n- Estado: {estado}\n\nEscribe en:\n\n{folders}\n\n"
-            "Edítala desde la pantalla de asignaciones o cambiando `carpetas` y `estado` en los atributos.\n")
+    write_folders = "\n".join(f"- `{c}`" for c in carpetas) or "- _ninguna_"
+    read_folders = "toda la bóveda" if lectura == ["*"] else "\n".join(f"- `{c}`" for c in lectura) or "- _ninguna_"
+    return (f"# {agent_id}\n\n- Clave: {keys}\n- Estado: {estado}\n\nEscribe en:\n\n{write_folders}\n\n"
+            f"Lee en:\n\n{read_folders}\n\n"
+            "Edítala desde la pantalla de asignaciones o cambiando `carpetas`, `lectura` y `estado` en los atributos.\n")
 
 
 class AgentRegistryService:
@@ -62,10 +65,12 @@ class AgentRegistryService:
                 return found
             after = (view_key(docs[-1]["path"]), docs[-1]["_id"])
 
-    def put(self, vault_id: str, agent_id: str, carpetas: list[str], estado: str, key_labels: list[str]) -> RegistryEntry:
-        frontmatter = _frontmatter(agent_id, carpetas, estado, key_labels)
-        content = _body(agent_id, carpetas, estado, key_labels)
+    def put(self, vault_id: str, agent_id: str, carpetas: list[str], estado: str, key_labels: list[str],
+            lectura: list[str] | None = None) -> RegistryEntry:
         existing = self.entries(vault_id).get(agent_id)
+        final_lectura = lectura if lectura is not None else (list(existing.registration.lectura) if existing else ["*"])
+        frontmatter = _frontmatter(agent_id, carpetas, estado, final_lectura, key_labels)
+        content = _body(agent_id, carpetas, estado, final_lectura, key_labels)
         if existing is None:
             created = self._contents.create(
                 vault_id, NoteCreate(path=registration_path(agent_id), content=content, frontmatter=frontmatter))
@@ -76,7 +81,7 @@ class AgentRegistryService:
             self._contents.update(
                 vault_id, note_id, NoteUpdate(content=content, frontmatter=frontmatter), current.etag)
         invalidate_registry(self._db, vault_id)
-        return RegistryEntry(note_id, Registration(agent_id, tuple(carpetas), estado))
+        return RegistryEntry(note_id, Registration(agent_id, tuple(carpetas), estado, tuple(final_lectura)))
 
     def remove(self, vault_id: str, agent_id: str) -> None:
         existing = self.entries(vault_id).get(agent_id)

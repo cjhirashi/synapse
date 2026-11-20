@@ -98,7 +98,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   registran (`classify`: no INDICES ni la propia BITACORA ni cambios solo de `fecha_actualizacion`), día local por zona horaria,
   `day_path` (`BITACORA/AAAA-MM/AAAA-MM-DD.md`) y el texto del día (`render_day`). Las usan REST, `sync_push.py` y `folder_service.py`.
 - `agent_access.py` — permisos de escritura de los agentes (H-030 E6), sin E/S: `Actor`, `parse_registration` del registro
-  `AG - AGENTES/<id>.md`, `decide`/`decide_files`. `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
+  `AG - AGENTES/<id>.md` (H-064 F3c: campo `lectura`), `decide`/`decide_files`. `vault_access.py` — acceso de un miembro invitado sobre ruta de contenido (H-064 F3): `level_of`, `can_read`, `can_write` y `agent_level_of` (motor puro que calcula nivel efectivo de un agente con techo del invitado). `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `wikilink_rewrite.py` — reglas puras de la reescritura de wikilinks al mover o renombrar notas y carpetas (H-039, sin E/S); las usa `services/wikilink_rewrite_service.py` y las espeja `frontend/src/editor/wikilink.ts` sobre un fixture compartido.

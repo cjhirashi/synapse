@@ -57,3 +57,24 @@ def can_read(access: MemberAccess, path: str) -> bool:
 
 def can_write(access: MemberAccess, path: str) -> bool:
     return level_of(access, path) == WRITE
+
+
+def agent_level_of(carpetas: tuple[str, ...], lectura: tuple[str, ...], ceiling: MemberAccess | None, path: str) -> str | None:
+    """Acceso efectivo de un agente sobre ruta de contenido. `ceiling` es el techo del invitado que lo respalda
+    (None para agente del propietario). Devuelve `escritura`, `lectura` o None."""
+    if ceiling is not None:
+        top = level_of(ceiling, path)
+        if top is None:
+            return None
+    else:
+        top = WRITE
+    own = None
+    if ALL_FOLDERS in carpetas or any(in_folder(path, c) for c in carpetas):
+        own = WRITE
+    elif ALL_FOLDERS in lectura or any(in_folder(path, c) for c in lectura):
+        own = READ
+    if own is None:
+        return None
+    if own == WRITE and top == WRITE:
+        return WRITE
+    return READ

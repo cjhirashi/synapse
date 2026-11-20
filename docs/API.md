@@ -674,16 +674,19 @@ con cumplimiento activo y con keys que ya tienen agente). Una key nunca crea, re
 
 ### 3. Registro de agentes por bóveda: `AG - AGENTES`
 
-Una nota por agente, `AG - AGENTES/<id>.md`, con `estado` (`activo` | `suspendido`) y `carpetas` (lista de carpetas con
-escritura; `*` = toda la bóveda salvo las reservadas). Una nota de esa carpeta que no sea un registro válido se rechaza
+Una nota por agente, `AG - AGENTES/<id>.md`, con `estado` (`activo` | `suspendido`), `carpetas` (lista de carpetas con
+escritura; `*` = toda la bóveda salvo las reservadas) y `lectura` (lista de carpetas con lectura; opcional, por omisión
+`["*"]` = todas las carpetas del alcance del propietario o invitado). Una nota de esa carpeta que no sea un registro válido se rechaza
 (`ag-agentes:registro`). Se edita como cualquier nota (sesión humana o agente administrador) o con:
 
 | Método | Ruta | Credencial | Respuestas |
 |---|---|---|---|
-| `GET` | `/vaults/{id}/agent-access` | cookie o key | `200` `{mode, agents[{agent_id, estado, carpetas, note_id, keys[{label,is_admin}]}], unregistered_keys, unregistered_agent_ids}` |
-| `PUT` | `/vaults/{id}/agent-access/{agent_id}` `{carpetas, estado}` | cookie | `200` · `404` · `422` |
+| `GET` | `/vaults/{id}/agent-access` | cookie o key | `200` `{mode, agents[{agent_id, estado, carpetas, lectura, note_id, keys[{label,is_admin}]}], unregistered_keys, unregistered_agent_ids}` |
+| `PUT` | `/vaults/{id}/agent-access/{agent_id}` `{carpetas, lectura?, estado}` | cookie | `200` · `404` · `422` |
 | `DELETE` | `/vaults/{id}/agent-access/{agent_id}` | cookie | `204` · `404` |
 | `GET` | `/agent-access/shadow-report?hours=48` | cookie | `200` decisiones del modo sombra por agente y últimas denegadas |
+
+Desde H-064 F3c el campo `lectura` existe y se valida; aún no restringe las lecturas de los agentes (se aplica en F4). Si el `PUT` no la envía, se conserva la del registro (o `["*"]` en un registro nuevo); `escritura` (`carpetas`) incluye lectura. Una `lectura` mal formada se rechaza con 422, también en una nota editada a mano (`ag-agentes:registro`).
 
 Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
 `activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo

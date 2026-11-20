@@ -621,11 +621,12 @@ class FileVisibilityUpdate(BaseModel):
 
 class AgentAccessPut(BaseModel):
     """Cuerpo de `PUT /vaults/{id}/agent-access/{agent_id}`: carpetas con escritura (`*` = toda la bóveda salvo
-    las reservadas) y estado del registro."""
+    las reservadas), carpetas con lectura, y estado del registro."""
 
     model_config = ConfigDict(extra="forbid")
 
     carpetas: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=300)]], Field(max_length=50)]
+    lectura: Annotated[list[Annotated[str, StringConstraints(min_length=1, max_length=300)]], Field(max_length=50)] | None = None
     estado: Literal["activo", "suspendido"] = "activo"
 
 
@@ -688,6 +689,7 @@ class AgentAccessEntryOut(BaseModel):
     agent_id: str
     estado: str
     carpetas: list[str]
+    lectura: list[str]
     note_id: str
     keys: list[AgentAccessKeyOut]  # claves vigentes de ese agente (nombre `op-…`)
 
