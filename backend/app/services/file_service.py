@@ -14,12 +14,13 @@ from datetime import UTC, datetime
 from app.adapters.file_repository import FileRepository
 from app.services.limit_guard import LimitGuard
 from app.core.errors import (
-    FileFolderNotEmpty, FileNotFound, FileTooLarge, FolderMoveInvalid, FolderNotFound, UnsafeSvg, UnsupportedFileType,
-    ValidationFailed,
+    FileFolderNotEmpty, FileNotFound, FileTooLarge, FolderMoveInvalid, FolderNotFound, ShareForbidden, UnsafeSvg,
+    UnsupportedFileType, ValidationFailed,
 )
 from app.core.file_safety import SVG, is_safe_svg, resolve_content_type
 from app.core.models.file import File
 from app.core.ports.object_storage_port import ObjectStoragePort
+from app.core.vault_access import WRITE, MemberAccess, folder_level, level_of
 
 # Límites por categoría (C-2/C-11). El router corta la lectura en límite + 1 byte.
 MAX_FILE_SIZE_IMAGE = 5 * 1024 * 1024
@@ -85,6 +86,16 @@ def _validate_folder(folder: str | None) -> str | None:
     return clean_folder
 
 
+def file_path_of(folder: str | None, name: str) -> str:
+    """La ruta que el motor de acceso evalúa para un archivo (H-064 F3b1): `carpeta/nombre`, o `nombre` en la raíz."""
+    return f"{folder}/{name}" if folder else name
+
+
+def visible_to(member: MemberAccess | None, record: File) -> bool:
+    """¿Ve el archivo quien tiene `member` (None = dueño, ve todo)?"""
+    return member is None or level_of(member, file_path_of(record.folder, record.name)) is not None
+
+
 def _with_ancestors(path: str) -> set[str]:
     """`a/b/c` → {`a`, `a/b`, `a/b/c`}."""
     levels = path.split("/")
@@ -113,6 +124,7 @@ class FileService:
         owner_id: str,
         ensure_vault: Callable[[str], None],
         limit_guard: LimitGuard | None = None,
+        member: MemberAccess | None = None,
     ) -> None:
         self._limit_guard = limit_guard  # H-060: almacenamiento por bóveda (None = sin límite)
         self._repo = repo
@@ -121,6 +133,32 @@ class FileService:
         # Lanza `VaultNotFound` si la bóveda no existe o no es del usuario (lo provee la ruta
         # con el `VaultService` del dueño; los tests pasan un doble).
         self._ensure_vault = ensure_vault
+        # H-064 F3b1: concesiones de un miembro invitado sobre la bóveda del dueño; None = el dueño (sin filtro).
+        self._member = member
+
+    # --- Gates de miembro (H-064 F3b1): sin concesión, 404 como si no existiera; con lectura y sin escritura, 403 ---
+
+    def _file_gate(self, path: str, *, write: bool = False) -> None:
+        if self._member is None:
+            return
+        level = level_of(self._member, path)
+        if level is None:
+            raise FileNotFound("hidden from this member")
+        if write and level != WRITE:
+            raise ShareForbidden("read-only for this member")
+
+    def _folder_gate(self, folder: str, *, write: bool = False) -> None:
+        if self._member is None:
+            return
+        level = folder_level(self._member, folder)
+        if level is None:
+            raise FolderNotFound("hidden from this member")
+        if write and level != WRITE:
+            raise ShareForbidden("read-only for this member")
+
+    def check_write(self, record: File) -> None:
+        """Lanza si el miembro no puede escribir el archivo (la lectura se exige antes, en `get_record`)."""
+        self._file_gate(file_path_of(record.folder, record.name), write=True)
 
     def create(self, *, vault_id: str, filename: str, data: bytes, folder: str | None = None, visibility: str = "private") -> File:
         """Guarda el objeto y crea su registro, privado por defecto o público si se pide al subir (C-1), o rechaza sin crear nada (C-2/C-5).
@@ -147,6 +185,7 @@ class FileService:
 
         # Validar carpeta (H-025)
         clean_folder = _validate_folder(folder)
+        self._file_gate(file_path_of(clean_folder, clean_name), write=True)  # H-064 F3b1: solo miembros con escritura
 
         # Extraer extensión y verificar tamaño antes de validar tipo
         ext = _get_file_extension(clean_name)
@@ -191,6 +230,10 @@ class FileService:
         record = self._repo.get(file_id)
         if record is None:
             raise FileNotFound(f"archivo inexistente: {file_id}")
+        if self._member is not None:
+            if record.owner_id != self._owner_id:
+                raise FileNotFound(f"archivo inexistente: {file_id}")
+            self._file_gate(file_path_of(record.folder, record.name))
         return record
 
     def read(self, record: File) -> bytes:
@@ -202,6 +245,8 @@ class FileService:
         existe o es de otro, `FileNotFound` (no revela que existe). Rechaza visibilidad inválida."""
         if visibility not in _VALID_VISIBILITIES:
             raise ValidationFailed(f"visibilidad inválida: {visibility}")
+        if self._member is not None:
+            self.check_write(self.get_record(file_id))
         record = self._repo.set_visibility(file_id, self._owner_id, visibility)
         if record is None:
             raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
@@ -213,11 +258,14 @@ class FileService:
         record = self._repo.get(file_id)
         if record is None or record.owner_id != self._owner_id:
             raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
+        self._file_gate(file_path_of(record.folder, record.name), write=True)
 
         # Sanitizar nuevo nombre
         clean_name = _sanitize_filename(new_name)
         if clean_name is None:
             raise UnsupportedFileType(f"nombre inválido: {new_name}")
+        if self._member is not None and clean_name != record.name:
+            raise ShareForbidden("a member cannot rename a file")
 
         # Si la extensión cambió, verificar que sea coherente con el tipo guardado
         old_ext = _get_file_extension(record.name)
@@ -243,6 +291,8 @@ class FileService:
         record = self._repo.get(file_id)
         if record is None or record.owner_id != self._owner_id:
             raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
+        if self._member is not None:
+            self.check_write(record)
 
         # Borrar objeto de MinIO primero; si falla, la transacción se detiene
         try:
@@ -296,14 +346,21 @@ class FileService:
 
     # --- Carpetas (H-046) ---
 
-    def list_folders(self, vault_id: str) -> list[str]:
-        """Carpetas de la bóveda: explícitas + las que tienen archivos + las ancestras de todas, ordenadas."""
-        self._ensure_vault(vault_id)
+    def _all_folders(self, vault_id: str) -> list[str]:
         known = self._repo.explicit_folders(vault_id, self._owner_id) | self._repo.file_folders(vault_id, self._owner_id)
         every: set[str] = set()
         for path in known:
             every |= _with_ancestors(path)
         return sorted(every, key=lambda p: [x.casefold() for x in p.split("/")])
+
+    def list_folders(self, vault_id: str) -> list[str]:
+        """Carpetas de la bóveda: explícitas + las que tienen archivos + las ancestras de todas, ordenadas.
+        Un miembro solo ve las que tienen nivel (H-064 F3b1); las ancestras no se le muestran por sí solas."""
+        self._ensure_vault(vault_id)
+        folders = self._all_folders(vault_id)
+        if self._member is None:
+            return folders
+        return [f for f in folders if folder_level(self._member, f) is not None]
 
     def create_folder(self, vault_id: str, path: str) -> list[str]:
         """Crea la carpeta (y sus ancestras) aunque no tenga archivos. Idempotente."""
@@ -311,15 +368,22 @@ class FileService:
         if clean is None:
             raise ValidationFailed("carpeta inválida: la ruta no puede estar vacía")
         self._ensure_vault(vault_id)
+        self._folder_gate(clean, write=True)
         self._repo.add_folders(vault_id, self._owner_id, _with_ancestors(clean))
         return self.list_folders(vault_id)
 
     def move_file(self, file_id: str, folder: str | None) -> File:
-        """Mueve un archivo a otra carpeta (`None` o vacía = raíz). La carpeta destino queda registrada."""
+        """Mueve un archivo a otra carpeta (`None` o vacía = raíz). La carpeta destino queda registrada.
+        A un miembro no se le mueve ningún archivo: si la carpeta cambia, `ShareForbidden` (H-064 F3b1)."""
         clean = _validate_folder(folder)
         record = self.get_record(file_id)
         if record.owner_id != self._owner_id:
             raise FileNotFound(f"archivo inexistente o ajeno: {file_id}")
+        if self._member is not None:
+            self.check_write(record)
+            if clean != record.folder:
+                raise ShareForbidden("a member cannot move a file")
+            return record
         if clean is not None:
             self._repo.add_folders(record.vault_id, self._owner_id, _with_ancestors(clean))
         moved = self._repo.set_folder(file_id, self._owner_id, clean)
@@ -328,13 +392,17 @@ class FileService:
         return moved
 
     def move_folder(self, vault_id: str, src: str, dst: str) -> tuple[str, str, int]:
-        """Mueve una carpeta con todo lo que contiene (`src` pasa a llamarse `dst`). Si `dst` ya existe, se fusionan."""
+        """Mueve una carpeta con todo lo que contiene (`src` pasa a llamarse `dst`). Si `dst` ya existe, se fusionan.
+        Un miembro nunca mueve carpetas (H-064 F3b1): `ShareForbidden`."""
+        if self._member is not None:
+            raise ShareForbidden("a member cannot move a folder")
         clean_src, clean_dst = _validate_folder(src), _validate_folder(dst)
         if clean_src is None or clean_dst is None:
             raise FolderMoveInvalid("la raíz no se mueve ni es destino de un nombre de carpeta")
         if clean_dst == clean_src or clean_dst.startswith(clean_src + "/"):
             raise FolderMoveInvalid("una carpeta no se puede mover dentro de sí misma")
-        if clean_src not in self.list_folders(vault_id):
+        self._ensure_vault(vault_id)
+        if clean_src not in self._all_folders(vault_id):
             raise FolderNotFound()
         self._repo.add_folders(vault_id, self._owner_id, _with_ancestors(clean_dst))
         moved = self._repo.move_folder_tree(vault_id, self._owner_id, clean_src, clean_dst)
@@ -345,7 +413,14 @@ class FileService:
         clean = _validate_folder(path)
         if clean is None:
             raise ValidationFailed("carpeta inválida: la raíz no se borra")
-        if clean not in self.list_folders(vault_id):
+        self._ensure_vault(vault_id)
+        folders = self._all_folders(vault_id)
+        if self._member is not None:
+            # Borrar la carpeta borra también sus subcarpetas: el miembro debe escribir en todas.
+            self._folder_gate(clean, write=True)
+            for sub in (f for f in folders if f.startswith(clean + "/")):
+                self._folder_gate(sub, write=True)
+        if clean not in folders:
             raise FolderNotFound()
         if self._repo.count_files_under(vault_id, self._owner_id, clean) > 0:
             raise FileFolderNotEmpty()

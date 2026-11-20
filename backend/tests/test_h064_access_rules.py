@@ -1,7 +1,7 @@
 """H-064 F3: reglas puras del acceso de un miembro invitado, por carpeta y nivel."""
 import pytest
 
-from app.core.vault_access import Grant, MemberAccess, can_read, can_write, level_of
+from app.core.vault_access import Grant, MemberAccess, can_read, can_write, folder_level, level_of
 
 
 def access(*grants: tuple[str, str]) -> MemberAccess:
@@ -50,3 +50,34 @@ def test_no_grants_means_no_access_at_all():
     nothing = access()
     assert level_of(nothing, "Pub/a.md") is None and level_of(nothing, "root.md") is None
     assert level_of(nothing, "PLANTILLAS/plantilla-nota.md") == "lectura"
+
+
+@pytest.mark.parametrize("folder, level", [
+    ("Pub", "escritura"), ("Pub/sub", "escritura"), ("pub", "escritura"), ("Pub2", None), ("Otra/Pub", None),
+    ("Priv", None), ("", None),
+])
+def test_folder_level_probes_a_path_inside_the_folder(folder, level):
+    assert folder_level(access(("Pub", "escritura")), folder) == level
+
+
+def test_folder_level_of_the_root_needs_a_star_grant():
+    assert folder_level(access(("*", "lectura")), "") == "lectura"
+    assert folder_level(access(("*", "escritura")), "") == "escritura"
+    assert folder_level(access(("Pub", "escritura")), "") is None
+
+
+@pytest.mark.parametrize("folder", ["AG - AGENTES", "AG - SKILLS", "AG - MENSAJES", "BITACORA", "bitacora/2026"])
+def test_folder_level_hides_reserved_zones_even_with_star_write(folder):
+    assert folder_level(access(("*", "escritura")), folder) is None
+
+
+def test_folder_level_of_templates_is_read_only():
+    assert folder_level(access(("Pub", "escritura")), "PLANTILLAS") == "lectura"
+    assert folder_level(access(("*", "escritura")), "PLANTILLAS") == "lectura"
+
+
+def test_folder_level_of_nested_grant_is_the_most_specific_level():
+    member = access(("a", "lectura"), ("a/b", "escritura"))
+    assert folder_level(member, "a") == "lectura"
+    assert folder_level(member, "a/b") == "escritura"
+    assert folder_level(member, "a/b/c") == "escritura"

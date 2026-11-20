@@ -854,7 +854,7 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 
 ## Notas de una bóveda compartida (H-064 F3)
 
-Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). El resto de rutas de la bóveda (tareas, archivos, carpetas, publicaciones, registro de agentes) no se abren a invitados todavía y responden 404.
+Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). Los archivos y las carpetas de archivos se abren con la misma regla (ver «Archivos de una bóveda compartida»). Las tareas y el registro de agentes no se abren todavía y responden 404; `POST /folders/move` responde 403 `share-forbidden` a un miembro; las publicaciones son solo del propietario.
 
 | Operación | Con lectura | Con escritura | Sin acceso |
 |---|---|---|---|
@@ -871,6 +871,24 @@ Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») 
 **Paginación:** el servidor examina como máximo 2,000 documentos por petición para llenar una página; si no alcanza puede devolver menos de `limit` notas con `next_cursor` para seguir. Lo no legible nunca se cuenta ni se re-sirve.
 
 **Propietario:** lo que crea un miembro cuenta contra los límites del propietario (`document-limit-reached` incluido), y en la bitácora consta como autor el miembro. Si el propietario se desactiva o se da de baja, el acceso del miembro se corta en la siguiente petición; revocar o cambiar concesiones también es inmediato.
+
+## Archivos de una bóveda compartida (H-064 F3b1)
+
+Un miembro activo usa `GET /vaults/{vault_id}`, `GET /vaults/{vault_id}/files`, `/vaults/{vault_id}/file-folders` y `/files/{id}` con su propia sesión; el servidor aplica sus concesiones a la ruta de cada archivo (`carpeta/nombre`, o `nombre` en la raíz) y a la de cada carpeta.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /vaults/{id}` | 200 con solo `id`, `name` y `description` | igual | 404 |
+| `GET /vaults/{id}/files` (`folder=`) | solo los archivos que cubre; `total` cuenta esos | igual | no aparecen |
+| `GET /vaults/{id}/file-folders` | solo las carpetas con nivel (las ancestras no se muestran por sí solas) | igual | no aparecen |
+| `GET /files/{id}` | 200 | 200 | 404 `file-not-found`, idéntico a uno inexistente |
+| `POST /files` (subir, `vault_id` en el formulario) y `POST /vaults/{id}/file-folders` (crear) | 403 `share-forbidden` | 201 solo bajo una carpeta con escritura | 404 |
+| `PATCH /files/{id}` con `name` o `folder` distintos | 403 `share-forbidden` | 403 `share-forbidden` | 404 |
+| `PATCH /files/{id}` solo con `visibility` | 403 `share-forbidden` | permitido | 404 |
+| `DELETE /files/{id}`, `DELETE …/file-folders` | 403 `share-forbidden` | permitido | 404 |
+| `POST …/file-folders/move`, `POST /folders/move` | 403 `share-forbidden` | 403 `share-forbidden` | 404 |
+
+Un miembro nunca mueve ni renombra archivos o carpetas (decisión de la fase: solo el propietario reorganiza). Una carpeta que contiene subcarpetas sin escritura no se borra. Las publicaciones siguen siendo solo del propietario.
 
 ## Perfil de agente (H-053)
 

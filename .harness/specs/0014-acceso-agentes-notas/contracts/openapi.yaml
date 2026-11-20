@@ -555,7 +555,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Shared vault access forbidden
         '404':
           content:
             application/problem+json:

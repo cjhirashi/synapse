@@ -307,6 +307,27 @@ components:
       - name
       title: VaultCreate
       type: object
+    VaultGuestOut:
+      description: '`GET /vaults/{id}` para un miembro invitado (H-064 F3b1): solo
+        lo que necesita para reconocer la bóveda.'
+      properties:
+        description:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Description
+        id:
+          title: Id
+          type: string
+        name:
+          title: Name
+          type: string
+      required:
+      - id
+      - name
+      - description
+      title: VaultGuestOut
+      type: object
     VaultListItem:
       properties:
         attributes:
@@ -710,7 +731,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/VaultOut'
+                anyOf:
+                - $ref: '#/components/schemas/VaultOut'
+                - $ref: '#/components/schemas/VaultGuestOut'
+                title: Response Get Vault Vaults  Vault Id  Get
           description: Successful Response
           headers:
             ETag:

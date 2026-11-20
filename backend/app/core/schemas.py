@@ -287,6 +287,14 @@ class VaultOut(BaseModel):
     deleted_at: str | None
 
 
+class VaultGuestOut(BaseModel):
+    """`GET /vaults/{id}` para un miembro invitado (H-064 F3b1): solo lo que necesita para reconocer la bóveda."""
+
+    id: str
+    name: str
+    description: str | None
+
+
 class VaultListItem(VaultOut):
     # PLAN-0003 §13: en los listados la versión viaja en cada elemento (mismo valor que la
     # cabecera `ETag`); sin ella la Papelera no podría enviar `If-Match` al restaurar.

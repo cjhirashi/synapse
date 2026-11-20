@@ -175,9 +175,12 @@ def test_a_member_cannot_move_or_rename_and_cannot_make_a_pdf(shared):
 
 def test_a_guest_keeps_no_access_to_what_other_surfaces_expose(shared):
     s = shared
-    problem(s.ana.get(f"/vaults/{s.vault}"), 404, "vault-not-found")
+    # H-064 F3b1: la bóveda y sus archivos son del invitado según sus concesiones (solo id, nombre y descripción de la bóveda).
+    res = s.ana.get(f"/vaults/{s.vault}")
+    assert res.status_code == 200 and set(res.json()) == {"id", "name", "description"}
+    assert s.ana.get(f"/vaults/{s.vault}/files").status_code == 200
     assert s.vault not in {v["id"] for v in s.ana.get("/vaults").json()["items"]}
-    for surface in ("tasks", "files", "folders", "agent-access", "members"):
+    for surface in ("tasks", "folders", "agent-access", "members"):
         res = s.ana.get(f"/vaults/{s.vault}/{surface}")
         assert res.status_code in (404, 405), (surface, res.status_code)
     listed = s.ana.get(f"/vaults/{s.vault}/publications")

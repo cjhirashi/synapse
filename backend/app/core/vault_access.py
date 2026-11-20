@@ -41,6 +41,16 @@ def level_of(access: MemberAccess, path: str) -> str | None:
     return level
 
 
+def folder_level(access: MemberAccess, folder: str) -> str | None:
+    """Nivel del miembro sobre la carpeta `folder` de archivos (H-064 F3b1), probando una ruta que cuelga de ella.
+
+    Una carpeta vale lo que valen sus archivos: se evalúa `folder/x` (o `x` en la raíz, `folder` vacía). Así la zona
+    reservada, `PLANTILLAS` y las concesiones se aplican igual que a una nota.
+    """
+    probe = f"{folder}/x" if folder else "x"
+    return level_of(access, probe)
+
+
 def can_read(access: MemberAccess, path: str) -> bool:
     return level_of(access, path) is not None
 

@@ -135,8 +135,8 @@ def require_password_changed(
 VaultIdPath = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
 
 
-def get_vault_context(vault_id: VaultIdPath, principal: TokenPayload = Depends(get_current_principal), db: Session = Depends(get_db)) -> VaultContext:
-    """Dónde y con qué permisos actúa quien pregunta sobre la bóveda `vault_id` de la URL.
+def resolve_vault_context(principal: TokenPayload, vault_id: str, db: Session) -> VaultContext:
+    """Dónde y con qué permisos actúa `principal` sobre la bóveda `vault_id`.
 
     Un miembro activo de esa bóveda (sesión humana) trabaja sobre la base de su propietario con sus concesiones; todos los
     demás (el propietario, sus claves de agente y cualquier otra persona) sobre la base de su propia sesión, donde una
@@ -147,3 +147,8 @@ def get_vault_context(vault_id: VaultIdPath, principal: TokenPayload = Depends(g
         if found is not None:
             return member_context(found[0], principal.sub, found[1])
     return owner_context(principal.sub)
+
+
+def get_vault_context(vault_id: VaultIdPath, principal: TokenPayload = Depends(get_current_principal), db: Session = Depends(get_db)) -> VaultContext:
+    """`resolve_vault_context` para las rutas que llevan `vault_id` en la URL."""
+    return resolve_vault_context(principal, vault_id, db)

@@ -52,19 +52,27 @@ class FileRepository:
         self._db.commit()
         return True
 
-    def list_by_vault(
-        self, vault_id: str, owner_id: str, limit: int = 100, offset: int = 0, folder: object = _ALL
-    ) -> tuple[list[File], int]:
-        """Lista archivos de la bóveda del usuario (C-4), con paginación. Retorna (archivos, total).
-        `folder`: sin pasar = todos; `None` = los de la raíz; una ruta = los de esa carpeta (no las subcarpetas)."""
+    def _vault_query(self, vault_id: str, owner_id: str, folder: object = _ALL):
         query = self._db.query(File).filter(
             and_(File.vault_id == vault_id, File.owner_id == owner_id)
         )
         if folder is not _ALL:
             query = query.filter(File.folder.is_(None) if folder is None else File.folder == folder)
+        return query.order_by(File.created_at.desc())
+
+    def list_by_vault(
+        self, vault_id: str, owner_id: str, limit: int = 100, offset: int = 0, folder: object = _ALL
+    ) -> tuple[list[File], int]:
+        """Lista archivos de la bóveda del usuario (C-4), con paginación. Retorna (archivos, total).
+        `folder`: sin pasar = todos; `None` = los de la raíz; una ruta = los de esa carpeta (no las subcarpetas)."""
+        query = self._vault_query(vault_id, owner_id, folder)
         total = query.count()
-        files = query.order_by(File.created_at.desc()).limit(limit).offset(offset).all()
+        files = query.limit(limit).offset(offset).all()
         return files, total
+
+    def all_by_vault(self, vault_id: str, owner_id: str, folder: object = _ALL) -> list[File]:
+        """Todos los archivos que cumplen `list_by_vault` (mismo orden), sin paginar: para filtrar por concesión (H-064 F3b1)."""
+        return self._vault_query(vault_id, owner_id, folder).all()
 
     # --- Carpetas (H-046) ---
 
