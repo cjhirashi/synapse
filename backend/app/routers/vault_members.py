@@ -12,11 +12,13 @@ from sqlalchemy.orm import Session
 from app.adapters.database import get_db
 from app.adapters.notification_repository import NotificationRepository
 from app.adapters.vault_member_repository import VaultMemberRepository
+from app.core import bitacora_rules
 from app.core.dependencies import get_current_user, require_password_changed
 from app.core.errors import (
     InvitationNotPending, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, MemberNotFound, PasswordChangeRequired,
     ShareInvalid, StorageUnavailable, VaultNotFound,
 )
+from app.core.models.change_log import ChangeLog
 from app.core.models.user import User
 from app.core.models.vault_member import VaultMember, VaultMemberGrant
 from app.core.ports.vault_port import VaultPort
@@ -28,6 +30,7 @@ from app.core.schemas import (
 from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
+from app.services.change_log_service import Author, ChangeLogService
 from app.services.notification_service import NotificationService
 from app.services.vault_member_service import VaultMemberService
 from app.services.vault_service import VaultService
@@ -94,6 +97,23 @@ def _notify(db: Session, recipient_id: str, member: VaultMember, event: str, tit
         dedupe_key=f"vault_share:{member.id}:{event}:{stamp.isoformat()}")
 
 
+def _log(
+    db: Session, port: VaultPort, repo: VaultMemberRepository, member: VaultMember, op: str, actor_id: str, detail: str | None = None,
+) -> ChangeLogService:
+    """Anota en la BITACORA del propietario el evento `op`, en la misma transacción que el cambio de membresía."""
+    users = repo.users_by_ids({actor_id, member.user_id})
+    actor, guest = users.get(actor_id), users.get(member.user_id)
+    log = ChangeLogService(port, user_db_name(member.owner_id), member.owner_id, author=Author("human", actor.email if actor else actor_id))
+    db.add(ChangeLog(**log.member_row(member.vault_id, member.id, op, guest.email if guest else member.user_id, detail)))
+    return log
+
+
+def _commit_logged(db: Session, log: ChangeLogService) -> None:
+    """Confirma el cambio y su anotación; el documento del día de BITACORA es de mejor esfuerzo (`rebuild` lo repara desde la tabla)."""
+    db.commit()
+    log.flush()
+
+
 @router.post(
     "/vaults/{vault_id}/members", status_code=status.HTTP_201_CREATED, response_model=VaultMemberOut,
     responses=problem_responses(VaultNotFound, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, ShareInvalid),
@@ -107,7 +127,8 @@ def invite_member(
     member = service.invite(user.sub, vault_id, body.email, [g.model_dump() for g in body.grants])
     owner = repo.users_by_ids({user.sub}).get(user.sub)
     _notify(db, member.user_id, member, "invited", f"{_who(owner)} te invitó a la bóveda «{vault.name}»")
-    db.commit()
+    log = _log(db, port, repo, member, "invite", user.sub, bitacora_rules.grants_summary([g.model_dump() for g in body.grants]))
+    _commit_logged(db, log)
     return _one_out(repo, member)
 
 
@@ -133,8 +154,10 @@ def update_member_grants(
     port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
     _owned_vault(user, port, vault_id)
-    member = service.replace_grants(service.of_owner(user.sub, vault_id, member_id), [g.model_dump() for g in body.grants])
-    db.commit()
+    grants = [g.model_dump() for g in body.grants]
+    member = service.replace_grants(service.of_owner(user.sub, vault_id, member_id), grants)
+    log = _log(db, port, repo, member, "regrant", user.sub, bitacora_rules.grants_summary(grants))
+    _commit_logged(db, log)
     return _one_out(repo, member)
 
 
@@ -144,7 +167,8 @@ def update_member_grants(
 )
 def end_member(
     vault_id: VaultId, member_id: MemberId, user: TokenPayload = Depends(get_current_user),
-    service: VaultMemberService = Depends(get_service), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
+    service: VaultMemberService = Depends(get_service), repo: VaultMemberRepository = Depends(get_repo),
+    port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
     """Cancela una invitación pendiente o revoca un acceso activo. Las concesiones se conservan como historial."""
     vault = _owned_vault(user, port, vault_id)
@@ -154,7 +178,8 @@ def end_member(
         _notify(db, member.user_id, member, "cancelled", f"Se canceló tu invitación a la bóveda «{vault.name}»")
     else:
         _notify(db, member.user_id, member, "revoked", f"Se revocó tu acceso a la bóveda «{vault.name}»")
-    db.commit()
+    log = _log(db, port, repo, member, "cancel" if reason == "cancelada" else "revoke", user.sub)
+    _commit_logged(db, log)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -176,7 +201,7 @@ def list_invitations(
 
 
 def _respond(
-    member_id: str, event: str, transition: Callable[[VaultMember], VaultMember], text: str, user: TokenPayload,
+    member_id: str, event: str, op: str, transition: Callable[[VaultMember], VaultMember], text: str, user: TokenPayload,
     service: VaultMemberService, repo: VaultMemberRepository, port: VaultPort, db: Session,
 ) -> VaultMember:
     """Aplica `transition` a mi invitación y avisa al propietario."""
@@ -184,7 +209,8 @@ def _respond(
     me = repo.users_by_ids({user.sub}).get(user.sub)
     name = _vault_name(port, member.owner_id, member.vault_id) or "una bóveda"
     _notify(db, member.owner_id, member, event, f"{_who(me)} {text} «{name}»")
-    db.commit()
+    log = _log(db, port, repo, member, op, user.sub)
+    _commit_logged(db, log)
     return member
 
 
@@ -194,7 +220,7 @@ def accept_invitation(
     member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
     repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    return _one_out(repo, _respond(member_id, "accepted", service.accept, "aceptó tu invitación a", user, service, repo, port, db))
+    return _one_out(repo, _respond(member_id, "accepted", "accept", service.accept, "aceptó tu invitación a", user, service, repo, port, db))
 
 
 @router.post(
@@ -203,7 +229,7 @@ def reject_invitation(
     member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
     repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    return _one_out(repo, _respond(member_id, "rejected", service.reject, "rechazó tu invitación a", user, service, repo, port, db))
+    return _one_out(repo, _respond(member_id, "rejected", "reject", service.reject, "rechazó tu invitación a", user, service, repo, port, db))
 
 
 @router.post(
@@ -213,5 +239,5 @@ def leave_vault(
     member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
     repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
-    _respond(member_id, "left", service.leave, "salió de la bóveda", user, service, repo, port, db)
+    _respond(member_id, "left", "leave", service.leave, "salió de la bóveda", user, service, repo, port, db)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

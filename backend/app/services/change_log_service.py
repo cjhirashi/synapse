@@ -224,6 +224,19 @@ class ChangeLogService:
         self._dirty.setdefault(vault_id, set()).add(date)
         return Pending(entry_id, vault_id, date)
 
+    def member_row(self, vault_id: str, member_id: str, op: str, guest_email: str, detail: str | None = None) -> dict:
+        """H-064: fila de `change_log` del evento de membresía `op` sobre `guest_email`, ya `applied` y lista para que quien llama
+        la inserte en SU transacción (la del propio cambio de membresía: o quedan los dos o ninguno). Sin diff.
+        Después de confirmar esa transacción, `flush` genera el documento del día."""
+        at = self._now()
+        self._dirty.setdefault(vault_id, set()).add(rules.local_date(at, self._owner()[1]))
+        author = self.author()
+        return {
+            "id": str(uuid.uuid4()), "at": at.replace(tzinfo=None), "owner_id": self._owner_id, "vault_id": vault_id,
+            "note_id": member_id, "rev": None, "op": op, "path": guest_email, "prev_path": None, "title": detail,
+            "author_kind": author.kind, "author": author.name, "via": self._via, "status": rules.STATUS_APPLIED,
+        }
+
     def confirm(self, pending: Pending | None, rev: str | None = None) -> None:
         if pending is not None:
             self._safe(self._store.set_status, pending.id, rules.STATUS_APPLIED, rev)

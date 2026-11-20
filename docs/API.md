@@ -850,6 +850,8 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 
 **Aislamiento:** una invitación o un miembro que no son de quien pregunta responden 404 (`vault-not-found` o `member-not-found`), igual que si no existieran. El correo se compara exacto, sin distinguir mayúsculas y sin comodines.
 
+**BITACORA del propietario:** cada evento (invitar, cambiar concesiones, cancelar, revocar, aceptar, rechazar y salir) queda como una línea en el documento del día de `BITACORA/` de la bóveda, con la hora, quién lo hizo (correo y tipo), el evento, el invitado y, al invitar o cambiar permisos, las concesiones (por ejemplo «lectura en `Pub`, escritura en toda la bóveda»). La fila se guarda en `change_log` en la misma transacción que el cambio de membresía (o quedan las dos o ninguna); el documento del día se genera después, de mejor esfuerzo, y `rebuild` lo regenera desde la tabla. Una petición que el servidor rechaza no deja línea. El invitado nunca ve `BITACORA` (zona oculta).
+
 **Avisos:** tipo `vault_share` (apagable en `PUT /notifications/preferences`), con `url` `/compartidas`. Invitar y cancelar o revocar avisan al invitado; aceptar, rechazar y salir, al propietario. El título lleva el nombre de la persona y de la bóveda, nunca carpetas ni notas.
 
 ## Notas de una bóveda compartida (H-064 F3)
