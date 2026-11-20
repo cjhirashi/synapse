@@ -305,13 +305,6 @@ def test_without_a_session_the_channel_answers_401(world):
     assert TestClient(app).get(f"/sync/shared/{world.vault}/db/_changes").status_code == 401
 
 
-def test_the_channel_never_writes_documents(world):
-    w = world
-    doc = {"_id": f"note:{w.vault}:{uuid.uuid4()}", "_rev": "1-a", "_revisions": {"start": 1, "ids": ["a"]}, "type": "note", "path": "Pub/mala.md"}
-    assert_problem(w.bea.post(f"/sync/shared/{w.vault}/db/_bulk_docs", json={"docs": [doc], "new_edits": False}), 404, NOT_FOUND)
-    assert not any(d.get("path") == "Pub/mala.md" for d in stored_docs(owner_db_name(w.db)).values())
-
-
 # --- Checkpoints: viven en la base del invitado, nunca en la del propietario ---
 
 def couch_local(db_name, local_id):

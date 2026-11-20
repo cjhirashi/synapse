@@ -57,6 +57,15 @@ LOCAL_PATH = "/sync/db/_local/{local_id}"
 BULK_DOCS_PATH = "/sync/db/_bulk_docs"
 
 
+def _body_limit(path_format: str) -> int:
+    """Tope de cuerpo por ruta exacta (compartido y propio) o patrón."""
+    if path_format.endswith("/db/_bulk_docs"):
+        return MAX_BULK_DOCS_BYTES
+    if "/db/_local/" in path_format:
+        return MAX_LOCAL_BYTES
+    return MAX_BODY_BYTES
+
+
 async def _read_capped(receive: Receive, limit: int) -> bytes:
     """Lee el cuerpo completo del flujo ASGI cortando en cuanto supera `limit` bytes.
 
@@ -104,8 +113,7 @@ class SyncRoute(DeepJsonRoute):
 
     def get_route_handler(self):
         handler = super().get_route_handler()
-        limit = {LOCAL_PATH: MAX_LOCAL_BYTES, BULK_DOCS_PATH: MAX_BULK_DOCS_BYTES}.get(
-            self.path_format, MAX_BODY_BYTES)
+        limit = _body_limit(self.path_format)
 
         async def limited(request: Request):
             # Sesión primero (RF-002): sin ella un cuerpo de hasta 16 MiB no se lee. El usuario
@@ -213,6 +221,8 @@ REJECTION_REASON = (
     r"|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied"
     # H-030b: BITACORA de solo lectura y plantillas. H-041: documentos de sistema y skills.
     r"|bitacora:.+|plantilla:.+|sistema:.+|skill:.+"
+    # H-060: límites de la cuenta (el servicio los emite desde `_check_limits`).
+    r"|vault-limit-reached|document-limit-reached"
     r"|validation-error:.+|not-normalized:.+)$"
 )
 

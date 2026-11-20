@@ -1,5 +1,26 @@
 components:
   schemas:
+    BulkDocsRequest:
+      additionalProperties: false
+      description: 'Lote del replicador. `new_edits` debe ser `false`: el canal sólo
+        replica revisiones.'
+      properties:
+        docs:
+          items:
+            additionalProperties: true
+            type: object
+          title: Docs
+          type: array
+        new_edits:
+          const: false
+          title: New Edits
+          type: boolean
+      required:
+      - docs
+      - new_edits
+      title: BulkDocsRequest
+      type: object
+    JsonValue: {}
     Problem:
       additionalProperties: false
       description: 'RFC 9457 Problem Details: body of every API error response.'
@@ -51,6 +72,32 @@ components:
       required:
       - detail
       title: ProblemError
+      type: object
+    SharedBulkDocsRejection:
+      additionalProperties: false
+      description: 'Revisión rechazada en el push de un invitado: añade los motivos
+        `share-forbidden:*`.'
+      properties:
+        error:
+          const: forbidden
+          title: Error
+          type: string
+        id:
+          $ref: '#/components/schemas/JsonValue'
+          description: '`_id` tal como lo envió el cliente.'
+        reason:
+          pattern: ^(invalid-id|owner-mismatch|immutable-field:created_at|vault-name-taken|note-path-taken|vault-not-found|delete-not-allowed|reserved-name:.+|index-readonly:.+|index-root:.+|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied|bitacora:.+|plantilla:.+|sistema:.+|skill:.+|vault-limit-reached|document-limit-reached|share-forbidden:(?:vault|path|move)|validation-error:.+|not-normalized:.+)$
+          title: Reason
+          type: string
+        rev:
+          $ref: '#/components/schemas/JsonValue'
+          description: '`_rev` tal como lo envió el cliente.'
+      required:
+      - id
+      - rev
+      - error
+      - reason
+      title: SharedBulkDocsRejection
       type: object
     VaultInvitationOut:
       description: Invitación o membresía del usuario (vista desde el invitado).
@@ -680,6 +727,79 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: All Docs With Keys
+      tags:
+      - sync-shared
+  /sync/shared/{vault_id}/db/_bulk_docs:
+    post:
+      description: 'Push validado de invitado (§2.3): responde sólo los rechazos;
+        `[]` si se aceptó todo.'
+      operationId: bulk_docs_sync_shared__vault_id__db__bulk_docs_post
+      parameters:
+      - in: path
+        name: vault_id
+        required: true
+        schema:
+          title: Vault Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkDocsRequest'
+        required: true
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/SharedBulkDocsRejection'
+                title: Response Bulk Docs Sync Shared  Vault Id  Db  Bulk Docs Post
+                type: array
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Password change required
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Sync endpoint not found
+        '413':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Payload too large
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Bulk Docs
       tags:
       - sync-shared
   /sync/shared/{vault_id}/db/_bulk_get:

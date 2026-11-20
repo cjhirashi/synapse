@@ -1,18 +1,21 @@
-"""Canal de lectura para bóvedas compartidas (H-064 F7a).
+"""Canal de lectura para bóvedas compartidas (H-064 F7a) y push de invitado (H-064 F7b).
 
-`/sync/shared/{vault_id}` replica para miembros invitados, lectura pura sobre la base del propietario.
+`/sync/shared/{vault_id}` replica para miembros invitados: lectura pura y push validado sobre la base del propietario.
 """
 import json
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, Path, Request, status
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import Field
 
 from app.adapters.database import SessionLocal
 from app.adapters.vault_member_repository import VaultMemberRepository
 from app.core.errors import (
     CheckpointNotFound, InvalidSyncRequest, PasswordChangeRequired, PayloadTooLarge, StorageUnavailable, SyncEndpointNotFound,
 )
+from app.core.guest_authorship import log_author
+from app.core.models.user import User
 from app.core.problems import problem_responses
 from app.core.ports.replication_port import ReplicationPort
 from app.core.shared_sync_rules import (
@@ -21,11 +24,30 @@ from app.core.shared_sync_rules import (
 )
 from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
-from app.routers.sync import MAX_LOCAL_BYTES, SyncRoute, get_replication_port, get_sync_user
+from app.routers.sync import (
+    MAX_BULK_DOCS, MAX_LOCAL_BYTES, REJECTION_REASON, BulkDocsRejection, BulkDocsRequest, SyncRoute, get_replication_port, get_sync_user,
+)
+from app.routers.vaults import get_vault_port
 from app.services import sync_filter
+from app.services.change_log_service import Author, ChangeLogService
+from app.services.note_service import NoteService
+from app.services.shared_sync_push import SharedPushService
+from app.services.vault_service import VaultService
+from app.services.limit_guard import guard_for
 
 # Para estos endpoints solo se permite lectura; puertos y límites de /sync/db.
 _SHARED_RESPONSES = problem_responses(*SESSION_ERRORS, PasswordChangeRequired, PayloadTooLarge, SyncEndpointNotFound)
+
+# Rechazo de push: añade alternativas para acceso de invitado.
+_SHARED_REJECTION_REASON = REJECTION_REASON.replace(
+    r"|validation-error:.+|not-normalized:.+)$",
+    r"|share-forbidden:(?:vault|path|move)|validation-error:.+|not-normalized:.+)$")
+
+
+class SharedBulkDocsRejection(BulkDocsRejection):
+    """Revisión rechazada en el push de un invitado: añade los motivos `share-forbidden:*`."""
+
+    reason: str = Field(pattern=_SHARED_REJECTION_REASON)
 
 
 def get_shared(
@@ -38,7 +60,7 @@ def get_shared(
     (b) Usuario sin sesión → 401 (get_sync_user).
     (c) Clave de API → 404 (solo sesión).
     (d) No miembro, pendiente, revocado o propietario inactivo → 404.
-    Devuelve {owner_db, guest_db, access, vault_id} o levanta SyncEndpointNotFound.
+    Devuelve {owner_db, owner_id, guest_db, guest_email, access, vault_id} o levanta SyncEndpointNotFound.
     """
     # Valida UUID canónico.
     if not sync_filter.is_replicable_id(f"vault:{vault_id}"):
@@ -57,9 +79,13 @@ def get_shared(
         if result is None:
             raise SyncEndpointNotFound()
         owner_id, access = result
+        guest_user = db.get(User, user.sub)
+        guest_email = guest_user.email if guest_user else user.sub
         return {
             "owner_db": user_db_name(owner_id),
+            "owner_id": owner_id,
             "guest_db": user_db_name(user.sub),
+            "guest_email": guest_email,
             "access": access,
             "vault_id": vault_id,
         }
@@ -68,6 +94,31 @@ def get_shared(
 
 
 SharedParams = Annotated[dict, Depends(get_shared)]
+
+
+def get_shared_push_service(
+    shared: SharedParams,
+    vault_port=Depends(get_vault_port),
+    replication=Depends(get_replication_port),
+) -> SharedPushService:
+    db = SessionLocal()
+    try:
+        guard = guard_for(db, shared["owner_id"], vault_port)
+    finally:
+        db.close()
+
+    author_kind, author_name = log_author(shared["guest_email"], None)
+    return SharedPushService(
+        VaultService(vault_port, shared["owner_db"]),
+        NoteService(vault_port, shared["owner_db"]),
+        vault_port, replication, shared["owner_db"],
+        shared["owner_id"], None,
+        ChangeLogService(vault_port, shared["owner_db"], shared["owner_id"], None, via="sync",
+                         author=Author(author_kind, author_name)),
+        limit_guard=guard,
+        vault_id=shared["vault_id"],
+        access=shared["access"])
+
 
 shared_router = APIRouter(
     prefix="/sync/shared/{vault_id}",
@@ -255,6 +306,24 @@ async def put_checkpoint(
 
     doc_to_save = {**doc, "_id": full_id}
     return await port.put_local(shared["guest_db"], full_id, doc_to_save)
+
+
+# --- Escritura (push) del invitado ---
+
+@shared_router.post(
+    "/db/_bulk_docs",
+    status_code=status.HTTP_201_CREATED,
+    response_model=list[SharedBulkDocsRejection],
+    responses=problem_responses(InvalidSyncRequest, StorageUnavailable),
+)
+async def bulk_docs(
+    body: BulkDocsRequest,
+    service: Annotated[SharedPushService, Depends(get_shared_push_service)],
+):
+    """Push validado de invitado (§2.3): responde sólo los rechazos; `[]` si se aceptó todo."""
+    if len(body.docs) > MAX_BULK_DOCS:
+        raise PayloadTooLarge(f"{len(body.docs)} documents over {MAX_BULK_DOCS}")
+    return await service.push(body.docs)
 
 
 # --- Comodín final (como /sync/db) ---
