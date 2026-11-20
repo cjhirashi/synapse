@@ -686,7 +686,7 @@ escritura; `*` = toda la bóveda salvo las reservadas) y `lectura` (lista de car
 | `DELETE` | `/vaults/{id}/agent-access/{agent_id}` | cookie | `204` · `404` |
 | `GET` | `/agent-access/shadow-report?hours=48` | cookie | `200` decisiones del modo sombra por agente y últimas denegadas |
 
-Desde H-064 F3c el campo `lectura` existe y se valida; aún no restringe las lecturas de los agentes (se aplica en F4). Si el `PUT` no la envía, se conserva la del registro (o `["*"]` en un registro nuevo); `escritura` (`carpetas`) incluye lectura. Una `lectura` mal formada se rechaza con 422, también en una nota editada a mano (`ag-agentes:registro`).
+Desde H-064 F3c el campo `lectura` existe y se valida; **no restringe todavía las lecturas de los agentes** (ni los del propietario ni los del invitado; estos últimos quedan acotados solo por las concesiones de su persona). Si el `PUT` no la envía, se conserva la del registro (o `["*"]` en un registro nuevo); `escritura` (`carpetas`) incluye lectura. Una `lectura` mal formada se rechaza con 422, también en una nota editada a mano (`ag-agentes:registro`).
 
 Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
 `activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo

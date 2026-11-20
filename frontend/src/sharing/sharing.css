@@ -75,7 +75,7 @@
 .share-role-group { margin: 0; border: none; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .share-role-legend { padding: 0; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
 .share-role-buttons { display: grid; grid-template-columns: 1fr 1fr 1.4fr; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); overflow: hidden; }
-.share-role-button { position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; }
+.share-role-button { margin: 0; position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; }
 .share-role-button + .share-role-button { border-left: 1px solid var(--border); }
 .share-role-button input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
 .share-role-button:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -97,3 +97,17 @@
   .share-grant-col:first-child { grid-column: 1 / -1; }
   .share-member .shared-actions button, .share-form-actions .shared-btn, .share-add-grant { width: 100%; }
 }
+
+/* Selector de carpetas (H-064 F5c) */
+.share-role-buttons.fsp-scope { grid-template-columns: 1fr 1.4fr 1fr; }
+.fsp-custom { display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm, 6px); }
+.fsp-search { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
+.fsp-search:disabled { opacity: 0.6; }
+.fsp-list { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.fsp-label { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.fsp-label input[type="checkbox"] { accent-color: var(--accent); margin: 0; width: 20px; height: 20px; flex: none; padding: 0; cursor: pointer; }
+.fsp-list li { margin: 0; }
+.fsp-label:has(input:disabled) { opacity: 0.6; cursor: not-allowed; }
+.fsp-name { overflow-wrap: anywhere; }
+.fsp-gone { color: var(--text-muted); font-size: 12px; }
+.fsp-empty { margin: 0; padding: 8px 0; color: var(--text-secondary); font-size: 14px; }

@@ -227,3 +227,9 @@ en un nodo contenedor (`pdf_block`) y las marcas de una línea en `pdf_mark`; al
 - En celular cada permiso es una mini tarjeta (carpeta, acceso y quitar); botones y campos de 44 px.
 - Pruebas: `src/sharing/*.test.ts(x)` y `e2e/h064-compartir-dialogo.spec.ts` (invitar con permisos personalizados, cambiar permisos, quitar un acceso y comprobar el resultado contra el servidor; celular y escritorio, claro y oscuro).
 
+## Agentes por bóveda (H-064 F5c)
+
+- `src/settings/FolderScopePicker.tsx` — selector de carpetas (Ninguna / Toda la bóveda / Carpetas, lista de carpetas reales de la bóveda sin las del sistema). Control segmentado idéntico al de `GrantsEditor`. Modo «Carpetas»: búsqueda (si hay >8 carpetas), lista de 44 px por carpeta, sangría para profundidad, carpetas ya no existentes al principio con sufijo «(ya no existe)». Reutiliza estilos de `sharing.css`.
+- `src/settings/AgentAccessPage.tsx` — obtiene carpetas de la bóveda actual desde `useSync().notes.list()` y las pasa a cada `FolderScopePicker` vía `folderOptions()`.
+- Pruebas: `src/settings/FolderScopePicker.test.tsx` (modos, onChange exactos, orden, carpetas que ya no existen, búsqueda, deshabilitado) y actualización de `src/settings/AgentAccessPage.test.tsx` (integración con `WithSync`).
+

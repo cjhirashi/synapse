@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import AgentAccessPage from "./AgentAccessPage";
 import * as api from "./agentAccess";
-import { parseFolders } from "./agentAccess";
+import { WithSync, syncValue } from "../test-utils/sync";
 
 const VAULTS = [
   { id: "v1", name: "Proyectos" },
@@ -20,13 +20,22 @@ const ACCESS = {
 };
 
 function setup() {
+  const { value } = syncValue({
+    notes: {
+      list: vi.fn(async () => [
+        { path: "1 - Proyectos AIRA/a.md", id: "1", rev: "1-x", updated_at: "2026-10-12T09:00:00Z", deleted_at: null, size: 0 },
+      ]),
+    } as any,
+  });
   render(
-    <MemoryRouter initialEntries={["/settings/agent-access"]}>
-      <Routes>
-        <Route path="/settings/agent-access" element={<AgentAccessPage />} />
-        <Route path="/login" element={<p>Pantalla de login</p>} />
-      </Routes>
-    </MemoryRouter>,
+    <WithSync value={value}>
+      <MemoryRouter initialEntries={["/settings/agent-access"]}>
+        <Routes>
+          <Route path="/settings/agent-access" element={<AgentAccessPage />} />
+          <Route path="/login" element={<p>Pantalla de login</p>} />
+        </Routes>
+      </MemoryRouter>
+    </WithSync>,
   );
   return userEvent.setup();
 }
@@ -43,7 +52,9 @@ test("muestra cada agente con el nombre de su clave y las claves aún sin regist
 
   const aira = await screen.findByRole("listitem", { name: "Agente aira" });
   expect(within(aira).getByText(/clave: op-aira/)).toBeInTheDocument();
-  expect(within(aira).getByRole("textbox")).toHaveValue("1 - Proyectos AIRA\n00- BITACORA");
+  const radiogroup = within(aira).getByRole("radiogroup");
+  const carpetas = within(radiogroup).getByLabelText("Carpetas");
+  expect(carpetas).toBeChecked();
   const emma = screen.getByRole("listitem", { name: "Agente emma" });
   expect(within(emma).getByText(/clave: op-emma/)).toBeInTheDocument();
   expect(within(emma).getByRole("button", { name: "Registrar emma" })).toBeInTheDocument();
@@ -57,13 +68,13 @@ test("reasignar: guarda las carpetas nuevas del agente y recarga", async () => {
   const user = setup();
 
   const aira = await screen.findByRole("listitem", { name: "Agente aira" });
-  const box = within(aira).getByRole("textbox");
-  await user.clear(box);
-  await user.type(box, "Nueva carpeta/");
-  await user.selectOptions(within(aira).getByRole("combobox"), "suspendido");
+  const ninguna = within(aira).getByLabelText("Ninguna");
+  await user.click(ninguna);
+  const estadoSelect = within(aira).getByLabelText("Estado");
+  await user.selectOptions(estadoSelect, "suspendido");
   await user.click(within(aira).getByRole("button", { name: "Guardar aira" }));
 
-  expect(put).toHaveBeenCalledWith("v1", "aira", ["Nueva carpeta"], "suspendido");
+  expect(put).toHaveBeenCalledWith("v1", "aira", [], "suspendido");
   expect(get).toHaveBeenCalledTimes(2);
 });
 
@@ -90,8 +101,42 @@ test("carpetas inválidas: muestra el error del servidor", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(/carpetas no son válidas/i);
 });
 
-test("parseFolders limpia líneas vacías y barras finales", () => {
-  expect(parseFolders(" A/B/ \n\n*\nC//")).toEqual(["A/B", "*", "C"]);
+test("elegir carpetas: agente con carpetas existentes y ya no existentes", async () => {
+  vi.spyOn(api, "listVaultOptions").mockResolvedValue(VAULTS);
+  vi.spyOn(api, "getVaultAgentAccess").mockResolvedValue(ACCESS);
+  const put = vi.spyOn(api, "putAgentRegistration").mockResolvedValue(ACCESS.agents[0]);
+  const user = setup();
+
+  const aira = await screen.findByRole("listitem", { name: "Agente aira" });
+  const carpetas = within(aira).getAllByRole("radiogroup")[0];
+  const carpetasButton = within(carpetas).getByLabelText("Carpetas");
+  expect(carpetasButton).toBeChecked();
+  const list = within(aira).getByRole("list");
+  const items = within(list).getAllByRole("listitem");
+  expect(items).toHaveLength(2);
+  expect(within(items[0]).getByText(/ya no existe/)).toBeInTheDocument();
+  expect(within(items[1]).getByText("1 - Proyectos AIRA")).toBeInTheDocument();
+
+  const checkboxes = within(list).getAllByRole("checkbox");
+  await user.click(checkboxes[1]);
+  await user.click(within(aira).getByRole("button", { name: "Guardar aira" }));
+
+  expect(put).toHaveBeenCalledWith("v1", "aira", ["00- BITACORA"], "activo");
+});
+
+test("selector: Ninguna → [], Toda la bóveda → [*], Carpetas vuelve a custom sin onChange", async () => {
+  vi.spyOn(api, "listVaultOptions").mockResolvedValue(VAULTS);
+  vi.spyOn(api, "getVaultAgentAccess").mockResolvedValue(ACCESS);
+  const put = vi.spyOn(api, "putAgentRegistration").mockResolvedValue(ACCESS.agents[0]);
+  const user = setup();
+
+  const aira = await screen.findByRole("listitem", { name: "Agente aira" });
+  const radiogroup = within(aira).getAllByRole("radiogroup")[0];
+  const todaBoveda = within(radiogroup).getByLabelText("Toda la bóveda");
+  await user.click(todaBoveda);
+  await user.click(within(aira).getByRole("button", { name: "Guardar aira" }));
+
+  expect(put).toHaveBeenCalledWith("v1", "aira", ["*"], "activo");
 });
 
 

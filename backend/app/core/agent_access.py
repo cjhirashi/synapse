@@ -4,8 +4,8 @@ Quién escribe dónde sale del registro `AG - AGENTES/<id>.md` de cada bóveda (
 `estado`). La sesión humana (cookie) no tiene restricción. Un agente administrador (flag `is_admin` de su
 clave, que vive en la base de control y no en notas) tampoco. Un agente registrado y activo escribe en las
 carpetas de su registro, en `AG - SKILLS` (qué skill toca cada uno lo decide la propiedad: `skill_rules`) y en `AG - MENSAJES`; uno no registrado o suspendido solo
-en `AG - MENSAJES`. El campo `lectura` del frontmatter define dónde lee el agente (H-064 F3c); aún no restringe
-las lecturas efectivas de las rutas (se aplica en F4). `*` en `carpetas` = toda la bóveda salvo las carpetas reservadas.
+en `AG - MENSAJES`. El campo `lectura` del frontmatter define dónde lee el agente (H-064 F3c); se guarda y se valida, pero
+no restringe todavía las lecturas efectivas de las rutas (`agent_level_of` aún no se usa en el servidor). `*` en `carpetas` = toda la bóveda salvo las carpetas reservadas.
 """
 from typing import NamedTuple
 
