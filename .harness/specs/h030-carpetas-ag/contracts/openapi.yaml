@@ -353,6 +353,12 @@ components:
           - type: string
           - type: 'null'
           title: Propietario
+        propietarios:
+          default: []
+          items:
+            type: string
+          title: Propietarios
+          type: array
         titulo:
           anyOf:
           - type: string

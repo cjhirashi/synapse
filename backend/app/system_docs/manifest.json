@@ -22,7 +22,7 @@
       "body": "plantilla-skill.md",
       "frontmatter": {
         "titulo": "plantilla-skill",
-        "descripcion": "Al crear una skill de agente en AG - SKILLS: disparadores primero, pasos con criterio de cierre, referencias, y los atributos propietario (lista de agentes) y agentes.",
+        "descripcion": "Al crear una skill de agente en AG - SKILLS: disparadores primero, pasos con criterio de cierre, referencias y los atributos propietario (agentes) y agentes.",
         "tags": [
           "plantilla",
           "skill",
@@ -54,7 +54,7 @@
           "pdf": {}
         }
       },
-      "sha256": "8b912f7145a588f854080f511cc74ab048f87ad3d111abf9e7b13e99333d9dc0"
+      "sha256": "690a70b875912e1da9f33420935b7d332641a6740ea1ad64c1788e3287dd5670"
     }
   ]
 }
