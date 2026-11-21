@@ -27,9 +27,10 @@ Solo con sesión de un admin o super admin (cookie). El admin gestiona invitados
 
 | Método | Ruta | Resultado |
 |---|---|---|
-| `GET` | `/admin/users` | `200` lista `[{id,email,role,display_name,must_change_password,created_at,deleted_at,purge_at,limits{max_vaults,max_notes_per_vault,max_storage_bytes_per_vault},vaults_used,grace[{kind,vault_id,deadline_at}]}]` · `403` |
+| `GET` | `/admin/users` | `200` lista `[{id,email,role,display_name,must_change_password,created_at,deleted_at,purge_at,limits{max_vaults,max_notes_per_vault,max_storage_bytes_per_vault},can_share_vaults,vaults_used,grace[{kind,vault_id,deadline_at}]}]` · `403` |
 | `POST` | `/admin/users` | `{email, role?: "guest"\|"admin", max_vaults?, max_notes_per_vault?, max_storage_bytes_per_vault?}` → `201` cuenta nueva con la contraseña `admin1234` y cambio obligatorio. Sin `password` (`422` si se envía). Límite omitido = 2 bóvedas, 100 documentos por bóveda, 500 MB por bóveda; `null` = sin límite. `role: "admin"` solo el super admin (`403 user-action-forbidden`) · `409 email-taken` |
 | `GET` | `/admin/users/{id}/usage` | `200` `{vaults:[{alias,documents,storage_bytes}], documents_total, storage_bytes_total}`: uso por bóveda y total; cada bóveda va con un alias por orden de creación («Bóveda 1» es la más vieja) porque su nombre y su id son privados de la persona (documentos = notas vivas sin índices ni documentos de sistema; bytes = archivos subidos). Lo ven admin y super admin; el listado ya trae `vaults_used` y `storage_bytes` · `403` · `404` |
+| `PATCH` | `/admin/users/{id}/sharing` | `{can_share_vaults: bool}`: activa o apaga que un usuario pueda compartir sus bóvedas (H-064 F5d); apagado por defecto → `200` (la cuenta con `can_share_vaults` efectivo) · `403` si la cuenta es administrador (siempre puede) · `404` · `409` |
 | `PATCH` | `/admin/users/{id}/limits` | solo cambia lo enviado → `200`; si la cuenta queda por encima de un límite abre `grace` (30 días) y le avisa · `404` · `409` |
 | `DELETE` | `/admin/users/{id}` | `200`; baja con gracia de 30 días (inactiva, sesiones cerradas, correo reservado) · `403 user-action-forbidden` (uno mismo, otro admin sin ser super admin, último super admin) · `404` · `409 user-state-conflict` |
 | `POST` | `/admin/users/{id}/restore` | `200`; recupera una cuenta dada de baja · `404` · `409` |
@@ -64,10 +65,12 @@ Forma del perfil (`GET`, `PATCH`, `PUT` y `DELETE` devuelven la misma):
   "role": "admin",
   "must_change_password": false,
   "display_name": "Ana",
-  "photo_url": "/auth/me/photo?v=2"
+  "photo_url": "/auth/me/photo?v=2",
+  "can_share_vaults": true
 }
 ```
 
+- `can_share_vaults` (H-064 F5d): ¿puede compartir sus bóvedas? Administradores siempre; un usuario solo si un administrador se lo activó (`PATCH /admin/users/{id}/sharing`).
 - `photo_url` es `null` si no hay foto. Si la hay, lleva la **versión** (`v=N`): cada subida
   incrementa `N`, así que el navegador no sirve la foto anterior de caché.
 - `GET /auth/me/photo` responde con `Cache-Control: private, no-cache`: es privada del usuario.
@@ -840,9 +843,9 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 
 | Método y ruta | Quién | Qué hace |
 |---|---|---|
-| `POST /vaults/{vault_id}/members` | propietario | Invita: `{email, grants: [{folder, level}]}`. 201 con el miembro (`status: pendiente`). 404 `invitee-not-found` (sin cuenta activa con ese correo exacto), 422 (correo inválido, uno mismo o concesiones inválidas), 409 `member-already-exists` y 409 `member-limit-reached` (50 pendientes o activos por bóveda). Si la persona ya tuvo una invitación terminada, se reabre la misma fila con las concesiones nuevas. |
+| `POST /vaults/{vault_id}/members` | propietario | Invita: `{email, grants: [{folder, level}]}`. 201 con el miembro (`status: pendiente`). 403 `share-not-allowed` si la cuenta no puede compartir (solo administradores y usuarios con la función activada; `GET /auth/me` trae `can_share_vaults`). 404 `invitee-not-found` (sin cuenta activa con ese correo exacto), 422 (correo inválido, uno mismo o concesiones inválidas), 409 `member-already-exists` y 409 `member-limit-reached` (50 pendientes o activos por bóveda). Si la persona ya tuvo una invitación terminada, se reabre la misma fila con las concesiones nuevas. |
 | `GET /vaults/{vault_id}/members` | propietario | Miembros de la bóveda en todos los estados, con `user` y `grants`. |
-| `PUT /vaults/{vault_id}/members/{member_id}/grants` | propietario | Reemplaza todas las concesiones (efecto inmediato). 409 `invitation-not-pending` si ya está revocado. |
+| `PUT /vaults/{vault_id}/members/{member_id}/grants` | propietario | Reemplaza todas las concesiones (efecto inmediato). 403 `share-not-allowed` si la cuenta ya no puede compartir (cancelar y revocar siguen permitidos). 409 `invitation-not-pending` si ya está revocado. |
 | `DELETE /vaults/{vault_id}/members/{member_id}` | propietario | Pendiente → `revocado` con motivo `cancelada`; activo → `revocado` con `revocada`. 204. Las concesiones se conservan como historial. |
 | `GET /invitations` | invitado | Mis invitaciones y accesos (por defecto `pendiente` y `activo`; `?status=pendiente\|activo\|revocado`), con `owner`, `vault_name` y `grants`. Del dueño y la bóveda solo se ve eso. |
 | `POST /invitations/{member_id}/accept` | invitado | `pendiente` → `activo`. 200 con el miembro. |

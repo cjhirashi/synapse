@@ -23,7 +23,7 @@ const LONG_VAULT = "Plan estratégico de operaciones y expansión regional 2027 
 for (const { label, size, theme } of CASES) {
   test(`H-064 F5a: compartidas conmigo a ${label}`, async ({ browser }) => {
     const mobile = size.width <= 640;
-    const owner = await createUser();
+    const owner = await createUser({ canShare: true });
     const guest = await createUser();
     const longVault = await createVault(owner.cookie, LONG_VAULT);
     const plainVault = await createVault(owner.cookie, "Notas de la casa");

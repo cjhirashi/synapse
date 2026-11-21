@@ -16,8 +16,9 @@ from app.core import bitacora_rules
 from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
 from app.core.errors import (
     InvitationNotPending, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, MemberNotFound, PasswordChangeRequired,
-    ShareInvalid, StorageUnavailable, VaultNotFound,
+    ShareInvalid, ShareNotAllowed, StorageUnavailable, VaultNotFound,
 )
+from app.core.limits import can_share_vaults
 from app.core.models.change_log import ChangeLog
 from app.core.models.user import User
 from app.core.models.vault_member import VaultMember, VaultMemberGrant
@@ -56,6 +57,13 @@ def get_service(repo: VaultMemberRepository = Depends(get_repo)) -> VaultMemberS
 def _owned_vault(user: TokenPayload, port: VaultPort, vault_id: str):
     """La bóveda del propietario o `VaultNotFound` (la base sale solo de la sesión)."""
     return VaultService(port, user_db_name(user.sub)).get(vault_id).vault
+
+
+def _require_sharing(repo: VaultMemberRepository, user: TokenPayload) -> None:
+    """Invitar y cambiar permisos exigen poder compartir; cancelar, revocar y ver quién tiene acceso, no (se puede retirar lo ya dado)."""
+    owner = repo.users_by_ids({user.sub}).get(user.sub)
+    if owner is None or not can_share_vaults(user.role, bool(owner.can_share_vaults)):
+        raise ShareNotAllowed()
 
 
 def _vault_name(port: VaultPort, owner_id: str, vault_id: str) -> str | None:
@@ -116,7 +124,7 @@ def _commit_logged(db: Session, log: ChangeLogService) -> None:
 
 @router.post(
     "/vaults/{vault_id}/members", status_code=status.HTTP_201_CREATED, response_model=VaultMemberOut,
-    responses=problem_responses(VaultNotFound, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, ShareInvalid),
+    responses=problem_responses(VaultNotFound, ShareNotAllowed, InviteeNotFound, MemberAlreadyExists, MemberLimitReached, ShareInvalid),
 )
 def invite_member(
     vault_id: VaultId, body: VaultMemberInviteIn, user: TokenPayload = Depends(get_current_user),
@@ -124,6 +132,7 @@ def invite_member(
     port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
     vault = _owned_vault(user, port, vault_id)
+    _require_sharing(repo, user)
     member = service.invite(user.sub, vault_id, body.email, [g.model_dump() for g in body.grants])
     owner = repo.users_by_ids({user.sub}).get(user.sub)
     _notify(db, member.user_id, member, "invited", f"{_who(owner)} te invitó a la bóveda «{vault.name}»")
@@ -146,7 +155,7 @@ def list_members(
 
 @router.put(
     "/vaults/{vault_id}/members/{member_id}/grants", response_model=VaultMemberOut,
-    responses=problem_responses(VaultNotFound, MemberNotFound, InvitationNotPending, ShareInvalid),
+    responses=problem_responses(VaultNotFound, ShareNotAllowed, MemberNotFound, InvitationNotPending, ShareInvalid),
 )
 def update_member_grants(
     vault_id: VaultId, member_id: MemberId, body: VaultMemberGrantsUpdate, user: TokenPayload = Depends(get_current_user),
@@ -154,6 +163,7 @@ def update_member_grants(
     port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
     _owned_vault(user, port, vault_id)
+    _require_sharing(repo, user)
     grants = [g.model_dump() for g in body.grants]
     member = service.replace_grants(service.of_owner(user.sub, vault_id, member_id), grants)
     log = _log(db, port, repo, member, "regrant", user.sub, bitacora_rules.grants_summary(grants))

@@ -1,5 +1,5 @@
 import uuid
-from sqlalchemy import BigInteger, Column, String, Boolean, DateTime, ForeignKey, Index, Integer, func
+from sqlalchemy import BigInteger, Column, String, Boolean, DateTime, ForeignKey, Index, Integer, false as sa_false, func
 from sqlalchemy.orm import relationship
 from app.adapters.database import Base
 
@@ -26,6 +26,8 @@ class User(Base):
     max_vaults = Column(Integer, nullable=True)
     max_notes_per_vault = Column(Integer, nullable=True)
     max_storage_bytes_per_vault = Column(BigInteger, nullable=True)
+    # H-064: quién puede compartir bóvedas (admin y super admin siempre; un guest solo si un admin lo activa o, más adelante, su plan).
+    can_share_vaults = Column(Boolean, nullable=False, default=False, server_default=sa_false())
     # H-060: baja con gracia de 30 días. Mientras no sea nulo la cuenta está inactiva y puede recuperarse.
     deleted_at = Column(DateTime, nullable=True)
     role = relationship("Role", back_populates="users")

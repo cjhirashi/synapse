@@ -7,6 +7,7 @@ from app.adapters.database import get_db
 from app.adapters.minio_adapter import get_object_storage
 from app.core.json_body import DeepJsonRoute
 from app.core.dependencies import get_current_user
+from app.core.limits import can_share_vaults
 from app.core.models.user import User
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.errors import (
@@ -105,6 +106,7 @@ def _profile_body(user: User, role: str) -> dict:
         "must_change_password": user.must_change_password,
         "display_name": user.display_name,
         "photo_url": photo_url,
+        "can_share_vaults": can_share_vaults(role, bool(user.can_share_vaults)),
     }
 
 

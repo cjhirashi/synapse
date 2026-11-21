@@ -61,6 +61,12 @@ class UpdateRoleRequest(BaseModel):
     role: Literal["guest", "admin"]
 
 
+class UpdateSharingRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    can_share_vaults: bool
+
+
 class UserLimitsOut(BaseModel):
     max_vaults: int | None
     max_notes_per_vault: int | None
@@ -101,6 +107,7 @@ class AdminUserOut(BaseModel):
     deleted_at: str | None  # baja con gracia: la cuenta puede recuperarse hasta `purge_at`
     purge_at: str | None
     limits: UserLimitsOut
+    can_share_vaults: bool  # efectivo: admin y super admin siempre; un invitado según el interruptor
     vaults_used: int | None  # `None` si CouchDB no respondió
     storage_bytes: int  # bytes de todos sus archivos, en todas sus bóvedas
     grace: list[GraceOut]

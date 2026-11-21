@@ -2,6 +2,9 @@ components:
   schemas:
     AdminUserOut:
       properties:
+        can_share_vaults:
+          title: Can Share Vaults
+          type: boolean
         created_at:
           title: Created At
           type: string
@@ -57,6 +60,7 @@ components:
       - deleted_at
       - purge_at
       - limits
+      - can_share_vaults
       - vaults_used
       - storage_bytes
       - grace
@@ -267,6 +271,16 @@ components:
       required:
       - role
       title: UpdateRoleRequest
+      type: object
+    UpdateSharingRequest:
+      additionalProperties: false
+      properties:
+        can_share_vaults:
+          title: Can Share Vaults
+          type: boolean
+      required:
+      - can_share_vaults
+      title: UpdateSharingRequest
       type: object
     UserLimitsOut:
       properties:
@@ -692,6 +706,74 @@ paths:
                 $ref: '#/components/schemas/Problem'
           description: Storage unavailable
       summary: Update Role
+      tags:
+      - admin
+  /admin/users/{user_id}/sharing:
+    patch:
+      operationId: update_sharing_admin_users__user_id__sharing_patch
+      parameters:
+      - in: path
+        name: user_id
+        required: true
+        schema:
+          title: User Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSharingRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserOut'
+          description: Successful Response
+        '401':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Not authenticated / Invalid token
+        '403':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User action forbidden
+        '404':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User not found
+        '409':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: User state conflict
+        '422':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Validation error
+        '500':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
+      summary: Update Sharing
       tags:
       - admin
   /admin/users/{user_id}/usage:

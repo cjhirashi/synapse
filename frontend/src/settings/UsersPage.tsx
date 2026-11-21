@@ -9,7 +9,7 @@ import { useMediaQuery } from "../layout/useMediaQuery";
 import { DataTable, type DataColumn } from "../ui/DataTable";
 import {
   type AdminUser, type UserLimits, type UserUsage,
-  createUser, deleteUser, formatBytes, formatCount, getUsage, listUsers, restoreUser, updateLimits, updateRole,
+  createUser, deleteUser, formatBytes, formatCount, getUsage, listUsers, restoreUser, updateLimits, updateRole, updateSharing,
 } from "./adminUsers";
 import { CreateUserDialog, LimitsDialog, UsageDialog } from "./UsersDialogs";
 import {
@@ -104,20 +104,21 @@ export default function UsersPage() {
     }
   }
 
-  async function submitLimits(user: AdminUser, limits: UserLimits) {
+  async function submitLimits(user: AdminUser, limits: UserLimits, canShare: boolean) {
     setFormError(null);
     setBusy(true);
     try {
-      const saved = await updateLimits(user.id, limits);
+      let saved = await updateLimits(user.id, limits);
+      if (canShare !== user.can_share_vaults) saved = { ...saved, ...(await updateSharing(user.id, canShare)), grace: saved.grace };
       setDialog(null);
       setNotice(
         saved.grace.length > 0
-          ? "Límites guardados. La persona quedó por encima en algo: recibió un aviso y tiene 30 días para reducirlo."
-          : "Límites guardados.",
+          ? "Cambios guardados. La persona quedó por encima en algo: recibió un aviso y tiene 30 días para reducirlo."
+          : "Cambios guardados.",
       );
       await load();
     } catch (err) {
-      if (!onUnauthorized(err)) setFormError(explain(err, "No se pudieron guardar los límites. Inténtalo de nuevo."));
+      if (!onUnauthorized(err)) setFormError(explain(err, "No se pudieron guardar los cambios. Inténtalo de nuevo."));
     } finally {
       setBusy(false);
     }
@@ -262,7 +263,7 @@ export default function UsersPage() {
         <CreateUserDialog isSuper={isSuper} busy={busy} error={formError} onSubmit={(e, r, l) => void submitCreate(e, r, l)} onCancel={() => setDialog(null)} />
       )}
       {dialog?.kind === "limits" && (
-        <LimitsDialog user={dialog.user} busy={busy} error={formError} onSubmit={(l) => void submitLimits(dialog.user, l)} onCancel={() => setDialog(null)} />
+        <LimitsDialog user={dialog.user} busy={busy} error={formError} onSubmit={(l, canShare) => void submitLimits(dialog.user, l, canShare)} onCancel={() => setDialog(null)} />
       )}
       {dialog?.kind === "usage" && <UsageDialog user={dialog.user} usage={usage} onClose={() => setDialog(null)} />}
 

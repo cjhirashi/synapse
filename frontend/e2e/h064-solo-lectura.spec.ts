@@ -41,7 +41,7 @@ async function writeControls(page: Page): Promise<string[]> {
 }
 
 test("H-064 F7c-2: un invitado que solo lee no ve controles de escritura en ninguna pestaña", async ({ browser }) => {
-  const owner = await createUser();
+  const owner = await createUser({ canShare: true });
   const guest = await createUser();
   const vault = await createVault(owner.cookie, "Plan compartido de solo lectura");
   await call(`/vaults/${vault}/notes`, owner.cookie, "POST", { path: "Pub/a.md", content: "# Pública A\n\nTexto para leer." });

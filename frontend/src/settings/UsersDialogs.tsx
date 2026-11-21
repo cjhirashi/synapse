@@ -1,6 +1,6 @@
 /** Ventanas de la gestión de usuarios (H-060): alta, límites y uso. El formulario vive en una ventana, no dentro de la lista. */
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { BarChart3, FileText, Folder, HardDrive, Lock, SlidersHorizontal, UserPlus, type LucideIcon } from "lucide-react";
+import { BarChart3, FileText, Folder, HardDrive, Lock, Share2, SlidersHorizontal, UserPlus, type LucideIcon } from "lucide-react";
 import DialogFrame from "../editor/DialogFrame";
 import { MB, formatBytes, formatCount, parseLimit, type AdminUser, type UserLimits, type UserUsage } from "./adminUsers";
 import { isLimited, Meter, RolePill } from "./usersView";
@@ -177,9 +177,10 @@ export function CreateUserDialog({ isSuper, busy, error, onSubmit, onCancel }: {
 }
 
 export function LimitsDialog({ user, busy, error, onSubmit, onCancel }: {
-  user: AdminUser; busy: boolean; error: string | null; onSubmit: (limits: UserLimits) => void; onCancel: () => void;
+  user: AdminUser; busy: boolean; error: string | null; onSubmit: (limits: UserLimits, canShare: boolean) => void; onCancel: () => void;
 }) {
   const [limits, setLimits] = useState<LimitText>(toText(user.limits));
+  const [canShare, setCanShare] = useState(user.can_share_vaults);
   const [local, setLocal] = useState<string | null>(null);
 
   function submit(e?: FormEvent) {
@@ -187,24 +188,40 @@ export function LimitsDialog({ user, busy, error, onSubmit, onCancel }: {
     const parsed = toLimits(limits);
     if (!parsed) return setLocal("Los límites deben ser números enteros, o vacíos para no limitar.");
     setLocal(null);
-    onSubmit(parsed);
+    onSubmit(parsed, canShare);
   }
 
   const shown = local ?? error;
   return (
     <DialogFrame
-      titleId="limits-user-title" title="Límites de la cuenta" glyph={SlidersHorizontal} tone="accent" size="md" top
+      titleId="limits-user-title" title="Límites y permisos" glyph={SlidersHorizontal} tone="accent" size="md" top
       subtitle={user.email} onCancel={onCancel} backdropClosable={false} onEnter={() => submit()}
       actions={
         <>
           <button type="button" disabled={busy} onClick={onCancel}>Cancelar</button>
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => submit()}>Guardar límites</button>
+          <button type="button" className="btn-primary" disabled={busy} onClick={() => submit()}>Guardar</button>
         </>
       }
     >
       <form className="us-form" onSubmit={submit} aria-label={`Límites de ${user.email}`}>
         {shown && <p role="alert" className="ag-callout ag-callout--warn">{shown}</p>}
         <LimitFields idPrefix={`lim-${user.id}`} value={limits} onChange={setLimits} vaultsUsed={user.vaults_used} />
+        <div className="us-limit">
+          <div className="us-limit-head">
+            <span className="us-limit-icon" aria-hidden="true"><Share2 size={16} /></span>
+            <div className="us-limit-title">
+              <label htmlFor={`share-${user.id}`}>Compartir bóvedas</label>
+              <p>Podrá invitar a otras personas a sus bóvedas. Lo que ellas hagan allí cuenta contra los límites de esta cuenta, no de las suyas.</p>
+            </div>
+          </div>
+          <label className="ag-switch-row us-limit-switch">
+            <input
+              id={`share-${user.id}`} className="ag-switch" type="checkbox" role="switch" checked={canShare}
+              aria-label="Puede compartir bóvedas" onChange={(e) => setCanShare(e.target.checked)}
+            />
+            <span aria-hidden="true">{canShare ? "Activado" : "Desactivado"}</span>
+          </label>
+        </div>
         <p className="us-limits-help">Si bajas un límite por debajo de lo que ya usa, no se borra nada: la persona recibe un aviso y tiene 30 días para reducir; después se retira lo más viejo.</p>
       </form>
     </DialogFrame>

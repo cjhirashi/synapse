@@ -80,15 +80,16 @@ function cookieHeader(res: Response): string {
 
 let userCounter = 0;
 
-/** Usuario nuevo (lo crea el admin y hace el cambio de contraseña forzado, RF-002 de 0002). */
-export async function createUser(): Promise<{ email: string; password: string; cookie: string }> {
+/** Usuario nuevo (lo crea el admin y hace el cambio de contraseña forzado, RF-002 de 0002). `canShare`: el admin le activa compartir bóvedas (H-064). */
+export async function createUser(options: { canShare?: boolean } = {}): Promise<{ email: string; password: string; cookie: string }> {
   const admin = cookieHeader(
     await api("/auth/login", { method: "POST", body: { email: process.env.ADMIN_EMAIL, password: process.env.E2E_ADMIN_PASSWORD } }),
   );
   userCounter += 1;
   const email = `visual-${Date.now()}-${userCounter}@example.com`;
   const temporary = "admin1234"; // la contraseña inicial de toda cuenta nueva (H-060)
-  await api("/admin/users", { method: "POST", body: { email }, cookie: admin });
+  const created = (await (await api("/admin/users", { method: "POST", body: { email }, cookie: admin })).json()) as { id: string };
+  if (options.canShare) await api(`/admin/users/${created.id}/sharing`, { method: "PATCH", body: { can_share_vaults: true }, cookie: admin });
   const first = cookieHeader(await api("/auth/login", { method: "POST", body: { email, password: temporary } }));
   const password = "definitiva-1234";
   await api("/auth/change-password", { method: "POST", body: { current_password: temporary, new_password: password }, cookie: first });

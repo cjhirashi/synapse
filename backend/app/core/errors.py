@@ -709,6 +709,15 @@ class MemberLimitReached(DomainError):
     detail = "This vault reached the maximum number of members"
 
 
+class ShareNotAllowed(DomainError):
+    """La cuenta no tiene habilitado compartir bóvedas (administradores o cuentas con la función activada)."""
+
+    slug = "share-not-allowed"
+    title = "Sharing not allowed"
+    status = 403
+    detail = "This account cannot share vaults"
+
+
 class InvitationNotPending(DomainError):
     """La invitación no está en estado pendiente o activo (no se puede cambiar ni responder)."""
 

@@ -74,3 +74,20 @@ def test_migracion_025_vault_sharing_crea_tablas_y_se_revierte(sqlite_url, tmp_p
     with sqlite3.connect(db) as con:
         tables = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
     assert not {"vault_members", "vault_member_grants"} & tables
+
+
+def test_migracion_026_can_share_vaults_apagado_por_defecto_y_se_revierte(sqlite_url, tmp_path):
+    """H-064 F5d: la columna nace apagada para las cuentas que ya existen y se revierte."""
+    db = tmp_path / "m.db"
+    cfg = _config(sqlite_url)
+    with sqlite3.connect(db) as con:
+        con.execute("CREATE TABLE users (id VARCHAR PRIMARY KEY)")
+        con.execute("INSERT INTO users (id) VALUES ('a')")
+    command.stamp(cfg, "9f1c5a3b7e2d")
+
+    command.upgrade(cfg, "a7d2e4f6b8c1")
+    with sqlite3.connect(db) as con:
+        assert con.execute("SELECT can_share_vaults FROM users WHERE id='a'").fetchone() == (0,)
+    command.downgrade(cfg, "9f1c5a3b7e2d")
+    with sqlite3.connect(db) as con:
+        assert "can_share_vaults" not in [r[1] for r in con.execute("PRAGMA table_info(users)")]

@@ -18,7 +18,7 @@ const CASES: Array<{ label: string; size: Size; theme: Theme }> = [
 for (const { label, size, theme } of CASES) {
   test(`H-064 F7c: el invitado abre la bóveda compartida a ${label}`, async ({ browser }) => {
     const mobile = size.width <= 640;
-    const owner = await createUser();
+    const owner = await createUser({ canShare: true });
     const guest = await createUser();
     const vault = await createVault(owner.cookie, "Plan estratégico compartido");
     const notes: Record<string, { id: string }> = {};

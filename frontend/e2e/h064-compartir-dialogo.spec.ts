@@ -23,7 +23,7 @@ const CASES: Array<{ label: string; size: Size; theme: Theme }> = [
 for (const { label, size, theme } of CASES) {
   test(`H-064 F5b: diálogo compartir a ${label}`, async ({ browser }) => {
     const mobile = size.width <= 640;
-    const owner = await createUser();
+    const owner = await createUser({ canShare: true });
     const ana = await createUser();
     const bea = await createUser();
     const cam = await createUser();

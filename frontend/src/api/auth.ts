@@ -11,6 +11,8 @@ export interface Me {
   // Perfil (H-028): nombre para mostrar y URL de la foto; `null` cuando no se han puesto.
   display_name: string | null;
   photo_url: string | null;
+  // H-064: ¿puede compartir bóvedas? (administradores siempre; un usuario, si un administrador se lo activó).
+  can_share_vaults?: boolean;
 }
 
 // Rutas cuyo 401 es una respuesta final, no una sesión caducada.

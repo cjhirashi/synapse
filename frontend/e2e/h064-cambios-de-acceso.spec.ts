@@ -27,7 +27,7 @@ const sharedReplicas = (page: Page) =>
 const recheck = (page: Page) => page.evaluate(() => void window.dispatchEvent(new Event("focus")));
 
 async function seed() {
-  const owner = await createUser();
+  const owner = await createUser({ canShare: true });
   const guest = await createUser();
   const vault = await createVault(owner.cookie, "Plan que cambia de permisos");
   const notes: Record<string, Summary> = {};

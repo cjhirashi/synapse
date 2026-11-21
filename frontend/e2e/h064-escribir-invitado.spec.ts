@@ -32,7 +32,7 @@ async function overwrite(page: Page, content: string) {
 }
 
 test("H-064 F7d: el invitado escribe solo donde su concesión lo permite", async ({ browser }) => {
-  const owner = await createUser();
+  const owner = await createUser({ canShare: true });
   const guest = await createUser();
   const vault = await createVault(owner.cookie, "Plan con escritura parcial");
   for (const [path, content] of [["Docs/a.md", "# A\n\noriginal A"], ["Docs/Sub/b.md", "# B\n\noriginal B"], ["Pub/p.md", "# P\n\noriginal P"]]) {

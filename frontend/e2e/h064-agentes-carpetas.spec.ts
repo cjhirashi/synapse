@@ -21,7 +21,7 @@ const CASES: Array<{ label: string; size: Size; theme: Theme }> = [
 for (const { label, size, theme } of CASES) {
   test(`H-064 F5c: agentes por carpeta a ${label}`, async ({ browser }) => {
     const mobile = size.width <= 640;
-    const owner = await createUser();
+    const owner = await createUser({ canShare: true });
     const vault = await createVault(owner.cookie, "Plan estratégico de operaciones y expansión regional 2027");
     for (const path of ["Docs/Sub/a.md", "Docs/b.md", "Proyectos/c.md", "Notas/d.md"]) {
       await call(`/vaults/${vault}/notes`, owner.cookie, "POST", { path, content: "# Nota" });

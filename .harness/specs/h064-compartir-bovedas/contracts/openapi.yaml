@@ -1281,7 +1281,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Sharing not allowed
         '404':
           content:
             application/problem+json:
@@ -1415,7 +1415,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Sharing not allowed
         '404':
           content:
             application/problem+json:

@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session
 from app.core.errors import (
     EmailTaken, StorageUnavailable, UserActionForbidden, UserNotFound, UserStateConflict,
 )
-from app.core.limits import GRACE_DAYS, ROLE_ADMIN, ROLE_GUEST, ROLE_SUPER_ADMIN, UserLimits
+from app.core.limits import GRACE_DAYS, can_share_vaults, ROLE_ADMIN, ROLE_GUEST, ROLE_SUPER_ADMIN, UserLimits
 from app.core.models.limit_grace import LimitGrace
 from app.core.models.user import User
 from app.core.schemas import (
-    AdminUserOut, CreateUserRequest, GraceOut, UpdateLimitsRequest, UserLimitsOut, UserUsageOut, VaultUsageOut,
+    AdminUserOut, CreateUserRequest, GraceOut, UpdateLimitsRequest, UpdateSharingRequest, UserLimitsOut, UserUsageOut, VaultUsageOut,
 )
 from app.core.security import normalize_email
 from app.services import limit_usage
@@ -65,6 +65,7 @@ class AdminUserService:
             limits=UserLimitsOut(
                 max_vaults=user.max_vaults, max_notes_per_vault=user.max_notes_per_vault,
                 max_storage_bytes_per_vault=user.max_storage_bytes_per_vault),
+            can_share_vaults=can_share_vaults(user.role.name, bool(user.can_share_vaults)),
             vaults_used=vaults_used,
             storage_bytes=limit_usage.storage_total(self._session, user.id),
             grace=[GraceOut(kind=row.kind, vault_id=row.vault_id, deadline_at=_iso(row.deadline_at))
@@ -130,6 +131,16 @@ class AdminUserService:
             setattr(user, field, getattr(body, field))
         self._session.commit()
         self._reconcile.refresh(user)
+        return self._out(user, self._session.query(LimitGrace).filter(LimitGrace.user_id == user.id).all())
+
+    def set_sharing(self, user_id: str, body: UpdateSharingRequest) -> AdminUserOut:
+        user = self._target(user_id)
+        if user.role.name != ROLE_GUEST:
+            raise UserActionForbidden("admins always can share")
+        if user.deleted_at is not None:
+            raise UserStateConflict("deleted account")
+        user.can_share_vaults = body.can_share_vaults
+        self._session.commit()
         return self._out(user, self._session.query(LimitGrace).filter(LimitGrace.user_id == user.id).all())
 
     def delete(self, user_id: str) -> AdminUserOut:

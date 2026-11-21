@@ -129,7 +129,7 @@ for (const { label, size, theme } of CASES) {
 
     // Límites.
     await page.getByRole("button", { name: `Límites de ${ana}`, exact: true }).click();
-    await expect(page.getByRole("button", { name: "Guardar límites" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Guardar" })).toBeVisible();
     await shot(page, `h060-${label}-3-limites`);
     await page.getByRole("button", { name: "Cancelar" }).click();
 

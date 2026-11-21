@@ -1,6 +1,7 @@
 /** Botón de la franja de la bóveda que abre el diálogo «Compartir» (H-064 F5b). */
 import { Share2 } from "lucide-react";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { MeContext } from "../auth/RequireAuth";
 import { useVaultAccess } from "../notes/useVaultAccess";
 import ShareDialog from "./ShareDialog";
 import { folderOptions } from "./folderOptions";
@@ -13,8 +14,9 @@ interface Props {
 
 export default function ShareButton({ vaultId, vaultName, notes }: Props) {
   const { isOwner } = useVaultAccess();
+  const canShare = useContext(MeContext)?.can_share_vaults ?? false;
   const [open, setOpen] = useState(false);
-  if (!isOwner) return null;
+  if (!isOwner || !canShare) return null;
   return (
     <>
       <button type="button" className="note-nav-button vault-share-button" aria-label="Compartir esta bóveda" title="Compartir" onClick={() => setOpen(true)}>

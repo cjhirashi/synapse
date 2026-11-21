@@ -17,10 +17,10 @@ from tests.test_h030_api import agent_client, vault_of
 READ_ALL = [{"folder": "*", "level": "lectura"}]
 
 
-def person(admin, db, email: str) -> TestClient:
-    """Usuario invitado con su propio cliente (sesión aparte de la del administrador)."""
+def person(admin, db, email: str, can_share: bool = True) -> TestClient:
+    """Usuario invitado con su propio cliente (sesión aparte de la del administrador). Puede compartir salvo que se pida lo contrario."""
     assert admin.post("/admin/users", json={"email": email}).status_code == 201
-    db.query(User).filter(User.email == email).update({"must_change_password": False})
+    db.query(User).filter(User.email == email).update({"must_change_password": False, "can_share_vaults": can_share})
     db.commit()
     client = TestClient(app, base_url=str(admin.base_url))
     assert login(client, email, SEED_PASSWORD).status_code == 200
