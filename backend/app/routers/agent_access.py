@@ -26,6 +26,7 @@ from app.core.schemas import (
     AgentAccessEntryOut, AgentAccessKeyOut, AgentAccessOut, AgentAccessPut, AgentLeave, AgentLeaveOut, ShadowCountOut,
     ShadowDenyOut, ShadowReportOut, SkillAssign, SkillListOut, SkillOut, TokenPayload,
 )
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.core.ports.vault_port import VaultPort
@@ -48,7 +49,7 @@ def _active_keys(db: Session, owner_id: str):
 
 
 def _registry(port: VaultPort, user: TokenPayload) -> AgentRegistryService:
-    return AgentRegistryService(port, f"synapse_user_{user.sub}")
+    return AgentRegistryService(port, user_db_name(user.sub))
 
 
 @router.get(
@@ -63,7 +64,7 @@ def get_agent_access(
     db: Session = Depends(get_db),
 ):
     """Quién está registrado en la bóveda, con el nombre de la clave (`op-…`) de cada agente."""
-    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+    if port.get(user_db_name(user.sub), f"vault:{vault_id}") is None:
         raise VaultNotFound(f"vault:{vault_id} not found")
     keys: dict[str, list[AgentAccessKeyOut]] = {}
     for key in _active_keys(db, user.sub):
@@ -72,6 +73,7 @@ def get_agent_access(
     agents = [
         AgentAccessEntryOut(
             agent_id=agent_id, estado=entry.registration.estado, carpetas=list(entry.registration.carpetas),
+            lectura=list(entry.registration.lectura),
             note_id=entry.note_id, keys=keys.get(agent_id, []))
         for agent_id, entry in sorted(entries.items())
     ]
@@ -97,9 +99,10 @@ def put_agent_access(
 ):
     """Registra o reasigna un agente en la bóveda (solo sesión humana)."""
     labels = [k.label for k in _active_keys(db, user.sub) if k.agent_id == agent_id]
-    entry = _registry(port, user).put(vault_id, agent_id, body.carpetas, body.estado, labels)
+    entry = _registry(port, user).put(vault_id, agent_id, body.carpetas, body.estado, labels, body.lectura)
     return AgentAccessEntryOut(
         agent_id=agent_id, estado=entry.registration.estado, carpetas=list(entry.registration.carpetas),
+        lectura=list(entry.registration.lectura),
         note_id=entry.note_id,
         keys=[AgentAccessKeyOut(label=k.label, is_admin=k.is_admin) for k in _active_keys(db, user.sub)
               if k.agent_id == agent_id])
@@ -123,7 +126,7 @@ def delete_agent_access(
 
 def _skills(port: VaultPort, user: TokenPayload, with_log: bool = False) -> SkillService:
     """El servicio de skills con el actor de quien llama; con `with_log`, sus cambios constan en la BITACORA."""
-    db = f"synapse_user_{user.sub}"
+    db = user_db_name(user.sub)
     actor = actor_of(user)
     return SkillService(port, db, actor=actor, changelog=ChangeLogService(port, db, user.sub, actor) if with_log else None)
 
@@ -146,7 +149,7 @@ def list_skills(
 ):
     """Las skills de la bóveda con su propietario, sus invitados y su estado (H-041 E4). Las archivadas no tienen
     propietario; los documentos de sistema no se listan."""
-    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+    if port.get(user_db_name(user.sub), f"vault:{vault_id}") is None:
         raise VaultNotFound(f"vault:{vault_id} not found")
     return SkillListOut(skills=[_skill_out(s) for s in _skills(port, user).list_skills(vault_id)])
 
@@ -165,7 +168,7 @@ def assign_skill(
 ):
     """Asigna la skill a un gestor activo (solo sesión humana): pasa a ser su propietario, sale de `agentes` si estaba y
     una skill archivada vuelve a `en revisión` (H-041 E4)."""
-    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+    if port.get(user_db_name(user.sub), f"vault:{vault_id}") is None:
         raise VaultNotFound(f"vault:{vault_id} not found")
     return _skill_out(_skills(port, user, with_log=True).assign(vault_id, note_id, body.propietario))
 
@@ -186,7 +189,7 @@ def agent_leaves(
     """Quita o suspende a un gestor resolviendo antes cada skill de la que es propietario (solo sesión humana, H-041 E4):
     con invitados, asignarla a uno de ellos o eliminarla; sin invitados, eliminarla o archivarla. También lo quita de
     `agentes` de las skills que lo invitan. Si falta alguna resolución, 409 `agent-owns-skills` y no se toca nada."""
-    if port.get(f"synapse_user_{user.sub}", f"vault:{vault_id}") is None:
+    if port.get(user_db_name(user.sub), f"vault:{vault_id}") is None:
         raise VaultNotFound(f"vault:{vault_id} not found")
     labels = [k.label for k in _active_keys(db, user.sub) if k.agent_id == agent_id]
     done = _skills(port, user, with_log=True).leave(vault_id, agent_id, body.modo, body.skills, labels)

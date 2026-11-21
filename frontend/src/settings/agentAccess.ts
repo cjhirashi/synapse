@@ -98,10 +98,3 @@ export function skillName(skill: Pick<SkillInfo, "path">): string {
   return (skill.path.split("/").pop() ?? skill.path).replace(/\.md$/i, "");
 }
 
-/** Carpetas escritas una por línea → lista limpia (sin vacías, sin barras finales). */
-export function parseFolders(text: string): string[] {
-  return text
-    .split("\n")
-    .map((line) => line.trim().replace(/\/+$/, ""))
-    .filter((line) => line.length > 0);
-}

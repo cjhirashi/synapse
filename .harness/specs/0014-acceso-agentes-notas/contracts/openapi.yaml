@@ -555,7 +555,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Shared vault access forbidden
         '404':
           content:
             application/problem+json:
@@ -728,7 +728,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied / Document limit reached
+          description: Agent access denied / Shared vault access forbidden / Document
+            limit reached
         '404':
           content:
             application/problem+json:
@@ -802,7 +803,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Shared vault access forbidden
         '404':
           content:
             application/problem+json:
@@ -975,7 +976,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied
+          description: Agent access denied / Shared vault access forbidden
         '404':
           content:
             application/problem+json:
@@ -1024,7 +1025,9 @@ paths:
   /vaults/{vault_id}/notes/{note_id}/pdf:
     post:
       description: 'PDF de un documento (H-036). Solo la persona (sesión): el HTML
-        es el de Lectura y el formato sale de la plantilla del documento.'
+        es el de Lectura y el formato sale de la plantilla del documento.
+
+        Un miembro invitado de una bóveda compartida no lo genera todavía (403).'
       operationId: note_pdf_vaults__vault_id__notes__note_id__pdf_post
       parameters:
       - in: path
@@ -1066,7 +1069,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Password change required
+          description: Shared vault access forbidden
         '404':
           content:
             application/problem+json:
@@ -1577,7 +1580,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Agent access denied / Document limit reached
+          description: Agent access denied / Shared vault access forbidden / Document
+            limit reached
         '404':
           content:
             application/problem+json:

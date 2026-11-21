@@ -38,6 +38,9 @@ export const PROBLEM = {
   vaultLimitReached: `${URN}vault-limit-reached`,
   documentLimitReached: `${URN}document-limit-reached`,
   storageLimitReached: `${URN}storage-limit-reached`,
+  inviteeNotFound: `${URN}invitee-not-found`,
+  memberAlreadyExists: `${URN}member-already-exists`,
+  memberLimitReached: `${URN}member-limit-reached`,
 } as const;
 
 export class ApiError extends Error {

@@ -13,16 +13,16 @@
           "sistema"
         ],
         "estado": "aprobado",
-        "version": "1.3.38"
+        "version": "1.3.39"
       },
-      "sha256": "43eb5a67d752a9393ef28b386d9e9163251fd0244d261a7dfbadc0894012b996"
+      "sha256": "8794b3b0c3bec6be690052c22c308fd9d17c2a613fc68dfbc3d6c89c249a0007"
     },
     {
       "path": "PLANTILLAS/plantilla-skill.md",
       "body": "plantilla-skill.md",
       "frontmatter": {
         "titulo": "plantilla-skill",
-        "descripcion": "Al crear una skill de agente en AG - SKILLS: disparadores primero, pasos con criterio de cierre, referencias, y los atributos propietario (lista de agentes) y agentes.",
+        "descripcion": "Al crear una skill de agente en AG - SKILLS: disparadores primero, pasos con criterio de cierre, referencias y los atributos propietario (agentes) y agentes.",
         "tags": [
           "plantilla",
           "skill",
@@ -54,7 +54,7 @@
           "pdf": {}
         }
       },
-      "sha256": "8b912f7145a588f854080f511cc74ab048f87ad3d111abf9e7b13e99333d9dc0"
+      "sha256": "690a70b875912e1da9f33420935b7d332641a6740ea1ad64c1788e3287dd5670"
     }
   ]
 }

@@ -4,7 +4,8 @@ Quién escribe dónde sale del registro `AG - AGENTES/<id>.md` de cada bóveda (
 `estado`). La sesión humana (cookie) no tiene restricción. Un agente administrador (flag `is_admin` de su
 clave, que vive en la base de control y no en notas) tampoco. Un agente registrado y activo escribe en las
 carpetas de su registro, en `AG - SKILLS` (qué skill toca cada uno lo decide la propiedad: `skill_rules`) y en `AG - MENSAJES`; uno no registrado o suspendido solo
-en `AG - MENSAJES`. Leer no se restringe. `*` en `carpetas` = toda la bóveda salvo las carpetas reservadas.
+en `AG - MENSAJES`. El campo `lectura` del frontmatter define dónde lee el agente (H-064 F3c); se guarda y se valida, pero
+no restringe todavía las lecturas efectivas de las rutas (`agent_level_of` aún no se usa en el servidor). `*` en `carpetas` = toda la bóveda salvo las carpetas reservadas.
 """
 from typing import NamedTuple
 
@@ -31,6 +32,7 @@ class Registration(NamedTuple):
     agent_id: str
     carpetas: tuple[str, ...]
     estado: str
+    lectura: tuple[str, ...] = ("*",)
 
 
 class Decision(NamedTuple):
@@ -73,7 +75,15 @@ def parse_registration(path: str, frontmatter: object) -> Registration | None:
     if not isinstance(carpetas, list) or not all(
             isinstance(c, str) and (c == ALL_FOLDERS or check_prefix(c) is None) for c in carpetas):
         return None
-    return Registration(agent_id, tuple(carpetas), frontmatter["estado"])
+    lectura = frontmatter.get("lectura")
+    if lectura is None:
+        lectura = (ALL_FOLDERS,)
+    else:
+        if not isinstance(lectura, list) or not all(
+                isinstance(c, str) and (c == ALL_FOLDERS or check_prefix(c) is None) for c in lectura):
+            return None
+        lectura = tuple(lectura)
+    return Registration(agent_id, tuple(carpetas), frontmatter["estado"], lectura)
 
 
 def check_registration_frontmatter(path: str, frontmatter: object) -> str | None:

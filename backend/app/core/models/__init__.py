@@ -12,5 +12,6 @@ from app.core.models.refresh_token import RefreshToken
 from app.core.models.role import Role
 from app.core.models.task import VaultTask
 from app.core.models.user import User
+from app.core.models.vault_member import VaultMember, VaultMemberGrant
 
-__all__ = ["AgentAccessLog", "AgentProfile", "AgentApiKey", "ChangeLog", "File", "FileFolder", "LimitGrace", "Notification", "NotificationPref", "Publication", "PurgeLog", "PushSubscription", "RefreshToken", "Role", "User", "VaultProject", "VaultTask"]
+__all__ = ["AgentAccessLog", "AgentProfile", "AgentApiKey", "ChangeLog", "File", "FileFolder", "LimitGrace", "Notification", "NotificationPref", "Publication", "PurgeLog", "PushSubscription", "RefreshToken", "Role", "User", "VaultMember", "VaultMemberGrant", "VaultProject", "VaultTask"]

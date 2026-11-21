@@ -28,7 +28,7 @@ from app.core import ag_rules, conversation_rules, doc_names, meta_rules, planti
 from app.core.agent_access import Actor, check_registration_frontmatter, identity, parse_registration
 from app.core.errors import (
     AgentOwnsSkills, InvalidCursor, NoteNotFound, NotePathTaken as NotePathTakenProblem, PreconditionFailed,
-    PreconditionRequired, RevisionConflict, ValidationFailed, VaultNotFound,
+    PreconditionRequired, RevisionConflict, ShareForbidden, ValidationFailed, VaultNotFound,
 )
 from app.core.etag import etag_matches
 from app.core.wikilink_rewrite import Rename
@@ -40,6 +40,7 @@ from app.core.note_rules import check_content, check_frontmatter, check_path, pa
 from app.core.ports.vault_port import VaultPort
 from app.core.schemas import NoteCreate, NoteListItem, NoteOut, NotePage, NoteUpdate
 from app.core.timestamps import is_timestamp, utc_now
+from app.core.vault_access import WRITE, MemberAccess, level_of
 from app.services.agent_access_guard import AgentAccessGuard, invalidate_registry, read_registry
 from app.services.limit_guard import LimitGuard
 from app.services.change_log_service import ChangeLogService, Pending
@@ -52,6 +53,9 @@ from app.services.wikilink_rewrite_service import RewriteReport, WikilinkRewrite
 # como componente extra (`v`) — un cursor sólo vale para la bóveda y la lista con que se emitió.
 
 _CURSOR_ERROR = [{"parameter": "cursor", "detail": "Invalid cursor."}]
+
+# Tope de documentos que se examinan para llenar una página de un miembro invitado (solo ve parte de la bóveda).
+MEMBER_SCAN_CAP = 2000
 
 
 def encode_cursor(vault_id: str, deleted: bool, created_at: str, note_id: str) -> str:
@@ -149,6 +153,7 @@ class NoteContentService:
         self, port: VaultPort, db: str, auto_indexes: bool = True,
         actor: Actor | None = None, guard: AgentAccessGuard | None = None,
         changelog: ChangeLogService | None = None, limit_guard: LimitGuard | None = None,
+        member: MemberAccess | None = None,
     ):
         self._port = port
         self._db = db
@@ -163,11 +168,15 @@ class NoteContentService:
         self._changelog = changelog
         # H-060: límite de documentos de la cuenta (None en scripts y herramientas del sistema: sin límite).
         self._limit_guard = limit_guard
+        # H-064 F3: concesiones de un miembro invitado (None = propietario, sus claves o el sistema: sin restricción por carpeta).
+        self._member = member
 
     def list(
         self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None = None
     ) -> NotePage:
         self._check_vault(vault_id)
+        if self._member is not None:
+            return self._list_member(vault_id, deleted, limit, cursor, prefix)
         if prefix is not None:
             return self._list_prefix(vault_id, deleted, limit, cursor, prefix)
         after = None
@@ -208,9 +217,75 @@ class NoteContentService:
             next_cursor = encode_prefix_cursor(vault_id, deleted, prefix, last_key, _note_id(last))
         return NotePage(items=[_to_list_item(doc) for _, doc in page], next_cursor=next_cursor)
 
+    def _list_member(self, vault_id: str, deleted: bool, limit: int, cursor: str | None, prefix: str | None) -> NotePage:
+        """Listado para un miembro invitado: solo las notas que puede leer. Se sigue leyendo páginas hasta juntar `limit + 1`
+        legibles o agotar `MEMBER_SCAN_CAP`; el cursor sale de lo último examinado, así lo no legible nunca se re-sirve ni se cuenta."""
+        if prefix is not None:
+            prefix = prefix.rstrip("/")
+            if (code := check_prefix(prefix)) is not None:
+                raise _field_error("prefix", code)
+            key = view_key(prefix)
+            after = None
+            if cursor is not None:
+                last_key, note_id = decode_prefix_cursor(cursor, vault_id, deleted, prefix)
+                after = (last_key, _doc_id(vault_id, note_id))
+        else:
+            after = None
+            if cursor is not None:
+                created_at, note_id = decode_cursor(cursor, vault_id, deleted)
+                after = (created_at, _doc_id(vault_id, note_id))
+        kept: list[dict] = []
+        scanned = 0
+        last_scanned: dict | None = None
+        exhausted = False
+        while len(kept) < limit + 1 and scanned < MEMBER_SCAN_CAP:
+            if prefix is not None:
+                docs = self._port.list_notes_by_prefix(self._db, vault_id, deleted, key, limit + 1, after)
+                wanted = [d for d in docs if in_folder(d["path"], prefix) and self._readable(d["path"])]
+            else:
+                docs = self._port.list_notes(self._db, vault_id, deleted, limit + 1, after)
+                wanted = [d for d in docs if self._readable(d["path"])]
+            scanned += len(docs)
+            kept += wanted
+            if docs:
+                last_scanned = docs[-1]
+            if len(docs) < limit + 1:
+                exhausted = True
+                break
+            after = (view_key(docs[-1]["path"]), docs[-1]["_id"]) if prefix is not None else (docs[-1]["created_at"], docs[-1]["_id"])
+        page = kept[:limit]
+        next_cursor = None
+        anchor = page[-1] if len(kept) > limit else (last_scanned if not exhausted else None)
+        if anchor is not None:
+            if prefix is not None:
+                next_cursor = encode_prefix_cursor(vault_id, deleted, prefix, view_key(anchor["path"]), _note_id(anchor))
+            else:
+                next_cursor = encode_cursor(vault_id, deleted, anchor["created_at"], _note_id(anchor))
+        return NotePage(items=[_to_list_item(doc) for doc in page], next_cursor=next_cursor)
+
+    def _readable(self, path: str) -> bool:
+        return self._member is None or level_of(self._member, path) is not None
+
+    def _member_gate(self, path: str, *, write: bool = False, moving: bool = False) -> None:
+        """Compuerta de un miembro invitado sobre una nota existente, antes de cualquier otra comprobación (así ni el orden de los
+        errores revela lo que no puede ver): sin lectura responde 404, con lectura sin escritura 403, y mover o renombrar es solo
+        del propietario (reescribiría enlaces en notas que el miembro no ve)."""
+        if self._member is None:
+            return
+        level = level_of(self._member, path)
+        if level is None:
+            raise NoteNotFound("hidden from this member")
+        if (write and level != WRITE) or moving:
+            raise ShareForbidden("read-only or move")
+
+    @property
+    def is_member(self) -> bool:
+        return self._member is not None
+
     def get(self, vault_id: str, note_id: str) -> Versioned:
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
+        self._member_gate(doc["path"])
         if is_index_path(doc["path"]):
             doc = {**doc, "content": self._index_body(vault_id, doc["path"])}  # H-031: el cuerpo no se guarda, se genera
         return _versioned(doc)
@@ -229,6 +304,8 @@ class NoteContentService:
         fields = data.model_dump(exclude_unset=True)
         _check_rules(
             data.path, data.content, fields.get("frontmatter"), frontmatter_set="frontmatter" in fields)
+        if self._member is not None and level_of(self._member, data.path) != WRITE:
+            raise ShareForbidden("create outside the writable folders")
         # H-041 E2: en `AG - SKILLS` y `PLANTILLAS` el servidor estructura el nombre (`skill-…`, `plantilla-…`) y
         # devuelve la ruta final; el resto del flujo (bloqueo de sistema, registro de agentes, reserva) usa esa ruta.
         path, name_code = doc_names.canonical_path(data.path)
@@ -283,6 +360,7 @@ class NoteContentService:
         reserva la nueva (reuso de `NoteService.reserve_path`/`release_path`)."""
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
+        self._member_gate(doc["path"], write=True, moving="path" in data.model_fields_set)
         _check_precondition(doc, if_match)
         changes = data.model_dump(exclude_unset=True)
         # Sólo se revalida lo que el cuerpo trae: lo que no cambia ya era válido (se guardó
@@ -354,6 +432,7 @@ class NoteContentService:
         """
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=False)
+        self._member_gate(doc["path"], write=True)
         _check_precondition(doc, if_match)
         self._mensajes_gate(doc["path"])
         self._check_system_lock(doc["path"], doc["path"], None, deleted=True)
@@ -379,6 +458,7 @@ class NoteContentService:
         `VaultService.restore`; C-6 si otra nota viva ya lo usa)."""
         self._check_vault(vault_id)
         doc = self._load(vault_id, note_id, deleted=True)
+        self._member_gate(doc["path"], write=True)
         _check_precondition(doc, if_match)
         self._mensajes_gate(doc["path"])
         self._check_system_lock(doc["path"], None, doc.get("frontmatter"))

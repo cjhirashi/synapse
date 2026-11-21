@@ -20,6 +20,7 @@ from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import ProjectCreate, ProjectListOut, ProjectOut, ProjectUpdate, TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import VaultId, get_vault_port
 from app.services.agent_access_guard import AgentAccessGuard
@@ -44,7 +45,7 @@ def get_project_service(
     db: Session = Depends(get_db),
     vault_port: VaultPort = Depends(get_vault_port),
 ) -> ProjectService:
-    couch = f"synapse_user_{principal.sub}"
+    couch = user_db_name(principal.sub)
     vault_service = VaultService(vault_port, couch)
     guard = AgentAccessGuard(vault_port, couch, principal.sub, actor_of(principal))
     return ProjectService(ProjectRepository(db), principal.sub, guard, ensure_vault=lambda vault_id: vault_service.get(vault_id))

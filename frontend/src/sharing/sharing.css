@@ -1,0 +1,117 @@
+/* Página de bóvedas compartidas (H-064 F5a). Solo tokens del tema. */
+.shared-page { max-width: 760px; margin: 0 auto; padding: var(--space-6, 24px) 16px; display: flex; flex-direction: column; gap: 14px; }
+.shared-page h1 { margin: 0; font-size: 22px; }
+.shared-page > p[role="alert"], .shared-page > p[role="status"] { padding: 12px 16px; border-radius: var(--radius-md, 10px); font-size: 14px; }
+.shared-page > p[role="alert"] { background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); color: var(--danger-text); }
+.shared-page > p[role="status"] { background: color-mix(in srgb, var(--success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border)); color: var(--success-text); }
+.shared-page > div[role="alert"] { padding: 12px 16px; border-radius: var(--radius-md, 10px); background: var(--bg-secondary); border: 1px solid var(--border); font-size: 14px; }
+.shared-page > div[role="alert"] button { margin-left: 6px; }
+
+.shared-empty { text-align: center; color: var(--text-secondary); padding: 32px 16px; display: flex; flex-direction: column; gap: 8px; }
+.shared-empty-hint { font-size: 13px; color: var(--text-muted); }
+
+.shared-section { display: flex; flex-direction: column; gap: 12px; }
+.shared-section h2 { margin: 0; font-size: 16px; font-weight: 600; }
+
+.shared-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.shared-card { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md, 10px); padding: var(--space-4, 16px); display: flex; flex-direction: column; gap: 12px; }
+.shared-main { display: flex; flex-direction: column; gap: 4px; }
+.shared-title { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.shared-owner { font-size: 13px; color: var(--text-secondary); }
+.shared-grants { font-size: 13px; color: var(--text-secondary); }
+.shared-date { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.shared-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.shared-btn { min-height: 44px; padding: 0 20px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.shared-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.shared-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.shared-btn--primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+.shared-btn--danger { color: var(--danger-text); }
+.shared-btn--danger:hover:not(:disabled) { color: var(--danger-text); border-color: var(--danger-text); background: var(--danger-bg); }
+
+@media (max-width: 640px) {
+  .shared-actions { flex-direction: column; }
+  .shared-actions button { width: 100%; }
+}
+
+@media (min-width: 641px) {
+  .shared-actions { justify-content: flex-end; }
+}
+
+/* Diálogo «Compartir» y editor de permisos (H-064 F5b). Los botones son los `.shared-btn` de arriba. */
+
+.vault-share-button { min-width: 40px; min-height: 40px; display: flex; align-items: center; justify-content: center; }
+
+.dlg-actions .shared-btn { min-height: 44px; }
+/* La regla global `label` (bloque con margen inferior) desalinea el control segmentado y las etiquetas de los campos. */
+.share-dialog-body label { margin: 0; }
+.share-dialog-body { display: flex; flex-direction: column; gap: 24px; }
+.share-banner { margin: 0; padding: 12px 16px; border-radius: var(--radius-md, 10px); font-size: 14px; }
+.share-banner[role="alert"] { background: color-mix(in srgb, var(--danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border)); color: var(--danger-text); }
+.share-banner[role="status"] { background: color-mix(in srgb, var(--success) 12%, transparent); border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border)); color: var(--success-text); }
+.share-banner button { margin-left: 8px; }
+
+.share-section { display: flex; flex-direction: column; gap: 12px; }
+.share-section h2 { margin: 0; font-size: 15px; font-weight: 600; color: var(--text-primary); }
+.share-members { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.share-member { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: var(--radius-md, 10px); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.share-member-main { display: flex; flex-direction: column; gap: 4px; }
+.share-member-name { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; color: var(--text-primary); }
+.share-member-email, .share-member-grants { font-size: 13px; color: var(--text-secondary); overflow-wrap: anywhere; }
+.share-pill { width: fit-content; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.share-pill[data-status="pendiente"] { background: color-mix(in srgb, var(--warning) 20%, transparent); color: var(--warning-text); }
+.share-pill[data-status="activo"] { background: color-mix(in srgb, var(--success) 20%, transparent); color: var(--success-text); }
+.share-member-editor, .share-member-confirm { display: flex; flex-direction: column; gap: 12px; }
+.share-member-confirm p { margin: 0; font-size: 14px; }
+
+.share-field { display: flex; flex-direction: column; gap: 4px; }
+.share-field label, .share-grant-label { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.share-input, .share-select { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
+.share-input:disabled, .share-select:disabled { opacity: 0.6; }
+
+.share-grants-editor { display: flex; flex-direction: column; gap: 12px; }
+.share-role-group { margin: 0; border: none; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.share-role-legend { padding: 0; font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+.share-role-buttons { display: grid; grid-template-columns: 1fr 1fr 1.4fr; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); overflow: hidden; }
+.share-role-button { margin: 0; position: relative; display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 6px; font-size: 13px; font-weight: 600; text-align: center; cursor: pointer; }
+.share-role-button + .share-role-button { border-left: 1px solid var(--border); }
+.share-role-button input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.share-role-button:focus-within { outline: 2px solid var(--accent); outline-offset: -2px; }
+.share-role-button--active { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.share-role-help { margin: 0; font-size: 13px; color: var(--text-secondary); }
+
+.share-custom-grants { display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm, 6px); }
+.share-grant-row { display: grid; grid-template-columns: 1fr 1fr 44px; gap: 8px; align-items: end; }
+.share-grant-col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.share-grant-remove { width: 44px; min-height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.share-grant-remove:hover:not(:disabled) { color: var(--danger-text); border-color: var(--danger-text); background: var(--danger-bg); }
+.share-add-grant { align-self: flex-start; }
+
+.share-invite-form { display: flex; flex-direction: column; gap: 16px; }
+.share-form-actions { display: flex; flex-direction: column; gap: 8px; }
+
+@media (max-width: 640px) {
+  .share-grant-row { grid-template-columns: 1fr 44px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); background: var(--bg-secondary); }
+  .share-grant-col:first-child { grid-column: 1 / -1; }
+  .share-member .shared-actions button, .share-form-actions .shared-btn, .share-add-grant { width: 100%; }
+}
+
+/* Selector de carpetas (H-064 F5c) */
+.share-role-buttons.fsp-scope { grid-template-columns: 1fr 1.4fr 1fr; }
+.fsp-custom { display: flex; flex-direction: column; gap: 12px; padding: 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm, 6px); }
+.fsp-search { box-sizing: border-box; width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm, 6px); background: var(--bg-primary); color: var(--text-primary); font-size: 14px; }
+.fsp-search:disabled { opacity: 0.6; }
+.fsp-list { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow-y: auto; }
+.fsp-label { display: flex; align-items: center; gap: 10px; min-height: 44px; margin: 0; font-size: 14px; color: var(--text-primary); cursor: pointer; }
+.fsp-label input[type="checkbox"] { accent-color: var(--accent); margin: 0; width: 20px; height: 20px; flex: none; padding: 0; cursor: pointer; }
+.fsp-list li { margin: 0; }
+.fsp-label:has(input:disabled) { opacity: 0.6; cursor: not-allowed; }
+.fsp-name { overflow-wrap: anywhere; }
+.fsp-gone { color: var(--text-muted); font-size: 12px; }
+.fsp-empty { margin: 0; padding: 8px 0; color: var(--text-secondary); font-size: 14px; }
+
+/* Aviso de cambios descartados al reconstruir una bóveda compartida (H-064 F7e). */
+.share-toast { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 50; max-width: min(92vw, 560px); margin: 0; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-radius: var(--radius-md, 10px); background: var(--bg-secondary); border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--border)); color: var(--text-primary); font-size: 14px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.25); }
+.share-toast button { min-height: 44px; padding: 0 16px; }

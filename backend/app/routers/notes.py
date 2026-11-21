@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 from app.adapters.database import get_db
 from app.adapters.file_repository import FileRepository
 from app.adapters.minio_adapter import get_object_storage
-from app.core.agent_access import actor_of
-from app.core.dependencies import get_current_principal, get_current_user, require_password_changed
+from app.core.agent_access import Actor, actor_of
+from app.core.dependencies import get_current_principal, get_current_user, get_vault_context, require_password_changed
 from app.core.errors import (
     AgentAccessDenied, AgentOwnsSkills, DocumentLimitReached, InvalidCursor, NoteNotFound, NotePathTaken, PasswordChangeRequired, PdfBusy, PdfNotEnabled,
-    PdfRenderFailed, PdfTimeout, PreconditionFailed, PreconditionRequired, StorageUnavailable, ValidationFailed, VaultNotFound,
+    PdfRenderFailed, PdfTimeout, PreconditionFailed, PreconditionRequired, ShareForbidden, StorageUnavailable, ValidationFailed, VaultNotFound,
 )
 from app.core.ports.object_storage_port import ObjectStoragePort
 from app.services.note_pdf_service import NotePdfService
@@ -18,11 +18,14 @@ from app.core.json_body import DeepJsonRoute
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import NoteCreate, NoteOut, NotePage, NoteUpdate, PdfIn, TokenPayload
+from app.core.models.user import User
+from app.core.vault_context import VaultContext, owner_context
 from app.routers.auth import SESSION_ERRORS
-from app.routers.vaults import VaultId, get_limit_guard, get_vault_port
+from app.routers.vaults import VaultId, get_vault_port
+from app.core.guest_authorship import log_author
 from app.services.agent_access_guard import AgentAccessGuard
-from app.services.change_log_service import ChangeLogService
-from app.services.limit_guard import LimitGuard
+from app.services.change_log_service import Author, ChangeLogService
+from app.services.limit_guard import guard_for
 from app.services.note_content_service import NoteContentService, Versioned
 
 router = APIRouter(
@@ -36,18 +39,40 @@ router = APIRouter(
 )
 
 
+def _note_service(ctx: VaultContext, current_user: TokenPayload, port: VaultPort, db: Session) -> NoteContentService:
+    actor = actor_of(current_user)
+    author = None
+    if ctx.member is not None:
+        # Un invitado y sus agentes no pasan por el registro `AG - AGENTES` del propietario (un id de agente puede coincidir
+        # con uno suyo): mandan las concesiones. Escriben como la persona, con el agente en la autoría (H-064 F4).
+        actor = Actor("human")
+        author = Author(*log_author(db.get(User, ctx.actor_id).email, current_user.agent_id))
+    return NoteContentService(
+        port, ctx.db, actor=actor, guard=AgentAccessGuard(port, ctx.db, ctx.owner_id, actor),
+        changelog=ChangeLogService(port, ctx.db, ctx.owner_id, actor, author=author),
+        limit_guard=guard_for(db, ctx.owner_id, port), member=ctx.member)
+
+
 def get_note_content_service(
+    ctx: VaultContext = Depends(get_vault_context),
     current_user: TokenPayload = Depends(get_current_principal),
     port: VaultPort = Depends(get_vault_port),
-    guard: LimitGuard = Depends(get_limit_guard),
+    db: Session = Depends(get_db),
 ) -> NoteContentService:
-    # Mismo repositorio compartido por proceso que vaults.py (`get_vault_port`) y la misma
-    # base resuelta sólo del principal (RF-014 de 0003; RF-002/RF-006 de 0013).
-    db = f"synapse_user_{current_user.sub}"
-    actor = actor_of(current_user)
-    return NoteContentService(
-        port, db, actor=actor, guard=AgentAccessGuard(port, db, current_user.sub, actor),
-        changelog=ChangeLogService(port, db, current_user.sub, actor), limit_guard=guard)
+    # Mismo repositorio compartido por proceso que vaults.py (`get_vault_port`). La base sale solo de la sesión
+    # (RF-014 de 0003; RF-002/RF-006 de 0013), salvo para un miembro invitado (H-064 F3): la del propietario de la bóveda
+    # compartida, con sus concesiones; sus límites y su bitácora son los del propietario y la autoría es suya.
+    return _note_service(ctx, current_user, port, db)
+
+
+def get_own_note_content_service(
+    current_user: TokenPayload = Depends(get_current_principal),
+    port: VaultPort = Depends(get_vault_port),
+    db: Session = Depends(get_db),
+) -> NoteContentService:
+    """Las notas de la bóveda de la propia sesión, nunca de una compartida: para lo que un invitado no puede hacer
+    (publicar notas ajenas en internet, por ejemplo). Una bóveda de otra persona no existe en la base de quien pregunta."""
+    return _note_service(owner_context(current_user.sub), current_user, port, db)
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:
@@ -116,7 +141,7 @@ def get_note(
     "/{note_id}/pdf",
     response_class=Response,
     responses={200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}, "description": "El documento como PDF."}}
-    | problem_responses(NoteNotFound, VaultNotFound, PdfNotEnabled, PdfBusy, PdfTimeout, PdfRenderFailed, StorageUnavailable),
+    | problem_responses(NoteNotFound, VaultNotFound, ShareForbidden, PdfNotEnabled, PdfBusy, PdfTimeout, PdfRenderFailed, StorageUnavailable),
 )
 def note_pdf(
     vault_id: VaultId,
@@ -127,7 +152,10 @@ def note_pdf(
     db: Session = Depends(get_db),
     storage: ObjectStoragePort = Depends(get_object_storage),
 ):
-    """PDF de un documento (H-036). Solo la persona (sesión): el HTML es el de Lectura y el formato sale de la plantilla del documento."""
+    """PDF de un documento (H-036). Solo la persona (sesión): el HTML es el de Lectura y el formato sale de la plantilla del documento.
+    Un miembro invitado de una bóveda compartida no lo genera todavía (403)."""
+    if service.is_member:
+        raise ShareForbidden("pdf is not available to shared-vault members")
     pdf, name = NotePdfService(service, FileRepository(db), storage, user.sub).generate(vault_id, note_id, body.html)
     return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store"})
 
@@ -136,7 +164,7 @@ def note_pdf(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=NoteOut,
-    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, AgentAccessDenied, DocumentLimitReached, StorageUnavailable),
+    responses=_with_etag(201) | problem_responses(VaultNotFound, NotePathTaken, AgentAccessDenied, ShareForbidden, DocumentLimitReached, StorageUnavailable),
 )
 def create_note(
     vault_id: VaultId,
@@ -151,7 +179,7 @@ def create_note(
     "/{note_id}",
     response_model=NoteOut,
     responses={200: {"headers": {**_with_etag(200)[200]["headers"], "X-Wikilinks-Rewritten": _REWRITTEN_HEADER}}}
-    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, AgentOwnsSkills),
+    | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, AgentOwnsSkills, ShareForbidden),
 )
 def update_note(
     vault_id: VaultId,
@@ -168,7 +196,7 @@ def update_note(
     "/{note_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    responses=problem_responses(*_CONDITIONAL, VaultNotFound, AgentAccessDenied, AgentOwnsSkills),
+    responses=problem_responses(*_CONDITIONAL, VaultNotFound, AgentAccessDenied, AgentOwnsSkills, ShareForbidden),
 )
 def delete_note(
     vault_id: VaultId,
@@ -182,7 +210,7 @@ def delete_note(
 @router.post(
     "/{note_id}/restore",
     response_model=NoteOut,
-    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, DocumentLimitReached),
+    responses=_with_etag(200) | problem_responses(*_CONDITIONAL, VaultNotFound, NotePathTaken, AgentAccessDenied, ShareForbidden, DocumentLimitReached),
 )
 def restore_note(
     vault_id: VaultId,

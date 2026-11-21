@@ -12,7 +12,7 @@ const LIMITS = { max_vaults: 2, max_notes_per_vault: 100, max_storage_bytes_per_
 
 const user = (over: Partial<api.AdminUser> = {}): api.AdminUser => ({
   id: "u1", email: "ana@synapse.test", role: "guest", display_name: null, must_change_password: false,
-  created_at: "2026-11-18T10:00:00Z", deleted_at: null, purge_at: null, limits: LIMITS, vaults_used: 1, storage_bytes: 3 * api.MB, grace: [], ...over,
+  created_at: "2026-11-18T10:00:00Z", deleted_at: null, purge_at: null, limits: LIMITS, can_share_vaults: false, vaults_used: 1, storage_bytes: 3 * api.MB, grace: [], ...over,
 });
 
 function mobile(matches: boolean) {
@@ -155,9 +155,29 @@ test("límites: se editan en una ventana y avisan si la persona quedó por encim
   const field = within(dialog).getByLabelText("Documentos por bóveda");
   await u.clear(field);
   await u.type(field, "10");
-  await u.click(within(dialog).getByRole("button", { name: "Guardar límites" }));
+  await u.click(within(dialog).getByRole("button", { name: "Guardar" }));
   expect(save).toHaveBeenCalledWith("u1", { max_vaults: 2, max_notes_per_vault: 10, max_storage_bytes_per_vault: 500 * api.MB });
   expect(await screen.findByRole("status")).toHaveTextContent(/30 días para reducirlo/);
+});
+
+test("compartir bóvedas: el interruptor del diálogo se guarda aparte de los límites y solo si cambió", async () => {
+  vi.spyOn(api, "listUsers").mockResolvedValue([user()]);
+  const limits = vi.spyOn(api, "updateLimits").mockResolvedValue(user());
+  const sharing = vi.spyOn(api, "updateSharing").mockResolvedValue(user({ can_share_vaults: true }));
+  const u = setup();
+  await u.click(await screen.findByRole("button", { name: "Límites de ana@synapse.test" }));
+  let dialog = screen.getByRole("dialog");
+  const toggle = within(dialog).getByRole("switch", { name: "Puede compartir bóvedas" });
+  expect(toggle).not.toBeChecked();
+  await u.click(within(dialog).getByRole("button", { name: "Guardar" }));
+  expect(limits).toHaveBeenCalledTimes(1);
+  expect(sharing).not.toHaveBeenCalled();
+
+  await u.click(await screen.findByRole("button", { name: "Límites de ana@synapse.test" }));
+  dialog = screen.getByRole("dialog");
+  await u.click(within(dialog).getByRole("switch", { name: "Puede compartir bóvedas" }));
+  await u.click(within(dialog).getByRole("button", { name: "Guardar" }));
+  expect(sharing).toHaveBeenCalledWith("u1", true);
 });
 
 test("eliminar exige escribir el correo y avisa de los 30 días", async () => {
@@ -281,7 +301,7 @@ test("límites: los valores sugeridos rellenan el campo y el almacenamiento gran
   expect(within(dialog).getByLabelText("Almacenamiento por bóveda")).toHaveValue("1024");
   expect(within(dialog).getByText("Equivale a 1 GB.")).toBeInTheDocument();
   await u.click(within(within(dialog).getByRole("group", { name: "Valores sugeridos de bóvedas" })).getByRole("button", { name: "5" }));
-  await u.click(within(dialog).getByRole("button", { name: "Guardar límites" }));
+  await u.click(within(dialog).getByRole("button", { name: "Guardar" }));
   expect(save).toHaveBeenCalledWith("u1", { max_vaults: 5, max_notes_per_vault: 100, max_storage_bytes_per_vault: 1024 * api.MB });
 });
 
@@ -300,7 +320,7 @@ test("límites: el interruptor «Sin límite» vacía el campo y al apagarlo dev
   await u.click(toggle);
   expect(field).toHaveValue("100");
   await u.click(toggle);
-  await u.click(within(dialog).getByRole("button", { name: "Guardar límites" }));
+  await u.click(within(dialog).getByRole("button", { name: "Guardar" }));
   expect(save).toHaveBeenCalledWith("u1", { max_vaults: 2, max_notes_per_vault: null, max_storage_bytes_per_vault: 500 * api.MB });
 });
 

@@ -8,6 +8,9 @@ No se registran (P7): los INDICES automáticos (sí un cambio de su `descripcion
 BITACORA, los cambios que solo tocan `fecha_actualizacion` y las lecturas.
 
 H-062: cada cambio registra diff (líneas agregadas/eliminadas y texto unificado truncado).
+
+H-064: los eventos de membresía (`MEMBER_OPS`) comparten tabla y documento del día: `path` es el correo del invitado y `title`
+las concesiones; no llevan diff.
 """
 import difflib
 import json
@@ -20,9 +23,15 @@ from app.core.ag_rules import BITACORA, meta_folder_of
 from app.core.index_rules import changed_keys, folder_of, is_index_path
 
 OPS = ("create", "edit", "rename", "move", "delete", "restore")
+MEMBER_OP_LABEL = {
+    "invite": "invitación", "regrant": "cambio de permisos", "cancel": "cancelación de invitación",
+    "revoke": "revocación de acceso", "accept": "aceptación de invitación", "reject": "rechazo de invitación",
+    "leave": "salida de la bóveda",
+}
+MEMBER_OPS = tuple(MEMBER_OP_LABEL)
 OP_LABEL = {
     "create": "creación", "edit": "edición", "rename": "renombre", "move": "movimiento",
-    "delete": "borrado", "restore": "restauración",
+    "delete": "borrado", "restore": "restauración", **MEMBER_OP_LABEL,
 }
 STATUS_APPLIED, STATUS_PENDING, STATUS_FAILED = "applied", "pending", "failed"
 AUTHOR_KIND_LABEL = {"human": "usuario", "agent": "agente", "general": "clave general", "system": "sistema"}
@@ -276,8 +285,25 @@ def _format_number(n: int) -> str:
     return f"{n:,}"
 
 
+def grants_summary(grants: list[dict]) -> str:
+    """H-064: las concesiones de una invitación en una frase («lectura en `Pub`, escritura en toda la bóveda»)."""
+    parts = [f"{g['level']} en {'toda la bóveda' if g['folder'] == '*' else _code(g['folder'])}" for g in grants]
+    return ", ".join(parts) if parts else "sin concesiones"
+
+
+def _member_line(entry: Entry, tz: str) -> str:
+    """H-064: un evento de membresía; `path` es el correo del invitado y `title` el detalle (las concesiones)."""
+    when = entry.at.astimezone(zone(tz)).strftime("%H:%M:%S")
+    who = f"{entry.author} ({AUTHOR_KIND_LABEL.get(entry.author_kind, entry.author_kind)})"
+    detail = f" · {entry.title}" if entry.title else ""
+    mark = {STATUS_PENDING: " [sin confirmar]", STATUS_FAILED: " [no se aplicó]"}.get(entry.status, "")
+    return f"- **{when}** · {who} · {OP_LABEL[entry.op]} · invitado {_code(entry.path)}{detail}{mark}"
+
+
 def _line(entry: Entry, tz: str) -> str:
     """H-062: Incluye conteo de líneas si está disponible."""
+    if entry.op in MEMBER_OPS:
+        return _member_line(entry, tz)
     when = entry.at.astimezone(zone(tz)).strftime("%H:%M:%S")
     who = f"{entry.author} ({AUTHOR_KIND_LABEL.get(entry.author_kind, entry.author_kind)})"
     if entry.op in ("rename", "move") and entry.prev_path:

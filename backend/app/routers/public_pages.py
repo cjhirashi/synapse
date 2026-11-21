@@ -10,6 +10,7 @@ from app.adapters.database import get_db
 from app.adapters.publication_repository import PublicationRepository
 from app.core.errors import NoteNotFound, StorageUnavailable, VaultNotFound
 from app.core.rate_limit import RateLimiter
+from app.core.vault_context import user_db_name
 from app.routers.vaults import get_vault_port
 from app.services.note_content_service import NoteContentService
 from app.services.publication_page import render_page, unavailable_page
@@ -57,7 +58,7 @@ def get_public_page(
     if pub.unpublish_at is not None and pub.unpublish_at <= datetime.now(UTC).replace(tzinfo=None):
         return _page(status.HTTP_404_NOT_FOUND, unavailable_page())
     # Sin sesión no hay actor ni guard: se lee con la base del dueño de la publicación para comprobar que la nota sigue viva.
-    notes = NoteContentService(port, f"synapse_user_{pub.owner_id}")
+    notes = NoteContentService(port, user_db_name(pub.owner_id))
     try:
         notes.get(pub.vault_id, pub.note_id)
     except (NoteNotFound, VaultNotFound):

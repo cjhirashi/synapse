@@ -13,7 +13,8 @@ import { useMenuPosition } from "../editor/menuPlacement";
 interface TreeRowMenuProps {
   /** Nombre visible de la fila: el botón se anuncia como «Acciones de <label>». */
   label: string;
-  onRename: () => void;
+  /** Sin él no hay «Renombrar» (renombrar y mover son del propietario). */
+  onRename?: () => void;
   onDelete: () => void;
 }
 
@@ -28,7 +29,7 @@ export function TreeRowMenu({ label, onRename, onDelete }: TreeRowMenuProps) {
   const position = useMenuPosition(open, trigger, menu, dismiss);
 
   const items = [
-    { label: "Renombrar", Icon: Pencil, run: onRename, danger: false },
+    ...(onRename ? [{ label: "Renombrar", Icon: Pencil, run: onRename, danger: false }] : []),
     { label: "Borrar", Icon: Trash2, run: onDelete, danger: true },
   ];
 

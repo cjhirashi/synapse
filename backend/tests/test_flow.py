@@ -44,6 +44,7 @@ def test_end_to_end_bootstrap_forced_change_and_guest_onboarding(client, db):
         "must_change_password": False,
         "display_name": None,
         "photo_url": None,
+        "can_share_vaults": False,  # H-064 F5d: un guest nuevo no comparte hasta que un admin lo habilite
     }
     again = client.post("/admin/users", json={"email": "x@test.com"})
     assert again.status_code == 403

@@ -27,6 +27,8 @@ export interface AdminUser {
   deleted_at: string | null;
   purge_at: string | null;
   limits: UserLimits;
+  /** Efectivo: administradores siempre; un usuario, solo si se le activó compartir bóvedas. */
+  can_share_vaults: boolean;
   /** Bóvedas vivas hoy; `null` si el servidor no pudo contarlas. */
   vaults_used: number | null;
   /** Bytes de todos sus archivos, en todas sus bóvedas. */
@@ -64,6 +66,10 @@ export async function getUsage(id: string): Promise<UserUsage> {
 
 export async function createUser(email: string, role: "guest" | "admin", limits: UserLimits): Promise<AdminUser> {
   return (await request("/admin/users", json("POST", { email, role, ...limits }))).json();
+}
+
+export async function updateSharing(id: string, canShare: boolean): Promise<AdminUser> {
+  return (await request(path(id, "/sharing"), json("PATCH", { can_share_vaults: canShare }))).json();
 }
 
 export async function updateLimits(id: string, limits: UserLimits): Promise<AdminUser> {

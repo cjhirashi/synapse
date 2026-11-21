@@ -166,6 +166,16 @@ Las plantillas son para documentos que se crean **a mano** (hoy, las skills). Lo
 
 Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SKILLS`, `AG - MENSAJES`, `AG - AGENTES`, `BITACORA`, `PLANTILLAS`. No se renombran, no se mueven y su ÍNDICE no se borra. `BITACORA` la escribe solo el servidor (un documento por día con cada cambio de la bóveda) y es de solo lectura para todos; no la edites ni la cites como si fuera tuya. Cada entrada lleva el nombre de quien causó el cambio (tu id si fuiste tú, también en lo que el servidor crea por ti, como la cabecera de una conversación); `sistema` queda solo para lo que Synapse publica por su cuenta, como las skills de sistema. Cada entrada de la bitácora muestra además `+N −M` (líneas agregadas y eliminadas) y, debajo, un bloque con el diff donde cada línea trae el número anterior y el nuevo para localizar el cambio, las líneas agregadas salen en verde y las eliminadas en rojo (como en GitHub), y las propiedades se etiquetan como `prop`. `AG - MENSAJES` es solo para agentes (sección 7 bis).
 
+## 7 quinquies. Bóvedas compartidas (H-064)
+
+Una persona puede **invitar a otra** (con cuenta) a una de sus bóvedas y darle `lectura` o `escritura` **por carpeta**; solo pueden compartir administradores y cuentas con «puede compartir bóvedas». La bóveda sigue siendo del propietario: **sus límites (documentos y espacio) son los del propietario**, no los de quien la usa. Las bóvedas no compartidas no cambian.
+
+- **Tu clave con `agent_id` actúa con las concesiones de tu persona como techo**: nunca puedes más que ella. Descubre las bóvedas compartidas con `GET /invitations?status=activo` (cada item trae `vault_id`, `vault_name`, `grants` y `owner`): `GET /vaults` solo lista las propias. Después usa las rutas de siempre con ese `vault_id`; las respuestas ya vienen filtradas (lo que no te concedieron no existe: 404).
+- **Zonas ocultas** para quien no es propietario: `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` y `BITACORA`; `PLANTILLAS` se lee y no se escribe. Tu buzón (`AG - MENSAJES`) sigue siendo el de tus bóvedas propias.
+- **No aceptas ni rechazas invitaciones, no invitas y no cambias concesiones**: es solo de personas (401/403). Una clave general (sin `agent_id`) de un invitado no entra en la bóveda compartida (404).
+- **Autoría:** la BITACORA del propietario anota tu cambio como «<id> (de <correo>) (agente)»; en las tareas, `guest:<id de usuario>/agent:<agent_id>`.
+- El campo `lectura` de `AG - AGENTES` se guarda pero todavía no restringe lecturas.
+
 ## 8. Errores frecuentes
 
 | Síntoma | Causa y salida |
@@ -201,6 +211,7 @@ Estas carpetas están siempre en la raíz y se escriben en MAYÚSCULAS: `AG - SK
 | 422 por `tags` o `estado` | Etiqueta con espacio o mayúscula, o `estado` con mayúscula: normaliza. |
 | `note-path-taken` | La ruta ya existe (al crear, mover o restaurar): elige otra. |
 | Cuerpo con `---` al inicio o metadatos vacíos | Es el error más común: quita el YAML del cuerpo y pasa `titulo`, `descripcion`, `tags` y `estado` como metadatos. |
+| 404 en una bóveda compartida | Tu persona no tiene concesión en esa carpeta, la invitación está pendiente o revocada, o usas una clave general: lo no concedido no existe. 403 `share-not-allowed` al invitar: la cuenta no puede compartir bóvedas. |
 | Respuesta enorme de `note_list` | Baja `limit` y pagina; no cargues la bóveda entera. |
 
 ## 9. Al terminar

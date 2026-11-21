@@ -236,4 +236,23 @@ describe("createRemoteDb", () => {
       await expect(offline().info().then(() => "nunca")).rejects.toThrow();
     });
   });
+
+  describe("H-064 F7c: ruta personalizable", () => {
+    it("por defecto es REMOTE_PATH", async () => {
+      vi.stubGlobal("fetch", vi.fn(async () =>
+        json({ db_name: "db", update_seq: "0", instance_start_time: "0" }),
+      ));
+      const remote = createRemoteDb({ onSessionExpired: vi.fn(), origin: "https://app.test" });
+      expect(remote.name).toBe(`https://app.test${REMOTE_PATH}`);
+    });
+
+    it("puede personalizarse", async () => {
+      vi.stubGlobal("fetch", vi.fn(async () =>
+        json({ db_name: "db", update_seq: "0", instance_start_time: "0" }),
+      ));
+      const path = "/sync/shared/vault-123/db";
+      const remote = createRemoteDb({ onSessionExpired: vi.fn(), origin: "https://app.test", path });
+      expect(remote.name).toBe(`https://app.test${path}`);
+    });
+  });
 });

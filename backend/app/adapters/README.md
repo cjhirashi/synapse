@@ -10,6 +10,8 @@ Aquí viven las dependencias concretas: CouchDB, httpx, psycopg2, MinIO, etc.
 - `file_repository.py` (`FileRepository`, H-015): metadatos de archivos (nombre, tipo, tamaño, visibilidad, carpeta) sobre la sesión de Postgres.
 - `task_repository.py` (`TaskRepository`, H-053): tareas de bóveda (`vault_tasks`) sobre la sesión de Postgres; toda lectura acotada al dueño; purga de raíces cerradas.
 - `notification_repository.py` (`NotificationRepository`, H-053): avisos (`notifications`), preferencias (`notification_prefs`, con horas silenciosas) y suscripciones push sobre la sesión de Postgres, acotados al dueño.
+- `vault_member_repository.py` (`VaultMemberRepository`, H-064 F2): membresías (`vault_members`) y concesiones (`vault_member_grants`), con toda búsqueda acotada por propietario o por invitado, y los usuarios invitables (correo exacto sin distinguir mayúsculas, activo y no dado de baja).
+  `active_access(user_id, vault_id)` devuelve `(owner_id, concesiones)` solo si la persona es miembro **activo** y su propietario sigue activo y no dado de baja (H-064 F3).
 - `agent_profile_repository.py` (`AgentProfileRepository`, H-053): perfiles de agente (`agent_profiles`) y los `agent_id` de las API keys de la persona.
 - `web_push.py` (H-053): único módulo que importa `pywebpush`; `send` firma con las claves VAPID y `endpoint_allowed` limita las suscripciones a servicios de push conocidos por https.
 - `minio_adapter.py` (`MinioObjectStorage`, H-015/H-016): `ObjectStoragePort` sobre MinIO. `minio` se importa dentro del

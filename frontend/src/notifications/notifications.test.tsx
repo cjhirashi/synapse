@@ -149,3 +149,24 @@ test("un push recibido por el service worker actualiza el contador al instante",
     vi.unstubAllGlobals();
   }
 });
+
+test("un aviso vault_share se pinta una sola vez, sin chips de tarea ni de una bóveda ajena, y navega a /compartidas", async () => {
+  const title = "ana@example.com te invitó a la bóveda «Plan 2027»";
+  vi.spyOn(api, "listNotices").mockResolvedValue({
+    items: [notice({ id: "n-share", kind: "vault_share", title, body: null, vault_id: "v-del-propietario", resource_type: "vault_member", resource_id: "m1", task: null, url: "/compartidas" })],
+    unread: 1,
+  });
+  renderPage();
+  expect(await screen.findByText("Compartir bóveda")).toBeInTheDocument();
+  expect(screen.getAllByText(title)).toHaveLength(1);
+  expect(screen.queryByText("Tarea eliminada")).toBeNull();
+  expect(screen.queryByTitle("Bóveda")).toBeNull();
+  await userEvent.click(screen.getByRole("button", { name: /Compartir bóveda/ }));
+  expect(await screen.findByTestId("where")).toHaveTextContent("/compartidas");
+});
+
+test("un aviso de tarea cuya tarea se eliminó sigue mostrando «Tarea eliminada»", async () => {
+  vi.spyOn(api, "listNotices").mockResolvedValue({ items: [notice({ id: "n-gone", task: null })], unread: 1 });
+  renderPage();
+  expect(await screen.findByText("Tarea eliminada")).toBeInTheDocument();
+});

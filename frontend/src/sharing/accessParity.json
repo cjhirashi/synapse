@@ -1,0 +1,2660 @@
+{
+ "cases": [
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "escritura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "escritura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Pub",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs/Sub",
+     "level": "escritura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "*",
+     "level": "lectura"
+    },
+    {
+     "folder": "Docs",
+     "level": "escritura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/sub/b.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "pub/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "PUB/A.MD",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Publico/a.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Priv/c.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/b.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Subtle/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Código/Ñandú/n.md",
+   "level": "escritura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "PLANTILLAS.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "BITACORA.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Pub/BITACORA/x.md",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "Docs/Sub/",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "",
+   "level": null
+  },
+  {
+   "grants": [
+    {
+     "folder": "Código/Ñandú",
+     "level": "escritura"
+    }
+   ],
+   "path": "ｐub/a.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "a.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Pub/a.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Pub/sub/b.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "pub/a.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "PUB/A.MD",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Pub.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Publico/a.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Priv/c.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/b.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/Sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/Subtle/x.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/sub/x.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Pub/INDICE.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "CÓDIGO/ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Código/Ñandú/n.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "BITACORA/2026-11-20.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "bitacora/x.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "AG - AGENTES/aira.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "AG - SKILLS/s.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "AG - MENSAJES/m.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "ag - mensajes/m.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "PLANTILLAS/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [],
+   "path": "plantillas/t.md",
+   "level": "lectura"
+  },
+  {
+   "grants": [],
+   "path": "PLANTILLAS.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "BITACORA.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Pub/BITACORA/x.md",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "Docs/Sub/",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "",
+   "level": null
+  },
+  {
+   "grants": [],
+   "path": "ｐub/a.md",
+   "level": null
+  }
+ ]
+}

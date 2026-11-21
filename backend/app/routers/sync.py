@@ -32,6 +32,7 @@ from app.core.ports.replication_port import ReplicationPort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import TokenPayload
+from app.core.vault_context import user_db_name
 from app.routers.auth import SESSION_ERRORS
 from app.routers.vaults import get_vault_port
 from app.services.limit_guard import guard_for
@@ -54,6 +55,15 @@ MAX_LOCAL_BYTES = 64 * 1024         # documento `_local` (checkpoint del replica
 
 LOCAL_PATH = "/sync/db/_local/{local_id}"
 BULK_DOCS_PATH = "/sync/db/_bulk_docs"
+
+
+def _body_limit(path_format: str) -> int:
+    """Tope de cuerpo por ruta exacta (compartido y propio) o patrón."""
+    if path_format.endswith("/db/_bulk_docs"):
+        return MAX_BULK_DOCS_BYTES
+    if "/db/_local/" in path_format:
+        return MAX_LOCAL_BYTES
+    return MAX_BODY_BYTES
 
 
 async def _read_capped(receive: Receive, limit: int) -> bytes:
@@ -103,8 +113,7 @@ class SyncRoute(DeepJsonRoute):
 
     def get_route_handler(self):
         handler = super().get_route_handler()
-        limit = {LOCAL_PATH: MAX_LOCAL_BYTES, BULK_DOCS_PATH: MAX_BULK_DOCS_BYTES}.get(
-            self.path_format, MAX_BODY_BYTES)
+        limit = _body_limit(self.path_format)
 
         async def limited(request: Request):
             # Sesión primero (RF-002): sin ella un cuerpo de hasta 16 MiB no se lee. El usuario
@@ -149,7 +158,7 @@ def get_replication_port() -> ReplicationPort:
 
 def get_sync_db(current_user: TokenPayload = Depends(get_sync_user)) -> str:
     # La base sale sólo del token (RF-001): ningún dato de la petición la elige.
-    return f"synapse_user_{current_user.sub}"
+    return user_db_name(current_user.sub)
 
 
 def get_push_service(
@@ -212,6 +221,8 @@ REJECTION_REASON = (
     r"|meta-folder:.+|ag-mensajes:.+|ag-agentes:.+|immutable-field:cerrada_el|agent-access-denied"
     # H-030b: BITACORA de solo lectura y plantillas. H-041: documentos de sistema y skills.
     r"|bitacora:.+|plantilla:.+|sistema:.+|skill:.+"
+    # H-060: límites de la cuenta (el servicio los emite desde `_check_limits`).
+    r"|vault-limit-reached|document-limit-reached"
     r"|validation-error:.+|not-normalized:.+)$"
 )
 

@@ -27,9 +27,10 @@ Solo con sesión de un admin o super admin (cookie). El admin gestiona invitados
 
 | Método | Ruta | Resultado |
 |---|---|---|
-| `GET` | `/admin/users` | `200` lista `[{id,email,role,display_name,must_change_password,created_at,deleted_at,purge_at,limits{max_vaults,max_notes_per_vault,max_storage_bytes_per_vault},vaults_used,grace[{kind,vault_id,deadline_at}]}]` · `403` |
+| `GET` | `/admin/users` | `200` lista `[{id,email,role,display_name,must_change_password,created_at,deleted_at,purge_at,limits{max_vaults,max_notes_per_vault,max_storage_bytes_per_vault},can_share_vaults,vaults_used,grace[{kind,vault_id,deadline_at}]}]` · `403` |
 | `POST` | `/admin/users` | `{email, role?: "guest"\|"admin", max_vaults?, max_notes_per_vault?, max_storage_bytes_per_vault?}` → `201` cuenta nueva con la contraseña `admin1234` y cambio obligatorio. Sin `password` (`422` si se envía). Límite omitido = 2 bóvedas, 100 documentos por bóveda, 500 MB por bóveda; `null` = sin límite. `role: "admin"` solo el super admin (`403 user-action-forbidden`) · `409 email-taken` |
 | `GET` | `/admin/users/{id}/usage` | `200` `{vaults:[{alias,documents,storage_bytes}], documents_total, storage_bytes_total}`: uso por bóveda y total; cada bóveda va con un alias por orden de creación («Bóveda 1» es la más vieja) porque su nombre y su id son privados de la persona (documentos = notas vivas sin índices ni documentos de sistema; bytes = archivos subidos). Lo ven admin y super admin; el listado ya trae `vaults_used` y `storage_bytes` · `403` · `404` |
+| `PATCH` | `/admin/users/{id}/sharing` | `{can_share_vaults: bool}`: activa o apaga que un usuario pueda compartir sus bóvedas (H-064 F5d); apagado por defecto → `200` (la cuenta con `can_share_vaults` efectivo) · `403` si la cuenta es administrador (siempre puede) · `404` · `409` |
 | `PATCH` | `/admin/users/{id}/limits` | solo cambia lo enviado → `200`; si la cuenta queda por encima de un límite abre `grace` (30 días) y le avisa · `404` · `409` |
 | `DELETE` | `/admin/users/{id}` | `200`; baja con gracia de 30 días (inactiva, sesiones cerradas, correo reservado) · `403 user-action-forbidden` (uno mismo, otro admin sin ser super admin, último super admin) · `404` · `409 user-state-conflict` |
 | `POST` | `/admin/users/{id}/restore` | `200`; recupera una cuenta dada de baja · `404` · `409` |
@@ -64,10 +65,12 @@ Forma del perfil (`GET`, `PATCH`, `PUT` y `DELETE` devuelven la misma):
   "role": "admin",
   "must_change_password": false,
   "display_name": "Ana",
-  "photo_url": "/auth/me/photo?v=2"
+  "photo_url": "/auth/me/photo?v=2",
+  "can_share_vaults": true
 }
 ```
 
+- `can_share_vaults` (H-064 F5d): ¿puede compartir sus bóvedas? Administradores siempre; un usuario solo si un administrador se lo activó (`PATCH /admin/users/{id}/sharing`).
 - `photo_url` es `null` si no hay foto. Si la hay, lleva la **versión** (`v=N`): cada subida
   incrementa `N`, así que el navegador no sirve la foto anterior de caché.
 - `GET /auth/me/photo` responde con `Cache-Control: private, no-cache`: es privada del usuario.
@@ -675,16 +678,19 @@ con cumplimiento activo y con keys que ya tienen agente). Una key nunca crea, re
 
 ### 3. Registro de agentes por bóveda: `AG - AGENTES`
 
-Una nota por agente, `AG - AGENTES/<id>.md`, con `estado` (`activo` | `suspendido`) y `carpetas` (lista de carpetas con
-escritura; `*` = toda la bóveda salvo las reservadas). Una nota de esa carpeta que no sea un registro válido se rechaza
+Una nota por agente, `AG - AGENTES/<id>.md`, con `estado` (`activo` | `suspendido`), `carpetas` (lista de carpetas con
+escritura; `*` = toda la bóveda salvo las reservadas) y `lectura` (lista de carpetas con lectura; opcional, por omisión
+`["*"]` = todas las carpetas del alcance del propietario o invitado). Una nota de esa carpeta que no sea un registro válido se rechaza
 (`ag-agentes:registro`). Se edita como cualquier nota (sesión humana o agente administrador) o con:
 
 | Método | Ruta | Credencial | Respuestas |
 |---|---|---|---|
-| `GET` | `/vaults/{id}/agent-access` | cookie o key | `200` `{mode, agents[{agent_id, estado, carpetas, note_id, keys[{label,is_admin}]}], unregistered_keys, unregistered_agent_ids}` |
-| `PUT` | `/vaults/{id}/agent-access/{agent_id}` `{carpetas, estado}` | cookie | `200` · `404` · `422` |
+| `GET` | `/vaults/{id}/agent-access` | cookie o key | `200` `{mode, agents[{agent_id, estado, carpetas, lectura, note_id, keys[{label,is_admin}]}], unregistered_keys, unregistered_agent_ids}` |
+| `PUT` | `/vaults/{id}/agent-access/{agent_id}` `{carpetas, lectura?, estado}` | cookie | `200` · `404` · `422` |
 | `DELETE` | `/vaults/{id}/agent-access/{agent_id}` | cookie | `204` · `404` |
 | `GET` | `/agent-access/shadow-report?hours=48` | cookie | `200` decisiones del modo sombra por agente y últimas denegadas |
+
+Desde H-064 F3c el campo `lectura` existe y se valida; **no restringe todavía las lecturas de los agentes** (ni los del propietario ni los del invitado; estos últimos quedan acotados solo por las concesiones de su persona). Si el `PUT` no la envía, se conserva la del registro (o `["*"]` en un registro nuevo); `escritura` (`carpetas`) incluye lectura. Una `lectura` mal formada se rechaza con 422, también en una nota editada a mano (`ag-agentes:registro`).
 
 Reglas de escritura (la lectura nunca se restringe). Sesión humana: todo. Key con `is_admin`: todo. Agente registrado y
 `activo`: sus `carpetas`, `AG - SKILLS/<su-id>/…` y `AG - MENSAJES`. No registrado, `suspendido` o key general: solo
@@ -820,7 +826,7 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 | `DELETE /notifications/push/subscription?endpoint=` | Quita este dispositivo. 204. |
 | `POST /notifications/push/test` | Envía ya un aviso de prueba a los dispositivos (ignora las horas silenciosas). `{sent, removed, failed}`. |
 
-**Tipos** (`kind`): `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
+**Tipos** (`kind`): `vault_share` (invitaciones y cambios de acceso a bóvedas compartidas; ver «Compartir una bóveda»), `task_assigned` (un agente te asigna una tarea o subtarea), `task_status` (un agente cambia el estado de una tarea que creaste tú) y `task_due` (una tarea tuya vence en 24 h, en 1 h o venció). La persona nunca se avisa de su propia acción. Cada aviso trae `title`, `body`, `vault_id`, `resource_type`/`resource_id` (`task`) y `url`, la ruta de la app que lo abre (`/vaults/{id}?tab=tareas&task={id}`); las fechas van en UTC con `Z`.
 
 **Bloqueo entre tareas (H-057):** `blocked_by` (en `POST` y `PATCH`) es la lista completa de ids de las tareas que esta debe esperar (hasta 30; `[]` o `null` las quita; ausente no cambia). Solo valen tareas de la misma bóveda, y no la propia, ni la tarea padre de una subtarea ni las subtareas de una raíz, ni cadenas que formen un ciclo: si no, 422 con `/blocked_by`. Una tarea bloqueada puede ponerse `in_progress` pero no `done` mientras alguna bloqueadora no esté `done` (una `cancelled` tampoco la libera): 422 con `/status` y detalle `This task is blocked…`. La respuesta trae `blocked_by` (ids) y `blocked` (alguna no está hecha). Una raíz bloqueada no se cierra sola aunque sus subtareas lo estén (queda `in_progress`) y se cierra cuando su última bloqueadora se hace. Cambiar `blocked_by` cuenta como editar la tarea: un agente solo lo hace en las que creó. Borrar una bloqueadora libera a las que esperaban.
 
@@ -831,6 +837,135 @@ Bandeja de avisos de la persona. **Solo sesión humana** (cookie): una API key d
 **Web Push (H-053):** cada aviso nuevo se envía al dispositivo con la misma estructura que la tarjeta de `/avisos`: título «Tipo · evento» y, en el cuerpo, título y descripción de la tarea, una línea «estado · responsable · bóveda» y el vencimiento (si la tarea ya no existe, sale el aviso simple); con un hilo despachador (`PUSH_DISPATCH`, `PUSH_POLL_SECONDS`), salvo en las horas silenciosas, durante las cuales el push queda pendiente y sale al terminar (si el aviso no tiene más de 24 h); el aviso siempre queda en la bandeja. Claves VAPID: `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` en `.env`; sin ellas el push está apagado (`GET /notifications/push` → `enabled: false`). Una API key de agente no usa ninguna de estas rutas (401).
 
 **PWA:** `/sw.js` (service worker, `Cache-Control: no-cache`, `Service-Worker-Allowed: /`) y `/manifest.webmanifest` (`application/manifest+json`) se sirven desde el build; el service worker solo guarda `/assets/*` y la pantalla de arranque, nunca datos de la API.
+
+## Compartir una bóveda: invitaciones y membresías (H-064 F2)
+
+El propietario invita a **usuarios que ya existen**; el aviso les llega dentro de la app. **Solo sesión humana** (cookie): una API key de agente no invita ni responde (401/403). Esta fase crea y gestiona las invitaciones y sus concesiones; aplicar las concesiones al leer y escribir notas llega en la fase F3.
+
+| Método y ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /vaults/{vault_id}/members` | propietario | Invita: `{email, grants: [{folder, level}]}`. 201 con el miembro (`status: pendiente`). 403 `share-not-allowed` si la cuenta no puede compartir (solo administradores y usuarios con la función activada; `GET /auth/me` trae `can_share_vaults`). 404 `invitee-not-found` (sin cuenta activa con ese correo exacto), 422 (correo inválido, uno mismo o concesiones inválidas), 409 `member-already-exists` y 409 `member-limit-reached` (50 pendientes o activos por bóveda). Si la persona ya tuvo una invitación terminada, se reabre la misma fila con las concesiones nuevas. |
+| `GET /vaults/{vault_id}/members` | propietario | Miembros de la bóveda en todos los estados, con `user` y `grants`. |
+| `PUT /vaults/{vault_id}/members/{member_id}/grants` | propietario | Reemplaza todas las concesiones (efecto inmediato). 403 `share-not-allowed` si la cuenta ya no puede compartir (cancelar y revocar siguen permitidos). 409 `invitation-not-pending` si ya está revocado. |
+| `DELETE /vaults/{vault_id}/members/{member_id}` | propietario | Pendiente → `revocado` con motivo `cancelada`; activo → `revocado` con `revocada`. 204. Las concesiones se conservan como historial. |
+| `GET /invitations` | invitado | Mis invitaciones y accesos (por defecto `pendiente` y `activo`; `?status=pendiente\|activo\|revocado`), con `owner`, `vault_name` y `grants`. Del dueño y la bóveda solo se ve eso. |
+| `POST /invitations/{member_id}/accept` | invitado | `pendiente` → `activo`. 200 con el miembro. 404 `vault-not-found` si la bóveda ya se borró (la invitación sigue pendiente); 409 `invitation-not-pending` si el propietario la canceló mientras tanto. |
+| `POST /invitations/{member_id}/reject` | invitado | `pendiente` → `revocado` (`rechazada`). 200. |
+| `POST /invitations/{member_id}/leave` | invitado | `activo` → `revocado` (`salio`). 204. |
+
+**Concesiones:** cada una es `{folder, level}` con `level` `lectura` o `escritura` (escritura incluye lectura) y `folder` igual a `*` (toda la bóveda) o una ruta de carpeta sin barra inicial ni final, sin segmentos vacíos ni `.`/`..`, de hasta 600 caracteres. Entre 1 y 100, sin carpeta repetida. Las zonas reservadas no se conceden por nombre (ni sus subcarpetas): `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA` y `PLANTILLAS` (422 `validation-error` con `/grants`).
+
+**Aislamiento:** una invitación o un miembro que no son de quien pregunta responden 404 (`vault-not-found` o `member-not-found`), igual que si no existieran. El correo se compara exacto, sin distinguir mayúsculas y sin comodines.
+
+**BITACORA del propietario:** cada evento (invitar, cambiar concesiones, cancelar, revocar, aceptar, rechazar y salir) queda como una línea en el documento del día de `BITACORA/` de la bóveda, con la hora, quién lo hizo (correo y tipo), el evento, el invitado y, al invitar o cambiar permisos, las concesiones (por ejemplo «lectura en `Pub`, escritura en toda la bóveda»). La fila se guarda en `change_log` en la misma transacción que el cambio de membresía (o quedan las dos o ninguna); el documento del día se genera después, de mejor esfuerzo, y `rebuild` lo regenera desde la tabla. Una petición que el servidor rechaza no deja línea. El invitado nunca ve `BITACORA` (zona oculta).
+
+**Avisos:** tipo `vault_share` (apagable en `PUT /notifications/preferences`), con `url` `/compartidas`. Invitar y cancelar o revocar avisan al invitado; aceptar, rechazar y salir, al propietario. El título lleva el nombre de la persona y de la bóveda, nunca carpetas ni notas.
+
+## Notas de una bóveda compartida (H-064 F3)
+
+Un miembro **activo** de una bóveda compartida (ver «Compartir una bóveda») usa las mismas rutas de notas del propietario, `/vaults/{vault_id}/notes…`, con su propia sesión: el servidor resuelve la bóveda del propietario y le aplica sus concesiones. Una clave de agente nunca entra como miembro (404, como cualquier ajeno). Los archivos y las carpetas de archivos se abren con la misma regla (ver «Archivos de una bóveda compartida»). Las tareas se abren con la misma regla (ver «Tareas de una bóveda compartida»); el registro de agentes no se abre todavía y responde 404; `POST /folders/move` responde 403 `share-forbidden` a un miembro; las publicaciones son solo del propietario.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /notes` (también `prefix=` y `deleted=true`) | solo las notas bajo sus carpetas | igual | no aparecen; una carpeta sin acceso da lista vacía |
+| `GET /notes/{id}` | 200 | 200 | 404 `note-not-found`, idéntico a una nota inexistente |
+| `POST /notes` | 403 `share-forbidden` | 201 solo bajo una carpeta con escritura | 403 `share-forbidden` |
+| `PATCH` (contenido o propiedades), `DELETE`, `…/restore` | 403 `share-forbidden` | permitido | 404 `note-not-found` |
+| `PATCH` con `path` (mover o renombrar), `POST …/pdf` | 403 `share-forbidden` | 403 `share-forbidden` | 404 / 403 |
+
+**Orden de las comprobaciones:** el permiso se evalúa antes que `If-Match` y que cualquier regla de contenido; así un `If-Match` errado nunca distingue una nota oculta (404) de una visible (403 o 412).
+
+**Zonas:** `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` y `BITACORA` no se ven ni se escriben nunca, aunque la concesión sea `*`; `PLANTILLAS` la lee cualquier miembro y no la escribe nadie. Una nota suelta en la raíz solo entra con `*`. Las carpetas se comparan por segmentos y con la equivalencia de rutas del proyecto (mayúsculas y compatibilidad Unicode).
+
+**Paginación:** el servidor examina como máximo 2,000 documentos por petición para llenar una página; si no alcanza puede devolver menos de `limit` notas con `next_cursor` para seguir. Lo no legible nunca se cuenta ni se re-sirve.
+
+**Propietario:** lo que crea un miembro cuenta contra los límites del propietario (`document-limit-reached` incluido), y en la bitácora consta como autor el miembro. Si el propietario se desactiva o se da de baja, el acceso del miembro se corta en la siguiente petición; revocar o cambiar concesiones también es inmediato.
+
+## Tareas de una bóveda compartida (H-064 F3b2)
+
+Un miembro activo usa `/vaults/{vault_id}/tasks…` con su propia sesión. Las tareas no tienen carpeta: el permiso sigue al `path` de cada tarea (una tarea sin `path` equivale a la raíz y solo la cubre una concesión `*`). Cada subtarea se evalúa por su propio `path`.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /tasks` de la bóveda (con sus filtros) | solo las tareas que cubre | igual | no aparecen |
+| `GET …/tasks/{id}` | 200 | 200 | 404 `task-not-found`, idéntico a una inexistente |
+| `POST …/tasks` y `…/subtasks` | 403 `share-forbidden` | 201 solo si escribe en el `path` de la tarea (y en el de su padre) | 403 (o 404 si el padre no se lee) |
+| `PATCH`, `DELETE` | 403 `share-forbidden` | permitido; si cambia `path`, debe escribir también en el nuevo | 404 |
+
+- El permiso se evalúa antes que `If-Match` y que cualquier otra regla: un `If-Match` errado no distingue una tarea oculta (404) de una de solo lectura (403).
+- Un miembro **no asigna a un agente** (el registro de agentes es del propietario), **no fija ni cambia el proyecto** y no bloquea con tareas que no lee (404). En la salida, `blocked_by` solo lista las bloqueadoras que lee; `blocked` se conserva.
+- Borrar una raíz borra sus subtareas: exige escritura sobre todas (si no, 403).
+- La autoría de lo que crea un miembro consta como `user`, igual que lo del propietario; los avisos de asignación llegan al propietario.
+- `GET /tasks` (vista de todas las bóvedas) sigue siendo solo de la sesión propia: nunca incluye una bóveda compartida.
+
+## Agentes de un invitado (H-064 F4)
+
+Las **claves de API con identidad de agente** de una persona invitada (las que crea con `POST /auth/agent-keys` con `agent_id`) trabajan en la bóveda compartida igual que la persona: sobre la base del propietario y con **las concesiones de la persona como techo** (nunca pueden más que ella). Lo demás de esta sección (notas, tareas, archivos y carpetas de archivos de una bóveda compartida) rige igual para el agente: lo no legible responde 404 y lo legible sin escritura, 403 `share-forbidden`.
+
+| Credencial en una bóveda compartida | Resultado |
+|---|---|
+| Sesión de un miembro activo | Sus concesiones. |
+| Clave con `agent_id` de un miembro activo | Las mismas concesiones del miembro; sin ellas (invitación pendiente, revocada, o no es miembro), 404 como si la bóveda no existiera. |
+| Clave **general** (sin `agent_id`) de un miembro | 404: no entra. |
+| Clave con `is_admin` de un miembro | No gana nada: sigue limitada a las concesiones del miembro. |
+| Clave del propietario o de sus agentes | Como siempre (registro `AG - AGENTES`, sin cambios). |
+
+**El registro del propietario no se aplica a los agentes del invitado.** Un id de agente puede coincidir entre cuentas distintas (el propietario puede tener un `aira` registrado y el invitado otro `aira` suyo): el agente del invitado no hereda nada del registro del propietario; manda solo lo concedido a su persona. Estrechar a un agente concreto por debajo de su persona (y que el campo `lectura` de `AG - AGENTES` lo aplique) queda como mejora posterior.
+
+**Autoría doble.** Lo que escribe una persona o su agente consta a nombre de la persona y, si fue el agente, también de él:
+
+- **BITACORA** del propietario: persona = `<correo> (usuario)`; agente = `<agent_id> (de <correo>) (agente)`.
+- **Tareas** (`created_by` / `updated_by`): `guest:<id de usuario>` para la persona y `guest:<id de usuario>/agent:<agent_id>` para su agente; nunca `user`, que es del propietario. Una tarea de un invitado no dispara los avisos de «un agente cambió algo que te toca».
+- Notas y archivos no guardan un campo de autor propio: la autoría de una nota consta en la BITACORA.
+
+**Contrato para el plugin `synapse_vault` (agentes del invitado).** El plugin usa la clave del agente del invitado y el `vault_id` de la bóveda **del propietario**:
+
+1. Descubrir las bóvedas compartidas con `GET /invitations?status=activo` (la clave de un agente puede leerlas): cada item trae `vault_id`, `vault_name`, `grants` y `owner`. `GET /vaults` solo lista las bóvedas propias de la cuenta.
+2. Operar con las rutas de siempre (`/vaults/{vault_id}/notes`, `/tasks`, `/files`…): las respuestas ya vienen filtradas por las concesiones. `GET /vaults/{vault_id}` devuelve solo `id`, `name` y `description`.
+3. `inbox` y `AG - MENSAJES` no existen en una bóveda compartida para un invitado (zona oculta): el buzón de un agente sigue siendo el de sus propias bóvedas.
+4. Una invitación se acepta o rechaza solo con **sesión humana**: una clave de agente no responde invitaciones ni invita (401/403).
+5. El agente no cambia concesiones ni comparte la bóveda: solo el propietario.
+
+## Réplica de una bóveda compartida: `/sync/shared/{vault_id}` (H-064 F7a, solo lectura)
+
+El navegador de un miembro invitado replica una bóveda compartida con PouchDB contra este canal (su propia réplica local por bóveda; la replicación de sus bóvedas propias, `/sync/db`, no cambia). **Solo sesión humana** de un miembro **activo**: un no miembro, una invitación pendiente o revocada, el propio propietario, una clave de API (también la de un agente del miembro) y un `vault_id` mal formado responden **404 `sync-endpoint-not-found`**, igual que una ruta inexistente. Sin sesión, 401. La base que se lee es la del **propietario** y sale de la membresía, nunca de la petición. Lo demás (rutas desconocidas) da 404. La escritura (`_bulk_docs`) se describe abajo.
+
+| Método y ruta | Qué devuelve |
+|---|---|
+| `GET /sync/shared/{vault_id}/db/` | Información mínima de la base (`db_name`, `update_seq`, `instance_start_time`). |
+| `GET`/`POST …/db/_changes` | Cambios (`normal` o `longpoll`) solo de la bóveda y de sus notas **legibles**. El lote está acotado a 100; el selector y los `doc_ids` del cliente se ignoran. |
+| `POST …/db/_bulk_get` | Un resultado por pedido y en su orden; una nota **no legible** se responde **idéntico a una que no existe** (`not_found/missing`). |
+| `GET`/`POST …/db/_all_docs` | Filas de la bóveda y de sus notas legibles (por lotes internos; el rango, `skip` y `descending` del cliente se descartan; `limit` cuenta filas legibles). `total_rows` es el número de filas devueltas. |
+| `POST …/db/_revs_diff` | Para los ids de esta bóveda, lo que falta; los ids ajenos o internos se responden `missing` sin consultar el almacén. |
+| `GET`/`PUT …/db/_local/{id}` | Checkpoints del replicador: se guardan en la base **del invitado** con el id `shared-{vault_id}-{id}` (nunca en la del propietario) y se devuelven con el id original; un invitado no lee el de otro; tope de 64 KiB (413). |
+
+| `POST …/db/_bulk_docs` | Push validado del invitado (`new_edits:false`, hasta 200 documentos y 16 MiB, como el canal propio). Responde solo los rechazos (`forbidden` con su motivo); `[]` si se aceptó todo. |
+
+**Qué puede escribir un invitado por el push (H-064 F7b):** solo **notas de esa bóveda** donde su concesión da `escritura`. La guarda del invitado corre **antes** de cualquier otra regla y rechaza con estos motivos: `share-forbidden:vault` (el documento de la bóveda, otra bóveda o un id que no es una nota de esta bóveda), `share-forbidden:path` (la ruta nueva o la actual no tiene escritura; también una lápida de una nota que no puede escribir, o que no existe, que se responden igual) y `share-forbidden:move` (la ruta no puede cambiar: **mover o renombrar es solo del propietario**). Después rigen las mismas reglas de siempre (forma de la nota, fechas, rutas tomadas, INDICE de solo lectura, carpetas reservadas, bóveda activa). Un lector, quien no tiene concesión sobre la carpeta y quien tiene solo `lectura` ahí reciben `share-forbidden:path`; ninguna concesión abre `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA` ni `PLANTILLAS`. Lo que el invitado crea cuenta contra los **límites del propietario** (`document-limit-reached`) y consta en la BITACORA a nombre del invitado (`<correo> (usuario)`). Los rechazos no dejan nada escrito; el resto del lote sí se escribe.
+
+**Corrección de H-060 hallada en esta fase:** el patrón de motivos de rechazo del push (`REJECTION_REASON`) no incluía `vault-limit-reached` ni `document-limit-reached`; un límite alcanzado al sincronizar daba 500 (`ResponseValidationError`) en lugar del rechazo con motivo. Ya está incluido para ambos canales.
+
+**Qué es legible:** exactamente lo que el miembro puede leer por la API REST (`can_read` sobre el `path` de la nota con sus concesiones; `*` no abre `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` ni `BITACORA`). Los `INDICE.md` generados por carpeta siguen la misma regla. Una nota que el propietario mueve fuera de lo legible **deja de emitirse**; quitarla de la réplica local es trabajo del cliente (F7c/F7d). Nunca salen otras bóvedas del propietario, reservas (`vault-name:*`, `note-path:*`) ni documentos internos.
+
+**El documento de la bóveda llega reducido:** `name`, `description`, `icon`, `owner_id`, fechas y `deleted_at`, con `tags: []` y `attributes: null`. El revisor de lo legible es único (`core/shared_sync_rules.py`) y se evalúa en el servidor sobre el documento real, sin rutas de carpetas en selectores de CouchDB.
+
+## Archivos de una bóveda compartida (H-064 F3b1)
+
+Un miembro activo usa `GET /vaults/{vault_id}`, `GET /vaults/{vault_id}/files`, `/vaults/{vault_id}/file-folders` y `/files/{id}` con su propia sesión; el servidor aplica sus concesiones a la ruta de cada archivo (`carpeta/nombre`, o `nombre` en la raíz) y a la de cada carpeta.
+
+| Operación | Con lectura | Con escritura | Sin acceso |
+|---|---|---|---|
+| `GET /vaults/{id}` | 200 con solo `id`, `name` y `description` | igual | 404 |
+| `GET /vaults/{id}/files` (`folder=`) | solo los archivos que cubre; `total` cuenta esos | igual | no aparecen |
+| `GET /vaults/{id}/file-folders` | solo las carpetas con nivel (las ancestras no se muestran por sí solas) | igual | no aparecen |
+| `GET /files/{id}` | 200 | 200 | 404 `file-not-found`, idéntico a uno inexistente |
+| `POST /files` (subir, `vault_id` en el formulario) y `POST /vaults/{id}/file-folders` (crear) | 403 `share-forbidden` | 201 solo bajo una carpeta con escritura | 404 |
+| `PATCH /files/{id}` con `name` o `folder` distintos | 403 `share-forbidden` | 403 `share-forbidden` | 404 |
+| `PATCH /files/{id}` solo con `visibility` | 403 `share-forbidden` | permitido | 404 |
+| `DELETE /files/{id}`, `DELETE …/file-folders` | 403 `share-forbidden` | permitido | 404 |
+| `POST …/file-folders/move`, `POST /folders/move` | 403 `share-forbidden` | 403 `share-forbidden` | 404 |
+
+Un miembro nunca mueve ni renombra archivos o carpetas (decisión de la fase: solo el propietario reorganiza). Una carpeta que contiene subcarpetas sin escritura no se borra. Las publicaciones siguen siendo solo del propietario.
 
 ## Perfil de agente (H-053)
 

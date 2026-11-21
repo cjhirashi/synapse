@@ -30,6 +30,7 @@ from app.core.security import (
     validate_new_password,
     verify_password,
 )
+from app.core.vault_context import user_db_name
 
 ADMIN_ROLE_ID = "admin-role-id"
 GUEST_ROLE_ID = "guest-role-id"
@@ -61,7 +62,7 @@ class AuthService:
         """Inserta el usuario y su base CouchDB; si algo falla, no queda nada en PostgreSQL."""
         email = normalize_email(email)
         user_id = str(uuid.uuid4())
-        couchdb_name = f"synapse_user_{user_id}"
+        couchdb_name = user_db_name(user_id)
         try:
             user = self.repo.create_user(
                 user_id=user_id,

@@ -35,6 +35,8 @@ export interface RemoteOptions {
    */
   fetch?: Fetch;
   refresh?: Refresh;
+  /** Ruta de la base remota; por defecto `REMOTE_PATH` (`/sync/db`). */
+  path?: string;
 }
 
 /** Tope de una sub-petición de `_bulk_docs` (el servidor admite 16 MiB, PLAN-0008 P-6). */
@@ -167,16 +169,17 @@ function observeInfo(db: PouchDB.Database): PouchDB.Database {
   return db;
 }
 
-/** Base PouchDB remota del usuario (`{origen}/sync/db`). */
+/** Base PouchDB remota del usuario (`{origen}/{path}`; por defecto `{origen}/sync/db`). */
 export function createRemoteDb({
   onSessionExpired,
   origin = window.location.origin,
   fetch: baseFetch,
   refresh,
+  path = REMOTE_PATH,
 }: RemoteOptions): PouchDB.Database {
   // PouchDB sólo usa el adaptador HTTP con una URL absoluta: una ruta relativa sería el
   // nombre de otra base local. `skip_setup`: el canal no permite crear la base (404).
-  const remote = new PouchDB(origin + REMOTE_PATH, {
+  const remote = new PouchDB(origin + path, {
     adapter: "http",
     skip_setup: true,
     fetch: syncFetch(onSessionExpired, baseFetch, refresh),

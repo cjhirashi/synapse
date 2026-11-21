@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlarmClock, CalendarClock, Check, CheckCheck, Gauge, Globe, RefreshCw, UserPlus, type LucideIcon } from "lucide-react";
+import { AlarmClock, CalendarClock, Check, CheckCheck, Gauge, Globe, RefreshCw, UserPlus, Users, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
@@ -16,6 +16,7 @@ const KIND: Record<string, { icon: LucideIcon; label: string }> = {
   task_due: { icon: AlarmClock, label: "Vencimiento" },
   publication_expired: { icon: Globe, label: "Publicación" },
   limit_grace: { icon: Gauge, label: "Límites de la cuenta" },
+  vault_share: { icon: Users, label: "Compartir bóveda" },
 };
 
 /** Encabezado del aviso sin repetir el título de la tarea (la tarjeta ya lo muestra): «Vence en 1 h», «aira marcó la tarea como Hecha». */
@@ -47,6 +48,10 @@ function groupByDay(items: Notice[]): Array<{ key: string; label: string; items:
 function NoticeCard({ notice, vault, onOpen, onRead }: { notice: Notice; vault: NoticeVault | undefined; onOpen: (notice: Notice) => void; onRead: (notice: Notice) => void }) {
   const { icon: Icon, label } = KIND[notice.kind] ?? { icon: RefreshCw, label: "Aviso" };
   const task = notice.task ?? null;
+  const isTask = notice.resource_type === "task";
+  // Sin tarea ni cuerpo (p. ej. una invitación) el mensaje es el título y no se repite como titular; la bóveda solo se muestra si la persona la conoce.
+  const lone = !task && !isTask && !notice.body;
+  const showVault = !!notice.vault_id && (isTask || !!vault);
   const unread = !notice.read_at;
   return (
     <div className={`notice-card${unread ? " notice-card--unread" : ""}`} data-kind={notice.kind}>
@@ -55,12 +60,12 @@ function NoticeCard({ notice, vault, onOpen, onRead }: { notice: Notice; vault: 
       <span className="notice-main">
         <span className="notice-top">
           <span className="notice-kind">{label}</span>
-          <span className="notice-headline">{headline(notice)}</span>
+          {!lone && <span className="notice-headline">{headline(notice)}</span>}
           <time className="notice-time" dateTime={notice.created_at} title={formatDue(notice.created_at)}>{formatTime(notice.created_at)}</time>
         </span>
         <span className="notice-title">{task?.title ?? notice.body ?? notice.title}</span>
         {task?.description && <span className="notice-desc">{task.description}</span>}
-        <span className="notice-meta">
+        {(isTask || task || showVault) && <span className="notice-meta">
           {task ? (
             <>
               <span className="notice-chip notice-status" data-status={task.status}>{STATUS_LABEL[task.status]}</span>
@@ -71,15 +76,15 @@ function NoticeCard({ notice, vault, onOpen, onRead }: { notice: Notice; vault: 
               {task.due_at && <span className="notice-due"><CalendarClock size={13} aria-hidden="true" />{formatDue(task.due_at)}</span>}
             </>
           ) : (
-            <span className="notice-chip notice-gone">Tarea eliminada</span>
+            isTask && <span className="notice-chip notice-gone">Tarea eliminada</span>
           )}
-          {notice.vault_id && (
+          {showVault && notice.vault_id && (
             <span className="notice-vault" title="Bóveda">
               <VaultChip id={notice.vault_id} name={vault?.name ?? "B"} icon={vault?.icon} />
               <span className="notice-vault-name">{vault?.name ?? "Bóveda"}</span>
             </span>
           )}
-        </span>
+        </span>}
       </span>
     </button>
     {unread && (

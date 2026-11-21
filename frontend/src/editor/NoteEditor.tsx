@@ -59,6 +59,7 @@ import {
   Table,
 } from "lucide-react";
 import { Link, useBlocker } from "react-router-dom";
+import { useVaultAccess } from "../notes/useVaultAccess";
 import { checkContent, checkFrontmatter, checkPath } from "../notes/noteRules";
 import { fileUrl, uploadFile, UploadTooLargeError, UploadTypeError, ALLOWED_IMAGE_TYPES, ALLOWED_DOCUMENT_TYPES } from "../files/uploadFile";
 import { captureFileName } from "../files/captureName";
@@ -253,6 +254,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
+  const { canWrite, isOwner } = useVaultAccess();
   const { Visual, Code } = views;
 
   /** Nota cargada (`null` mientras carga o si desapareció). */
@@ -1150,7 +1152,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
         <NoteBreadcrumb path={note.path} onRevealFolder={(folder) => onRevealFolder?.(folder)} />
         {/* Fila 1 (H-009 + H-010 C-1): el lápiz Editar/Leer y el menú ⋮ cierran la fila de título, como hijos
             directos del header (el botón de sidebar sigue siendo el primer hijo, H-009 C-1). */}
-        {mode === "read" && pdfEnabled && (
+        {mode === "read" && pdfEnabled && isOwner && (
           <button
             type="button"
             className="note-nav-button"
@@ -1163,7 +1165,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             <FileDown size={16} aria-hidden="true" />
           </button>
         )}
-        {mode === "read" && note && publication && (publication.enabled || publication.published) && (
+        {mode === "read" && note && publication && (publication.enabled || publication.published) && isOwner && (
           <PublishControl
             vaultId={note.vault_id}
             noteId={note.id}
@@ -1176,18 +1178,20 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           />
         )}
         {mode === "read" ? (
-          <button
-            type="button"
-            className="note-nav-button"
-            aria-label="Editar"
-            title="Editar"
-            onClick={() => {
-              setFocusEditor(true);
-              setMode("edit");
-            }}
-          >
-            <Pencil size={16} aria-hidden="true" />
-          </button>
+          note && canWrite(note.path) && (
+            <button
+              type="button"
+              className="note-nav-button"
+              aria-label="Editar"
+              title="Editar"
+              onClick={() => {
+                setFocusEditor(true);
+                setMode("edit");
+              }}
+            >
+              <Pencil size={16} aria-hidden="true" />
+            </button>
+          )
         ) : (
           <button type="button" className="note-nav-button" aria-label="Leer" title="Leer" onClick={() => void leave()} disabled={saving}>
             <BookOpen size={16} aria-hidden="true" />
@@ -1197,6 +1201,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             con la lógica de carpetas; «Ver en Código» ya funciona. */}
         <NoteMenu
           inCode={mode === "edit" && view === "code"}
+          path={note?.path}
           onRename={() => onRename?.()}
           onCopyPath={() => void copyPath()}
           onViewInCode={() => {

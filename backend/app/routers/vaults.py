@@ -10,14 +10,16 @@ from app.adapters.vault_repository import VaultRepository
 from app.adapters.database import get_db
 from app.core.config import settings
 from app.core.json_body import DeepJsonRoute
-from app.core.dependencies import get_current_principal, require_password_changed
+from app.core.dependencies import get_current_principal, get_vault_context, require_password_changed, resolve_vault_context
 from app.core.errors import (
     InvalidCursor, PasswordChangeRequired, PreconditionFailed, PreconditionRequired,
     StorageUnavailable, VaultLimitReached, VaultNameTaken, VaultNotFound,
 )
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
-from app.core.schemas import TokenPayload, VaultCreate, VaultOut, VaultPage, VaultUpdate, FileMetaOut
+from app.core.schemas import TokenPayload, VaultCreate, VaultGuestOut, VaultOut, VaultPage, VaultUpdate, FileMetaOut
+from app.core.vault_context import VaultContext, user_db_name
+from app.services.file_service import visible_to
 from app.routers.auth import SESSION_ERRORS
 from app.services.limit_guard import LimitGuard, guard_for
 from app.services.note_content_service import NoteContentService
@@ -58,7 +60,7 @@ def get_vault_service(
 ) -> VaultService:
     # La base sale sólo del principal resuelto (cookie o Bearer key), nunca de la petición
     # (RF-014 de 0003; RF-002/RF-006 de 0013): una key ve exactamente la base de su dueño.
-    return VaultService(port, f"synapse_user_{current_user.sub}")
+    return VaultService(port, user_db_name(current_user.sub))
 
 
 def _with_etag(status_code: int) -> dict[int, dict]:
@@ -107,7 +109,7 @@ def _seed_ag_folders(vault_id: str, owner_id: str) -> None:
     if not settings.SEED_AG_FOLDERS:
         return
     try:
-        NoteContentService(get_vault_port(), f"synapse_user_{owner_id}").ensure_ag_folders(vault_id)
+        NoteContentService(get_vault_port(), user_db_name(owner_id)).ensure_ag_folders(vault_id)
     except Exception:  # noqa: BLE001
         logging.getLogger(__name__).warning("ensure_ag_folders failed for %s", vault_id, exc_info=True)
 
@@ -120,11 +122,20 @@ VaultId = Annotated[str, Path(json_schema_extra={"format": "uuid"})]
 
 @router.get(
     "/{vault_id}",
-    response_model=VaultOut,
+    # Un miembro invitado (H-064 F3b1) recibe solo id, nombre y descripción; el dueño, la bóveda completa.
+    response_model=VaultOut | VaultGuestOut,
     responses=_with_etag(200) | problem_responses(VaultNotFound, StorageUnavailable),
 )
-def get_vault(vault_id: VaultId, response: Response, service: VaultService = Depends(get_vault_service)):
-    return _respond(service.get(vault_id), response)
+def get_vault(
+    vault_id: VaultId,
+    response: Response,
+    ctx: VaultContext = Depends(get_vault_context),
+    port: VaultPort = Depends(get_vault_port),
+):
+    vault = _respond(VaultService(port, ctx.db).get(vault_id), response)
+    if ctx.member is None:
+        return vault
+    return VaultGuestOut(id=vault.id, name=vault.name, description=vault.description)
 
 
 @router.patch(
@@ -194,20 +205,23 @@ def list_vault_files(
     folder: Annotated[str | None, Query(max_length=300, description="Solo los archivos de esa carpeta (no de sus subcarpetas); vacío = los de la raíz; sin el parámetro, todos.")] = None,
     current_user: TokenPayload = Depends(get_current_principal),
     db: Session = Depends(get_db),
+    port: VaultPort = Depends(get_vault_port),
 ):
-    """Lista archivos de la bóveda del usuario (C-4). 404 si la bóveda no es suya.
-    Paginación: limit (1-100, def 50) + offset. `folder` filtra por carpeta (H-046)."""
+    """Lista archivos de la bóveda (C-4). 404 si la bóveda no es del usuario ni la tiene como miembro.
+    Paginación: limit (1-100, def 50) + offset. `folder` filtra por carpeta (H-046). Un miembro solo ve los archivos
+    que sus concesiones cubren; `total` cuenta esos (H-064 F3b1)."""
+    ctx = resolve_vault_context(current_user, vault_id, db)
     repo = FileRepository(db)
-    if folder is None:
-        files, total = repo.list_by_vault(vault_id, current_user.sub, limit=limit, offset=offset)
+    scope = {} if folder is None else {"folder": folder.strip() or None}
+    if ctx.member is None:
+        files, total = repo.list_by_vault(vault_id, ctx.owner_id, limit=limit, offset=offset, **scope)
     else:
-        files, total = repo.list_by_vault(
-            vault_id, current_user.sub, limit=limit, offset=offset, folder=folder.strip() or None)
+        visible = [f for f in repo.all_by_vault(vault_id, ctx.owner_id, **scope) if visible_to(ctx.member, f)]
+        files, total = visible[offset:offset + limit], len(visible)
 
     # Validar que la bóveda existe y es del usuario (si no hay archivos, validar contra vault_port)
     if not files:
-        vault_service = get_vault_service(current_user, get_vault_port())
-        vault_service.get(vault_id)  # Lanza VaultNotFound si no existe o es de otro
+        VaultService(port, ctx.db).get(vault_id)  # Lanza VaultNotFound si no existe o es de otro
 
     return VaultFilesResponse(
         files=[FileMetaOut.model_validate(f) for f in files],

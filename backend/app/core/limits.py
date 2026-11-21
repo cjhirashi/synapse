@@ -23,6 +23,15 @@ ROLE_GUEST = "guest"
 ADMIN_ROLES = (ROLE_SUPER_ADMIN, ROLE_ADMIN)
 
 
+def can_share_vaults(role: str, enabled: bool) -> bool:
+    """¿Puede esta cuenta compartir sus bóvedas? Admin y super admin siempre; un invitado solo si se le activó.
+
+    Es el único punto que decide: cuando exista la suscripción, el plan contratado sustituye a `enabled`.
+    Recibir invitaciones no pasa por aquí: cualquier cuenta puede recibirlas.
+    """
+    return role in ADMIN_ROLES or enabled
+
+
 @dataclass(frozen=True)
 class UserLimits:
     max_vaults: int | None = None

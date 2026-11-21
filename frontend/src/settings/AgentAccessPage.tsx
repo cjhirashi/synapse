@@ -14,12 +14,14 @@ import {
   leaveAgent,
   listSkills,
   listVaultOptions,
-  parseFolders,
   putAgentRegistration,
   skillName,
 } from "./agentAccess";
+import { folderOptions } from "../sharing/folderOptions";
+import { useSync } from "../sync/useSync";
 import AgentBadge from "../agents/AgentBadge";
 import { agentName, useAgentProfiles } from "../agents/agentProfiles";
+import FolderScopePicker from "./FolderScopePicker";
 import LeaveDialog from "./LeaveDialog";
 import "./agents.css";
 
@@ -49,13 +51,14 @@ interface RowProps {
   initialEstado: string;
   registered: boolean;
   busy: boolean;
+  folderChoices: string[];
   onSave: (agentId: string, folders: string[], estado: "activo" | "suspendido") => void;
   onRemove: (agentId: string) => void;
 }
 
-/** Una fila del registro: el agente con el nombre de su clave, sus carpetas (una por línea) y su estado. */
-function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, registered, busy, onSave, onRemove }: RowProps) {
-  const [folders, setFolders] = useState(initialFolders.join("\n"));
+/** Una fila del registro: el agente con el nombre de su clave, sus carpetas y su estado. */
+function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, registered, busy, folderChoices, onSave, onRemove }: RowProps) {
+  const [folders, setFolders] = useState(initialFolders);
   const [estado, setEstado] = useState(initialEstado === "suspendido" ? "suspendido" : "activo");
   const profiles = useAgentProfiles();
   const displayName = agentName(agentId, profiles);
@@ -77,8 +80,7 @@ function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, re
         </p>
       )}
       <div className="ag-field">
-        <label htmlFor={`folders-${agentId}`}>Carpetas con escritura (una por línea; * = toda la bóveda salvo las reservadas)</label>
-        <textarea id={`folders-${agentId}`} rows={3} value={folders} onChange={(e) => setFolders(e.target.value)} />
+        <FolderScopePicker value={folders} onChange={setFolders} folders={folderChoices} disabled={busy} idPrefix={`fsp-${agentId}`} />
       </div>
       <div className="ag-actions">
         <div className="ag-field">
@@ -94,7 +96,7 @@ function Row({ agentId, keys, owns, invitedTo, initialFolders, initialEstado, re
             Quitar {agentId}
           </button>
         )}
-        <button type="button" className="btn-primary" disabled={busy} onClick={() => onSave(agentId, parseFolders(folders), estado as "activo" | "suspendido")}>
+        <button type="button" className="btn-primary" disabled={busy} onClick={() => onSave(agentId, folders, estado as "activo" | "suspendido")}>
           {registered ? `Guardar ${agentId}` : `Registrar ${agentId}`}
         </button>
       </div>
@@ -115,10 +117,12 @@ export default function AgentAccessPage() {
   const [busy, setBusy] = useState(false);
   const [newAgent, setNewAgent] = useState("");
   const [skills, setSkills] = useState<SkillInfo[]>([]);
+  const [folderChoices, setFolderChoices] = useState<string[]>([]);
   /** H-041 E4: quitar o suspender a un gestor que posee skills activas abre la ventana de resolución. */
   const [leaving, setLeaving] = useState<{ agentId: string; modo: "quitar" | "suspender" } | null>(null);
   const [assignTo, setAssignTo] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+  const { notes, dataVersion } = useSync();
 
   const fail = useCallback(
     (err: unknown, fallback: string) => {
@@ -158,6 +162,18 @@ export default function AgentAccessPage() {
   useEffect(() => {
     if (vaultId) void load(vaultId);
   }, [vaultId, load]);
+
+  useEffect(() => {
+    if (!vaultId) return;
+    let alive = true;
+    notes
+      .list(vaultId)
+      .then((list) => alive && setFolderChoices(folderOptions(list.map((n) => n.path))))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [vaultId, dataVersion, notes]);
 
   async function run(action: () => Promise<unknown>, failure: string) {
     setBusy(true);
@@ -272,6 +288,7 @@ export default function AgentAccessPage() {
                 initialEstado={a.estado}
                 registered
                 busy={busy}
+                folderChoices={folderChoices}
                 onSave={save}
                 onRemove={remove}
               />
@@ -287,6 +304,7 @@ export default function AgentAccessPage() {
                 initialEstado="activo"
                 registered={false}
                 busy={busy}
+                folderChoices={folderChoices}
                 onSave={save}
                 onRemove={remove}
               />

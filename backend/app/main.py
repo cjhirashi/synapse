@@ -18,10 +18,12 @@ from app.routers.notifications import router as notifications_router
 from app.routers.agent_profiles import router as agent_profiles_router
 from app.routers.publications import router as publications_router, vault_router as publications_vault_router
 from app.routers.public_pages import router as public_pages_router
+from app.routers.shared_sync import shared_router as shared_sync_router
 from app.routers.sync import router as sync_router
 from app.routers.projects import router as projects_router
 from app.routers.tasks import router as tasks_router
 from app.routers.vaults import get_vault_port, router as vaults_router
+from app.routers.vault_members import router as vault_members_router
 from app.services.system_docs_service import sync_all_in_background
 from app.adapters.web_push import push_configured
 from app.services.push_dispatcher import start_push_dispatcher
@@ -54,6 +56,7 @@ app.include_router(auth_router)
 app.include_router(admin_router)
 app.include_router(agent_keys_router)
 app.include_router(vaults_router)
+app.include_router(vault_members_router)
 app.include_router(agent_access_router)
 app.include_router(notes_router)
 app.include_router(publications_router)
@@ -66,6 +69,7 @@ app.include_router(tasks_router)
 app.include_router(projects_router)
 app.include_router(notifications_router)
 app.include_router(agent_profiles_router)
+app.include_router(shared_sync_router)
 app.include_router(sync_router)
 
 

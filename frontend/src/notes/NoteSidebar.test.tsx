@@ -1286,7 +1286,7 @@ test("H-041: en AG - SKILLS el formulario pide el propietario entre los gestores
   await confirmNote(user, "Revisión final");
   await waitFor(async () => {
     const created = (await value.notes.list(VAULT)).find((n) => n.path === "AG - SKILLS/skill-revision-final.md");
-    expect(created?.frontmatter).toMatchObject({ propietario: "emma" });
+    expect(created?.frontmatter).toMatchObject({ propietario: ["emma"] });
   });
 });
 

@@ -98,7 +98,7 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
   registran (`classify`: no INDICES ni la propia BITACORA ni cambios solo de `fecha_actualizacion`), día local por zona horaria,
   `day_path` (`BITACORA/AAAA-MM/AAAA-MM-DD.md`) y el texto del día (`render_day`). Las usan REST, `sync_push.py` y `folder_service.py`.
 - `agent_access.py` — permisos de escritura de los agentes (H-030 E6), sin E/S: `Actor`, `parse_registration` del registro
-  `AG - AGENTES/<id>.md`, `decide`/`decide_files`. `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
+  `AG - AGENTES/<id>.md` (H-064 F3c: campo `lectura`), `decide`/`decide_files`. `vault_access.py` — acceso de un miembro invitado sobre ruta de contenido (H-064 F3): `level_of`, `can_read`, `can_write` y `agent_level_of` (motor puro que calcula nivel efectivo de un agente con techo del invitado). `note_prefix.py` — filtro por carpeta del listado (`view_key`, `in_folder`).
 - `index_body.py` — cuerpo generado del INDICE (secciones Navegación / Subcarpetas / Documentos con listas: `- [[enlace]] — descripción · Estado · Tags · Actualizado`, sólo las partes con valor; los enlaces escapan el Markdown de la ruta y no se emiten para nombres que el editor no podría reconocer, ver la regla «Enlace» de `tests/fixtures/indice_cuerpo.json`):
   se calcula al leer (`GET` de la nota) y no se guarda; el espejo del cliente es `frontend/src/notes/indexBody.ts`.
 - `wikilink_rewrite.py` — reglas puras de la reescritura de wikilinks al mover o renombrar notas y carpetas (H-039, sin E/S); las usa `services/wikilink_rewrite_service.py` y las espeja `frontend/src/editor/wikilink.ts` sobre un fixture compartido.
@@ -108,6 +108,14 @@ Configuración global, seguridad, logger y puertos (interfaces abstractas).
 - `rate_limit.py` (H-035 fase 2): limitador de peticiones por ventana deslizante con protección multi-threading.
 - `timestamps.py` — formato único de marca de tiempo (RFC 3339 UTC, ancho fijo) y su
   comprobación; lo comparten bóvedas, notas, reservas y push.
+
+## Compartir bóvedas (H-064)
+
+- `vault_context.py` — punto único del nombre de la base CouchDB de una cuenta (`user_db_name`, `USER_DB_PREFIX`) y `VaultContext`/`owner_context`/`member_context` (dueño, base, actor, `is_owner` y, para un invitado, sus concesiones en `member`). Ningún otro módulo de `app/` construye `synapse_user_<id>` a mano (lo vigila `tests/test_h064_vault_context.py`). Las fases siguientes lo extienden con las concesiones del invitado.
+- `vault_member_rules.py` — reglas puras de las concesiones de una membresía (H-064 F2): `check_grants` valida 1 a 100 concesiones sin repetir carpeta, nivel `lectura|escritura` y carpeta `*` o ruta bien formada; rechaza las zonas reservadas (`AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES`, `BITACORA`, `PLANTILLAS`) por nombre y por subcarpeta.
+- `shared_sync_rules.py` — reglas puras del canal de lectura de una bóveda compartida (H-064 F7a): `belongs` (la bóveda y sus notas), `readable` (el predicado único `can_read` sobre el documento real), `project` (la bóveda reducida) y los filtros de `_changes`, `_bulk_get`, `_all_docs` y `_revs_diff`; lo no legible se responde como inexistente.
+- `vault_access.py` — reglas puras del acceso de un miembro invitado a una bóveda compartida (H-064 F3): `level_of`, `can_read` y `can_write` sobre una ruta de nota y las concesiones `{carpeta, nivel}` (`*` = toda la bóveda; `escritura` incluye `lectura`; la carpeta cubre por segmentos con la equivalencia `path_key`). `AG - AGENTES`, `AG - SKILLS`, `AG - MENSAJES` y `BITACORA` no se ven ni se escriben nunca, ni con `*`; `PLANTILLAS` la lee cualquier miembro y no la escribe nadie.
+- `models/vault_member.py` — `VaultMember` (invitación y membresía: `pendiente|activo|revocado`, motivo de cierre, quién invitó) y `VaultMemberGrant` (carpeta o `*` y nivel `lectura|escritura`). Migración 025. Sin lógica todavía: F2 agrega las invitaciones y F3 los permisos.
 
 ## Atributos, fechas y archivos (H-029, H-015/H-016)
 

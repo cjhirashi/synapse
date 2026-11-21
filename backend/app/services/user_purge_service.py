@@ -6,6 +6,7 @@ MinIO o CouchDB fallan, la cuenta y sus filas siguen ahí y la siguiente pasada 
 import logging
 from datetime import datetime, timedelta
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.limits import GRACE_DAYS
@@ -22,6 +23,7 @@ from app.core.models.purge_log import PurgeLog
 from app.core.models.refresh_token import RefreshToken
 from app.core.models.task import VaultTask
 from app.core.models.user import User
+from app.core.models.vault_member import VaultMember, VaultMemberGrant
 from app.core.ports.couchdb_port import CouchDBPort
 from app.core.ports.object_storage_port import ObjectStoragePort
 
@@ -67,6 +69,11 @@ class UserPurgeService:
         self._session.flush()
         for model in _BY_OWNER:
             self._session.query(model).filter(model.owner_id == user_id).delete(synchronize_session=False)
+        member_ids = [row.id for row in self._session.query(VaultMember.id).filter(
+            or_(VaultMember.owner_id == user_id, VaultMember.user_id == user_id))]
+        if member_ids:  # las concesiones primero: SQLite no aplica el ON DELETE CASCADE
+            self._session.query(VaultMemberGrant).filter(VaultMemberGrant.member_id.in_(member_ids)).delete(synchronize_session=False)
+            self._session.query(VaultMember).filter(VaultMember.id.in_(member_ids)).delete(synchronize_session=False)
         self._session.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(synchronize_session=False)
         self._session.query(LimitGrace).filter(LimitGrace.user_id == user_id).delete(synchronize_session=False)
         self._session.delete(user)

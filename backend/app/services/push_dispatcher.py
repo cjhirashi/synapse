@@ -23,6 +23,7 @@ from app.core.models.notification import Notification, NotificationPref, PushSub
 from app.core.models.task import VaultTask
 from app.core.quiet_hours import in_quiet_hours
 from app.core.task_rules import STATUS_ES
+from app.core.vault_context import user_db_name
 from app.services.notification_service import PUSH_WAKE
 
 log = logging.getLogger("synapse.push")
@@ -37,7 +38,7 @@ VaultNamer = Callable[[str, str], str | None]
 _CDMX = ZoneInfo("America/Mexico_City")
 _MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 # Mismos rótulos que la pantalla de avisos (`NotificationsPage.tsx`): la notificación del móvil dice lo mismo que la tarjeta.
-KIND_LABEL = {"task_assigned": "Tarea asignada", "task_status": "Cambio de estado", "task_due": "Vencimiento", "publication_expired": "Publicación", "limit_grace": "Límites de la cuenta"}
+KIND_LABEL = {"task_assigned": "Tarea asignada", "task_status": "Cambio de estado", "task_due": "Vencimiento", "publication_expired": "Publicación", "limit_grace": "Límites de la cuenta", "vault_share": "Bóvedas compartidas"}
 
 
 @lru_cache
@@ -50,7 +51,7 @@ def couch_vault_name(owner_id: str, vault_id: str) -> str | None:
     """Nombre de la bóveda, o `None` si no se puede leer (el aviso sale igual, sin ese dato)."""
     try:
         from app.services.vault_service import VaultService
-        return VaultService(_vault_port(), f"synapse_user_{owner_id}").get(vault_id).vault.name
+        return VaultService(_vault_port(), user_db_name(owner_id)).get(vault_id).vault.name
     except Exception:
         return None
 

@@ -15,7 +15,7 @@ from app.core.ports.object_storage_port import ObjectStoragePort
 from app.core.ports.vault_port import VaultPort
 from app.core.problems import problem_responses
 from app.core.schemas import (
-    AdminUserOut, CreateUserRequest, TokenPayload, UpdateLimitsRequest, UpdateRoleRequest, UserUsageOut,
+    AdminUserOut, CreateUserRequest, TokenPayload, UpdateLimitsRequest, UpdateSharingRequest, UpdateRoleRequest, UserUsageOut,
 )
 from app.routers.auth import SESSION_ERRORS, get_auth_service
 from app.routers.vaults import get_vault_port
@@ -71,6 +71,13 @@ def update_limits(
     user_id: str, body: UpdateLimitsRequest, service: AdminUserService = Depends(get_admin_user_service),
 ):
     return service.set_limits(user_id, body)
+
+
+@router.patch("/users/{user_id}/sharing", response_model=AdminUserOut, responses=problem_responses(*_MANAGE))
+def update_sharing(
+    user_id: str, body: UpdateSharingRequest, service: AdminUserService = Depends(get_admin_user_service),
+):
+    return service.set_sharing(user_id, body)
 
 
 @router.delete("/users/{user_id}", response_model=AdminUserOut, responses=problem_responses(*_MANAGE))

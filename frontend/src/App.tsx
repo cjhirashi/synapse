@@ -24,6 +24,8 @@ const AllTasks = lazy(() => import("./tasks/AllTasks"));
 const DocsPage = lazy(() => import("./docs/DocsPage"));
 const NotificationsPage = lazy(() => import("./notifications/NotificationsPage"));
 const NotificationsSettingsPage = lazy(() => import("./settings/NotificationsSettingsPage"));
+const SharedWithMePage = lazy(() => import("./sharing/SharedWithMePage"));
+const SharedVaultPage = lazy(() => import("./sharing/SharedVaultPage"));
 
 interface Props {
   /** Réplica, remota y replicador sustituibles en las pruebas (por defecto, los reales). */
@@ -115,6 +117,10 @@ export default function App({ syncEnv }: Props) {
         {/* H-061: el Manual de Operación dentro de la app. */}
         <Route path="/docs" element={<Suspense fallback={null}><DocsPage /></Suspense>} />
         <Route path="/docs/:slug" element={<Suspense fallback={null}><DocsPage /></Suspense>} />
+        {/* H-064 F5a: invitaciones a bóvedas compartidas. */}
+        <Route path="/compartidas" element={<Suspense fallback={null}><SharedWithMePage /></Suspense>} />
+        {/* H-064 F7c: bóveda compartida abierta en solo lectura. */}
+        <Route path="/compartidas/:id" element={<Suspense fallback={null}><SharedVaultPage /></Suspense>} />
         <Route path="/avisos" element={<Suspense fallback={null}><NotificationsPage /></Suspense>} />
         <Route path="/rejections" element={<RejectionsPage />} />
         <Route path="/conflicts" element={<ConflictView />} />

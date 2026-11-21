@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlarmClock, BellOff, BellRing, CheckCheck, Globe, MonitorSmartphone, Moon, Send, UserPlus, type LucideIcon } from "lucide-react";
+import { AlarmClock, BellOff, BellRing, CheckCheck, Globe, MonitorSmartphone, Moon, Send, UserPlus, Users, type LucideIcon } from "lucide-react";
 import {
   getPreferences, pushStatus, sendTestPush, setPreference, setQuietHours, type NoticeKind, type Preferences, type PushStatus,
 } from "../notifications/notificationsApi";
@@ -11,6 +11,7 @@ const OPTIONS: { kind: NoticeKind; label: string; hint: string; Icon: LucideIcon
   { kind: "task_status", label: "Un agente cambia el estado de una tarea mía", hint: "Cuando un agente la marca como hecha, en progreso o cancelada.", Icon: CheckCheck },
   { kind: "task_due", label: "Las tareas vencen", hint: "A 24 h y a 1 h del vencimiento (o con los recordatorios de cada tarea) y cuando vence sin cerrarse; también las tareas de tus agentes.", Icon: AlarmClock },
   { kind: "publication_expired", label: "Una publicación se despublica sola", hint: "Cuando llega la fecha de despublicación de un documento y su enlace deja de funcionar.", Icon: Globe },
+  { kind: "vault_share", label: "Invitaciones a bóvedas compartidas", hint: "Cuando alguien te invita a una bóveda o te cambia el acceso a ella.", Icon: Users },
 ];
 
 const SUPPORT_TEXT: Record<Exclude<PushSupport, "ready">, string> = {
