@@ -70,7 +70,7 @@ function creatorAgent(task: Task): string | null {
 }
 
 function StatusSelect({ task, locked, onStatus }: { task: Task; locked: boolean; onStatus: ViewActions["onStatus"] }) {
-  const { canEdit } = useVaultAccess();
+  const { isOwner: canEdit } = useVaultAccess();
   return (
     <select
       className="tasks-status" data-status={task.status} value={task.status} disabled={locked || !canEdit}
@@ -130,7 +130,7 @@ function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; act
 }
 
 export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; actions: ViewActions; sub: boolean }) {
-  const { canEdit } = useVaultAccess();
+  const { isOwner: canEdit } = useVaultAccess();
   const [open, setOpen] = useState(true);
   const hasKids = !sub && node.children.length > 0;
   const done = node.children.filter(isClosed).length;
@@ -220,7 +220,7 @@ const COLUMN_HINT: Record<TaskStatus, string> = {
 };
 
 export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewActions }) {
-  const { canEdit } = useVaultAccess();
+  const { isOwner: canEdit } = useVaultAccess();
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<TaskStatus | null>(null);
   const parents = new Map(tasks.map((t) => [t.id, t]));

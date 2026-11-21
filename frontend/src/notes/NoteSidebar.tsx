@@ -166,7 +166,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   ref,
 ) {
   const { notes, notesVersion } = useSync();
-  const { isOwner, canEdit } = useVaultAccess();
+  const { isOwner, canEdit, canWrite } = useVaultAccess();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(initialExpanded ?? []));
   const [title, setTitle] = useState("");
@@ -357,6 +357,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         if (inFlight.current) return; // misma guarda que los botones (`busy`)
         if (row.kind === "folder") {
           event.preventDefault();
+          if (!isOwner) return; // H-064: renombrar y borrar carpetas es del propietario
           if (isMetaFolderPath(row.path) || isInBitacora(row.path) || isInMensajes(row.path)) return; // H-030: la reservada no se renombra ni se borra; la BITACORA solo la escribe el servidor; el buzón (H-042) solo los agentes
           if (event.key === "F2") startFolderRename(row.path);
           else askDeleteFolder(row.path);
@@ -366,6 +367,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         if (!note) return;
         event.preventDefault();
         if (isInBitacora(note.path) || isInMensajes(note.path) || isSystemPath(note.path)) return; // H-030b/H-041/H-042: la bitácora, el buzón y los documentos de sistema son de solo lectura
+        if (event.key === "F2" ? !isOwner : !canWrite(note.path)) return; // H-064: renombrar es del propietario; borrar, de quien escribe en esa ruta
         if (event.key === "F2") startNoteRename(note);
         else askDeleteNote(note);
         return;
@@ -776,7 +778,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 {system && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
               </button>
             )}
-            {!editing && !isInBitacora(note.path) && !readOnlyNote && canEdit && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+            {!editing && !isInBitacora(note.path) && !readOnlyNote && canWrite(note.path) && <TreeRowMenu label={node.name} onRename={isOwner ? () => startNoteRename(note) : undefined} onDelete={() => askDeleteNote(note)} />}
           </div>
         </li>
       );
@@ -909,7 +911,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
             ref={newNoteRef}
             type="button"
             className="note-create-icon"
-            disabled={busy}
+            disabled={busy || !canWrite(joinPath(activeFolder, "x.md"))}
             onClick={() => {
               setError(null);
               setNoteDialogOpen(true);
@@ -919,16 +921,18 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           >
             <FilePlus size={16} aria-hidden="true" />
           </button>
-          <button
-            ref={newFolderRef}
-            type="button"
-            className="note-create-icon"
-            onClick={() => setFolderForm({ name: "", message: null })}
-            aria-label={`Nueva carpeta en ${activeFolder || "Raíz"}`}
-            title={`Crear carpeta en ${activeFolder || "Raíz"}`}
-          >
-            <FolderPlus size={16} aria-hidden="true" />
-          </button>
+          {isOwner && (
+            <button
+              ref={newFolderRef}
+              type="button"
+              className="note-create-icon"
+              onClick={() => setFolderForm({ name: "", message: null })}
+              aria-label={`Nueva carpeta en ${activeFolder || "Raíz"}`}
+              title={`Crear carpeta en ${activeFolder || "Raíz"}`}
+            >
+              <FolderPlus size={16} aria-hidden="true" />
+            </button>
+          )}
         </div>
       )}
       {noteDialogOpen && !inMensajes && (

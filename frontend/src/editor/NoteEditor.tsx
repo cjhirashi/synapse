@@ -254,7 +254,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
   ref,
 ) {
   const { notes, notesVersion, conflicts, unsavedDrafts } = useSync();
-  const { canEdit, isOwner } = useVaultAccess();
+  const { canWrite, isOwner } = useVaultAccess();
   const { Visual, Code } = views;
 
   /** Nota cargada (`null` mientras carga o si desapareció). */
@@ -1178,7 +1178,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
           />
         )}
         {mode === "read" ? (
-          canEdit && (
+          note && canWrite(note.path) && (
             <button
               type="button"
               className="note-nav-button"
@@ -1201,6 +1201,7 @@ const NoteEditor = forwardRef<NoteEditorHandle, NoteEditorProps>(function NoteEd
             con la lógica de carpetas; «Ver en Código» ya funciona. */}
         <NoteMenu
           inCode={mode === "edit" && view === "code"}
+          path={note?.path}
           onRename={() => onRename?.()}
           onCopyPath={() => void copyPath()}
           onViewInCode={() => {

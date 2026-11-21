@@ -15,6 +15,9 @@ import { openRejections, type RejectionsStore } from "./rejections";
 import { createRemoteDb } from "./remote";
 import { rememberSharedReplica, type PurgeOptions } from "./sharedReplicas";
 import { readOnly } from "./readOnly";
+import { guardSharedDb } from "./sharedWriteGuard";
+import { hasWriteGrant } from "../sharing/access";
+import type { Grant } from "../sharing/sharingApi";
 import {
   BATCH_SIZE,
   createReplicator,
@@ -60,13 +63,24 @@ export interface SyncResources {
 }
 
 /**
+ * Almacén de notas de una réplica compartida (H-064 F7d). Sin escritura en las concesiones, solo lee. Con ella, crea, guarda,
+ * borra y restaura, pero solo donde hay escritura y sin cambiar rutas (la guarda de la base lo comprueba antes de escribir);
+ * mover, renombrar, carpetas y plantillas siguen siendo del propietario. Sin INDICEs del cliente: crearlos obligaría a
+ * escribir el de la raíz, que el invitado no puede.
+ */
+function sharedNotes(db: PouchDB.Database, vaultId: string, grants: readonly Grant[]): NoteStore {
+  if (!hasWriteGrant(grants)) return readOnly(createNoteStore(db), ["list", "get"]);
+  return readOnly(createNoteStore(guardSharedDb(db, vaultId, grants), { indexes: false }), ["list", "get", "create", "save", "softDelete", "restore"]);
+}
+
+/**
  * Abre los recursos del usuario `sub`; el replicador queda creado, sin arrancar (`start()`).
  * Con `shared`: réplica de bóveda compartida en solo lectura con nombre y remota personalizados.
  */
 export async function openSyncResources(
   sub: string,
   env: SyncEnv = {},
-  shared?: { vaultId: string },
+  shared?: { vaultId: string; grants?: readonly Grant[] },
 ): Promise<SyncResources> {
   // Con `shared`, la réplica va en un nombre aparte; sin él, el nombre se elige del `env` o el default.
   const baseName = env.localDb?.name ?? LOCAL_DB_NAME;
@@ -100,9 +114,8 @@ export async function openSyncResources(
   let closed: Promise<void> | null = null;
   // Lecturas de cada almacén (las únicas que llegan a una réplica compartida); el resto escribe y se deniega.
   const vaultStore = createVaultStore(db, sub);
-  const noteStore = createNoteStore(db);
   const vaults: VaultStore = shared ? readOnly(vaultStore, ["list", "get"]) : vaultStore;
-  const notes: NoteStore = shared ? readOnly(noteStore, ["list", "get"]) : noteStore;
+  const notes: NoteStore = shared ? sharedNotes(db, shared.vaultId, shared.grants ?? []) : createNoteStore(db);
 
   const resources: SyncResources = {
     db,

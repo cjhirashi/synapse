@@ -33,3 +33,4 @@ Restaurar en un servidor nuevo (con los contenedores de `docker-compose.yml` ya 
 3. CouchDB: `python3 restore_couchdb.py ./couchdb http://localhost:5984 <usuario> <contraseña>` (la URL del CouchDB publicado en el host).
 4. Archivos: con `synapse-minio` detenido, `tar -xf <files>.tar -C /mnt/disco1/synapse-data/minio` y se vuelve a levantar.
 5. Levanta `synapse-backend` y comprueba `/health`, el inicio de sesión y una nota. Ensayado el 2026-11-06 con un respaldo bajado de Drive: PostgreSQL (2 usuarios, 422 registros de cambios) y CouchDB (20 bases, 3 918 documentos) coincidieron con producción.
+- `gen_access_parity.py` (H-064 F7d): regenera `frontend/src/sharing/accessParity.json` (nivel de acceso que calcula el servidor para una tabla de concesiones y rutas); lo usan el cliente y `tests/test_h064_access_parity.py`.

@@ -66,7 +66,7 @@ function errorText(error: unknown, fallback: string): string {
 /** Pestaña «Tareas» de una bóveda (H-053): lista con subtareas, Kanban y Calendario, con filtros en la barra lateral. */
 export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = null, onOpenNote, onOpenFolder, onCloseSide, onOpenCount }: Props) {
   const { notes, notesVersion } = useSync();
-  const { canEdit } = useVaultAccess();
+  const { isOwner: canEdit } = useVaultAccess();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectConfirm, setProjectConfirm] = useState<Project | null>(null);

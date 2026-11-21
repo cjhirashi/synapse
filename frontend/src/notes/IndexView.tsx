@@ -43,7 +43,7 @@ export interface IndexViewProps {
 }
 
 export default function IndexView({ noteId, vault, notes, notesVersion, userId, noteRefs, onOpenWikilink, sidebarToggle }: IndexViewProps) {
-  const { canEdit } = useVaultAccess();
+  const { canWrite } = useVaultAccess();
   const [note, setNote] = useState<Note | null>(null);
   const [model, setModel] = useState<IndexModel | null>(null);
   const [colors, setColors] = useState<ReadonlyMap<string, ReadonlyMap<string, EstadoColor>>>(new Map());
@@ -105,7 +105,7 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
   );
 
   // H-042: el INDICE del buzón entre agentes lo mantiene el servidor; el usuario no edita ni su descripción. F7c-2: tampoco en bóvedas compartidas.
-  const readOnly = note !== null && (isInMensajes(note.path) || !canEdit);
+  const readOnly = note !== null && (isInMensajes(note.path) || !canWrite(note.path));
   const saved = typeof note?.frontmatter.descripcion === "string" ? note.frontmatter.descripcion : "";
   const text = draft ?? saved;
   const dirty = draft !== null && draft !== saved;

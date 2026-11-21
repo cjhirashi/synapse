@@ -15,6 +15,7 @@ import type { Rejection } from "../sync/rejections";
 import type { SyncStatus } from "../sync/status";
 import { SyncContext, useSync, type SharedInfo, type SyncContextValue } from "../sync/useSync";
 import { ID_PREFIX } from "../sync/vaultStore";
+import { hasWriteGrant } from "./access";
 import { listInvitations, type Invitation } from "./sharingApi";
 
 type Access = { kind: "loading" } | { kind: "failed" } | { kind: "missing" } | { kind: "ready"; invitation: Invitation };
@@ -25,6 +26,7 @@ function SharedWorkspace({ invitation, env }: { invitation: Invitation; env?: Sy
   const parent = useSync();
   const { user_id: sub } = useMe();
   const vaultId = invitation.vault_id;
+  const { grants } = invitation;
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [status, setStatus] = useState<SyncStatus | null>(null);
   const [rejections, setRejections] = useState<Rejection[]>([]);
@@ -37,7 +39,7 @@ function SharedWorkspace({ invitation, env }: { invitation: Invitation; env?: Sy
     let alive = true;
     const unsubscribe: (() => void)[] = [];
     setPhase({ kind: "loading" });
-    const opened = serial(() => openSyncResources(sub, env, { vaultId }));
+    const opened = serial(() => openSyncResources(sub, env, { vaultId, grants }));
     opened.then(
       (resources) => {
         if (!alive) return;
@@ -68,7 +70,7 @@ function SharedWorkspace({ invitation, env }: { invitation: Invitation; env?: Sy
         await resources?.close();
       }).catch((err: unknown) => console.error(err));
     };
-  }, [vaultId, sub, env]);
+  }, [vaultId, sub, env, grants]);
 
   const resources = phase.kind === "ready" ? phase.resources : null;
 
@@ -80,7 +82,7 @@ function SharedWorkspace({ invitation, env }: { invitation: Invitation; env?: Sy
     () => ({
       vaultId,
       ownerName: invitation.owner?.display_name || invitation.owner?.email || "",
-      readOnly: true,
+      readOnly: !hasWriteGrant(invitation.grants),
       grants: invitation.grants,
     }),
     [vaultId, invitation],

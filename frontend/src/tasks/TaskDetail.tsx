@@ -62,7 +62,7 @@ const when = (iso: string | null) => (iso ? formatDue(iso) : null);
  */
 export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose, global, blockedBy = [], blocks = [], project }: Props) {
   const id = useId();
-  const { canEdit } = useVaultAccess();
+  const { isOwner: canEdit } = useVaultAccess();
   const isRoot = task.parent_id === null;
   const locked = isRoot && subtasks.length > 0; // el estado de una raíz sale de sus subtareas
   const target = task.path ? resolvePath(task.path, pathIndex) : null;

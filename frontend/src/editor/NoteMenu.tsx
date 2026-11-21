@@ -17,14 +17,17 @@ import { useMenuPosition } from "./menuPlacement";
 interface NoteMenuProps {
   /** ¿La nota ya está en la vista Código? Entonces «Ver en Código» queda `aria-disabled`. */
   inCode: boolean;
+  /** Ruta de la nota abierta: quien solo la lee no ve «Ver en Código» ni «Borrar». */
+  path?: string;
   onRename: () => void;
   onCopyPath: () => void;
   onViewInCode: () => void;
   onDelete: () => void;
 }
 
-export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete }: NoteMenuProps) {
-  const { canEdit, isOwner } = useVaultAccess();
+export function NoteMenu({ inCode, path, onRename, onCopyPath, onViewInCode, onDelete }: NoteMenuProps) {
+  const { canEdit, canWrite, isOwner } = useVaultAccess();
+  const writable = path === undefined ? canEdit : canWrite(path);
   const triggerId = useId();
   const menuId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -39,7 +42,7 @@ export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete 
     { label: "Copiar ruta", Icon: Copy, run: onCopyPath, disabled: false, danger: false, requireEdit: false, requireOwner: false },
     { label: "Ver en Código", Icon: Code, run: onViewInCode, disabled: inCode, danger: false, requireEdit: true, requireOwner: false },
     { label: "Borrar", Icon: Trash2, run: onDelete, disabled: false, danger: true, requireEdit: true, requireOwner: false },
-  ].filter((item) => (!item.requireEdit || canEdit) && (!item.requireOwner || isOwner));
+  ].filter((item) => (!item.requireEdit || writable) && (!item.requireOwner || isOwner));
 
   /** Abre el menú con el foco en el ítem `index`; `useMenuPosition` lo coloca bajo el botón o, si no cabe, encima. */
   function openAt(index: number) {

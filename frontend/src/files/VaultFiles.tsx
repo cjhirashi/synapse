@@ -117,7 +117,8 @@ interface VaultFilesProps {
 /** Archivos de una bóveda: tabla en la zona principal y árbol de carpetas en la barra lateral (`sideSlot`). */
 export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: VaultFilesProps) {
   const { notes } = useSync();
-  const { canEdit, isOwner } = useVaultAccess();
+  const { isOwner } = useVaultAccess();
+  const canEdit = isOwner; // H-064: tareas y archivos del invitado por la interfaz llegan después; el servidor ya los admite por la API
   const selectedVaultId = vaultId;
   const [folders, setFolders] = useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = useState("");
