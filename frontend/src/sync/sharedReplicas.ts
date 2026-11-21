@@ -62,10 +62,14 @@ async function storedSharedNames(): Promise<string[]> {
   }
 }
 
-/** Destruye las réplicas compartidas que corresponda; una que falla sigue anotada y las demás se destruyen. Nunca lanza. */
-export async function purgeSharedReplicas({ exceptSub, pouch }: PurgeOptions = {}): Promise<void> {
-  const targets = new Set(readRegistry().filter((entry) => entry.sub !== exceptSub).map((entry) => entry.name));
-  if (exceptSub === undefined) for (const name of await storedSharedNames()) targets.add(name);
+/** Id de la bóveda compartida de una réplica (`<base>-shared-<id>`), o `null` si el nombre no tiene esa forma. */
+export function vaultIdOfReplica(name: string): string | null {
+  return /-shared-([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/.exec(name)?.[1] ?? null;
+}
+
+/** Destruye las réplicas anotadas que cumplan `doomed`; una que falla sigue anotada y las demás se destruyen. Nunca lanza. */
+async function destroyAnnotated(doomed: (entry: SharedReplicaEntry) => boolean, extra: string[], pouch?: PurgeOptions["pouch"]): Promise<void> {
+  const targets = new Set([...readRegistry().filter(doomed).map((entry) => entry.name), ...extra]);
   const destroyed = new Set<string>();
   for (const name of targets) {
     try {
@@ -76,4 +80,14 @@ export async function purgeSharedReplicas({ exceptSub, pouch }: PurgeOptions = {
     }
   }
   if (destroyed.size > 0) writeRegistry(readRegistry().filter((entry) => !destroyed.has(entry.name)));
+}
+
+/** Cierre de sesión o cambio de cuenta: destruye las de otras cuentas (o todas, y barre las no anotadas). */
+export async function purgeSharedReplicas({ exceptSub, pouch }: PurgeOptions = {}): Promise<void> {
+  await destroyAnnotated((entry) => entry.sub !== exceptSub, exceptSub === undefined ? await storedSharedNames() : [], pouch);
+}
+
+/** Pérdida de acceso: destruye las réplicas de `sub` cuya bóveda ya no está entre las que `activeVaultIds` mantiene activas. */
+export async function purgeSharedReplicasNotIn(sub: string, activeVaultIds: ReadonlySet<string>, pouch?: PurgeOptions["pouch"]): Promise<void> {
+  await destroyAnnotated((entry) => entry.sub === sub && !activeVaultIds.has(vaultIdOfReplica(entry.name) ?? ""), [], pouch);
 }

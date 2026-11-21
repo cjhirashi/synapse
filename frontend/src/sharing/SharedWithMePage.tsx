@@ -1,6 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useContext, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { MeContext } from "../auth/RequireAuth";
 import { ConfirmDialog } from "../editor/ConfirmDialog";
+import { serial } from "../sync/lifecycle";
+import { purgeSharedReplicasNotIn } from "../sync/sharedReplicas";
 import { formatCdmx } from "../notes/cdmxTime";
 import { acceptInvitation, leaveInvitation, listInvitations, rejectInvitation, type Invitation } from "./sharingApi";
 import { grantsText } from "./grants";
@@ -17,15 +20,19 @@ export default function SharedWithMePage() {
   const [notice, setNotice] = useState<Notice>(null);
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState<Invitation | null>(null);
+  const sub = useContext(MeContext)?.user_id;
 
   const load = useCallback(async () => {
     try {
-      setInvitations((await listInvitations()).items);
+      const { items } = await listInvitations();
+      setInvitations(items);
       setFailed(false);
+      // Una bóveda de la que ya no se es miembro (salió, o le quitaron el acceso) no deja su copia en este dispositivo.
+      if (sub) void serial(() => purgeSharedReplicasNotIn(sub, new Set(items.filter((item) => item.status === "activo").map((item) => item.vault_id)))).catch(() => undefined);
     } catch {
       setFailed(true);
     }
-  }, []);
+  }, [sub]);
 
   useEffect(() => {
     void load();

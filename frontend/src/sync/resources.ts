@@ -16,6 +16,7 @@ import { createRemoteDb } from "./remote";
 import { rememberSharedReplica, type PurgeOptions } from "./sharedReplicas";
 import { readOnly } from "./readOnly";
 import { guardSharedDb } from "./sharedWriteGuard";
+import { grantsKey, pushPending, storedGrantsKey, storeGrantsKey } from "./sharedRebuild";
 import { hasWriteGrant } from "../sharing/access";
 import type { Grant } from "../sharing/sharingApi";
 import {
@@ -59,6 +60,8 @@ export interface SyncResources {
    * `note:` (`notesVersion`), para que guardar una nota no relea las listas de bóvedas.
    */
   feed: PouchDB.Core.Changes<{}>;
+  /** Réplica compartida reconstruida: cambios locales que el servidor ya no admite (sin escritura donde se hicieron) y se descartaron. */
+  discarded: number;
   close(): Promise<void>;
 }
 
@@ -73,6 +76,17 @@ function sharedNotes(db: PouchDB.Database, vaultId: string, grants: readonly Gra
   return readOnly(createNoteStore(guardSharedDb(db, vaultId, grants), { indexes: false }), ["list", "get", "create", "save", "softDelete", "restore"]);
 }
 
+/** Réplica de una bóveda compartida (H-064 F7). */
+export interface SharedOptions {
+  vaultId: string;
+  /** Concesiones de la persona en esa bóveda. */
+  grants?: readonly Grant[];
+  /** Reconstruir la réplica aunque las concesiones no hayan cambiado (se detectaron copias que el servidor ya no deja leer). */
+  rebuild?: boolean;
+  /** El replicador se puso al día con el servidor (se bajó todo lo que había). */
+  onCaughtUp?: () => void;
+}
+
 /**
  * Abre los recursos del usuario `sub`; el replicador queda creado, sin arrancar (`start()`).
  * Con `shared`: réplica de bóveda compartida en solo lectura con nombre y remota personalizados.
@@ -80,14 +94,32 @@ function sharedNotes(db: PouchDB.Database, vaultId: string, grants: readonly Gra
 export async function openSyncResources(
   sub: string,
   env: SyncEnv = {},
-  shared?: { vaultId: string; grants?: readonly Grant[] },
+  shared?: SharedOptions,
 ): Promise<SyncResources> {
   // Con `shared`, la réplica va en un nombre aparte; sin él, el nombre se elige del `env` o el default.
   const baseName = env.localDb?.name ?? LOCAL_DB_NAME;
   const dbName = shared ? `${baseName}-shared-${shared.vaultId}` : baseName;
   const localDbOptions = shared ? { ...env.localDb, name: dbName } : env.localDb;
 
-  const db = await openLocalDb(sub, localDbOptions);
+  let db = await openLocalDb(sub, localDbOptions);
+  let discarded = 0;
+  if (shared) {
+    // Reconstruir si cambiaron las concesiones con las que se armó la réplica, o si se pidió: primero se sube lo pendiente; sin
+    // conexión no se reconstruye (se conserva lo que hay) y se reintenta al abrir de nuevo.
+    const key = grantsKey(shared.grants ?? []);
+    const stored = await storedGrantsKey(db);
+    if (shared.rebuild === true || (stored !== null && stored !== key)) {
+      const pushed = await pushPending(db, (env.createRemote ?? ((expired) => createRemoteDb({ onSessionExpired: expired, path: `/sync/shared/${shared.vaultId}/db` })))(() => undefined));
+      if (pushed.ok) {
+        discarded = pushed.discarded;
+        await db.destroy();
+        db = await openLocalDb(sub, localDbOptions);
+        await storeGrantsKey(db, key);
+      }
+    } else if (stored === null) {
+      await storeGrantsKey(db, key);
+    }
+  }
   const status = await openSyncStatus(db);
   const rejections = await openRejections(db);
   const conflicts = await openConflicts(db);
@@ -103,6 +135,7 @@ export async function openSyncResources(
     void status.handle(event);
     void rejections.handle(event);
     repush?.handle(event);
+    if (shared && event.type === "paused" && event.direction === "pull" && !event.offline) shared.onCaughtUp?.();
   };
   // Cada réplica compartida tiene su cerrojo y su canal: no compite con el replicador de las bóvedas propias.
   const sharedChannel = shared ? { lockName: `synapse-sync-shared-${shared.vaultId}`, channelName: `synapse-sync-shared-${shared.vaultId}` } : {};
@@ -128,6 +161,7 @@ export async function openSyncResources(
     replicator,
     repush,
     feed,
+    discarded,
     close() {
       closed ??= (async () => {
         feed.cancel();
