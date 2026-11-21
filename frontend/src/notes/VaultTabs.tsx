@@ -1,8 +1,9 @@
 import { useId, type KeyboardEvent } from "react";
 import { FileText, Files, Globe, ListChecks, Tags } from "lucide-react";
+import { useVaultAccess } from "./useVaultAccess";
 import type { VaultTab } from "./workspaceMemory";
 
-const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
+const ALL_TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
   { id: "documentos", label: "Documentos", Icon: FileText },
   { id: "tags", label: "Filtro por tags", Icon: Tags },
   { id: "archivos", label: "Archivos", Icon: Files },
@@ -11,7 +12,7 @@ const TABS: { id: VaultTab; label: string; Icon: typeof FileText }[] = [
 ];
 
 /** Orden de izquierda a derecha: de él sale hacia dónde se mueve el cambio de pestaña. */
-export const TAB_ORDER: VaultTab[] = TABS.map((t) => t.id);
+export const TAB_ORDER: VaultTab[] = ALL_TABS.map((t) => t.id);
 
 interface Props {
   tab: VaultTab;
@@ -24,6 +25,8 @@ interface Props {
 
 /** Barra de pestañas de la barra lateral de la bóveda (H-052). Flechas, Inicio y Fin mueven la selección. */
 export default function VaultTabs({ tab, onChange, panelId, taskCount = 0 }: Props) {
+  const { isOwner } = useVaultAccess();
+  const TABS = ALL_TABS.filter((t) => t.id !== "publicados" || isOwner);
   const baseId = useId();
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {

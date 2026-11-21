@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { indexModel, type IndexModel } from "./indexBody";
+import { useVaultAccess } from "./useVaultAccess";
 import IndexList from "./IndexList";
 import { folderOf } from "./indexRules";
 import { isInMensajes } from "./metaFolders";
@@ -42,6 +43,7 @@ export interface IndexViewProps {
 }
 
 export default function IndexView({ noteId, vault, notes, notesVersion, userId, noteRefs, onOpenWikilink, sidebarToggle }: IndexViewProps) {
+  const { canEdit } = useVaultAccess();
   const [note, setNote] = useState<Note | null>(null);
   const [model, setModel] = useState<IndexModel | null>(null);
   const [colors, setColors] = useState<ReadonlyMap<string, ReadonlyMap<string, EstadoColor>>>(new Map());
@@ -102,8 +104,8 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
     [userId, vault.id],
   );
 
-  // H-042: el INDICE del buzón entre agentes lo mantiene el servidor; el usuario no edita ni su descripción.
-  const readOnly = note !== null && isInMensajes(note.path);
+  // H-042: el INDICE del buzón entre agentes lo mantiene el servidor; el usuario no edita ni su descripción. F7c-2: tampoco en bóvedas compartidas.
+  const readOnly = note !== null && (isInMensajes(note.path) || !canEdit);
   const saved = typeof note?.frontmatter.descripcion === "string" ? note.frontmatter.descripcion : "";
   const text = draft ?? saved;
   const dirty = draft !== null && draft !== saved;
@@ -138,7 +140,8 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
               {error}
             </p>
           )}
-          <div className="index-view-description">
+          {/* Quien solo lee no ve un cuadro vacío: la descripción aparece solo si existe. */}
+          {(!readOnly || text !== "") && <div className="index-view-description">
             <label htmlFor="index-description">Descripción</label>
             <textarea
               id="index-description"
@@ -153,8 +156,8 @@ export default function IndexView({ noteId, vault, notes, notesVersion, userId, 
                 {saving ? "Guardando…" : "Guardar descripción"}
               </button>
             )}
-          </div>
-          {available.length > 0 && (
+          </div>}
+          {available.length > 0 && !readOnly && (
             <details className="index-view-columns">
               <summary>Columnas adicionales ({shown.filter((key) => available.includes(key)).length} de {available.length})</summary>
               <div className="index-view-columns-list" role="group" aria-label="Columnas adicionales">

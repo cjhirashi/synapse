@@ -1,3 +1,4 @@
+import { useVaultAccess } from "../notes/useVaultAccess";
 import { useId, type ReactNode, type CSSProperties } from "react";
 import { Bell, CalendarClock, CornerDownRight, ExternalLink, FileText, Folder, ListChecks, Pencil, Plus, Trash2 } from "lucide-react";
 import AgentBadge from "../agents/AgentBadge";
@@ -61,6 +62,7 @@ const when = (iso: string | null) => (iso ? formatDue(iso) : null);
  */
 export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, onStatus, onEdit, onAddSubtask, onDelete, onOpenTask, onOpenPath, onClose, global, blockedBy = [], blocks = [], project }: Props) {
   const id = useId();
+  const { canEdit } = useVaultAccess();
   const isRoot = task.parent_id === null;
   const locked = isRoot && subtasks.length > 0; // el estado de una raíz sale de sus subtareas
   const target = task.path ? resolvePath(task.path, pathIndex) : null;
@@ -84,7 +86,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
       size="lg"
       showClose
       onCancel={onClose}
-      footerStart={global ? undefined : (
+      footerStart={global || !canEdit ? undefined : (
         <button type="button" className="ag-danger td-delete" onClick={() => onDelete(task)}>
           <Trash2 size={14} aria-hidden="true" /> Eliminar
         </button>
@@ -96,7 +98,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
             <button type="button" className="btn-primary" onClick={global.onOpenInVault}>
               <ExternalLink size={14} aria-hidden="true" /> Abrir en la bóveda
             </button>
-          ) : (
+          ) : canEdit && (
             <button type="button" className="btn-primary" onClick={() => onEdit(task)}>
               <Pencil size={14} aria-hidden="true" /> Editar
             </button>
@@ -232,7 +234,7 @@ export default function TaskDetail({ task, parent, subtasks, pathIndex, accent, 
                 ))}
               </ul>
             )}
-            {!global && (
+            {!global && canEdit && (
               <button type="button" className="td-add" onClick={() => onAddSubtask(task)}>
                 <Plus size={14} aria-hidden="true" /> Añadir subtarea
               </button>

@@ -19,6 +19,7 @@ import { whenIdle } from "../editor/deferred/idle";
 import { hasUnmanagedExtension } from "../editor/wikilink";
 import type { NoteEditorHandle } from "../editor/NoteEditor";
 import { useSync } from "../sync/useSync";
+import { useVaultAccess } from "./useVaultAccess";
 import type { Vault } from "../sync/vaultStore";
 import { catalogEstados, withEstado } from "../editor/catalogEstados";
 import { canStep, type History, load as loadHistory, push, save as saveHistory, step } from "./noteHistory";
@@ -271,6 +272,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     void notes.ensureIndexes(vault.id).catch(() => undefined);
   }, [notes, synced, vault.id]);
 
+  const { isOwner } = useVaultAccess();
   // H-026: memoria por dispositivo, usuario y bóveda (documento abierto y carpetas desplegadas). Sin usuario no recuerda.
   const userId = useContext(MeContext)?.user_id ?? null;
   const remembered = useRef<ReturnType<typeof readMemory> | undefined>(undefined);
@@ -315,7 +317,7 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
   const [tab, setTab] = useState<VaultTab>(() => {
     const param = new URLSearchParams(location.search).get("tab");
     if (param === "tareas") return "tareas";
-    if (param === "publicados") return "publicados";
+    if (param === "publicados" && isOwner) return "publicados";
     return remembered.current?.tab ?? "documentos";
   });
   // Movimiento del cambio de pestaña: hacia dónde va (por el orden de las pestañas) y si ya hubo un cambio (la carga inicial no se anima).
@@ -336,10 +338,10 @@ function Workspace({ vault, onDirtyDraft }: { vault: Vault; onDirtyDraft: (draft
     if (tabParam === "tareas") {
       setTab("tareas");
       setFocusTask(query.get("task"));
-    } else if (tabParam === "publicados") {
+    } else if (tabParam === "publicados" && isOwner) {
       setTab("publicados");
     }
-  }, [location.search]);
+  }, [location.search, isOwner]);
   useEffect(() => {
     // El contador de la pestaña «Tareas» se lee al abrir la bóveda; la pestaña lo mantiene al día cuando está abierta.
     let cancelled = false;

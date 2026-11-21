@@ -1,3 +1,4 @@
+import { useVaultAccess } from "../notes/useVaultAccess";
 import { useState } from "react";
 import AgentBadge from "../agents/AgentBadge";
 import UserBadge from "../agents/UserBadge";
@@ -69,9 +70,10 @@ function creatorAgent(task: Task): string | null {
 }
 
 function StatusSelect({ task, locked, onStatus }: { task: Task; locked: boolean; onStatus: ViewActions["onStatus"] }) {
+  const { canEdit } = useVaultAccess();
   return (
     <select
-      className="tasks-status" data-status={task.status} value={task.status} disabled={locked}
+      className="tasks-status" data-status={task.status} value={task.status} disabled={locked || !canEdit}
       title={locked ? "Su estado sale de sus subtareas" : "Estado"} aria-label={`Estado de ${task.title}`}
       onChange={(e) => onStatus(task, e.target.value as TaskStatus)}
     >
@@ -128,6 +130,7 @@ function TaskCells({ task, locked, actions }: { task: Task; locked: boolean; act
 }
 
 export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; actions: ViewActions; sub: boolean }) {
+  const { canEdit } = useVaultAccess();
   const [open, setOpen] = useState(true);
   const hasKids = !sub && node.children.length > 0;
   const done = node.children.filter(isClosed).length;
@@ -160,7 +163,7 @@ export function Row({ task, node, actions, sub }: { task: Task; node: TaskNode; 
             <button type="button" className="tasks-add-sub" title="Abrir la tarea en su bóveda" aria-label={`Abrir ${task.title} en su bóveda`} onClick={() => actions.global!.onOpenInVault(task)}>
               <ExternalLink size={13} aria-hidden="true" /> En la bóveda
             </button>
-          ) : (<>
+          ) : canEdit && (<>
           {!sub && <button type="button" className="tasks-add-sub" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={13} aria-hidden="true" /> Subtarea</button>}
           <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={15} /></button>
           <button type="button" className="tasks-icon-btn tasks-icon-btn--danger" title="Eliminar" aria-label={`Eliminar ${task.title}`} onClick={() => actions.onDelete(task)}><Trash2 size={15} /></button>
@@ -217,6 +220,7 @@ const COLUMN_HINT: Record<TaskStatus, string> = {
 };
 
 export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewActions }) {
+  const { canEdit } = useVaultAccess();
   const [dragId, setDragId] = useState<string | null>(null);
   const [over, setOver] = useState<TaskStatus | null>(null);
   const parents = new Map(tasks.map((t) => [t.id, t]));
@@ -264,9 +268,9 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                     key={task.id} id={`task-${task.id}`} data-status={task.status} data-locked={locked ? "true" : undefined}
                     data-dragging={dragId === task.id ? "true" : undefined}
                     className={`tasks-card${actions.focusId === task.id ? " tasks-row--focus" : ""}${isClosed(task) ? " tasks-row--closed" : ""}`}
-                    draggable={!locked}
+                    draggable={!locked && canEdit}
                     title={locked ? "Su estado sale de sus subtareas: mueve las subtareas" : undefined}
-                    onDragStart={(e) => { if (locked) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); setDragId(task.id); }}
+                    onDragStart={(e) => { if (locked || !canEdit) return; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", task.id); setDragId(task.id); }}
                     onDragEnd={endDrag}
                   >
                     {parent && <p className="tasks-card-parent">↳ {parent.title}</p>}
@@ -296,7 +300,7 @@ export function TaskKanban({ tasks, actions }: { tasks: Task[]; actions: ViewAct
                         <StatusSelect task={task} locked={locked} onStatus={actions.onStatus} />
                         {actions.global ? (
                           <button type="button" className="tasks-icon-btn" title="Abrir la tarea en su bóveda" aria-label={`Abrir ${task.title} en su bóveda`} onClick={() => actions.global!.onOpenInVault(task)}><ExternalLink size={14} /></button>
-                        ) : (<>
+                        ) : canEdit && (<>
                         {!task.parent_id && <button type="button" className="tasks-icon-btn" title="Añadir subtarea" aria-label={`Añadir subtarea a ${task.title}`} onClick={() => actions.onAddSubtask(task)}><Plus size={14} aria-hidden="true" /></button>}
                         <button type="button" className="tasks-icon-btn" title="Editar" aria-label={`Editar ${task.title}`} onClick={() => actions.onEdit(task)}><Pencil size={14} /></button>
                         </>)}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type CSSProperties, type DragEvent } 
 import { createPortal } from "react-dom";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
+import { useVaultAccess } from "../notes/useVaultAccess";
 import {
   listVaultFiles,
   listFileFolders,
@@ -116,6 +117,7 @@ interface VaultFilesProps {
 /** Archivos de una bóveda: tabla en la zona principal y árbol de carpetas en la barra lateral (`sideSlot`). */
 export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: VaultFilesProps) {
   const { notes } = useSync();
+  const { canEdit, isOwner } = useVaultAccess();
   const selectedVaultId = vaultId;
   const [folders, setFolders] = useState<string[]>([]);
   const [selectedFolder, setSelectedFolder] = useState("");
@@ -313,6 +315,7 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
   function handleDrop(e: React.DragEvent<HTMLElement>) {
     e.preventDefault();
     setDragging(false);
+    if (!canEdit) return;
     void uploadMany(Array.from(e.dataTransfer.files ?? []));
   }
 
@@ -508,19 +511,33 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
         return DATE_FORMAT.format(parseUtc(file.created_at));
       case "visibility":
         return (
-          <button
-            type="button"
-            className={`files-visibility files-visibility--${file.visibility}`}
-            aria-label={`Cambiar visibilidad de ${file.name}`}
-            onClick={() => void handleVisibilityClick(file)}
-          >
-            {file.visibility === "private" ? (
-              <Lock size={12} aria-hidden="true" />
-            ) : (
-              <Globe size={12} aria-hidden="true" />
+          <>
+            {canEdit && (
+              <button
+                type="button"
+                className={`files-visibility files-visibility--${file.visibility}`}
+                aria-label={`Cambiar visibilidad de ${file.name}`}
+                onClick={() => void handleVisibilityClick(file)}
+              >
+                {file.visibility === "private" ? (
+                  <Lock size={12} aria-hidden="true" />
+                ) : (
+                  <Globe size={12} aria-hidden="true" />
+                )}
+                {file.visibility === "private" ? "Privado" : "Público"}
+              </button>
             )}
-            {file.visibility === "private" ? "Privado" : "Público"}
-          </button>
+            {!canEdit && (
+              <span className={`files-visibility files-visibility--${file.visibility}`}>
+                {file.visibility === "private" ? (
+                  <Lock size={12} aria-hidden="true" />
+                ) : (
+                  <Globe size={12} aria-hidden="true" />
+                )}
+                {file.visibility === "private" ? "Privado" : "Público"}
+              </span>
+            )}
+          </>
         );
       default:
         return file.references_count ?? 0;
@@ -544,26 +561,32 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
             <Code size={14} aria-hidden="true" />
           </button>
         )}
-        <button
-          type="button"
-          aria-label={`Mover ${file.name}`}
-          title="Mover a otra carpeta"
-          onClick={() => setMoveDialog({ fileId: file.id, fileName: file.name, destination: file.folder ?? "" })}
-        >
-          <FolderInput size={14} aria-hidden="true" />
-        </button>
-        <button type="button" aria-label={`Renombrar ${file.name}`} title="Renombrar" onClick={() => handleRenameClick(file)}>
-          <Pencil size={14} aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className="data-table-danger"
-          aria-label={`Borrar ${file.name}`}
-          title="Borrar"
-          onClick={() => void handleDeleteClick(file)}
-        >
-          <Trash2 size={14} aria-hidden="true" />
-        </button>
+        {canEdit && isOwner && (
+          <button
+            type="button"
+            aria-label={`Mover ${file.name}`}
+            title="Mover a otra carpeta"
+            onClick={() => setMoveDialog({ fileId: file.id, fileName: file.name, destination: file.folder ?? "" })}
+          >
+            <FolderInput size={14} aria-hidden="true" />
+          </button>
+        )}
+        {canEdit && isOwner && (
+          <button type="button" aria-label={`Renombrar ${file.name}`} title="Renombrar" onClick={() => handleRenameClick(file)}>
+            <Pencil size={14} aria-hidden="true" />
+          </button>
+        )}
+        {canEdit && (
+          <button
+            type="button"
+            className="data-table-danger"
+            aria-label={`Borrar ${file.name}`}
+            title="Borrar"
+            onClick={() => void handleDeleteClick(file)}
+          >
+            <Trash2 size={14} aria-hidden="true" />
+          </button>
+        )}
       </span>
     );
   }
@@ -579,20 +602,22 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
 
   const treePanel = (
     <aside className="note-sidebar" aria-label="Carpetas">
-      <div className="note-create-bar" role="toolbar" aria-label="Crear en la carpeta abierta">
-        <button
-          type="button"
-          className="note-create-icon"
-          onClick={() => {
-            setNewFolderError(null);
-            setNewFolderOpen(true);
-          }}
-          aria-label={`Nueva carpeta en ${selectedFolder || "Raíz"}`}
-          title={`Crear carpeta en ${selectedFolder || "Raíz"}`}
-        >
-          <FolderPlus size={16} aria-hidden="true" />
-        </button>
-      </div>
+      {canEdit && (
+        <div className="note-create-bar" role="toolbar" aria-label="Crear en la carpeta abierta">
+          <button
+            type="button"
+            className="note-create-icon"
+            onClick={() => {
+              setNewFolderError(null);
+              setNewFolderOpen(true);
+            }}
+            aria-label={`Nueva carpeta en ${selectedFolder || "Raíz"}`}
+            title={`Crear carpeta en ${selectedFolder || "Raíz"}`}
+          >
+            <FolderPlus size={16} aria-hidden="true" />
+          </button>
+        </div>
+      )}
       <FileFolderTree
         folders={folders}
         selected={selectedFolder}
@@ -612,7 +637,7 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
     <div
       className={`vault-workspace-main files-main${dragging ? " files-page--dragging" : ""}`}
       onDragOver={(e) => {
-        if (e.dataTransfer?.types?.includes("Files")) {
+        if (canEdit && e.dataTransfer?.types?.includes("Files")) {
           e.preventDefault();
           setDragging(true);
         }
@@ -676,17 +701,21 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
               />
             </>
           )}
-          <button
-            type="button"
-            className="btn-primary files-upload"
-            onClick={() => {
-              const input = document.querySelector<HTMLInputElement>("#file-upload-input");
-              input?.click();
-            }}
-          >
-            Subir archivo
-          </button>
-          <input id="file-upload-input" type="file" multiple hidden onChange={(e) => void handleUpload(e)} />
+          {canEdit && (
+            <>
+              <button
+                type="button"
+                className="btn-primary files-upload"
+                onClick={() => {
+                  const input = document.querySelector<HTMLInputElement>("#file-upload-input");
+                  input?.click();
+                }}
+              >
+                Subir archivo
+              </button>
+              <input id="file-upload-input" type="file" multiple hidden onChange={(e) => void handleUpload(e)} />
+            </>
+          )}
         </div>
 
         <div
@@ -705,9 +734,11 @@ export default function VaultFiles({ vaultId, sideSlot, onCloseSide, accent }: V
           )}
           {status === "ready" && files.length === 0 && (
             <p className="files-empty">
-              {selectedFolder
-                ? "Esta carpeta no tiene archivos. Súbelos con el botón o arrástralos aquí, o muévelos desde otra carpeta."
-                : "Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí."}
+              {!canEdit
+                ? selectedFolder ? "Esta carpeta no tiene archivos." : "Aún no hay archivos en esta bóveda."
+                : selectedFolder
+                  ? "Esta carpeta no tiene archivos. Súbelos con el botón o arrástralos aquí, o muévelos desde otra carpeta."
+                  : "Aún no hay archivos en esta bóveda. Súbelos con el botón o arrástralos aquí."}
             </p>
           )}
           {status === "ready" && filesWithReferences.length > 0 && (

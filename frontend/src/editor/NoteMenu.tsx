@@ -11,6 +11,7 @@
 import { Fragment, KeyboardEvent, useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Code, Copy, EllipsisVertical, Pencil, Trash2 } from "lucide-react";
+import { useVaultAccess } from "../notes/useVaultAccess";
 import { useMenuPosition } from "./menuPlacement";
 
 interface NoteMenuProps {
@@ -23,6 +24,7 @@ interface NoteMenuProps {
 }
 
 export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete }: NoteMenuProps) {
+  const { canEdit, isOwner } = useVaultAccess();
   const triggerId = useId();
   const menuId = useId();
   const trigger = useRef<HTMLButtonElement>(null);
@@ -33,11 +35,11 @@ export function NoteMenu({ inCode, onRename, onCopyPath, onViewInCode, onDelete 
   const position = useMenuPosition(open, trigger, menu, dismiss);
 
   const items = [
-    { label: "Renombrar o mover", Icon: Pencil, run: onRename, disabled: false, danger: false },
-    { label: "Copiar ruta", Icon: Copy, run: onCopyPath, disabled: false, danger: false },
-    { label: "Ver en Código", Icon: Code, run: onViewInCode, disabled: inCode, danger: false },
-    { label: "Borrar", Icon: Trash2, run: onDelete, disabled: false, danger: true },
-  ];
+    { label: "Renombrar o mover", Icon: Pencil, run: onRename, disabled: false, danger: false, requireEdit: true, requireOwner: true },
+    { label: "Copiar ruta", Icon: Copy, run: onCopyPath, disabled: false, danger: false, requireEdit: false, requireOwner: false },
+    { label: "Ver en Código", Icon: Code, run: onViewInCode, disabled: inCode, danger: false, requireEdit: true, requireOwner: false },
+    { label: "Borrar", Icon: Trash2, run: onDelete, disabled: false, danger: true, requireEdit: true, requireOwner: false },
+  ].filter((item) => (!item.requireEdit || canEdit) && (!item.requireOwner || isOwner));
 
   /** Abre el menú con el foco en el ítem `index`; `useMenuPosition` lo coloca bajo el botón o, si no cabe, encima. */
   function openAt(index: number) {

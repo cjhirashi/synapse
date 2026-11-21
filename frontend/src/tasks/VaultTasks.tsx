@@ -4,6 +4,7 @@ import { CalendarDays, FolderKanban, GanttChartSquare, KanbanSquare, List, Plus 
 import { ConfirmDialog } from "../editor/ConfirmDialog";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
+import { useVaultAccess } from "../notes/useVaultAccess";
 import { ApiError } from "../api/problems";
 import { getVaultAgentAccess } from "../settings/agentAccess";
 import TaskFilters from "./TaskFilters";
@@ -65,6 +66,7 @@ function errorText(error: unknown, fallback: string): string {
 /** Pestaña «Tareas» de una bóveda (H-053): lista con subtareas, Kanban y Calendario, con filtros en la barra lateral. */
 export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = null, onOpenNote, onOpenFolder, onCloseSide, onOpenCount }: Props) {
   const { notes, notesVersion } = useSync();
+  const { canEdit } = useVaultAccess();
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectConfirm, setProjectConfirm] = useState<Project | null>(null);
@@ -247,12 +249,16 @@ export default function VaultTasks({ vaultId, accent, sideSlot, focusTaskId = nu
             </button>
           ))}
         </div>
-        <button type="button" className="tasks-projects" title="Proyectos de la bóveda" aria-label="Proyectos" onClick={() => setDialog({ kind: "projects" })}>
-          <FolderKanban size={16} aria-hidden="true" /> <span className="tasks-tab-label">Proyectos</span>
-        </button>
-        <button type="button" className="tasks-new" title="Nueva tarea" aria-label="Nueva tarea" onClick={() => { setFormError(null); setDialog({ kind: "form" }); }}>
-          <Plus size={18} aria-hidden="true" />
-        </button>
+        {canEdit && (
+          <button type="button" className="tasks-projects" title="Proyectos de la bóveda" aria-label="Proyectos" onClick={() => setDialog({ kind: "projects" })}>
+            <FolderKanban size={16} aria-hidden="true" /> <span className="tasks-tab-label">Proyectos</span>
+          </button>
+        )}
+        {canEdit && (
+          <button type="button" className="tasks-new" title="Nueva tarea" aria-label="Nueva tarea" onClick={() => { setFormError(null); setDialog({ kind: "form" }); }}>
+            <Plus size={18} aria-hidden="true" />
+          </button>
+        )}
       </header>
       {/* La barra de arriba queda fija; solo este cuerpo se desplaza. `key` lo vuelve a montar al cambiar de vista y se anima la entrada. */}
       <div key={shownView} id="tasks-panel" className="tasks-body" role="tabpanel" aria-labelledby={`tasks-tab-${shownView}`} data-direction={direction}>

@@ -26,6 +26,7 @@ import { CSSProperties, DragEvent, forwardRef, KeyboardEvent, ReactNode, useCall
 import { ChevronDown, ChevronRight, FilePlus, FileText, Folder, FolderOpen, FolderPlus, House, Lock, Trash2 } from "lucide-react";
 import { useMediaQuery } from "../layout/useMediaQuery";
 import { useSync } from "../sync/useSync";
+import { useVaultAccess } from "./useVaultAccess";
 import NameDialog from "./NameDialog";
 import { folderNameMessage, noteErrorMessage } from "./messages";
 import type { NoteSummary } from "./noteStore";
@@ -165,6 +166,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
   ref,
 ) {
   const { notes, notesVersion } = useSync();
+  const { isOwner, canEdit } = useVaultAccess();
   const [items, setItems] = useState<NoteSummary[] | null>(null);
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(initialExpanded ?? []));
   const [title, setTitle] = useState("");
@@ -707,7 +709,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   className="note-tree-row note-tree-folder"
                   style={indent}
                   aria-current={activeFolder === node.path ? "true" : undefined}
-                  draggable={!reserved && !isInBitacora(node.path) && !isInMensajes(node.path)}
+                  draggable={!reserved && !isInBitacora(node.path) && !isInMensajes(node.path) && canEdit && isOwner}
                   data-drop-target={dropTargetKey === folderKey(node.path) ? "true" : undefined}
                   onDragStart={(event) => onRowDragStart(event, { kind: "folder", path: node.path })}
                   onDragOver={(event) => onTargetDragOver(event, node.path, folderKey(node.path))}
@@ -727,8 +729,8 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                   {reserved && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
                 </button>
               )}
-              {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). */}
-              {!editing && !reserved && !isInBitacora(node.path) && !isInMensajes(node.path) && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
+              {/* H-030: la carpeta reservada no ofrece renombrar, mover ni borrar (el servidor ya lo rechaza). F7c-2: en bóvedas compartidas tampoco. */}
+              {!editing && !reserved && !isInBitacora(node.path) && !isInMensajes(node.path) && canEdit && isOwner && <TreeRowMenu label={node.name} onRename={() => startFolderRename(node.path)} onDelete={() => askDeleteFolder(node.path)} />}
             </div>
             {open && (
               <ul role="group" className="note-tree-group">
@@ -763,7 +765,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 onPointerEnter={() => onPrefetch?.(note.id)}
                 className="note-tree-row note-tree-note"
                 style={indent}
-                draggable={!isInBitacora(note.path) && !readOnlyNote}
+                draggable={!isInBitacora(note.path) && !readOnlyNote && canEdit && isOwner}
                 onDragStart={(event) => onRowDragStart(event, { kind: "note", id: note.id, path: note.path })}
                 onClick={() => onOpen(note.id)}
               >
@@ -774,7 +776,7 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
                 {system && <Lock size={11} aria-hidden="true" data-icon="lock" className="note-tree-icon-lock" />}
               </button>
             )}
-            {!editing && !isInBitacora(note.path) && !readOnlyNote && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
+            {!editing && !isInBitacora(note.path) && !readOnlyNote && canEdit && <TreeRowMenu label={node.name} onRename={() => startNoteRename(note)} onDelete={() => askDeleteNote(note)} />}
           </div>
         </li>
       );
@@ -894,6 +896,11 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
         <p className="note-sidebar-readonly" role="note">
           <Lock size={12} aria-hidden="true" data-icon="lock" />
           Buzón entre agentes: solo lectura
+        </p>
+      ) : !canEdit ? (
+        <p className="note-sidebar-readonly" role="note">
+          <Lock size={12} aria-hidden="true" data-icon="lock" />
+          Solo lectura
         </p>
       ) : (
         /* Solo dos botones de icono pegados al lado del documento; el nombre se pide en una ventana emergente. */
@@ -1041,12 +1048,14 @@ const NoteSidebar = forwardRef<NoteSidebarHandle, NoteSidebarProps>(function Not
           onCancel={() => setPendingDelete(null)}
         />
       )}
-      <div className="note-sidebar-footer">
-        <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>
-          <Trash2 size={14} aria-hidden="true" />
-          Papelera de la bóveda
-        </button>
-      </div>
+      {isOwner && (
+        <div className="note-sidebar-footer">
+          <button type="button" className="note-sidebar-trash" onClick={onShowTrash}>
+            <Trash2 size={14} aria-hidden="true" />
+            Papelera de la bóveda
+          </button>
+        </div>
+      )}
     </aside>
   );
 });
