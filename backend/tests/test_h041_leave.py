@@ -97,6 +97,23 @@ def test_each_owned_skill_is_assigned_deleted_or_archived_and_the_agent_is_remov
     assert find(ready_admin, vault_id, f"{SK}/skill-sola.md") is not None  # no se borra sola
 
 
+def test_a_co_owned_skill_needs_no_resolution_and_the_leaving_owner_is_dropped(ready_admin, team):
+    vault_id, ids = team
+    shared = ready_admin.get(f"/vaults/{vault_id}/notes/{ids['compartida']}")
+    res = patch(ready_admin, vault_id, {"id": ids["compartida"], "etag": shared.headers["ETag"]},
+                frontmatter=_fm(propietario=["aira", "emma"], agentes=["otro"]))
+    assert res.status_code == 200 and res.json()["frontmatter"]["propietario"] == ["aira", "emma"]
+    listed = skills(ready_admin, vault_id)["skill-compartida"]
+    assert (listed["propietario"], listed["propietarios"]) == ("aira", ["aira", "emma"])
+    # Solo `skill-sola` queda sin dueño si sale aira: la compartida no hay que resolverla.
+    only = [{"note_id": ids["sola"], "accion": "archive"}]
+    assert leave(ready_admin, vault_id, "aira").status_code == 409
+    done = leave(ready_admin, vault_id, "aira", resolutions=only)
+    assert done.status_code == 200 and done.json()["archivadas"] == 1 and done.json()["asignadas"] == 0
+    after = skills(ready_admin, vault_id)["skill-compartida"]
+    assert after["propietarios"] == ["emma"] and after["estado"] == "borrador"
+
+
 def test_delete_goes_to_the_trash_and_suspend_keeps_the_registration(ready_admin, team):
     vault_id, ids = team
     resolutions = [{"note_id": ids["compartida"], "accion": "delete"}, {"note_id": ids["sola"], "accion": "delete"}]

@@ -648,7 +648,8 @@ class SkillOut(BaseModel):
     note_id: str
     path: str
     titulo: str | None
-    propietario: str | None  # ausente solo si está archivada
+    propietario: str | None  # el primer propietario; ausente solo si está archivada
+    propietarios: list[str] = []  # todos los propietarios (copropiedad); vacía solo si está archivada
     agentes: list[str]
     estado: str | None
 

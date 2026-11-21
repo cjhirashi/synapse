@@ -188,7 +188,9 @@ export default function AgentAccessPage() {
     }
   }
 
-  const ownedBy = (agentId: string) => skills.filter((s) => s.propietario === agentId && s.estado !== "archivado");
+  // Solo las skills de las que es único propietario: con copropietarios no quedan sin dueño, así que no hay que resolverlas.
+  const ownedBy = (agentId: string) =>
+    skills.filter((s) => (s.propietarios ?? (s.propietario ? [s.propietario] : [])).join() === agentId && s.estado !== "archivado");
   const invitedTo = (agentId: string) => skills.filter((s) => s.agentes.includes(agentId)).length;
 
   const save = (agentId: string, folders: string[], estado: "activo" | "suspendido") => {

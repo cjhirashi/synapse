@@ -654,7 +654,7 @@ class SyncPushService:
                 raise Rejected(code)
             if agentic and not was:
                 who = identity(actor, honor_declared=not (self._guard is not None and self._guard.enforcing))
-                if who is None or skill_rules.owner_of(fm) != who:
+                if who is None or skill_rules.owners_of(fm) != [who]:
                     raise Rejected(skill_rules.SKILL_OWNER)  # el propietario lo fija quien crea; aquí no se puede sellar
             if not agentic:
                 registry = await to_thread.run_sync(read_registry, self._port, self._db, vault_id)

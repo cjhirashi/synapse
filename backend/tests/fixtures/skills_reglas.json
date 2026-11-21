@@ -1,5 +1,5 @@
 {
- "_doc": "H-041 E3: especificación compartida de la forma de una skill de bóveda (propietario, agentes, estado). La implementan backend (core/skill_rules.py) y frontend (notes/skillRules.ts). `shape`: metadatos y código de rechazo; `paths`: qué rutas son una skill.",
+ "_doc": "H-041 E3: especificación compartida de la forma de una skill de bóveda (propietario como lista de ids —el texto de un id también vale—, agentes, estado). La implementan backend (core/skill_rules.py) y frontend (notes/skillRules.ts). `shape`: metadatos y código de rechazo; `paths`: qué rutas son una skill.",
  "shape": [
   {
    "frontmatter": {
@@ -168,6 +168,79 @@
     "estado": "archivado",
     "agentes": [
      "emma"
+    ]
+   },
+   "expected": "skill:estado"
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "aira"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "paulina",
+     "fedora"
+    ],
+    "agentes": [
+     "emma"
+    ]
+   },
+   "expected": null
+  },
+  {
+   "frontmatter": {
+    "propietario": []
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "aira",
+     "aira"
+    ]
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "aira",
+     3
+    ]
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "Aira"
+    ]
+   },
+   "expected": "skill:propietario"
+  },
+  {
+   "frontmatter": {
+    "propietario": [
+     "aira",
+     "emma"
+    ],
+    "agentes": [
+     "emma"
+    ]
+   },
+   "expected": "skill:agentes"
+  },
+  {
+   "frontmatter": {
+    "estado": "archivado",
+    "propietario": [
+     "aira"
     ]
    },
    "expected": "skill:estado"

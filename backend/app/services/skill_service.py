@@ -1,10 +1,10 @@
-"""Skills de bóveda: listado, asignación de propietario y el flujo del gestor que sale (H-041 E4).
+"""Skills de bóveda: listado, asignación de propietario y el flujo del gestor que sale (H-041 E4; propietarios en lista).
 
 Escribe por `NoteContentService` con el actor de quien llama (la sesión humana: es el usuario quien resuelve), de modo que
 valen las mismas reglas de siempre (forma `skill:*`, gestores) y cada cambio consta en la BITACORA a su nombre.
 
-Una skill **activa nunca queda sin propietario**: quitar o suspender a un gestor que posee skills activas exige resolver
-cada una antes (`leave`). Con invitados: asignarla a uno de ellos o eliminarla. Sin invitados: eliminarla o archivarla.
+Una skill **activa nunca queda sin propietario**: quitar o suspender a un gestor que es el único propietario de skills
+activas exige resolver cada una antes (`leave`); de las que comparte con otros propietarios solo se le quita. Con invitados: asignarla a uno de ellos o eliminarla. Sin invitados: eliminarla o archivarla.
 Archivada = en su carpeta, inactiva, sin propietario ni invitados, hasta que el usuario la asigne a un gestor.
 """
 from typing import NamedTuple
@@ -26,7 +26,8 @@ class SkillInfo(NamedTuple):
     note_id: str
     path: str
     titulo: str | None
-    propietario: str | None
+    propietario: str | None  # el primero de `propietarios`
+    propietarios: list[str]
     agentes: list[str]
     estado: str | None
     etag: str
@@ -46,7 +47,7 @@ def _info(doc: dict) -> SkillInfo:
     estado = fm.get("estado")
     return SkillInfo(
         doc["_id"].split(":")[2], doc["path"], titulo if isinstance(titulo, str) else None, skill_rules.owner_of(fm),
-        skill_rules.guests_of(fm), estado if isinstance(estado, str) else None, f'"{doc["_rev"]}"', fm)
+        skill_rules.owners_of(fm), skill_rules.guests_of(fm), estado if isinstance(estado, str) else None, f'"{doc["_rev"]}"', fm)
 
 
 def _invalid(pointer: str, code: str) -> ValidationFailed:
@@ -73,7 +74,8 @@ class SkillService:
             after = (view_key(docs[-1]["path"]), docs[-1]["_id"])
 
     def owned_active(self, vault_id: str, agent_id: str) -> list[SkillInfo]:
-        return [s for s in self.list_skills(vault_id) if s.propietario == agent_id and s.estado != skill_rules.ARCHIVED]
+        """Las skills activas de las que `agent_id` es el **único** propietario: las que quedarían sin dueño si sale."""
+        return [s for s in self.list_skills(vault_id) if s.propietarios == [agent_id] and s.estado != skill_rules.ARCHIVED]
 
     # --- Escritura de una skill ---
 
@@ -135,6 +137,7 @@ class SkillService:
                 self._write(vault_id, fresh, skill_rules.assign_owner(fresh.frontmatter, res.a))
                 assigned += 1
         dropped = self.drop_guest_everywhere(vault_id, agent_id)
+        self.drop_owner_everywhere(vault_id, agent_id)
         if modo == "quitar":
             self._registry.remove(vault_id, agent_id)
         else:
@@ -147,6 +150,15 @@ class SkillService:
         for skill in self.list_skills(vault_id):
             if agent_id in skill.agentes:
                 self._write(vault_id, skill, skill_rules.drop_guest(skill.frontmatter, agent_id))
+                count += 1
+        return count
+
+    def drop_owner_everywhere(self, vault_id: str, agent_id: str) -> int:
+        """Quita a `agent_id` de `propietario` de las skills que comparte con otros propietarios (conservan a los demás)."""
+        count = 0
+        for skill in self.list_skills(vault_id):
+            if agent_id in skill.propietarios and len(skill.propietarios) > 1:
+                self._write(vault_id, skill, skill_rules.drop_owner(skill.frontmatter, agent_id))
                 count += 1
         return count
 

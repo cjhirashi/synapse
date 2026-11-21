@@ -23,7 +23,7 @@ import { joinPath, parentFolder } from "./folders";
 import { stampDates, localDateISO } from "../editor/metaDates";
 import { canonical } from "../sync/canonical";
 import { canonicalBase, canonicalPath, isCanonical } from "./docNames";
-import { ARCHIVED, checkShape as checkSkillShape, isSkillPath } from "./skillRules";
+import { ARCHIVED, checkShape as checkSkillShape, isSkillPath, ownersOf } from "./skillRules";
 import { detachTemplate, seedValue } from "../editor/templateAttrs";
 import { checkReservedCase, checkNoteWrite, checkFolderMove, templateName, templatePath, isValidTemplateName, PLANTILLA_NAME_MAX, TEMPLATE_PREFIX } from "./metaRules";
 
@@ -515,10 +515,13 @@ export function createNoteStore(db: PouchDB.Database, options: NoteStoreOptions 
     if (seed !== undefined) Object.assign(seeded, seed);
     if (isSkillPath(path)) {
       // H-041 E3: la skill nace de un gestor o archivada; el servidor lo exige (`skill:propietario`).
-      if (typeof seeded.propietario !== "string" || seeded.propietario === "") {
+      const owners = ownersOf(seeded);
+      if (owners.length === 0) {
         delete seeded.propietario;
         delete seeded.agentes;
         seeded.estado = ARCHIVED;
+      } else {
+        seeded.propietario = owners;
       }
       if (checkSkillShape(seeded) !== null) throw new NoteValidationError(["frontmatter"]);
     }
