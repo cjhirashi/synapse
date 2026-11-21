@@ -31,6 +31,7 @@ class VaultMemberService:
     def invite(self, owner_id: str, vault_id: str, email: str, grants: list[dict]) -> VaultMember:
         """Invita a un usuario existente. Una invitación anterior terminada (revocada) se reabre sobre la misma fila."""
         _valid_grants(grants)
+        self._repo.lock_owner(owner_id)
         invitee = self._repo.invitable_user(email)
         if invitee is None:
             raise InviteeNotFound()
@@ -48,8 +49,11 @@ class VaultMemberService:
                 vault_id=vault_id, owner_id=owner_id, user_id=invitee.id, status="pendiente", invited_by="user", created_at=_now()))
         else:
             member = existing
-            member.status, member.invited_by, member.created_at = "pendiente", "user", _now()
-            member.responded_at = member.ended_at = member.ended_reason = None
+            reopened = self._repo.transition(member, ("revocado",), {
+                "status": "pendiente", "invited_by": "user", "created_at": _now(),
+                "responded_at": None, "ended_at": None, "ended_reason": None})
+            if not reopened:
+                raise MemberAlreadyExists()
         self._repo.replace_grants(member.id, grants)
         return member
 
@@ -77,30 +81,27 @@ class VaultMemberService:
         reason = {"pendiente": "cancelada", "activo": "revocada"}.get(member.status)
         if reason is None:
             raise InvitationNotPending()
-        self._end(member, reason)
+        self._move(member, (member.status,), reason)
         return reason
 
     def accept(self, member: VaultMember) -> VaultMember:
-        self._require(member, "pendiente")
-        member.status, member.responded_at = "activo", _now()
+        if not self._repo.transition(member, ("pendiente",), {"status": "activo", "responded_at": _now()}):
+            raise InvitationNotPending()
         return member
 
     def reject(self, member: VaultMember) -> VaultMember:
-        self._require(member, "pendiente")
-        self._end(member, "rechazada")
-        member.responded_at = member.ended_at
+        self._move(member, ("pendiente",), "rechazada", responded=True)
         return member
 
     def leave(self, member: VaultMember) -> VaultMember:
-        self._require(member, "activo")
-        self._end(member, "salio")
+        self._move(member, ("activo",), "salio")
         return member
 
-    @staticmethod
-    def _require(member: VaultMember, status: str) -> None:
-        if member.status != status:
+    def _move(self, member: VaultMember, expected: tuple[str, ...], reason: str, responded: bool = False) -> None:
+        """Termina la membresía (`revocado` + motivo) solo si sigue en el estado esperado; si otra petición ya la movió, no la pisa."""
+        now = _now()
+        values = {"status": "revocado", "ended_reason": reason, "ended_at": now}
+        if responded:
+            values["responded_at"] = now
+        if not self._repo.transition(member, expected, values):
             raise InvitationNotPending()
-
-    @staticmethod
-    def _end(member: VaultMember, reason: str) -> None:
-        member.status, member.ended_reason, member.ended_at = "revocado", reason, _now()

@@ -21,6 +21,19 @@ class VaultMemberRepository:
         self._db.flush()
         return member
 
+    def lock_owner(self, owner_id: str) -> None:
+        """Serializa las invitaciones de un mismo propietario (`SELECT … FOR UPDATE` sobre su cuenta; SQLite lo ignora): sin esto,
+        dos invitaciones simultáneas superan el tope de miembros o chocan con la unicidad de la fila."""
+        self._db.query(User.id).filter(User.id == owner_id).with_for_update().first()
+
+    def transition(self, member: VaultMember, expected: tuple[str, ...], values: dict) -> bool:
+        """Cambia la fila solo si sigue en uno de los estados `expected` (`UPDATE … WHERE status IN …`) y la recarga. `False` si otra
+        petición la movió antes: así una aceptación tardía nunca pisa una cancelación ni una salida pisa una revocación."""
+        moved = self._db.query(VaultMember).filter(VaultMember.id == member.id, VaultMember.status.in_(expected)).update(
+            values, synchronize_session=False)
+        self._db.refresh(member)
+        return moved == 1
+
     def get_of_owner(self, member_id: str, owner_id: str, vault_id: str) -> VaultMember | None:
         return self._db.query(VaultMember).filter(
             VaultMember.id == member_id, VaultMember.owner_id == owner_id, VaultMember.vault_id == vault_id).first()

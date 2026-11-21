@@ -84,9 +84,10 @@ def check_grants(grants: list[dict] | None) -> str | None:
             if _is_reserved_start(folder):
                 return "validation-error:grants"
 
-        # Sin carpetas repetidas
-        if folder in seen_folders:
+        # Sin carpetas repetidas (por la clave normalizada: «Pub» y «pub» son la misma carpeta)
+        key = folder if folder == "*" else path_key(folder)
+        if key in seen_folders:
             return "validation-error:grants"
-        seen_folders.add(folder)
+        seen_folders.add(key)
 
     return None

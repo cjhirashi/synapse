@@ -404,7 +404,7 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
-          description: Member not found
+          description: Member not found / Vault not found
         '409':
           content:
             application/problem+json:
@@ -423,6 +423,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
           description: Internal Server Error
+        '503':
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+          description: Storage unavailable
       summary: Accept Invitation
       tags:
       - sharing

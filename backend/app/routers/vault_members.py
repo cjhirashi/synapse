@@ -226,11 +226,14 @@ def _respond(
 
 
 @router.post(
-    "/invitations/{member_id}/accept", response_model=VaultMemberOut, responses=problem_responses(MemberNotFound, InvitationNotPending))
+    "/invitations/{member_id}/accept", response_model=VaultMemberOut,
+    responses=problem_responses(MemberNotFound, InvitationNotPending, VaultNotFound, StorageUnavailable))
 def accept_invitation(
     member_id: MemberId, user: TokenPayload = Depends(get_current_user), service: VaultMemberService = Depends(get_service),
     repo: VaultMemberRepository = Depends(get_repo), port: VaultPort = Depends(get_vault_port), db: Session = Depends(get_db),
 ):
+    pending = service.of_user(user.sub, member_id)
+    VaultService(port, user_db_name(pending.owner_id)).get(pending.vault_id)  # una bóveda borrada ya no se acepta (404 VaultNotFound)
     return _one_out(repo, _respond(member_id, "accepted", "accept", service.accept, "aceptó tu invitación a", user, service, repo, port, db))
 
 

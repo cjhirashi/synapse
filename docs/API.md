@@ -848,7 +848,7 @@ El propietario invita a **usuarios que ya existen**; el aviso les llega dentro d
 | `PUT /vaults/{vault_id}/members/{member_id}/grants` | propietario | Reemplaza todas las concesiones (efecto inmediato). 403 `share-not-allowed` si la cuenta ya no puede compartir (cancelar y revocar siguen permitidos). 409 `invitation-not-pending` si ya está revocado. |
 | `DELETE /vaults/{vault_id}/members/{member_id}` | propietario | Pendiente → `revocado` con motivo `cancelada`; activo → `revocado` con `revocada`. 204. Las concesiones se conservan como historial. |
 | `GET /invitations` | invitado | Mis invitaciones y accesos (por defecto `pendiente` y `activo`; `?status=pendiente\|activo\|revocado`), con `owner`, `vault_name` y `grants`. Del dueño y la bóveda solo se ve eso. |
-| `POST /invitations/{member_id}/accept` | invitado | `pendiente` → `activo`. 200 con el miembro. |
+| `POST /invitations/{member_id}/accept` | invitado | `pendiente` → `activo`. 200 con el miembro. 404 `vault-not-found` si la bóveda ya se borró (la invitación sigue pendiente); 409 `invitation-not-pending` si el propietario la canceló mientras tanto. |
 | `POST /invitations/{member_id}/reject` | invitado | `pendiente` → `revocado` (`rechazada`). 200. |
 | `POST /invitations/{member_id}/leave` | invitado | `activo` → `revocado` (`salio`). 204. |
 
