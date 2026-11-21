@@ -260,3 +260,20 @@ def test_the_members_writes_count_against_the_owners_document_limit(ready_admin,
     created = [editor.post(f"/vaults/{vault}/notes", json={"path": f"n{i}.md", "content": "1"}) for i in range(4)]
     assert any(r.status_code == 403 and r.json()["type"].endswith("document-limit-reached") for r in created)
     assert owner.post(f"/vaults/{vault}/notes", json={"path": "del-dueno.md", "content": "1"}).status_code == 403
+
+
+def test_the_members_own_low_limits_do_not_apply_inside_the_owners_vault(ready_admin, db):
+    """Los límites de la bóveda son del propietario: un tope bajo del invitado no lo frena en una bóveda ajena."""
+    owner = person(ready_admin, db, "due@example.com")
+    editor = person(ready_admin, db, "edi@example.com")
+    vault = vault_of(owner, name="Del dueño")
+    member = invite(owner, vault, "edi@example.com", [{"folder": "*", "level": "escritura"}]).json()
+    assert editor.post(f"/invitations/{member['id']}/accept").status_code == 200
+    db.query(User).filter(User.email == "due@example.com").update({"max_notes_per_vault": 50})
+    db.query(User).filter(User.email == "edi@example.com").update({"max_notes_per_vault": 1})
+    db.commit()
+    created = [editor.post(f"/vaults/{vault}/notes", json={"path": f"n{i}.md", "content": "1"}) for i in range(4)]
+    assert [r.status_code for r in created] == [201] * 4
+    own = vault_of(editor, name="Propia del invitado")
+    mine = [editor.post(f"/vaults/{own}/notes", json={"path": f"m{i}.md", "content": "1"}) for i in range(2)]
+    assert [r.status_code for r in mine] == [201, 403]

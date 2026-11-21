@@ -9,6 +9,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.main import app
+from app.core.models.user import User
 from app.routers.files import get_object_storage
 from tests.fake_object_storage import FakeObjectStorage
 from tests.test_h030_api import vault_of
@@ -304,3 +305,19 @@ def test_revoking_a_member_removes_file_access_immediately(shared):
     problem(s.ana.get(f"/vaults/{s.vault}/files"), 404, "vault-not-found")
     problem(s.ana.get(f"/vaults/{s.vault}"), 404, "vault-not-found")
     problem(s.ana.post(f"/vaults/{s.vault}/file-folders", json={"path": "Pub/x"}), 404, "vault-not-found")
+
+
+def test_the_guests_own_storage_limit_does_not_apply_and_the_owners_does(ready_admin, db, storage):
+    """El almacenamiento de la bóveda compartida se mide con el tope del propietario, no con el del invitado."""
+    owner = person(ready_admin, db, "due@example.com")
+    vault = vault_of(owner, name="Del dueño")
+    editor = person(ready_admin, db, "edi@example.com")
+    member = invite(owner, vault, "edi@example.com", [{"folder": "*", "level": "escritura"}]).json()
+    assert editor.post(f"/invitations/{member['id']}/accept").status_code == 200
+    db.query(User).filter(User.email == "edi@example.com").update({"max_storage_bytes_per_vault": 1})
+    db.commit()
+    assert upload(editor, vault, filename="libre.png").status_code == 201
+    db.query(User).filter(User.email == "due@example.com").update({"max_storage_bytes_per_vault": 1})
+    db.commit()
+    blocked = upload(editor, vault, filename="tope.png")
+    assert blocked.status_code == 403 and blocked.json()["type"].endswith("storage-limit-reached"), blocked.text
